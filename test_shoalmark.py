@@ -13935,12 +13935,15 @@ def _ci_classifier_failures(script, root, shape):
     """The unchanged classifier must retain full coverage after failed git commands or incomplete raw diff records."""
     event, base, head, merge = shape
     out = []
-    real_git = shlex.quote(Path(shutil.which("git")).as_posix())
+    def fault(command, replacement):
+        # Git for Windows' bash launcher can put its real git ahead of PATH. A function is resolved before any executable;
+        # all other commands still use the real git, through `command`, in this same shell.
+        return (f'git() {{ if [ "$1" = {shlex.quote(command)} ]; then {replacement}; return $?; fi; command git "$@"; }}\n')
     subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
     valid = ':100644 100644 ' + '1' * 40 + ' ' + '2' * 40 + ' M\\0work-tracker/FM-001-note.md\\0'
     for name, command, replacement, wanted in (
-        ("git show fails", "show", "exit 23", "false"),
-        ("git diff fails", "diff", "exit 23", "false"),
+        ("git show fails", "show", "return 23", "false"),
+        ("git diff fails", "diff", "return 23", "false"),
         ("a raw record has no terminated path", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md'", "false"),
         ("a raw record has an extra NUL", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md\\0\\0'", "false"),
         ("a valid raw record", "diff", "printf " + shlex.quote(valid), "true"),
@@ -13950,18 +13953,27 @@ def _ci_classifier_failures(script, root, shape):
     ):
         with tempfile.TemporaryDirectory() as d:
             area = Path(d)
-            git = area / "git"
-            git.write_bytes((f'#!/bin/sh\nif [ "$1" = {shlex.quote(command)} ]; then {replacement}; exit; fi\n'
-                             f'exec {real_git} "$@"\n').encode())
-            git.chmod(0o755)
             put, summary = area / "output", area / "summary"
             put.write_bytes(b""); summary.write_bytes(b"")
-            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c", script], cwd=root, capture_output=True, timeout=15,
-                               env=dict(_ENV, PATH=str(area) + os.pathsep + _ENV.get("PATH", ""), EVENT=event, BASE=base, HEAD_SHA=head,
+            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c", fault(command, replacement) + script], cwd=root, capture_output=True, timeout=15,
+                               env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head,
                                         RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
             said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
             out.append((f"the classifier: {name} requires records={wanted!r} (saw exit {r.returncode}, records={said.get('records')!r})",
                         r.returncode == 0 and said.get("records") == wanted))
+    # Prove the injection itself, including its nonzero return and delegation, with the real git first on PATH. This also runs
+    # on macOS, where the old executable shim worked; classifier output alone would not prove the intended call was intercepted.
+    with tempfile.TemporaryDirectory() as d:
+        marker = Path(d) / "intercepted"
+        probe = ('if git diff > "$RUNNER_TEMP/intercepted"; then status=0; else status=$?; fi\n'
+                 'printf "status=%s\\nkind=%s\\nhead=%s\\n" "$status" "$(type -t git)" "$(git rev-parse --verify HEAD)"\n')
+        r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c",
+                            fault("diff", 'printf "function intercepted\\n"; return 23') + probe], cwd=root, capture_output=True, timeout=15,
+                           env=dict(_ENV, RUNNER_TEMP=d, PATH=str(Path(shutil.which("git")).parent) + os.pathsep + _ENV.get("PATH", "")))
+        said = dict(ln.split("=", 1) for ln in r.stdout.decode().splitlines() if "=" in ln)
+        out.append(("the classifier's bash function intercepts with real git first on PATH, preserves a failed return and delegates other commands",
+                    r.returncode == 0 and marker.read_bytes() == b"function intercepted\n"
+                    and said == {"status": "23", "kind": "function", "head": merge}))
     return out
 
 
