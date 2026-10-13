@@ -443,19 +443,63 @@ def tracker_folder_problem(what="the board is not refreshed"):
 _TRACKED = None
 
 
+def svn_tracked_board_rels():
+    """One local status snapshot, never a server read. Unreadable metadata is not an empty inventory."""
+    status = svn_run("status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", xml=True)
+    if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != ".":
+        raise SvnUnreadable("local status did not identify the working-copy target")
+    wanted = (HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix())
+    versioned = {"normal", "modified", "added", "replaced", "deleted", "missing", "conflicted", "merged"}
+    out, seen, root_seen = [], set(), False
+    for entry in status.iter("entry"):
+        rel = (entry.get("path") or "").replace("\\", "/")
+        parts = pathlib.PurePosixPath(rel).parts
+        if not rel or rel.startswith("/") or re.match(r"^[A-Za-z]:", rel) or ".." in parts:
+            raise SvnUnreadable("local status printed an invalid working-copy path")
+        rel = pathlib.PurePosixPath(rel).as_posix()
+        if rel in seen:
+            raise SvnUnreadable("local status printed a duplicate working-copy path")
+        seen.add(rel)
+        wc = entry.find("wc-status")
+        if wc is None or wc.get("item") is None or wc.get("props") is None:
+            raise SvnUnreadable("local status printed incomplete working-copy metadata")
+        item = wc.get("item")
+        root_seen = root_seen or (rel == "." and item in versioned)
+        relevant = any(rel == p or rel.startswith(p + "/") or p.startswith(rel + "/") for p in wanted)
+        if not relevant:
+            continue
+        if item not in versioned | {"unversioned", "ignored"} or wc.get("switched") == "true" or wc.get("tree-conflicted") == "true":
+            raise SvnUnreadable(f"local status cannot establish the board path {rel}")
+        if item in versioned and any(rel == p or rel.startswith(p + "/") for p in wanted):
+            out.append(rel)
+    if not root_seen:
+        raise SvnUnreadable("local status did not establish a versioned working-copy target")
+    # An outer status does not descend into an unversioned nested working copy. Do not write its board as though unversioned.
+    for directory in (TRACKER_DIR, VIEW_DIR):
+        for path in (directory, *directory.parents):
+            if path == ROOT:
+                break
+            if disk_marker(path / ".svn"):
+                raise SvnUnreadable("the board lies in a nested Subversion working copy")
+    return out
+
+
 def tracked_board_rels():
-    """What git tracks of the board's files — the page and its views — as git names them, relative to the repository, with one read-only call. Where there is
-    no git, none."""
+    """Versioned board paths relative to ROOT, from one successful read-only backend query."""
+    if vcs() == "svn":
+        return svn_tracked_board_rels()
     if vcs() != "git":
         return []
     rels = [HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()]
-    out = subprocess.run(["git", "ls-files", "-z", "--", *(":(literal)" + r for r in rels)], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                         errors="replace", env=nested_git_env()).stdout
-    return [r for r in out.split("\x00") if r]
+    out = vcs_process("git", "ls-files", "-z", "--", *(":(literal)" + r for r in rels), cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                      errors="replace", env=nested_git_env())
+    if out.returncode:
+        raise ReadOnlyRun("Git could not identify the versioned board files")
+    return [r for r in out.stdout.split("\x00") if r]
 
 
 def tracked_board_files():
-    """What git tracks of the board's files (`tracked_board_rels`), as paths, read once per run. Where there is no git, none."""
+    """Versioned board paths (`tracked_board_rels`), read once per run."""
     global _TRACKED
     if _TRACKED is None:
         _TRACKED = {_norm(ROOT / r) for r in tracked_board_rels()}
@@ -467,6 +511,8 @@ def tracked_board_line(rels):
     is the one line it says in place of the link, naming the file, and the page it leaves says the same. A page git tracks is left as committed, with its own
     line (`unwritable`)."""
     names = ", ".join(rels[:3]) + (f" and {len(rels) - 3} more" if len(rels) > 3 else "")
+    if vcs() == "svn":
+        return f"board: not written — Subversion versions {names}, a path of the board: the page loads nothing; remove the board from version control, and the next run writes it"
     return (f"board: not written — git tracks {names}, a file of the board: the page loads nothing; untrack it (`git rm --cached`), and the next run "
             "writes the board")
 
@@ -485,7 +531,7 @@ def unwritable(path):
     if why:
         return why
     if SAFE_READS and _norm(path) in tracked_board_files():
-        return "git tracks it"
+        return "Subversion versions it" if vcs() == "svn" else "git tracks it"
     return ""
 
 
@@ -567,6 +613,11 @@ def read_only_git(argv):
     return True
 
 
+def read_only_svn(argv):
+    """Exactly the local status snapshot used by the board, with no remote, mutation or configurable target."""
+    return isinstance(argv, (list, tuple)) and tuple(argv) == ("svn", "status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", "--xml")
+
+
 def split_cmdline(line):
     """A Windows command line as the argument list it came from (the rules `subprocess.list2cmdline` writes by): Windows hands the audit hook
     the line, POSIX the list."""
@@ -620,7 +671,8 @@ def board_judge(event, args):
     why = ""
     if event == "subprocess.Popen":
         argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]
-        if not read_only_git(argv):
+        allowed = (read_only_svn(argv) and args[0] == "svn" and args[2] is not None and _norm(args[2]) == _norm(ROOT)) if vcs() == "svn" else read_only_git(argv)
+        if not allowed:
             why = f"it would start {' '.join(str(a) for a in argv[:4])}"
     elif event in ("os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty", "webbrowser.open", "socket.connect"):
         why = f"{event} is not for the board's run"
@@ -9881,11 +9933,12 @@ def board_run(root):
         if why:
             print(f"board: not refreshed — {why}", file=sys.stderr)
             return EXIT_OK
+        tracked = tracked_board_rels() if TRACKER_DIR.is_dir() else []
+        _TRACKED = {_norm(ROOT / rel) for rel in tracked}        # the single validated snapshot precedes every board write
         basis = board_basis()                                       # FM-045: what the board is built from, read before the trackers are
         trackers = load_trackers()
         no_derived(trackers)                                        # no deriver: no derived column, file, note or key
         if TRACKER_DIR.is_dir():
-            tracked = tracked_board_rels()
             if any(r != HTML_OUT.relative_to(ROOT).as_posix() for r in tracked):     # the cold review's F1: no page this run writes loads a view git tracks
                 line = tracked_board_line(tracked)
                 if board_write(HTML_OUT, tracked_board_page(line)):     # a page git tracks itself is left as committed, with its line
@@ -9893,7 +9946,8 @@ def board_run(root):
             else:                                                   # a page git tracks is left as committed, its line said in place of the link
                 page, left = render_html(trackers), len(BOARD_LEFT)
                 written = board_write(HTML_OUT, page)
-                write_views(trackers)
+                if written or vcs() != "svn":                   # a versioned SVN page and all its existing views are left untouched
+                    write_views(trackers)
                 if written:
                     write_built(basis, left)                        # FM-045: last, only after the page and every view
                     print(board_link())                             # where the board is written, to open (FM-006) — only a board this run wrote; never with --print-written
@@ -9902,7 +9956,11 @@ def board_run(root):
                 print(drift)                                        # the hook still refreshed: it only says that the copy is not what the repository pins
         return EXIT_OK
     except ReadOnlyRun as e:
-        print(f"the board's run was stopped: {e} — it starts nothing but read-only git and writes only the board", file=sys.stderr)
+        capability = "the one local Subversion status query" if vcs() == "svn" else "read-only git"
+        print(f"the board's run was stopped: {e} — it starts nothing but {capability} and writes only the board", file=sys.stderr)
+        return EXIT_LINT
+    except SvnUnreadable as e:
+        print(f"board: not refreshed — Subversion's local metadata could not be read: {e}; nothing is written", file=sys.stderr)
         return EXIT_LINT
     except Unread:                                                  # each reader that can meet a missing object catches it; one that did not leaves the board as it was
         print("board: not refreshed — a read met an object this partial clone does not hold", file=sys.stderr)
