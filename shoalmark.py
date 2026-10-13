@@ -2706,7 +2706,7 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
     return owner_change(tid, t, dict(
         flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write, onto=bool(onto),
         subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
-        again=f'{CMD} --answer {tid} {verdict}' + (f' "{text.replace(chr(34), chr(39))}"' if text else "") + (" --supersede" if supersede else ""),
+        again=f'{CMD} --answer {printed_arg(tid)} {verdict}' + (f' {printed_arg(text)}' if text else "") + (" --supersede" if supersede else ""),
         said=lambda branch, pushed: (f"{tid} answered: {answer}\n  signed, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
                                      + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
                                      + seed_said(tid, seed))))
@@ -2737,7 +2737,7 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
     own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
     his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
     if not his:
-        return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {branch}`, "
+        return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {printed_arg(branch)}`, "
                 f"then `{how['again']}`")
     said = "; ".join(f"`{sha}` {subject[:60]}" for sha, subject in his[:3]) + (f"; and {len(his) - 3} more" if len(his) > 3 else "")
     tip = (git("rev-parse", "--verify", "--quiet", branch).stdout or "").strip()
@@ -2749,13 +2749,13 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
         there = cat_blobs([f"{branch}:{rel}"]).get(f"{branch}:{rel}")
         t_ = extract(ROOT / rel, there) if there is not None else None
         if t_ and (act_of(t_) if how["flag"] == "--done" else t_.get("status") in OPEN_STATUSES):
-            return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {branch}`, then "
+            return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {printed_arg(branch)}`, then "
                     f"`{how['again']}` — it commits on top, and nothing of yours is deleted" + held)
     if stray:
         return (f"it carries your commit(s) — {said} — and nothing of yours is deleted{held}; then merge it (its pull request), "
-                f"then `{how['again']}`; or `git switch {branch}` and run it there")
+                f"then `{how['again']}`; or `git switch {printed_arg(branch)}` and run it there")
     return (f"it carries your commit(s) — {said} — and nothing of yours is deleted: merge it first (its pull request), then `{how['again']}`; "
-            f"or `git switch {branch}` and run it there")
+            f"or `git switch {printed_arg(branch)}` and run it there")
 
 
 def ics_text(value):
@@ -3059,7 +3059,7 @@ def owner_change(tid, t, how):
                 print(f"{flag}: `{branch}` exists and is not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
                 return EXIT_LINT
             if git("branch", "-D", branch).returncode != 0:
-                print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {branch}`, then answer again", file=sys.stderr)
+                print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {printed_arg(branch)}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
             print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{ref_name(trunk)}` — deleted, and cut fresh", file=sys.stderr)
         step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
@@ -8389,7 +8389,7 @@ def done_cmd(words, trackers):
             there = cat_blobs([f"refs/heads/{branch}:{rel}"]).get(f"refs/heads/{branch}:{rel}")
             if there is not None and act_of(extract(ROOT / rel, there)):
                 print(f"--done: {tid}'s act is on `{branch}`, not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(
-                    git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {tid} {shlex.quote(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
+                    git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {printed_arg(tid)} {printed_arg(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
                 return EXIT_LINT
     if not act:
         print(f"--done: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`; "
@@ -8413,7 +8413,7 @@ def done_cmd(words, trackers):
         write=lambda lines, me, branch: (act_record(lines, fields,
                                                     f"**{today}** · done — {where}" + (f" ({facts})" if facts else "") + f" · {what}"
                                                     + (f" · due {due}" if due else "") + f" · {me}"), ""),
-        subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {tid} "{where}"',
+        subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {printed_arg(tid)} {printed_arg(where)}',
         said=lambda branch, pushed: f"{tid} done: {where}\n  signed, on `{branch}`{pushed}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
                                      + (f" — with what the repository says of it: {facts}" if facts else "")
                                      + ("\n  next: build — the seat's move follows" if "next" in fields else "")))
@@ -8448,7 +8448,7 @@ def due_cmd(words, trackers):
         write=lambda lines, me, branch: (act_record(lines, {"due": when, "done": None},
                                                     f"**{today}** · " + (f"rescheduled — was due {old}, now due {when}" if old else f"scheduled — due {when}{before}")
                                                     + f" · {what} · {me}"), ""),
-        subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {tid} {when}",
+        subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {printed_arg(tid)} {printed_arg(when)}",
         said=lambda branch, pushed: f"{tid} due: {when}\n  signed, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
 
 
@@ -8492,7 +8492,7 @@ def revoke_cmd(words, trackers):
     return owner_change(tid, t, dict(
         flag="--revoke", verb="revoking", noun="revocation", right="taking back the Owner's act is an `answer` change", check=lambda: "", onto=bool(onto),
         write=lambda lines, me, branch_: (act_record(lines, fields, f"**{today}** · done revoked — {why} · it was done {was} · {where} · {what} · {me}"), ""),
-        subject=REVOKE_DONE_SUBJECT.format(tid) + why[:50], kept=("your revocation", why), again=f'{CMD} --revoke {tid} "{why}"',
+        subject=REVOKE_DONE_SUBJECT.format(tid) + why[:50], kept=("your revocation", why), again=f'{CMD} --revoke {printed_arg(tid)} {printed_arg(why)}',
         said=lambda branch_, pushed: f"{tid} done revoked: {why}\n  signed, on `{branch_}`{pushed}\n  the act is owed again — it is back on your list; "
                                      f"the revocation is under `## {HEAD['acts']}`" + ("\n  next: owner — the act is yours again" if "next" in fields else "")))
 
@@ -8712,6 +8712,54 @@ def drift_normalize(text):
     """Blank the generation date so only ledger content can count as drift."""
     return GENERATED_RE.sub("> Generated <date> ", text)
 
+
+
+def printed_arg(token):
+    """Spell one argument for a copied command: a PowerShell literal on Windows, shlex.quote elsewhere.
+    CMD is already a command prefix; callers keep it intact and quote each argument separately."""
+    return "'" + token.replace("'", "''") + "'" if sys.platform == "win32" else shlex.quote(token)
+
+
+CLI_GIT_ONLY = {
+    "session_trailer": ("--session-trailer: Git commit-message trailers require a Git working copy", EXIT_LINT),
+    "whoami": ("--whoami: Git worktree identity requires a Git working copy", EXIT_LINT),
+    "session_check": ("--session-check: the Git-hook session capability is unavailable under Subversion", EXIT_LINT),
+    "commit_msg": ("--commit-msg: the Git-hook commit-message capability is unavailable under Subversion", EXIT_LINT),
+    "sessions": ("--sessions: the registry is read from git's commit trailers — this is no git repository", EXIT_LINT),
+    "ratio": ("--ratio: the merges are read from git's first-parent history — this is no git repository", 2),
+    "queue": ("--queue: not a git repository — the queue is read from GitHub with `gh`", EXIT_NO_FORGE),
+    "answer": ("--answer: signed answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "done": ("--done: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "due": ("--due: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "revoke": ("--revoke: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+}
+
+
+def cli_operation(args):
+    """Select the existing main handler without discovery, proof, processes or writes.
+    The caller retains argument validation and normalizes TortoiseSVN before this selection."""
+    ordered = (("html_only", args.html_only), ("vendor", args.vendor), ("brand", args.brand), ("init", args.init),
+               ("install_hook", args.install_hook), ("session_trailer", args.session_trailer), ("whoami", args.whoami),
+               ("session_check", args.session_check), ("commit_msg", args.commit_msg), ("session", args.session),
+               ("sessions", args.sessions), ("ratio", args.ratio), ("ratio_window", args.since or args.until),
+               ("queue", args.queue), ("schema", args.schema), ("new", args.new), ("invite", args.invite),
+               ("notify", args.notify), ("owner", args.owner), ("answered", args.answered), ("answer", args.answer),
+               ("done", args.done), ("due", args.due), ("revoke", args.revoke), ("clear_ask", args.clear_ask),
+               ("standup", args.standup), ("next", args.next), ("triage", args.triage), ("related", args.related))
+    for name, value in ordered:
+        selected = value is not None if name in ("brand", "standup") else bool(value)
+        if selected:
+            return name
+    return "check" if args.check else "write"
+
+
+def cli_preflight(args, backend):
+    """Return (one diagnostic, exit code), or (None, 0) to continue the existing handler and its proof.
+    Only the selected operation matters: an ignored lower-priority flag changes no capability."""
+    operation = cli_operation(args)
+    if operation == "ratio_window":
+        return "--since and --until go with --ratio", 2
+    return CLI_GIT_ONLY[operation] if backend != "git" and operation in CLI_GIT_ONLY else (None, EXIT_OK)
 
 
 def parse_args(argv):
