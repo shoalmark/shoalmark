@@ -167,15 +167,32 @@ def find_root(start=None):
     return here
 
 
+_VCS = ("", None)
+
+
+def disk_marker(path):
+    """Absent markers are normal; a marker that cannot be inspected cannot select the unversioned lane."""
+    try:
+        os.lstat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    except OSError as e:
+        metadata_unreadable(f"{path} cannot be inspected: {e}")
+    return True
+
+
+def select_vcs(root):
+    """Select the nearest disk marker once per configured ROOT, retaining Git's priority where both markers occupy one folder."""
+    for p in (root, *root.parents):
+        for program, marker in (("git", ".git"), ("svn", ".svn")):
+            if disk_marker(p / marker):
+                return program, p
+    return "", None
+
+
 def vcs():
-    """"git", "svn" or "" — the nearest working copy ROOT sits in. Nothing in the gate, INDEX.md or the board asks:
-    only what a version control system does differently does — hooks, ignore rules, and a pass's *last worked on*."""
-    for p in (ROOT, *ROOT.parents):
-        if (p / ".git").exists():
-            return "git"
-        if (p / ".svn").exists():
-            return "svn"
-    return ""
+    """"git", "svn" or "" for this configured ROOT. Only configure changes the selected working copy."""
+    return _VCS[0]
 
 
 # THE WRITE RULE (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): every run writes a file of the tree only as
@@ -267,20 +284,77 @@ _GIT_DIRS = None
 
 
 def git_dirs():
-    """The repository's git directories — its own and the common one, which holds the hooks' copy — read once per run with one read-only call,
-    and `.git` at the root whatever git says."""
+    """Administrative paths, retaining this name for the existing guards. Git supplies its own/common directories; SVN needs only local disk metadata.
+    Both root marker names, ancestor markers and resolved aliases are protected. A non-Git destination starts no Git (FM-004 archive integration)."""
     global _GIT_DIRS
     if _GIT_DIRS is None:
-        out = subprocess.run(["git", "rev-parse", "--absolute-git-dir", "--git-common-dir"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                             errors="replace", env=nested_git_env())
-        _GIT_DIRS = sorted({_norm(ROOT / ".git"), *(_norm(ROOT / l) for l in (out.stdout.splitlines() if out.returncode == 0 else []) if l.strip())})
+        paths = {ROOT / ".git", ROOT / ".svn"}
+        paths.update(p / marker for p in (ROOT, *ROOT.parents) for marker in (".git", ".svn") if disk_marker(p / marker))
+        if vcs() == "git":
+            try:
+                out = vcs_process("git", "rev-parse", "--absolute-git-dir", "--git-common-dir", cwd=ROOT, capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace", env=nested_git_env())
+            except OSError as e:
+                metadata_unreadable(f"Git could not be run: {e}")
+            dirs = out.stdout.splitlines()
+            if out.returncode or len(dirs) != 2 or not all(d.strip() for d in dirs):
+                metadata_unreadable("Git did not identify both its own and common directories")
+            for name in dirs:
+                path = ROOT / name
+                readable_admin_dir(path)
+                paths.add(path)
+        elif vcs() == "svn":
+            path = _VCS[1] / ".svn"
+            readable_admin_dir(path)
+            records = [path / name for name in ("wc.db", "entries") if disk_marker(path / name)]
+            if not records:
+                metadata_unreadable(f"{path} holds no working-copy metadata")
+            for record in records:
+                try:
+                    if not record.is_file() or record.is_symlink():
+                        metadata_unreadable(f"{record} is not a regular metadata file")
+                    with open(record, "rb") as stream:
+                        if not stream.read(1):
+                            metadata_unreadable(f"{record} is empty")
+                except OSError as e:
+                    metadata_unreadable(f"{record} cannot be read: {e}")
+        _GIT_DIRS = sorted({_norm(p) for path in paths for p in (path, os.path.realpath(path))})
     return _GIT_DIRS
+
+
+def metadata_unreadable(why):
+    """No missing/unreadable administrative metadata becomes empty success or a traceback."""
+    print(f"shoalmark: cannot read version-control administrative metadata: {' '.join(str(why).split())[:300]} — nothing is written", file=sys.stderr)
+    raise SystemExit(EXIT_LINT)
+
+
+def readable_admin_dir(path):
+    try:
+        with os.scandir(path) as entries:
+            next(entries, None)
+    except OSError as e:
+        metadata_unreadable(f"{path} cannot be read: {e}")
+
+
+def disk_admin_path(path):
+    """An on-disk .git/.svn component, including nested metadata and spellings the file system treats as the same directory."""
+    path = pathlib.Path(path)
+    for p in (path, *path.parents):
+        for marker in (".git", ".svn"):
+            if p.name == marker and disk_marker(p):
+                return True
+            if fs_fold(p.name) == fs_fold(marker):
+                ident = fs_identity(p)
+                if ident is not None and ident == fs_identity(p.parent / marker):
+                    return True
+    return False
 
 
 def in_git_dir(path):
     """Whether `path`, as written or as it resolves, lies inside one of the repository's git directories."""
     ps = {_norm(path), os.path.normcase(os.path.realpath(_norm(path)))}
-    return any(p == d or p.startswith(d.rstrip(os.sep) + os.sep) for p in ps for d in git_dirs())
+    dirs = git_dirs()
+    return any(disk_admin_path(p) or any(p == d or p.startswith(d.rstrip(os.sep) + os.sep) for d in dirs) for p in ps)
 
 
 def in_git_dir_on_disk(path):
@@ -296,7 +370,7 @@ def write_problem(path):
     if not in_tree(path):
         return "outside the repository"
     if in_git_dir_on_disk(path):
-        return "inside the git directory"
+        return "inside the Subversion administrative directory" if vcs() == "svn" else "inside the git directory"
     if not real_inside(path):
         return "a symlink, or reached through one"
     if os.path.lexists(path) and not os.path.isfile(path):
@@ -358,6 +432,8 @@ def tracker_folder_problem(what="the board is not refreshed"):
     if not in_tree(real):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} resolves outside the repository, to {real} — {what}"
     if in_git_dir_on_disk(d):
+        if vcs() == "svn":
+            return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is inside the Subversion administrative directory — {what}"
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is inside the git directory, where the hooks and their copy are — {what}"
     if not real_inside(d):
         return f"the tracker folder {os.path.relpath(d, ROOT).replace(os.sep, '/')} is, or is reached through, a symlink — {what}"
@@ -632,7 +708,10 @@ def configure(root=None):
     global ROOT, CONFIG, TRACKER_DIR, OUT, HTML_OUT, VIEW_DIR, REPO_BLOB, TAGS, CONSIDERED_FROM, TRIAGE_DAYS
     global KINDS, KIND_LABELS, KIND_RE, TITLE_RE, TRACKER_LINK_RE, H1_ID_RE, ROW_ID_RE, _IDS, FRONT_MATTER, CMD
     global HEAD, STATE_HEAD_RE, DONE_RE
+    global _VCS, _GIT_DIRS
     ROOT = find_root(root)
+    _VCS, _GIT_DIRS = ("", None), None                   # even a reconfiguration that refuses must not reuse another root's selection/metadata
+    _VCS = select_vcs(ROOT)
     path = ROOT / CONFIG_NAME
     text = board_text(path)                             # in the board's run: a regular file inside the repository, or no configuration
     CONFIG = {**DEFAULTS, **(read_config(text) if text is not None else {})}
@@ -700,7 +779,6 @@ def configure(root=None):
     _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
     _ASK_ORIGIN = False                                 # whether this run walks the branch's commits, and may ask origin (`main`, `default_trunk`)
     _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
-    global _GIT_DIRS
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     global LAZY_OFF, _PARTIAL
     LAZY_OFF, _PARTIAL = False, None                    # git's own default for every read, until a run whose reads fetch nothing says otherwise (`lazy_fetch_off`)
@@ -6306,11 +6384,21 @@ class SvnUnreadable(Exception):
 SVN_ANSWERS = ("E160006", "E195012")        # *no such revision*, and *the path is not in that revision*: an answer of the history, not a failure to read it
 
 
-def vcs_process(program, *args, cwd=None, **options):
+def vcs_process(program, *args, cwd=None, source=False, **options):
     """The Git/SVN process boundary. Return the process result unchanged; each caller keeps its output, environment and error contract.
     The source HERE may need Git even when the configured consumer ROOT is Subversion, so the caller names the program explicitly."""
     if program not in ("git", "svn"):
         raise ValueError("the VCS process boundary accepts git or svn")
+    if source:
+        # Exactly the existing source-provenance reads, also used by the separate archive's source check during integration.
+        source_reads = (("rev-parse", "--show-toplevel"), ("rev-parse", "HEAD"), ("tag", "--points-at", "HEAD"),
+                        ("status", "--porcelain", "--untracked-files=all"))
+        if program != "git" or cwd is None or _norm(cwd) != _norm(HERE) or args not in source_reads:
+            print("shoalmark: source provenance accepts only its fixed Git reads in the tool's source folder — nothing is started", file=sys.stderr)
+            raise SystemExit(EXIT_LINT)
+    elif program == "git" and vcs() == "svn":
+        print("shoalmark: this Git operation requires a Git working copy; the configured target is Subversion — nothing is started", file=sys.stderr)
+        raise SystemExit(EXIT_LINT)
     return subprocess.run([program, *args], cwd=cwd if cwd is not None else ROOT, **options)
 
 
@@ -6495,9 +6583,9 @@ SESSION_ID_RE = re.compile(r"[0-9a-f]{8}(?:/([A-Za-z][A-Za-z0-9_-]*)-\d+)?")    
 SESSION_RECENT = 86400        # seconds: the board and the digest name the sessions with a commit this recent
 
 
-def git_out(*a, cwd=None):
+def git_out(*a, cwd=None, source=False):
     """One git call's stdout, or None when it failed."""
-    r = vcs_process("git", *a, cwd=cwd or ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    r = vcs_process("git", *a, cwd=cwd or ROOT, source=source, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     return r.stdout if r.returncode == 0 else None
 
 
@@ -8867,12 +8955,12 @@ def source_provenance():
     """Where this copy of the tool comes from, as a vendoring vouches for it (FM-011): (the tag, the commit, the dirty
     paths, why it is no release — "" when it is one). A release is a git checkout whose HEAD is exactly at `v<VERSION>`,
     with a clean tree: a consumer runs a release, never a working copy."""
-    top = git_out("rev-parse", "--show-toplevel", cwd=HERE)
+    top = git_out("rev-parse", "--show-toplevel", cwd=HERE, source=True)
     if top is None:
         return "", "", [], f"{HERE} is not a git checkout — a release is vendored from a clone at its tag"
-    sha = (git_out("rev-parse", "HEAD", cwd=HERE) or "").strip()
-    tags = (git_out("tag", "--points-at", "HEAD", cwd=HERE) or "").split()
-    dirty = [l[3:] for l in (git_out("status", "--porcelain", "--untracked-files=all", cwd=HERE) or "").splitlines() if l.strip()]
+    sha = (git_out("rev-parse", "HEAD", cwd=HERE, source=True) or "").strip()
+    tags = (git_out("tag", "--points-at", "HEAD", cwd=HERE, source=True) or "").split()
+    dirty = [l[3:] for l in (git_out("status", "--porcelain", "--untracked-files=all", cwd=HERE, source=True) or "").splitlines() if l.strip()]
     want = f"v{__version__}"
     why = "; ".join(([f"HEAD {sha[:10]} is not at the tag {want}" + (f" (it carries {', '.join(tags)})" if tags else "")] if want not in tags else [])
                     + ([f"the tree has changes: {', '.join(dirty[:8])}" + (" …" if len(dirty) > 8 else "")] if dirty else []))

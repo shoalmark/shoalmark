@@ -3,7 +3,7 @@ id: FM-044
 status: In Progress
 considered: FM-003
 tags: bug
-next: build
+next: review
 triaged: 2026-10-13
 rank: 3
 tier: P1
@@ -14,18 +14,38 @@ hook: "A Subversion team without git could not run the reviewed copy: every comm
 
 ## What is true now
 
-**2026-10-13 — common skeleton, neutral refactor built; critical review and dependent slices remain due.**
-The judged parent is `170985c` (Owner filing #167 at `e6d1e27`). `git_out` and `svn_run` now start through the explicit
-`vcs_process(program, *args, cwd=None, **options)` boundary; their argv, cwd, Git environment, return/error, byte decoding,
-LF and XML contracts are retained. Nineteen contract controls pass against the immutable parent and the refactor, with
-real Git and local SVN fixtures; the refactor also checks the boundary's result identity and unknown-program refusal.
-Compile and `test_core.py` pass (15.877 s for core); the existing Git command classifier still reads 30 commands with no
-unresolved start. This first change supplies no new dispatch behavior. The [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md)
-remains the bounded acceptance and sequencing record: cached root selection, fail-closed metadata dispatch, target/source
-refusal controls and a shrinking launch ratchet are next; then independent critical skeleton review before dependent seats.
-All other direct production launches remain unmigrated. Archive source work remains separate at `3c18008`; its non-Git
-metadata integration point must survive. D3/D4 holds, the guard capability dependency, R14, R25 and R26 remain retained;
-no full-tool no-Git completion or platform proof is claimed.
+**2026-10-13 — bounded common skeleton built; independent critical review is next.**
+On `fm/044-stage-1-skeleton`, the neutral refactor `4f1664d` follows the judged parent `170985c` (Owner filing #167 at
+`e6d1e27`). Its 19 wrapper controls also pass against that immutable parent; the refactor retains Git argv/cwd/environment,
+return/error and SVN byte/LF/XML semantics. The separate dispatch change selects Git/SVN once per configured ROOT,
+resets repository/dispatch caches on reconfiguration, and routes administrative-path discovery through that selection.
+SVN metadata starts no process; missing, empty, non-regular, symlinked or unreadable working-copy records refuse in one
+line with exit 4. Git own/common and linked-worktree directories, ancestor/nested disk metadata and symlink/filesystem
+aliases remain excluded. A Git request at the layer for an SVN target refuses before launch; arbitrary cwd cannot bypass
+it. Source HERE uses `source=True` only for the four fixed existing provenance reads; source acquisition/parsing is unchanged.
+
+Final compile and all 243 `test_core.py` checks pass (33.044 s for core), including real local SVN with its executable
+available and Git absent, actual `--root --schema` metadata probes at the working-copy root/subdirectory, root-cache reset,
+linked-Git/admin positive/refusal cases and 26 ratchet controls. Existing FM-045 Git command classification retains 30
+commands with no unresolved/unclassified start, and its injected boundary/`git_out` calls are detected. Three selected R14
+signature/default-policy/every-parent controls pass on both the refactor and final dispatch (150.797 s for the latter), as recorded in the
+[check/caller evidence](evidence/stage-1-skeleton-checks-2026-10-13.md). Full suites and the retained five-job code matrix
+remain CI work after Owner push; no platform trial is claimed under D4.
+
+The transitional launch ratchet scans **Python process references in `shoalmark.py`**. Its initial ceiling and mutable
+allowlist identify function/operation/API/normalized call, preserve occurrence counts and compare prior list revisions;
+new literal, renamed, aliased/dynamic starts and list growth/resurrection fail, while migration can shrink the list.
+There are still **63 direct starts: 55 Git, 3 SVN and 5 non-VCS/dynamic**; all are declared in the
+[initial ceiling](../test_vcs_launch_ceiling.json) and [caller evidence](evidence/stage-1-skeleton-checks-2026-10-13.md).
+The scanner excludes generated hook shell, release scripts, fixtures and documentation tooling, whose existing controls
+remain. It is a static process-API ratchet, not proof against arbitrary Python obfuscation. Administrative-path discovery
+checks local file accessibility and guards paths; it supplies no SVN database integrity, history/author or protected-state
+proof. Shared commands, board read-only SVN capability, rights/guard and CLI migration remain dependent work: full-tool
+SVN without Git is **not** complete. The unresolved committed consumer policy anchor cannot be replaced by Source HERE;
+protected acceptance must conservatively refuse in its later guard slice. Archive source at `3c18008` remains separate;
+its non-Git `git_dirs` integration is preserved semantically, and eventual `archive_source` must explicitly use
+`source=True`. The [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md), D3/D4 holds and R14/R25/R26 remain
+retained. Dependent seats start only after independent critical skeleton review; this Builder supplies no verdict.
 
 **2026-10-13 — filing recovered; no stage-1 build was supplied by the recovery.** This replacement carries the filing
 reviewed at `99050b9`, with RV-2735–RV-2737 corrected. The signed 12 October R23 lifts the hold for stage 1:
@@ -84,3 +104,4 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 | 2026-10-08 | Filed, for 0.19.2. |
 | 2026-10-13 | Filing recovered from `99050b9` on current main; RV-2735–RV-2737 fixed, acceptance bounded to signed R23 and FM-023, records review next. |
 | 2026-10-13 | FM-044 common-layer neutral refactor: only git_out/svn_run launch mechanics moved behind vcs_process. Immutable-parent/refactor wrapper contracts and real Git/SVN positive/refusal fixtures pass; compile and test_core pass; metadata dispatch, ratchet, independent critical review and dependent migrations remain due. |
+| 2026-10-13 | FM-044 bounded skeleton dispatch built after neutral refactor 4f1664d: cached ROOT selection, no-process SVN metadata, fail-closed administrative paths and constrained target/source process requests. Compile and 243 core checks pass; 63 retained direct starts and exact scanner/proof limits declared. Independent critical review next; dependent migrations, archive integration, CI and platform decisions remain due. |
