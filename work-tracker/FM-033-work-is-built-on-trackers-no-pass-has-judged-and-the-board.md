@@ -27,7 +27,7 @@ RV-3027: recorded privately
 
 RV-3028: recorded privately
 
-**Next:** R12 follows separately. The Owner's signed GitHub-identity commit `b6eb608` is included in the R14 merge. The Owner runs `python3 shoalmark.py --install-hook` in their own checkout after merge. R22 remains its own v0.20.1 item.
+**Next:** R12 follows separately. The Owner's signed GitHub-identity commit `b6eb608` is included in the R14 merge. The Owner ran `python3 shoalmark.py --install-hook` in their own checkout on 2026-10-13 after the release. R22 remains its own v0.20.1 item.
 
 **Written 2026-09-24 by the Auditor seat (session 8b91dba2), filed word for word by the Principal, on the Owner's word: *"This shall be tracked as a violation of the
 rules and as a new issue."* Nothing is built.** Every time and sha below is from git or GitHub. Times are CEST.

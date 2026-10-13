@@ -26,7 +26,7 @@ SSH signatures with LF, CRLF and CR configuration/signers. They also exercise si
 each converted committed-text reader with LF, CRLF and missing snapshots, and local filtered clones.
 
 Compile, all 158 core checks, 16 Owner-exemption tests, and 364 selected existing browser-free checks pass, with no FAIL or skip lines;
-the full suite is left to CI under BRIEF-2.md when the Owner opens the pull request.
+the full suite runs in CI.
 
 ## Done when
 
