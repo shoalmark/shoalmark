@@ -8,6 +8,7 @@ These controls do not establish an adopted SVN consumer authority or public-entr
 import argparse
 import builtins
 from contextlib import ExitStack
+from contextlib import redirect_stderr
 import importlib.util
 import io
 import os
@@ -219,6 +220,48 @@ def run_guard_controls(fm, check):
                 check("FM-044 B: real SVN " + label + " starts no process and writes no guarded bytes", not starts and not writes and before == {str(p.relative_to(root)): p.read_bytes() for p in (home, root / "shoalmark.toml")})
                 if signed:
                     check("FM-044 B: real SVN " + label + " cannot substitute an author for a requested signature", "signature" in " ".join(refused) and "signed" in " ".join(refused))
+
+            # Direct Git-only history helpers must refuse at the actual boundary before Popen.
+            git_only = (
+                ("pending_author", lambda: fm.pending_author()),
+                ("staged_now", lambda: fm.staged_now()),
+                ("merge_heads", lambda: fm.merge_heads()),
+                ("cat_blobs", lambda: fm.cat_blobs(["HEAD:shoalmark.toml"])),
+                ("resolve_commits", lambda: fm.resolve_commits(["HEAD"])),
+                ("tree_paths", lambda: fm.tree_paths("HEAD")),
+                ("path_mode", lambda: fm.path_mode("HEAD", "shoalmark.toml")),
+                ("owner_policy", lambda: fm.owner_policy()),
+                ("origin_default", lambda: fm.origin_default()),
+                ("trunk_ref", lambda: fm.trunk_ref()),
+                ("read_changes", lambda: fm.read_changes()),
+                ("git_ship_verdicts", lambda: fm.git_ship_verdicts(["HEAD"], ["HEAD"], ["docs/"])),
+                ("staged_files", lambda: fm.staged_files([], fm.nested_git_env())),
+            )
+            for label, call in git_only:
+                starts = []
+                original_popen = subprocess.Popen
+
+                def attempted(*args, **kwargs):
+                    starts.append((args, kwargs))
+                    return original_popen(*args, **kwargs)
+
+                with patch.dict(os.environ, {"PATH": str(restricted)}), patch.object(fm.subprocess, "Popen", side_effect=attempted), redirect_stderr(io.StringIO()):
+                    fm.configure(root)
+                    try:
+                        call()
+                    except SystemExit as error:
+                        refused = error.code == fm.EXIT_LINT
+                    except OSError:
+                        refused = False
+                    else:
+                        refused = False
+                check("FM-044 B: actual SVN " + label + " refuses before a Git process attempt", refused and not starts)
+
+            # CLI-only Git-hook applicability belongs to C/P; internal SVN checks remain harmless.
+            fm.configure(root)
+            with patch.object(fm.subprocess, "Popen", side_effect=AssertionError("internal non-Git hooks start nothing")):
+                check("FM-044 B: normal SVN internal session problems retain empty result", fm.session_problems() == [])
+                check("FM-044 B: normal SVN internal pending triage retains empty result", fm.triage_pending("ordinary work") == ([], []))
 
             # This is the pure protected-text comparison seam, not public-entry acceptance.
             with patch.dict(os.environ, {"PATH": str(restricted)}), patch.object(fm.subprocess, "Popen", side_effect=AssertionError("local comparison must start nothing")):

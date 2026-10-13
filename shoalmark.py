@@ -3196,7 +3196,7 @@ def origin_default():
     global _ORIGIN_DEFAULT
     if _ORIGIN_DEFAULT is None:
         try:
-            r = subprocess.run(["git", "ls-remote", "--symref", "origin", "HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            r = vcs_process("git", "ls-remote", "--symref", "origin", "HEAD", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                                errors="replace", timeout=60, env=dict(nested_git_env(), GIT_TERMINAL_PROMPT="0"))
         except (OSError, subprocess.TimeoutExpired):
             r = None
@@ -5496,7 +5496,7 @@ def line_author(path, needle):
             out = (None, None, "unattributed", "")
         elif line in _LINE_AUTHOR[("tips", rel)]:
             try:
-                log = subprocess.run(["git", "log", *board_diff_args(), "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
+                log = vcs_process("git", "log", *board_diff_args(), "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel, cwd=ROOT, capture_output=True,
                                      text=True, encoding="utf-8", errors="replace", env=nested_git_env())
             except ValueError:                          # a NUL in the line: no argument can carry it
                 log = None
@@ -5533,7 +5533,7 @@ def unattributed(t, needle, how, named=True):
 def pending_author():
     """The author git WOULD write for the commit being made right now — `user.email`, unless the environment imposes
     another (`GIT_AUTHOR_EMAIL`). In the pre-commit run the line is not committed yet, and this is who is committing it."""
-    out = subprocess.run(["git", "var", "GIT_AUTHOR_IDENT"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    out = vcs_process("git", "var", "GIT_AUTHOR_IDENT", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     name, _, rest = out.stdout.partition(" <")
     return (name.strip(), rest.partition(">")[0].strip()) if out.returncode == 0 else ("", "")
 
@@ -5545,7 +5545,7 @@ def owner_policy():
     """The configured Owner identities from the default branch, read once per run."""
     global _OWNER_POLICY
     if _OWNER_POLICY is None:
-        git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         why = []
         owners = owners_at(default_trunk(git), why, owner_only=True)
         _OWNER_POLICY = owners, why
@@ -5576,7 +5576,7 @@ def owner_signature_problems():
     """R14: signed Owner identities in the branch's own committed history verify as an Owner principal."""
     if vcs() != "git":
         return []
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git, ask=True)
     if not trunk:
         return []
@@ -5634,7 +5634,7 @@ def verified_as(commit, identity):
     Owner's email vouches for nothing); and the principal that file trusts the key for (`%GS`) IS the identity's email — equal, never containing it."""
     if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or signature_gap(commit):
         return False
-    v = subprocess.run(["git", *signers_args(), "log", "-1", "--format=%G?%n%GS", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    v = vcs_process("git", *signers_args(), "log", "-1", "--format=%G?%n%GS", commit, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     good, signer = (v.stdout.split("\n") + ["", ""])[:2]
     return good.strip() == "G" and signer.strip() == identity
 
@@ -5676,7 +5676,7 @@ def trusted_signers():
         _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, inside another checkout ({other}): the signers file is inside another checkout, "
                                          "where a branch writes it — name this repository's own file, or one outside every checkout", "rel": None, "trunk": None}
         return _SIGNERS
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git) if top is not None else None
     rel = signers_rel(top, below, str(path), trunk) if top is not None else None
     blob = cat_blobs([f"{trunk}:{rel}"], raw=True).get(f"{trunk}:{rel}") if trunk else None
@@ -5843,7 +5843,7 @@ def staged_now():
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative", "--ignore-submodules=none"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
+        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
         _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
@@ -6090,7 +6090,7 @@ def transitions(before, after, new_file=False):
 
 def merge_heads():
     """The other parents of a merge being committed right now — `MERGE_HEAD`, one line per head — or none."""
-    out = subprocess.run(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    out = vcs_process("git", "rev-parse", "--git-path", "MERGE_HEAD", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     f = pathlib.Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else None
     f = f if f is None or f.is_absolute() else ROOT / f
     return f.read_text(encoding="utf-8").split() if f is not None and f.is_file() else []
@@ -6132,7 +6132,7 @@ def read_changes():
     (the Owner's ruling of 2026-10-04, v0.19.1). Where no default branch is found (`default_trunk`), the newest commit
     alone is judged, as before, and `--check` says so in one line — never the whole history."""
     global _WALK
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
     def brought(tips, first, why="which the merge brings", exclude=()):
@@ -6208,7 +6208,7 @@ def walk_problems():
     if _WALK_FAILED:
         return [_WALK_FAILED]
     if vcs() == "git":
-        default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
+        default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
     return [_TRUNK_UNTOLD] if _TRUNK_UNTOLD else []
 
 
@@ -6353,7 +6353,7 @@ def git_ship_verdicts(names, bases, records):
     """{name: "" when that commit is a commit behind the change, else why it is not} — in the change's history (reachable from its
     parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
     At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
-    git = lambda *a, **k: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    git = lambda *a, **k: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}\n{n}^{{commit}}\n" for n in names))     # each name twice: as written, where git says *ambiguous*, and peeled to its commit
     lines = found.stdout.split("\n") + [""] * (2 * len(names))
     shas = {n: lines[2 * i + 1].partition(" ")[0] for i, n in enumerate(names) if lines[2 * i + 1].partition(" ")[2] == "commit"}
@@ -7131,7 +7131,7 @@ def cat_blobs(specs, env=None, types=None, *, raw=False):
     asked = [s_ for s_ in specs if s_ not in got]
     if not asked:
         return got
-    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in asked).encode("utf-8"), cwd=ROOT,
+    r = vcs_process("git", "cat-file", "--batch", input="".join(s_ + "\n" for s_ in asked).encode("utf-8"), cwd=ROOT,
                        capture_output=True, env=env or nested_git_env())
     data, i = r.stdout, 0
     for spec in asked:
@@ -7237,7 +7237,7 @@ def build_judgement(subject=None):
     if vcs() != "git":
         _BUILD = ([], "judged before build: on — this is no git repository: nothing is judged")
         return _BUILD
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         _BUILD = ([], f"judged before build: on — `{branch}` is the default branch: nothing on it is judged")
@@ -7269,7 +7269,7 @@ def pending_judgement(subject, git, trunk, branch):
         return []                                          # a first commit has no parent to be judged at
     # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-    staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative", "--ignore-submodules=none"], cwd=ROOT, capture_output=True, text=True,
+    staged = vcs_process("git", "diff", "--cached", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True,
                             encoding="utf-8", errors="replace", env=env).stdout
     return judge_commits([("", "HEAD", set(staged.split("\n")) - {""}, subject)], branch)
 
@@ -7310,7 +7310,7 @@ def commit_msg_check(message_file):
         return EXIT_LINT
     if not CONFIG.get("judged_before_build") or vcs() != "git":
         return EXIT_OK
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         return EXIT_OK                                     # on the default branch nothing is judged
@@ -7388,7 +7388,7 @@ def tree_paths(rev, env=None):
     key = (str(ROOT), rev)
     if key not in _TREES:
         args = ["ls-files", "-z", "--full-name", "--", ":/"] if rev == "" else ["ls-tree", "-r", "-z", "--name-only", "--full-tree", rev]
-        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        r = vcs_process("git", *args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
         _TREES[key] = [x for x in r.stdout.split("\x00") if x] if r.returncode == 0 else None
     return _TREES[key]
 
@@ -7401,7 +7401,7 @@ def path_mode(rev, path, env=None):
     key = (str(ROOT), rev, path)
     if key not in _MODES:
         args = ["ls-files", "-s", "-z", "--full-name", "--", f":/{path}"] if rev == "" else ["ls-tree", "-z", "--full-tree", rev, "--", path]
-        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        r = vcs_process("git", *args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
         rows = [row.partition("\t") for row in r.stdout.split("\x00") if row]
         _MODES[key] = ("?" if r.returncode != 0 else next((m.split(" ", 1)[0] for m, _t, name in rows if name == path), "040000" if rows else ""))
     return _MODES[key]
@@ -7781,7 +7781,7 @@ def triage_pending(subject):
     what it says."""
     if vcs() != "git":
         return [], []
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, why = default_trunk(git), []
     owners = owners_at(trunk, why)
     if not owners and not why:
@@ -7818,7 +7818,7 @@ def triage_pending(subject):
 def staged_files(parents, env):
     """The files the commit being made changes, from the repository's root: what its index (`env`) holds that differs from
     every parent — a merge being made, from each of its parents; a first commit, all it holds. One `git diff` a parent."""
-    run = lambda *a: subprocess.run(["git", "-c", "diff.relative=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    run = lambda *a: vcs_process("git", "-c", "diff.relative=false", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     every_file = lambda: run("ls-files", "-z", "--full-name", "--", ":/")
     sets = [run("diff", "--cached", "--name-only", "-z", "--no-renames", "--ignore-submodules=none", p) for p in parents] or [every_file()]
     names = [set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else None for r in sets]
@@ -8042,7 +8042,7 @@ def resolve_commits(names):
     got = {n: "" for n in names}
     lines = [n for n in names if n and "\n" not in n and "\r" not in n]
     if lines:
-        r = subprocess.run(["git", "cat-file", "--batch-check"], cwd=ROOT, input="".join(f"{n}^{{commit}}\n" for n in lines), capture_output=True,
+        r = vcs_process("git", "cat-file", "--batch-check", cwd=ROOT, input="".join(f"{n}^{{commit}}\n" for n in lines), capture_output=True,
                            text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         answers = r.stdout.split("\n") if r.returncode == 0 else []
         if len(answers) >= len(lines):
@@ -8068,7 +8068,7 @@ def trunk_ref():
     """The trunk a verdict's branch is measured against — a report's, never a refusal's: the default branch as `--check` reads it
     (`default_trunk`, asking no server: origin's answer where this run has it), else the local `main`, else `master` — each by its
     full ref (v0.19.1)."""
-    held = default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
+    held = default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
     return held or next((ref for ref in ("refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
 
