@@ -2,6 +2,19 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.19.4 — 2026-10-13
+
+**0.19.4 is a security release: upgrade, run `--install-hook` again on your default branch, then `--check` once.** Committed tracker text has one line-ending normalisation, and the configured Owner's commits are judged under the Owner's signing rules.
+
+### Security (GHSA-xh54-c5jg-j4fp)
+- Committed tracker text is read with one line-ending normalisation for Git and Subversion, so every rule reads a tracker the same way whatever its line endings.
+- Comparisons, the signers file and physical-line attribution keep the raw bytes.
+
+### Changed
+- The configured Owner's own commits pass the session, judged-before-build and filing-freeze rules before signing.
+- `--check` asks every Owner-authored commit in a branch's own range for the Owner's verified signature.
+- A commit GitHub made in the Owner's name inside a pull request is refused, with one line saying why and how to redo it: make the commit in the Owner's checkout, sign it with the Owner's SSH key, and merge main locally.
+
 ## 0.19.3 — 2026-10-10
 
 **0.19.3 is a security release: upgrade, run `--install-hook` again on your default branch, then `--check` once.** The board's refresh fetches nothing and starts no program a configuration names but its SSH signature check. `--notify` hands a notice's text over as data on macOS and Linux; on Windows, in this release, it prints the notice instead of posting it.
