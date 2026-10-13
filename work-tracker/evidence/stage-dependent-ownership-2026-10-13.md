@@ -334,3 +334,17 @@ Every immutable top-level function is listed once below. P's otherwise unallocat
 | `main@9839` | P | `start git/<forwarded>@10007` | `git/<forwarded> : 6880e1b376` |
 
 Static allocation check: 403 existing top-level functions assigned once; 102 functions contain at least one direct start or VCS-wrapper call; all 65 immutable raw starts covered, with 64 outside the common boundary; all 63 candidate retained rows covered. This checks the allocation's completeness only, not behavior or acceptance.
+
+## P history-control adapter agreement — 13 October 20:23 CEST
+
+From: 01a13517 planner (repo) · gpt-6.1-sol · xhigh
+To: 01a1362e builder (stage-shared-corrector) · gpt-6.1-sol · xhigh
+
+P owns the test-only adapter for `run_review_history_controls`. Its fixed graph fixture uses the immutable
+c599d5c git_version definition with one original ceiling call and the actual frozen boundary. It no longer
+requires a live production VCS call to remain unconverted. Every original reachable-history, every-parent
+merge, shrink, resurrection, missing-object and malformed-history obligation is retained. The production
+scanner, ceiling, source tuples, boundary digests and test_core are unchanged. A may apply only P's exact
+committed test fixture patch to its caller branch after receiving the pin, then run compile and unchanged core.
+This is narrow permission to carry P-authored control code; it transfers no main/configure/lint/scanner ownership.
+P retains the same adapter in final composition. New caller review remains separate from closed A findings.

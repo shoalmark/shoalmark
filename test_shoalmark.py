@@ -13491,8 +13491,8 @@ else:
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
-#     a pull request whose whole diff is tracker files alone runs the gate's --check in the five checks; anything else, and any doubt, the
-#     full suites; the two Ubuntu entries run both suites again under UTC+14 and UTC−11, reported and not yet required
+#     R12 (2026-10-12): records run --check only on Ubuntu/3.9, with four truthful pass-through results; anything else, and any doubt,
+#     five gates and the full suites; the two Ubuntu entries run both suites again under UTC+14 and UTC−11, reported and not yet required
 def _ci_yaml(text):
     """A workflow read as the shapes it is written in: block mappings and `- ` sequences by indentation, one-line flow mappings and
     sequences of plain or quoted scalars, `|` and `>` blocks (their lines kept, less the block's own indentation), `#` comments.
@@ -13850,6 +13850,140 @@ def _ci_reads_hold(tier_run, root, sources, lazy=False):
 _CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py") if (HERE / n).is_file()}
 
 
+def _ci_step_runs(step, records, entry):
+    """Evaluate the workflow's simple conditions for an independently chosen tier and matrix entry; refuse other syntax."""
+    if step.get("if") is None:
+        return True
+    values = {"steps.tier.outputs.records": records, "matrix.system": entry.get("system"), "matrix.python": entry.get("python"),
+              "matrix.tz": entry.get("tz") or "", "runner.os": {"ubuntu": "Linux", "macos": "macOS", "windows": "Windows"}.get(entry.get("system"))}
+    expr = re.sub(r"\b(?:steps\.tier\.outputs\.records|matrix\.(?:system|python|tz)|runner\.os)\b",
+                  lambda m: repr(values[m.group()]), str(step["if"]))
+    expr = expr.replace("&&", " and ").replace("||", " or ")
+
+    def read(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (str, bool)):
+            return node.value
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, (ast.And, ast.Or)):
+            parts = [bool(read(v)) for v in node.values]
+            return all(parts) if isinstance(node.op, ast.And) else any(parts)
+        if isinstance(node, ast.Compare) and len(node.ops) == 1 and isinstance(node.ops[0], (ast.Eq, ast.NotEq)):
+            equal = str(read(node.left)).casefold() == str(read(node.comparators[0])).casefold()
+            return equal if isinstance(node.ops[0], ast.Eq) else not equal
+        raise ValueError("a condition outside the CI checks' expression subset")
+    return bool(read(ast.parse(expr, mode="eval").body))
+
+
+def _ci_job_paths(steps, include):
+    """R12/R25: each of five independent choices runs one gate or truthful pass-through; code and uncertain output retain coverage."""
+    entries = [("ubuntu", "3.9"), ("ubuntu", "3.12"), ("macos", "3.12"), ("windows", "3.9"), ("windows", "3.12")]
+    gate = [s for s in steps if "python shoalmark.py --check" in str(s.get("run") or "")]
+    passes = [s for s in steps if "Records validation was not run in this job." in str(s.get("run") or "")]
+    installs = [s for s in steps if s.get("name") in ("Subversion (Linux)", "Subversion (macOS)", "Subversion (Windows)")]
+    svn = [s for s in steps if str(s.get("run") or "").strip() == "svn --version --quiet"]
+    suites = [s for s in steps if str(s.get("run") or "").strip() in ("python -u test_shoalmark.py", "python -u test_core.py")]
+    zones = [s for s in steps if "TZ" in (s.get("env") or {})]
+    out = []
+    for records in ("true", "false", "", "uncertain"):
+        seen = []
+        try:
+            for system, python in entries:
+                entry = next(e for e in include if (e.get("system"), e.get("python")) == (system, python))
+                counts = tuple(sum(_ci_step_runs(s, records, entry) for s in group) for group in (gate, passes, installs, svn, suites, zones))
+                want = (int((system, python) == ("ubuntu", "3.9")), int((system, python) != ("ubuntu", "3.9")), 0, 0, 0, 0) if records == "true" else (1, 0, 1, 1, 2, int(system == "ubuntu"))
+                seen.append((system, python, counts, want))
+            ok = all(got == want for _, _, got, want in seen)
+        except (ValueError, SyntaxError, StopIteration, TypeError):
+            ok = False
+        out.append((f"R12/R25: all five jobs for records={records!r} select gate, pass-through, SVN install/verification, UTC suites and zone reports (saw {seen})", ok))
+    return out
+
+
+def _ci_install_failures(steps):
+    """R12: execute installer failures and mandatory SVN verification with harmless stubs; Windows also runs where PowerShell exists."""
+    scripts = {s.get("name"): str(s.get("run") or "") for s in steps}
+    if not _CI_BASH:
+        return [("the Linux/macOS install and SVN verification failure controls run in bash", False)]
+    out = []
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        for name, script in {
+            "sudo": '#!/bin/sh\ncase "$2" in update) exit "$UPDATE_EXIT";; install) exit "$INSTALL_EXIT";; *) exit 99;; esac\n',
+            "brew": '#!/bin/sh\nexit "$INSTALL_EXIT"\n',
+            "svn": '#!/bin/sh\nexit "$INSTALL_EXIT"\n',
+        }.items():
+            path = root / name
+            path.write_bytes(script.encode())
+            path.chmod(0o755)
+        for name, update, install, wanted in (("Subversion (Linux)", 0, 0, 0), ("Subversion (Linux)", 23, 0, 23),
+                                              ("Subversion (Linux)", 0, 23, 23), ("Subversion (macOS)", 0, 0, 0),
+                                              ("Subversion (macOS)", 0, 23, 23),
+                                              ("Subversion is really there — the S checks must run, not skip", 0, 23, 23)):
+            script = scripts.get(name, "")
+            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c", script], cwd=root, capture_output=True, timeout=5,
+                               env=dict(_ENV, PATH=str(root) + os.pathsep + _ENV.get("PATH", ""), UPDATE_EXIT=str(update), INSTALL_EXIT=str(install)))
+            out.append((f"{name}: update exit {update}, install/verification exit {install} gives {wanted} (saw {r.returncode})",
+                        bool(script) and r.returncode == wanted))
+        pwsh = shutil.which("pwsh")
+        if pwsh:
+            script = scripts.get("Subversion (Windows)", "")
+            for install in (0, 23):
+                target = root / "github-path"
+                target.unlink() if target.exists() else None
+                r = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command",
+                                    'function choco { $global:LASTEXITCODE = [int]$env:INSTALL_EXIT };\n' + script],
+                                   cwd=root, capture_output=True, timeout=15,
+                                   env=dict(_ENV, INSTALL_EXIT=str(install), GITHUB_PATH=str(target)))
+                out.append((f"Subversion (Windows): installer exit {install} propagates, writing PATH only on success (saw {r.returncode})",
+                            bool(script) and r.returncode == install and target.exists() == (install == 0)))
+    return out
+
+
+def _ci_classifier_failures(script, root, shape):
+    """The unchanged classifier must retain full coverage after failed git commands or incomplete raw diff records."""
+    event, base, head, merge = shape
+    out = []
+    def fault(command, replacement):
+        # Git for Windows' bash launcher can put its real git ahead of PATH. A function is resolved before any executable;
+        # all other commands still use the real git, through `command`, in this same shell.
+        return (f'git() {{ if [ "$1" = {shlex.quote(command)} ]; then {replacement}; return $?; fi; command git "$@"; }}\n')
+    subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
+    valid = ':100644 100644 ' + '1' * 40 + ' ' + '2' * 40 + ' M\\0work-tracker/FM-001-note.md\\0'
+    for name, command, replacement, wanted in (
+        ("git show fails", "show", "return 23", "false"),
+        ("git diff fails", "diff", "return 23", "false"),
+        ("a raw record has no terminated path", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md'", "false"),
+        ("a raw record has an extra NUL", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md\\0\\0'", "false"),
+        ("a valid raw record", "diff", "printf " + shlex.quote(valid), "true"),
+        ("an empty raw stream", "diff", ":", "false"),
+        ("stream control A", "diff", "printf " + shlex.quote(valid + ':100644 100644'), "false"),
+        ("stream control B", "diff", "printf " + shlex.quote(valid + valid.split('\\0', 1)[0]), "false"),
+    ):
+        with tempfile.TemporaryDirectory() as d:
+            area = Path(d)
+            put, summary = area / "output", area / "summary"
+            put.write_bytes(b""); summary.write_bytes(b"")
+            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c", fault(command, replacement) + script], cwd=root, capture_output=True, timeout=15,
+                               env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head,
+                                        RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
+            said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
+            out.append((f"the classifier: {name} requires records={wanted!r} (saw exit {r.returncode}, records={said.get('records')!r})",
+                        r.returncode == 0 and said.get("records") == wanted))
+    # Prove the injection itself, including its nonzero return and delegation, with the real git first on PATH. This also runs
+    # on macOS, where the old executable shim worked; classifier output alone would not prove the intended call was intercepted.
+    with tempfile.TemporaryDirectory() as d:
+        marker = Path(d) / "intercepted"
+        probe = ('if git diff > "$RUNNER_TEMP/intercepted"; then status=0; else status=$?; fi\n'
+                 'printf "status=%s\\nkind=%s\\nhead=%s\\n" "$status" "$(type -t git)" "$(git rev-parse --verify HEAD)"\n')
+        r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c",
+                            fault("diff", 'printf "function intercepted\\n"; return 23') + probe], cwd=root, capture_output=True, timeout=15,
+                           env=dict(_ENV, RUNNER_TEMP=d, PATH=str(Path(shutil.which("git")).parent) + os.pathsep + _ENV.get("PATH", "")))
+        said = dict(ln.split("=", 1) for ln in r.stdout.decode().splitlines() if "=" in ln)
+        out.append(("the classifier's bash function intercepts with real git first on PATH, preserves a failed return and delegates other commands",
+                    r.returncode == 0 and marker.read_bytes() == b"function intercepted\n"
+                    and said == {"status": "23", "kind": "function", "head": merge}))
+    return out
+
+
 def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
     """FM-032's CI tiers and time zones, as `.github/workflows/ci.yml` says them — [(what is asserted, whether it holds)]. `lazy`, for a
     control: where a property of the file's text fails, the tier step's shell is not run; else it stops at its first shape that differs."""
@@ -13866,6 +14000,10 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
     tier_at = at(lambda s: s.get("id") == "tier")
     tier = steps[tier_at] if tier_at is not None else {}
     records_at = at(lambda s: "python shoalmark.py --check" in run_of(s))
+    pass_at = at(lambda s: "Records validation was not run in this job." in run_of(s))
+    pass_step = steps[pass_at] if pass_at is not None else {}
+    installs = [s for s in steps if s.get("name") in ("Subversion (Linux)", "Subversion (macOS)", "Subversion (Windows)")]
+    svn = [s for s in steps if run_of(s).strip() == "svn --version --quiet"]
     suite_at, core_at = at(lambda s: run_of(s) == "python -u test_shoalmark.py\n" or run_of(s) == "python -u test_shoalmark.py"), \
         at(lambda s: run_of(s).strip() == "python -u test_core.py")
     zone_at = at(lambda s: s.get("continue-on-error") is not None or "TZ" in (s.get("env") or {}))
@@ -13889,8 +14027,8 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          and """[ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ]""" in run_of(tier)
          and """[ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ]""" in run_of(tier)),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in run_of(s) for s in steps)),
-        ("every tier checks the PR head with the default branch's signers and the committed command, then restores the merge checkout for the suites",
-         records_at is not None and steps[records_at].get("id") == "gate" and steps[records_at].get("if") is None
+        ("each gate checks the PR head with the default branch's signers and SHOALMARK_CMD, then restores the merge checkout for the suites",
+         records_at is not None and steps[records_at].get("id") == "gate"
          and steps[records_at].get("continue-on-error") is None and steps[records_at].get("shell") == "bash"
          and run_of(steps[records_at]) == 'git remote set-head origin "$DEFAULT_BRANCH"\nchecked=$(git rev-parse HEAD)\n'
              'if [ "$EVENT" = pull_request ]; then git checkout --detach "$HEAD_SHA"; fi\n'
@@ -13899,6 +14037,16 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          and (steps[records_at].get("env") or {}) == {"TRACKER": "${{ steps.tier.outputs.dir }}", "EVENT": "${{ github.event_name }}",
              "HEAD_SHA": "${{ github.event.pull_request.head.sha }}", "DEFAULT_BRANCH": "${{ github.event.repository.default_branch }}",
              "SHOALMARK_CMD": "python3 shoalmark.py"}),
+        ("the four records pass-through jobs explicitly say they did not validate records and Ubuntu/3.9 owns validation, in the summary",
+         pass_at is not None and pass_step.get("shell") == "bash" and pass_step.get("continue-on-error") is None
+         and 'suites (ubuntu, 3.9) owns records validation.' in run_of(pass_step) and '>> "$GITHUB_STEP_SUMMARY"' in run_of(pass_step)),
+        ("each of the three SVN installs has a positive bound of at most 15 minutes and failures stop the code job; SVN verification stays mandatory",
+         len(installs) == 3 and all(type(s.get("timeout-minutes")) is int and 1 <= s["timeout-minutes"] <= 15
+                                  and s.get("continue-on-error") is None for s in installs)
+         and [run_of(s).strip() for s in installs] == ['sudo apt-get update -q && sudo apt-get install -y -q subversion', 'brew install subversion',
+             'choco install sliksvn -y --no-progress\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n'
+             'echo "C:\\Program Files\\SlikSvn\\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append']
+         and len(svn) == 1 and svn[0].get("continue-on-error") is None),
         ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
          None not in (suite_at, core_at) and all(steps[i].get("if") == full for i in (suite_at, core_at))
          and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
@@ -13910,7 +14058,7 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          and zone.get("if") == "matrix.tz && " + full and zone.get("env") == {"TZ": "${{ matrix.tz }}"} and zone.get("shell") == "bash"
          and "python -u test_shoalmark.py && suite=0 || suite=$?" in run_of(zone) and "python -u test_core.py && core=0 || core=$?" in run_of(zone)
          and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone) and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ]')),
-    ]
+    ] + _ci_job_paths(steps, include)
     if lazy and not all(ok for _, ok in text_props):
         return text_props
     runs = _ci_tier(run_of(tier), root, shapes, stop_at=want if lazy else None) if tier and _CI_BASH else {}
@@ -13972,6 +14120,14 @@ def _ci_wf_regressions(text, root, shapes):
                                                                         "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
         ("the signers setting is removed", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\n', "", 1)),
         ("the gate command changes to the platform's default", lambda t: t.replace(', SHOALMARK_CMD: python3 shoalmark.py', "", 1)),
+        ("records repeat the gate in all five jobs", lambda t: t.replace("        if: steps.tier.outputs.records != 'true' || (matrix.system == 'ubuntu' && matrix.python == '3.9')\n", "", 1)),
+        ("code runs no gate", lambda t: t.replace("        if: steps.tier.outputs.records != 'true' || ", "        if: steps.tier.outputs.records == 'true' || ", 1)),
+        ("records validation moves to Windows", lambda t: t.replace("|| (matrix.system == 'ubuntu' && matrix.python == '3.9')", "|| (matrix.system == 'windows' && matrix.python == '3.9')", 1)),
+        ("pass-through says it did not validate when it did", lambda t: t.replace("        if: steps.tier.outputs.records == 'true' && (matrix.system != 'ubuntu' || matrix.python != '3.9')\n", "", 1)),
+        ("pass-through names no validation owner", lambda t: t.replace("suites (ubuntu, 3.9) owns records validation.", "", 1)),
+        ("Linux update failure is hidden by its install", lambda t: t.replace("sudo apt-get update -q &&", "sudo apt-get update -q;", 1)),
+        ("Windows installation failure is not propagated", lambda t: t.replace("          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n", "", 1)),
+        ("SVN verification may fail without stopping suites", lambda t: t.replace("      - name: Subversion is really there — the S checks must run, not skip\n", "      - name: Subversion is really there — the S checks must run, not skip\n        continue-on-error: true\n", 1)),
         ("the zone's run turns the check red", lambda t: t.replace("        continue-on-error: true\n", "", 1)),
         ("macOS runs a zone too", lambda t: t.replace('{system: macos, image: macos-26, python: "3.12"}', '{system: macos, image: macos-26, python: "3.12", tz: Pacific/Kiritimati}', 1)),
         ("the zones change places", lambda t: t.replace("tz: Pacific/Kiritimati}", "tz: PLACE}", 1).replace("tz: Pacific/Pago_Pago}", "tz: Pacific/Kiritimati}", 1).replace("tz: PLACE}", "tz: Pacific/Pago_Pago}", 1)),
@@ -13980,6 +14136,14 @@ def _ci_wf_regressions(text, root, shapes):
                                                                   m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
             re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
     )
+    rows += tuple((f"{system}'s SVN installation has no timeout", lambda t, system=system:
+                   re.sub(r"(      - name: Subversion \(" + re.escape(system) + r"\)\n.*?)(        timeout-minutes: 15\n)", r"\1", t, count=1, flags=re.S))
+                  for system in ("Linux", "macOS", "Windows"))
+    rows += tuple((f"an SVN install timeout is {minutes}", lambda t, minutes=minutes: t.replace("timeout-minutes: 15", f"timeout-minutes: {minutes}", 1))
+                  for minutes in (0, -1, 360))
+    rows += tuple((f"{system}'s SVN installation may fail without stopping suites", lambda t, system=system:
+                   t.replace(f"      - name: Subversion ({system})\n", f"      - name: Subversion ({system})\n        continue-on-error: true\n", 1))
+                  for system in ("Linux", "macOS", "Windows"))
     rows += (("the step compares paths case-sensitively (RV-2966)", lambda t: t.replace("          shopt -s nocasematch\n", "", 1)),
              ("a path holding a byte outside printable ASCII passes (RV-2966)", lambda t: t.replace(
                  '              case "$path" in\n                *[![:print:]]*) records=false ;;\n              esac\n', "", 1)),
@@ -14011,7 +14175,11 @@ else:
         _ci_root = Path(_ci_d).resolve()
         _ci_shape = _ci_shapes(_ci_root)
         _ci_text = (HERE / ".github/workflows/ci.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/ci.yml").is_file() else ""
-        for _what, _ok in _ci_wf_properties(_ci_text, _ci_root, _ci_shape) + _ci_wf_regressions(_ci_text, _ci_root, _ci_shape):
+        _ci_steps = (_ci_yaml(_ci_text) or {}).get("jobs", {}).get("suites", {}).get("steps", [])
+        _ci_tier_script = next(s["run"] for s in _ci_steps if s.get("id") == "tier")
+        _ci_results = _ci_wf_properties(_ci_text, _ci_root, _ci_shape) + _ci_wf_regressions(_ci_text, _ci_root, _ci_shape)
+        _ci_results += _ci_install_failures(_ci_steps) + _ci_classifier_failures(_ci_tier_script, _ci_root, _ci_shape["a tracker-only edit"])
+        for _what, _ok in _ci_results:
             check(f"FM-032 · ci.yml: {_what}", _ok)
         rm_git(_ci_root)
 

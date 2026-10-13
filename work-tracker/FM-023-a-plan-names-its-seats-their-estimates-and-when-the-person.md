@@ -17,18 +17,17 @@ is designed or built.
 
 ## What is true now
 
-**2026-10-13 — critical common READY; dependent implementation dispatched.** Owner #167 filing, #168 PartB/FM043
-and #170 planning records are merged, current main `cab89ed`. R14 and v0.19.4 are shipped. R12's new control follow-up
-is locally READY at `246ccdf1995fa416e8757682dcef3784d231c044`, retaining the completed separate critical re-check
-and exact unchanged workflow. RV-3040: recorded privately. Native Windows/full CI await Owner fetch/push/rerun.
-Archive critical READY `1ba6fc4` closed RV3070 in round2; #170 records integration `f117209` retains every product blob,
-passes its clean gate and has an exact-commit deterministic dry run. Its scoped records verification is running.
+**2026-10-13 — R12 merged; bounded common/A1/A2 accepted; remaining local work continues.**
+Current main `3cac843` includes R12 READY `246ccdf`; its native/full CI status is not inferred solely from ancestry.
+RV-3040: recorded privately. #167/#168/#170 remain merged. Common READY `ef77527` closes RV-3085–RV-3088;
+A1/A2 READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in their final round. Neither accepts full Stage1.
+Archive standalone READY `b2e5195` remains unchanged. Its later common integration is NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD with its final round exhausted. B corrective `eabbeef` is in final independent verification of RV-3092–RV-3094. C final READY `f59a1c1` closes RV-3095. P's notice/Tortoise/entry composition continues separately from held archive activation.
 
-Common independent critical READY `ef77527` accepts `b72b9ae`, closing RV3085–RV3088 in round2, COMMON SKELETON ONLY.
-Ordinary main merge `1fc12b0` retains that exact product tree, passes its clean gate and26history-aware ratchet controls.
-A/B/C start the scoped implementation below after this dispatch commit; P alone integrates shared functions and suites.
-The [ownership/API record](evidence/stage-dependent-ownership-2026-10-13.md) and [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md)
-are the canonical tasking. No full Stage1, new consumer authority, plain-folder expansion or platform proof is accepted.
+Owner confirms no SVN consumer adoption proof exists. Full protected acceptance remains held for authenticating
+consumer, recorded adoption and trial findings, with held rulings20Oct. Local CLI/board/init/install continue,
+with the actual entry required to state its verification limit once and claim no authenticated author/signature.
+The canonical [ownership/API record](evidence/stage-dependent-ownership-2026-10-13.md) and
+[Builder brief](evidence/stage-1-builder-brief-2026-10-13.md) remain the tasking; no new authority/platform scope.
 
 The Owner's dispatch in the coordinating session, quoted as dispatch rather than a new signed policy answer:
 "Push URL stays DISABLED. Tell me when a branch is ready; I fetch from your clone and push."
@@ -40,17 +39,17 @@ Reservations: R12 3040–3054; records 3055–3069; archive 3070–3084; stage30
 
 | Rank / step | Work and seat | Estimate | What can stop it / next movable work |
 |---|---|---|---|
-| 1 | R12 locally READY; Owner fetch/push and native CI | Owner/CI execution time | Native Windows/full CI failures; archive and stage seats continue. |
-| 2 | Archive accepted product plus current-main records; records Reviewer then P serial common/archive integration | records20–30 min; integration90–120 Builder min plus45–60 critical review | Actual integration/control findings or CI/release qualification; A/B/C move in owned functions. |
-| 3a | A Critical Builder: server-free local SVN tracked-board inventory/tripwire, then honest init/install and dependent controls | first60–90 min; full2.25–3.75 Builder h plus review/waits | Unreadable local metadata, shared function transfer or P/B seams hold affected controls. |
-| 3b | B Critical Builder: explicit missing-consumer-proof refusal/result first, then bounded history/rights/guard | first60–90 min; full4.5–7 Builder h plus1–2 review h | Missing adopted committed consumer baseline refuses protected acceptance; new authority needs a signed decision. Other local work continues. |
-| 3c | C Critical Builder: pure ordered CLI capability/refusals, quoting, controls and accurate docs | first30–45 min; full1.5–2.5 Builder h, private tasking separate | Actual A/B/P entry wiring, private fix verification or unavailable native shell proof; owned helper/control work continues. RV-3003/RV-3004: recorded privately. |
+| 1 | R12 READY `246ccdf` merged on `3cac843`; Owner/native CI evidence | Owner/CI evidence time | Any actual remaining CI failure; local archive/stage work continues. |
+| 2 | Archive standalone READY `b2e5195`; common integration HELD RV-3072 after final NOT READY `eabee22` | outside strict-classification preparation 30–60 min; Owner disposition wait | Two-round limit prevents another verification; local A/B/C/P work continues. |
+| 3a | A1/A2 critical READY `6fe35f5`; A caller migration and dependent entries | next45–90 Builder min plus separate review; original2.25–3.75 h allowance retained | Concrete caller failures or P/B/Tortoise seams; preserve accepted board/init/install and source separation. |
+| 3b | B corrective `eabbeef`; final independent critical verification of RV-3092–RV-3094 | 60–90 Reviewer min | Any remaining original proof-binding failure holds; local entry work continues. |
+| 3c | C bounded CLI READY `f59a1c1`, RV-3095 CLOSED; P composes entries | component complete; P serial allowance below | Actual entry/native qualification remains due. RV-3003/RV-3004: recorded privately. |
 | 4 | P serial integration/reconciliation and independent critical exact-head review |0.5–1 Builder h wiring plus archive allowance above;1–2 review h | Concrete integration findings, incomplete public-entry proof or required CI; preserve every parent allowlist reduction. |
 | 5 | B1 conflict inventory complete; Claude takes design/site next day | future2–4 Builder h plus review/dependencies | Claude next-day availability and stage/archive qualification; no site code today. |
 
 These are seat hours, excluding Owner waits/CI. The updated common/A/B/C/P allowance is10.25–16.75 Builder seat hours
 before archive/integrated review; completed preparation and later critical corrections are stated separately. No full-stage
-finish today is promised. Source process starts remain63 transitional sites until actual owned migrations shrink them.
+finish today is promised. The current A1/A2 composition retains 60 transitional starts; further component reductions await serial integration.
 A/B/C each remove only their migrated exact allowlist keys in the same commit; C owns scanner behavior, fixed ceiling and
 accepted boundary stay frozen, and P serially retains every parent's removals. No two seats edit the same shared function.
 
@@ -238,6 +237,9 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
+| 2026-10-13 19:48 CEST | Current-main fetch confirms R12 READY merged at `3cac843`; A1/A2 independently READY `6fe35f5`. B/C corrections and archive final verification continue; local P/Tortoise entry work proceeds through those waits. No adopted SVN consumer exists; protected acceptance/trial holds return20Oct. |
+| 2026-10-13 18:18 CEST | RV-3057 P3 fixed forward: archive records READY `b2e5195` replaces the stale running-review paragraph and rank-2 row; inherited common records READY `84c8a6b` needs no re-pass. Serial integration and CI/release holds remain. |
 | 2026-10-13 17:42 CEST | **Dependent dispatch from critical common READY:** `ef77527` closes the four common findings; current-main merge `1fc12b0` retains its exact product and passes gate/ratchet. A first local board slice60–90 min (2.25–3.75 h total), B first missing-proof refusal60–90 min (4.5–7 h total), C first capability/control slice30–45 min (1.5–2.5 h plus private tasking). P owns serial shared/archive integration. RV-3003/RV-3004: recorded privately. |
 | 2026-10-13 | Stage-1 and B1 read-only preparation recorded with immutable-ref evidence; stage-1 build re-estimated from 4–8 h to 6–10.5 Builder hours before archive/review, and its guard capability contract remains a brief dependency. B1 has three conflicted paths/eight groups and a 2–4 h next-day integration estimate. R15 configuration switch verified on current main; no feature build, platform proof or publication claimed. |
 | 2026-09-23 | **Updated as if FM-024 had landed, on the Owner's word:** every seat step carries its session id (`@a9`, `@d8`), `plan-by:` and the updates name seat and session, the gate matches a step's session to the commit's `Session:` trailer, and the multi-session extract uses the registry's ids and rows. |

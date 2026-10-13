@@ -744,6 +744,17 @@ def run_review_root_controls(fm, check):
 def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
     """RV-3088: real reachable graphs, historical transitions, unavailable objects, and the actual outer gate."""
     real_run = subprocess.run
+    # Historical graph fixtures must survive retirement of every production VCS
+    # start. Use one fixed original ceiling call with the actual frozen boundary;
+    # current production source/list/history are independently checked above.
+    boundary = next(n for n in ast.parse(original).body
+                    if isinstance(n, ast.FunctionDef) and n.name == "vcs_process")
+    historical_version = 'def git_version():\n    """The git this run starts, as (major, minor) — one read-only call, `git version` — or None where its answer names no version."""\n    r = subprocess.run(["git", "version"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())\n    m = re.search(r"(\\d+)\\.(\\d+)", r.stdout) if r.returncode == 0 else None\n    return (int(m.group(1)), int(m.group(2))) if m else None\n'
+    original = "import subprocess, os, sys\n" + ast.unparse(boundary) + "\n" + historical_version
+    initial_sites, initial_errors = scanner.launch_sites(original)
+    allowed = [site["key"] for site in initial_sites]
+    check("RV-3088: fixed historical fixture retains one original ceiling start",
+          not initial_errors and len(allowed) == 1 and allowed[0] in ceiling)
 
     class MigrateVersion(ast.NodeTransformer):
         def visit_FunctionDef(self, node):
@@ -756,7 +767,7 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
 
     smaller = ast.unparse(ast.fix_missing_locations(MigrateVersion().visit(ast.parse(original)))) + "\n"
     sites, errors = scanner.launch_sites(smaller); small_keys = [site["key"] for site in sites]
-    check("RV-3088: real version migration removes exactly one existing key", not errors and len(small_keys) == len(allowed) - 1
+    check("RV-3088: fixed version migration removes exactly one original ceiling key", not errors and len(small_keys) == len(allowed) - 1
           and len(collections.Counter(allowed) - collections.Counter(small_keys)) == 1
           and not scanner.ratchet_problems(smaller, small_keys, ceiling, [allowed]))
     with tempfile.TemporaryDirectory(prefix="fm044-history-review-") as tmp:
@@ -798,8 +809,8 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
             check("RV-3088: readable first introduction with no earlier list succeeds", passes(original, allowed))
             initial = commit("introduce launch ratchet")
             check("RV-3088: readable absent introduction parent succeeds", passes(original, allowed))
-            git("checkout", "-qb", "shrinking"); write(smaller, small_keys); shrunk = commit("migrate version launch")
-            check("RV-3088: committed 63-to-62 migration succeeds", passes(smaller, small_keys))
+            git("checkout", "-qb", "shrinking"); write(smaller, small_keys); shrunk = commit("migrate historical version launch")
+            check("RV-3088: committed one-to-zero fixture migration succeeds", passes(smaller, small_keys))
             write(original, allowed)
             check("RV-3088: working-tree resurrection refuses readable history", not passes(original, allowed))
             hidden = root / ".git-hidden"
@@ -819,11 +830,11 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
             git("checkout", "-fqb", "records", initial)
             (root / "record.txt").write_text("records branch\n", encoding="utf-8"); records_base = commit("records-only branch")
             git("merge", "--no-ff", "--no-commit", "shrinking"); write(original, allowed); bad_merge = commit("merge retaining stale source and list")
-            check("RV-3088: merge retaining stale parent's 63 keys refuses", not passes(original, allowed))
+            check("RV-3088: merge retaining a stale parent key refuses", not passes(original, allowed))
             (root / "record.txt").write_text("after bad merge\n", encoding="utf-8"); commit("records after bad merge")
             check("RV-3088: records descendant cannot hide bad merge", not passes(original, allowed))
             write(smaller, small_keys); commit("shrink again after bad merge")
-            check("RV-3088: later shrink to 62 cannot hide historical growth", not passes(smaller, small_keys))
+            check("RV-3088: later shrink cannot hide historical growth", not passes(smaller, small_keys))
             (root / "record.txt").write_text("after later shrink\n", encoding="utf-8"); commit("records after later shrink")
             check("RV-3088: records descendant of later shrink still refuses bad history", not passes(smaller, small_keys))
             git("replace", bad_merge, records_base)
@@ -832,7 +843,7 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
             finally:
                 git("replace", "-d", bad_merge)
             git("checkout", "-fqb", "valid-merge", records_base); git("merge", "--no-ff", "-m", "valid shrinking merge", "shrinking")
-            check("RV-3088: valid merge retaining 62 keys succeeds", passes(smaller, small_keys))
+            check("RV-3088: valid merge retaining the reduction succeeds", passes(smaller, small_keys))
             for label, rev in (("list blob", "HEAD:" + ALLOWLIST_PATH), ("root tree", "HEAD^{tree}"), ("required parent commit", initial)):
                 sha = git("rev-parse", rev); obj = root / ".git" / "objects" / sha[:2] / sha[2:]; hidden_obj = obj.with_name(obj.name + ".hidden")
                 obj.rename(hidden_obj)
