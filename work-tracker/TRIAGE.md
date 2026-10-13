@@ -9,7 +9,7 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 - **for** a trust layer, simple to integrate, use and build with, between an Owner's agent harnesses and the product(s) they care about, inside the repositories their agents work in
 - **so that** agents can work at full speed and check back with the Owner when it matters, only the Owner's verified word decides, every decision and act can be read back from those repositories, and each task that works earns trust for a bigger one, until the product exists
-- **never** a false pass or false refusal, least of all of the Owner's verified word; a protection claimed that the version control in use cannot give; an agent's word counted as the Owner's, or as fact where a check can show it; a control an agent can switch off; a ruling recorded outside version control; sensitive data leaked unredacted into the records or the outside
+- **never** a false pass or false refusal, least of all of the Owner's verified word; work that circles instead of finishing — a check, round or pass repeated where its result cannot change the outcome; a protection claimed that the version control in use cannot give; an agent's word counted as the Owner's, or as fact where a check can show it; a control an agent can switch off; a ruling recorded outside version control; sensitive data leaked unredacted into the records or the outside
 
 ## The current path
 
