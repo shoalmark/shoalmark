@@ -263,6 +263,115 @@ def run_guard_controls(fm, check):
                 check("FM-044 B: normal SVN internal session problems retain empty result", fm.session_problems() == [])
                 check("FM-044 B: normal SVN internal pending triage retains empty result", fm.triage_pending("ordinary work") == ([], []))
 
+            # An explicit fixture policy tests existing attribution semantics, not consumer adoption.
+            (root / "shoalmark.toml").write_text('owner = "fixture-owner"\n[seats]\nbuilder = "fixture-builder"\n', encoding="utf-8")
+            home.write_text(TRIAGE, encoding="utf-8")
+            original = root / "docs/work-tracker/original.txt"
+            original.write_text('---\nid: FEAT-001\nstatus: Proposed\nanswer: keep\n---\n\n# Fixture\n', encoding="utf-8")
+            run("svn", "add", str(original))
+            run("svn", "commit", "-q", "-m", "fixture author-only policy and original", "--username", "fixture-owner", cwd=root)
+            copied = original.with_name("intruder-copy.txt")
+            run("svn", "copy", str(original), str(copied))
+            run("svn", "commit", "-q", "-m", "intruder copies protected state", "--username", "intruder", cwd=root)
+            permitted = original.with_name("owner-copy.txt")
+            run("svn", "copy", str(original), str(permitted))
+            run("svn", "commit", "-q", "-m", "fixture Owner copies its own state", "--username", "fixture-owner", cwd=root)
+            bad_source = original.with_name("intruder-source.txt")
+            bad_source.write_text(original.read_text(encoding="utf-8"), encoding="utf-8")
+            run("svn", "add", str(bad_source))
+            run("svn", "commit", "-q", "-m", "unauthorized original state", "--username", "intruder", cwd=root)
+            laundered = original.with_name("owner-copies-intruder.txt")
+            run("svn", "copy", str(bad_source), str(laundered))
+            run("svn", "commit", "-q", "-m", "fixture Owner cannot cleanse original author", "--username", "fixture-owner", cwd=root)
+            svn_only = base / "svn-only"; svn_only.mkdir()
+            # The launcher path is real. No Git exists on the actual production PATH.
+            if os.name == "nt":
+                # Retain SVN's installation directory so its adjacent DLLs are loadable.
+                svn_only = Path(programs["svn"]).parent
+                if shutil.which("git", path=str(svn_only)) is not None:
+                    print("  SKIP FM-044 B: installed SVN and Git share a Windows PATH directory")
+                    return
+            else:
+                (svn_only / "svn").symlink_to(programs["svn"])
+            check("FM-044 B: real attribution production PATH excludes Git", shutil.which("git", path=str(svn_only)) is None)
+            for label, path, expected in (("original", original, "fixture-owner"), ("authorized original/unauthorized copier", copied, "intruder"),
+                                           ("authorized original/authorized copier", permitted, "fixture-owner"),
+                                           ("unauthorized original/authorized copier", laundered, "intruder")):
+                starts = []
+                original_popen = subprocess.Popen
+
+                def observed(*args, **kwargs):
+                    starts.append(args[0])
+                    return original_popen(*args, **kwargs)
+
+                with patch.dict(os.environ, {"PATH": str(svn_only)}), patch.object(fm.subprocess, "Popen", side_effect=observed):
+                    fm.configure(root)
+                    author = fm.line_author(path, "answer:")
+                check("FM-044 B: real SVN " + label + " retains both author/copy rights", author[0] == expected and author[2] == "svn" and author[3].isdigit()
+                      and bool(starts) and all(cmd[0] == "svn" for cmd in starts))
+
+            # After real SVN reads, inject unusable required first-path log output; never replace it by empty success.
+            relative = copied.relative_to(root).as_posix()
+            broken_logs = (
+                ("empty", b""), ("no-entry", b"<log/>"),
+                ("missing-revision", b"<log><logentry><author>intruder</author></logentry></log>"),
+                ("bad-revision", b'<log><logentry revision="bad"><author>intruder</author></logentry></log>'),
+                ("zero-revision", b'<log><logentry revision="0"><author>intruder</author></logentry></log>'),
+                ("missing-copy-author", b'<log><logentry revision="3"/></log>'),
+            )
+            for label, output in broken_logs:
+                actual_run, starts = subprocess.run, []
+
+                def injected(cmd, *args, **kwargs):
+                    done = actual_run(cmd, *args, **kwargs)
+                    starts.append(cmd)
+                    if cmd[0] == "svn" and "--stop-on-copy" in cmd:
+                        return subprocess.CompletedProcess(cmd, 0, output, done.stderr)
+                    return done
+
+                with patch.dict(os.environ, {"PATH": str(svn_only)}), patch.object(fm.subprocess, "run", side_effect=injected):
+                    fm.configure(root)
+                    errors = []
+                    for _attempt in range(2):
+                        try:
+                            fm.svn_blame(relative)
+                        except fm.SvnUnreadable as error:
+                            errors.append(str(error))
+                check("FM-044 B: actual SVN " + label + " required copy history refuses and keeps its failure", len(errors) == 2 and errors[0] == errors[1]
+                      and sum("--stop-on-copy" in cmd for cmd in starts) == 1 and all(cmd[0] == "svn" for cmd in starts))
+
+            broken_blames = (
+                ("missing-revision", '<entry line-number="4"><commit><author>fixture-owner</author></commit></entry>'),
+                ("bad-revision", '<entry line-number="4"><commit revision="bad"><author>fixture-owner</author></commit></entry>'),
+                ("zero-revision", '<entry line-number="4"><commit revision="0"><author>fixture-owner</author></commit></entry>'),
+                ("missing-author", '<entry line-number="4"><commit revision="3"/></entry>'),
+                ("empty-author", '<entry line-number="4"><commit revision="3"><author> </author></commit></entry>'),
+                ("zero-line", '<entry line-number="0"><commit revision="3"><author>fixture-owner</author></commit></entry>'),
+                ("repeated-line", '<entry line-number="4"><commit revision="3"><author>fixture-owner</author></commit></entry>' * 2),
+            )
+            for label, entries in broken_blames:
+                actual_run, starts = subprocess.run, []
+
+                def injected_blame(cmd, *args, **kwargs):
+                    done = actual_run(cmd, *args, **kwargs)
+                    starts.append(cmd)
+                    if cmd[0] == "svn" and "blame" in cmd:
+                        return subprocess.CompletedProcess(cmd, 0, ("<blame><target>" + entries + "</target></blame>").encode("utf-8"), done.stderr)
+                    return done
+
+                with patch.dict(os.environ, {"PATH": str(svn_only)}), patch.object(fm.subprocess, "run", side_effect=injected_blame):
+                    fm.configure(root)
+                    errors = []
+                    for _attempt in range(2):
+                        try:
+                            fm.svn_blame(relative)
+                        except fm.SvnUnreadable as error:
+                            errors.append(str(error))
+                        except (AttributeError, TypeError, ValueError):
+                            pass                          # old malformed-output traceback is not a bounded refusal
+                check("FM-044 B: actual SVN " + label + " required blame metadata refuses without traceback", len(errors) == 2 and errors[0] == errors[1]
+                      and sum("blame" in cmd for cmd in starts) == 1 and all(cmd[0] == "svn" for cmd in starts))
+
             # This is the pure protected-text comparison seam, not public-entry acceptance.
             with patch.dict(os.environ, {"PATH": str(restricted)}), patch.object(fm.subprocess, "Popen", side_effect=AssertionError("local comparison must start nothing")):
                 before = view(TRIAGE)

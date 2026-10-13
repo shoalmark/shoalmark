@@ -5309,7 +5309,12 @@ def svn_blame(rel):
         for e in (blame.iter("entry") if blame is not None else []):
             c = e.find("merged/commit") if e.find("merged/commit") is not None else e.find("commit")
             who = c.find("author") if c is not None else None
-            out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
+            number, revision = e.get("line-number") or "", c.get("revision") if c is not None else ""
+            if not re.fullmatch(r"[1-9][0-9]*", number) or int(number) in out:
+                raise ValueError("invalid or repeated blame line")
+            if c is not None and (not re.fullmatch(r"[1-9][0-9]*", revision or "") or who is None or not (who.text or "").strip()):
+                raise ValueError("unavailable committed revision or author")
+            out[int(number)] = (who.text if who is not None else None, revision)
     except (ValueError, TypeError):                     # a blame that cannot be read is no answer of the history's: refused, never read as nothing committed
         _SVN_BLAME[rel] = SvnUnreadable("svn blame printed lines that could not be read")
         raise _SVN_BLAME[rel]
@@ -5320,7 +5325,10 @@ def svn_blame(rel):
             _SVN_BLAME[rel] = e
             raise
         first = log.findall("logentry")[-1] if log is not None and log.findall("logentry") else None
-        if first is not None and (first.get("revision") or "").isdigit():
+        if first is None or not re.fullmatch(r"[1-9][0-9]*", first.get("revision") or ""):
+            _SVN_BLAME[rel] = SvnUnreadable("svn log did not name the path's required first committed revision")
+            raise _SVN_BLAME[rel]
+        if first is not None:
             at, by = int(first.get("revision")), first.findtext("author")
             if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()):
                 try:
@@ -5329,6 +5337,9 @@ def svn_blame(rel):
                     _SVN_BLAME[rel] = e
                     raise
                 if by is not MERGED_IN:                         # a copy: each older line's own author, read through it by the same blame (v0.19.1)
+                    if not (by or "").strip():
+                        _SVN_BLAME[rel] = SvnUnreadable(f"svn log did not name the copied path's author at revision {at}")
+                        raise _SVN_BLAME[rel]
                     _SVN_BLAME[("through", rel)] = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
                 out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
             _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path: a line it wrote was written at the filing
