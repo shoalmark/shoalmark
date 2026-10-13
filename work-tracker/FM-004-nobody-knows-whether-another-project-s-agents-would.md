@@ -3,24 +3,17 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: build
+next: review
 triaged: 2026-09-23
 tier: P3
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
-ask: "What exact replacement text do you want for RV-2734 in #154, removing the withdrawn requirement for git on every machine?"
-ask-kind: ruling
-ask-since: 2026-10-12
-ask-proposal: "Use: 'Target v0.20.0: shoalmark runs on Subversion with no git installed; this is not shipped yet.'"
-answer: "accepted - with a change: in #154 the clause reads (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed)"
-answered: 2026-10-12
-answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
 
 ## What is true now
 
-**2026-10-12 — #154 and the release archive.** #154's RV-2734 fix text remains the Owner's to give; the front-matter proposal is draft wording for their signed acceptance or replacement. **Confidence 98%:** it states only the authorized v0.20.0 requirement and does not claim it shipped. After the answer, a Records Builder replaces the withdrawn sentence and one Reviewer pass follows. The release archive's bundle was verified locally at `23e3f7a10299804e903094feafd43910a46fd2de`; its earlier READY is reported, and scoped RV-3020/RV-3021 review of `6379acd..23e3f7a` remains owed. The Owner's release-script change and archive dry run remain release prerequisites. Probe draft 3 runs in its separate session.
+**2026-10-13 — #154 replacement and the release archive.** The Part B work package is recovered on this branch with the Owner's exact signed 12 October RV-2734 replacement applied; its one records review remains pending. B1, the final probe prompt and what the first outside run needs are allocated to v0.20.1 by the signed FM-023 answer. Subversion without git remains a v0.20.0 target, not shipped functionality. The release archive's bundle was verified locally at `23e3f7a10299804e903094feafd43910a46fd2de`; its earlier READY is reported, and scoped RV-3020/RV-3021 review of `6379acd..23e3f7a` and stage-1 integration remain owed. The Owner's release-script change and archive dry run remain release prerequisites. Probe draft 3 runs in its separate session.
 
 **Run 2026-09-21: 0 of 3 recommend adopting — my prediction of 2 of 3 was wrong.** A (sceptical): *nicht übernehmen*;
 B (neutral): *jetzt nicht, frühestens an einer Paketgrenze neu prüfen*; C (time pressure): *jetzt nicht, eher gar nicht
@@ -59,10 +52,35 @@ done; what flips the verdict is *no migration* plus *the Owner uses it*, not a f
 | What no file and no board does | 3 of 3, unprompted: *"Eine Datei ruft Sie nicht an, und eine Tafel müssen Sie auch erst öffnen."* — nothing **pushes**, and nothing **enforces**: the gate checks a tracker's form, not that the test it names exists. |
 | Their protocol | two to four weeks with twenty lines in the plan they have (*Wartet auf Owner*: question, date, what it blocks, *our proposal if no answer comes*); if the median age of open Owner questions stays above one working day **and** the Owner prefers a page in the browser — switch at a package boundary, keeping their numbers. Measures offered: median age of open Owner questions · packages in progress at once · minutes to a fresh session's first useful move · overwritten status lines per week. |
 
+## Part B — the probe's next version, and onboarding through the agents (2026-10-08; wording updated 2026-10-13)
+
+The Owner's work package after v0.19.1, in two lanes that meet at the landing page's dialog. **B1, the landing page,**
+in English and German from one template: a primary button that copies a probe prompt and opens a dialog, built behind a
+switch that stays off until the probe has passed; a secondary "How it works"; and figures generated from the repository
+when the site is built. **The probe lane** rewrites ADOPT.md and ADOPT.de.md as an honest evaluation of fit that may end
+in "no fit": prerequisites first (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed), the
+human's yes before it runs, the working copy read-only within a time and file budget, the one first result that fits
+where the project stands, a report of benefit and cost, the yes-path at a work-item boundary, an optional feedback
+report the human sends, and the probe in the project's language. Nothing in it says or implies that shoalmark scans for
+security problems or data leaks, and it fits one person in charge. Nothing goes outside before it passes a fixed rule:
+a set number of consecutive clean end-to-end runs, from the landing page's button to the feedback file; any failure is
+fixed, and the count restarts.
+
+The Owner's signed 12 October FM-023 allocation puts B1, the probe's final prompt and what its first outside run needs
+in v0.20.1; rows that put that release's date at risk move to v0.20.2. The prerequisite wording names the v0.20.0 target;
+Subversion without git is not shipped yet.
+
 ## Done when
 
 The three reports are recorded here with their counts and verdicts, the note is corrected for what they found, and
 the limits are said: three runs, one model family, an invented project.
+
+## Asks
+
+**2026-10-12** · What exact replacement text do you want for RV-2734 in #154, removing the withdrawn requirement for git on every machine?
+**answered** — accepted - with a change: in #154 the clause reads (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed) · holgo99
+**relation** — accepted with a change
+**signed** — adaec88 · G
 
 ## Ship log
 
@@ -71,3 +89,4 @@ the limits are said: three runs, one model family, an invented project.
 | 2026-09-21 | Filed; prediction written before the runs. |
 | 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
 | 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |
+| 2026-10-13 | Recovered Part B from `643ad4b` on current main, applied the exact signed RV-2734 prerequisite replacement and FM-023 release allocation; one records review pending, archive re-review and integration still owed. |
