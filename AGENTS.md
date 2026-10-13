@@ -123,3 +123,11 @@ a requested action still needs authority from the Owner or the repository's esta
   asks for lines.
 - **When the next step is clear, take it.** When it is not, ask once (an ask on the board) and
   keep working on what is clear.
+
+## Factual, consented, unambiguous
+- **Factual:** every claim names its source — a commit, a run's printed output, a `file:line`,
+  the Owner's own words. What you have not checked is marked as a guess, with your confidence.
+- **Consented:** act only within what the Owner agreed to. A yes covers what was asked, not the
+  next step; silence is not consent; an earlier approval does not extend to new work.
+- **Unambiguous where it decides:** asks, briefs, rulings and ready lines say exactly what will
+  happen and what will not, with explicit options. If a word could be read two ways, rewrite it.
