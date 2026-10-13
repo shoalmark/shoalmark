@@ -2651,11 +2651,11 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
         return EXIT_LINT
     if t.get("answer") and not (supersede or verdict == "revoke"):
         print(f"--answer: {tid} is answered already ({t['answered']}, {t['answered_by']}) — an answer is never overwritten in place. "
-              f"To take it back: `{CMD} --answer {tid} revoke \"<reason>\"`; to change it: `{CMD} --answer {tid} accept|reject \"<option>\" --supersede` — "
+              f"To take it back: `{CMD} --answer {printed_arg(tid)} revoke \"<reason>\"`; to change it: `{CMD} --answer {printed_arg(tid)} accept|reject \"<option>\" --supersede` — "
               f"either way the answer it replaces moves into the ship log", file=sys.stderr)
         return EXIT_LINT
     if not t.get("answer") and (supersede or verdict == "revoke"):
-        print(f"--answer: {tid} carries no answer to " + ("revoke" if verdict == "revoke" else "supersede") + f" — answer it: `{CMD} --answer {tid} accept|reject`", file=sys.stderr)
+        print(f"--answer: {tid} carries no answer to " + ("revoke" if verdict == "revoke" else "supersede") + f" — answer it: `{CMD} --answer {printed_arg(tid)} accept|reject`", file=sys.stderr)
         return EXIT_LINT
     if verdict == "reject" and not text:
         print("--answer: a rejection carries its reason, and how the ask should be reworded", file=sys.stderr)
@@ -2721,12 +2721,12 @@ def seed_said(tid, seed):
     if not seed:
         return ""
     if not seed.get("when"):
-        return f"\n  no date read in your answer — {seed['why']}; the act shows *no date yet*: `{CMD} --due {tid} <time>` sets it"
+        return f"\n  no date read in your answer — {seed['why']}; the act shows *no date yet*: `{CMD} --due {printed_arg(tid)} <time>` sets it"
     if not seed.get("had"):
-        return f"\n  due: {seed['when']} — read from your answer's `{seed['words']}`, written with it; `{CMD} --due {tid} <time>` moves it"
+        return f"\n  due: {seed['when']} — read from your answer's `{seed['words']}`, written with it; `{CMD} --due {printed_arg(tid)} <time>` moves it"
     if parse_due(seed["had"]) == parse_due(seed["when"]):
         return f"\n  due: {seed['had']} — your answer names the same time"
-    return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {tid} {seed['when']}` moves it"
+        return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {printed_arg(tid)} {printed_arg(seed['when'])}` moves it"
 
 
 def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
@@ -2796,7 +2796,7 @@ def invite_cmd(tid, trackers):
         return EXIT_LINT
     when = parse_due(act[3])
     if not when:
-        print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {tid} <time>` first", file=sys.stderr)
+        print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {printed_arg(tid)} <time>` first", file=sys.stderr)
         return EXIT_LINT
     what, answer, answered, due, window, asked = act
     body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))[1]
@@ -2807,7 +2807,7 @@ def invite_cmd(tid, trackers):
     name = CONFIG["name"] or ROOT.name
     said = ((f"{what}\nAsked: {asked}\n" if asked else "") + (f"Promised {answered}: {answer}. " if answer else "")
             + f"Owed to you, due {due}; it can still be done {window} minutes after. "
-            f'Done: {CMD} --done {tid} "<where the result is>" — moved: {CMD} --due {tid} <time>')
+             f'Done: {CMD} --done {printed_arg(tid)} "<where the result is>" — moved: {CMD} --due {printed_arg(tid)} <time>')
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT",
              f"UID:act-{tid.lower()}-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", "DTSTAMP:20000101T000000Z",
              f"SEQUENCE:{sequence}", f"DTSTART:{utc(when)}", f"DURATION:PT{window}M",

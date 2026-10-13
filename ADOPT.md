@@ -86,7 +86,8 @@ copy the board's two lines in `.gitignore`.
   has no client hook — run the tool before every `svn commit` and commit the `INDEX.md` along with it, then run
   `<cmd> --check` after the commit to check its server history. TortoiseSVN's installed hook properties are a separate
   entry path; the Windows qualification limit below still applies. With an installed copy below the project, use
-  `<cmd> --root <project directory>` to select the consumer working copy.
+  `<cmd> --root <project directory>` to select the consumer working copy. Here `<cmd>` is
+  `python3 tools/shoalmark/shoalmark.py`, using `python` on Windows.
 - Way back: first remove from your hooks folder (`.git/hooks/`, or the one `core.hooksPath` names) everything that calls
   the copy of the tool in the git directory: the hooks marked `# shoalmark`, and the line you added to a hook of your own
   (on Subversion, the `tsvn:` hook properties, which call `tools/shoalmark/shoalmark.py`). Delete the copy — on
