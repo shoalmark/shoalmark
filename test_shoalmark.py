@@ -4488,11 +4488,11 @@ _readme_ = re.sub(r"\s+", " ", _rd("README.md"))
 _NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
                   "`svn update`: run `--html-only` to rebuild it.")
 check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
-      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (10 October 2026, 0.19.3's), and the player stats keep theirs; the top bar and the footer's link name the release VERSION names",
+      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (13 October 2026, 0.19.4's), and the player stats keep theirs; the top bar and the footer's link name the release VERSION names",
       "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
       "folder inside the working tree; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "last accepted it" not in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
       and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
-      and 'v0.19.3, released 10 October 2026 — a security release: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
+      and 'v0.19.4, released 13 October 2026 — a security release: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
       and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html")
       and f'release<b>v{fm.__version__}</b>' in _rd("overrides/landing.html") and f'releases/tag/v{fm.__version__}" style="color:#b4c3d1">v{fm.__version__}</a>' in _rd("overrides/landing.html"))
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
@@ -7735,7 +7735,7 @@ else:
         # a blame that cannot be read is refused — never read as a line nobody has committed
         real_run6_ = subprocess.run
         bad6_ = '<?xml version="1.0"?><blame><target path="x"><entry line-number="one"><commit revision="2"><author>planner</author><date>2026-10-04T00:00:00.000000Z</date></commit></entry></target></blame>'
-        subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a[0], 0, bad6_, "") if a and list(a[0])[:2] == ["svn", "blame"] else real_run6_(*a, **k)
+        subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a[0], 0, bad6_.encode("utf-8"), b"") if a and list(a[0])[:2] == ["svn", "blame"] else real_run6_(*a, **k)
         try:
             code_u, _, err_u = run(root, "--check")
         finally:
@@ -12921,10 +12921,10 @@ with tempfile.TemporaryDirectory() as tmp:
           and got_["AP-311"][0] == "accepted the proposal" and answer_sha_.startswith(got_["AP-311"][1]) and len(got_["AP-311"][1]) >= 7
           and got_["AP-312"] == ("relation not computable", "") and got_["AP-313"] == ("accepted with a change", "")
           and "**relation**" not in f310_.read_text())
-    check("FM-029 · 0.18.3 · its cost: a load spends no git call on it; a reading spends ONE `git log` for all the records that lack the line, and one `git show` per record whose commit was found — and a record that carries its line calls no git at all",
+    check("FM-029 · 0.18.3 · its cost: a load spends no git call on it; a reading spends ONE `git log` for all the records that lack the line, and one `cat_blobs` batch per tracker whose commits were found — and a record that carries its line calls no git at all",
           not any(fm.line_regex("answer:") in c for c in load_calls_)
           and [c for c in batch_calls_ if "log" in c and fm.line_regex("answer:") in c] == [c for c in batch_calls_ if "log" in c] and len([c for c in batch_calls_ if "log" in c]) == 1
-          and len([c for c in batch_calls_ if "show" in c]) == 2 and len(batch_calls_) == 3 and line_calls_ == [])
+          and len([c for c in batch_calls_ if "cat-file" in c and "--batch" in c]) == 2 and len(batch_calls_) == 3 and line_calls_ == [])
     _, said_out_, _ = run(root, "--answered")
     acted_ = dict(re.findall(r"^  (AP-31\d) — acted on in `[0-9a-f]+` · (.*)$", said_out_, re.M))
     check(f"FM-029 · 0.18.3 · `--answered` prints it on each acted-on line and names the answer's commit it was read from (saw {acted_})",
@@ -12986,8 +12986,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check("FM-029 · R2 · FM-031's shape — an old record, then one with its line: the old one prints its recovered relation, the newer keeps its own, nothing doubled; the newest-only reading (`--answered`) says the newest's",
           line_(a1_, "accepted with a change", s1_("AP-321")) in v321_ and v321_.count("**relation** —") == 2
           and f"**answered** — {a2_} · holgo\n**relation** — accepted the proposal\n" in v321_ and fm.record_relation(by_["AP-321"]) == ("accepted the proposal", ""))
-    check("FM-029 · R2 · still one `git log` for every file, and one `git show` per record whose answer's commit is found — three here",
-          len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "show" in c_]) == 3 and len(calls_) == 4)
+    check("FM-029 · R2 · still one `git log` for every file, and one `cat_blobs` batch per tracker whose answers' commits are found — two here",
+          len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "cat-file" in c_ and "--batch" in c_]) == 2 and len(calls_) == 3)
     rm_git(root)
 fm.configure(HERE)
 
@@ -13032,7 +13032,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-029 · R1 (third pass) · the same answer to the same question, twice: the question cannot tell the commits apart — *relation not computable* under both records, no commit named (saw {by_['AP-331']['asks_recovered_all']})",
           by_["AP-331"]["asks_recovered_all"] == {k_("Ship the importer?"): ("relation not computable", "")}
           and view_("AP-331").count("**relation** — relation not computable\n") == 2 and "read from the answer's commit" not in view_("AP-331")
-          and len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "show" in c_]) == 4)
+          and len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "cat-file" in c_ and "--batch" in c_]) == 2)
     rm_git(root)
 fm.configure(HERE)
 # …and FM-007 in this repository: answered twice, word for word, on 09-22 — `63e72b4` at 16:48 and `7521116` at 19:36, the same
@@ -13469,11 +13469,11 @@ else:
     _pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
     check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
           f"blob, where the tag is here; the head's before it (saw {_pins_saw})", _pins_ok)
-    _changed_tool = lambda rel: (HERE / rel).read_bytes() + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
+    _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
     _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
                  ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
                  *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
-                 ("a head that changes shoalmark.py alone after the tag", "HEAD", _changed_tool, _tag_tool, True)]
+                 ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
     for _what, _rev, _read, _tags, _want in _pins_ctl:
         if not _held(_rev):
             _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
@@ -14037,6 +14037,13 @@ with tempfile.TemporaryDirectory() as tmp:
           len(_BOARD_GIT) > 0 and not other_ and wrapped_ctl_ == ["env"])
     rm_git(root); rm_git(plain_)
 fm.configure(HERE)
+
+import test_tracker_text
+for _label, _ok, _detail in test_tracker_text.run_checks(fm):
+    if _ok is None:
+        _skipped(_label, 11, _detail)
+    else:
+        check(_label, _ok)
 
 import test_owner_exemption
 check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_exemption.run_checks())

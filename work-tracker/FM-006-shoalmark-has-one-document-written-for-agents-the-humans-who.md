@@ -3,7 +3,7 @@ id: FM-006
 status: In Progress
 considered: FM-005, FM-003
 tags: process
-next: build
+next: review
 triaged: 2026-09-26
 rank: 6
 tier: P2
@@ -23,14 +23,17 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
-**2026-10-11 — P2, public (not a security item): v0.19.3's ADOPT pins named the release commit's tool.** ADOPT.md and
-ADOPT.de.md at v0.19.3 pin `shoalmark.py` as `4a617ee4…b467`, the tool of the release commit `0bb1b3b`, while the tag ships
-`42ec6aa1…0b31`: `44bde64` and `7738037` changed `shoalmark.py` after the release commit. An agent that checks the tool
-against ADOPT's pin finds a mismatch and stops. The cause: a code change after the release commit, and no check of the
-pins after it. Fixed by `f7de965`: both pins name `42ec6aa1…0b31`. Since `c29cfee` a suite check holds, on every run,
-both notes to the one release VERSION names and one SHA-256: that of the tag's `shoalmark.py`, git's blob, where the tag
-is in the clone; the head's before the tag. Its six controls: `3432566` fails with its tag and without it; v0.19.0,
-v0.19.1 and v0.19.2 pass; a head that changes `shoalmark.py` alone passes. The tag and its release page stay as they are.
+**2026-10-13 — v0.19.4 is prepared on `fm/046-text-boundary`.** This security release builds on FM-046's
+critical round-2 READY review at `51f333f`, with R14 (FM-033) from main. VERSION, the CHANGELOG section naming
+GHSA-xh54-c5jg-j4fp, both ADOPT pins, both setup pages and the landing name the release. `shoalmark.py` is unchanged
+from `51f333f`; both pins name its SHA-256, `cce2974ae5293d83f0c6b477fd2dc8dcf3f3e36d9bdf726aae71abad65d9a7eb`.
+The landing's release assertion follows the new date. The ADOPT case for a tool changed after a tag uses v0.19.2's
+files, so it checks an existing tag while the new release awaits its own. The pin check still compares the current
+release with its tag's tool where that tag exists, and with the head's tool before it.
+
+The browser-free landing, VERSION, setup and ADOPT checks pass, as do the explicit `--version` check, `test_core.py`
+and compilation. The full suite is left to CI. Next: an independent critical release review, then the Owner's pull
+request and CI, merge and `v0.19.4` tag. FM-046 stays In Progress; after the tag the Planner records its merge and tag.
 
 **2026-10-07 — v0.19.1 is combined on `release/v0.19.1`, and the push waits for the Owner's sitting.** The branch holds:
 - each Queue A security fix, on its own branch, merged in with `--no-ff`:
@@ -905,6 +908,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-13 | **v0.19.4 release prepared** on `fm/046-text-boundary`, on the READY `51f333f`: VERSION, CHANGELOG (GHSA-xh54-c5jg-j4fp), both ADOPT pins, both setup pages and the landing. The tool keeps the reviewed bytes. Browser-free release checks, core and compilation pass; the full suite is left to CI. Independent critical release review and the Owner's merge and tag are next. |
 | 2026-10-11 | **The pin check, as it holds since `c29cfee`:** on every run, ADOPT.md and ADOPT.de.md name the one release VERSION names and the SHA-256 of that tag's `shoalmark.py`, git's blob, where the tag is in the clone; the head's before the tag. Six controls: `3432566` fails with its tag and without it; v0.19.0, v0.19.1 and v0.19.2 pass; a head that changes `shoalmark.py` alone passes. This row holds over the next one's "the head's tool". |
 | 2026-10-11 | **P2 filed, public:** v0.19.3's ADOPT pins named the release commit's tool (`4a617ee4…b467`, `0bb1b3b`), not the one the tag ships (`42ec6aa1…0b31`); the cause, a code change after the release commit and no check of the pins after it. Fixed by `f7de965` on `fm/032-ci-tiers-and-time-zones`: both pins, and a suite check of the pins against VERSION and the head's tool on every run. |
 | 2026-10-07 | **v0.19.1 combined** by the Planner, on the Owner's rulings of 2026-10-03, 2026-10-04 and 2026-10-07: the four security branches merged into `release/v0.19.1` beside `--install-hook`'s configuration check, `--init` and the board's days, each READY on its own head. The push, the tag and the advisory wait for the Owner's sitting. |

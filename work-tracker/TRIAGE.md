@@ -7,22 +7,24 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 *The Owner's own words — for · so that · never. Nobody else edits this. A pass prints it above its rules.*
 
-- **for** a trust layer for an Owner whose agents work in their repository
-- **so that** the agents move at full speed, only the Owner's signed word decides, and every decision and act can be read back from the repository
-- **never** an agent's word counted as the Owner's; a control an agent can switch off; a ruling recorded outside the repository; blocking the Owner's signed word; leak sensitive data unredacted into the records or the outside.
+- **for** a trust layer, simple to integrate, use and build with, between an Owner's agent harnesses and the product(s) they care about, inside the repositories their agents work in
+- **so that** agents can work at full speed and check back with the Owner when it matters, only the Owner's verified word decides, every decision and act can be read back from those repositories, and each task that works earns trust for a bigger one, until the product exists
+- **never** a false pass or false refusal, least of all of the Owner's verified word; a protection claimed that the version control in use cannot give; an agent's word counted as the Owner's, or as fact where a check can show it; a control an agent can switch off; a ruling recorded outside version control; sensitive data leaked unredacted into the records or the outside
 
 ## The current path
 
 *The Owner's. A pass judges every tier against it; only the Owner changes it.*
 
-1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits, and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)).
+1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits, and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)). A security fix for a released version does not wait: it ships as a patch release on the Owner's word (v0.19.4, 13 October).
 2. A pull request merges on a verdict that names what it covers: the reviewed commit, its base, the tier and the checks run, as a Reviewed: line in the commit. The review commit carries the findings, their evidence and dispositions, its limits and who reviewed; a separate file only where the evidence needs one. Critical work takes a Reviewer in a session of its own, never one the building session started, and at most two rounds per finding. Critical means: a release, the gate or hooks, signing and rights, auth, migrations, deploy and secrets tooling, run sheets for the Owner, TRIAGE.md or AGENTS.md rules changed by a seat, and rules and code under a P1 or security tracker. Other code takes one inline Reviewer pass; records take one pass; neither runs re-check rounds: findings are fixed forward and named in the commit. Relevant local checks run before a pull request; the complete suites run in CI, not locally before every pull request. A review of the Owner's own answers and TRIAGE lines reports and never blocks. The Owner merges on a ready line, or over any other verdict with a signed reason.
-3. The trial decides what comes next. Until its findings are in, v0.20.0 holds only what the trial needs: Subversion without git, and the release archive (R23); nothing else on Subversion is built. What the trial finds is filed as trackers and comes first; the held rulings are looked at again on 20 October.
+3. The trial decides what comes next. Until its findings are in, v0.20.0 holds only what item 1 names (R23); nothing else on Subversion is built, and on Subversion the tool says once what it cannot verify — no signature, and without a server's login no author — and never claims it. What the trial finds is filed as trackers and comes first; the held rulings, the plain folder among them, are looked at again on 20 October.
 4. A seat's question for the Owner goes on the board as an ask, with its proposal, and the seat keeps working; the Owner answers in one sitting. A seat interrupts the Owner only to stop harm.
 
 ## Passes
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
+
+**2026-10-12 — FM-046, a partial pass at the Owner's request:** **keep P1 build**, unranked — consistent committed-tracker reads support current path 1's trust layer and the Subversion trial. The worksheet's three NOT considered matches were read; none owns shared line-ending normalisation. FM-046 moves from Proposed to In Progress; no implementation is built yet. One row applied by `python3 shoalmark.py --triage`, regenerating INDEX.md and the board; the other fifteen rows await judgement. Worksheet: [triage-2026-10-12.md](evidence/triage/triage-2026-10-12.md).
 
 **2026-10-08 — the build judged before its first commit, a partial pass** (Planner seat, on the Owner's ruling of 2026-10-08 for a patch release, 0.19.2; the worksheet `work-tracker/evidence/triage/triage-2026-10-08.md`, one row of sixteen filled and applied by the command): **FM-045 keep P0 build** — harm today: 0.19.1's board refresh stops on `git ls-tree`, and the board an answer leaves goes stale; unranked, the next full pass ranks it. The other fifteen rows wait for that pass.
 

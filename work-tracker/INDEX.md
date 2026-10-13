@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-10-12 · 43 trackers (43 work).
+> Generated 2026-10-13 · 44 trackers (44 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -20,9 +20,9 @@
 
 *The Owner's. A pass judges every tier against it; only the Owner changes it.*
 
-1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits, and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)).
+1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits, and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)). A security fix for a released version does not wait: it ships as a patch release on the Owner's word (v0.19.4, 13 October).
 2. A pull request merges on a verdict that names what it covers: the reviewed commit, its base, the tier and the checks run, as a Reviewed: line in the commit. The review commit carries the findings, their evidence and dispositions, its limits and who reviewed; a separate file only where the evidence needs one. Critical work takes a Reviewer in a session of its own, never one the building session started, and at most two rounds per finding. Critical means: a release, the gate or hooks, signing and rights, auth, migrations, deploy and secrets tooling, run sheets for the Owner, TRIAGE.md or AGENTS.md rules changed by a seat, and rules and code under a P1 or security tracker. Other code takes one inline Reviewer pass; records take one pass; neither runs re-check rounds: findings are fixed forward and named in the commit. Relevant local checks run before a pull request; the complete suites run in CI, not locally before every pull request. A review of the Owner's own answers and TRIAGE lines reports and never blocks. The Owner merges on a ready line, or over any other verdict with a signed reason.
-3. The trial decides what comes next. Until its findings are in, v0.20.0 holds only what the trial needs: Subversion without git, and the release archive (R23); nothing else on Subversion is built. What the trial finds is filed as trackers and comes first; the held rulings are looked at again on 20 October.
+3. The trial decides what comes next. Until its findings are in, v0.20.0 holds only what item 1 names (R23); nothing else on Subversion is built, and on Subversion the tool says once what it cannot verify — no signature, and without a server's login no author — and never claims it. What the trial finds is filed as trackers and comes first; the held rulings, the plain folder among them, are looked at again on 20 October.
 4. A seat's question for the Owner goes on the board as an ask, with its proposal, and the seat keeps working; the Owner answers in one sitting. A seat interrupts the Owner only to stop harm.
 
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
@@ -31,7 +31,7 @@
 | 2 | P1 | build | — | intended, kind | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | In Progress |
 | 3 | P2 | build | — | intended, kind | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | In Progress |
 | 5 | P1 | review | *complicated* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
-| 6 | P2 | build | — | sized, intended, kind | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
+| 6 | P2 | review | *complicated* | sized, intended | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
 | 7 | P2 | review | *complicated* | intended | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress |
 | 8 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
 | 9 | P2 | review | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
@@ -50,6 +50,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-046](FM-046-a-committed-tracker-s-front-matter-is-parsed-only-for-lf.md) | P1 | A committed tracker's front matter is parsed only for LF line endings and not through one normalisation, so the same tr… | In Progress | progress | 2026-10-12 |
 | [FM-042](FM-042-requirements-in-the-repository-tested-as-a-contract-a-layer-for.md) | P2 | Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading… | In Progress | progress | 2026-09-30 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
 | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | P2 | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress | progress | 2026-09-27 |
