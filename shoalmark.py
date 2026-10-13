@@ -4868,7 +4868,7 @@ def svn_last_worked_on(path):
     global _SVN_LOG
     if _SVN_LOG is None:
         import xml.etree.ElementTree as ET
-        out = vcs_process("svn", "log", "-v", "--xml", str(TRACKER_DIR), capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=os.getcwd())
+        out = vcs_process("svn", "log", "-v", "--xml", str(TRACKER_DIR), capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=".")
         try:
             _SVN_LOG = [((e.findtext("date") or "")[:10], e.findtext("msg") or "", [x.text or "" for x in e.iter("path")])
                         for e in ET.fromstring(out.stdout).iter("logentry")] if out.returncode == 0 and out.stdout.strip() else []
@@ -4895,7 +4895,7 @@ def repos_naming():
             continue
         if not (ROOT / sub / ".git").exists():
             continue
-        said = "".join(vcs_process("git", "-C", str(ROOT / sub), *cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=os.getcwd()).stdout for cmd in (["log", "--all", "--format=%s %D"], ["branch", "-r"]))
+        said = "".join(vcs_process("git", "-C", str(ROOT / sub), *cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=".").stdout for cmd in (["log", "--all", "--format=%s %D"], ["branch", "-r"]))
         for kind, num in re.findall(r"\b(%s)[-/](\d+)\b" % "|".join(KINDS), said, re.I):
             found.setdefault(f"{kind.upper()}-{int(num):03d}", set()).add(sub.rsplit("/", 1)[-1])
     return {k: sorted(v) for k, v in found.items()}
@@ -9525,7 +9525,7 @@ def install_copy():
     copy installed from another branch carries that branch's tool. Beside it, `COPY` records the command it was run with, for the copy's messages."""
     if vcs() != "git":
         return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
-    out = vcs_process("git", "-C", str(ROOT), "rev-parse", "--git-common-dir", capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=os.getcwd())
+    out = vcs_process("git", "-C", str(ROOT), "rev-parse", "--git-common-dir", capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=".")
     if out.returncode:
         return EXIT_LINT, [f"--install-hook: {ROOT} has no git directory to keep the hooks' copy in"]
     target = (ROOT / out.stdout.strip()).resolve() / COPY_DIR
@@ -9847,7 +9847,7 @@ def install_hook():
     ours is never overwritten: it is named, with the line to add to it."""
     if vcs() == "svn":
         return install_hook_svn()
-    out = vcs_process("git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks", capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=os.getcwd())
+    out = vcs_process("git", "-C", str(ROOT), "rev-parse", "--git-path", "hooks", capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), cwd=".")
     if out.returncode:
         print(f"--install-hook: {ROOT} is neither a git repository nor a Subversion working copy", file=sys.stderr)
         return EXIT_LINT

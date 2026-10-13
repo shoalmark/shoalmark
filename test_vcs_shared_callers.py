@@ -8,6 +8,7 @@ authority, protected acceptance or offline SVN history verification is claimed.
 import ast
 from contextlib import redirect_stderr, redirect_stdout
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -36,10 +37,10 @@ def load(source):
     return fm
 
 
-def baseline_source():
-    folder = HERE / ".cache" / "shared-callers-baseline"
+def baseline_source(pin=BASE):
+    folder = HERE / ".cache" / ("shared-callers-baseline" if pin == BASE else "shared-callers-baseline-" + pin[:8])
     import tarfile
-    archive = subprocess.run(["git", "archive", BASE], cwd=HERE, capture_output=True, check=True).stdout
+    archive = subprocess.run(["git", "archive", pin], cwd=HERE, capture_output=True, check=True).stdout
     with tarfile.open(fileobj=io.BytesIO(archive)) as source:
         # Tracked repository files only; refuse absolute/parent paths on Python 3.9 too.
         members = source.getmembers()
@@ -80,8 +81,14 @@ def source_controls(fm, old, check):
             expected = [ast.dump(x) for x in prior.args[0].elts]
             actual = [ast.dump(x) for x in current.args]
             keywords = {k.arg: ast.dump(k.value) for k in prior.keywords}
-            keywords.setdefault("cwd", ast.dump(ast.parse("os.getcwd()", mode="eval").body))
-            check(f"A callers: {name} argv/keywords/effective cwd remain exact {n}", expected == actual and keywords == {k.arg: ast.dump(k.value) for k in current.keywords})
+            current_keywords = {k.arg: ast.dump(k.value) for k in current.keywords}
+            if "cwd" not in keywords:
+                # The real inherited-cwd controls establish effective identity;
+                # this supporting AST check only requires an explicit cwd.
+                has_cwd = current_keywords.pop("cwd", None) is not None
+            else:
+                has_cwd = True
+            check(f"A callers: {name} argv/keywords/effective cwd remain exact {n}", expected == actual and has_cwd and keywords == current_keywords)
             count += 1
     check("A callers: exactly sixteen Git/SVN starts migrate", count == 16)
     previous = json.loads((Path(old.__file__).parent / "test_vcs_launch_allowlist.json").read_text())
@@ -118,7 +125,7 @@ def git_controls(fm, old, check):
                 prepare(tool)
             records = []
             def run(argv, **kwargs):
-                normalized = copy.deepcopy(kwargs); normalized["cwd"] = str(normalized.get("cwd", os.getcwd()))
+                normalized = copy.deepcopy(kwargs); normalized["cwd"] = os.path.abspath(normalized.get("cwd") or ".")
                 # Each source's own unavailable signature program follows its real __file__.
                 def normalize(value):
                     if isinstance(value, dict):
@@ -262,7 +269,8 @@ def svn_controls(fm, old, check):
         check("A callers: real SVN init remains local with no Git and unavailable server", got["code"] == 0 and got["git_absent"] and all(e[0] == "svn" for e in got["events"]))
         a, b = probe("history", old.__file__), probe("history")
         check("A callers: unavailable-server SVN date preserves accepted placeholder/cache/rebind results", a["results"] == b["results"] == {"first": "—", "cached": "—", "starts_before_rebind": 1, "after_rebind": "—"})
-        check("A callers: date helper honestly retains one server log then one after rebind; no Git", [[e[0], e[1], os.getcwd() if e[2] == "None" else e[2]] for e in a["events"]] == b["events"] and len(b["events"]) == 2 and all(e[1] == ["svn", "log", "-v", "--xml", str(root / "work-tracker")] for e in b["events"]))
+        effective = lambda events: [[e[0], e[1], os.getcwd() if e[2] in ("None", ".") else e[2]] for e in events]
+        check("A callers: date helper honestly retains one server log then one after rebind; no Git", effective(a["events"]) == effective(b["events"]) and len(b["events"]) == 2 and all(e[1] == ["svn", "log", "-v", "--xml", str(root / "work-tracker")] for e in b["events"]))
         # Existing controlled local-metadata refusal remains before scaffold or property writes.
         (init / ".svn" / "wc.db").write_bytes(b"not a working copy database")
         got = probe("init", target=init)
@@ -271,15 +279,139 @@ def svn_controls(fm, old, check):
         (folder / "shared-callers-svn-observations.json").write_text(json.dumps(observations, indent=2) + "\n")
 
 
+def cwd_probe(source, root, launch, operation, deleted):
+    """Real functions/processes; preserve unnamed cwd by inode, never os.getcwd()."""
+    tool = load(source); tool.configure(root)
+    starts, reads, writes = [], [], []; active = [False]
+    original = os.getcwd(); os.chdir(launch)
+    identity = tuple((getattr(os.stat("."), key)) for key in ("st_dev", "st_ino"))
+    if deleted:
+        launch.rmdir()
+    def environment(env):
+        values = dict(os.environ if env is None else env)
+        return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
+    def audit(event, args):
+        if not active[0]:
+            return
+        if event == "subprocess.Popen":
+            cwd = args[2] if args[2] is not None else "."
+            stat = os.stat(cwd); inherited = (stat.st_dev, stat.st_ino) == identity
+            frame = sys._getframe()
+            while frame and not (frame.f_code.co_name == "run" and frame.f_globals.get("__name__") == "subprocess"):
+                frame = frame.f_back
+            options = dict(frame.f_locals["kwargs"]) if frame else {}
+            options.pop("env", None); options.pop("cwd", None)
+            starts.append({"argv": list(map(str, args[1])), "cwd_raw": str(cwd),
+                           "cwd": "<inherited launch cwd>" if inherited else str(cwd),
+                           "inherited": inherited, "env_mode": "inherited" if args[3] is None else "explicit",
+                           "environment_sha256": environment(args[3]), "options": options})
+        elif event == "open":
+            mode, flags = args[1:3]
+            write = (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND)))
+            if write and isinstance(args[0], (str, bytes, os.PathLike)):
+                writes.append(os.fsdecode(args[0]))
+            elif isinstance(args[0], (str, bytes, os.PathLike)):
+                reads.append(os.fsdecode(args[0]))
+        elif event in ("os.mkdir", "os.remove", "os.rmdir", "os.rename", "os.chmod"):
+            if isinstance(args[0], (str, bytes, os.PathLike)):
+                writes.append(os.fsdecode(args[0]))
+    sys.addaudithook(audit)
+    out, err = io.StringIO(), io.StringIO(); active[0] = True; error = None
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            result = tool.svn_last_worked_on(root / "work-tracker" / "WORK-001-local.md") if operation == "svn_last_worked_on" else getattr(tool, operation)()
+    except BaseException as exception:
+        result = None; error = type(exception).__name__
+    finally:
+        active[0] = False; os.chdir(original)
+    copied = root / ".git" / tool.COPY_DIR / "shoalmark.py"
+    installed = error is None and (operation not in ("install_copy", "install_hook") or (copied.is_file() and copied.read_bytes() == source.read_bytes()))
+    print(json.dumps({"result": result, "exception": error, "starts": starts, "reads": reads, "writes": writes,
+                      "installed_source_exact": installed, "out": out.getvalue(), "err": err.getvalue(),
+                      "removed_launch": deleted, "identity_preserved": all(not s["inherited"] or s["cwd"] == "<inherited launch cwd>" for s in starts)}))
+
+
+def inherited_cwd_controls(fm, check):
+    """RV-3096: actual immutable-before and fixed-after unrelated/deleted cwd."""
+    before = baseline_source("43b560037a6d0297578dc5f7f9a7cf6caa02f0ef")
+    if os.name == "nt":
+        print("SKIP RV-3096 deleted launch cwd: Windows prevents deleting an in-use cwd; native qualification remains separate")
+        return
+    with tempfile.TemporaryDirectory() as temp:
+        base = Path(temp).resolve(); root = base / "consumer"; root.mkdir()
+        call(root, "git", "init", "-q", "--initial-branch=main"); shared.corpus(root)
+        call(root, "git", "add", "."); call(root, "git", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "commit", "-qm", "WORK-001 local fixture")
+        dep = root / "dep"; dep.mkdir(); call(dep, "git", "init", "-q")
+        (dep / "file").write_text("local work\n"); call(dep, "git", "add", ".")
+        call(dep, "git", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "commit", "-qm", "WORK-021 dep work")
+        (root / ".gitmodules").write_text('[submodule "dep"]\n path = dep\n')
+        target = root / "tools" / "shoalmark"; target.mkdir(parents=True)
+        for name in fm.TOOL_FILES:
+            if name != "shoalmark.py":
+                path = target / name; path.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(HERE / name, path)
+        tool = target / "shoalmark.py"; rows = []
+        def probe(operation, chosen, deleted, consumer=root):
+            tool.write_bytes(Path(chosen).read_bytes())
+            (target / "PIN").write_text("".join(hashlib.sha256((target / rel).read_bytes().replace(b"\r\n", b"\n")).hexdigest() + "  " + rel + "\n" for rel in fm.TOOL_FILES))
+            if consumer == root:
+                copy_dir = root / ".git" / fm.COPY_DIR
+                if copy_dir.exists():
+                    shutil.rmtree(copy_dir)
+                for hook in fm.HOOKS:
+                    path = root / ".git" / "hooks" / hook
+                    if path.exists():
+                        path.unlink()
+            launch = base / "unrelated"; launch.mkdir(exist_ok=True)
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+            env.update(PYTHONDONTWRITEBYTECODE="1", GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+            if operation == "svn_last_worked_on":
+                env["PATH"] = str(search)
+            done = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--cwd-probe", str(tool), str(consumer), str(launch), operation, str(int(deleted))], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
+            if done.returncode:
+                raise AssertionError(done.stderr)
+            got = json.loads(done.stdout); got.update(operation=operation, source_pin="43b5600" if chosen == before else "fixed working source", root=str(consumer)); rows.append(got)
+            return got
+        def effective(got):
+            return [{k: v for k, v in record.items() if k not in ("cwd_raw", "inherited")} for record in got["starts"]]
+        for operation in ("repos_naming", "install_copy", "install_hook", "svn_last_worked_on"):
+            if operation == "svn_last_worked_on":
+                server = base / "server"; wc = base / "wc"
+                call(base, "svnadmin", "create", str(server)); call(base, "svn", "checkout", "-q", server.as_uri(), str(wc))
+                shared.corpus(wc); call(wc, "svn", "add", "shoalmark.toml", "work-tracker"); call(wc, "svn", "commit", "-qm", "local history fixture")
+                server.rename(base / "server-unavailable")
+                search = base / "svn-only"; search.mkdir(); (search / "svn").symlink_to(shutil.which("svn"))
+                consumer = wc
+            else:
+                consumer = root
+            old_healthy = probe(operation, before, False, consumer)
+            old_deleted = probe(operation, before, True, consumer)
+            new_healthy = probe(operation, fm.__file__, False, consumer)
+            new_deleted = probe(operation, fm.__file__, True, consumer)
+            check("RV-3096: " + operation + " immutable43 really fails before launch after cwd deletion", old_deleted["exception"] == "FileNotFoundError" and not old_deleted["starts"] and not old_deleted["writes"])
+            expected = {"WORK-021": ["dep"]} if operation == "repos_naming" else "—" if operation == "svn_last_worked_on" else 0
+            result = lambda got: got["result"][0] if operation == "install_copy" and got["exception"] is None else got["result"]
+            check("RV-3096: " + operation + " healthy and deleted cwd keep the real accepted result", all(g["exception"] is None and result(g) == expected for g in (old_healthy, new_healthy, new_deleted)))
+            check("RV-3096: " + operation + " keeps full argv/environment/options and effective cwd", effective(old_healthy) == effective(new_healthy) == effective(new_deleted) and new_deleted["starts"] and new_deleted["starts"][0]["cwd_raw"] == "." and new_deleted["starts"][0]["inherited"])
+            check("RV-3096: " + operation + " mutations stay in the disposable consumer", all(all(path == str(consumer) or path.startswith(str(consumer) + os.sep) for path in g["writes"]) and g["installed_source_exact"] for g in (old_healthy, new_healthy, new_deleted)))
+            permitted = (str(root), str(consumer), str(Path(os.__file__).parent))
+            check("RV-3096: " + operation + " reads only fixture data and trusted Python runtime", all(all(any(path == prefix or path.startswith(prefix + os.sep) for prefix in permitted) for path in g["reads"]) for g in (old_healthy, new_healthy, new_deleted)))
+            if operation in ("repos_naming", "svn_last_worked_on"):
+                check("RV-3096: " + operation + " remains read-only", all(not g["writes"] for g in (old_healthy, new_healthy, new_deleted)))
+        (HERE / ".cache" / "shared-callers-cwd-observations.json").write_text(json.dumps(rows, indent=2) + "\n")
+
+
 def run_shared_caller_controls(fm, check, baseline=None):
     old = load(baseline or baseline_source())
     source_controls(fm, old, check)
     git_controls(fm, old, check)
     svn_controls(fm, old, check)
+    inherited_cwd_controls(fm, check)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--svn-probe":
+    if len(sys.argv) > 1 and sys.argv[1] == "--cwd-probe":
+        cwd_probe(Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4]), sys.argv[5], bool(int(sys.argv[6])))
+    elif len(sys.argv) > 1 and sys.argv[1] == "--svn-probe":
         svn_probe(Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])
     else:
         rows = []; started = time.monotonic()
