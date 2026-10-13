@@ -3,11 +3,15 @@ id: FM-044
 status: In Progress
 considered: FM-003
 tags: bug
-next: review
+next: owner
 triaged: 2026-10-13
 rank: 3
 tier: P1
 hook: "A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped with a traceback before it wrote anything."
+ask: "Which disposition should the B readers take after RV-3092–RV-3094 exhausted their review rounds?"
+ask-kind: ruling
+ask-since: 2026-10-13
+ask-proposal: "Keep the readers held; prepare structural XML validation for Owner disposition without a third review, while local components continue."
 ---
 
 # FM-044 — shoalmark stops with a traceback where git is not installed, on Subversion too
@@ -25,19 +29,26 @@ A1/A2 critical READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in 
 BOARD/INIT/INSTALL ONLY. This ordinary seat merge incorporates its exact functions, shared controls and three
 allowlist removals, 63 to 60; the later C composition reduces that to 45. The prior combined A merge passed compile, unchanged core 302 in 65.602 s and 152 A
 controls in 42.777 s. This independent branch retains the same A product; its current-main checks are recorded
-here: changed Python compiles in 0.475 s, and unchanged core passes in 46.861 s. A's separate caller branch continues sixteen VCS migrations, retaining its two
-non-VCS dynamic starts. RV-3096–RV-3097 reserve that new caller scope; no closed A finding is reopened.
+here: changed Python compiles in 0.475 s, and unchanged core passes in 46.861 s. A's separate caller commit `43b5600` completes sixteen VCS migrations and retains its two
+non-VCS dynamic starts. Its 97 controls, unchanged core and clean gate pass; independent critical review runs
+in a separate ROOT session before this branch imports that product. RV-3096–RV-3097 reserve that new caller scope; no closed A finding is reopened.
 
 C critical READY `f59a1c1`, Reviewed `05e02ac`, closes RV-3095 in its final round, BOUNDED CLI/PRESENTATION/
 DOCUMENTATION ONLY. Its actual callbacks and retained quoting checks pass; This ordinary seat merge incorporates the exact C product and controls: compile0.251 s, unchanged
 core44.768 s, and all16 C methods3.162 s pass. Actual launch keys are45, retaining both A and C reductions.
-B corrective `eabbeef`, following initial NOT READY `c01940a`, is in its final independent verification of
-RV-3092–RV-3094 together. Its 232 controls pass and immutable c019 fails the 82 matching controls. No B closure
-or full public-chain acceptance is claimed before that verdict. RV-3003/RV-3004: recorded privately.
+B final NOT READY `99968f2`, Reviewed `eabbeef`, leaves RV-3092–RV-3094 P2 OPEN/HELD after their
+second/final rounds. Structural XML text/tails can become empty or credited blame, hide pending Shipped status,
+and pass malformed logs as product proof. The full inline verdict contains actual-read evidence and exact
+outstanding corrections; 232 scoped controls and 302 core passing cannot override those reproduced failures.
+B's readers and twenty-three migrations are excluded from this local branch. A structural validation proposal
+is prepared outside production for Owner disposition. No third verification or replacement finding is opened.
+RV-3003/RV-3004: recorded privately.
 
 Archive/common final NOT READY `eabee22`, Reviewed `284a4e8`, closes RV-3071 and leaves RV-3072 HELD with
 its second/final round exhausted. The archive integration stays separate from local-stage acceptance; its
-strict source-classification proposal is prepared outside production for Owner disposition, with no third loop.
+strict source-classification proposal is complete outside production for Owner disposition: 28/28 development
+expectations pass versus 14/28 before. Its only changed function preserves the frozen source command. Unknown
+and translated diagnostics refuse; native mount/layout qualification is pending. It is NOT ACCEPTED, with no third loop.
 Standalone accepted archive/common antecedents remain intact. The earlier combined branch `fm/044-stage-entry-integration` retains that held ancestry. This separate
 `fm/044-local-stage-current` starts at accepted A6fe35f5 and merges current main; it contains no archive_source
 or archive_check production implementation. Its local-stage composition remains unreviewed.
@@ -93,6 +104,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-13 20:36 CEST | B final NOT READY `99968f2` leaves RV-3092–RV-3094 HELD with final rounds exhausted; disposition ask proposes holding the readers and preparing structural validation outside. A caller `43b5600` is in its separate critical review; C is locally composed. Archive final hold remains separate; local entry/notice work continues. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
 | 2026-10-13 19:48 CEST | R12 merged on current main `3cac843`; local entry branch incorporates it with generated INDEX, compile/core and affected R14 gate passing. A1/A2 critical READY closes RV-3089–RV-3091; B and C corrections/final reviews and archive final review continue. P prepares actual preflight/once limitation/Tortoise entries; protected acceptance stays held under Owner clarification. |
 | 2026-10-13 18:48 CEST | RV-3003/RV-3004: recorded privately |

@@ -21,7 +21,7 @@ is designed or built.
 Current main `3cac843` includes R12 READY `246ccdf`; its native/full CI status is not inferred solely from ancestry.
 RV-3040: recorded privately. #167/#168/#170 remain merged. Common READY `ef77527` closes RV-3085–RV-3088;
 A1/A2 READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in their final round. Neither accepts full Stage1.
-Archive standalone READY `b2e5195` remains unchanged. Its later common integration is NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD with its final round exhausted. B corrective `eabbeef` is in final independent verification of RV-3092–RV-3094. C final READY `f59a1c1` closes RV-3095. P's notice/Tortoise/entry composition continues separately from held archive activation.
+Archive standalone READY `b2e5195` remains unchanged. Its later common integration is NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD with its final round exhausted. B final NOT READY `99968f2` leaves RV-3092–RV-3094 HELD after their final rounds; structural validation is prepared outside for disposition. C final READY `f59a1c1` closes RV-3095. P's notice/Tortoise/entry composition continues separately from held archive activation.
 
 Owner confirms no SVN consumer adoption proof exists. Full protected acceptance remains held for authenticating
 consumer, recorded adoption and trial findings, with held rulings20Oct. Local CLI/board/init/install continue,
@@ -41,8 +41,8 @@ Reservations: R12 3040–3054; records 3055–3069; archive 3070–3084; stage30
 |---|---|---|---|
 | 1 | R12 READY `246ccdf` merged on `3cac843`; Owner/native CI evidence | Owner/CI evidence time | Any actual remaining CI failure; local archive/stage work continues. |
 | 2 | Archive standalone READY `b2e5195`; common integration HELD RV-3072 after final NOT READY `eabee22` | outside strict-classification preparation 30–60 min; Owner disposition wait | Two-round limit prevents another verification; local A/B/C/P work continues. |
-| 3a | A1/A2 critical READY `6fe35f5`; A caller migration and dependent entries | next45–90 Builder min plus separate review; original2.25–3.75 h allowance retained | Concrete caller failures or P/B/Tortoise seams; preserve accepted board/init/install and source separation. |
-| 3b | B corrective `eabbeef`; final independent critical verification of RV-3092–RV-3094 | 60–90 Reviewer min | Any remaining original proof-binding failure holds; local entry work continues. |
+| 3a | A1/A2 READY `6fe35f5`; new caller `43b5600` in separate critical review | 30–60 Reviewer min; caller Builder complete | New caller findings may take one correction/final pass; other local work continues. |
+| 3b | B readers HELD under RV-3092–RV-3094, final NOT READY `99968f2`; outside structural proposal | 30–60 Builder min outside; Owner disposition wait | Two-round limit prevents another verification; local components continue. |
 | 3c | C bounded CLI READY `f59a1c1`, RV-3095 CLOSED; P composes entries | component complete; P serial allowance below | Actual entry/native qualification remains due. RV-3003/RV-3004: recorded privately. |
 | 4 | P serial integration/reconciliation and independent critical exact-head review |0.5–1 Builder h wiring plus archive allowance above;1–2 review h | Concrete integration findings, incomplete public-entry proof or required CI; preserve every parent allowlist reduction. |
 | 5 | B1 conflict inventory complete; Claude takes design/site next day | future2–4 Builder h plus review/dependencies | Claude next-day availability and stage/archive qualification; no site code today. |
