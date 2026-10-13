@@ -1,6 +1,6 @@
 # The proof that is not the author's machine: both suites on three systems, with Subversion installed on each. A pull request that
-# changes tracker files alone runs the gate's --check instead, in the same five checks: CI's cost follows the review tier (the Owner's
-# word of 2026-10-09). The two Ubuntu entries also run both suites under a time zone far from UTC, reported and not yet required.
+# changes tracker files alone runs the gate's --check on Ubuntu/Python 3.9; the other four unchanged check names pass through and
+# say so (R12, 2026-10-12). The two Ubuntu entries also run both suites under a time zone far from UTC, reported and not yet required.
 name: ci
 # Validate every non-draft PR revision and every release tag.
 on:
@@ -84,7 +84,7 @@ jobs:
               esac
             done < "$RUNNER_TEMP/tier.raw"
             nul=$(tr -cd '\000' < "$RUNNER_TEMP/tier.raw" | wc -c)
-            if [ "$entries" -eq 0 ] || [ "$((nul))" -ne "$((2 * entries))" ]; then
+            if [ -n "${head:-}" ] || [ "$entries" -eq 0 ] || [ "$((nul))" -ne "$((2 * entries))" ]; then
               records=false
             fi
           fi
@@ -100,6 +100,7 @@ jobs:
       # R14: the gate judges the PR head; the suites run on the merge checkout.
       - name: the branch — the gate's --check
         id: gate
+        if: steps.tier.outputs.records != 'true' || (matrix.system == 'ubuntu' && matrix.python == '3.9')
         shell: bash
         env: {TRACKER: "${{ steps.tier.outputs.dir }}", EVENT: "${{ github.event_name }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}", SHOALMARK_CMD: python3 shoalmark.py}
         run: |
@@ -109,16 +110,25 @@ jobs:
           git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"
           python shoalmark.py --check
           git checkout --detach "$checked"
+      - name: records — validation belongs to Ubuntu/Python 3.9
+        if: steps.tier.outputs.records == 'true' && (matrix.system != 'ubuntu' || matrix.python != '3.9')
+        shell: bash
+        run: |
+          echo "Records validation was not run in this job. suites (ubuntu, 3.9) owns records validation." >> "$GITHUB_STEP_SUMMARY"
       - name: Subversion (Linux)
         if: runner.os == 'Linux' && steps.tier.outputs.records != 'true'
+        timeout-minutes: 15
         run: sudo apt-get update -q && sudo apt-get install -y -q subversion
       - name: Subversion (macOS)
         if: runner.os == 'macOS' && steps.tier.outputs.records != 'true'
+        timeout-minutes: 15
         run: brew install subversion
       - name: Subversion (Windows)
         if: runner.os == 'Windows' && steps.tier.outputs.records != 'true'
+        timeout-minutes: 15
         run: |
           choco install sliksvn -y --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           echo "C:\Program Files\SlikSvn\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Subversion is really there — the S checks must run, not skip
         if: steps.tier.outputs.records != 'true'
