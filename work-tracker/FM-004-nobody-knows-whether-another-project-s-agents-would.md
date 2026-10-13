@@ -3,7 +3,7 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: build
+next: review
 triaged: 2026-09-23
 tier: P3
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
@@ -20,7 +20,11 @@ answered-by: holgo99
 
 ## What is true now
 
-**2026-10-12 — #154 and the release archive.** #154's RV-2734 fix text remains the Owner's to give; the front-matter proposal is draft wording for their signed acceptance or replacement. **Confidence 98%:** it states only the authorized v0.20.0 requirement and does not claim it shipped. After the answer, a Records Builder replaces the withdrawn sentence and one Reviewer pass follows. The release archive's bundle was verified locally at `23e3f7a10299804e903094feafd43910a46fd2de`; its earlier READY is reported, and scoped RV-3020/RV-3021 review of `6379acd..23e3f7a` remains owed. The Owner's release-script change and archive dry run remain release prerequisites. Probe draft 3 runs in its separate session.
+**2026-10-12 — #154 and the release archive.** #154's RV-2734 fix text remains the Owner's to give; the front-matter proposal is draft wording for their signed acceptance or replacement. **Confidence 98%:** it states only the authorized v0.20.0 requirement and does not claim it shipped. After the answer, a Records Builder replaces the withdrawn sentence and one Reviewer pass follows. Probe draft 3 runs in its separate session.
+
+**2026-10-13 — release archive integrated; independent critical review owed.** Local branch `fm/004-archive-current`, based on current main `e7ce074`, carries the source archive range `570a773..23e3f7a` as the unchanged inventory refactor `3ac2e9d` and behavior integration `94f6bc2`. RV-3020's complete vendored set, RV-3021's ASCII-only build refs and all five probe files survive. The archive checks exact manifest bytes before copying only the 19 tool files; its PIN retains legacy line-end normalization. Malformed manifests and unsafe source symlinks refuse before writing. The bounded shared `git_dirs` change avoids Git discovery for non-Git acquisition destinations, retaining Git/common-worktree and disk `.git` guards; stage 1 must integrate this point, and the separate critical Reviewer must judge it. Current 0.19.4 authority/security behavior, legacy interpretation and all five code CI jobs are retained. This supplies acquisition alone: no Subversion backend or gate operation is claimed.
+
+Local checks passed: changed-Python compilation, 158 core checks (14.52 s) and 59 scoped vendoring/archive workflow properties and controls (27.59 s), zero scoped skips. A commit-pinned dry run of `94f6bc2`, without creating a tag, built a 25-entry zip whose RELEASE hashes all 24 shipped entries, including the five probe files at their paths. Rebuilding under UTC and Pacific/Kiritimati gave identical bytes; the checksum verified. SHA-256: `4dfedf7dc8ac54acfb02371ea9994487f527a662890ff2a58d007fc5e3fa26d6`. With no Git binary on PATH, default vendoring refused the untagged dry run, explicit `--allow-untagged` copied only the complete tool, and a changed source refused without writes. This is a local proof at the current version, not a release artifact. Next: separate-session critical review, Owner fetch/push and complete CI; stage-1/candidate integration, the Owner's release-script change and real release workflow qualification remain owed. The push URL stays `DISABLED`.
 
 **Run 2026-09-21: 0 of 3 recommend adopting — my prediction of 2 of 3 was wrong.** A (sceptical): *nicht übernehmen*;
 B (neutral): *jetzt nicht, frühestens an einer Paketgrenze neu prüfen*; C (time pressure): *jetzt nicht, eher gar nicht
@@ -71,3 +75,4 @@ the limits are said: three runs, one model family, an invented project.
 | 2026-09-21 | Filed; prediction written before the runs. |
 | 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
 | 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |
+| 2026-10-13 | Release archive integrated onto current 0.19.4: refactor `3ac2e9d`, behavior `94f6bc2`, source `570a773..23e3f7a`; relevant local controls and a commit-pinned dry run pass. Independent critical review, Owner publication, CI and release integration remain owed. |
