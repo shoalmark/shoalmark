@@ -427,8 +427,12 @@ def run_ratchet_controls(fm, check):
     }
     for name, extra in injections.items():
         check("FM-044: ratchet rejects " + name, bool(ratchet_problems(source + "\n" + extra, allowed, ceiling)))
-    renamed = source.replace("def tracked_board_rels(", "def renamed_board_rels(")
-    check("FM-044: renaming a retained caller grants no exemption", bool(ratchet_problems(renamed, allowed, ceiling)))
+    # Use a real retained caller: a legitimate migration can remove tracked_board_rels
+    # (or any other fixed function) from this shrinking list.
+    retained = next((row["function"] for row in ceiling_rows if row["key"] in allowed), None)
+    renamed = source.replace(f"def {retained}(", f"def renamed_retained_{retained}(", 1) if retained else source
+    check("FM-044: renaming a retained caller grants no exemption", retained is not None and renamed != source
+          and bool(ratchet_problems(renamed, allowed, ceiling)))
     modified = source.replace('if program not in ("git", "svn"):', 'if program not in ("git", "svn", "sh"):')
     check("FM-044: changing the boundary cannot hide extra programs", bool(ratchet_problems(modified, allowed, ceiling)))
     extra_sites, _ = launch_sites(source + "\n" + injections["literal Git"])
