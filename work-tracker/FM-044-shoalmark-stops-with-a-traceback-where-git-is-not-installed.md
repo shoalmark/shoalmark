@@ -28,12 +28,20 @@ Independent acceptance included 302 core, 52 scanner/cache/source controls, 43 r
 restricted-PATH controls and retained FM-045/R14 proof. These prior results retain their original exact-head and
 native-platform limits; they do not accept later dependent code. Source HERE never supplies consumer authority.
 
-A's first local board slice is committed at `ba6347c` after merging the C/P renamed-caller test correction `c974044`;
-B's bounded missing-proof adapter and owned process migrations/history refusals are on its separate builder branch;
-C's pure ordered CLI/capability/quoting first slice is `9612ace`. These are Builder results awaiting separate
-independent acceptance and serial P integration, not full Stage 1 READY. A continues init/install; B continues
-bounded history/rights work; C continues owned migrations and documentation. RV-3003/RV-3004: recorded privately.
-The original private tasking is supplied; implementation and verification remain their separate private hold.
+A's `a1ce0b9` is independently NOT READY at `d70ee54`: RV-3089–RV-3091 P2 remain open for cwd identity,
+status XML and property binding. B's `c6bb529` is independently NOT READY at `c01940a`: RV-3092–RV-3094 P2
+remain open for blame/copy, switched status and Shipped revision/namespace binding. Their Codex Builders
+correct them in separate worktrees; each finding has one final verification round left. C's `8c85aa5` is released
+for its independent component pass. P's ordinary CLI preflight preview passes all fourteen real-SVN entry
+controls; it is preparation, not committed integrated acceptance. RV-3003/RV-3004: recorded privately.
+
+Owner clarification, 13 October: “No consumer proof is available: no Subversion consumer has adopted shoalmark
+yet”. Full protected SVN acceptance remains held for a consumer with an authenticating server, recorded adoption
+and trial findings; held rulings return 20 October. The local CLI/board/init/install work continues. The tool
+must say once what it cannot verify where no server authenticates an author, claiming nothing more, under the
+already signed current path item 3 and intent never line. P must prove that once-per-run limitation on the actual
+aggregate entries; A's bounded board positive currently prints zero author-verification notices. This clarification
+records the existing hold and directed local work; it supplies no adoption, authority or replacement signed rule.
 
 P alone edits main/configure/lint, shared bindings, canonical records and suites. Adapter agreements are recorded
 at `1b48e22`: explicit no-argument protected-refusal result, validated local install/property reads and empty SVN
@@ -42,11 +50,13 @@ interpretation remain unresolved integration obligations. No adopted committed c
 supplied; required protected acceptance refuses, while harmless unguarded/local work stays distinct. No new
 adoption convention, rights change, signature substitute or pending-author exception is inferred.
 
-This serial branch ordinarily integrates independently READY archive `b2e5195`, keeping `git_dirs` exactly common
-and adding only `source=True` to the archive's existing HERE top-level read. No source operation or raw start is added.
-All other accepted archive functions stay exact; real SVN positive fixtures replace empty-marker placeholders.
-Compile, all 302 unchanged core checks and 55 archive/workflow controls pass locally. A separate critical archive/
-common integration verdict and exact-head artifact are still due. A/B/C work does not wait on that review.
+This serial branch retains independently accepted archive/common antecedents, but new integration verdict
+`4aeb6d7`, Reviewed `16dadcea`, holds RV-3071/RV-3072 P2. Planner corrects administrative-destination and checked
+source-failure caller semantics, without changing accepted common AST, source tuples, ceiling/list/digests or
+release workflow/build script. Thirteen entry regressions fail twelve necessary refusals on immutable `16dadcea`
+and pass on the fixed tree; all 68 affected archive controls and unchanged 302 core pass. Both findings need their
+second/final independent verification. No component readiness or full chain acceptance follows from helper checks.
+
 The serial target still has 63 transitional direct starts (55 Git, 3 SVN, 5 dynamic/non-VCS); isolated builder
 reductions are not claimed as integrated. Each Builder removes only its migrated exact keys in the same commit,
 and P retains every parent's reductions. The scanner's Python scope supplies no general FFI/obfuscation proof.
@@ -96,6 +106,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-13 19:14 CEST | A/B initial critical verdicts hold RV-3089–RV-3094 for owned corrections; C independent pass follows. Owner confirms no adopted SVN consumer proof exists; protected acceptance stays held until authenticating consumer/adoption/trial findings, rulings 20 Oct. P continues local entry work and once-per-run verification limitation controls. Archive caller corrections await final critical verification. |
 | 2026-10-13 18:18 CEST | Accepted common dispatch records READY `84c8a6b` retained; RV-3057 P3 corrected forward. A/B/C first bounded commits are moving in exclusive branches; P archive integration retains common guards and source confinement, with compile/302 core/55 archive controls passing. Separate affected integration review and full Stage 1 remain due. |
 | 2026-10-13 17:42 CEST | **Common critical READY and dependent dispatch:** independent `ef77527` closes RV-3085–RV-3088, COMMON SKELETON ONLY. Ordinary #170 merge `1fc12b0` preserves the exact product; clean gate and all 26 ratchet controls pass. A/B/C receive exclusive bounded tasking; Planner owns serial integration. Full Stage 1, protected SVN acceptance and CI remain due. |
 | 2026-10-13 | Independent records verdict ce014e4 merged in Owner PR #167 at e6d1e27; command-applied triage keeps P1 #3 build, and the seat sets In Progress before the common skeleton. Bounded Builder/dependent-seat brief recorded, with guard contract and D3/D4 holds explicit; no implementation or proof claimed. |

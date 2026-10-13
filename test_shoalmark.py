@@ -1934,7 +1934,7 @@ with tempfile.TemporaryDirectory() as d:
     no_path_ = base / "empty-path"; no_path_.mkdir(); no_git_env_ = dict(_ENV, PATH=str(no_path_))
     local_svn_ = shutil.which("svn") and shutil.which("svnadmin")
     if not local_svn_:
-        _skipped("FM-004 · real SVN archive acquisition and administrative guards", 3, "svn and svnadmin are needed for fixture setup")
+        _skipped("FM-004 · real SVN archive acquisition and administrative guards", 16, "svn and svnadmin are needed for fixture setup")
     else:
         no_git_ = _svn_project("no-git-target")
         ng_ = _vend(unpacked_, no_git_, env=no_git_env_)
@@ -1948,6 +1948,10 @@ with tempfile.TemporaryDirectory() as d:
         check(f"FM-004 · a missing RELEASE with no Git binary refuses in one line before writing, including with the legacy bypass flags (saw {absent_[0]}, {absent_[2].strip()[-150:]!r})",
               absent_[0] == fm.EXIT_LINT and "holds no RELEASE manifest" in absent_[2]
               and len(absent_[2].strip().splitlines()) == 1 and not (absent_target_ / "tools").exists())
+        from test_vcs_archive import run_archive_integration_controls
+        acquisition_ = run_archive_integration_controls(fm, check, unpacked_)
+        if acquisition_["skipped"]:
+            _skipped("RV-3071: administrative destination alias", acquisition_["skipped"], acquisition_["reason"])
     malformed_ = {}
     for n_, text_ in enumerate(("not a manifest\n", release_ + release_.splitlines()[4] + "\n", release_ + "0" * 64 + "  ../outside\n")):
         u_ = _unpack(base / f"bad-manifest-{n_}")

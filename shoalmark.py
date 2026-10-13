@@ -9030,11 +9030,37 @@ def archive_source():
     unpacked inside a project's repository is still an archive; a clone of this repository, whose top level is the tool's own, never is."""
     if not os.path.lexists(HERE / RELEASE_NAME):
         return False
+    def unreadable(why):
+        print(f"--vendor: source Git classification cannot be verified: {' '.join(str(why).split())[:240]} — nothing was written", file=sys.stderr)
+        raise SystemExit(EXIT_LINT)
     try:
-        top = git_out("rev-parse", "--show-toplevel", cwd=HERE, source=True)
-    except OSError:                                         # no git here at all: no work tree either
-        top = None
-    return top is None or os.path.normcase(os.path.realpath(top.strip())) != os.path.normcase(os.path.realpath(HERE))
+        done = vcs_process("git", "rev-parse", "--show-toplevel", cwd=HERE, source=True,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    except FileNotFoundError as e:
+        if not disk_marker(HERE / ".git") and shutil.which("git") is None:
+            return True                                    # truly absent executable, with no tool-root Git marker
+        unreadable(e)
+    except OSError as e:
+        unreadable(e)                                      # permission/launcher errors are not absent Git
+    if done.returncode:
+        marked = any(disk_marker(p / ".git") for p in (HERE, *HERE.parents))
+        diagnostic = done.stderr.strip()
+        # Git's ordinary no-repository answer, including its mount-boundary form. Other failures stay failures.
+        absent = done.returncode == 128 and not marked and not done.stdout.strip() and (
+            diagnostic.endswith(": .git") or "GIT_DISCOVERY_ACROSS_FILESYSTEM" in diagnostic)
+        if absent:
+            return True
+        unreadable(done.stderr or f"Git exited {done.returncode}")
+    tops = done.stdout.splitlines()
+    if len(tops) != 1 or not tops[0].strip() or not pathlib.Path(tops[0]).is_absolute():
+        unreadable("Git did not identify one absolute source top level")
+    try:
+        top = pathlib.Path(tops[0]).resolve(strict=True)
+    except (OSError, RuntimeError) as e:
+        unreadable(e)
+    if not top.is_dir():
+        unreadable("Git's source top level is not a directory")
+    return os.path.normcase(str(top)) != os.path.normcase(str(HERE))
 
 
 def archive_check():
@@ -9158,6 +9184,9 @@ def vendor(dest, partial=False, allow_untagged=False):
     copied = vendor_files()                                 # the themes it ships travel, pinned (FM-002)
     named = pathlib.Path(dest).absolute()
     dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
+    if any(in_git_dir(p) or in_git_dir_on_disk(p) for p in (named, dest)):
+        print("--vendor: the named or resolved destination is inside a version-control administrative directory — nothing was written", file=sys.stderr)
+        return EXIT_LINT
     for rel in copied + ["PIN"]:                            # the write rule for every file it writes — as the path is named, and under the folder it resolves to —
         write_rule(named / rel)                             # before anything is read or written
         write_rule(dest / rel)

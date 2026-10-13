@@ -14,39 +14,44 @@ hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through
 
 ## What is true now
 
-**2026-10-13 — archive/common wiring implemented locally; independent integration review remains due.**
-Owner #168 preserves Part B's exact signed RV-2734 replacement and archived exchange; #170 planning records are
-on main at `cab89ed`. B1/final probe preparation remain allocated to v0.20.1, with Claude's site work tomorrow.
-The adoption result remains 0 of 3 in the 21 September synthetic run, not a measured real-consumer recommendation.
+**2026-10-13 — archive/common integration NOT READY; two bounded acquisition corrections are implemented locally.**
+Owner #168 preserves the exact signed Part B and archived exchange; #170 planning records are on main at
+`cab89ed`. B1/final probe preparation remains v0.20.1, with Claude's site work tomorrow. The adoption result
+remains 0 of 3 in the 21 September synthetic run, not a measured real-consumer recommendation.
 
-Archive critical READY `1ba6fc4` reviewed `79b17ba`, closed RV-3070 in round 2 and retained the earlier 85 independent
-product controls. Current-main archive records are independently READY at `b2e5195`, Reviewed `f117209`.
-The latter's local untagged dry-run checksum `e357518935af72527ffc803de11034cad51accd2579577f3315d17c4c87baa35`
-belongs to exact `f117209`, not this integration. Common critical READY `ef77527` reviewed `b72b9ae`, COMMON
-SKELETON ONLY, closing its four findings; exact-tree main integration `1fc12b0` and dispatch `c599d5c` follow it.
-Common dispatch records READY `84c8a6b` reports one P3 status fix, RV-3057, corrected forward in this record.
+Accepted archive critical `1ba6fc4`, Reviewed `79b17ba`, closed RV-3070 in round 2; current-main records READY
+`b2e5195`, Reviewed `f117209`, retains it. Common critical `ef77527`, Reviewed `b72b9ae`, is COMMON SKELETON
+ONLY and closes RV-3085–RV-3088. Its ordinary main merge/dispatch and records READY `84c8a6b` remain ancestry;
+RV-3057 P3 status correction is fixed forward without a re-pass. No closed finding is reopened.
 
-Planner's serial `fm/004-stage-integration` starts from that dispatched common product, retains its boundary,
-cache invalidation, metadata exclusions and history-aware scanner, and ordinarily merges archive READY `b2e5195`.
-The only overlapping production function, `git_dirs`, stays exact to accepted common. The archive's existing
-HERE top-level read now explicitly uses `source=True`; the four allowed source operations do not expand.
-Every other archive function stays AST-identical to its accepted product. Release workflow/build script stay
-byte-identical, and VERSION, CHANGELOG, signatures, legacy meanings and Git authority remain unchanged.
+New independent critical integration verdict `4aeb6d7`, Reviewed exact `16dadcea`, is NOT READY:
+RV-3071 and RV-3072 P2 remain open, each with one final verification round left. Passing core, 55 prior tracked
+controls and the clean ledger gate did not detect the actual acquisition entry failures. Planner corrects only
+the archive callers: vendoring explicitly refuses named/resolved administrative destinations before destination
+reads or writes; source classification keeps the checked process status, permits genuine absent Git/nonrepository
+answers, and refuses malformed present metadata, unexpected status and launcher/permission failures. It retains
+`source=True` and the exact four allowed source tuples. Common functions, cache, scanner, ceiling/list/boundary
+digest and Git authority are unchanged; release workflow/build script, VERSION, CHANGELOG and CI are unchanged.
 
-Positive acquisition controls now use real local SVN working copies prepared before the production PATH is emptied.
-Git own/common-directory exclusions remain required as a subset of the expanded .git/.svn/ancestor/alias guards;
-every discovered administrative path still refuses writes. Empty or unreadable metadata remains a refusal.
-Changed Python compiles; unchanged core passes all 302 checks (approximately 71.5 s), and the exact existing
-archive/workflow block passes 55 controls in 27.907 s, with zero skips. Those checks include real no-Git/no-SVN
-acquisition, complete manifests, RV-3020/RV-3021, snapshot copying, raw bytes/PIN normalization, legacy Git path,
-unsafe sources, workflow refusal controls and expanded administrative guards. They are Planner checks, not a new
-independent verdict. The C-authored renamed-caller control `c974044` retains scanner assertions during migration.
+The same commit adds thirteen actual-entry regressions, including root/nested SVN and linked-Git own/common
+administrative destinations, resolved alias, malformed/dangling source metadata and source process faults.
+On immutable `16dadcea`, one acquisition positive passes and twelve required refusals fail (11.885 s). Fixed
+tracked archive/workflow execution passes all 68 controls in 37.793 s with zero skips, including all thirteen
+regressions, legacy Git paths, complete raw manifests, snapshot copying and PIN normalization. Changed Python
+compiles; unchanged core passes all 302 controls. These are Builder checks; final independent verification is due.
 
-Next: commit and clean-tree gate, exact-final-head deterministic dry run, then independent critical integration review.
-An earlier archive checksum is never relabeled to a new head. Full SVN command/board/history/guard and P entry wiring,
-consumer policy adoption/proof, required five-job CI, native qualification, Owner release-script adaptation and real
-release workflow/publication remain due. D3/D4 remain held. This work supplies bounded acquisition/shared dispatch,
-not full Stage 1 or shipped SVN support. Push stays DISABLED; Owner fetches, pushes and merges.
+Artifact SHA256 `1e0d3c0514ea3c83233e01c2e9581ab17a110b59f781b09e482f4a92c60ae9aa` belongs ONLY reviewed
+`16dadcea`, whose three-zone dry-run has 25 entries and 24 exact Git payload hashes. Older `f117209` checksum
+`e357518935af72527ffc803de11034cad51accd2579577f3315d17c4c87baa35` belongs only that head. A fixed final head
+requires its own committed dry-run pin; no older checksum is relabeled.
+
+Next: normal corrective commit, exact clean-tree gate/final-head dry run and the second/final independent
+verification round on both findings. Full shared SVN command/board/history/guard, P entry composition,
+consumer adoption/authenticated policy/history proof, native qualification, five-job CI, Owner release-script
+adaptation and real release workflow/publication remain held or pending their assigned acts. D3/D4 remain held.
+No consumer has yet adopted shoalmark; full protected acceptance awaits an authenticating consumer, recorded
+adoption and trial findings, with held rulings returning 20 October. This branch supplies bounded acquisition,
+not full Stage 1 or shipped SVN support. Push DISABLED; Owner fetches, pushes and merges.
 
 ## Second round — the Owner's question: *what do agents want, and how do we get a better-performing human owner?*
 
@@ -96,6 +101,7 @@ the limits are said: three runs, one model family, an invented project.
 
 | Date | Event |
 |---|---|
+| 2026-10-13 19:14 CEST | Independent archive/common verdict `4aeb6d7` holds RV-3071/RV-3072 P2; Planner implements caller-only administrative destination and checked source-failure corrections with immutable-before/fixed-after entry controls. All 68 affected controls and 302 core pass; final independent verification remains due. |
 | 2026-10-13 18:18 CEST | Serial archive/common wiring retains both independently accepted products: common `git_dirs` unchanged, existing archive HERE read marked source, real SVN positive fixtures and expanded administrative guards retained. Compile, 302 core and 55 scoped archive controls pass; exact-head artifact and separate critical integration review remain due. |
 | 2026-10-13 17:24 CEST | **Owner #170 records integrated locally** from `cab89ed`, retaining archive critical READY `1ba6fc4` and its exact product/workflow/release-script blobs. Current command-applied judgement and signed Part B/exchanges remain; INDEX regenerated. Scoped records verification and Owner-pushed CI remain. |
 | 2026-09-21 | Filed; prediction written before the runs. |
