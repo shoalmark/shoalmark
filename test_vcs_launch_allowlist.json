@@ -55,7 +55,6 @@
   "svn_last_worked_on|svn/log|subprocess.run|33003eb6aeaf6ea169cec7fb22203ccd6fefda4a0da751873edd5616bc61c97b",
   "tracked_board_rels|git/ls-files|subprocess.run|0f3a5765b6b07baded9a1e2750ce9151b72b55434b0efb848464e26c5dfbd8dd",
   "tree_paths|git/<forwarded>|subprocess.run|29217f76ed76a95bbd0420d131e280afe25eebe96c49d9ab6eb0114fa90e25ee",
-  "triage_guard|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
   "triage_pending|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
   "triage_reading|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
   "trunk_ref|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",

@@ -7873,6 +7873,23 @@ def tip_variants(trunk, tip=None):
             for p in sorted(held) for h in homes if p not in homes and fs_fold(p) == fs_fold(h)]
 
 
+def svn_guard():
+    """A requested protected SVN acceptance, not a local-rendering check: (refusals, report line).
+
+    No adopted committed consumer policy boundary is available here. The candidate's configuration can request proof,
+    but cannot authorize itself or prove older obligations absent. Local text, BASE, HEAD, a username, or the tool's
+    source policy is no substitute. Refuse before any process or write; ordinary local rendering does not request this
+    proof. A future accepted-policy reader requires the consumer's established authority, not a new guessed anchor.
+    """
+    signed = any(mode == "signed" for ids in SEATS.values() for _who, mode in ids) or "signed" in ANSWERERS.values()
+    why = "the adopted committed consumer policy and its checked history cannot be established"
+    if signed:
+        why += "; configured `signed` proof requires a signature, which Subversion cannot supply"
+    report = ("the Owner's two sections: protected Subversion acceptance is refused — the adopted committed consumer policy "
+              "and its checked history are unavailable; Subversion supplies no signature, and an author requires the repository's authenticated history")
+    return [f"refused: protected Subversion acceptance — {why}; no protected change is passed unread"], report
+
+
 def triage_guard():
     """(refusals, the one line `--check` says) — FM-037 over the branch's own commits, `HEAD` less `origin`'s default branch,
     merges walked and judged by the text they bring — where this tool refuses the default branch's configuration, each commit
@@ -7887,7 +7904,7 @@ def triage_guard():
     if vcs() != "git":
         _GUARD = ([], GUARD_SVN if vcs() == "svn" else "the Owner's two sections: this is no git repository — nothing is judged")
         return _GUARD
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if not trunk:
         _GUARD = ([], "the Owner's two sections: " + ("the default branch cannot be told — nothing is judged until it can" if _TRUNK_UNTOLD
