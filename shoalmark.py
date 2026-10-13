@@ -9073,7 +9073,12 @@ def vendor(dest, partial=False, allow_untagged=False):
             print(f"--vendor: {HERE} is not the whole tool — missing {', '.join(missing)}. Vendor from a clone at a release tag; "
                   f"nothing was written. (`--partial` copies what there is and names the rest in the PIN.)", file=sys.stderr)
             return EXIT_LINT
-        tag, sha, dirty, why = source_provenance()
+        try:
+            tag, sha, dirty, why = source_provenance()
+        except OSError:
+            print(f"--vendor: {HERE} holds no {RELEASE_NAME} manifest, and its Git provenance cannot be read; nothing was written. "
+                  "Download the release's archive again and check its SHA-256 against the pin published beside it.", file=sys.stderr)
+            return EXIT_LINT
         if why and not allow_untagged:
             print(f"--vendor: {why}. A consumer runs a release, never a working copy: check out v{__version__} in a clean clone "
                   f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)

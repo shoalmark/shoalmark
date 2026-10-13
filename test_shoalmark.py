@@ -1931,6 +1931,12 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-004 · archive acquisition into a Subversion-marked destination with no git binary on PATH copies and pins the complete tool (saw {ng_[0]}, {ng_[2].strip()[-150:]!r})",
           shutil.which("git", path=no_git_env_["PATH"]) is None and ng_[0] == 0 and ng_pin_ == pin_
           and all((no_git_ / "tools/shoalmark" / n_).read_bytes() == z_.read(n_) for n_ in pinned_))
+    absent_manifest_ = _unpack(base / "missing-manifest"); (absent_manifest_ / "RELEASE").unlink()
+    absent_target_ = base / "missing-manifest-target"; absent_target_.mkdir(); (absent_target_ / ".svn").mkdir()
+    absent_ = _vend(absent_manifest_, absent_target_, "--partial", "--allow-untagged", env=no_git_env_)
+    check(f"FM-004 · a missing RELEASE with no Git binary refuses in one line before writing, including with the legacy bypass flags (saw {absent_[0]}, {absent_[2].strip()[-150:]!r})",
+          absent_[0] == fm.EXIT_LINT and "holds no RELEASE manifest" in absent_[2]
+          and len(absent_[2].strip().splitlines()) == 1 and not (absent_target_ / "tools").exists())
     malformed_ = {}
     for n_, text_ in enumerate(("not a manifest\n", release_ + release_.splitlines()[4] + "\n", release_ + "0" * 64 + "  ../outside\n")):
         u_ = _unpack(base / f"bad-manifest-{n_}")
