@@ -7,24 +7,19 @@ next: review
 triaged: 2026-09-23
 tier: P3
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
-ask: "What exact replacement text do you want for RV-2734 in #154, removing the withdrawn requirement for git on every machine?"
-ask-kind: ruling
-ask-since: 2026-10-12
-ask-proposal: "Use: 'Target v0.20.0: shoalmark runs on Subversion with no git installed; this is not shipped yet.'"
-answer: "accepted - with a change: in #154 the clause reads (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed)"
-answered: 2026-10-12
-answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
 
 ## What is true now
 
-**2026-10-12 — #154 and the release archive.** #154's RV-2734 fix text remains the Owner's to give; the front-matter proposal is draft wording for their signed acceptance or replacement. **Confidence 98%:** it states only the authorized v0.20.0 requirement and does not claim it shipped. After the answer, a Records Builder replaces the withdrawn sentence and one Reviewer pass follows. Probe draft 3 runs in its separate session.
+**2026-10-13 — #154 replacement merged; archive records integrated for the remaining review round.** Part B's exact signed 12 October RV-2734 replacement and the archived ask/answer are on main through #168 (`ab7ed3f`), after the one-pass records READY at `2a3da85`. B1, the final probe prompt and what the first outside run needs are allocated to v0.20.1 by the signed FM-023 answer. Subversion without git remains a v0.20.0 target, not shipped functionality. Probe draft 3 remains in its separate session.
 
-**2026-10-13 — release archive integrated; independent critical review owed.** Local branch `fm/004-archive-current`, based on current main `e7ce074`, carries the source archive range `570a773..23e3f7a` as the unchanged inventory refactor `3ac2e9d` and behavior integration `94f6bc2`, with the missing-manifest refusal at `b62b341`. RV-3020's complete vendored set, RV-3021's ASCII-only build refs and all five probe files survive. The archive checks exact manifest bytes before copying only the 19 tool files; its PIN retains legacy line-end normalization. Malformed manifests, changed or missing listed entries and unsafe source symlinks refuse before writing. A missing RELEASE when Git is unavailable also refuses before writing; the existing Git-present partial/untagged path remains retained. The bounded shared `git_dirs` change avoids Git discovery for non-Git acquisition destinations, retaining Git/common-worktree and disk `.git` guards; stage 1 must integrate this point, and the separate critical Reviewer must judge it. Current 0.19.4 authority/security behavior, legacy interpretation and all five code CI jobs are retained. This supplies acquisition alone: no Subversion backend or gate operation is claimed.
+Local branch `fm/004-archive-current`, originally based on `e7ce074`, carries source archive range `570a773..23e3f7a` as the unchanged inventory refactor `3ac2e9d` and behavior integration `94f6bc2`, with the missing-manifest refusal at `b62b341` and final source head `3c18008`. RV-3020's complete vendored set, RV-3021's ASCII-only build refs and all five probe files survive. The archive checks exact manifest bytes before copying only the 19 tool files; its PIN retains legacy line-end normalization. Malformed manifests, changed or missing listed entries and unsafe source symlinks refuse before writing. A missing RELEASE when Git is unavailable also refuses before writing; the existing Git-present partial/untagged path remains retained. The bounded shared `git_dirs` change avoids Git discovery for non-Git acquisition destinations, retaining Git/common-worktree and disk `.git` guards. Current 0.19.4 authority/security behavior, legacy interpretation and all five code CI jobs are retained. This supplies acquisition alone: no Subversion backend or gate operation is claimed.
 
-Local checks passed: changed-Python compilation, 158 core checks (14.99 s) and 60 scoped vendoring/archive workflow properties and controls (29.85 s), zero scoped skips. A commit-pinned dry run of `b62b341`, without creating a tag, built a 25-entry zip whose RELEASE hashes all 24 shipped entries, including the five probe files at their paths. Rebuilding under UTC and Pacific/Kiritimati gave identical bytes; the checksum verified. SHA-256: `9632e27f2ef02d8d352000ecde4280e3c19507527e574a0b59a19fe2084e5e60`. With no Git binary on PATH, default vendoring refused the untagged dry run, explicit `--allow-untagged` copied only the complete tool, and a changed source refused without writes. This is a local proof at the current version, not a release artifact. Next: separate-session critical review, Owner fetch/push and complete CI; stage-1/candidate integration, the Owner's release-script change and real release workflow qualification remain owed. The push URL stays `DISABLED`.
+The separate critical review at `7abf64a` reports 77 independent acceptance controls and 8 compatibility controls passing on `3c18008`, including the scoped source corrections and shared `git_dirs` boundary; RV-3070 (P2, round 1) is its only open finding, for the records conflict with newly advanced main. This ordinary local integration merges `ab7ed3f`, retaining its signed Part B, exchange and release allocation together with the archive facts and ship history. Reviewed product/test blobs are unchanged; RV-3070's remaining critical round 2 is next. The review evidence is inherited, not a new execution on this records-only resolution.
+
+Earlier Builder checks passed: changed-Python compilation, 158 core checks (14.99 s) and 60 scoped vendoring/archive workflow properties and controls (29.85 s), zero scoped skips. A commit-pinned dry run of `b62b341`, without creating a tag, built a 25-entry zip whose RELEASE hashes all 24 shipped entries, including the five probe files at their paths. Rebuilding under UTC and Pacific/Kiritimati gave identical bytes; the checksum verified. SHA-256: `9632e27f2ef02d8d352000ecde4280e3c19507527e574a0b59a19fe2084e5e60`. With no Git binary on PATH, default vendoring refused the untagged dry run, explicit `--allow-untagged` copied only the complete tool, and a changed source refused without writes. The independent Reviewer's final-head dry run at `3c18008` reports identical bytes across three time zones, checksum `5654932459caa5f0fe211179d6ca85ac18210a2b7574b7a3118c4e3bddb728bc`. These are local proofs at version 0.19.4 with tag `none`, not release artifacts. Next: the remaining separate-session critical review, Owner fetch/push and complete CI; stage-1/candidate integration, the Owner's release-script change and real release workflow qualification remain owed. The push URL stays `DISABLED`.
 
 **Run 2026-09-21: 0 of 3 recommend adopting — my prediction of 2 of 3 was wrong.** A (sceptical): *nicht übernehmen*;
 B (neutral): *jetzt nicht, frühestens an einer Paketgrenze neu prüfen*; C (time pressure): *jetzt nicht, eher gar nicht
@@ -63,10 +58,35 @@ done; what flips the verdict is *no migration* plus *the Owner uses it*, not a f
 | What no file and no board does | 3 of 3, unprompted: *"Eine Datei ruft Sie nicht an, und eine Tafel müssen Sie auch erst öffnen."* — nothing **pushes**, and nothing **enforces**: the gate checks a tracker's form, not that the test it names exists. |
 | Their protocol | two to four weeks with twenty lines in the plan they have (*Wartet auf Owner*: question, date, what it blocks, *our proposal if no answer comes*); if the median age of open Owner questions stays above one working day **and** the Owner prefers a page in the browser — switch at a package boundary, keeping their numbers. Measures offered: median age of open Owner questions · packages in progress at once · minutes to a fresh session's first useful move · overwritten status lines per week. |
 
+## Part B — the probe's next version, and onboarding through the agents (2026-10-08; wording updated 2026-10-13)
+
+The Owner's work package after v0.19.1, in two lanes that meet at the landing page's dialog. **B1, the landing page,**
+in English and German from one template: a primary button that copies a probe prompt and opens a dialog, built behind a
+switch that stays off until the probe has passed; a secondary "How it works"; and figures generated from the repository
+when the site is built. **The probe lane** rewrites ADOPT.md and ADOPT.de.md as an honest evaluation of fit that may end
+in "no fit": prerequisites first (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed), the
+human's yes before it runs, the working copy read-only within a time and file budget, the one first result that fits
+where the project stands, a report of benefit and cost, the yes-path at a work-item boundary, an optional feedback
+report the human sends, and the probe in the project's language. Nothing in it says or implies that shoalmark scans for
+security problems or data leaks, and it fits one person in charge. Nothing goes outside before it passes a fixed rule:
+a set number of consecutive clean end-to-end runs, from the landing page's button to the feedback file; any failure is
+fixed, and the count restarts.
+
+The Owner's signed 12 October FM-023 allocation puts B1, the probe's final prompt and what its first outside run needs
+in v0.20.1; rows that put that release's date at risk move to v0.20.2. The prerequisite wording names the v0.20.0 target;
+Subversion without git is not shipped yet.
+
 ## Done when
 
 The three reports are recorded here with their counts and verdicts, the note is corrected for what they found, and
 the limits are said: three runs, one model family, an invented project.
+
+## Asks
+
+**2026-10-12** · What exact replacement text do you want for RV-2734 in #154, removing the withdrawn requirement for git on every machine?
+**answered** — accepted - with a change: in #154 the clause reads (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed) · holgo99
+**relation** — accepted with a change
+**signed** — adaec88 · G
 
 ## Ship log
 
@@ -75,5 +95,7 @@ the limits are said: three runs, one model family, an invented project.
 | 2026-09-21 | Filed; prediction written before the runs. |
 | 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
 | 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |
+| 2026-10-13 | Recovered Part B from `643ad4b` on current main, applied the exact signed RV-2734 prerequisite replacement and FM-023 release allocation; one records review pending, archive re-review and integration still owed. |
 | 2026-10-13 | Release archive integrated onto current 0.19.4: refactor `3ac2e9d`, behavior `94f6bc2`, source `570a773..23e3f7a`; relevant local controls and a commit-pinned dry run pass. Independent critical review, Owner publication, CI and release integration remain owed. |
 | 2026-10-13 | Final bounded archive qualification at `b62b341`: 158 core checks and 60 scoped controls pass; no-git missing-manifest refusal covered, deterministic checksum verified. Acquisition alone; independent critical review and release integration remain owed. |
+| 2026-10-13 | RV-3070: ordinary local integration of main `ab7ed3f` reconciles its signed Part B/history with the archive records; product/test blobs retain reviewed `3c18008`. Independent review reports 85 passing local controls; its remaining critical round 2, CI and release integration remain owed. |
