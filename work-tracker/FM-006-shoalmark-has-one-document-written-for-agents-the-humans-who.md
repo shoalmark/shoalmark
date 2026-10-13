@@ -23,17 +23,19 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
-**2026-10-13 — v0.19.4 is prepared on `fm/046-text-boundary`.** This security release builds on FM-046's
-critical round-2 READY review at `51f333f`, with R14 (FM-033) from main. VERSION, the CHANGELOG section naming
+**2026-10-13 — v0.19.4 shipped:** `fm/046-text-boundary` merged to main as `39e5763` (#165), tagged
+`v0.19.4` on `39e5763`, with the release page "shoalmark 0.19.4 — security release".
+This security release includes FM-046, reviewed READY in critical round 2 at `51f333f`, R14 (FM-033),
+merged as `e5a1a9e` (#164), and the release commit `4a6e6a9` (FM-006). Advisory `GHSA-xh54-c5jg-j4fp` is public.
+VERSION, the CHANGELOG section naming
 GHSA-xh54-c5jg-j4fp, both ADOPT pins, both setup pages and the landing name the release. `shoalmark.py` is unchanged
 from `51f333f`; both pins name its SHA-256, `cce2974ae5293d83f0c6b477fd2dc8dcf3f3e36d9bdf726aae71abad65d9a7eb`.
 The landing's release assertion follows the new date. The ADOPT case for a tool changed after a tag uses v0.19.2's
-files, so it checks an existing tag while the new release awaits its own. The pin check still compares the current
+files, so it checks that existing tag. The pin check still compares the current
 release with its tag's tool where that tag exists, and with the head's tool before it.
 
-The browser-free landing, VERSION, setup and ADOPT checks pass, as do the explicit `--version` check, `test_core.py`
-and compilation. The full suite is left to CI. Next: an independent critical release review, then the Owner's pull
-request and CI, merge and `v0.19.4` tag. FM-046 stays In Progress; after the tag the Planner records its merge and tag.
+The recorded browser-free landing, VERSION, setup and ADOPT checks passed, as did the explicit `--version` check,
+`test_core.py` and compilation. The full suite runs in CI. FM-046 is Shipped.
 
 **2026-10-07 — v0.19.1 is combined on `release/v0.19.1`, and the push waits for the Owner's sitting.** The branch holds:
 - each Queue A security fix, on its own branch, merged in with `--no-ff`:
@@ -961,3 +963,4 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 | 2026-09-23 | **The human pages open from a file** (the Owner's finding: *"clicking links does not work currently because it tries to open files"*): `use_directory_urls = false` — links are `setup.html`, not `setup/` — and `navigation.instant` dropped, whose page fetches `file://` blocks. Built with Zensical 0.0.64: the start page's local links are all `.html` and 133 of 145 local links across the site resolve to files on disk (the 12 others are `404.html`'s absolute `/shoalmark/…` paths, for Pages); a click on *Set up* in headless Chrome from `file://…/site/index.html` opens `setup.html`. The setup pages (EN, DE) say how to open or serve the built site. The content refresh is the next slice. |
 | 2026-09-22 | The site builds green in CI; Pages refuses a private repository (*"Upgrade or make this repository public"*). The deploy step waits for the public release, by condition in the workflow. **Ruled the same hour: CI runs only on a ready pull request and on a release tag — minutes are paid for; the site builds on a tag.** |
 | 2026-09-22 | Filed; Zensical tried on a scratch build first (0.3 s, search and dark mode in, four anchor warnings from the README); the signing page written. |
+| 2026-10-13 | **v0.19.4 shipped:** release commit `4a6e6a9` on `fm/046-text-boundary`, merged to main as `39e5763` (#165); tagged `v0.19.4` on `39e5763`, with the release page "shoalmark 0.19.4 — security release". Includes FM-046 and R14 (FM-033, merged as `e5a1a9e`, #164). Advisory `GHSA-xh54-c5jg-j4fp` is public. FM-006 stays In Progress. |
