@@ -18,8 +18,8 @@ is designed or built.
 ## What is true now
 
 **2026-10-13 — R12 merged; bounded common/A1/A2 accepted; remaining local work continues.**
-Current main `3cac843` includes R12 READY `246ccdf`; its native/full CI status is not inferred solely from ancestry.
-RV-3040: recorded privately. #167/#168/#170 remain merged. Common READY `ef77527` closes RV-3085–RV-3088;
+Current main `80b60c8` includes R12 READY `246ccdf`; its native/full CI status is not inferred solely from ancestry.
+RV-3040: recorded privately. #167/#168/#170/#171 remain merged. Common READY `ef77527` closes RV-3085–RV-3088;
 A1/A2 READY `6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091 in their final round. Neither accepts full Stage1.
 Archive standalone READY `b2e5195` remains unchanged. Its later common integration is NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD with its final round exhausted. B final NOT READY `99968f2` leaves RV-3092–RV-3094 HELD after their final rounds; structural validation is prepared outside for disposition. C final READY `f59a1c1` closes RV-3095. P's notice/Tortoise/entry composition continues separately from held archive activation.
 

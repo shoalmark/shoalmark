@@ -19,8 +19,9 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 ## What is true now
 
 **2026-10-13 — bounded common/A/C accepted; final caller correction and local entry composition continue.**
-Current Owner main `3cac843` includes R12 READY `246ccdf`. Its CI/test/records changes are integrated on this
-feature branch; the production tool, signed TRIAGE, AGENTS and configuration match cab89ed before seat merges.
+Current Owner main `80b60c8` includes R12 READY `246ccdf` and the Owner's #171 instructions. Its
+CI/test/records changes are integrated on this feature branch. The production baseline and configuration
+match cab89ed; AGENTS and signed TRIAGE incorporate the Owner's exact #171 changes through this ordinary merge.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088. Dispatch
 records READY `84c8a6b` remains ancestry; RV-3057 P3 was fixed forward without a re-pass. Accepted common
 boundary/cache/source/history semantics, ceiling, digests and scanner remain frozen.
