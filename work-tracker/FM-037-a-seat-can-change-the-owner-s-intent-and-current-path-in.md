@@ -4,7 +4,6 @@ status: In Progress
 considered: FM-008, FM-033, FM-007, FM-019, FM-022, FM-014
 tags: bug
 triaged: 2026-09-25
-rank: 1
 next: owner
 tier: P1
 hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through"

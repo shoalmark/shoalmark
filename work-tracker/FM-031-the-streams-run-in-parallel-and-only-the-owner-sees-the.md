@@ -3,25 +3,22 @@ id: FM-031
 status: In Progress
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
-next: build
-triaged: 2026-09-24
+next: wait
+triaged: 2026-10-13
 tier: P2
 hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By 08:18 six were open: one sat inside another, one had been copied into another, two conflicted on the file every session writes. He asked which to merge five times."
-ask: "While Claude is unavailable until 14 October, do you authorize Codex Builders for R14 and R12 under a temporary tier-rule change, or keep the rule and wait?"
-ask-kind: ruling
-ask-since: 2026-10-12
-ask-proposal: "Authorize Codex for R14 and R12 until 14 October; keep independent critical review"
-ask-options: "Authorize Codex for R14 and R12 until 14 October; keep independent critical review | Wait until 14 October for Claude Opus Builders"
-answer: "accepted - with a change: Codex builds R14 and R12 to completion, under separate independent critical review; from 14 October critical builds go back to Claude Opus, and design and website work goes to Claude sessions"
-answered: 2026-10-12
-answered-by: holgo99
 ---
 
 # FM-031 — the streams run in parallel and only the Owner sees the whole queue
 
 ## What is true now
 
-**2026-10-12 — critical-Builder staffing awaits the Owner.** The usage limit until 14 October is reported. FM-024's 2 October tier rule still requires Claude Opus for critical work; this Planner has dispatched no Builder and assumes no exception. Proposal: authorize Codex for R14 and R12 until 14 October, preserving separate independent critical review and the two-round limit; other critical builds retain the standing rule. **Confidence 88%:** the Owner reports two blocked commits and has put R14 first; a narrow temporary exception addresses that urgency without claiming model equivalence. If they keep the rule, wait for Claude's reported return. This staffing choice replaces the unresolved wait/exception decision; it does not change the rule before their signed answer.
+**2026-10-13 — the signed staffing exchange is acted on.** The Owner's 12 October answer in `adaec88` authorizes
+Codex to build R14 and R12 to completion with separate independent critical review. R14 shipped in v0.19.4;
+R12 is dispatched on `fm/032-r12-records-gate`. The exchange is preserved below under Asks, including its exact
+answer and signature reference. Today's operational dispatch and reservations are recorded in FM-023; no new
+authority is inferred from a seat message. Critical Reviewer sessions have roots separate from the Builder's;
+the two-round limit remains. The broader coordination/measurement remainder has not been declared complete.
 
 **Filed 2026-09-24 08:24 CEST on the Owner's question; ruled by his signed answer at 11:08:24 (`d20bc89`): all three
 rules now, S1 then S2 — then the cap of 2 revoked by his own signed edit at 12:39:56 (`7c97c5b`, PR 46, merged
@@ -230,6 +227,11 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 **2026-09-24** · Which rules hold for a message between two sessions — the nine recorded as open in this tracker's body, D11's eight and no message to a session you stopped?
 **answered** — accepted - the nine hold as written · holgo99
 **relation** — accepted the proposal
+
+**2026-10-12** · While Claude is unavailable until 14 October, do you authorize Codex Builders for R14 and R12 under a temporary tier-rule change, or keep the rule and wait?
+**answered** — accepted - with a change: Codex builds R14 and R12 to completion, under separate independent critical review; from 14 October critical builds go back to Claude Opus, and design and website work goes to Claude sessions · holgo99
+**relation** — accepted with a change
+**signed** — adaec88 · G
 
 ## Ship log
 

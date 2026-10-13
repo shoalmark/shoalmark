@@ -3,7 +3,7 @@ id: FM-030
 status: In Progress
 considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
-next: build
+next: wait
 ask: "How does the board show an act or answer you just gave, before your merge lands it on main?"
 ask-kind: ruling
 ask-since: 2026-09-27
@@ -12,9 +12,8 @@ ask-proposal: "the board reads git: an unmerged `origin/answer/*` tip with a `do
 answer: "accepted - the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way"
 answered: 2026-09-27
 answered-by: holgo99
-triaged: 2026-09-27
-rank: 2
-tier: P1
+triaged: 2026-10-13
+tier: P2
 hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two acts only his hands can do were owed that day. For an action ask the answer is a promise, not the act, and the tool drops the ask the moment the promise is signed. The rules it ships even steer the second kind away from him."
 ---
 

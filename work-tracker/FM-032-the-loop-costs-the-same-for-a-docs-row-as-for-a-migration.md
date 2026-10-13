@@ -3,9 +3,9 @@ id: FM-032
 status: In Progress
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
-triaged: 2026-09-24
-tier: P2
-next: review
+triaged: 2026-10-13
+tier: P1
+next: owner
 ask: "After a READY WITH FINDINGS verdict, how does a fix of its findings reach main without a second Reviewer pass?"
 ask-kind: ruling
 ask-since: 2026-09-28
@@ -14,6 +14,7 @@ ask-proposal: "the Auditor's S5: exact fix texts, a decision file per finding; t
 answer: "accepted - the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts"
 answered: 2026-09-28
 answered-by: holgo99
+rank: 1
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
@@ -21,7 +22,7 @@ hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merg
 
 ## What is true now
 
-**2026-10-13 — R12 CI control correction, HELD for one separate scoped critical re-check and Windows CI.** The independent critical verdict `8b7f7f1` covers the local R12 build. The Owner reports Ubuntu and macOS green on #169 at that head; both Windows jobs require a classifier-control correction. This follow-up changes the test control only: all eight existing cases remain, with a ninth control proving interception and delegation in the shell. `.github/workflows/ci.yml` stays byte-for-byte identical to `8b7f7f1`, including the Ubuntu/Python 3.9 records gate, four truthful pass-through summaries, `SHOALMARK_CMD: python3 shoalmark.py` from `068c9e6`, the three 15-minute SVN installation timeouts and Windows failure propagation. Code and uncertain classification retain all five gates, mandatory SVN verification, both complete UTC suites and the Ubuntu time-zone reports; R14's PR-head gate, merge-checkout restoration and default-branch signing policy remain. RV-3040: recorded privately. What remains: one separate scoped critical Reviewer re-check, then the Owner fetches and pushes this local head to rerun Windows CI. Complete suites and native platform installation have not run locally. R12 supersedes the five-records-gates wording below; signed R2/current path 2 supersedes older local-suite and compulsory decision-file proposals retained below as history. R15's `freeze_at = 0` is on this base (`4685efa`); freeze-code deletion remains outside this slice.
+**2026-10-13 — R12 CI control correction passed its separate scoped critical re-check.** The unchanged workflow retains its prior critical acceptance. The control-only product `4139137` has the independent ROOT verdict `bec95f2`: all eight existing cases and the added interception control pass on native macOS and under the local launcher simulation. `.github/workflows/ci.yml` is byte-identical to `8b7f7f1`, retaining `SHOALMARK_CMD: python3 shoalmark.py` from `068c9e6`, the three 15-minute SVN installation timeouts, truthful Windows failure propagation and all existing gate/suite names. RV-3040: recorded privately. The Owner's #170 planning records at `cab89ed` are integrated locally; all production/test/configuration blobs remain identical to the critically reviewed control product. The Owner fetches and pushes this branch to rerun Windows CI; native Windows and the complete matrix remain pending. The local launcher check is a simulation, not Windows qualification. R12 supersedes the five-records-gates wording below; signed R2/current path 2 supersedes older local-suite and compulsory decision-file proposals retained below as history. R15's verified `freeze_at = 0` remains; freeze-code deletion stays outside this slice.
 
 **2026-10-09 — CI tiers (the Owner's ruling; one process PR right after 0.19.3's tag):** CI's cost follows the review tier. A records-only change runs `--check` inside the five required check names, not the full suites. **Built** on `fm/032-ci-tiers-and-time-zones`: `2d5c7ff`, the tier step; `1211347` (RV-2965), it reads the merge CI tests, against its first parent; `41b1659`, a record is a tracker, INDEX.md, TRIAGE.md or evidence no suite reads; `4f90688` (RV-2966), paths compare in any case, and a path outside printable ASCII runs the suites; `49e7831` (RV-2968), so does a Windows short name; `9e7fc4a` (RV-2967), the suite writes the step's script as bytes. Such a pull request runs `--check` in the five checks; anything else, and any doubt, runs the full suites. The suite's check of ci.yml: 17 properties, 33 controls that fail and 2 that pass.
 
@@ -189,6 +190,7 @@ scorer; the Owner took it out of this branch (19:16:21), so it stays on main as 
 
 | Date | Event |
 |---|---|
+| 2026-10-13 17:18 CEST | **Current-main records integrated locally:** Owner #170 at `cab89ed`, retaining the independent critical control verdict `bec95f2` and its exact product blobs. RV-3040: recorded privately. INDEX is regenerated; scoped records verification and Owner-pushed Windows CI remain. |
 | 2026-10-13 16:54 CEST | **R12 CI control follow-up** on `fm/032-r12-current`, parent `8b7f7f1`: all eight classifier cases retained and a direct shell-interception control added; workflow unchanged. RV-3040: recorded privately. One separate scoped critical re-check and Owner-pushed Windows CI remain. |
 | 2026-10-13 15:04 CEST | Branch `fm/032-r12-current`, base `e6d1e27`, carried builds `ff1fa83`, `89fa5cb`, `0ac5eef`. RV-3040: recorded privately. Relevant local checks pass; R12 HELD for separate critical round 2 and required CI. |
 | 2026-10-13 14:31 CEST | **R12 build recorded:** `6169214`; its hook trailers name `01a13517/builder-1`, Builder, `r12-builder`, `gpt-6.1-sol`, xhigh. The canonical status names the build; INDEX regenerated without a diff. Independent critical review and Owner-pushed CI remain. |
