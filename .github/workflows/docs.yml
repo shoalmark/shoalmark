@@ -9,7 +9,7 @@ permissions: {contents: read, pages: write, id-token: write}
 concurrency: {group: pages, cancel-in-progress: false}
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -26,7 +26,7 @@ jobs:
     # The public repository lives at shoalmark/shoalmark; keep private forks from deploying.
     if: github.event.repository.private == false
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: {name: github-pages, url: "${{ steps.deployment.outputs.page_url }}"}
     steps:
       - id: deployment

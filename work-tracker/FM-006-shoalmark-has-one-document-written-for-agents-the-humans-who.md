@@ -3,7 +3,7 @@ id: FM-006
 status: In Progress
 considered: FM-005, FM-003
 tags: process
-next: build
+next: review
 triaged: 2026-09-26
 rank: 6
 tier: P2
@@ -22,6 +22,20 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 # FM-006 — shoalmark has one document, written for agents — the humans who own the repositories have no page of their own
 
 ## What is true now
+
+**2026-10-13 — v0.19.4 shipped:** `fm/046-text-boundary` merged to main as `39e5763` (#165), tagged
+`v0.19.4` on `39e5763`, with the release page "shoalmark 0.19.4 — security release".
+This security release includes FM-046, reviewed READY in critical round 2 at `51f333f`, R14 (FM-033),
+merged as `e5a1a9e` (#164), and the release commit `4a6e6a9` (FM-006). Advisory `GHSA-xh54-c5jg-j4fp` is public.
+VERSION, the CHANGELOG section naming
+GHSA-xh54-c5jg-j4fp, both ADOPT pins, both setup pages and the landing name the release. `shoalmark.py` is unchanged
+from `51f333f`; both pins name its SHA-256, `cce2974ae5293d83f0c6b477fd2dc8dcf3f3e36d9bdf726aae71abad65d9a7eb`.
+The landing's release assertion follows the new date. The ADOPT case for a tool changed after a tag uses v0.19.2's
+files, so it checks that existing tag. The pin check still compares the current
+release with its tag's tool where that tag exists, and with the head's tool before it.
+
+The recorded browser-free landing, VERSION, setup and ADOPT checks passed, as did the explicit `--version` check,
+`test_core.py` and compilation. The full suite runs in CI. FM-046 is Shipped.
 
 **2026-10-07 — v0.19.1 is combined on `release/v0.19.1`, and the push waits for the Owner's sitting.** The branch holds:
 - each Queue A security fix, on its own branch, merged in with `--no-ff`:
@@ -896,6 +910,9 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-13 | **v0.19.4 release prepared** on `fm/046-text-boundary`, on the READY `51f333f`: VERSION, CHANGELOG (GHSA-xh54-c5jg-j4fp), both ADOPT pins, both setup pages and the landing. The tool keeps the reviewed bytes. Browser-free release checks, core and compilation pass; the full suite is left to CI. Independent critical release review and the Owner's merge and tag are next. |
+| 2026-10-11 | **The pin check, as it holds since `c29cfee`:** on every run, ADOPT.md and ADOPT.de.md name the one release VERSION names and the SHA-256 of that tag's `shoalmark.py`, git's blob, where the tag is in the clone; the head's before the tag. Six controls: `3432566` fails with its tag and without it; v0.19.0, v0.19.1 and v0.19.2 pass; a head that changes `shoalmark.py` alone passes. This row holds over the next one's "the head's tool". |
+| 2026-10-11 | **P2 filed, public:** v0.19.3's ADOPT pins named the release commit's tool (`4a617ee4…b467`, `0bb1b3b`), not the one the tag ships (`42ec6aa1…0b31`); the cause, a code change after the release commit and no check of the pins after it. Fixed by `f7de965` on `fm/032-ci-tiers-and-time-zones`: both pins, and a suite check of the pins against VERSION and the head's tool on every run. |
 | 2026-10-07 | **v0.19.1 combined** by the Planner, on the Owner's rulings of 2026-10-03, 2026-10-04 and 2026-10-07: the four security branches merged into `release/v0.19.1` beside `--install-hook`'s configuration check, `--init` and the board's days, each READY on its own head. The push, the tag and the advisory wait for the Owner's sitting. |
 | 2026-09-30 | **What a stranger meets first in v0.19.0 — filed** by the Planner on the Owner's ruling of that day, as one slice of this tracker (*What a stranger meets first — v0.19.0*): the human lead on the landing and the German start page, the tagline where agents read, an English note beside the German one, the fleet as a section of its own, the Owner not a seat — D2 with the `[seats]` change of 2026-10-01 — and the last gendered pronouns on current pages. The two screens it follows are merged into the branch (`a410aef`, `87985b6`). |
 | 2026-09-30 | **Wording pass built — rewording, not product growth** (the Owner's rulings 3 and 4 and the renames that followed, 16:51 CEST): they/them/their for the Owner and any person; seats stay *it*, one sentence in AGENTS.md; seat names English only; Planner and Builder in prose, the `[seats]` keys and addresses unchanged. Lines of the Implementer's change `origin/main..77f7722`, records left out: product 140 added, 136 deleted (the tool and its test 62 of each, string assertions only; AGENTS.md's one sentence and three setup/README sentences on the keys the only new prose); records +8 (the CHANGELOG bullet 7, this row 1). |
@@ -946,3 +963,4 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 | 2026-09-23 | **The human pages open from a file** (the Owner's finding: *"clicking links does not work currently because it tries to open files"*): `use_directory_urls = false` — links are `setup.html`, not `setup/` — and `navigation.instant` dropped, whose page fetches `file://` blocks. Built with Zensical 0.0.64: the start page's local links are all `.html` and 133 of 145 local links across the site resolve to files on disk (the 12 others are `404.html`'s absolute `/shoalmark/…` paths, for Pages); a click on *Set up* in headless Chrome from `file://…/site/index.html` opens `setup.html`. The setup pages (EN, DE) say how to open or serve the built site. The content refresh is the next slice. |
 | 2026-09-22 | The site builds green in CI; Pages refuses a private repository (*"Upgrade or make this repository public"*). The deploy step waits for the public release, by condition in the workflow. **Ruled the same hour: CI runs only on a ready pull request and on a release tag — minutes are paid for; the site builds on a tag.** |
 | 2026-09-22 | Filed; Zensical tried on a scratch build first (0.3 s, search and dark mode in, four anchor warnings from the README); the signing page written. |
+| 2026-10-13 | **v0.19.4 shipped:** release commit `4a6e6a9` on `fm/046-text-boundary`, merged to main as `39e5763` (#165); tagged `v0.19.4` on `39e5763`, with the release page "shoalmark 0.19.4 — security release". Includes FM-046 and R14 (FM-033, merged as `e5a1a9e`, #164). Advisory `GHSA-xh54-c5jg-j4fp` is public. FM-006 stays In Progress. |

@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-10-11 · 43 trackers (43 work).
+> Generated 2026-10-13 · 44 trackers (44 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -20,16 +20,18 @@
 
 *The Owner's. A pass judges every tier against it; only the Owner changes it.*
 
-1. Raptor 3: records follow code. The records-to-code ratio is our main concern: record lines added against product lines added in merged pull requests, per Berlin day, deletions tracked separately, judged on seven-day sums ([definition](evidence/FM-032/records-to-product-ratio.md)). The shadow week stood at 4.2:1 here; it shall reach 1:1 and then invert. Every plan, brief and ready line states its effect on the ratio; when a record and product compete, product wins. Critical work keeps its review; security and a run sheet's dry run are never traded for the number. Records moved out of git, and generated or vendored code, don't count as progress; a check output that regenerates keeps only its summary, and one that doesn't stays in git.
-2. A pull request merges on a verdict that names what it covers: the reviewed commit, its base, the tier and the checks run, as a Reviewed: line in the commit. Critical work also needs an evidence file from a Reviewer in another, independent session. Critical means: a release, the gate or hooks, signing and rights, auth, migrations, deploy and secrets tooling, run sheets for the Owner, TRIAGE.md or AGENTS.md rules changed by a seat, and rules and code under a P1 or security tracker. Other code takes one inline Reviewer pass; records take one pass. Neither writes a review file or runs re-check rounds: findings are fixed forward and named in the commit. A review of the Owner's own answers and TRIAGE lines reports and never blocks, until a hardware key that needs a touch signs them (shoalmark FM-007). The Owner merges on a ready line, or over any other verdict with a signed reason.
+1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits, and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)). A security fix for a released version does not wait: it ships as a patch release on the Owner's word (v0.19.4, 13 October).
+2. A pull request merges on a verdict that names what it covers: the reviewed commit, its base, the tier and the checks run, as a Reviewed: line in the commit. The review commit carries the findings, their evidence and dispositions, its limits and who reviewed; a separate file only where the evidence needs one. Critical work takes a Reviewer in a session of its own, never one the building session started, and at most two rounds per finding. Critical means: a release, the gate or hooks, signing and rights, auth, migrations, deploy and secrets tooling, run sheets for the Owner, TRIAGE.md or AGENTS.md rules changed by a seat, and rules and code under a P1 or security tracker. Other code takes one inline Reviewer pass; records take one pass; neither runs re-check rounds: findings are fixed forward and named in the commit. Relevant local checks run before a pull request; the complete suites run in CI, not locally before every pull request. A review of the Owner's own answers and TRIAGE lines reports and never blocks. The Owner merges on a ready line, or over any other verdict with a signed reason.
+3. The trial decides what comes next. Until its findings are in, v0.20.0 holds only what item 1 names (R23); nothing else on Subversion is built, and on Subversion the tool says once what it cannot verify — no signature, and without a server's login no author — and never claims it. What the trial finds is filed as trackers and comes first; the held rulings, the plain folder among them, are looked at again on 20 October.
+4. A seat's question for the Owner goes on the board as an ask, with its proposal, and the seat keeps working; the Owner answers in one sitting. A seat interrupts the Owner only to stop harm.
 
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
-| 1 | P1 | review | *complicated* | intended | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress |
+| 1 | P1 | owner | *complicated* | intended | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress |
 | 2 | P1 | build | — | intended, kind | [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) | At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two act… | In Progress |
 | 3 | P2 | build | — | intended, kind | [FM-029](FM-029-the-answer-says-accepted-when-the-person-picked-another.md) | The person picked the third of three options, not the proposal, and the signed record reads `accepted - <the third opti… | In Progress |
 | 5 | P1 | review | *complicated* | intended | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | In Progress |
-| 6 | P2 | build | — | sized, intended, kind | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
+| 6 | P2 | review | *complicated* | sized, intended | [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) | One README, written for the agent that has to use the tool, is the whole documentation. The people who own the reposito… | In Progress |
 | 7 | P2 | review | *complicated* | intended | [FM-039](FM-039-fm-035-s-healthy-board-case-fails-under-machine-load-a-5-s.md) | FM-035's healthy-board case fails under machine load: a 5 s wall-clock Chrome budget, 469/470 at load 9–27 | In Progress |
 | 8 | P2 | build | — | intended, kind | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed |
 | 9 | P2 | review | complicated | intended | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress |
@@ -41,7 +43,7 @@
 
 | ID | Act | Promised | Due | Window |
 |----|-----|----------|-----|--------|
-| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | no date yet | 60 min |
+| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | 2026-10-15 18:00:00+02:00 | 60 min |
 
 
 ## Work
@@ -71,6 +73,8 @@
 | [FM-038](FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md) | P3 | the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time | Proposed | backlog | 2026-09-27 |
 | [FM-028](FM-028-after-midnight-the-suite-refuses-every-commit-the-board-and.md) | P2 | Between midnight and two in the morning the pre-commit suite refused every commit; they went through only with TZ=UTC.… | Proposed | progress | 2026-09-25 |
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
+| [FM-046](FM-046-a-committed-tracker-s-front-matter-is-parsed-only-for-lf.md) | P1 | A committed tracker's front matter is parsed only for LF line endings and not through one normalisation, so the same tr… | Shipped | ended | 2026-10-12 |
+| [FM-045](FM-045-the-board-s-refresh-stops-on-git-ls-tree-which-its-read-only.md) | P0 | Where an answer waits on an answer branch and the signers file lies in the working tree, the board's refresh stops and… | Shipped | ended | 2026-10-08 |
 | [FM-040](FM-040-the-hook-s-board-regeneration-takes-26-s-on-shoalmark-and-15.md) | P2 | the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it | Shipped | ended | 2026-09-28 |
 | [FM-036](FM-036-a-worksheet-with-two-filled-rows-for-one-tracker-applies.md) | P2 | On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-… | Shipped | ended | 2026-09-25 |
 | [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | P2 | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | Shipped | ended | 2026-09-25 |

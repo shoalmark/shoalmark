@@ -1,4 +1,6 @@
-# The proof that is not the author's machine: both suites on three systems, with Subversion installed on each.
+# The proof that is not the author's machine: both suites on three systems, with Subversion installed on each. A pull request that
+# changes tracker files alone runs the gate's --check instead, in the same five checks: CI's cost follows the review tier (the Owner's
+# word of 2026-10-09). The two Ubuntu entries also run both suites under a time zone far from UTC, reported and not yet required.
 name: ci
 # Validate every non-draft PR revision and every release tag.
 on:
@@ -10,37 +12,133 @@ permissions: {contents: read}
 concurrency: {group: "ci-${{ github.event.pull_request.number || github.ref }}", cancel-in-progress: "${{ github.event_name == 'pull_request' }}"}
 jobs:
   suites:
+    name: suites (${{ matrix.system }}, ${{ matrix.python }})
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     strategy:
       fail-fast: false
+      # The images are pinned until 0.19.3; the check names carry the OS family only, so a pin never renames a check.
       matrix:
         include:
-          - {os: ubuntu-latest, python: "3.9"}
-          - {os: ubuntu-latest, python: "3.12"}
-          - {os: macos-latest, python: "3.12"}
-          - {os: windows-latest, python: "3.9"}
-          - {os: windows-latest, python: "3.12"}
-    runs-on: ${{ matrix.os }}
+          - {system: ubuntu, image: ubuntu-24.04, python: "3.9", tz: Pacific/Kiritimati}
+          - {system: ubuntu, image: ubuntu-24.04, python: "3.12", tz: Pacific/Pago_Pago}
+          - {system: macos, image: macos-26, python: "3.12"}
+          - {system: windows, image: windows-2025-vs2026, python: "3.9"}
+          - {system: windows, image: windows-2025-vs2026, python: "3.12"}
+    runs-on: ${{ matrix.image }}
     steps:
       # the whole history: a check judges FM-033's five builds at their own parents in this repository's own record
       - uses: actions/checkout@v7
         with: {fetch-depth: 0}
+      # The tier: records only where the checkout is the merge CI tests — its first parent the base, its second the head — and every
+      # entry of that merge's whole diff against the base is a plain file, added, changed or deleted, its mode 100644 throughout, that
+      # is a record: an entry at the tracker folder's top (`*.md`: the trackers, INDEX.md, TRIAGE.md) or a file under its evidence/, but
+      # none a suite reads (the last case below; test_shoalmark.py holds that list to the suites). A submodule pointer, a symlink, a
+      # mode change, `.gitmodules` or `.github/` anywhere, a path holding a byte outside printable ASCII or a Windows short name (a part
+      # with `~` and a digit, as `START-~1`), any other path, an empty list,
+      # a failed command, a tag, a run by hand: the full suites. Paths compare without regard to case, as macOS and Windows hold them.
+      - name: the tier — records only, or the full suites
+        id: tier
+        shell: bash
+        env: {EVENT: "${{ github.event_name }}", BASE: "${{ github.event.pull_request.base.sha }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}
+        run: |
+          export LC_ALL=C
+          shopt -s nocasematch
+          records=false
+          dir=""
+          if [ "$EVENT" = pull_request ] && [ -n "$BASE" ] && [ -n "$HEAD_SHA" ] \
+             && [ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ] \
+             && [ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ] \
+             && git show "$BASE:shoalmark.toml" > "$RUNNER_TEMP/tier.toml" \
+             && dir=$(sed -n '/^tracker_dir *=/{s|^tracker_dir *= *"\([A-Za-z0-9_-][A-Za-z0-9_/-]*\)" *\(#.*\)\{0,1\}$|\1|p;q;}' "$RUNNER_TEMP/tier.toml") \
+             && [ -n "$dir" ] \
+             && git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE" HEAD > "$RUNNER_TEMP/tier.raw"; then
+            records=true
+            entries=0
+            while IFS= read -r -d '' head && IFS= read -r -d '' path; do
+              entries=$((entries + 1))
+              set -- $head
+              case "$1 $2 ${5:-}" in
+                ":100644 100644 M" | ":000000 100644 A" | ":100644 000000 D") ;;
+                *) records=false ;;
+              esac
+              case "/$path/" in
+                */.github/* | */.gitmodules/*) records=false ;;
+              esac
+              case "$path" in
+                *[![:print:]]*) records=false ;;
+              esac
+              case "/$path/" in
+                */*~[0-9]*/*) records=false ;;
+              esac
+              case "$path" in
+                "$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;
+                "$dir"/*.md) ;;
+                *) records=false ;;
+              esac
+              case "$path" in
+                "$dir"/FM-007-*.md) records=false ;;
+                "$dir"/evidence/FM-002/slice-a | "$dir"/evidence/FM-002/slice-a/*) records=false ;;
+                "$dir"/evidence/FM-006/landing/index.html) records=false ;;
+                "$dir"/evidence/FM-006/landing/start-page | "$dir"/evidence/FM-006/landing/start-page/*) records=false ;;
+                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;
+              esac
+            done < "$RUNNER_TEMP/tier.raw"
+            nul=$(tr -cd '\000' < "$RUNNER_TEMP/tier.raw" | wc -c)
+            if [ "$entries" -eq 0 ] || [ "$((nul))" -ne "$((2 * entries))" ]; then
+              records=false
+            fi
+          fi
+          echo "records=$records" >> "$GITHUB_OUTPUT"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          if [ "$records" = true ]; then
+            echo "The tier: every path the pull request changes is a record under $dir/ that no suite reads — --check alone, not the suites." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "The tier: the full suites." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/setup-python@v7
         with: {python-version: "${{ matrix.python }}"}
+      # R14: the gate judges the PR head; the suites run on the merge checkout.
+      - name: the branch — the gate's --check
+        id: gate
+        shell: bash
+        env: {TRACKER: "${{ steps.tier.outputs.dir }}", EVENT: "${{ github.event_name }}", HEAD_SHA: "${{ github.event.pull_request.head.sha }}", DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}", SHOALMARK_CMD: python3 shoalmark.py}
+        run: |
+          git remote set-head origin "$DEFAULT_BRANCH"
+          checked=$(git rev-parse HEAD)
+          if [ "$EVENT" = pull_request ]; then git checkout --detach "$HEAD_SHA"; fi
+          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"
+          python shoalmark.py --check
+          git checkout --detach "$checked"
       - name: Subversion (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && steps.tier.outputs.records != 'true'
         run: sudo apt-get update -q && sudo apt-get install -y -q subversion
       - name: Subversion (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && steps.tier.outputs.records != 'true'
         run: brew install subversion
       - name: Subversion (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && steps.tier.outputs.records != 'true'
         run: |
           choco install sliksvn -y --no-progress
           echo "C:\Program Files\SlikSvn\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Subversion is really there — the S checks must run, not skip
+        if: steps.tier.outputs.records != 'true'
         run: svn --version --quiet
       - name: git identity for the suites
         run: git config --global user.email ci@example.invalid && git config --global user.name ci && git config --global init.defaultBranch main
-      - run: python -u test_shoalmark.py
-      - run: python -u test_core.py
+      - if: steps.tier.outputs.records != 'true'
+        run: python -u test_shoalmark.py
+      - if: steps.tier.outputs.records != 'true'
+        run: python -u test_core.py
+      # Both suites again under the entry's time zone, far from UTC (the Owner's word of 2026-10-09): reported in the run's summary, and
+      # not required until they are green (2026-10-10) — a failure here is a finding for its tracker, and the check stays as UTC leaves it.
+      - name: the suites under ${{ matrix.tz }} — reported, not yet required
+        if: matrix.tz && steps.tier.outputs.records != 'true'
+        continue-on-error: true
+        shell: bash
+        env: {TZ: "${{ matrix.tz }}"}
+        run: |
+          python -u test_shoalmark.py && suite=0 || suite=$?
+          python -u test_core.py && core=0 || core=$?
+          if [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]; then said="both suites passed"; else said="FAILED — test_shoalmark.py exit $suite, test_core.py exit $core"; fi
+          echo "Under TZ=$TZ: $said (reported, not yet required)." >> "$GITHUB_STEP_SUMMARY"
+          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]

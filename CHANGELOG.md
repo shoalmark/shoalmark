@@ -2,6 +2,48 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.19.4 — 2026-10-13
+
+**0.19.4 is a security release: upgrade, run `--install-hook` again on your default branch, then `--check` once.** Committed tracker text has one line-ending normalisation, and the configured Owner's commits are judged under the Owner's signing rules.
+
+### Security (GHSA-xh54-c5jg-j4fp)
+- Committed tracker text is read with one line-ending normalisation for Git and Subversion, so every rule reads a tracker the same way whatever its line endings.
+- Comparisons, the signers file and physical-line attribution keep the raw bytes.
+
+### Changed
+- The configured Owner's own commits pass the session, judged-before-build and filing-freeze rules before signing.
+- `--check` asks every Owner-authored commit in a branch's own range for the Owner's verified signature.
+- A commit GitHub made in the Owner's name inside a pull request is refused, with one line saying why and how to redo it: make the commit in the Owner's checkout, sign it with the Owner's SSH key, and merge main locally.
+
+## 0.19.3 — 2026-10-10
+
+**0.19.3 is a security release: upgrade, run `--install-hook` again on your default branch, then `--check` once.** The board's refresh fetches nothing and starts no program a configuration names but its SSH signature check. `--notify` hands a notice's text over as data on macOS and Linux; on Windows, in this release, it prints the notice instead of posting it.
+
+### Security (GHSA-phwg-xghr-hfvg, GHSA-xfv6-2vf2-fm94)
+- **GHSA-phwg-xghr-hfvg, the board's refresh:**
+  - The board's git reads run with fixed settings: no fetch, no program a configuration names but the SSH signature check, no fsmonitor, no textconv, and text read as text on its six history reads.
+  - The four pathspec variables are dropped for every git the tool starts.
+  - Every read that lists what a commit or a pending change touches lists submodule pointers too, so a record, a review addendum and the gate see every change.
+- **GHSA-xfv6-2vf2-fm94, `--notify`:**
+  - On macOS the notice's code is fixed, and its title and body travel as data, a NUL replaced; Linux passes them after `--` as before.
+  - One notice that cannot be posted never stops the others, and the run exits 1.
+  - On Windows it prints each notice and starts no program.
+
+### Hardening
+- The board records what it was built from — the tracker folder, the configuration and the answer branches it reads — in `view/built.json`, and `--owner` and `--standup` say in one line when any of them has changed since.
+- The deriver's texts say when a deriver runs: on each run of the tool itself that reads the trackers, TortoiseSVN's commit hooks included; never in the copy git's hooks run, or in the board's run.
+- The classification of every program the tool starts reads the notice's code as the fixed code it is.
+
+## 0.19.2 — 2026-10-09
+
+**0.19.2 fixes the board's refresh, which 0.19.1 stopped in some repositories: upgrade, run `--install-hook` again on your default branch, then `--check` once.** The hooks run the copy of the tool kept in the git directory, so the fix reaches the board's refresh only once `--install-hook` has copied it there.
+
+### Fixes
+- **The board's refresh.** `--html-only` — the run the checkout, merge and rewrite hooks start, and the rebuild right after an answer — no longer stops on `git ls-tree` where an unmerged answer branch on origin sets an answer and the signers file lies in the working tree. `git ls-tree` is on the read-only git the board's refresh may start.
+
+### Hardening
+- Every git command the tool can start is classified from its own source: read-only git the board's refresh may start, or a command it never starts, with the reason. The board's refresh runs end to end in CI on Ubuntu, macOS and Windows: real merges, checkouts and rebases fire the real hooks on git, and on Subversion the board's run follows `svn update` and `svn switch`.
+
 ## 0.19.1 — 2026-10-08
 
 **0.19.1 is a security release: upgrade, then run `--check` once.** The gate judges every commit of a branch as the tracker reads it, guards the Owner's two sections where a configuration cannot be read, and judges the tracker folder before any write.

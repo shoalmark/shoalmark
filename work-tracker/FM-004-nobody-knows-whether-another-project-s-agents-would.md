@@ -3,15 +3,24 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: wait
+next: build
 triaged: 2026-09-23
 tier: P3
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
+ask: "What exact replacement text do you want for RV-2734 in #154, removing the withdrawn requirement for git on every machine?"
+ask-kind: ruling
+ask-since: 2026-10-12
+ask-proposal: "Use: 'Target v0.20.0: shoalmark runs on Subversion with no git installed; this is not shipped yet.'"
+answer: "accepted - with a change: in #154 the clause reads (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed)"
+answered: 2026-10-12
+answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
 
 ## What is true now
+
+**2026-10-12 — #154 and the release archive.** #154's RV-2734 fix text remains the Owner's to give; the front-matter proposal is draft wording for their signed acceptance or replacement. **Confidence 98%:** it states only the authorized v0.20.0 requirement and does not claim it shipped. After the answer, a Records Builder replaces the withdrawn sentence and one Reviewer pass follows. The release archive's bundle was verified locally at `23e3f7a10299804e903094feafd43910a46fd2de`; its earlier READY is reported, and scoped RV-3020/RV-3021 review of `6379acd..23e3f7a` remains owed. The Owner's release-script change and archive dry run remain release prerequisites. Probe draft 3 runs in its separate session.
 
 **Run 2026-09-21: 0 of 3 recommend adopting — my prediction of 2 of 3 was wrong.** A (sceptical): *nicht übernehmen*;
 B (neutral): *jetzt nicht, frühestens an einer Paketgrenze neu prüfen*; C (time pressure): *jetzt nicht, eher gar nicht

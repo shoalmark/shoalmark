@@ -1,13 +1,13 @@
 name = "shoalmark"
-owner = "holgoijo@gmail.com signed"   # the Owner, not a seat (FM-024): they answer with their key; at the top, before any table
+owner = ["holgoijo@gmail.com signed", "165006637+holgo99@users.noreply.github.com signed"]   # the Owner, not a seat (FM-024): they answer with their key; at the top, before any table
 tracker_dir = "work-tracker"       # the tracker; docs/ is the documentation site
 triage_days = 7
-freeze_at = 8        # the filing freeze (FM-032 S4, the Owner's `all four now`): at 8 open or more, only bug filings
+freeze_at = 0        # the filing freeze is off: the Owner's ruling R15 of 12 Oct; its code goes with the deletions
 judged_before_build = true   # FM-033, the Owner's rule: a pass judges before the first build commit — refused otherwise
 
 [seats]            # who sits where — a seat commits unsigned under an identity its list gives: the old address, or its GitHub App's bot address, whose icon the forge shows (README, *Seat icons on the forge*);
                    # the Owner is `owner` above, not a seat. A seat's value is a list: every identity in it is that seat, the old address first
-owner = "holgoijo@gmail.com signed"   # the old spelling, the same as `owner` above: a copy older than D2 reads no Owner from the top line, so it stays until the open branches have merged main
+owner = ["holgoijo@gmail.com signed", "165006637+holgo99@users.noreply.github.com signed"]   # the old spelling, the same as `owner` above: a copy older than D2 reads no Owner from the top line, so it stays until the open branches have merged main
 planner = ["principal@seat", "336427458+shoalmark-planner[bot]@users.noreply.github.com"]   # `principal` is its former name, and its address stays: history resolves to this seat
 builder = ["implementer@seat", "336429412+shoalmark-builder[bot]@users.noreply.github.com"]   # `implementer` is its former name
 reviewer = ["reviewer@seat", "336429944+shoalmark-reviewer[bot]@users.noreply.github.com"]
