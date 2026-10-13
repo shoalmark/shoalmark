@@ -7,6 +7,7 @@ These controls do not establish an adopted SVN consumer authority or public-entr
 
 import argparse
 import builtins
+import copy
 from contextlib import ExitStack
 from contextlib import redirect_stderr
 import importlib.util
@@ -16,6 +17,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import urllib.parse
 from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
@@ -450,8 +452,333 @@ def run_guard_controls(fm, check):
                 scaffold = fm.TRIAGE_HOME.format(cmd="shoalmark", **fm.DEFAULTS["headings"])
                 check("FM-044 B: known scaffold comparison makes no protected statement", fm.section_changes(view(scaffold), [view(None)]) == [])
                 check("FM-044 B: actual protected local text differs independently of missing authority", bool(fm.section_changes(view(TRIAGE.replace("lose a loan", "lose a key")), [before])))
+        run_binding_controls(fm, check, env, programs)
     finally:
         fm.configure(previous)
+
+
+def run_binding_controls(fm, check, env, programs):
+    """RV-3092/3093/3094: real-read binding faults cannot become author or Shipped proof."""
+    if not programs["svn"] or not programs["svnadmin"]:
+        return
+    actual_run, actual_popen = subprocess.run, subprocess.Popen
+
+    def setup(*args, cwd=None):
+        return actual_run([programs["svn"], *args], cwd=cwd, env=env, check=True, capture_output=True).stdout.decode()
+
+    def xml_fault(operation, change, select=lambda cmd: True):
+        def fault(cmd, data):
+            if cmd[1] == operation and select(cmd):
+                tree = ET.fromstring(data)
+                change(tree)
+                return ET.tostring(tree)
+        return fault
+
+    with tempfile.TemporaryDirectory() as temp:
+        top = Path(temp).resolve(); server = top / "server"; root = top / "root"
+        actual_run([programs["svnadmin"], "create", str(server)], env=env, check=True, capture_output=True)
+        setup("checkout", "-q", server.as_uri(), str(root))
+        original = "docs/work-tracker/FEAT-001-item.md"
+        copied = "docs/work-tracker/FEAT-002-copy.md"
+        text = '---\nid: FEAT-001\nstatus: Proposed\nanswer: keep\n---\n\n# Fixture\n'
+        for name in ("alpha", "beta"):
+            home = root / name
+            (home / original).parent.mkdir(parents=True)
+            (home / original).write_text(text, encoding="utf-8")
+            (home / "empty.txt").write_text("", encoding="utf-8")
+            (home / "product.txt").write_text("product\n", encoding="utf-8")
+            (home / "shoalmark.toml").write_text('owner = "owner"\n', encoding="utf-8")
+        setup("add", "alpha", "beta", cwd=root)
+        setup("commit", "-qm", "fixture baseline", "--username", "owner", cwd=root)
+        setup("copy", original, copied, cwd=root / "alpha")
+        setup("commit", "-qm", "fixture copy", "--username", "copier", cwd=root / "alpha")
+        (root / "alpha" / original).write_text(text + "records only\n", encoding="utf-8")
+        (root / "beta/product.txt").write_text("foreign product\n", encoding="utf-8")
+        setup("commit", "-qm", "own records and foreign product", "--username", "owner", cwd=root)
+        consumer = top / "consumer"
+        setup("checkout", "-q", server.as_uri() + "/alpha", str(consumer))
+        svn_only = top / "bin"; svn_only.mkdir()
+        if os.name == "nt":
+            svn_only = Path(programs["svn"]).parent
+            if shutil.which("git", path=str(svn_only)) is not None:
+                print("  SKIP RV-3092/3093/3094: installed SVN and Git share a Windows PATH directory")
+                return
+        else:
+            (svn_only / "svn").symlink_to(programs["svn"])
+        tracker = {"id": "FEAT-001", "file": "FEAT-001-item.md", "status": "Proposed"}
+
+        def exercise(label, call, expected, fault=None, home=consumer):
+            """Measure production only: actual reads, confined cwd, no Git or Python writes."""
+            starts, writes = [], []
+            before = {p.relative_to(home).as_posix(): p.read_bytes() for p in home.rglob("*") if p.is_file() and ".svn" not in p.parts}
+
+            def invoked(cmd, *args, **kwargs):
+                done = actual_run(cmd, *args, **kwargs)
+                output = fault(cmd, done.stdout) if fault is not None and done.returncode == 0 else None
+                return subprocess.CompletedProcess(cmd, done.returncode, output, done.stderr) if output is not None else done
+
+            def observed(*args, **kwargs):
+                starts.append((args[0], kwargs.get("cwd")))
+                return actual_popen(*args, **kwargs)
+
+            def guarded_open(real):
+                def opened(file, mode="r", *args, **kwargs):
+                    if any(flag in mode for flag in "wax+"):
+                        writes.append(file)
+                        raise AssertionError("proof call attempted a write")
+                    return real(file, mode, *args, **kwargs)
+                return opened
+
+            real_fd = os.open
+
+            def opened_fd(file, flags, *args, **kwargs):
+                if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND):
+                    writes.append(file)
+                    raise AssertionError("proof call attempted a write")
+                return real_fd(file, flags, *args, **kwargs)
+
+            with ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ, {"PATH": str(svn_only)}))
+                stack.enter_context(patch.object(fm.subprocess, "run", side_effect=invoked))
+                stack.enter_context(patch.object(fm.subprocess, "Popen", side_effect=observed))
+                stack.enter_context(patch.object(builtins, "open", guarded_open(builtins.open)))
+                stack.enter_context(patch.object(io, "open", guarded_open(io.open)))
+                stack.enter_context(patch.object(os, "open", side_effect=opened_fd))
+                fm.configure(home)
+                try:
+                    value = call(fm)
+                except fm.SvnUnreadable as error:
+                    value = error
+                except (AttributeError, TypeError, ValueError, KeyError, IndexError) as error:
+                    value = error
+            after = {p.relative_to(home).as_posix(): p.read_bytes() for p in home.rglob("*") if p.is_file() and ".svn" not in p.parts}
+            check(label, expected(value, starts) and before == after and not writes and bool(starts)
+                  and all(cmd[0] == "svn" and Path(cwd) == home for cmd, cwd in starts))
+
+        def cached_blame(path):
+            def call(tool):
+                errors = []
+                for _attempt in range(2):
+                    try:
+                        tool.svn_blame(path)
+                    except tool.SvnUnreadable as error:
+                        errors.append(error)
+                return errors, ("first", path) in tool._SVN_BLAME, ("through", path) in tool._SVN_BLAME
+            return call
+
+        def cache_refused(value, starts):
+            return (isinstance(value, tuple) and len(value[0]) == 2 and value[0][0] is value[0][1] and not value[1] and not value[2]
+                    and sum(cmd[1] == "blame" for cmd, _cwd in starts) == 1)
+
+        refused = lambda value, _starts: isinstance(value, fm.SvnUnreadable)
+        outer_refused = lambda value, _starts: isinstance(value, list) and bool(value) and all(isinstance(line, str) for line in value)
+        exercise("RV-3092: real copied lines retain copier and source", lambda tool: tool.line_author(consumer / copied, "answer:"),
+                 lambda value, _starts: isinstance(value, tuple) and value[0] == "copier" and value[2:] == ("svn", "2"))
+        exercise("RV-3092: real committed empty blame is genuinely empty", lambda tool: tool.svn_blame("empty.txt"), lambda value, _starts: value == {})
+        (consumer / "pending.txt").write_text("pending\n", encoding="utf-8")
+        exercise("RV-3092: real unversioned blame remains pending", lambda tool: tool.svn_blame("pending.txt"), lambda value, _starts: value == {})
+        setup("add", "pending.txt", cwd=consumer)
+        exercise("RV-3092: real scheduled-add blame remains pending", lambda tool: tool.svn_blame("pending.txt"), lambda value, _starts: value == {})
+        (consumer / copied).write_text(text + "pending line\n", encoding="utf-8")
+        exercise("RV-3092: real uncommitted line retains no committed author", lambda tool: tool.svn_blame(copied),
+                 lambda value, _starts: isinstance(value, dict) and value[max(value)] == (None, ""))
+        setup("revert", copied, "pending.txt", cwd=consumer); (consumer / "pending.txt").unlink()
+
+        blame_faults = (
+            ("unrelated root", lambda _tree: None),
+            ("foreign target", lambda tree: tree[0].set("path", "elsewhere/foreign.md")),
+            ("duplicate target", lambda tree: tree.append(copy.deepcopy(tree[0]))),
+            ("entry outside target", lambda tree: tree.append(copy.deepcopy(tree[0][0]))),
+            ("duplicate commit", lambda tree: tree[0][0].append(copy.deepcopy(tree[0][0].find("commit")))),
+            ("duplicate author", lambda tree: tree[0][0].find("commit").append(copy.deepcopy(tree[0][0].find("commit/author")))),
+            ("duplicate date", lambda tree: tree[0][0].find("commit").append(copy.deepcopy(tree[0][0].find("commit/date")))),
+            ("duplicate merged proof", lambda tree: tree[0][0].append(copy.deepcopy(tree[0][0].find("merged")))),
+            ("missing merged commit", lambda tree: tree[0][0].find("merged").clear()),
+            ("merged path alias", lambda tree: tree[0][0].find("merged").set("path", "/alpha/../beta/item.md")),
+            ("merged newer than commit", lambda tree: tree[0][0].find("merged/commit").set("revision", "999999")),
+            ("unordered line", lambda tree: tree[0][0].set("line-number", "2")),
+        )
+        for label, change in blame_faults:
+            fault = (lambda cmd, _data: b"<unrelated/>" if cmd[1] == "blame" else None) if label == "unrelated root" else xml_fault("blame", change)
+            exercise("RV-3092: " + label + " is one cached controlled blame refusal", cached_blame(copied), cache_refused, fault)
+        exercise("RV-3092: blank successful committed blame cannot mean pending", cached_blame(copied), cache_refused,
+                 lambda cmd, _data: b"" if cmd[1] == "blame" else None)
+        first_faults = (
+            ("wrong first-log root", lambda tree: setattr(tree, "tag", "unrelated")),
+            ("duplicate first revision", lambda tree: tree.append(copy.deepcopy(tree[0]))),
+            ("mismatched last revision", lambda tree: tree[0].set("revision", "999999")),
+            ("duplicate first author", lambda tree: tree[0].append(copy.deepcopy(tree[0].find("author")))),
+            ("foreign changed path", lambda tree: tree[0].find("paths/path").__setattr__("text", "/beta/foreign.md")),
+            ("no creation binding", lambda tree: [p.set("action", "M") for p in tree[0].find("paths")]),
+        )
+        for label, change in first_faults:
+            exercise("RV-3092: " + label + " cannot certify a copy", cached_blame(copied), cache_refused,
+                     xml_fault("log", change, lambda cmd: "--stop-on-copy" in cmd))
+        exercise("RV-3092: reversed multi-revision first-path history refuses", cached_blame(original), cache_refused,
+                 xml_fault("log", lambda tree: tree.__setitem__(slice(None), list(reversed(list(tree)))), lambda cmd: "--stop-on-copy" in cmd))
+        for label, change in (
+                ("wrong merge root", lambda tree: setattr(tree, "tag", "unrelated")),
+                ("mismatched merge revision", lambda tree: tree[0].set("revision", "999999")),
+                ("duplicate merge revision", lambda tree: tree.append(copy.deepcopy(tree[0]))),
+                ("missing nested revision", lambda tree: tree[0].append(ET.fromstring("<logentry/>"))),
+                ("duplicate nested revisions", lambda tree: tree[0].extend([ET.fromstring('<logentry revision="1"/>'), ET.fromstring('<logentry revision="1"/>')]))):
+            exercise("RV-3092: " + label + " cannot certify copy attribution", cached_blame(copied), cache_refused,
+                     xml_fault("log", change, lambda cmd: "-g" in cmd))
+        for label, change in (
+                ("foreign info target", lambda tree: tree[0].set("path", "elsewhere/item.md")),
+                ("duplicate info commit", lambda tree: tree[0].append(copy.deepcopy(tree[0].find("commit")))),
+                ("foreign info namespace", lambda tree: setattr(tree[0].find("relative-url"), "text", "^/beta/foreign.md"))):
+            exercise("RV-3092: " + label + " cannot bind first-path history", cached_blame(copied), cache_refused,
+                     xml_fault("info", change, lambda cmd: "--show-item" not in cmd))
+
+        shipped = text.replace("status: Proposed", "status: Shipped") + "\n## Ship log\n\n| Date | What |\n| --- | --- |\n| 2026-10-13 | r1 |\n"
+        for item in ("copied", "added", "replaced"):
+            pending_path = original if item == "replaced" else "docs/work-tracker/FEAT-004-pending.md"
+            if item == "copied":
+                setup("copy", original, pending_path, cwd=consumer)
+            elif item == "replaced":
+                setup("delete", original, cwd=consumer)
+            (consumer / pending_path).write_text(shipped, encoding="utf-8")
+            if item != "copied":
+                setup("add", pending_path, cwd=consumer)
+            pending_tracker = dict(tracker, file=Path(pending_path).name)
+            exercise("RV-3093: real pending " + item + " Shipped retains valid status and own-product proof", lambda tool, pending_tracker=pending_tracker: tool.ship_problems([pending_tracker]), lambda value, _starts: value == [])
+            setup("revert", pending_path, cwd=consumer)
+            if item != "replaced":
+                (consumer / pending_path).unlink(missing_ok=True)
+        setup("switch", "--ignore-ancestry", server.as_uri() + "/beta/" + original, original, cwd=consumer)
+        exercise("RV-3093: real switched non-Shipped tracker refuses its foreign view", lambda tool: tool.ship_problems([tracker]), outer_refused)
+        (consumer / original).write_text(shipped, encoding="utf-8")
+        exercise("RV-3093: real switched pending Shipped tracker refuses before proof", lambda tool: tool.ship_problems([tracker]), outer_refused)
+        setup("revert", original, cwd=consumer)
+        setup("switch", "--ignore-ancestry", server.as_uri() + "/alpha/" + original, original, cwd=consumer)
+        (consumer / original).write_text(shipped, encoding="utf-8")
+        exercise("RV-3093/3094: ordinary own-product pending Shipped retains proof", lambda tool: tool.ship_problems([tracker]), lambda value, _starts: value == [])
+        setup("changelist", "fixture-changes", original, cwd=consumer)
+        exercise("RV-3093: real changelist pending Shipped retains its unique local binding", lambda tool: tool.ship_problems([tracker]), lambda value, _starts: value == [])
+        setup("changelist", "--remove", original, cwd=consumer)
+        (consumer / original).write_text(shipped.replace("r1", "no revision"), encoding="utf-8")
+        exercise("RV-3093: actual pending move with no revision refuses", lambda tool: tool.ship_problems([tracker]), outer_refused)
+        status_faults = (
+            ("foreign target", lambda tree: tree[0].set("path", "elsewhere/foreign")),
+            ("duplicate target", lambda tree: tree.append(copy.deepcopy(tree[0]))),
+            ("unknown item hides pending move", lambda tree: tree[0][0][0].set("item", "INVALID")),
+            ("unknown props", lambda tree: tree[0][0][0].set("props", "INVALID")),
+            ("foreign entry hides pending move", lambda tree: tree[0][0].set("path", "elsewhere/foreign.md")),
+            ("confined absent entry hides pending move", lambda tree: tree[0][0].set("path", "docs/work-tracker/foreign.md")),
+            ("dot path alias", lambda tree: tree[0][0].set("path", "./" + original)),
+            ("parent path alias", lambda tree: tree[0][0].set("path", "docs/work-tracker/../work-tracker/FEAT-001-item.md")),
+            ("case path alias", lambda tree: tree[0][0].set("path", original[:-3] + ".MD")),
+            ("duplicate entry", lambda tree: tree[0].append(copy.deepcopy(tree[0][0]))),
+            ("duplicate wc-status", lambda tree: tree[0][0].append(copy.deepcopy(tree[0][0][0]))),
+            ("missing revision", lambda tree: tree[0][0][0].attrib.pop("revision", None)),
+            ("invalid revision", lambda tree: tree[0][0][0].set("revision", "wrong")),
+            ("invalid switched boolean", lambda tree: tree[0][0][0].set("switched", "maybe")),
+            ("invalid external boolean", lambda tree: tree[0][0][0].set("file-external", "maybe")),
+            ("external item", lambda tree: tree[0][0][0].set("item", "external")),
+            ("inconsistent committed revision", lambda tree: tree[0][0][0].find("commit").set("revision", "999999")),
+        )
+        for label, change in status_faults:
+            exercise("RV-3093: " + label + " refuses through outer gate", lambda tool: tool.ship_problems([tracker]), outer_refused, xml_fault("status", change))
+        (consumer / original).write_text(shipped, encoding="utf-8")
+        log_faults = (
+            ("unrelated root", lambda tree: setattr(tree, "tag", "unrelated")),
+            ("missing revision", lambda tree: tree[0].attrib.pop("revision", None)),
+            ("mismatched revision", lambda tree: tree[0].set("revision", "999999")),
+            ("duplicate entry", lambda tree: tree.append(copy.deepcopy(tree[0]))),
+            ("duplicate paths container", lambda tree: tree[0].append(copy.deepcopy(tree[0].find("paths")))),
+            ("duplicate changed path", lambda tree: tree[0].find("paths").append(copy.deepcopy(tree[0].find("paths/path")))),
+            ("invalid action", lambda tree: tree[0].find("paths/path").set("action", "INVALID")),
+            ("changed-path alias", lambda tree: setattr(tree[0].find("paths/path"), "text", "/alpha/../beta/product.txt")),
+            ("changed-path separator", lambda tree: setattr(tree[0].find("paths/path"), "text", "/alpha//product.txt")),
+            ("duplicate required author", lambda tree: tree[0].append(copy.deepcopy(tree[0].find("author")))),
+        )
+        for label, change in log_faults:
+            fault = xml_fault("log", change)
+            exercise("RV-3094: referenced " + label + " cannot prove product", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["docs/"]), refused, fault)
+            exercise("RV-3094: referenced " + label + " refuses through outer Shipped gate", lambda tool: tool.ship_problems([tracker]), outer_refused, fault)
+        blank_log = lambda cmd, _data: b"" if cmd[1] == "log" else None
+        exercise("RV-3094: blank successful existing-revision log is missing proof", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["docs/"]), refused, blank_log)
+        exercise("RV-3094: blank successful referenced log refuses through outer gate", lambda tool: tool.ship_problems([tracker]), outer_refused, blank_log)
+        exercise("RV-3094: checked empty log remains explicit non-success", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["docs/"]),
+                 lambda value, _starts: isinstance(value, dict) and bool(value.get("r1")), lambda cmd, _data: b"<log/>" if cmd[1] == "log" else None)
+        (consumer / original).write_text(shipped.replace("r1", "r3"), encoding="utf-8")
+        exercise("RV-3094: own records plus foreign product refuses through outer gate", lambda tool: tool.ship_problems([tracker]), outer_refused)
+        malformed = ("^//", "^/alpha/", "^/alpha//child", "^/./alpha", "^/alpha/..", "^/%2f", "^/%5c", "^/%2e%2e", "^/alpha%", "^/alpha%GG", "^/%FF", "^/%00", "^/alpha<", "^/alpha space", "^/alpha\n^/beta", "^/alpha\n")
+        for value in malformed:
+            fault = lambda cmd, _data, value=value: (value + "\n").encode() if "relative-url" in cmd else None
+            exercise("RV-3094: malformed namespace " + repr(value) + " refuses before classification", lambda tool: tool.svn_ship_verdicts(["r3"], None, ["docs/"]), refused, fault)
+            exercise("RV-3094: malformed namespace " + repr(value) + " cannot pass outer gate", lambda tool: tool.ship_problems([tracker]), outer_refused, fault)
+        setup("revert", original, cwd=consumer)
+        for label, change in log_faults:
+            exercise("RV-3094: newest " + label + " refuses even with open local tracker", lambda tool: tool.ship_problems([tracker]), outer_refused, xml_fault("log", change))
+        exercise("RV-3094: newest out-of-range product-only revision cannot disappear as a non-move", lambda tool: tool.ship_problems([tracker]), outer_refused,
+                 lambda cmd, _data: b'<log><logentry revision="999999"><paths><path action="M">/alpha/product.txt</path></paths></logentry></log>' if cmd[1] == "log" else None)
+        exercise("RV-3094: checked nonexistent revision remains explicit non-success", lambda tool: tool.svn_ship_verdicts(["r999999"], None, ["docs/"]),
+                 lambda value, _starts: isinstance(value, dict) and bool(value.get("r999999")))
+        exercise("RV-3094: genuine repository-root namespace retains own product proof", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["alpha/docs/", "beta/docs/"]),
+                 lambda value, _starts: value == {"r1": ""}, home=root)
+        external = top / "external-consumer"
+        setup("checkout", "-q", server.as_uri() + "/alpha", str(external))
+        setup("propset", "svn:externals", "^/beta/docs/work-tracker external", "docs/work-tracker", cwd=external)
+        setup("update", "-q", cwd=external)
+        exercise("RV-3093: real directory external refuses the foreign tracker view", lambda tool: tool.ship_problems([tracker]), outer_refused, home=external)
+        file_external = top / "file-external-consumer"
+        setup("checkout", "-q", server.as_uri() + "/alpha", str(file_external))
+        setup("propset", "svn:externals", "^/beta/" + original + " foreign.md", "docs/work-tracker", cwd=file_external)
+        setup("update", "-q", cwd=file_external)
+        exercise("RV-3093: real file external with normal status refuses the foreign view", lambda tool: tool.ship_problems([tracker]), outer_refused, home=file_external)
+        if os.name != "nt":
+            (consumer / original).unlink(); (consumer / original).symlink_to(root / "beta" / original)
+            exercise("RV-3093: real local file alias refuses before reading pending content", lambda tool: tool.ship_problems([tracker]), outer_refused)
+            (consumer / original).unlink(); setup("revert", original, cwd=consumer)
+        nested_name = "nested space/consumer%name"
+        nested = root / nested_name; (nested / original).parent.mkdir(parents=True)
+        (nested / original).write_text(text, encoding="utf-8"); (nested / "product.txt").write_text("nested product\n", encoding="utf-8")
+        setup("add", "nested space", cwd=root); setup("commit", "-qm", "encoded nested consumer fixture", "--username", "owner", cwd=root)
+        revision = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        encoded = top / "encoded-consumer"
+        setup("checkout", "-q", server.as_uri() + "/" + urllib.parse.quote(nested_name), str(encoded))
+        exercise("RV-3094: legal encoded nested consumer names retain their exact product namespace", lambda tool: tool.svn_ship_verdicts(["r" + revision], None, ["docs/"]),
+                 lambda value, _starts: value == {"r" + revision: ""}, home=encoded)
+        exercise("RV-3094: nested encoded consumer cannot count another consumer's product", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["docs/"]),
+                 lambda value, _starts: isinstance(value, dict) and bool(value.get("r1")), home=encoded)
+        # A real merge introduces a copied path; a later merge changes an existing path.
+        branch_url = server.as_uri() + "/branch"
+        setup("copy", server.as_uri() + "/alpha", branch_url, "-m", "branch fixture", "--username", "owner")
+        branch = top / "branch"; setup("checkout", "-q", branch_url, str(branch))
+        introduced = "docs/work-tracker/FEAT-003-introduced.md"
+        (branch / introduced).write_text(text.replace("FEAT-001", "FEAT-003"), encoding="utf-8")
+        setup("add", introduced, cwd=branch); setup("commit", "-qm", "branch introduction", "--username", "intruder", cwd=branch)
+        added_revision = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        setup("update", "-q", cwd=consumer)
+        setup("merge", "-c", added_revision, branch_url, ".", cwd=consumer)
+        setup("commit", "-qm", "merge introduced path", "--username", "owner", cwd=consumer)
+        merged_revision = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        exercise("RV-3092: real merge introducing a path retains merged-line refusal", lambda tool: tool.line_author(consumer / introduced, "answer:"),
+                 lambda value, _starts: value == (None, None, "merged", merged_revision))
+        exercise("RV-3092: unordered required merged revisions are a cached refusal", cached_blame(introduced), cache_refused,
+                 xml_fault("log", lambda tree: tree[0].__setitem__(slice(None), [ET.fromstring('<logentry revision="1"/>'), ET.fromstring('<logentry revision="2"/>')]), lambda cmd: "-g" in cmd))
+        (branch / original).write_text((branch / original).read_text(encoding="utf-8").replace("answer: keep", "answer: changed"), encoding="utf-8")
+        setup("commit", "-qm", "branch guarded line", "--username", "intruder", cwd=branch)
+        changed_revision = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        setup("update", "-q", cwd=consumer); setup("merge", "-c", changed_revision, branch_url, ".", cwd=consumer)
+        setup("commit", "-qm", "merge existing guarded line", "--username", "owner", cwd=consumer)
+        exercise("RV-3092: real merge into an existing path retains the original line author", lambda tool: tool.line_author(consumer / original, "answer:"),
+                 lambda value, _starts: value == ("intruder", None, "svn", changed_revision))
+        lower = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        for step in ("one", "two"):
+            (branch / "product.txt").write_text("branch product " + step + "\n", encoding="utf-8")
+            setup("commit", "-qm", "branch product " + step, "--username", "owner", cwd=branch)
+        upper = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        setup("update", "-q", cwd=consumer); setup("merge", "-r", lower + ":" + upper, branch_url, ".", cwd=consumer)
+        setup("commit", "-qm", "multiple merged revisions", "--username", "owner", cwd=consumer)
+        forward = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        exercise("RV-3092: real multi-revision merge keeps readable ordered merge proof", lambda tool: tool.svn_merged(int(forward)), lambda value, _starts: value is True)
+        setup("update", "-q", cwd=consumer); setup("merge", "-r", upper + ":" + lower, branch_url, ".", cwd=consumer)
+        setup("commit", "-qm", "reverse merged revisions", "--username", "owner", cwd=consumer)
+        reverse = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
+        exercise("RV-3092: real reverse merge retains readable merge proof", lambda tool: tool.svn_merged(int(reverse)), lambda value, _starts: value is True)
 
 
 def main():

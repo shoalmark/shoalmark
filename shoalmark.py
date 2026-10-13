@@ -5262,17 +5262,22 @@ def svn_merged(rev):
     """Whether revision `rev` merged anything — `svn log -g` lists the revisions it merged under it — read at the repository's root,
     which this run reads once, and kept by revision: each revision's log is asked once per run. Where Subversion cannot
     answer, SvnUnreadable (v0.19.1)."""
-    if ("root",) not in _SVN_BLAME:
-        _SVN_BLAME[("root",)] = (svn_run("info", "--show-item", "repos-root-url", ".") or "").strip()
-    if not _SVN_BLAME[("root",)]:
-        raise SvnUnreadable("svn info did not name the repository's root")
-    if ("merged", rev) not in _SVN_BLAME:
-        log = svn_run("log", "-q", "-g", "-r", str(rev), f'{_SVN_BLAME[("root",)]}@{rev}', xml=True)
-        top = log.find("logentry") if log is not None else None
-        if top is None:
-            raise SvnUnreadable(f"svn log did not answer for revision {rev}")
-        _SVN_BLAME[("merged", rev)] = top.find("logentry") is not None
-    return _SVN_BLAME[("merged", rev)]
+    key = ("merged", rev)
+    if key not in _SVN_BLAME:
+        try:
+            if ("root",) not in _SVN_BLAME:
+                root = (svn_run("info", "--show-item", "repos-root-url", ".") or "").strip()
+                if not root or "\n" in root or "\r" in root:
+                    raise SvnUnreadable("svn info did not name the repository's root")
+                _SVN_BLAME[("root",)] = root
+            log = svn_run("log", "-q", "-g", "-r", str(rev), f'{_SVN_BLAME[("root",)]}@{rev}', xml=True)
+            entries = svn_log_proof(log, requested=rev, merged=True)
+            _SVN_BLAME[key] = entries[0].find("logentry") is not None
+        except SvnUnreadable as e:
+            _SVN_BLAME[key] = e
+    if isinstance(_SVN_BLAME[key], Exception):
+        raise _SVN_BLAME[key]
+    return _SVN_BLAME[key]
 
 
 def svn_tracker_new(t):
@@ -5301,48 +5306,68 @@ def svn_blame(rel):
         return _SVN_BLAME[rel]
     out = {}
     try:
-        blame = svn_run("blame", "-g", rel, xml=True, answers=BLAME_ANSWERS)     # `-g`: a line a merge brought is its author's, never the merger's (v0.19.1)
+        svn_proof_path(rel)
+        blame = svn_run("blame", "-g", rel, xml=True, answers=BLAME_ANSWERS)
+        if blame is None:
+            if not svn_new(rel):
+                raise SvnUnreadable("svn blame did not report the committed path")
+        else:
+            targets = list(blame)
+            if blame.tag != "blame" or len(targets) != 1 or targets[0].tag != "target" or targets[0].get("path") != rel:
+                raise SvnUnreadable("svn blame did not report one matching target")
+            for e in targets[0]:
+                number = e.get("line-number") or ""
+                if e.tag != "entry" or not re.fullmatch(r"[1-9][0-9]*", number) or int(number) != len(out) + 1:
+                    raise SvnUnreadable("svn blame printed invalid, repeated or unordered lines")
+                commits, merges = e.findall("commit"), e.findall("merged")
+                if len(commits) > 1 or len(merges) > 1 or any(c.tag not in ("commit", "merged") for c in e):
+                    raise SvnUnreadable("svn blame printed ambiguous committed lines")
+                current = svn_proof_commit(commits[0], author=True) if commits else (None, "")
+                if merges:
+                    merge = merges[0]
+                    svn_proof_path(merge.get("path"), absolute=True)
+                    if not commits or len(merge) != 1 or merge[0].tag != "commit":
+                        raise SvnUnreadable("svn blame printed invalid merged-line proof")
+                    current = svn_proof_commit(merge[0], author=True)
+                    if int(current[1]) > int(commits[0].get("revision")):
+                        raise SvnUnreadable("svn blame printed inconsistent merged revisions")
+                out[int(number)] = current
+        if out:
+            info = svn_run("info", rel, xml=True)
+            if info is None or info.tag != "info" or len(info) != 1 or info[0].tag != "entry" or info[0].get("path") != rel:
+                raise SvnUnreadable("svn info did not report one matching blame path")
+            entry = info[0]
+            if not re.fullmatch(r"[0-9]+", entry.get("revision") or "") or len(entry.findall("commit")) != 1 or len(entry.findall("relative-url")) != 1:
+                raise SvnUnreadable("svn info did not bind the path's committed revision")
+            _author, last = svn_proof_commit(entry.find("commit"), author=True)
+            path = svn_relative_path(entry.findtext("relative-url"))
+            if int(last) > int(entry.get("revision")) or path != svn_consumer_prefix() + "/" + rel:
+                raise SvnUnreadable("svn info printed inconsistent blame-path metadata")
+            log = svn_run("log", "-q", "-v", "--stop-on-copy", "-r", last + ":1", rel, xml=True)
+            entries = svn_log_proof(log, paths=True, authors=True)
+            revisions = [int(e.get("revision")) for e in entries]
+            if revisions[0] != int(last) or any(a <= b for a, b in zip(revisions, revisions[1:])):
+                raise SvnUnreadable("svn log did not bind the ordered path history to its committed revision")
+            if any(not any(path == p.text or path.startswith(p.text + "/") for p in e.find("paths")) for e in entries):
+                raise SvnUnreadable("svn log reported history for another path")
+            first = entries[-1]
+            if not any(p.get("action") in ("A", "R") and (path == p.text or path.startswith(p.text + "/")) for p in first.find("paths")):
+                raise SvnUnreadable("svn log did not report the path's first creation or copy")
+            at, by = int(first.get("revision")), first.findtext("author")
+            if any(rev.isdigit() and int(rev) > int(last) for _who, rev in out.values()):
+                raise SvnUnreadable("svn blame named a revision outside the path's committed history")
+            through = {}
+            if any(rev.isdigit() and int(rev) < at for _who, rev in out.values()):
+                by = MERGED_IN if svn_merged(at) else by
+                if by is not MERGED_IN:
+                    through = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
+                out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
+            if through:
+                _SVN_BLAME[("through", rel)] = through
+            _SVN_BLAME[("first", rel)] = str(at)
     except SvnUnreadable as e:
         _SVN_BLAME[rel] = e
         raise
-    try:
-        for e in (blame.iter("entry") if blame is not None else []):
-            c = e.find("merged/commit") if e.find("merged/commit") is not None else e.find("commit")
-            who = c.find("author") if c is not None else None
-            number, revision = e.get("line-number") or "", c.get("revision") if c is not None else ""
-            if not re.fullmatch(r"[1-9][0-9]*", number) or int(number) in out:
-                raise ValueError("invalid or repeated blame line")
-            if c is not None and (not re.fullmatch(r"[1-9][0-9]*", revision or "") or who is None or not (who.text or "").strip()):
-                raise ValueError("unavailable committed revision or author")
-            out[int(number)] = (who.text if who is not None else None, revision)
-    except (ValueError, TypeError):                     # a blame that cannot be read is no answer of the history's: refused, never read as nothing committed
-        _SVN_BLAME[rel] = SvnUnreadable("svn blame printed lines that could not be read")
-        raise _SVN_BLAME[rel]
-    if out:
-        try:
-            log = svn_run("log", "-q", "--stop-on-copy", rel, xml=True)
-        except SvnUnreadable as e:
-            _SVN_BLAME[rel] = e
-            raise
-        first = log.findall("logentry")[-1] if log is not None and log.findall("logentry") else None
-        if first is None or not re.fullmatch(r"[1-9][0-9]*", first.get("revision") or ""):
-            _SVN_BLAME[rel] = SvnUnreadable("svn log did not name the path's required first committed revision")
-            raise _SVN_BLAME[rel]
-        if first is not None:
-            at, by = int(first.get("revision")), first.findtext("author")
-            if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()):
-                try:
-                    by = MERGED_IN if svn_merged(at) else by      # a merge that put the path here: its older lines are no one's here
-                except SvnUnreadable as e:
-                    _SVN_BLAME[rel] = e
-                    raise
-                if by is not MERGED_IN:                         # a copy: each older line's own author, read through it by the same blame (v0.19.1)
-                    if not (by or "").strip():
-                        _SVN_BLAME[rel] = SvnUnreadable(f"svn log did not name the copied path's author at revision {at}")
-                        raise _SVN_BLAME[rel]
-                    _SVN_BLAME[("through", rel)] = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
-                out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
-            _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path: a line it wrote was written at the filing
     _SVN_BLAME[rel] = out
     return out
 
@@ -6457,18 +6482,138 @@ def svn_run(*args, xml=False, answers=()):
         raise SvnUnreadable("svn printed XML that could not be read")
 
 
+def svn_proof_path(value, absolute=False):
+    """A canonical SVN proof path; aliases never stand for a broader namespace."""
+    if not isinstance(value, str) or not value or "\\" in value or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise SvnUnreadable("svn printed an invalid proof path")
+    if absolute and value == "/":
+        return value
+    parts = value[1:].split("/") if absolute and value.startswith("/") else value.split("/")
+    if value.startswith("/") != absolute or any(p in ("", ".", "..") for p in parts):
+        raise SvnUnreadable("svn printed a noncanonical proof path")
+    return value
+
+
+def svn_relative_path(relative):
+    """Decode one canonical repository-relative URL, retaining the genuine ^/ root."""
+    if not isinstance(relative, str) or not relative.startswith("^/") or any(c in relative for c in "\r\n?#\\"):
+        raise SvnUnreadable("svn info did not name a canonical repository-relative path")
+    raw = relative[2:]
+    if not raw:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9._~!$&'()*+,;=:@%/-]+", raw) or re.search(r"%(?![0-9a-fA-F]{2})", raw):
+        raise SvnUnreadable("svn info printed malformed repository-relative URL encoding")
+    parts = raw.split("/")
+    try:
+        decoded = [urllib.parse.unquote(p, encoding="utf-8", errors="strict") for p in parts]
+    except UnicodeError:
+        raise SvnUnreadable("svn info printed unreadable repository-relative URL encoding")
+    if any(not p or "/" in p for p in decoded):
+        raise SvnUnreadable("svn info printed malformed repository-relative URL separators")
+    return svn_proof_path("/" + "/".join(decoded), absolute=True)
+
+
+def svn_proof_commit(commit, author=False):
+    """One unambiguous committed revision, with an author where attribution needs it."""
+    if not re.fullmatch(r"[1-9][0-9]*", commit.get("revision") or ""):
+        raise SvnUnreadable("svn printed an unavailable committed revision")
+    for tag in ("author", "date"):
+        fields = commit.findall(tag)
+        if len(fields) > 1 or any(len(f) for f in fields):
+            raise SvnUnreadable("svn printed ambiguous committed fields")
+    if any(c.tag not in ("author", "date") for c in commit):
+        raise SvnUnreadable("svn printed invalid commit structure")
+    who = commit.findtext("author")
+    if author and not (who or "").strip():
+        raise SvnUnreadable("svn did not name the required committed author")
+    return who, commit.get("revision")
+
+
+def svn_log_proof(log, requested=None, paths=False, authors=False, merged=False, empty=False):
+    """Validate required log structure and bindings before any history classification."""
+    if log is None or log.tag != "log" or any(e.tag != "logentry" for e in log):
+        raise SvnUnreadable("svn log did not report the required history")
+    entries = list(log)
+    if not entries and not empty:
+        raise SvnUnreadable("svn log did not report the required committed revision")
+    if requested is not None and (len(entries) != 1 or entries[0].get("revision") != str(requested)):
+        raise SvnUnreadable("svn log did not bind one entry to the requested revision")
+
+    def validate(entry, ceiling=None):
+        revision = entry.get("revision") or ""
+        if not re.fullmatch(r"[1-9][0-9]*", revision) or (ceiling is not None and int(revision) > ceiling):
+            raise SvnUnreadable("svn log printed an inconsistent committed revision")
+        for attr in ("reverse-merge", "non-inheritable"):
+            if attr in entry.attrib and entry.get(attr) not in ("true", "false"):
+                raise SvnUnreadable("svn log printed an invalid merge flag")
+        allowed = {"author", "date", "msg", "paths"} | ({"logentry"} if merged else set())
+        if any(c.tag not in allowed for c in entry):
+            raise SvnUnreadable("svn log printed invalid entry structure")
+        for tag in ("author", "date", "msg", "paths"):
+            fields = entry.findall(tag)
+            if len(fields) > 1 or (tag != "paths" and any(len(f) for f in fields)):
+                raise SvnUnreadable("svn log printed ambiguous required fields")
+        if authors and not (entry.findtext("author") or "").strip():
+            raise SvnUnreadable("svn log did not name the path's required author")
+        changed = entry.find("paths")
+        if paths and (changed is None or not len(changed)):
+            raise SvnUnreadable("svn log did not report the required changed paths")
+        seen = set()
+        for p in changed if changed is not None else []:
+            name = svn_proof_path(p.text, absolute=True)
+            if p.tag != "path" or len(p) or name in seen or p.get("action") not in ("M", "A", "R", "D"):
+                raise SvnUnreadable("svn log printed ambiguous or invalid changed paths")
+            seen.add(name)
+            if "kind" in p.attrib and p.get("kind") not in ("file", "dir", "unknown"):
+                raise SvnUnreadable("svn log printed an invalid changed-path kind")
+            for attr in ("text-mods", "prop-mods"):
+                if attr in p.attrib and p.get(attr) not in ("true", "false", "unknown"):
+                    raise SvnUnreadable("svn log printed an invalid changed-path flag")
+            copied = "copyfrom-path" in p.attrib or "copyfrom-rev" in p.attrib
+            if copied:
+                svn_proof_path(p.get("copyfrom-path"), absolute=True)
+                if p.get("action") not in ("A", "R") or not re.fullmatch(r"[0-9]+", p.get("copyfrom-rev") or "") or int(p.get("copyfrom-rev")) >= int(revision):
+                    raise SvnUnreadable("svn log printed an inconsistent copy binding")
+        children = entry.findall("logentry")
+        numbers = [int(validate(child, int(revision) - 1)) for child in children]
+        if any(a <= b for a, b in zip(numbers, numbers[1:])):
+            raise SvnUnreadable("svn log printed duplicate or unordered merged revisions")
+        return revision
+
+    revisions = [validate(entry) for entry in entries]
+    if len(revisions) != len(set(revisions)):
+        raise SvnUnreadable("svn log printed duplicate revisions")
+    return entries
+
+
 def svn_entry(*args, answers=()):
     """The one `<logentry>` that `svn log <args> .` prints for the working copy, or None."""
     log = svn_run("log", *args, ".", xml=True, answers=answers)
-    return log.find("logentry") if log is not None else None
+    revision = args[args.index("-r") + 1] if "-r" in args else None
+    if log is None:
+        if revision is not None and revision.isdigit() and svn_run("info", "-r", revision, ".", xml=True, answers=answers) is not None:
+            raise SvnUnreadable("svn log did not report the checked existing revision")
+        return None                                      # an explicitly checked absent revision never proves product
+    entries = svn_log_proof(log, paths="-v" in args, empty=True)
+    if len(entries) > 1:
+        raise SvnUnreadable("svn log printed more than the one requested entry")
+    if not entries:
+        return None
+    if revision is not None and revision.isdigit() and entries[0].get("revision") != revision:
+        raise SvnUnreadable("svn log did not bind the entry to the requested revision")
+    if revision is not None and re.fullmatch(r"[1-9][0-9]*:1", revision) and int(entries[0].get("revision")) > int(revision.split(":")[0]):
+        raise SvnUnreadable("svn log named a revision outside the requested newest-history range")
+    return entries[0]
 
 
 def svn_consumer_prefix():
     """The consumer's repository-relative path, not an authority/policy anchor. Missing metadata is not the root."""
-    relative = (svn_run("info", "--show-item", "relative-url", ".") or "").strip()
-    if not relative.startswith("^/") or "\n" in relative or "\r" in relative:
-        raise SvnUnreadable("svn info did not name the consumer's repository-relative path")
-    return ("/" + urllib.parse.unquote(relative[2:]).strip("/")).rstrip("/")
+    relative = svn_run("info", "--show-item", "relative-url", ".") or ""
+    if relative.endswith("\n"):
+        relative = relative[:-1]
+        if relative.endswith("\r"):
+            relative = relative[:-1]
+    return svn_relative_path(relative)
 
 
 def svn_shipped_moves(rels):
@@ -6486,32 +6631,89 @@ def svn_shipped_moves(rels):
 
     pending = {}
     try:
-        status = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True)
-        if status is None or status.tag != "status" or status.find("target") is None:
+        base = svn_consumer_prefix()                    # namespace metadata is required for either selected change
+        target = svn_proof_path(TRACKER_DIR.relative_to(ROOT).as_posix())
+        status = svn_run("status", target, xml=True)
+        if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != target:
             raise SvnUnreadable("svn status did not report the required working-copy change view")
-        entries = list(status.iter("entry"))
-        if any(not e.get("path") or e.find("wc-status") is None or not e.find("wc-status").get("item") for e in entries):
-            raise SvnUnreadable("svn status printed working-copy entries that could not be read")
+        if any(c.tag not in ("target", "changelist") for c in status) or any(e.tag != "entry" for c in status for e in c):
+            raise SvnUnreadable("svn status printed an inconsistent working-copy structure")
+        entries, seen = [], set()
+        for container in status:
+            for e in container:
+                rel = svn_proof_path(e.get("path"))
+                if rel in seen or not (rel == target or rel.startswith(target + "/")) or len(e) != 1 or e[0].tag != "wc-status":
+                    raise SvnUnreadable("svn status printed ambiguous or foreign working-copy bindings")
+                seen.add(rel)
+                local = ROOT / rel
+                if local.resolve() != local:
+                    raise SvnUnreadable("svn status names a local path alias or a foreign file")
+                wc = e[0]
+                item, props, revision = wc.get("item"), wc.get("props"), wc.get("revision")
+                legal = ("none", "normal", "added", "missing", "deleted", "replaced", "modified", "merged", "conflicted", "ignored", "obstructed", "external", "unversioned", "incomplete")
+                if item not in legal or props not in ("none", "normal", "modified", "conflicted"):
+                    raise SvnUnreadable("svn status printed unsupported working-copy status values")
+                if item in ("missing", "conflicted", "obstructed", "external", "incomplete") or props == "conflicted":
+                    raise SvnUnreadable("svn status reports an external or inconsistent working-copy view")
+                if item != "deleted" and not local.exists():
+                    raise SvnUnreadable("svn status names a path absent from the reported local view")
+                for known in rels:
+                    other = ROOT / known
+                    if rel != known and local.exists() and other.exists() and local.samefile(other):
+                        raise SvnUnreadable("svn status names an alias of another local tracker binding")
+                for flag in ("switched", "file-external", "copied", "wc-locked", "tree-conflicted"):
+                    if flag in wc.attrib and wc.get(flag) not in ("true", "false"):
+                        raise SvnUnreadable("svn status printed invalid working-copy flags")
+                if any(wc.get(flag) == "true" for flag in ("switched", "file-external", "tree-conflicted")):
+                    raise SvnUnreadable("svn status reports a switched, external or conflicted consumer path")
+                if revision is not None and not re.fullmatch(r"(?:0|[1-9][0-9]*|-1)", revision):
+                    raise SvnUnreadable("svn status printed an invalid working-copy revision")
+                if item not in ("added", "unversioned", "ignored", "none") and (revision is None or revision == "-1"):
+                    raise SvnUnreadable("svn status omitted the committed working-copy revision")
+                if len(wc.findall("commit")) > 1 or any(c.tag not in ("commit", "lock") for c in wc):
+                    raise SvnUnreadable("svn status printed ambiguous working-copy metadata")
+                if wc.find("commit") is not None:
+                    _who, changed = svn_proof_commit(wc.find("commit"))
+                    copied_add = item == "added" and wc.get("copied") == "true" and revision is None
+                    if not copied_add and (revision is None or revision == "-1" or int(changed) > int(revision)):
+                        raise SvnUnreadable("svn status printed inconsistent committed metadata")
+                entries.append((rel, wc))
+        for rel in rels:
+            svn_proof_path(rel)
+            local = ROOT / rel
+            if not rel.startswith(target + "/") or local.resolve() != local:
+                raise SvnUnreadable("the local tracker is not bound to the consumer's tracker namespace")
     except SvnUnreadable as e:
         e.checked = True                               # neither the pending nor newest checked change can be selected safely
         raise
-    for e in entries:
-        wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
-        if rel in rels and wc is not None and wc.get("item") in ("modified", "added", "replaced", "unversioned"):
+    except (OSError, RuntimeError, ValueError) as error:
+        e = SvnUnreadable(f"the reported local working-copy paths could not be checked: {error}")
+        e.checked = True
+        raise e from error
+    for rel, wc in entries:
+        if rel in rels and wc.get("item") in ("modified", "added", "replaced", "unversioned"):
             pending[rel] = wc.get("item") != "modified"                     # is it new to the repository
     at, touched = None, {}
     if pending:
-        touched = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in pending}
+        for rel in pending:
+            try:
+                touched[rel] = (ROOT / rel).read_text(encoding="utf-8")
+            except (OSError, UnicodeError) as error:
+                e = SvnUnreadable(f"the pending tracker's local content could not be read: {error}")
+                e.tracker = rels[rel]["id"]
+                raise e from error
         was = lambda rel: None if pending[rel] else read(rel, "cat", "-r", "BASE", rel)
     else:
         try:
-            newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")              # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+            head = (svn_run("info", "--show-item", "revision", "-r", "HEAD", ".") or "").rstrip("\r\n")
+            if not re.fullmatch(r"[1-9][0-9]*", head):
+                raise SvnUnreadable("svn info did not bind the newest-history range to HEAD")
+            newest = svn_entry("-l", "1", "-v", "-r", head + ":1")        # HEAD, not BASE; bind the checked range to the server's numeric snapshot
             if newest is None or not re.fullmatch(r"[1-9][0-9]*", newest.get("revision") or ""):
                 raise SvnUnreadable("svn log did not name the required newest committed revision")
             all_paths = list(newest.iter("path"))
             if not all_paths or any(not p.text or not p.text.startswith("/") or p.get("action") not in ("M", "A", "R", "D") for p in all_paths):
                 raise SvnUnreadable("svn log did not report the newest revision's required changed paths")
-            base = svn_consumer_prefix()
         except SvnUnreadable as e:
             e.newest = True; raise
         at = int(newest.get("revision"))
@@ -6580,7 +6782,8 @@ def ship_problems(trackers):
     rels = {}
     for t in trackers:
         try:
-            rels[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
+            path = TRACKER_DIR / t["file"]
+            rels[(path if vcs() == "svn" else path.resolve()).relative_to(ROOT).as_posix()] = t
         except (KeyError, ValueError):
             continue                                     # no file, or a link to one outside the repository — as `in_this_commit` reads it
     if vcs() == "git":
