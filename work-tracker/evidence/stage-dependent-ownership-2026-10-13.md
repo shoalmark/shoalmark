@@ -71,6 +71,31 @@ seat hours, not a promise of all work today; native/full CI and D3/D4 holds rema
 
 ## Bounded API seams
 
+## Concrete adapter agreements — 18:08 CEST
+
+The following messages are recorded before their serial integration. They agree implementation interfaces within the
+existing signed scope; they grant no new authority, capability acceptance or ownership outside the reservations.
+
+- B proposed: "svn_guard() -> (refusals, report_line)" with no argument, process, write, cache or adoption mechanism.
+  P agrees the adapter always refuses an explicitly requested protected acceptance without adopted consumer proof,
+  including the applicable signature limitation. B implements the standalone adapter and owned Git migrations.
+  Its normal SVN `triage_guard` branch must not unconditionally call it: P still owns the actual protected-request
+  predicate and placement before writes, preserving unguarded/scaffold/Passes/local reads. Adapter controls alone
+  do not establish public-entry fail-closed acceptance. The past-policy reader remains held.
+- A proposed: "svn_local_properties(rel)" through existing `svn_run('proplist', '--verbose', rel, xml=True)`.
+  P agrees one confined, validated local WC target for init/install, with no URL/revision/server fallback; valid
+  successful XML precedes a claim that a property is absent. Administrative/symlink paths and option/peg ambiguity
+  must refuse. Add/propset results are checked. This is not admitted by the board tripwire, whose local SVN capability
+  remains its exact agreed status tuple. A alone edits this adapter and its callers.
+- C proposed: "on SVN return the empty presentation placeholder without starting Git" from `git_user`.
+  P agrees empty presentation text supplies no WC/process/server author or authority; B retains actual attribution
+  and missing-proof refusal. Git retains cached `user.name` through the existing boundary and configure invalidation.
+  C controls extract's blank/placeholder presentation and unchanged real Git identity; selected Git-only answer/done
+  entries still refuse before their authority handlers. P alone integrates the ordered `cli_preflight` in main.
+
+Implementation, actual public-entry controls and independent critical acceptance remain due. A, B and C continue
+other owned work while a dependent interface or review waits. RV-3003/RV-3004: recorded privately.
+
 | Seam | Producer / sole editor | Consumer / requirement |
 |---|---|---|
 | Configured consumer ROOT and chosen backend/administrative paths | P, from reviewed common skeleton. Candidate-only additions are `disk_marker`, `select_vcs`, `metadata_unreadable`, `readable_admin_dir`, `disk_admin_path`; P reserves all five if they survive review. | A/B/C query the selected backend, never rediscover from the source HERE or assume `.git` at ROOT. `configure` resets dispatch, metadata and proof caches together. |
