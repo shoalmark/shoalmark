@@ -51,7 +51,11 @@ ROOT and routes administrative-path discovery through that selection. SVN metada
 non-regular, symlinked or unreadable working-copy records refuse in one line with exit 4. Git own/common and linked-worktree
 directories, ancestor/nested disk metadata and symlink/filesystem aliases remain excluded. Current-main #168 records at
 `ab7ed3f` are already integrated by ordinary local merge `6d0c239`, retaining signed records and command-applied FM-004
-judgement; no dependent product branch is integrated.
+judgement; no dependent product branch is integrated. The independently READY tasking records at
+`6134fae65103c44482babffc2322c229f3aa76f0` are integrated by an ordinary local records merge after the corrective
+product commit `049637c`. All product/control/list/ceiling blobs remain exact, signed records and command-applied
+judgements remain, and INDEX is regenerated. The exclusive dependent function/test allocation and conservative guard
+hold are current; their code still waits for independent critical common-skeleton READY.
 
 There remain **63 direct starts: 55 Git, 3 SVN and 5 non-VCS/dynamic**, declared in the unchanged
 [initial ceiling](../test_vcs_launch_ceiling.json) and caller evidence. The 60 `git_out` and 9 `svn_run` domain callers
@@ -125,3 +129,4 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 | 2026-10-13 | FM-044 bounded skeleton dispatch built after neutral refactor 4f1664d: cached ROOT selection, no-process SVN metadata, fail-closed administrative paths and constrained target/source process requests. Compile and 243 core checks pass; 63 retained direct starts and exact scanner/proof limits declared. Independent critical review next; dependent migrations, archive integration, CI and platform decisions remain due. |
 | 2026-10-13 | Integrated only immutable current-main #168 records at ab7ed3f by ordinary local merge before the critical handoff, retaining the exact 6f00764 product blobs, command-applied FM-004 judgement, main's signed records and FM-044 implementation evidence; INDEX regenerated. |
 | 2026-10-13 | Fixed forward round-1 RV-3085–RV-3088 after released e511d57: node-identity/class-scoped scanner, pre-fallible repository invalidation, original-path/canonical-HERE source confinement and complete checked reachable parent transitions with deliberate proof failures. Compile and 302 core checks pass; 59 targeted controls contrast 17 pass/42 fail on immutable 6d0c239 with 59 pass on the fix. Ceiling/list unchanged; critical verification remains due and dependent code held. |
+| 2026-10-13 | Integrated only independently READY planning records 6134fae after corrective product 049637c by ordinary local merge. Retained all product/control/list/ceiling blobs and signed records/judgements exactly; exclusive dependent function/test ownership and current holds retained; INDEX regenerated. No dependent code or acceptance verdict supplied. |

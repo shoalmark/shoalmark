@@ -1,6 +1,6 @@
 (Research) Stage 1 — bounded SVN-without-git inventory and Builder handoff
 
-Prepared 2026-10-13 by `stage_and_b1_inventory`, a read-only Research support agent. This is a handoff outside git, not a tracker, signed decision, implementation or review verdict. Repository reads used immutable main `e7ce074ad0717f864067159365eb700b7a7a0a38` and recovered filing `6c03193`; concurrent working-tree tracker edits were not evidence for this inventory. No tests, browser runs, fetch, worktree creation, repository edits or forge/remotes mutations were performed.
+Prepared 2026-10-13 by `stage_and_b1_inventory`, a read-only Research support agent. This committed research handoff supports the canonical tracker; it is not a signed decision, implementation or review verdict. Repository reads used immutable main `e7ce074ad0717f864067159365eb700b7a7a0a38` and recovered filing `6c03193`; concurrent working-tree tracker edits were not evidence for this inventory. No tests, browser runs, fetch, worktree creation, repository edits or forge/remotes mutations were performed.
 
 ## Authority and release boundary
 

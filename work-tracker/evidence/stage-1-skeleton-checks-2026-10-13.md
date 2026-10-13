@@ -181,3 +181,12 @@ protects administrative paths and checks directory/file readability; it does not
 server author, signatures or the committed protected-policy baseline. Source HERE cannot supply consumer authority.
 Archive 3c18008's non-Git metadata integration point survives; source/archive code, final release dry run/pins and
 combined integration are still separate. Independent root critical review must precede dependent branches.
+
+## Current tasking integration
+
+Corrective product `049637c7b94e74cb2c00e8bb2d9f0383e72f03e8` follows released addendum `e511d57`.
+Only independently READY planning records `6134fae65103c44482babffc2322c229f3aa76f0` are merged locally after it.
+All 118 non-work-tracker mode/blob/path entries, including production/control/list/ceiling files, remain identical to
+that tested corrective product. Current signed path/Part B and command-applied judgement fields remain; only canonical
+implementation truth is reconciled and INDEX regenerated. Exclusive function/test ownership is in the canonical brief
+and its linked allocation. No dependent product code starts and no critical READY is inferred from the records verdict.

@@ -1,6 +1,6 @@
 (Research) B1 — read-only conflict handoff for Claude tomorrow
 
-Prepared 2026-10-13 by `stage_and_b1_inventory`, Research support. This file is outside git; it is no design approval, code build, review verdict or publish instruction. Immutable comparison: main `e7ce074ad0717f864067159365eb700b7a7a0a38` versus `origin/fm/006-b1-the-landing` at `490707148fdb5401107664b2699979176e252bc0`. Merge base is `a86667f902eb6f644c927886ddea00c477101622`. Read-only `git merge-tree <base> e7ce074 4907071` and diffs were used; no merge, checkout, test, browser, remote or forge mutation was performed.
+Prepared 2026-10-13 by `stage_and_b1_inventory`, Research support. This committed research handoff is not a design approval, code build, review verdict or publish instruction. Immutable comparison: main `e7ce074ad0717f864067159365eb700b7a7a0a38` versus `origin/fm/006-b1-the-landing` at `490707148fdb5401107664b2699979176e252bc0`. Merge base is `a86667f902eb6f644c927886ddea00c477101622`. Read-only `git merge-tree <base> e7ce074 4907071` and diffs were used; no merge, checkout, test, browser, remote or forge mutation was performed.
 
 ## Signed allocation and current state
 
