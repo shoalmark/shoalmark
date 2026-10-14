@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
@@ -124,6 +125,43 @@ def command(root, *argv):
     return subprocess.run(list(argv), cwd=root, env=env, capture_output=True, check=True)
 
 
+def svn_only(folder):
+    """The measured runs' search folder, as test_vcs_entry.svn_search builds it: svn under the name svn has — `svn.exe` on Windows, which a
+    start of `svn` looks for there — its DLLs beside it on Windows, and no Git. A link named `svn` alone is no program on Windows (PR #173)."""
+    from test_vcs_entry import svn_search          # imported here: the probe this file also runs loads nothing more before it measures
+    return svn_search(folder, shutil.which("svn"))
+
+
+def saw(got):
+    """What a measured run or the CLI said: its exit code and the first 300 characters of its stderr, so a failing check explains itself."""
+    if isinstance(got, subprocess.CompletedProcess):
+        return f"saw {got.returncode}, stderr {got.stderr[:300]!r}"
+    return f"saw {got['code']}, stderr {got['err'][:300]!r}"
+
+
+def fixture_saw(error):
+    """What a fixture step that failed saw, as `guarded` caught it: the command, its exit code and the first 300 characters of its stderr, or the
+    error; then the block's line it stopped at, and the innermost suite line where that differs (a helper such as `command`)."""
+    if isinstance(error, subprocess.CalledProcessError):
+        stderr = error.stderr.decode("utf-8", "replace") if isinstance(error.stderr, bytes) else str(error.stderr or "")
+        cmd = error.cmd if isinstance(error.cmd, str) else " ".join(map(str, error.cmd))
+        said = f"`{cmd}` exited {error.returncode}, stderr {stderr[:300]!r}"
+    else:
+        said = f"{type(error).__name__}: {str(error)[:300]!r}"
+    ours = [f"{Path(f.filename).name}:{f.lineno}" for f in traceback.extract_tb(error.__traceback__)[1:] if Path(f.filename).name.startswith("test_")]
+    return said + (f" at {ours[0]}" if ours else "") + (f" (innermost {ours[-1]})" if len(ours) > 1 else "")
+
+
+def guarded(block, check, controls, /, *args, **kwargs):
+    """Run one block of controls. A fixture step that fails — a setup command `check=True` refuses, a program that does not start, a fixture's
+    own precondition — is a named FAIL with what it saw, and the next block runs; the block's later checks cannot run without it. Before,
+    the traceback ended the whole suite (PR #173's run 38539381661, Windows, A1: `svn add` of a page no measured run had written)."""
+    try:
+        controls(*args, **kwargs)
+    except (subprocess.SubprocessError, OSError, AssertionError) as error:
+        check(f"{block}: a fixture step failed, and the block's later checks did not run ({fixture_saw(error)})", False)
+
+
 def corpus(root):
     (root / "shoalmark.toml").write_text('name = "local fixture"\ntracker_dir = "work-tracker"\n[kinds]\nWORK = "Work"\n', encoding="utf-8")
     folder = root / "work-tracker"
@@ -168,8 +206,7 @@ def run_board_local_controls(fm, check):
             command(base, "svnadmin", "create", str(server))
             command(base, "svn", "checkout", "-q", server.as_uri(), str(root))
             folder = corpus(root)
-            search.mkdir()
-            (search / "svn").symlink_to(shutil.which("svn"))
+            svn_only(search)
             command(root, "svn", "add", "shoalmark.toml", "work-tracker")
             command(root, "svn", "commit", "-q", "-m", "local fixture", "--username", "fixture-author")
             states = base / "board-states"
@@ -183,37 +220,42 @@ def run_board_local_controls(fm, check):
             command(base, "svn", "checkout", "-q", server.as_uri(), str(nested_wc))
             server.rename(base / "server-unavailable")
             got = measured(root, search)
-            check("A1: real public SVN board succeeds with Git absent and server unavailable", got["code"] == 0 and got["git_absent"] and got["svn_present"] and "Recorded content" in (folder / "view" / "WORK-001.js").read_text(encoding="utf-8"))
+            check(f"A1: real public SVN board succeeds with Git absent and server unavailable ({saw(got)}; git absent {got['git_absent']}, svn present {got['svn_present']})",
+                  got["code"] == 0 and got["git_absent"] and got["svn_present"] and "Recorded content" in (folder / "view" / "WORK-001.js").read_text(encoding="utf-8"))
             starts = [e for e in got["events"] if e[0] == "subprocess.Popen"]
-            check("A1: one exact local consumer status start and no Git or network attempt", len(starts) == 1 and starts[0][2] == STATUS and starts[0][3] == str(root) and not any(e[0] == "socket.connect" for e in got["events"]))
+            check(f"A1: one exact local consumer status start and no Git or network attempt ({saw(got)}; starts {str([e[1:] for e in starts])[:300]})",
+                  len(starts) == 1 and starts[0][2] == STATUS and starts[0][3] == str(root) and not any(e[0] == "socket.connect" for e in got["events"]))
             writes = [e[1] for e in got["events"] if e[0] == "open" and not e[1].isdigit()]
-            check("A1: actual successful writes are confined to page and views", bool(writes) and all(Path(p) == folder / "index.html" or Path(p).parent == folder / "view" for p in writes))
+            check(f"A1: actual successful writes are confined to page and views ({saw(got)}; writes {str(writes)[:300]})",
+                  bool(writes) and all(Path(p) == folder / "index.html" or Path(p).parent == folder / "view" for p in writes))
             before = board_snapshot(folder)
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
             env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
             cli = subprocess.run([sys.executable, "-B", str(HERE / "shoalmark.py"), "--root", str(root), "--html-only"], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
-            check("A1: direct production CLI succeeds with no Git and unavailable server", cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held.\n")
+            check(f"A1: direct production CLI succeeds with no Git and unavailable server ({saw(cli)})",
+                  cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held.\n")
             for scenario in ("malformed_xml", "failed_status"):
                 got = measured(root, search, scenario)
-                check(f"A1: injected unreadable query refuses before writes ({scenario})", got["code"] == 4 and "metadata could not be read" in got["err"] and board_snapshot(folder) == before and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))
+                check(f"A1: injected unreadable query refuses before writes ({scenario}; {saw(got)})", got["code"] == 4 and "metadata could not be read" in got["err"] and board_snapshot(folder) == before and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))
             empty_search = base / "no-vcs-bin"; empty_search.mkdir()
             got = measured(root, empty_search)
-            check("A1: actually absent SVN refuses without changing the board", got["code"] == 4 and "svn could not be run" in got["err"] and not got["svn_present"] and board_snapshot(folder) == before)
+            check(f"A1: actually absent SVN refuses without changing the board ({saw(got)})", got["code"] == 4 and "svn could not be run" in got["err"] and not got["svn_present"] and board_snapshot(folder) == before)
             source = root / "tools" / "shoalmark"; source.mkdir(parents=True)
             for name in ("shoalmark.py", "VERSION"):
                 shutil.copy2(HERE / name, source / name)
             for name in ("vendor", "brand"):
                 shutil.copytree(HERE / name, source / name)
             cli = subprocess.run([sys.executable, "-B", str(source / "shoalmark.py"), "--root", str(root), "--html-only"], cwd=source, env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
-            check("A1: installed source below ROOT refreshes the consumer board without Git", cli.returncode == 0 and str(folder / "index.html") in cli.stdout and not (source / "work-tracker").exists())
+            check(f"A1: installed source below ROOT refreshes the consumer board without Git ({saw(cli)})", cli.returncode == 0 and str(folder / "index.html") in cli.stdout and not (source / "work-tracker").exists())
             # The fixed local query includes ignored boards, so they remain writable after ordinary ignore setup.
             command(root, "svn", "propset", "svn:ignore", "index.html\nview\n", "work-tracker")
             got = measured(root, search)
-            check("A1: actual ignored board paths are writable through the same local snapshot", got["code"] == 0 and "file://" in got["out"])
+            check(f"A1: actual ignored board paths are writable through the same local snapshot ({saw(got)})", got["code"] == 0 and "file://" in got["out"])
             for scenario in ("start:" + json.dumps(["svn", "log", "."]), "start:" + json.dumps(["git", "version"]), "start:" + json.dumps([sys.executable, "-c", "pass"]), "network", "write"):
                 got = measured(root, search, scenario)
-                check(f"A1: actual audit refusal precedes side effect ({scenario[:45]})", got["code"] == 4 and "was stopped" in got["err"] and board_snapshot(folder) == before and not (root / "forbidden.txt").exists())
-                check(f"A1: independent observer records refused attempt ({scenario[:45]})", len([e for e in got["events"] if e[0] == "subprocess.Popen"]) == 2 if scenario.startswith("start:") else any(e[0] == ("socket.connect" if scenario == "network" else "open") for e in got["events"]))
+                check(f"A1: actual audit refusal precedes side effect ({scenario[:45]}; {saw(got)})", got["code"] == 4 and "was stopped" in got["err"] and board_snapshot(folder) == before and not (root / "forbidden.txt").exists())
+                check(f"A1: independent observer records refused attempt ({scenario[:45]}; {saw(got)}; events {str([e[:2] for e in got['events']])[:300]})",
+                      len([e for e in got["events"] if e[0] == "subprocess.Popen"]) == 2 if scenario.startswith("start:") else any(e[0] == ("socket.connect" if scenario == "network" else "open") for e in got["events"]))
             fm.configure(root)
             with patch.object(fm, "_VCS", ("svn", root)):
                 for executable, cwd in (("other-program", root), ("svn", base), ("svn", None)):
@@ -248,19 +290,19 @@ def run_board_local_controls(fm, check):
             command(root, "svn", "add", "--no-ignore", "work-tracker/index.html")
             before = board_snapshot(folder)
             got = measured(root, search)
-            check("A1: actual scheduled page and its views stay byte identical without a link", got["code"] == 0 and board_snapshot(folder) == before and "Subversion versions it" in got["err"] and "file://" not in got["out"])
+            check(f"A1: actual scheduled page and its views stay byte identical without a link ({saw(got)})", got["code"] == 0 and board_snapshot(folder) == before and "Subversion versions it" in got["err"] and "file://" not in got["out"])
             command(root, "svn", "revert", "work-tracker/index.html")
             command(root, "svn", "add", "--no-ignore", "work-tracker/view")
             views = {k: v for k, v in board_snapshot(folder).items() if k.startswith("view/")}
             got = measured(root, search)
             page = (folder / "index.html").read_text(encoding="utf-8")
-            check("A1: scheduled view directory is unchanged and page is inert", got["code"] == 0 and all(board_snapshot(folder).get(k) == v for k, v in views.items()) and "default-src 'none'" in page and not any(s in page for s in ("<script", "<style", "<img", "<link")) and "Subversion versions" in got["err"])
+            check(f"A1: scheduled view directory is unchanged and page is inert ({saw(got)})", got["code"] == 0 and all(board_snapshot(folder).get(k) == v for k, v in views.items()) and "default-src 'none'" in page and not any(s in page for s in ("<script", "<style", "<img", "<link")) and "Subversion versions" in got["err"])
             command(root, "svn", "revert", "-R", "work-tracker/view")
             # Valid explicit subtree and reconfiguration never reuse another root's inventory.
             sub = root / "sub"; sub.mkdir(); corpus(sub)
             command(root, "svn", "add", "sub")
             got = measured(sub, search)
-            check("A1: actual explicit SVN subdirectory works without Git or server", got["code"] == 0 and got["git_absent"] and [e[3] for e in got["events"] if e[0] == "subprocess.Popen"] == [str(sub)])
+            check(f"A1: actual explicit SVN subdirectory works without Git or server ({saw(got)})", got["code"] == 0 and got["git_absent"] and [e[3] for e in got["events"] if e[0] == "subprocess.Popen"] == [str(sub)])
             gitroot = base / "git-root"; gitroot.mkdir(); gitfolder = corpus(gitroot)
             command(gitroot, "git", "init", "-q")
             (gitfolder / "index.html").write_text("committed page", encoding="utf-8")
@@ -274,15 +316,15 @@ def run_board_local_controls(fm, check):
             out, err = io.StringIO(), io.StringIO()
             with redirect_stdout(out), redirect_stderr(err):
                 code = fm.board_run(gitroot)
-            check("A1: real retained Git tracked-page protection", code == 0 and (gitfolder / "index.html").read_text(encoding="utf-8") == "committed page" and "git tracks it" in err.getvalue())
+            check(f"A1: real retained Git tracked-page protection (saw {code}, stderr {err.getvalue()[:300]!r})", code == 0 and (gitfolder / "index.html").read_text(encoding="utf-8") == "committed page" and "git tracks it" in err.getvalue())
             before = board_snapshot(state_folder)
             got = measured(states, search)
-            check("A1: actual normal versioned page/views stay byte identical", got["code"] == 0 and board_snapshot(state_folder) == before and "file://" not in got["out"])
+            check(f"A1: actual normal versioned page/views stay byte identical ({saw(got)})", got["code"] == 0 and board_snapshot(state_folder) == before and "file://" not in got["out"])
             (state_folder / "index.html").write_bytes(b"locally modified versioned page\n")
             (state_folder / "view" / "WORK-001.js").write_bytes(b"locally modified versioned view\n")
             before = board_snapshot(state_folder)
             got = measured(states, search)
-            check("A1: actual modified versioned page/views stay byte identical", got["code"] == 0 and board_snapshot(state_folder) == before)
+            check(f"A1: actual modified versioned page/views stay byte identical ({saw(got)})", got["code"] == 0 and board_snapshot(state_folder) == before)
             command(states, "svn", "revert", "-R", "work-tracker")
             for state in ("deleted", "missing", "replaced", "obstructed"):
                 page_path = state_folder / "index.html"
@@ -297,34 +339,34 @@ def run_board_local_controls(fm, check):
                         page_path.mkdir()
                 before = board_snapshot(state_folder)
                 got = measured(states, search)
-                check(f"A1: actual {state} board path is never overwritten/recreated", got["code"] == (4 if state == "obstructed" else 0) and board_snapshot(state_folder) == before and (page_path.is_dir() if state == "obstructed" else not page_path.exists() if state in ("missing", "deleted") else page_path.read_bytes() == b"scheduled replacement page\n"))
+                check(f"A1: actual {state} board path is never overwritten/recreated ({saw(got)})", got["code"] == (4 if state == "obstructed" else 0) and board_snapshot(state_folder) == before and (page_path.is_dir() if state == "obstructed" else not page_path.exists() if state in ("missing", "deleted") else page_path.read_bytes() == b"scheduled replacement page\n"))
                 if page_path.is_dir():
                     page_path.rmdir()
                 command(states, "svn", "revert", "work-tracker/index.html")
             command(states, "svn", "copy", "work-tracker/view/WORK-001.js", "work-tracker/view/WORK-002.js")
             before = board_snapshot(state_folder)
             got = measured(states, search)
-            check("A1: actual scheduled copied view remains protected", got["code"] == 0 and board_snapshot(state_folder) == before)
+            check(f"A1: actual scheduled copied view remains protected ({saw(got)})", got["code"] == 0 and board_snapshot(state_folder) == before)
             saved_view = base / "saved-view"
             (folder / "view").rename(saved_view); nested_wc.rename(folder / "view")
             before = board_snapshot(folder)
             got = measured(root, search)
-            check("A1: actual nested WC ambiguity refuses before board writes", got["code"] == 4 and "nested Subversion working copy" in got["err"] and board_snapshot(folder) == before)
+            check(f"A1: actual nested WC ambiguity refuses before board writes ({saw(got)})", got["code"] == 4 and "nested Subversion working copy" in got["err"] and board_snapshot(folder) == before)
             (folder / "view").rename(nested_wc); saved_view.rename(folder / "view")
             # Actual metadata failure occurs before the first board write.
             before = board_snapshot(folder)
             (root / ".svn" / "wc.db").rename(root / ".svn" / "wc.db-hidden")
             got = measured(root, search)
-            check("A1: real missing working-copy metadata refuses before every board write", got["code"] == 4 and board_snapshot(folder) == before and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))
+            check(f"A1: real missing working-copy metadata refuses before every board write ({saw(got)})", got["code"] == 4 and board_snapshot(folder) == before and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))
             (root / ".svn" / "wc.db-hidden").rename(root / ".svn" / "wc.db")
     finally:
         fm.configure(original_root)
 
 
 def run_shared_controls(fm, check):
-    run_board_local_controls(fm, check)
-    run_svn_setup_controls(fm, check)
-    run_corrective_controls(fm, check)
+    guarded("A1", check, run_board_local_controls, fm, check)
+    guarded("A2", check, run_svn_setup_controls, fm, check)
+    guarded("A corrections", check, run_corrective_controls, fm, check)
 
 
 def run_svn_setup_controls(fm, check):
@@ -337,7 +379,7 @@ def run_svn_setup_controls(fm, check):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp).resolve(); server = base / "server"; search = base / "bin"
             command(base, "svnadmin", "create", str(server))
-            search.mkdir(); (search / "svn").symlink_to(shutil.which("svn"))
+            svn_only(search)
             roots = {}
             for name in ("init", "info-fail", "add-fail", "propset-fail", "install", "install-info-fail", "install-proplist-fail", "install-propset-fail", "bad-db", "foreign"):
                 root = base / name
@@ -477,8 +519,10 @@ def run_corrective_controls(fm, check):
         (root / "a" / "b").mkdir(parents=True); (foreign / "x" / "y" / "z").mkdir(parents=True)
         (root / "a" / "b" / "escape").symlink_to(foreign / "x" / "y" / "z", target_is_directory=True)
         cwd = str(root / "a" / "b" / "escape") + "/../../.."
-        assert os.path.abspath(cwd) == str(root) and Path(cwd).resolve() == foreign
-        search.mkdir(); (search / "svn").symlink_to(shutil.which("svn"))
+        # POSIX resolves `..` after the link, so this spelling of the root reaches the foreign copy; Windows resolves `..` by name first, and it
+        # stays a spelling of the root. The refusal below is of the spelling, so it holds on both; only the resolution is POSIX's (PR #173).
+        assert os.path.abspath(cwd) == str(root) and (os.name == "nt" or Path(cwd).resolve() == foreign)
+        svn_only(search)
         setup = base / "setup"; command(base, "svn", "checkout", "-q", server.as_uri(), str(setup))
         source = setup / "tools" / "shoalmark" / "shoalmark.py"; source.parent.mkdir(parents=True); source.write_bytes((HERE / "shoalmark.py").read_bytes())
         server.rename(base / "server-unavailable")

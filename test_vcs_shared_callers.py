@@ -246,7 +246,7 @@ def svn_controls(fm, old, check):
         call(base, "svn", "checkout", "-q", server.as_uri(), str(init))
         module = root / "module"; module.mkdir(); call(module, "git", "init", "-q")
         (root / ".gitmodules").write_text('[submodule "module"]\n path = module\n')
-        search.mkdir(); (search / "svn").symlink_to(shutil.which("svn"))
+        shared.svn_only(search)
         toolfile = root / "tools" / "shoalmark" / "shoalmark.py"; toolfile.parent.mkdir(parents=True); toolfile.write_bytes(Path(fm.__file__).read_bytes())
         server.rename(base / "server-unavailable")
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}; env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")

@@ -14635,23 +14635,26 @@ import test_vcs_entry as _stage_entry
 import test_git_entry_differential as _stage_git_entry
 import test_tsvn_source_binding as _stage_binding
 
+# Each block below runs guarded: a fixture step that fails in it — a setup command `check=True` refuses, a program that does not start, a
+# fixture's precondition — is a named FAIL with what it saw, and the next block runs (PR #173's run 38539381661: A1's traceback ended Windows' suite)
+_stage_guard = _stage_shared.guarded
 _stage_svn = bool(shutil.which("svn") and shutil.which("svnadmin"))
 if _stage_svn:
-    _stage_shared.run_shared_controls(fm, check)
+    _stage_shared.run_shared_controls(fm, check)                # A1, A2 and the A corrections, each guarded
 else:
     _skipped("FM-044 local board/init/install", 152, "svn or svnadmin is not installed here")
 _stage_old_path = _stage_callers.baseline_source()
 _stage_old = _stage_callers.load(_stage_old_path)
-_stage_callers.git_controls(fm, _stage_old, check)
+_stage_guard("FM-044 A callers, Git", check, _stage_callers.git_controls, fm, _stage_old, check)
 if _stage_svn:
-    _stage_callers.svn_controls(fm, _stage_old, check)
+    _stage_guard("FM-044 A callers, SVN", check, _stage_callers.svn_controls, fm, _stage_old, check)
 else:
     _skipped("FM-044 SVN caller runtime", 9, "svn or svnadmin is not installed here")
 if os.name == "nt":
     _skipped("RV-3096 inherited deleted-directory runtime", 22,
              "Windows prevents deleting an in-use current directory")
 elif _stage_svn:
-    _stage_callers.inherited_cwd_controls(fm, check)
+    _stage_guard("RV-3096 inherited directory", check, _stage_callers.inherited_cwd_controls, fm, check)
 else:
     _skipped("RV-3096 inherited-directory runtime", 22, "svn or svnadmin is not installed here")
 fm.configure(HERE)
@@ -14666,14 +14669,14 @@ for _stage_case in _stage_unittest.defaultTestLoader.loadTestsFromTestCase(_stag
         for _stage_test, _stage_detail in _stage_result.errors + _stage_result.failures:
             print(_stage_detail)
 if _stage_svn:
-    _stage_entry.run_entry_controls(fm, check)
+    _stage_guard("FM-044 actual local entry", check, _stage_entry.run_entry_controls, fm, check)
 else:
     _skipped("FM-044 actual local entry", 162, "svn or svnadmin is not installed here")
 _stage_git_baseline = _stage_callers.baseline_source("615fb1d1f58c0936e7d5aa2037e2b3a655e0f107")
-_stage_git_entry.run_git_entry_differentials(fm.__file__, _stage_git_baseline,
-                                           payload=_stage_git_baseline.parent, check=check)
+_stage_guard("FM-044 Git entry differentials", check, _stage_git_entry.run_git_entry_differentials, fm.__file__, _stage_git_baseline,
+             payload=_stage_git_baseline.parent, check=check)
 if all(shutil.which(_name) for _name in ("git", "svn", "svnadmin")):
-    _stage_binding.run_source_binding_controls(fm.__file__, check, payload=HERE)
+    _stage_guard("FM-044 Tortoise source binding", check, _stage_binding.run_source_binding_controls, fm.__file__, check, payload=HERE)
 else:
     _skipped("FM-044 Tortoise source binding", 92, "Git fixture setup or svn/svnadmin unavailable")
 fm.configure(HERE)

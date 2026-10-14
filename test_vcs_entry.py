@@ -170,7 +170,9 @@ def svn_search(folder, svn):
         executable.symlink_to(svn)
     except OSError:
         shutil.copy2(svn, executable)
-        # Windows copies need their runtime DLLs, never another VCS executable.
+    # Windows needs the runtime DLLs, never another VCS executable, beside a copy and beside a link alike. It looks for them next to
+    # the path a program was started by (CPython's own venv links every .exe and .dll for that reason), and runners may make links.
+    if os.name == "nt":
         for dll in Path(svn).parent.glob("*.dll"):
             shutil.copy2(dll, folder / dll.name)
     assert shutil.which("svn", path=str(folder))
