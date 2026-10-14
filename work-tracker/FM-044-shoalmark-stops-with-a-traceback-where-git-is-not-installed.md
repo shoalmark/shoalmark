@@ -24,7 +24,8 @@ step, so it has still never run there at this branch. The five are new and Windo
 path with the URI the product prints (RV-3230); A1's reconfigure compared raw spellings with the product's normcased
 inventory, its second clause passing vacuously (RV-3231). A2's ignore setup met a product defect: `proplist --xml` prints
 an `svn:` value with Windows' line ends, `svn_local_properties` returned them, and `svn propset` refused the mixed value
-that `svn_ignore_board` built; `svn_local_properties` alone now returns `svn:` values with LF, as stored (RV-3232). The
+that `svn_ignore_board` built. On Windows, where `proplist --xml` also prints an `svn:` value in the system's code page,
+`svn_local_properties` alone now reads each `svn:` value with `propget --xml`, as stored (RV-3232, RV-3235). The
 POSIX-shell CLI test skips by name on Windows (RV-3233), and the Git entry differential removes its consumer with a
 helper that clears Git's read-only bit (RV-3234). RV-3220, the first round's last finding, made the entry and binding
 fixtures' `svn add` quiet. The first round answered run `38539381661`:
