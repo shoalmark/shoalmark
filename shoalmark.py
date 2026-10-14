@@ -9490,6 +9490,10 @@ def svn_local_properties(rel):
                 raise SvnUnreadable("a local property is not UTF-8 text")
         elif prop.get("encoding") is not None:
             raise SvnUnreadable("a local property has an unknown encoding")
+        if name.startswith("svn:") and os.linesep != "\n":
+            # `proplist --xml` prints an `svn:` value with the system's line ends (Subversion 1.14.5 cmdline.c:1182, subst.c:2015) and keeps
+            # each `\r` as `&#13;` (xml.c:180); stored, the value has LF alone. Return it as stored (PR #173's run 38589202689, RV-3232).
+            value = value.replace(os.linesep, "\n")
         out[name] = value
     return out
 

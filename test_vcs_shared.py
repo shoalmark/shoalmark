@@ -430,7 +430,12 @@ def run_svn_setup_controls(fm, check):
             with redirect_stdout(out), redirect_stderr(err):
                 code = fm.svn_ignore_board()
             expected = value + "index.html\nview\n"
-            check("A2: ignore setup preserves raw existing patterns/newlines", code == 0 and fm.svn_local_properties("docs/work-tracker")["svn:ignore"] == expected)
+            try:
+                read_ = fm.svn_local_properties("docs/work-tracker").get("svn:ignore") if code == 0 else None
+            except fm.SvnUnreadable as e:
+                read_ = f"<unreadable: {e}>"
+            check(f"A2: ignore setup preserves raw existing patterns/newlines (saw {code}, stderr {err.getvalue()[:300]!r}; svn:ignore {read_!r})",
+                  code == 0 and read_ == expected)
             # Local option/peg-like paths stay literal rather than options or remote revision selectors.
             for name in ("-local", "peg@HEAD"):
                 (root / name).mkdir()
