@@ -3,17 +3,14 @@ id: FM-006
 status: In Progress
 considered: FM-005, FM-003
 tags: process
-next: review
+next: owner
 triaged: 2026-10-13
 tier: P2
-ask: "When and how does shoalmark go public?"
-ask-kind: action
-ask-since: 2026-09-25
-ask-options: "this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held | a snapshot as a new repository, client names and the parent's traces removed, this one the private archive, same gates | not yet"
-ask-proposal: "this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held"
-answer: "accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held"
-answered: 2026-09-26
-answered-by: holgo99
+ask: "Do the corrections in the body, M1 to M10, S3, S4 and Board for Tafel, land in v0.20.1, integrated now and re-read at the words freeze after v0.20.0's tag, with the signing page stating your key file as it stands after FM-007's act of 15 October?"
+ask-kind: ruling
+ask-since: 2026-10-14
+ask-options: "M1 to M10, S3, S4 and Board for Tafel | all except the signing page's key state, which you describe yourself | only the lines the B1 handoff already names: M4, M9 and M1's push, and Board for Tafel"
+ask-proposal: "M1 to M10, S3, S4 and Board for Tafel"
 done: "2026-09-30T08:14:56+02:00 · Public repository: https://github.com/shoalmark/shoalmark/ · Documentation: https://shoalmark.github.io/shoalmark/ · Migration merged: 80d0811974a1d39b679cfd374c80109ddd62acce · Independent migration review: 5e26a88e75b992c243148c2786e44f443e0f7437 · Port-evidence cleanup merged: b041cb2dca136623ee9160d74ae5b39b0f1a7ba2 · Publication gates merged and deployed: 792dbca9caa74629d12645dcc5ae7f55a2bb2340 · Independent publication review: b9b3971c21f3b84f332249bbc976fe9af7580f0d · Scoring completed; publication preceded scoring under my previously recorded risk acceptance."
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
@@ -21,6 +18,216 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 # FM-006 — shoalmark has one document, written for agents — the humans who own the repositories have no page of their own
 
 ## What is true now
+
+**2026-10-14 — the truth pass on B1's words, and the signing page.**
+
+Every line below is in B1's landing partials (EN `overrides/partials/landing/en.html`, DE `…/de.html`). Each change
+applies equally to the line's twins wherever the same sentence stands:
+- `docs/index.md` and `docs/de/index.md`;
+- both *How it works* pages and both Setup pages;
+- the README;
+- `launch/*/start.*`.
+
+The Reviewer greps for every copy in both languages. Lines are read at B1's head `4907071`; recount them at the
+integration's base.
+
+**The rule for M1 and M2,** shared with FM-007's dialog item: a signature is promised only where signing is on.
+
+**Order and timing:**
+- Integrate all of it now. M1, M2 and M5 go in the Builder's first pass; the rest follows on the same branch.
+- The words freeze after v0.20.0's tag. At the freeze, only M4 is re-read against what v0.20.0 shipped.
+- The signing page's key state is re-read after FM-007's act of 15 October.
+
+**M1. The answer command signs only where signing is on.**
+- EN `p2_answer`
+  - old: `One command per answer: it writes the answer, signs it with your key and pushes it.`
+  - new: `One command per answer: it writes your answer as a commit, signed with your key once you turn signing on.`
+- DE `p2_answer`
+  - old: `Ein Befehl pro Antwort: Er schreibt die Antwort, signiert sie mit Ihrem Schlüssel und pusht sie.`
+  - new: `Ein Befehl pro Antwort: Er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.`
+- EN `cost_2`
+  - old: `<code>--answer AP-007 accept</code> writes the answer, signs it with your key and pushes it.`
+  - new: `<code>--answer AP-007 accept</code> writes your answer as a commit, signed with your key once you turn signing on.`
+- DE `cost_2`
+  - old: `<code>--answer AP-007 accept</code> schreibt die Antwort, signiert sie mit Ihrem Schlüssel und pusht sie.`
+  - new: `<code>--answer AP-007 accept</code> schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.`
+- **Why:** `--answer` adds `-S` only where the answering identity is marked signed (`shoalmark.py:2997–2999` at main
+  `70fe288`).
+- **The push:** at `70fe288` `--answer` still pushes (`:3012`), and R4's removal of that is v0.21.0 (FM-023). The
+  new words leave the push out, which is true either way; adding *and pushes it* back would also be true for v0.20.1.
+
+**M2. Only your signed commit counts, once signing is on; *move on your word* goes.**
+- EN `p2_sig`
+  - old: `As an answer, only your signed commit counts. A click, a merge or a line in chat is not an answer — four tiers, from a key anything on your account can use to one that needs your touch.`
+  - new: `Once you turn signing on, only your signed commit counts as an answer. A click, a merge or a line in chat is not an answer — four tiers, from a key anything on your account can use to one that needs your touch.`
+- DE `p2_sig`
+  - old: `Als Antwort zählt nur Ihr signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter Ihrem Konto benutzen kann, bis zu einem, der Ihre Berührung braucht.`
+  - new: `Sobald Sie das Signieren einschalten, zählt als Antwort nur Ihr signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter Ihrem Konto benutzen kann, bis zu einem, der Ihre Berührung braucht.`
+- `docs/index.md:25`, the bold opener only; the paragraph after it is already scoped
+  - old: `**Your agents move on your word — and only your signed word counts.**`
+  - new: `**Your answer is a commit, never a click or a line in chat.**`
+- `docs/de/index.md:23`, the bold opener only
+  - old: `**Ihre Agenten handeln auf Ihr Wort hin — und es gilt nur Ihr signiertes Wort.**`
+  - new: `**Ihre Antwort ist ein Commit, nie ein Klick oder eine Zeile im Chat.**`
+- **Why:** where answers prove the author only, an unsigned answer in your name counts, so the absolute line is false
+  there.
+
+**M3. The standup without an invite.**
+- EN `p2_standup`
+  - old: `One sitting, fifteen minutes, at the time you choose. The invite comes as a calendar file.`
+  - new: `One sitting at the time you choose, fifteen minutes by default: the board's first lines are its agenda.`
+- DE `p2_standup`
+  - old: `Ein Standup, fünfzehn Minuten, zu der Uhrzeit, die Sie wählen. Die Einladung kommt als Kalenderdatei.`
+  - new: `Ein Standup zu der Uhrzeit, die Sie wählen, fünfzehn Minuten, wenn Sie nichts anderes einstellen: Die ersten Zeilen des Boards sind seine Tagesordnung.`
+- EN `cost_1_b` / `cost_1`
+  - old: `One sitting, fifteen minutes` / `at the time you choose. The invite comes as a calendar file.`
+  - new: `One sitting, at the time you choose` / `fifteen minutes by default; the board's first lines are its agenda.`
+- DE `cost_1_b` / `cost_1`
+  - old: `Ein Standup, fünfzehn Minuten` / `zu der Uhrzeit, die Sie wählen. Die Einladung kommt als Kalenderdatei.`
+  - new: `Ein Standup, zu der Uhrzeit, die Sie wählen` / `fünfzehn Minuten, wenn Sie nichts anderes einstellen; die ersten Zeilen des Boards sind seine Tagesordnung.`
+- *How it works* `:47`
+  - EN: `(that is what the calendar invite says; the length can be set)` → `(the length can be set)`
+  - DE: `(so steht es in der Kalendereinladung; die Dauer lässt sich einstellen)` → `(die Dauer lässt sich einstellen)`
+- **Why:**
+  - R9 removes the invite in v0.21.0 (FM-023), so v0.20.1 still writes it. The new words stop advertising a channel
+    already ruled for removal, without denying it.
+  - *Fifteen minutes* is a setting.
+  - *The board's first lines are its agenda* is the tool's own sentence (`shoalmark.py:1955`).
+
+**M4. Subversion without git, as v0.20.0 delivers it.** The rest of `beta_4` stays.
+- EN `beta_4`
+  - old: `Today the tool needs <code>git</code> installed, on Subversion too.`
+  - new: `On Subversion it runs without <code>git</code> installed, from the release archive, and says once what it cannot verify there: commit signatures and server-authenticated authors.`
+- DE `beta_4`
+  - old: `Heute braucht das Werkzeug ein installiertes <code>git</code>, auch unter Subversion.`
+  - new: `Unter Subversion läuft es ohne installiertes <code>git</code>, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.`
+- *How it works* `:56` (DE: `Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter
+  Subversion.`) and the Setup intro lines: drop the git requirement for Subversion in the same words.
+- **What it cannot verify** is taken from FM-044's own statement: "this local run cannot verify commit signatures or
+  server-authenticated authors". At the freeze, re-read it there, and keep both languages to it.
+- **When it says so** is re-read at the freeze too. In FM-044's current code the limit prints only where its notice
+  flag is set, on board runs and hook errors, so *says once* must match what v0.20.0 shipped.
+- **Why:** FM-044 puts Subversion without git, from the release archive, in v0.20.0. If v0.20.0's tag does not deliver
+  it, the current sentence stays.
+
+**M5. The hi-score as a dated cohort, not a series across R2.** This also sets one fixed value in `landing_facts.py`:
+the last pull request merged under the review-file rule.
+- EN `pd_1`
+  - old: `pull requests 47–{hiscore_last}, from the Owner's signed answer of 24 September 2026, 11:07 CEST, to {read_date}`
+  - new: `pull requests 47–{cohort_last}, from the Owner's signed answer of 24 September 2026, 11:07 CEST, to {cohort_end}, when review commits replaced review files`
+- DE `pd_1`
+  - old: `Pull Requests 47–{hiscore_last}, von der signierten Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ, bis {read_date}`
+  - new: `Pull Requests 47–{cohort_last}, von der signierten Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ, bis {cohort_end}, als Review-Commits die Review-Dateien ablösten`
+- EN `board_small`: replace `from pull requests 1–{hiscore_last}` with `from pull requests 1–{cohort_last}`, and add at
+  the end: ` Pull requests after {cohort_end} are reviewed by commit and are not counted here.`
+- DE `board_small`: the same, with ` Pull Requests nach {cohort_end} werden per Commit geprüft und hier nicht gezählt.`
+- The header's *hi-score* reads the cohort's figure.
+- **Why:** R2 replaces review files with review commits. Read across R2, the score falls because the rule changed,
+  not because review stopped, on a page whose own heading says *measured, not promised*.
+
+**M6. *You lose nothing* becomes what is true.**
+- EN `p2_loses_b`: old `You lose nothing.` → new `Nothing of yours is overwritten.`
+- EN `p2_loses`
+  - old: `What you keep today stays where it is: shoalmark changes only what it wrote itself.`
+  - new: `What you keep today stays where it is: shoalmark writes only its own files and never overwrites a file or a hook it did not write.`
+- DE `p2_loses_b`: old `Sie verlieren nichts.` → new `Nichts Bestehendes wird überschrieben.`
+- DE `p2_loses`
+  - old: `Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark ändert nur, was es selbst geschrieben hat.`
+  - new: `Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark schreibt nur seine eigenen Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht selbst geschrieben hat.`
+- **Why:**
+  - *You lose nothing* contradicts *Replace, do not add* (`ADOPT.md:70`).
+  - The new line holds in the code: `--init` never overwrites (`shoalmark.py:8701`), and `--install-hook` never
+    overwrites a hook that is not its own (`:9532–9534`).
+
+**M7. The rest is on the board.**
+- EN `cost_3_b`: old `The rest comes to you` → new `The rest is on the board`
+- EN `cost_3`
+  - old: `every session's last message ends with what waits for you. You open nothing.`
+  - new: `your agents are asked to end each session with what waits for you, and the board puts it first.`
+- DE `cost_3_b`: old `Der Rest kommt zu Ihnen` → new `Der Rest steht auf dem Board`
+- DE `cost_3`
+  - old: `Die letzte Nachricht jeder Session endet mit dem, was auf Sie wartet. Sie müssen nichts öffnen.`
+  - new: `Ihre Agenten sind angehalten, jede Session mit dem zu beenden, was auf Sie wartet, und das Board stellt es ganz oben hin.`
+- **Why:** *every session* is a text rule the tool cannot enforce, and *you open nothing* promises a push the product
+  does not have.
+
+**M8. The gate, scoped.**
+- EN `p1_check`
+  - old: `The gate on every commit refuses what contradicts itself.`
+  - new: `The gate refuses what contradicts itself: in CI, and on each commit where its hook is installed.`
+- DE `p1_check`
+  - old: `Das Gate bei jedem Commit lehnt ab, was sich widerspricht.`
+  - new: `Das Gate lehnt ab, was sich widerspricht: in der CI und bei jedem Commit, wo sein Hook installiert ist.`
+- The ticker: EN `a gate on every commit` → `a gate in ci and on commit`; DE `ein Gate bei jedem Commit` → `ein Gate in
+  der CI und beim Commit`.
+- `docs/index.md:73` and `docs/de/index.md:77`: the same scope.
+- **Why:** the hook is best-effort; `--check` on the branch and in CI is what judges (`AGENTS.md`).
+
+**M9. The footer describes v0.20.1.** EN and DE `foot_fine`: the release seat writes the first sentence's release
+description for v0.20.1, as the B1 handoff's item 2 says.
+
+**M10. The board gathers; you choose the sitting.**
+- EN `p2_text`
+  - old: `Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those questions and puts them to you once a day.`
+  - new: `Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark gathers those questions on one board, for one sitting at the time you choose.`
+- DE `p2_text`
+  - old: `Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten. shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.`
+  - new: `Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten. shoalmark sammelt diese Fragen auf einem Board, für ein Standup zu der Uhrzeit, die Sie wählen.`
+- *How it works* `:15`
+  - EN: `**Once a day, you sit.**` → `**You sit, at the time you chose.**`
+  - DE: `**Einmal am Tag sitzen Sie.**` → `**Sie sitzen, zu der Uhrzeit, die Sie gewählt haben.**`
+- `docs/index.md:20, 23` and their German twins: *once a day* / *einmal am Tag* follow the same change.
+- **Why:** the cadence is the Owner's setting, not the product's promise.
+
+**S3. *Three independent agents* says what they were.**
+- EN `over_1`: `three independent agents` → `three agents, run separately,`
+- DE `over_1`: `drei unabhängige Agenten` → `drei getrennt laufende Agenten`
+- **Why:** FM-005 §9 records them as *three agents, one model family*; *independent* claims more than that.
+
+**S4. The dialog's step 3 says what the prompt asks, not what the agent will do.** The rest of `dlg_s3` stays.
+- EN `dlg_s3`
+  - old: `Your agent checks first and asks your yes before it writes anything.`
+  - new: `The prompt asks your agent to check first and to ask your yes before it writes anything.`
+- DE `dlg_s3`
+  - old: `Ihr Agent prüft zuerst und fragt nach Ihrem Ja, bevor er etwas schreibt.`
+  - new: `Der Prompt bittet Ihren Agenten, zuerst zu prüfen und nach Ihrem Ja zu fragen, bevor er etwas schreibt.`
+- **Why:** the page cannot promise an agent's conduct; it can promise the prompt's words.
+
+***Board*, not *Tafel*, in German.** Every live, user-facing use. The list was read with `git grep -i tafel` at
+`4907071`; recount it at the integration's base.
+- `overrides/partials/landing/de.html:103, 109, 115`; `:183` is replaced by M9.
+- `docs/de/how-it-works.md:16, 27, 37`; `docs/de/index.md:49`; `docs/de/requirements.md:22`.
+- `docs/de/setup.md:39, 68, 76`; `docs/de/signing.md:5, 63, 224`; `docs/de/standup.md:5, 38, 48, 59, 79`.
+- `docs/de/triage.md:61, 182, 216, 218`; `ADOPT.de.md:14, 46, 57, 88`.
+- `examples/de/labels.yaml:6, 61, 147, 150`; line 109 already says *Board*.
+- The mirrored fixtures in `test_shoalmark.py:5232, 5299, 5302, 5365`, and `:4428` with M9.
+- **The grammar changes with the gender:**
+  - *die Tafel* → *das Board*;
+  - *der Tafel* → *des Boards* / *dem Board*;
+  - *auf der Tafel* → *auf dem Board*;
+  - *Ihre Tafel* → *Ihr Board*;
+  - *eine statische Tafel* → *ein statisches Board*;
+  - *aus shoalmarks eigener Tafel* → *aus shoalmarks eigenem Board*;
+  - *diese Tafel* → *dieses Board*;
+  - *eine … geöffnete Tafel* → *ein … geöffnetes Board*;
+  - *Die Tafel.* / *Die Tafel öffnen* → *Das Board.* / *Das Board öffnen*;
+  - *← Tafel* → *← Board*;
+  - every *sie* that pointed back at *die Tafel* becomes *es*.
+- **What stays:** the records (trackers, ship logs, reviews), and above all any quotation in them: a quote is never
+  renamed.
+- **Side effects:**
+  - Editing `ADOPT.de.md` re-pins the probe. `landing_facts.py` fails the build on a pin mismatch, and that path is
+    critical tier.
+  - Existing adopters keep their copied `labels.yaml`; the new example applies to new ones.
+
+**The signing page.** It says the signers file lists two hardware keys and one software key, the software key not yet
+retired. It drops *Tier 3 is the step the record can see* and the planned *needs the owner's touch* line (the
+go-to-market consolidation, recorded privately). Re-read the key state after FM-007's act of 15 October. It is yours
+to confirm, because it describes your keys; the repository shows only their types.
+
+- **Confidence:** 90 % (M1 and M9); 85 % (M2); 80 % (M3–M6); 75 % (M7, M8); 70 % (M10); 60 % (S3, S4).
+- **Holds up:** B1's integration and its words freeze, and the Reviewer's qualification of the integrated head.
+- **Source:** the go-to-market review of B1, recorded privately.
 
 **2026-10-13 — v0.19.4 shipped:** `fm/046-text-boundary` merged to main as `39e5763` (#165), tagged
 `v0.19.4` on `39e5763`, with the release page "shoalmark 0.19.4 — security release".
@@ -905,6 +1112,13 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 ## Acts
 
 **2026-09-30** · done — Public repository: https://github.com/shoalmark/shoalmark/ · Documentation: https://shoalmark.github.io/shoalmark/ · Migration merged: 80d0811974a1d39b679cfd374c80109ddd62acce · Independent migration review: 5e26a88e75b992c243148c2786e44f443e0f7437 · Port-evidence cleanup merged: b041cb2dca136623ee9160d74ae5b39b0f1a7ba2 · Publication gates merged and deployed: 792dbca9caa74629d12645dcc5ae7f55a2bb2340 · Independent publication review: b9b3971c21f3b84f332249bbc976fe9af7580f0d · Scoring completed; publication preceded scoring under my previously recorded risk acceptance. · this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held · holgo99
+## Asks
+
+**2026-09-26** · When and how does shoalmark go public?
+**answered** — accepted - this repository, client names and the parent's traces public, the port evidence deleted — after the scoring, gates held · holgo99
+**relation** — accepted the proposal
+**signed** — 8defe63 · G
+
 ## Ship log
 
 | Date | Event |
