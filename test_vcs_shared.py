@@ -41,7 +41,13 @@ def probe(root, scenario):
         if not active[0]:
             return
         if event == "subprocess.Popen":
-            events.append([event, str(args[0]), [str(a) for a in args[1]], str(args[2])])
+            if args[0] is None and isinstance(args[1], str):
+                # Windows' audit shape (RV-3061): no program, one command line. Windows starts its first word; the raw line is kept for
+                # exact checks, and its argv is read back as the suite reads one (`fm.split_cmdline`, as `_watch_git` does).
+                argv = fm.split_cmdline(args[1])
+                events.append([event, argv[0] if argv else "", argv, str(args[2]), args[1]])
+            else:
+                events.append([event, str(args[0]), [str(a) for a in args[1]], str(args[2])])
         elif event == "socket.connect":
             events.append([event, str(args[1])])
         elif event == "open":
@@ -130,6 +136,20 @@ def svn_only(folder):
     start of `svn` looks for there — its DLLs beside it on Windows, and no Git. A link named `svn` alone is no program on Windows (PR #173)."""
     from test_vcs_entry import svn_search          # imported here: the probe this file also runs loads nothing more before it measures
     return svn_search(folder, shutil.which("svn"))
+
+
+def svn_property(root, name, rel):
+    """A property's value as svn stores it, the same on every system: `svn propget --xml` prints it only escaped (svn 1.14.5 cmdline.c:792-825),
+    where plain `propget` turns an `svn:` property's line ends into the system's, `\\r\\n` on Windows, and adds one (propget-cmd.c:219-229).
+    None where svn answers with another property or an encoded one; a property not set is svn's own refusal (exit 1), as plain `propget`'s."""
+    node = ET.fromstring(command(root, "svn", "propget", "--xml", name, rel).stdout).find("target/property")
+    return None if node is None or node.get("name") != name or node.get("encoding") else node.text or ""
+
+
+def exact_start(event, argv):
+    """A probe's recorded start is exactly `argv`: in Windows' shape its raw line (the fifth field) against CPython's own spelling, in POSIX's its list."""
+    from test_vcs_entry import same_start
+    return same_start(event[2], event[4] if len(event) > 4 else None, argv)
 
 
 def saw(got):
@@ -224,7 +244,7 @@ def run_board_local_controls(fm, check):
                   got["code"] == 0 and got["git_absent"] and got["svn_present"] and "Recorded content" in (folder / "view" / "WORK-001.js").read_text(encoding="utf-8"))
             starts = [e for e in got["events"] if e[0] == "subprocess.Popen"]
             check(f"A1: one exact local consumer status start and no Git or network attempt ({saw(got)}; starts {str([e[1:] for e in starts])[:300]})",
-                  len(starts) == 1 and starts[0][2] == STATUS and starts[0][3] == str(root) and not any(e[0] == "socket.connect" for e in got["events"]))
+                  len(starts) == 1 and exact_start(starts[0], STATUS) and starts[0][3] == str(root) and not any(e[0] == "socket.connect" for e in got["events"]))
             writes = [e[1] for e in got["events"] if e[0] == "open" and not e[1].isdigit()]
             check(f"A1: actual successful writes are confined to page and views ({saw(got)}; writes {str(writes)[:300]})",
                   bool(writes) and all(Path(p) == folder / "index.html" or Path(p).parent == folder / "view" for p in writes))
@@ -394,7 +414,9 @@ def run_svn_setup_controls(fm, check):
             root = roots["init"]
             got = measured(root, search, "setup:init")
             folder = root / "docs" / "work-tracker"
-            check("A2: actual no-Git/server-free init schedules tracker folder and ignores the board", got["code"] == 0 and got["git_absent"] and (folder / "TRIAGE.md").is_file() and command(root, "svn", "propget", "svn:ignore", "docs/work-tracker").stdout == b"index.html\nview\n\n")
+            ignored = svn_property(root, "svn:ignore", "docs/work-tracker") if got["code"] == 0 and folder.is_dir() else None
+            check(f"A2: actual no-Git/server-free init schedules tracker folder and ignores the board ({saw(got)}; svn:ignore {ignored!r})",
+                  got["code"] == 0 and got["git_absent"] and (folder / "TRIAGE.md").is_file() and ignored == "index.html\nview\n")
             check("A2: SVN init advice has no Git session setup or client-hook claim", "git config" not in got["out"] and "--session new" not in got["out"] and "SVN CLI runs no client hook" in got["out"])
             before = {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file() and ".svn" not in p.parts}
             got = measured(root, search, "setup:init")

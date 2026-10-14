@@ -205,8 +205,13 @@ def svn_probe(source, root, mode):
     events = []; active = [False]
     def audit(event, args):
         if active[0] and event == "subprocess.Popen":
-            events.append([str(args[0]), list(map(str, args[1])), str(args[2])])
+            if args[0] is None and isinstance(args[1], str):        # Windows' audit shape (RV-3061): no program, one command line
+                argv = split(args[1])                               # Windows starts its first word; the raw line is kept for exact checks
+                events.append([argv[0] if argv else "", argv, str(args[2]), args[1]])
+            else:
+                events.append([str(args[0]), list(map(str, args[1])), str(args[2])])
     sys.addaudithook(audit)
+    split = load(HERE / "shoalmark.py").split_cmdline               # the suite's reading of a Windows line (`_watch_git`); the baselines have none
     tool = load(source); tool.configure(root); tempfile.gettempdir()
     output, error = io.StringIO(), io.StringIO(); active[0] = True
     try:
@@ -262,7 +267,9 @@ def svn_controls(fm, old, check):
         prior = probe("metadata", old.__file__)
         check("A callers: immutable accepted caller baseline really attempts unavailable Git on ordinary SVN", prior["code"] == -1 and prior["git_absent"] and prior["results"].get("exception") == "FileNotFoundError" and prior["events"] and prior["events"][0][1][0] == "git")
         got = probe("board")
-        check("A callers: real board remains server-free with no Git", got["code"] == 0 and got["git_absent"] and len(got["events"]) == 1 and got["events"][0][1] == shared.STATUS)
+        from test_vcs_entry import same_start                       # an exact start: Windows' raw line against list2cmdline, POSIX's list
+        exact = lambda e, argv: same_start(e[1], e[3] if len(e) > 3 else None, argv)
+        check("A callers: real board remains server-free with no Git", got["code"] == 0 and got["git_absent"] and len(got["events"]) == 1 and exact(got["events"][0], shared.STATUS))
         got = probe("install")
         check("A callers: install selects real SVN properties before any Git attempt", got["code"] == 0 and got["git_absent"] and got["events"] and all(e[0] == "svn" for e in got["events"]))
         got = probe("init", target=init)
@@ -270,7 +277,7 @@ def svn_controls(fm, old, check):
         a, b = probe("history", old.__file__), probe("history")
         check("A callers: unavailable-server SVN date preserves accepted placeholder/cache/rebind results", a["results"] == b["results"] == {"first": "—", "cached": "—", "starts_before_rebind": 1, "after_rebind": "—"})
         effective = lambda events: [[e[0], e[1], os.getcwd() if e[2] in ("None", ".") else e[2]] for e in events]
-        check("A callers: date helper honestly retains one server log then one after rebind; no Git", effective(a["events"]) == effective(b["events"]) and len(b["events"]) == 2 and all(e[1] == ["svn", "log", "-v", "--xml", str(root / "work-tracker")] for e in b["events"]))
+        check("A callers: date helper honestly retains one server log then one after rebind; no Git", effective(a["events"]) == effective(b["events"]) and len(b["events"]) == 2 and all(exact(e, ["svn", "log", "-v", "--xml", str(root / "work-tracker")]) for e in b["events"]))
         # Existing controlled local-metadata refusal remains before scaffold or property writes.
         (init / ".svn" / "wc.db").write_bytes(b"not a working copy database")
         got = probe("init", target=init)
@@ -282,6 +289,7 @@ def svn_controls(fm, old, check):
 def cwd_probe(source, root, launch, operation, deleted):
     """Real functions/processes; preserve unnamed cwd by inode, never os.getcwd()."""
     tool = load(source); tool.configure(root)
+    split = load(HERE / "shoalmark.py").split_cmdline               # the suite's reading of a Windows line (`_watch_git`); 43b5600 has none
     starts, reads, writes = [], [], []; active = [False]
     original = os.getcwd(); os.chdir(launch)
     identity = tuple((getattr(os.stat("."), key)) for key in ("st_dev", "st_ino"))
@@ -301,10 +309,11 @@ def cwd_probe(source, root, launch, operation, deleted):
                 frame = frame.f_back
             options = dict(frame.f_locals["kwargs"]) if frame else {}
             options.pop("env", None); options.pop("cwd", None)
-            starts.append({"argv": list(map(str, args[1])), "cwd_raw": str(cwd),
+            windows = args[0] is None and isinstance(args[1], str)  # Windows' audit shape (RV-3061): the raw line kept, its argv read back
+            starts.append({"argv": split(args[1]) if windows else list(map(str, args[1])), "cwd_raw": str(cwd),
                            "cwd": "<inherited launch cwd>" if inherited else str(cwd),
                            "inherited": inherited, "env_mode": "inherited" if args[3] is None else "explicit",
-                           "environment_sha256": environment(args[3]), "options": options})
+                           "environment_sha256": environment(args[3]), "options": options, **({"raw": args[1]} if windows else {})})
         elif event == "open":
             mode, flags = args[1:3]
             write = (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND)))

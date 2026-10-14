@@ -8,6 +8,7 @@ Local file:// authors are fixture strings, never authenticated identities.
 import argparse
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -76,6 +77,8 @@ def actual_entry(spec):
                            "env_mode": "inherited" if args[3] is None else "explicit",
                            "environment_sha256": hashlib.sha256(json.dumps(environment, sort_keys=True).encode()).hexdigest(),
                            "options": options})
+            if args[0] is None and isinstance(args[1], str):        # Windows' audit shape (RV-3061): `invoke` reads its argv back
+                events[-1]["raw"] = args[1]
         elif event == "open":
             mode, flags = args[1:3]
             write = (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND)))
@@ -136,6 +139,25 @@ def command(root, *argv):
                GIT_COMMITTER_EMAIL="fixture@example.invalid", GIT_AUTHOR_DATE="2026-10-13T00:00:00+00:00",
                GIT_COMMITTER_DATE="2026-10-13T00:00:00+00:00")
     return subprocess.run(list(argv), cwd=root, env=env, capture_output=True, text=True, encoding="utf-8", check=True, timeout=30).stdout
+
+
+def same_start(argv, raw, expected):
+    """One start, exactly: in Windows' audit shape (RV-3061: no program, one command line), its raw line against `subprocess.list2cmdline`
+    of the expected argv — CPython's own spelling of that start, no parser of ours; in POSIX's, its argv list itself."""
+    return raw == subprocess.list2cmdline(list(expected)) if raw is not None else list(argv) == list(expected)
+
+
+_SPLIT = []
+
+
+def read_back(raw):
+    """A Windows command line as its argv, as the suite reads one (`fm.split_cmdline`, as `_watch_git` does): the checkout's own tool,
+    loaded once here in the parent — never in the observed child, where the product runs as `__main__`."""
+    if not _SPLIT:
+        spec = importlib.util.spec_from_file_location("entry_split_tool", HERE / "shoalmark.py")
+        tool = importlib.util.module_from_spec(spec); spec.loader.exec_module(tool)
+        _SPLIT.append(tool.split_cmdline)
+    return _SPLIT[0](raw)
 
 
 def stdlib_tempdir_probe(probes):
@@ -213,6 +235,9 @@ def invoke(tool, root, argv, cwd, search=None):
     if len(marker) != 1:
         raise AssertionError("actual entry observer did not complete: " + done.stderr[-1200:])
     observed = json.loads(marker[0]); err = "".join(line for line in lines if not line.startswith(MARKER))
+    for event in observed["events"]:
+        if "raw" in event:                                          # Windows' shape: the raw line stays, its argv is read back
+            event["argv"] = read_back(event["raw"])
     after = snapshot(root)
     observed.update(code=done.returncode, out=done.stdout, err=err, argv=argv, tool=str(tool), root=str(root), invocation_cwd=str(cwd),
                     changed=[p for p in sorted(set(before) | set(after)) if before.get(p) != after.get(p)],
@@ -261,7 +286,7 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
             processes = [e for e in got["events"] if e["event"] == "subprocess.Popen"]
             check("entry: " + name + " attempts no Git or alternate network/process API", got["git_absent"] and all(e["argv"][0] == "svn" for e in processes) and not any(e.get("alternate_process_or_network") for e in got["events"]))
             def correct_cwd(event):
-                if event["argv"] == ["svn", "log", "-v", "--xml", str(Path(got["root"]) / "work-tracker")] and "svn_last_worked_on" in event["stack"]:
+                if same_start(event["argv"], event.get("raw"), ["svn", "log", "-v", "--xml", str(Path(got["root"]) / "work-tracker")]) and "svn_last_worked_on" in event["stack"]:
                     return event["cwd"] == got["invocation_cwd"] and got["server_available"]
                 return event["cwd"] == got["root"]
             # Invalid Tortoise argv is deliberately refused before consumer binding.
@@ -291,7 +316,7 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
 
         root, tool = fresh("board"); got = run("board", root, tool, ["--html-only"])
         processes = checks("board", got, local=True)
-        check("entry: board uses exactly its allowed local status tuple", [e["argv"] for e in processes] == [STATUS])
+        check("entry: board uses exactly its allowed local status tuple", len(processes) == 1 and same_start(processes[0]["argv"], processes[0].get("raw"), STATUS))
         check("entry: board writes its page/views and no canonical or Git-basis record", "work-tracker/index.html" in got["changed"] and "work-tracker/view/WORK-001.js" in got["changed"] and "work-tracker/view/built.json" not in got["changed"] and all(p == "work-tracker/index.html" or p.startswith("work-tracker/view/") for p in got["changed"]))
 
         root, tool = fresh("damaged-board"); (root / ".svn" / "wc.db").write_bytes(b"broken WC metadata")
