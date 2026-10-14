@@ -129,6 +129,8 @@ class CliControls(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("sh"), "POSIX shell unavailable")
     def test_real_posix_shell_preserves_single_argument_bytes(self):
+        if sys.platform == "win32":                        # read here, before the patch below reports "darwin" (RV-3233)
+            self.skipTest("a POSIX shell is what it means; Windows' `sh` is MSYS's, which rewrites path-like arguments")
         with tempfile.TemporaryDirectory() as directory:
             capture = Path(directory) / "capture argv.py"
             capture.write_text("import json,sys; print(json.dumps(sys.argv[1:],ensure_ascii=False))\n", encoding="utf-8")
