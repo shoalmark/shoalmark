@@ -6181,6 +6181,11 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# A command the tool prints for him to copy spells each argument as `printed_arg` does (FM-030 C, accepted at f59a1c1): a PowerShell literal on
+# Windows — every argument quoted, `'AP-421'` — and `shlex.quote` elsewhere — a text with a space quoted, an id or a path bare. The checks below write
+# the expected command out for each platform, never through `printed_arg` itself (PR #173's run 38539381661 met the old spelling)
+_WIN_ARGS = sys.platform == "win32"
+
 # --- FM-017: a failed --answer leaves nothing behind — and a leftover from one is named, with the command that undoes it -
 # What the Owner met: the gate refused the commit, and the run returned with his answer staged, INDEX.md rewritten by the
 # hook and an empty `answer/<id>` checked out. His next `--answer`, on another ask, said only "the working tree has changes".
@@ -6207,7 +6212,8 @@ with tempfile.TemporaryDirectory() as tmp:
           and "restored docs/work-tracker/AP-500-x.md, docs/work-tracker/INDEX.md" in err and "`answer/ap-500` deleted" in err)
     check("FM-017 · …and it says what refused it — the hook's own words, not git's last line — and the answer, with the command that gives it again: no answer is lost",
           "gate: AP-500 refused - the reason the Owner must read" in err and "your answer, not lost: accepted - count one week first" in err
-          and 'to give it again: ' in err and '--answer AP-500 accept "count one week first"' in err)
+          and 'to give it again: ' in err
+          and ("--answer 'AP-500' accept 'count one week first'" if _WIN_ARGS else "--answer AP-500 accept 'count one week first'") in err)
     # the leftover 0.17.3 left: the answer staged, INDEX.md rewritten — and a file of the Owner's own changed beside them
     p5_ = root / "docs/work-tracker/AP-500-x.md"
     p5_.write_text(p5_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted - count one week first"\nanswered: {new_}\nanswered-by: holgo\n'), encoding="utf-8")
@@ -6606,7 +6612,8 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "-c", "answer/ap-301"); git(root, "switch", "-q", "-")
     code, _, err = run(root, "--answer", "AP-301", "accept", "the importer")
     check("8 · `--answer` refuses an `answer/<id>` that exists and is not merged — it may hold work, and nothing unmerged is deleted for him; the refusal names the one command that clears it",
-          code == fm.EXIT_LINT and "`answer/ap-301` exists and is not merged into `origin`" in err and "`git branch -D answer/ap-301`" in err and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-301")
+          code == fm.EXIT_LINT and "`answer/ap-301` exists and is not merged into `origin`" in err
+          and ("`git branch -D 'answer/ap-301'`" if _WIN_ARGS else "`git branch -D answer/ap-301`") in err and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-301")
     git(root, "branch", "-q", "-D", "answer/ap-301")
     t2.write_text(t2.read_text().replace('\nask: "Shall', '\n ask: "Shall'), encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-qm", "the ask, indented")      # --answer wants a clean tree; the ask still parses
@@ -10097,8 +10104,10 @@ with tempfile.TemporaryDirectory() as tmp:
     code_x, _o, err_x = run(root, "--done", "AP-423", "evidence/AP-423/read.md")
     check(f"FM-030 · C · an unmerged `answer/<id>` that carries his commits is never cleared for him: where the act is open there, the refusal names `--done` on that branch; `git branch -D` only where nothing of his is on it (saw {err_o.strip()[-220:]!r} · {err_x.strip()[-160:]!r})",
           code_o == code_x == fm.EXIT_LINT and "it carries your commit(s) — " in err_o and "AP-421: due " in err_o
-          and "AP-421's act is open there: `git switch answer/ap-421`, then " in err_o and '--done AP-421 "evidence/AP-421/key.md"`' in err_o and "git branch -D" not in err_o
-          and "nothing of yours is on it — clear it with `git branch -D answer/ap-423`" in err_x and here_() == start_)
+          and ("AP-421's act is open there: `git switch 'answer/ap-421'`, then " if _WIN_ARGS else "AP-421's act is open there: `git switch answer/ap-421`, then ") in err_o
+          and ("--done 'AP-421' 'evidence/AP-421/key.md'`" if _WIN_ARGS else "--done AP-421 evidence/AP-421/key.md`") in err_o and "git branch -D" not in err_o
+          and ("nothing of yours is on it — clear it with `git branch -D 'answer/ap-423'`" if _WIN_ARGS else "nothing of yours is on it — clear it with `git branch -D answer/ap-423`") in err_x
+          and here_() == start_)
     # R1 (the pass on 52cfcc7): `--done` hands the move to the seat only where his ACCEPTED action answer left `next: owner` —
     # a `due:` beside a ruling he has not answered keeps it, and the question stays on his queue and his board
     tracker(root, "AP-426", extra=f'next: owner\nask: "Does the launcher ship before the site?"\nask-kind: ruling\nask-since: {since_}\n'
@@ -10120,7 +10129,8 @@ with tempfile.TemporaryDirectory() as tmp:
     code_r3, _o, err_r3 = run(root, "--done", "AP-424", "evidence/AP-424/logs.md")
     check(f"FM-030 · C · R3 · `--done` where the act is on an unmerged `answer/<id>` names that branch and his commit, never *owes no act* (saw {err_r3.strip()[-240:]!r})",
           code_a3 == 0 and code_r3 == fm.EXIT_LINT and "AP-424's act is on `answer/ap-424`, not merged into " in err_r3 and "owes the Owner no act" not in err_r3
-          and "it carries your commit(s) — " in err_r3 and "`git switch answer/ap-424`, then " in err_r3 and "--done AP-424 evidence/AP-424/logs.md`" in err_r3 and here_() == start_)
+          and "it carries your commit(s) — " in err_r3 and ("`git switch 'answer/ap-424'`, then " if _WIN_ARGS else "`git switch answer/ap-424`, then ") in err_r3
+          and ("--done 'AP-424' 'evidence/AP-424/logs.md'`" if _WIN_ARGS else "--done AP-424 evidence/AP-424/logs.md`") in err_r3 and here_() == start_)
     check("FM-030 · C · `--schema` says what `--done` does to the move: `next: build` where his answer left `next: owner`",
           "`--done` sets `next: build` — the act done, the seat's move is next" in fm.render_schema())
     if _browser("owe"):
@@ -10196,7 +10206,8 @@ with tempfile.TemporaryDirectory() as tmp:
     code_d, _o, err_d = run(root, "--invite", "AP-435")
     check(f"FM-030 · D · a moved act's invite carries a higher SEQUENCE — its records under `## Acts` — so importing it again replaces the event; an act with no `due:` yet and one that is done have none (saw {err_n.strip()!r})",
           "SEQUENCE:2\r\n" in seq_ and f"DTSTART:{utc_(300)}\r\n" in seq_ and code_n == code_d == fm.EXIT_LINT
-          and "AP-434's act has no `due:` yet — an invite needs a time" in err_n and "--due AP-434 <time>" in err_n and "AP-435 owes the Owner no act" in err_d)
+          and "AP-434's act has no `due:` yet — an invite needs a time" in err_n and ("--due 'AP-434' <time>" if _WIN_ARGS else "--due AP-434 <time>") in err_n
+          and "AP-435 owes the Owner no act" in err_d)
     check("FM-030 · D · the notifier is the system's own, each where present: macOS `osascript`, Linux `notify-send` — none on Windows, and none where there is none",
           [(fm.notify_argv("t", "b", p_, lambda n: "/usr/bin/" + n) or [None])[0] for p_ in ("darwin", "linux", "win32")] == ["osascript", "notify-send", None]
           and fm.notify_argv("t", "b", "darwin", lambda n: None) is None and fm.notify_argv("t", "b", "sunos5", lambda n: "/x") is None)
@@ -10685,10 +10696,12 @@ with tempfile.TemporaryDirectory() as tmp:
     t461_ = fm.extract(root / "docs/work-tracker/AP-461-x.md", show_("origin/answer/ap-461", "docs/work-tracker/AP-461-x.md"))
     check(f"FM-030 · 0.18.6 · a weekday alone is not read: no `due:`, the act shows *no date yet* as before, and `--answer` says why and names `--due` (saw {out_1.strip()!r})",
           code_1 == 0 and "due" not in front_("AP-461") and fm.act_state(fm.act_of(t461_)) == "nodate"
-          and "no date read in your answer — it names no date with an hour" in out_1 and "a weekday alone is not a date" in out_1 and "--due AP-461 <time>" in out_1)
+          and "no date read in your answer — it names no date with an hour" in out_1 and "a weekday alone is not a date" in out_1
+          and ("--due 'AP-461' <time>" if _WIN_ARGS else "--due AP-461 <time>") in out_1)
     check(f"FM-030 · 0.18.6 · a `due:` the seat set is left and the answer's time named beside it, with the `--due` that moves it; a ruling's answer seeds nothing (saw {out_2.strip()!r} · {out_3.strip()!r})",
           code_2 == code_3 == 0 and front_("AP-462").get("due") == "2026-10-05T10:00:00+02:00"
-          and f"`due:` is 2026-10-05T10:00:00+02:00 already and is left — " in out_2 and f"--due AP-462 {sat_.isoformat()}T10:00:00" in out_2
+          and f"`due:` is 2026-10-05T10:00:00+02:00 already and is left — " in out_2
+          and (f"--due 'AP-462' '{sat_.isoformat()}T10:00:00" if _WIN_ARGS else f"--due AP-462 {sat_.isoformat()}T10:00:00") in out_2
           and "due" not in front_("AP-463") and "due" not in out_3.replace("--due", "") and "no date read" not in out_3)
     check("FM-030 · 0.18.6 · `--schema` says `--answer` seeds `due:` and what it reads — a full date with its hour, the weekday checked; a weekday alone is not",
           "`--answer`, from an accepted action answer that names its hour" in fm.render_schema() and "`Sat 09-26 09:00`" in fm.render_schema()
@@ -10735,9 +10748,10 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · 0.18.6 · E0 row 20 · `--due`, `--done` and `--answer` refused after the cut each leave ONE line under `## Acts` on `answer/<id>` — "
           f"when, the command, what refused it — committed unsigned and pushed; the undo says so, and he is back on a clean tree (saw {err_d.strip()!r} · {rec_('AP-470')})",
           code_d == code_n == code_a == fm.EXIT_LINT and here_() == start_ and clean_() == ""
-          and [re.fullmatch(line_ % re.escape(f"--due AP-470 {when_}"), l_) is not None for l_ in rec_("AP-470")] == [True]
-          and [re.fullmatch(line_ % re.escape('--done AP-471 "evidence/AP-471/key.md"'), l_) is not None for l_ in rec_("AP-471")] == [True]
-          and [re.fullmatch(line_ % re.escape("--answer AP-472 accept"), l_) is not None for l_ in rec_("AP-472")] == [True]
+          and [re.fullmatch(line_ % re.escape(f"--due 'AP-470' '{when_}'" if _WIN_ARGS else f"--due AP-470 {when_}"), l_) is not None for l_ in rec_("AP-470")] == [True]
+          and [re.fullmatch(line_ % re.escape("--done 'AP-471' 'evidence/AP-471/key.md'" if _WIN_ARGS else "--done AP-471 evidence/AP-471/key.md"), l_) is not None
+               for l_ in rec_("AP-471")] == [True]
+          and [re.fullmatch(line_ % re.escape("--answer 'AP-472' accept" if _WIN_ARGS else "--answer AP-472 accept"), l_) is not None for l_ in rec_("AP-472")] == [True]
           and all("the commit was refused" in e_ and "recorded under `## Acts` on `answer/ap-47" in e_ and "`, unsigned — pushed" in e_ for e_ in (err_d, err_n, err_a))
           and log_("origin/answer/ap-470").startswith("N AP-470: --due refused — the commit was refused")
           and "due" not in fm.parse_frontmatter(show_("origin/answer/ap-470", "docs/work-tracker/AP-470-x.md"))[0]
@@ -10757,7 +10771,8 @@ with tempfile.TemporaryDirectory() as tmp:
     code_u, _o, err_u = run(root, "--due", "AP-470", when_)
     check(f"FM-030 · 0.18.6 · the unmerged path is unchanged: the next `--due` names `answer/<id>`, the refusal's commit as his, and the command to run there (saw {err_u.strip()[-240:]!r})",
           code_u == fm.EXIT_LINT and "`answer/ap-470` exists and is not merged" in err_u and "it carries your commit(s) — " in err_u and "AP-470: --due refused" in err_u
-          and "AP-470's act is open there: `git switch answer/ap-470`, then " in err_u and here_() == start_)
+          and ("AP-470's act is open there: `git switch 'answer/ap-470'`, then " if _WIN_ARGS else "AP-470's act is open there: `git switch answer/ap-470`, then ") in err_u
+          and here_() == start_)
     hook_.unlink()
     git(root, "merge", "-q", "--no-edit", "answer/ap-470"); git(root, "push", "-q", "origin", "HEAD:main")
     code_m, _o, err_m = run(root, "--due", "AP-470", when_)
