@@ -18,7 +18,9 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-14 — PR #173 CI correction READY `d0f0f24` (round 2 of 2); the Owner's CI run `38539381661` on it failed; one fix round is built in three passes, and the Reviewer's first critical pass on it is next.**
+**2026-10-14 — PR #173 CI correction READY `d0f0f24` (round 2 of 2); the Owner's CI run `38539381661` on it failed; one fix round is built in three passes; the Reviewer's first critical pass found it NOT READY `83cf764` on one finding, RV-3220, now corrected, and round 2 of 2 is next.**
+RV-3220: the entry and binding fixtures' `svn add` named `documents/O'Neil & ü.txt` aloud, which svn on Windows prints in
+the system's code page and `command` reads as strict UTF-8; both adds are quiet (`-q`) now.
 Run `38539381661`: ubuntu 3.9 ended FAILED: 6, ubuntu 3.12 and macOS 3.12 FAILED: 4, and both Windows jobs a traceback after
 25 FAIL lines. No board render failed: "headless Chrome did not return index.html within 5 s" is the saw-text of FM-035's
 own control, inside an `ok` line. Windows did not run to the end: A1's `svn add` of a page no measured run had written

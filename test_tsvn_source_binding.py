@@ -43,7 +43,7 @@ def run_source_binding_controls(source, check, baseline=None, payload=None, repo
         entry.command(base, "svnadmin", "create", str(server))
         entry.command(base, "svn", "checkout", "-q", server.as_uri(), str(seed))
         entry.corpus(seed)
-        entry.command(seed, "svn", "add", "shoalmark.toml", "work-tracker", "documents")
+        entry.command(seed, "svn", "add", "-q", "shoalmark.toml", "work-tracker", "documents")
         entry.command(seed, "svn", "commit", "-qm", "untrusted local fixture data", "--username", "fixture-only")
         message = base / "message.txt"; message.write_text("Keep this message exactly. ü\n", encoding="utf-8")
         original_message = message.read_bytes()

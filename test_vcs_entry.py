@@ -260,7 +260,7 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
         search = svn_search(base / "svn-only", shutil.which("svn"))
         server = base / "server"; seed = base / "seed"
         command(base, "svnadmin", "create", str(server)); command(base, "svn", "checkout", "-q", server.as_uri(), str(seed))
-        corpus(seed); command(seed, "svn", "add", "shoalmark.toml", "work-tracker", "documents")
+        corpus(seed); command(seed, "svn", "add", "-q", "shoalmark.toml", "work-tracker", "documents")
         command(seed, "svn", "commit", "-qm", "untrusted local fixture string", "--username", "fixture-only")
         number = [0]
         def fresh(name, chosen=source):
