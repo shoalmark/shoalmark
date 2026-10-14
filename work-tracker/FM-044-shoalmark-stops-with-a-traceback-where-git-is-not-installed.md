@@ -18,7 +18,7 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-14 — local P READY `2dbaa80`; Owner PR #173 CI stopped on two old suite fixtures; test-only correction built, independent critical review next.**
+**2026-10-14 — local P READY `2dbaa80`; Owner PR #173 CI stopped on old suite fixtures; fixture correction `22b0a07` and the Owner's `run` correction built; independent critical review, then one Owner CI run.**
 Current Owner main `80b60c8` includes R12 READY `246ccdf` and #171. This branch carries its exact
 AGENTS and signed TRIAGE changes through ordinary merge `2f373a8`; it adds no Owner ruling or consumer authority.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088;
@@ -62,8 +62,16 @@ The hook check gets a real path list, message file and working copy, as S2 does.
 list and ceiling are unchanged. On `2dbaa80` the two blocks exit 4 and the hook check fails; corrected,
 all pass. The old tool's `svn blame` still fails FM-006's check; FM-045 C and the runtime check fail on the
 status argv without their exclusion. FM-037's empty `.svn` guard block and the other old SVN blocks pass
-unchanged. Independent critical review of this correction is next; native CI on the Owner's PR #173 push
-is the first full-suite judgement.
+unchanged.
+
+The Owner's order on PR #173 adds one more test-only correction: the suite's in-process `run` returns a
+refusal the tool ends with as the program ends — its exit status and both streams; a message is exit 1, on
+stderr — so its check fails and the suite goes on, and the next CI run shows every remaining failure at
+once. Product refusals are unchanged; two FM-037 checks read the message from the returned stderr. A new
+regression compares each refusal with the program and runs these helpers as a program past one: with the
+old helper it fails, its child suite ending with exit 4 as CI did; corrected, the child ends on its FAILED
+line, exit 1. The paused independent critical review verifies both corrections; one Owner CI run on PR #173
+is then the first full-suite judgement.
 
 Composition preserves every parent's removal: 45 and 44 keys intersect to 29, and P's one migrated main call
 removes the final exact key to 28. Common boundary/cache/source/history semantics, scanner, fixed ceiling,
@@ -128,6 +136,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-14 10:09 CEST | The Owner's order on PR #173: the suite's in-process `run` returns a refusal as the program ends — exit status and both streams — so its check fails and the suite goes on. Its regression fails with the old helper (the child suite exits 4) and passes corrected; unchanged core 303/303 passes. Independent critical review, then one Owner CI run, remain due; earlier verdicts and holds stand. |
 | 2026-10-14 09:20 CEST | Owner PR #173 CI at `2dbaa80` stopped with exit 4 on old suite fixtures: an empty `.svn`, a board run assumed to start no `svn`, fake Tortoise paths. Four checks are corrected, test-only: their focused blocks fail on `2dbaa80` and pass corrected; unchanged core 303/303 passes. Independent critical review and native CI on the Owner's push remain due; earlier verdicts and holds stand. |
 | 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
 | 2026-10-13 21:30 CEST | A caller final READY `4ab9341` closes RV-3096; ordinary local composition retains its exact functions and all parent reductions, leaving 28 keys. Actual local runtime 527/527 and unchanged core 303/303 pass. P critical review remains next; exhausted B/archive and protected-consumer holds remain. |

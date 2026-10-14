@@ -77,11 +77,24 @@ def _watch_git(event, args):
 sys.addaudithook(_watch_git)
 
 
+def _exit_status(code, err):
+    """The status a program ending in `SystemExit(code)` exits with, as the interpreter sets it: None is 0, a number is itself, anything else is 1 and
+    is printed to stderr — here into `err`, so what the refusal said is kept."""
+    if code is None:
+        return 0
+    if isinstance(code, int):
+        return code
+    print(code, file=err)
+    return 1
+
+
 def run(root, *argv, git_env=None):
     """The tool, in process. The ambient `GIT_*` variables are stripped for the call — git exports them into every hook,
     so the suite run by the pre-commit hook would otherwise answer for the repository being committed to, not for the
     scratch one it just built (`_ENV` strips them for the same reason). `git_env` puts chosen ones back, on purpose.
-    A board's run (`--html-only`) is watched: each git argv it starts is recorded (`_BOARD_GIT`)."""
+    A board's run (`--html-only`) is watched: each git argv it starts is recorded (`_BOARD_GIT`).
+    A run the tool ends with `SystemExit` — a refusal, said before it ends — is returned as the program would end: its exit status (`_exit_status`) and
+    both streams as written. The check that called it fails on it, and the suite goes on (the Owner's order on PR #173: every failure in one run)."""
     out, err = io.StringIO(), io.StringIO()
     saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
     os.environ.update(git_env or {})
@@ -89,7 +102,10 @@ def run(root, *argv, git_env=None):
     _BOARD_RUNS["in process"] += _WATCHING[0]
     try:
         with redirect_stdout(out), redirect_stderr(err):
-            code = fm.main(["--root", str(root), *argv])
+            try:
+                code = fm.main(["--root", str(root), *argv])
+            except SystemExit as e:
+                code = _exit_status(e.code, err)
     finally:
         _WATCHING[0] = False
         for k in git_env or {}:
@@ -222,6 +238,52 @@ with tempfile.TemporaryDirectory() as d:
     made[0].write_text(made[0].read_text().replace("considered: none\n", "considered: none\ntags: bug\n"))
     check("the kind of work is a tag — `bug` is in the vocabulary, a synonym is refused", run(root)[0] == 0
           and (made[0].write_text(made[0].read_text().replace("tags: bug", "tags: defect")) or run(root)[0] == fm.EXIT_LINT))
+
+# --- FM-044 · the Owner's order on PR #173: a refusal the tool ends with, in process, is a FAILED CHECK and the suite goes on — `run` returns it as the
+#     program ends, its exit status and both streams, never as success. Before, its `SystemExit` left `run` with the refusal's line captured and ended the
+#     suite there: exit 4, no FAIL line, no check after it (PR #173's CI, 2026-10-14). Each is compared with the same command as a program
+with tempfile.TemporaryDirectory() as d:
+    svn_ = Path(d).resolve() / "svn"; svn_.mkdir(); (svn_ / ".svn").mkdir()          # a `.svn` that holds no working-copy metadata: the tool refuses it, exit 4
+    plain_ = Path(d).resolve() / "plain"; plain_.mkdir()
+    prog_ = lambda root_, *a_: (lambda r_: (r_.returncode, r_.stdout, r_.stderr))(subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--root", str(root_), *a_], cwd=str(root_),
+                                                                                                  capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV))
+    def caught_(f_):
+        try:
+            return f_()
+        except SystemExit as e_:                    # what the helper let through: the check below fails on it, and the suite goes on to say so
+            return ("left run", e_.code, "")
+    os.environ["GIT_SUITE_AMBIENT"] = "kept"; streams_ = (sys.stdout, sys.stderr); counted_ = _BOARD_RUNS["in process"]
+    try:
+        init_ = caught_(lambda: run(svn_, "--init", "--key", "msr", git_env={"GIT_SUITE_CALL": "1"})); env_init_ = (os.environ.get("GIT_SUITE_AMBIENT"), os.environ.get("GIT_SUITE_CALL"))
+        board_ = caught_(lambda: run(svn_, "--html-only")); after_board_ = (_WATCHING[0], _BOARD_RUNS["in process"] - counted_, fm._TRIPWIRE, fm.SAFE_READS)
+        done_ = caught_(lambda: run(plain_, "--init", "--key", "msr"))
+        (plain_ / "shoalmark.toml").write_text((plain_ / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", "freeze_at = -1\n[kinds]", 1), encoding="utf-8")
+        said_ = caught_(lambda: run(plain_, "--check")); env_end_ = (os.environ.get("GIT_SUITE_AMBIENT"), os.environ.get("GIT_SUITE_CALL")); streams_end_ = (sys.stdout, sys.stderr)
+    finally:
+        os.environ.pop("GIT_SUITE_AMBIENT", None)
+    p_init_, p_board_, p_said_ = prog_(svn_, "--init", "--key", "msr"), prog_(svn_, "--html-only"), prog_(plain_, "--check")
+    metadata_ = "holds no working-copy metadata — nothing is written"
+    check(f"FM-044 · PR #173 · a refusal in process is returned as the program ends it, never as success: `--init` and the board's run in a `.svn` with no working-copy "
+          f"metadata exit 4 with the refusal's line on stderr, and a configuration refused with a message exits 1 with the message on stderr — each code and both streams "
+          f"the program's own (saw {init_[0]!r}, {board_[0]!r}, {said_[0]!r} · the program {p_init_[0]}, {p_board_[0]}, {p_said_[0]})",
+          init_ == p_init_ and board_ == p_board_ and said_ == p_said_ and init_[0] == board_[0] == fm.EXIT_LINT and said_[0] == 1
+          and metadata_ in init_[2] and metadata_ in board_[2] and said_[2].startswith("shoalmark.toml: `freeze_at` is a whole number"))
+    check(f"FM-044 · PR #173 · `run` puts back what it changed, refused or not: the ambient `GIT_*` variable, none of the call's own, the board's watch off and counted "
+          f"once, the tripwire disarmed, the suite's own stdout and stderr — and the run after the refusals succeeds (saw {env_init_}, {env_end_}, {after_board_}, exit {done_[0]})",
+          env_init_ == env_end_ == ("kept", None) and after_board_ == (False, 1, False, False) and streams_end_ == streams_ and done_[0] == 0 and "MSR-001" in done_[1])
+    # …and the suite goes on: these helpers as a program, a refused run checked and a check after it
+    suite_ = Path(d) / "refused_then_more.py"
+    src_ = (HERE / "test_shoalmark.py").read_text(encoding="utf-8")
+    suite_.write_text("__file__ = " + repr(str(HERE / "test_shoalmark.py")) + "\n" + src_[:src_.index("# --- a fresh repository: init, file, gate")]
+                      + "with tempfile.TemporaryDirectory() as d:\n"
+                        "    root = Path(d).resolve(); (root / '.svn').mkdir()\n"
+                        "    check('a refused run, checked', run(root, '--init', '--key', 'msr')[0] == 0)\n"
+                        "check('the check after it', True)\n"
+                        "if FAILS:\n    print(f'FAILED: {len(FAILS)}'); sys.exit(1)\nprint('all green')\n", encoding="utf-8")
+    went_ = subprocess.run([sys.executable, str(suite_)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV, timeout=120)
+    check(f"FM-044 · PR #173 · the suite goes on past a refusal: these helpers as a program, a refused run checked and a check after it — the refusal is a FAIL line, "
+          f"the check after it runs, and the program ends on its FAILED line with exit 1, not the refusal's 4 (saw exit {went_.returncode}, {went_.stdout.strip()[-160:]!r})",
+          went_.returncode == 1 and "  FAIL  a refused run, checked\n" in went_.stdout and "  ok    the check after it\n" in went_.stdout and went_.stdout.rstrip().endswith("FAILED: 1"))
 
 # --- configuration: kinds are the repository's own ------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
@@ -12036,10 +12098,7 @@ with tempfile.TemporaryDirectory() as tmp:
         if os.name != "nt":
             (root / "docs\\work-tracker").mkdir(); (root / "docs\\work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
     (c_bs1_,) = by_hand37_("ap/037-backslash", "main", ("AP-037: tidy the folder", backslash37_, SEAT_))
-    try:
-        code_bs_, said_bs_ = run(root, "--check")[0], ""
-    except SystemExit as e_:
-        code_bs_, said_bs_ = None, str(e_)
+    code_bs_, _o, err_bs_ = run(root, "--check"); said_bs_ = err_bs_.rstrip("\n") if code_bs_ == 1 else ""     # a refusal with a message: exit 1, the message on stderr
     git(root, "switch", "-q", "ap/037-backslash"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written with /", SEAT_)
     c_bs2_, g_bs_ = sha37_(), guard37_(); code_bs2_, _o, err_bs2_ = run(root, "--check")
     check(f"FM-006 · v0.19.1 · a `tracker_dir` holding a backslash is refused in one line ending \"write the folder with /\", and a commit carrying one is refused by `--check`, exit 4 (saw {said_bs_!r}, {code_bs2_}, {g_bs_[0]!r})",
@@ -12054,10 +12113,7 @@ with tempfile.TemporaryDirectory() as tmp:
         if os.name != "nt":
             (root / "C:" / "work-tracker").mkdir(parents=True); (root / "C:" / "work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
     (c_dq1_,) = by_hand37_("ap/037-drive", "main", ("AP-037: tidy the folder", drive37_, SEAT_))
-    try:
-        code_dq_, said_dq_ = run(root, "--check")[0], ""
-    except SystemExit as e_:
-        code_dq_, said_dq_ = None, str(e_)
+    code_dq_, _o, err_dq_ = run(root, "--check"); said_dq_ = err_dq_.rstrip("\n") if code_dq_ == 1 else ""     # the same, as the program ends
     git(root, "switch", "-q", "ap/037-drive"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written relative", SEAT_)
     c_dq2_, g_dq_ = sha37_(), guard37_(); code_dq2_ = run(root, "--check")[0]
     check(f"FM-006 · v0.19.1 · a `tracker_dir` some system reads as drive-qualified is refused as the configuration is read, in one line, and a commit carrying one is refused by `--check`, "
