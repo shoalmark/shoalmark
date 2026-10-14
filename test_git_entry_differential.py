@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import runpy
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,18 @@ HERE = Path(__file__).resolve().parent
 MARKER = "__GIT_ENTRY_DIFFERENTIAL__"
 PAYLOAD = ("VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md", "vendor/marked-18.0.13.umd.js")
 POISON_KEYS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS")
+
+
+def remove_tree(path):
+    """`shutil.rmtree` that makes a refused entry writable and removes it again. Git writes its object files read-only, and Windows
+    refuses to delete a read-only file (PR #173's run 38589202689, RV-3234). The handler is `onexc` from Python 3.12, `onerror` before."""
+    def writable(function, target, _error):
+        os.chmod(target, os.lstat(target).st_mode | stat.S_IWRITE)
+        function(target)
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=writable)
+    else:
+        shutil.rmtree(path, onerror=writable)
 
 
 def serial(value):
@@ -262,7 +275,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         for label, flags, condition, ask, readonly in cases:
             pair = []
             for version, chosen in (("baseline", baseline), ("candidate", candidate)):
-                shutil.rmtree(root); shutil.copytree(saved, root)
+                remove_tree(root); shutil.copytree(saved, root)
                 tool.write_bytes(chosen.read_bytes())
                 if condition == "dirty":
                     (root / "product.txt").write_text("product local edit\n")

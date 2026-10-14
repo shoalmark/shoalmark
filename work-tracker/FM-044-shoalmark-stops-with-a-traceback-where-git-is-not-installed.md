@@ -18,9 +18,16 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-14 — PR #173 CI correction READY `d0f0f24` (round 2 of 2); the Owner's CI run `38539381661` on it failed; one fix round is built in three passes; the Reviewer's first critical pass found it NOT READY `83cf764` on one finding, RV-3220, now corrected, and round 2 of 2 is next.**
-RV-3220: the entry and binding fixtures' `svn add` named `documents/O'Neil & ü.txt` aloud, which svn on Windows prints in
-the system's code page and `command` reads as strict UTF-8; both adds are quiet (`-q`) now.
+**2026-10-14 — PR #173's fix round READY `46f8732` (round 2 of 2); the Owner's run `38589202689` on it is green on Linux and macOS, `test_core.py` included, and runs the whole suite on Windows with 5 FAIL; a second fix round, RV-3230–RV-3234, is built, and the Reviewer's first critical pass on it is next.**
+On Windows that run counts 1867 ok, 5 FAIL and 47 checks skipped in 15 blocks; `test_core.py` was skipped after the failed
+step, so it has still never run there at this branch. The five are new and Windows-only. A1's board link compared a raw
+path with the URI the product prints (RV-3230); A1's reconfigure compared raw spellings with the product's normcased
+inventory, its second clause passing vacuously (RV-3231). A2's ignore setup met a product defect: `proplist --xml` prints
+an `svn:` value with Windows' line ends, `svn_local_properties` returned them, and `svn propset` refused the mixed value
+that `svn_ignore_board` built; `svn_local_properties` alone now returns `svn:` values with LF, as stored (RV-3232). The
+POSIX-shell CLI test skips by name on Windows (RV-3233), and the Git entry differential removes its consumer with a
+helper that clears Git's read-only bit (RV-3234). RV-3220, the first round's last finding, made the entry and binding
+fixtures' `svn add` quiet. The first round answered run `38539381661`:
 Run `38539381661`: ubuntu 3.9 ended FAILED: 6, ubuntu 3.12 and macOS 3.12 FAILED: 4, and both Windows jobs a traceback after
 25 FAIL lines. No board render failed: "headless Chrome did not return index.html within 5 s" is the saw-text of FM-035's
 own control, inside an `ok` line. Windows did not run to the end: A1's `svn add` of a page no measured run had written
@@ -168,6 +175,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-14 19:02 CEST | Owner PR #173 CI run `38589202689` at `46f8732`: Linux and macOS green, `test_core.py` included; both Windows jobs ran the suite to its end with 5 FAIL and skipped `test_core.py` — and cost the Owner a CI run. Second fix round, Owner-approved: A1's board link and reconfigure checks compare as the product spells paths (RV-3230, RV-3231); `svn_local_properties` returns `svn:` values with LF as stored, which Windows' `proplist --xml` prints with CRLF (RV-3232, the one product change); the POSIX-shell CLI test skips by name on Windows (RV-3233); the differential clears Git's read-only bit before removing (RV-3234). Each control fails on `46f8732` and passes corrected; the stage tail gives 619/619. The Reviewer's critical pass, then one Owner CI run, remain due. |
 | 2026-10-14 13:46 CEST | Owner PR #173 CI run `38539381661` at `d0f0f24` failed — FAILED: 6, 4 and 4 on ubuntu 3.9, ubuntu 3.12 and macOS 3.12, and both Windows jobs ended in A1's setup traceback — and cost the Owner a CI run. Fix round: nine checks expect the copied commands as `printed_arg` spells them; `init` refuses a folder name with a line break before its first metadata read; A1's Windows search folder names svn as `svn.exe`, and a failed fixture step is a named FAIL; 3.9's tempdir probe is admitted in its exact shape. Focused blocks fail on `d0f0f24` and pass corrected; the stage tail gives 619/619 and unchanged core 303/303. The Reviewer's first critical pass, then one Owner CI run, remain due. |
 | 2026-10-14 10:09 CEST | The Owner's order on PR #173: the suite's in-process `run` returns a refusal as the program ends — exit status and both streams — so its check fails and the suite goes on. Its regression fails with the old helper (the child suite exits 4) and passes corrected; unchanged core 303/303 passes. Independent critical review, then one Owner CI run, remain due; earlier verdicts and holds stand. |
 | 2026-10-14 09:20 CEST | Owner PR #173 CI at `2dbaa80` stopped with exit 4 on old suite fixtures: an empty `.svn`, a board run assumed to start no `svn`, fake Tortoise paths. Four checks are corrected, test-only: their focused blocks fail on `2dbaa80` and pass corrected; unchanged core 303/303 passes. Independent critical review and native CI on the Owner's push remain due; earlier verdicts and holds stand. |
