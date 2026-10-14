@@ -9950,7 +9950,22 @@ def install_hook():
 
 
 def init(key=None):
-    refused = tracker_folder_problem("nothing is written")  # the tracker folder, judged first, as every run judges it (`load_trackers`)
+    # The key and the folder's name are judged first: neither reads version-control metadata or writes anything. A name with a line
+    # break reaches `git_dirs` as more than its two lines, and its fail-closed refusal would otherwise come first (PR #173's run).
+    key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
+    if not re.fullmatch(r"[A-Z][A-Z0-9]*", key):
+        print(f"--key: {key!r} is not an id prefix — letters and digits, starting with a letter", file=sys.stderr)
+        return EXIT_LINT
+    fresh_config = not (ROOT / CONFIG_NAME).exists()
+    config_text = CONFIG_TEMPLATE.format(name=ROOT.name.replace("\\", "\\\\").replace('"', '\\"'), key=key)       # the folder's name as a TOML string
+    if fresh_config:                                        # read back before any metadata read or write: a name it cannot carry is refused in one line
+        try:
+            read_config(config_text)
+        except SystemExit:
+            print(f"--init: the folder's name {ROOT.name!r} cannot be written into {CONFIG_NAME} as one line — nothing is written; give the folder a name "
+                  "without a line break", file=sys.stderr)
+            return EXIT_LINT
+    refused = tracker_folder_problem("nothing is written")  # the tracker folder, judged next, as every run judges it (`load_trackers`)
     if refused:
         print(refused, file=sys.stderr)
         return EXIT_LINT
@@ -9961,19 +9976,6 @@ def init(key=None):
             print(f"--init: Subversion's local metadata could not be read: {e} — nothing is written", file=sys.stderr)
             return EXIT_LINT
     wrote = []
-    key = (key or re.split(r"[^A-Za-z0-9]+", ROOT.name.strip("._-"))[0][:5] or "WORK").upper()
-    if not re.fullmatch(r"[A-Z][A-Z0-9]*", key):
-        print(f"--key: {key!r} is not an id prefix — letters and digits, starting with a letter", file=sys.stderr)
-        return EXIT_LINT
-    fresh_config = not (ROOT / CONFIG_NAME).exists()
-    config_text = CONFIG_TEMPLATE.format(name=ROOT.name.replace("\\", "\\\\").replace('"', '\\"'), key=key)       # the folder's name as a TOML string
-    if fresh_config:                                        # read back before anything is written: a name it cannot carry is refused in one line
-        try:
-            read_config(config_text)
-        except SystemExit:
-            print(f"--init: the folder's name {ROOT.name!r} cannot be written into {CONFIG_NAME} as one line — nothing is written; give the folder a name "
-                  "without a line break", file=sys.stderr)
-            return EXIT_LINT
     made = [(path, text) for path, text in ((ROOT / CONFIG_NAME, config_text),
                                             (TRACKER_DIR / "TRIAGE.md", TRIAGE_HOME.format(cmd=CMD, **HEAD))) if not path.exists()]
     agents, claude, ignore, svn = ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / ".gitignore", vcs() == "svn"
