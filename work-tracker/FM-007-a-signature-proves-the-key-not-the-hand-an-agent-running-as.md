@@ -22,6 +22,21 @@ hook: "The gate accepts an answer only from a commit signed by the Owner's key. 
 
 ## What is true now
 
+**2026-10-14 — the board's signing dialog promises a signature in every repository.**
+- The dialog step `answer.sign.step.commit` (`shoalmark.py:3739`, used only at `:3548`) reads "commits them, signed
+  with your key — a hardware key waits for your touch".
+- `--answer` passes `git commit -S` only where the answering identity is marked signed (`:2997–2999`), and its own
+  step text says so.
+- So where answers prove the author only, the board promises a signature the command does not make, and the record
+  can never show a touch.
+- The same dialog says it in three more places: its intro (`answer.sign.intro`, `:3733`), its success example
+  ("signed, on …", `:3549`) and its check, which expects `G` (`answer.sign.check.text`, `:3743`, used at `:3550`). The
+  German label (`examples/de/labels.yaml:154`, pinned at `test_shoalmark.py:4941`) says the same.
+- Every dialog that `sign()` opens shares these lines: answer, accept and reject, done, due and revoke.
+- **The rule,** shared with FM-006's M1 and M2: a signature is promised only where signing is on.
+- **Fix, in the next code round:** each of these lines is conditional on `signed`, in English and German.
+- **The signing page's key state:** FM-006's ask carries it, re-read after this tracker's act of 15 October.
+
 **Named 2026-09-22 by the Owner, the day the answer scheme went live.** The scheme (0.15.0): an `answer:` counts only from
 a commit that verifies under a key the repository's signers file ties to the Owner's email. That refuses a forged author
 string. It does not refuse **the Owner's own machine used by someone else**: an agent started from his shell holds his
