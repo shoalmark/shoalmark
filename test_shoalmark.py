@@ -2688,31 +2688,43 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root)
 fm.configure(HERE)
 
-# no Subversion call: a working copy that asks `svn blame` for who set `next: owner` — the board's run asks nothing of it. What starts `svn` is seen by a
-# stand-in in Python, on every system: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process starts a program
-# named `svn` — before the tool's own tripwire could refuse it, so even an attempt shows
-if _has_rev("ae3c9e9"):
+# no Subversion call but its one local status: a working copy that asks `svn blame` for who set `next: owner` — the board's run asks nothing of it, nor of its
+# repository, which is away while it runs. What starts `svn` is seen by a stand-in in Python, on every system: a `sitecustomize` on the tool's PYTHONPATH whose
+# audit hook writes down each start of a program named `svn` — before the tool's own tripwire could refuse it, so even an attempt shows. FM-044 (A1, accepted):
+# the board's run reads which of its paths Subversion versions with one local `svn status`, this argv, in the working copy — and refuses a `.svn` that holds
+# no working-copy metadata, so the working copy here is a real one, checked out from a file:// repository
+_SVN_STATUS = ["svn", "status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", "--xml"]
+_SVN_HERE = bool(shutil.which("svn") and shutil.which("svnadmin"))
+if _has_rev("ae3c9e9") and _SVN_HERE:
     with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
-        root = Path(d).resolve(); (root / ".svn").mkdir(); run(root, "--init", "--key", "msr")
+        repo_ = Path(o).resolve() / "repo"; subprocess.run(["svnadmin", "create", str(repo_)], check=True, capture_output=True)
+        root = Path(d).resolve() / "wc"; subprocess.run(["svn", "checkout", "-q", repo_.as_uri(), str(root)], check=True, capture_output=True)
+        run(root, "--init", "--key", "msr")
         (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", 'owner = "o@x"\n\n[seats]\nbuilder = "b@x"\n\n[kinds]', 1), encoding="utf-8")
         tracker(root, "MSR-001", extra='next: owner\nask: "Which one?"\n', title="asks")
         seen_ = Path(o) / "seen"; seen_.mkdir(); mark_ = Path(o) / "svn-ran"
-        (seen_ / "sitecustomize.py").write_text(
-            "import os, re, sys\n"
+        (seen_ / "sitecustomize.py").write_text(           # its log is opened before the run begins: the tripwire refuses a file opened inside the event
+            "import json, os, re, sys\n"
+            f"_log = open({str(mark_)!r}, 'a', encoding='utf-8')\n"
             "def _seen(event, args):\n"
             "    if event in ('subprocess.Popen', 'os.spawn', 'os.posix_spawn', 'os.exec'):\n"
             "        words = [w for w in re.split(r'[^A-Za-z0-9._-]+', ' '.join(str(a) for a in (args[0], args[1]) if a is not None)) if w]\n"
             "        if any(w.lower() in ('svn', 'svn.exe') for w in words[:3]):\n"
-            f"            open({str(mark_)!r}, 'a').write('svn\\n')\n"
+            "            argv = args[1] if isinstance(args[1], str) else [str(a) for a in args[1]] if isinstance(args[1], (list, tuple)) else str(args[1])\n"
+            "            _log.write(json.dumps([event, argv, str(args[2]) if event == 'subprocess.Popen' else '']) + '\\n'); _log.flush()\n"
             "sys.addaudithook(_seen)\n", encoding="utf-8")
         env_ = dict(_ENV, PYTHONPATH=str(seen_))
-        new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only", env=env_); ran_new_ = mark_.exists(); mark_.unlink(missing_ok=True)
-        old_ = _tool_run(_old_tool(Path(o) / "old"), root, "--html-only", env=env_); ran_old_ = mark_.exists()
-        check(f"FM-006 · a private security report · in a Subversion working copy the board's run starts no `svn`: with a seat to check and an ask to place, it writes the board and the marker never appears; "
-              f"the tool before it ran `svn` for the same repository (saw exit {new_[0]}, marker new {ran_new_} · old {ran_old_})",
-              new_[0] == 0 and not ran_new_ and (root / "docs/work-tracker/index.html").exists() and ran_old_)
+        starts_ = lambda: [json.loads(l_) for l_ in mark_.read_text(encoding="utf-8").splitlines()] if mark_.exists() else []
+        status_ = lambda s_: s_[0] == "subprocess.Popen" and (fm.split_cmdline(s_[1]) if isinstance(s_[1], str) else s_[1]) == _SVN_STATUS and Path(s_[2]).resolve() == root
+        repo_.rename(repo_.with_name("repo-away"))         # the repository is away: the board's run asks it nothing
+        new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only", env=env_); seen_new_ = starts_(); mark_.unlink(missing_ok=True)
+        old_ = _tool_run(_old_tool(Path(o) / "old"), root, "--html-only", env=env_); seen_old_ = starts_()
+        check(f"FM-006 · a private security report · in a Subversion working copy the board's run starts no `svn` but the one local status FM-044 reads: with a seat to check, "
+              f"an ask to place and the repository away, it writes the board, and its only start of `svn` is `{' '.join(_SVN_STATUS)}` in the working copy; "
+              f"the tool before it ran `svn` beyond that for the same repository (saw exit {new_[0]}, new {seen_new_} · old {seen_old_[:2]})",
+              new_[0] == 0 and len(seen_new_) == 1 and status_(seen_new_[0]) and (root / "docs/work-tracker/index.html").exists() and any(not status_(s_) for s_ in seen_old_))
 else:
-    _skipped("FM-006 · the board's run starts no `svn`", 1, "this clone does not hold ae3c9e9")
+    _skipped("FM-006 · the board's run starts no `svn` but its one local status", 1, "svn and svnadmin unavailable" if not _SVN_HERE else "this clone does not hold ae3c9e9")
 
 # what it reads: only regular files inside the repository — a tracker, the configuration, the Owner's path, the brand's files, a triage worksheet, each a symlink to a file outside
 if _SYMLINKS and _has_rev("ae3c9e9"):
@@ -7660,9 +7672,12 @@ else:
         code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-011")
         check(f"FM-006 · v0.19.1 · an unversioned new tracker — never `svn add`ed — carrying `close`, `ask` and `triage` lines is refused too, in one line naming all three (saw {code}, {len(lines_)})",
               code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-011: is not committed yet, and it carries lines that `ask`, `close` and `triage` guard"))
-        # the TortoiseSVN pre-commit run of the copy vendored into the working copy says the same line
+        # the TortoiseSVN pre-commit run of the copy vendored into the working copy says the same line — called with what TortoiseSVN hands it: its path list,
+        # its message file and the working copy, which FM-044's binding (P, accepted) reads before anything else and refuses where they are not real
         fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
-        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        paths6_, message6_ = base / "affected-paths.txt", base / "commit-message.txt"
+        paths6_.write_text(str(p_) + "\n", encoding="utf-8"); message6_.write_text("C6-011\n", encoding="utf-8")
+        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths6_), "3", str(message6_), str(root)], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
         hook6_("start"); pre_ = hook6_("pre")
         check(f"FM-006 · v0.19.1 · `--tsvn-hook pre`, as TortoiseSVN calls it, refuses the same tracker with the same line, exit 4 (saw {pre_.returncode})",
               pre_.returncode == fm.EXIT_LINT and said6_(pre_.stdout + pre_.stderr, "C6-011") == lines_)
@@ -10997,15 +11012,19 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 for kind_ in ("Subversion", "a plain folder"):
+    if kind_ == "Subversion" and not _SVN:
+        _skipped("FM-045 · C · Subversion: the board's run records nothing", 1, "svn and svnadmin unavailable")
+        continue
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp).resolve()
-        if kind_ == "Subversion":
-            (root / ".svn").mkdir()
+        if kind_ == "Subversion":                           # FM-044: a real working copy — the tool refuses a `.svn` that holds no working-copy metadata
+            subprocess.run(["svnadmin", "create", str(root / "repo")], check=True, capture_output=True)
+            subprocess.run(["svn", "checkout", "-q", (root / "repo").as_uri(), str(root / "wc")], check=True, capture_output=True); root = root / "wc"
         run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
         calls_ = argv_of(lambda: run(root, "--html-only")); code_ = run(root, "--html-only")[0]; run(root)
-        started_ = [c_ for c_ in calls_ if c_ and (Path(str(c_[0])).name.lower() in ("svn", "svn.exe") or "for-each-ref" in c_ or "HEAD" in c_)]
+        started_ = [c_ for c_ in calls_ if c_ and c_ != _SVN_STATUS and (Path(str(c_[0])).name.lower() in ("svn", "svn.exe") or "for-each-ref" in c_ or "HEAD" in c_)]
         codes_, o_, s_ = _bj_says(root)
-        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records nothing — no `view/built.json`, from it or from the default run — starting no `svn` and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it (saw exit {code_}, {started_} · {o_} · {s_})",
+        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records nothing — no `view/built.json`, from it or from the default run — starting no `svn`{' but the one local status FM-044 reads' if kind_ == 'Subversion' else ''} and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it (saw exit {code_}, {started_} · {o_} · {s_})",
               code_ == 0 and (root / "docs/work-tracker/index.html").is_file() and not (root / "docs/work-tracker/view/built.json").exists() and started_ == []
               and codes_ == (0, 0) and o_ == s_ == [])
 fm.configure(HERE)
@@ -14419,16 +14438,17 @@ with tempfile.TemporaryDirectory() as tmp:
     run(plain_, "--html-only"); _tool_run(HERE / "shoalmark.py", plain_, "--html-only")
     never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
     hit_, moved_ = _started_never(_BOARD_GIT, never_), _started_never(_BOARD_GIT, {**never_, "ls-tree": "the control"})
-    other_, wrapped_ctl_ = _not_git_itself(_BOARD_GIT), _not_git_itself(_BOARD_GIT + [["env", "git", "log"], ["/usr/bin/GIT.EXE", "log"]])
+    seen_git_ = [a_ for a_ in _BOARD_GIT if a_ != _SVN_STATUS]      # FM-044 (A1, accepted): a Subversion board's run starts one local `svn status`, this argv
+    other_, wrapped_ctl_ = _not_git_itself(seen_git_), _not_git_itself(seen_git_ + [["env", "git", "log"], ["/usr/bin/GIT.EXE", "log"]])
     traced_ = _BOARD_RUNS["through git's trace"]
     check(f"FM-045 · the classification's runtime half: none of the git commands named as never started in the board's run is started by one — watched: each `--html-only` "
           f"the suite runs in process, each of this tool's own file it runs as a program in its own environment, and every board's run of the board matrix through git's trace "
           f"(the hooks' copy, the runner's, `--answer`'s, by hand), FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs "
           f"in process, {_BOARD_RUNS['a program']} as a program and {traced_} through git's trace, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
           "ls-remote" in never_ and _BOARD_RUNS["in process"] >= 3 and _BOARD_RUNS["a program"] >= 3 and not hit_ and moved_ == ["ls-tree"])
-    check(f"FM-045 · the classification's runtime half: every program recorded as started by a board's run it watches is git itself, as `read_only_git` reads argv[0] — "
-          f"never through `env` or another wrapper; its control, `env git log` among them, is found, and git by a path in another case is not (saw {len(_BOARD_GIT)} starts; not git "
-          f"itself {other_}; the control found {wrapped_ctl_})",
+    check(f"FM-045 · the classification's runtime half: every program recorded as started by a board's run it watches is git itself, as `read_only_git` reads argv[0], "
+          f"or FM-044's one local `svn status` by its exact argv — never through `env` or another wrapper; its control, `env git log` among them, is found, and git by a path "
+          f"in another case is not (saw {len(_BOARD_GIT)} starts, {len(_BOARD_GIT) - len(seen_git_)} of them that status; not git itself {other_}; the control found {wrapped_ctl_})",
           len(_BOARD_GIT) > 0 and not other_ and wrapped_ctl_ == ["env"])
     rm_git(root); rm_git(plain_)
 fm.configure(HERE)

@@ -18,7 +18,7 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-13 — bounded common/A/C and callers accepted; P first review NOT READY; correction built, final verification next.**
+**2026-10-14 — local P READY `2dbaa80`; Owner PR #173 CI stopped on two old suite fixtures; test-only correction built, independent critical review next.**
 Current Owner main `80b60c8` includes R12 READY `246ccdf` and #171. This branch carries its exact
 AGENTS and signed TRIAGE changes through ordinary merge `2f373a8`; it adds no Owner ruling or consumer authority.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088;
@@ -31,33 +31,44 @@ RV-3097 is unused. Its four inherited-dot corrections pass 119 component control
 caller functions and runtime controls. C final READY `f59a1c1`, Reviewed `05e02ac`, closes RV-3095,
 BOUNDED CLI/PRESENTATION/DOCUMENTATION ONLY. Closed component findings are not reopened.
 
-P now composes actual main/preflight/Tortoise binding and the once-per-invocation limitation:
+P final READY `2dbaa80`, Reviewed `f3bcca0`, closes RV-3098 in its second/final round, BOUNDED LOCAL P
+INTEGRATION ONLY: the installed tool validates its complete configuration chain against the affected
+directory's consumer before metadata queries, PATH contents, tracker/proof reads or writes. P composes actual
+main/preflight/Tortoise binding and the once-per-invocation limitation:
 "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
 Local board/init/install/refusals run with Git absent and the server unavailable. Ordinary legacy-history
 index/check/triage controls explicitly use available file:// history; their untrusted account strings establish
 no authentication or adoption. Recursive applied triage prints the limitation once. Git retains its actual
 mixed-flag ordering, origin-selection probe, process options and cleaned foreign hook environment.
+Production SHA-256 `344db0516be7876a796f19c40b3d4334208ae33524dee1a20b8dbdf489d9b1fe` passed compile,
+unchanged core 303/303 and the stage runtime block 619/619 with zero skips; the whole `test_shoalmark.py`
+had not run before CI. Component-only source assertions remain in their standalone accepted modules, and
+unchanged core retains the production/every-parent history ratchet.
 
-Independent first P critical NOT READY `62ecf9c`, Reviewed `de17860`, records RV-3098 P2.
-The installed tool now validates its complete configuration chain against the affected directory's
-consumer before metadata queries, PATH contents, tracker/proof reads or writes. Seven identical
-refusal controls fail on the reviewed source and pass with the three-line correction; six legitimate
-bindings retain START/PRE, explicit root/subroot and once-only notice behavior. The portable current
-binding group adds 92 controls. Its observer adds measurements, without replacing handlers or results.
+Owner PR #173 CI at `2dbaa80`, run 38523854934: all five suite jobs stopped with exit 4, no traceback,
+right after the FM-006 tempfile check. The next block, FM-006's board run in Subversion, made a working copy
+as an empty `.svn` and ran `--init` in process: accepted metadata validation refuses a `.svn` with no
+`wc.db` or `entries` (exit 4), and the suite's in-process `run` captured that line, so the escaping exit
+ended the suite silently. FM-045 C's Subversion case had the same fixture. Both, and FM-045's suite-end
+runtime check, assumed the board's run starts no `svn`, where accepted A1 starts exactly one local
+`svn status … --xml` in the working copy. FM-006's v0.19.1 `--tsvn-hook pre` check handed fake
+TortoiseSVN paths, which P's accepted binding refuses before the gate.
 
-Exact corrected production SHA-256 `344db0516be7876a796f19c40b3d4334208ae33524dee1a20b8dbdf489d9b1fe`
-passes changed-file compile (0.782 s), unchanged core 303/303 (52.394 s), and actual current
-aggregate runtime 619/619 with zero skips (151.345 s), including the new binding group.
-These are Planner build checks; the same independent ROOT owes the sole remaining final P verification.
-Earlier actual entry/Git/legacy evidence stays attached to its exact source and scope; no native/full CI
-qualification or independent P READY is inferred from this run.
-Component-only source assertions remain in their standalone accepted modules; the aggregate runs actual shared,
-caller, C and entry controls, and unchanged core retains the production/every-parent history ratchet.
+The correction is test-only. Both fixtures are real file:// working copies, skipped by name without
+svn/svnadmin (CI installs both). FM-006's check admits only that exact status in the working copy, with the
+repository moved away; its stand-in opens its log before the run, as the tripwire refuses a file opened
+inside the event. FM-045 C and the runtime check exclude only that argv; the `env git log` control stays.
+The hook check gets a real path list, message file and working copy, as S2 does. Production, `ci.yml`,
+list and ceiling are unchanged. On `2dbaa80` the two blocks exit 4 and the hook check fails; corrected,
+all pass. The old tool's `svn blame` still fails FM-006's check; FM-045 C and the runtime check fail on the
+status argv without their exclusion. FM-037's empty `.svn` guard block and the other old SVN blocks pass
+unchanged. Independent critical review of this correction is next; native CI on the Owner's PR #173 push
+is the first full-suite judgement.
 
 Composition preserves every parent's removal: 45 and 44 keys intersect to 29, and P's one migrated main call
 removes the final exact key to 28. Common boundary/cache/source/history semantics, scanner, fixed ceiling,
 digests and source-command options remain frozen. No held B reader or archive-source/check implementation is
-imported. RV-3098 is corrected for final verification; local composition remains NOT READY until that verdict.
+imported.
 RV-3099: recorded privately
 RV-3003/RV-3004: recorded privately
 
@@ -76,8 +87,8 @@ native layout qualification remains due. Archive activation awaits Owner disposi
 Owner confirms no SVN consumer adoption proof exists. Full protected acceptance waits for an authenticating
 consumer, recorded adoption and trial findings; held rulings return 20 October. Local CLI/board/init/install
 continues without a policy anchor, authority substitute, new rights or blanket ordinary-operation refusal.
-Native/full CI, protected-request/past-policy proof and actual release remain held or due. Codex covers today's
-critical builds; Claude tomorrow. Push DISABLED; Owner fetches, pushes and opens/merges PRs.
+Native/full CI, protected-request/past-policy proof and actual release remain held or due. Claude covers
+today's critical builds. Push DISABLED; Owner fetches, pushes and opens/merges PRs.
 
 ## Why
 
@@ -117,6 +128,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-14 09:20 CEST | Owner PR #173 CI at `2dbaa80` stopped with exit 4 on old suite fixtures: an empty `.svn`, a board run assumed to start no `svn`, fake Tortoise paths. Four checks are corrected, test-only: their focused blocks fail on `2dbaa80` and pass corrected; unchanged core 303/303 passes. Independent critical review and native CI on the Owner's push remain due; earlier verdicts and holds stand. |
 | 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
 | 2026-10-13 21:30 CEST | A caller final READY `4ab9341` closes RV-3096; ordinary local composition retains its exact functions and all parent reductions, leaving 28 keys. Actual local runtime 527/527 and unchanged core 303/303 pass. P critical review remains next; exhausted B/archive and protected-consumer holds remain. |
 | 2026-10-13 20:36 CEST | B final NOT READY `99968f2` leaves RV-3092–RV-3094 HELD with final rounds exhausted; disposition ask proposes holding the readers and preparing structural validation outside. A caller `43b5600` is in its separate critical review; C is locally composed. Archive final hold remains separate; local entry/notice work continues. |
