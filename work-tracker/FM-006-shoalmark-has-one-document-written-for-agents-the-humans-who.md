@@ -103,10 +103,11 @@ integration's base.
   - new: `Unter Subversion läuft es ohne installiertes <code>git</code>, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.`
 - *How it works* `:56` (DE: `Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter
   Subversion.`) and the Setup intro lines: drop the git requirement for Subversion in the same words.
-- **What it cannot verify** is taken from FM-044's own statement: "this local run cannot verify commit signatures or
-  server-authenticated authors". At the freeze, re-read it there, and keep both languages to it.
-- **When it says so** is re-read at the freeze too. In FM-044's current code the limit prints only where its notice
-  flag is set, on board runs and hook errors, so *says once* must match what v0.20.0 shipped.
+- **What it cannot verify** is taken from FM-044's own statement, on its branch `fm/044-local-stage-current` at
+  `3932e7f` and not yet on main: "this local run cannot verify commit signatures or server-authenticated authors".
+  At the freeze, re-read it where v0.20.0 has it, and keep both languages to it.
+- **When it says so** is re-read at the freeze too. In FM-044's code at `3932e7f` the limit prints only where its
+  notice flag is set, on board runs and hook errors, so *says once* must match what v0.20.0 shipped.
 - **Why:** FM-044 puts Subversion without git, from the release archive, in v0.20.0. If v0.20.0's tag does not deliver
   it, the current sentence stays.
 

@@ -18,8 +18,8 @@ hook: "B1's probe dialog gives a visitor one opt-in line to say what their agent
 ## What is true now
 
 **Filed 2026-10-14 as a chapter of FM-006; nothing is built.** The line is in B1's probe dialog, FM-006's subject.
-FM-006's one ask carries the truth pass on B1's words, and FM-004's slot holds the archive ruling until 20 October,
-so this chapter carries the ask, to be answered before the words freeze.
+FM-006's one ask carries the truth pass on B1's words, so this chapter carries the ask, to be answered before the
+words freeze.
 
 **2026-10-14 — one opt-in line after the probe dialog's third step.**
 - A new key after `dlg_s3`, shown in the dialog and under the start section's coin lines:
