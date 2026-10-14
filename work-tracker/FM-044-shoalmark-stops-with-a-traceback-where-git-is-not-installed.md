@@ -18,7 +18,7 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-14 — PR #173 CI correction READY `d0f0f24` (round 2 of 2); the Owner's CI run `38539381661` on it failed; one fix round is built in two passes, and the Reviewer's first critical pass on it is next.**
+**2026-10-14 — PR #173 CI correction READY `d0f0f24` (round 2 of 2); the Owner's CI run `38539381661` on it failed; one fix round is built in three passes, and the Reviewer's first critical pass on it is next.**
 Run `38539381661`: ubuntu 3.9 ended FAILED: 6, ubuntu 3.12 and macOS 3.12 FAILED: 4, and both Windows jobs a traceback after
 25 FAIL lines. No board render failed: "headless Chrome did not return index.html within 5 s" is the saw-text of FM-035's
 own control, inside an `ok` line. Windows did not run to the end: A1's `svn add` of a page no measured run had written
@@ -33,7 +33,9 @@ The second pass makes the suite's own observers read the start as Windows audits
 (RV-3061's shape): each keeps the raw line, an exact check compares it with `subprocess.list2cmdline` of the expected
 argv, and a check of a program or a subcommand reads the argv back with `split_cmdline`. Before, A1's exact status
 check failed there, and A2's and the corrections' no-mutation checks passed with nothing read. A2 reads `svn:ignore`
-back through `propget --xml`, since plain `propget` prints an `svn:` property with the system's line ends.
+back through `propget --xml`, since plain `propget` prints an `svn:` property with the system's line ends. The third
+pass gives the Git entry differential's observer, the last in the suite that read a Windows start as a list, the same
+reading: its exact `git diff` and `ls-remote` checks failed there, and "dirty default asks no origin" passed with nothing read.
 Current Owner main `80b60c8` includes R12 READY `246ccdf` and #171. This branch carries its exact
 AGENTS and signed TRIAGE changes through ordinary merge `2f373a8`; it adds no Owner ruling or consumer authority.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088;

@@ -65,6 +65,8 @@ def observe(spec):
                            "cwd": str(Path(os.fsdecode(cwd)).resolve()) if cwd is not None else os.getcwd(),
                            "environment": serial(dict(os.environ) if env is None else env),
                            "explicit_environment": env is not None, "product_stack": stack()})
+            if executable is None and isinstance(argv, str):        # Windows' audit shape (RV-3061): `invoke` reads its argv back
+                starts[-1]["raw"] = argv
         elif event == "open":
             path, mode, flags = arguments
             if flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND):
@@ -157,6 +159,11 @@ def invoke(tool, root, flags, cwd, env):
     if len(markers) != 1:
         raise AssertionError("actual observer did not complete: " + result.stderr[-1800:])
     report = json.loads(markers[0])
+    if any("raw" in row for row in report["starts"]):
+        from test_vcs_entry import read_back                        # the suite's reading of a Windows line (`fm.split_cmdline`), here in the parent
+        for row in report["starts"]:
+            if "raw" in row:
+                row["argv"] = read_back(row["raw"])
     report.update(status=result.returncode, stdout=result.stdout,
                   stderr="".join(line for line in lines if not line.startswith(MARKER)), before=before, after=snapshot(root),
                   source_sha256=hashlib.sha256(tool.read_bytes()).hexdigest(), flags=flags,
@@ -173,6 +180,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
     candidate, baseline, payload = Path(candidate).resolve(), Path(baseline).resolve(), Path(payload).resolve()
     immutable = {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     rows, checks = [], []
+    from test_vcs_entry import same_start                           # an exact start: Windows' raw line against list2cmdline, POSIX's list
 
     def assert_control(label, passed):
         checks.append({"name": label, "pass": bool(passed)})
@@ -285,7 +293,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             if readonly:
                 assert_control(label_prefix + "read-only entry leaves consumer snapshot identical", all(observed["before"] == observed["after"] for observed in pair))
             if label in ("clean-check-origin", "dirty-check-fallback", "clean-default-origin", "dirty-default-fallback"):
-                main_probe = lambda observed: [row for row in observed["starts"] if row["argv"] == ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"]
+                main_probe = lambda observed: [row for row in observed["starts"] if same_start(row["argv"], row.get("raw"), ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"])
                                               and "main" in row["product_stack"] and "worktree_edited" in row["product_stack"]
                                               and "read_changes" not in row["product_stack"]]
                 probes = [main_probe(observed) for observed in pair]
@@ -297,7 +305,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 if condition == "dirty":
                     assert_control(label_prefix + "dirty tree selects uncommitted fallback", all(observed["main_returns"][-1]["WALK"] == "uncommitted" for observed in pair))
                 if label == "clean-default-origin":
-                    assert_control(label_prefix + "clean default actually reads local origin once", all(sum(row["argv"] == ["git", "ls-remote", "--symref", "origin", "HEAD"] for row in observed["starts"]) == 1 for observed in pair))
+                    assert_control(label_prefix + "clean default actually reads local origin once", all(sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts"]) == 1 for observed in pair))
                 if label == "dirty-default-fallback":
                     assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts"]) for observed in pair))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
