@@ -18,7 +18,7 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-14 — local P READY `2dbaa80`; Owner PR #173 CI stopped on old suite fixtures; fixture correction `22b0a07` and the Owner's `run` correction built; independent critical review, then one Owner CI run.**
+**2026-10-14 — local P READY `2dbaa80`; PR #173 CI correction first critical NOT READY `39abd8a` (RV-3061 P2, RV-3062 and RV-3063 P3); one correction built, round 2 of 2 next, then one Owner CI run.**
 Current Owner main `80b60c8` includes R12 READY `246ccdf` and #171. This branch carries its exact
 AGENTS and signed TRIAGE changes through ordinary merge `2f373a8`; it adds no Owner ruling or consumer authority.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088;
@@ -40,13 +40,13 @@ Local board/init/install/refusals run with Git absent and the server unavailable
 index/check/triage controls explicitly use available file:// history; their untrusted account strings establish
 no authentication or adoption. Recursive applied triage prints the limitation once. Git retains its actual
 mixed-flag ordering, origin-selection probe, process options and cleaned foreign hook environment.
-Production SHA-256 `344db0516be7876a796f19c40b3d4334208ae33524dee1a20b8dbdf489d9b1fe` passed compile,
+P's production SHA-256 `344db0516be7876a796f19c40b3d4334208ae33524dee1a20b8dbdf489d9b1fe` passed compile,
 unchanged core 303/303 and the stage runtime block 619/619 with zero skips; the whole `test_shoalmark.py`
 had not run before CI. Component-only source assertions remain in their standalone accepted modules, and
 unchanged core retains the production/every-parent history ratchet.
 
-Owner PR #173 CI at `2dbaa80`, run 38523854934: all five suite jobs stopped with exit 4, no traceback,
-right after the FM-006 tempfile check. The next block, FM-006's board run in Subversion, made a working copy
+Owner PR #173 CI at `2dbaa80`, run 38523854934: all five suite jobs failed after check 168, the FM-006
+tempfile check — exit 4 on Linux and macOS, 1 on Windows, as reported — with no traceback. The next block, FM-006's board run in Subversion, made a working copy
 as an empty `.svn` and ran `--init` in process: accepted metadata validation refuses a `.svn` with no
 `wc.db` or `entries` (exit 4), and the suite's in-process `run` captured that line, so the escaping exit
 ended the suite silently. FM-045 C's Subversion case had the same fixture. Both, and FM-045's suite-end
@@ -70,8 +70,21 @@ stderr — so its check fails and the suite goes on, and the next CI run shows e
 once. Product refusals are unchanged; two FM-037 checks read the message from the returned stderr. A new
 regression compares each refusal with the program and runs these helpers as a program past one: with the
 old helper it fails, its child suite ending with exit 4 as CI did; corrected, the child ends on its FAILED
-line, exit 1. The paused independent critical review verifies both corrections; one Owner CI run on PR #173
-is then the first full-suite judgement.
+line, exit 1.
+
+First critical pass NOT READY `39abd8a`, Reviewed `b08f376`, judged both corrections sound and found three new
+issues. RV-3061 P2, product: on Windows CPython audits the board's status start as no program and its command
+line, and the board's judge admitted only `svn`, so every Subversion `--html-only` there would stop, exit 4 —
+fail closed, nothing exposed. The judge now also admits that Windows shape, still only the exact status in
+the working copy; no program with a list, any explicit program, other argv, cwd or spelling stays refused.
+RV-3062 P3: six skip reasons now say "svn or svnadmin is not installed here"; counting is unchanged. RV-3063
+P3: a new check requires a RuntimeError and a KeyboardInterrupt to leave `run` as raised, its state restored.
+Simulated event shapes fail on `b08f376` and pass corrected; the event this system really audits for the
+board's own status start is caught before anything starts and admitted — POSIX here, Windows only natively,
+in CI. Predicate and helper mutants each fail their control. Only `board_judge` changed in production
+(SHA-256 `fb4fde94142ca4bbb671d576d5b0fa3baffed259d0b33d39b74ea68465acbdd3`); scanner, list, ceiling and
+boundary hold; A1's 152 controls and unchanged core 303/303 pass. Round 2 of 2 by the same independent
+reviewer is next; then one Owner CI run on PR #173, the first full-suite and native Windows judgement.
 
 Composition preserves every parent's removal: 45 and 44 keys intersect to 29, and P's one migrated main call
 removes the final exact key to 28. Common boundary/cache/source/history semantics, scanner, fixed ceiling,

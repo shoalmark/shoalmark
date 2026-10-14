@@ -712,7 +712,8 @@ def board_judge(event, args):
     if event == "subprocess.Popen":
         argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]
         # ROOT is configure's canonical consumer directory. Keep the original launch spelling: lexical parent cancellation can hide a foreign symlink cwd.
-        allowed = (read_only_svn(argv) and args[0] == "svn" and isinstance(args[2], (str, bytes, os.PathLike)) and os.fsdecode(args[2]) == os.fsdecode(ROOT)) if vcs() == "svn" else read_only_git(argv)
+        # CPython audits the program as given: POSIX fills in `svn` and keeps the list; Windows, given none, audits None and the command line (RV-3061).
+        allowed = (read_only_svn(argv) and (args[0] == "svn" or (args[0] is None and isinstance(args[1], str))) and isinstance(args[2], (str, bytes, os.PathLike)) and os.fsdecode(args[2]) == os.fsdecode(ROOT)) if vcs() == "svn" else read_only_git(argv)
         if not allowed:
             why = f"it would start {' '.join(str(a) for a in argv[:4])}"
     elif event in ("os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty", "webbrowser.open", "socket.connect"):

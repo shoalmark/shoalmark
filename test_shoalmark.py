@@ -271,6 +271,27 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-044 · PR #173 · `run` puts back what it changed, refused or not: the ambient `GIT_*` variable, none of the call's own, the board's watch off and counted "
           f"once, the tripwire disarmed, the suite's own stdout and stderr — and the run after the refusals succeeds (saw {env_init_}, {env_end_}, {after_board_}, exit {done_[0]})",
           env_init_ == env_end_ == ("kept", None) and after_board_ == (False, 1, False, False) and streams_end_ == streams_ and done_[0] == 0 and "MSR-001" in done_[1])
+    # …and only SystemExit: a traceback or an interrupt inside the tool leaves `run` as raised, the same exception, with `run`'s state put back (RV-3063)
+    def raising_(raised_):
+        def main_(argv=None, **kw_):
+            raise raised_
+        return main_
+    real_main_, got_ = fm.main, []
+    os.environ["GIT_SUITE_AMBIENT"] = "kept"
+    try:
+        for raised_ in (RuntimeError("a traceback in the tool"), KeyboardInterrupt()):
+            fm.main = raising_(raised_)
+            try:
+                got_.append(("returned", run(plain_, "--html-only", git_env={"GIT_SUITE_CALL": "1"})[0]))
+            except BaseException as x_:
+                got_.append((type(x_).__name__, x_ is raised_, os.environ.get("GIT_SUITE_CALL"), os.environ.get("GIT_SUITE_AMBIENT"), _WATCHING[0], (sys.stdout, sys.stderr) == streams_))
+            finally:
+                fm.main = real_main_
+    finally:
+        os.environ.pop("GIT_SUITE_AMBIENT", None)
+    check(f"FM-044 · PR #173 · `run` returns only what the tool ends with SystemExit: a RuntimeError and a KeyboardInterrupt inside the tool leave it as raised, the same "
+          f"exception, with the call's `GIT_*` variable gone, the ambient one kept, the board's watch off and the suite's own streams (saw {got_})",
+          got_ == [("RuntimeError", True, None, "kept", False, True), ("KeyboardInterrupt", True, None, "kept", False, True)] and fm.main is real_main_)
     # …and the suite goes on: these helpers as a program, a refused run checked and a check after it
     suite_ = Path(d) / "refused_then_more.py"
     src_ = (HERE / "test_shoalmark.py").read_text(encoding="utf-8")
@@ -2786,7 +2807,76 @@ if _has_rev("ae3c9e9") and _SVN_HERE:
               f"the tool before it ran `svn` beyond that for the same repository (saw exit {new_[0]}, new {seen_new_} · old {seen_old_[:2]})",
               new_[0] == 0 and len(seen_new_) == 1 and status_(seen_new_[0]) and (root / "docs/work-tracker/index.html").exists() and any(not status_(s_) for s_ in seen_old_))
 else:
-    _skipped("FM-006 · the board's run starts no `svn` but its one local status", 1, "svn and svnadmin unavailable" if not _SVN_HERE else "this clone does not hold ae3c9e9")
+    _skipped("FM-006 · the board's run starts no `svn` but its one local status", 1, "svn or svnadmin is not installed here" if not _SVN_HERE else "this clone does not hold ae3c9e9")
+
+# FM-044 · RV-3061: the board's judge admits its one local status in each shape CPython audits it — POSIX fills in the program, `svn`, and keeps the list;
+#     Windows, given no program, audits None and the command line (subprocess's Windows `_execute_child`) — and nothing beside it. The shapes are simulated
+#     here, on every system, by calling the judge; then the event this system's Python actually audits for the board's own status start is caught before
+#     anything starts, and judged. The configuration is Subversion as A1's controls set it: the judge reads only the backend and ROOT, no metadata
+class _StartCaught(BaseException):
+    """The start `_catch_start` stopped — a BaseException, so no handler on the way can take it for a failed command."""
+
+
+_CATCH = [False, None]                 # on, and the one process start caught while on (`_catch_start`)
+
+
+def _catch_start(event, args):
+    """While on: the first process start's audited event is kept, and the start is stopped before anything runs."""
+    if _CATCH[0] and event == "subprocess.Popen":
+        _CATCH[0], _CATCH[1] = False, tuple(args)
+        raise _StartCaught()
+
+
+sys.addaudithook(_catch_start)
+with tempfile.TemporaryDirectory() as d:
+    from unittest import mock as _mock
+    wc_ = Path(d).resolve() / "wc"; wc_.mkdir(); fm.configure(wc_); line_ = subprocess.list2cmdline(_SVN_STATUS); tripped_ = list(fm.TRIPPED)
+    def judged_(args_):
+        try:
+            fm.board_judge("subprocess.Popen", args_)
+            return "admitted"
+        except fm.ReadOnlyRun:
+            return "refused"
+    shapes_ = {"Windows, simulated: no program, the status as its command line, in the working copy": ((None, line_, str(fm.ROOT), None), "admitted"),
+               "POSIX: `svn`, the status as its list, in the working copy": (("svn", list(_SVN_STATUS), fm.ROOT, None), "admitted"),
+               "no program, with the POSIX list": ((None, list(_SVN_STATUS), str(fm.ROOT), None), "refused"),
+               "an explicit `C:\\bin\\svn.exe`": (("C:\\bin\\svn.exe", line_, str(fm.ROOT), None), "refused"),
+               "an explicit `/usr/bin/svn`": (("/usr/bin/svn", list(_SVN_STATUS), fm.ROOT, None), "refused"),
+               "`-u`, which asks the server": ((None, subprocess.list2cmdline(_SVN_STATUS + ["-u"]), str(fm.ROOT), None), "refused"),
+               "spelled `svn.exe`": ((None, subprocess.list2cmdline(["svn.exe", *_SVN_STATUS[1:]]), str(fm.ROOT), None), "refused"),
+               "a shell's `& calc` after it": ((None, line_ + " & calc", str(fm.ROOT), None), "refused"),
+               "through `cmd /c`": ((None, subprocess.list2cmdline(["cmd", "/c", *_SVN_STATUS]), str(fm.ROOT), None), "refused"),
+               "through `env`": ((None, subprocess.list2cmdline(["env", *_SVN_STATUS]), str(fm.ROOT), None), "refused"),
+               "`svn info`": ((None, subprocess.list2cmdline(["svn", "info", "--xml"]), str(fm.ROOT), None), "refused"),
+               "`svn blame`": ((None, subprocess.list2cmdline(["svn", "blame", "docs/work-tracker/MSR-001-x.md", "--xml"]), str(fm.ROOT), None), "refused"),
+               "the parent folder as cwd": ((None, line_, str(fm.ROOT.parent), None), "refused"),
+               "the working copy spelled with `.`": ((None, line_, str(fm.ROOT) + os.sep + ".", None), "refused"),
+               "the working copy spelled through `..`": ((None, line_, os.path.join(str(fm.ROOT.parent), "x", "..", fm.ROOT.name), None), "refused"),
+               "no cwd": ((None, line_, None, None), "refused")}
+    if _SYMLINKS:
+        os.symlink(wc_, Path(d) / "alias"); shapes_["a symlink to the working copy as cwd"] = ((None, line_, str(Path(d).resolve() / "alias"), None), "refused")
+    with _mock.patch.object(fm, "_VCS", ("svn", fm.ROOT)):
+        seen_ = {name_: judged_(args_) for name_, (args_, _want) in shapes_.items()}
+        _CATCH[:] = [True, None]
+        try:
+            fm.svn_local_status()             # the board's own status start, through `svn_run` and `vcs_process`: caught before anything starts
+            native_ = None
+        except _StartCaught:
+            native_ = _CATCH[1]
+        finally:
+            _CATCH[0] = False
+        native_seen_ = judged_(native_) if native_ else "not caught"
+    fm.TRIPPED[:] = tripped_
+    check(f"FM-044 · RV-3061 · simulated event shapes: the board's judge admits its one local status as POSIX audits it, `svn` and the list, and as Windows does, "
+          f"no program and the command line, both in the working copy — and refuses no program with a list, any explicit program, a flag more, another spelling, a "
+          f"wrapper, another command, another cwd or a spelling of it{', a symlink among them' if _SYMLINKS else ' (no symlink alias: this system makes none)'}, and no cwd "
+          f"(saw {[n_ for n_, (_a, w_) in shapes_.items() if seen_[n_] != w_]} judged otherwise)",
+          all(seen_[n_] == w_ for n_, (_a, w_) in shapes_.items()))
+    check(f"FM-044 · RV-3061 · the event this system's Python actually audits for the board's own status start, caught before anything starts, is admitted by the "
+          f"board's judge — {'Windows: no program and the command line' if os.name == 'nt' else 'POSIX: `svn` and the list'} "
+          f"(saw {(repr(native_[0]), type(native_[1]).__name__) if native_ else 'nothing caught'}: {native_seen_})",
+          native_seen_ == "admitted" and (native_[0] is None and isinstance(native_[1], str) if os.name == "nt" else native_[0] == "svn" and isinstance(native_[1], list)))
+fm.configure(HERE)
 
 # what it reads: only regular files inside the repository — a tracker, the configuration, the Owner's path, the brand's files, a triage worksheet, each a symlink to a file outside
 if _SYMLINKS and _has_rev("ae3c9e9"):
@@ -11075,7 +11165,7 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 for kind_ in ("Subversion", "a plain folder"):
     if kind_ == "Subversion" and not _SVN:
-        _skipped("FM-045 · C · Subversion: the board's run records nothing", 1, "svn and svnadmin unavailable")
+        _skipped("FM-045 · C · Subversion: the board's run records nothing", 1, "svn or svnadmin is not installed here")
         continue
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp).resolve()
@@ -14534,21 +14624,21 @@ _stage_svn = bool(shutil.which("svn") and shutil.which("svnadmin"))
 if _stage_svn:
     _stage_shared.run_shared_controls(fm, check)
 else:
-    _skipped("FM-044 local board/init/install", 152, "svn and svnadmin unavailable")
+    _skipped("FM-044 local board/init/install", 152, "svn or svnadmin is not installed here")
 _stage_old_path = _stage_callers.baseline_source()
 _stage_old = _stage_callers.load(_stage_old_path)
 _stage_callers.git_controls(fm, _stage_old, check)
 if _stage_svn:
     _stage_callers.svn_controls(fm, _stage_old, check)
 else:
-    _skipped("FM-044 SVN caller runtime", 9, "svn and svnadmin unavailable")
+    _skipped("FM-044 SVN caller runtime", 9, "svn or svnadmin is not installed here")
 if os.name == "nt":
     _skipped("RV-3096 inherited deleted-directory runtime", 22,
              "Windows prevents deleting an in-use current directory")
 elif _stage_svn:
     _stage_callers.inherited_cwd_controls(fm, check)
 else:
-    _skipped("RV-3096 inherited-directory runtime", 22, "svn and svnadmin unavailable")
+    _skipped("RV-3096 inherited-directory runtime", 22, "svn or svnadmin is not installed here")
 fm.configure(HERE)
 for _stage_case in _stage_unittest.defaultTestLoader.loadTestsFromTestCase(_stage_cli.CliControls):
     _stage_result = _stage_unittest.TestResult()
@@ -14563,7 +14653,7 @@ for _stage_case in _stage_unittest.defaultTestLoader.loadTestsFromTestCase(_stag
 if _stage_svn:
     _stage_entry.run_entry_controls(fm, check)
 else:
-    _skipped("FM-044 actual local entry", 162, "svn and svnadmin unavailable")
+    _skipped("FM-044 actual local entry", 162, "svn or svnadmin is not installed here")
 _stage_git_baseline = _stage_callers.baseline_source("615fb1d1f58c0936e7d5aa2037e2b3a655e0f107")
 _stage_git_entry.run_git_entry_differentials(fm.__file__, _stage_git_baseline,
                                            payload=_stage_git_baseline.parent, check=check)
