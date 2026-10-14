@@ -266,7 +266,10 @@ def run_board_local_controls(fm, check):
             for name in ("vendor", "brand"):
                 shutil.copytree(HERE / name, source / name)
             cli = subprocess.run([sys.executable, "-B", str(source / "shoalmark.py"), "--root", str(root), "--html-only"], cwd=source, env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
-            check(f"A1: installed source below ROOT refreshes the consumer board without Git ({saw(cli)})", cli.returncode == 0 and str(folder / "index.html") in cli.stdout and not (source / "work-tracker").exists())
+            # the product prints `board: ` and the page's resolved URI (`board_link`); the same form, resolved the same way, on every system (RV-3230)
+            board_ = "board: " + (folder / "index.html").resolve().as_uri()
+            check(f"A1: installed source below ROOT refreshes the consumer board without Git ({saw(cli)}; stdout {cli.stdout[:300]!r}; expected {board_!r})",
+                  cli.returncode == 0 and board_ in cli.stdout.splitlines() and not (source / "work-tracker").exists())
             # The fixed local query includes ignored boards, so they remain writable after ordinary ignore setup.
             command(root, "svn", "propset", "svn:ignore", "index.html\nview\n", "work-tracker")
             got = measured(root, search)
@@ -332,7 +335,10 @@ def run_board_local_controls(fm, check):
             git_inventory = fm.tracked_board_files()
             fm.configure(sub)
             svn_inventory = fm.tracked_board_files()
-            check("A1: real Git-to-SVN reconfigure clears the inventory", str(gitfolder / "index.html") in git_inventory and all(str(gitroot) not in p for p in svn_inventory))
+            # the inventory holds the product's `_norm` of paths under its resolved ROOT (`find_root`): both sides compared so (RV-3231)
+            git_page_, git_home_ = fm._norm(gitfolder.resolve() / "index.html"), fm._norm(gitroot.resolve())
+            check(f"A1: real Git-to-SVN reconfigure clears the inventory (saw git {str(sorted(git_inventory))[:300]}, svn {str(sorted(svn_inventory))[:300]}; "
+                  f"expected {git_page_!r})", git_page_ in git_inventory and all(git_home_ not in p for p in svn_inventory))
             out, err = io.StringIO(), io.StringIO()
             with redirect_stdout(out), redirect_stderr(err):
                 code = fm.board_run(gitroot)
