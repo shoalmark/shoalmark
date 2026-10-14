@@ -18,7 +18,17 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-14 — local P READY `2dbaa80`; PR #173 CI correction first critical NOT READY `39abd8a` (RV-3061 P2, RV-3062 and RV-3063 P3); one correction built, round 2 of 2 next, then one Owner CI run.**
+**2026-10-14 — PR #173 CI correction READY `d0f0f24` (round 2 of 2); the Owner's CI run `38539381661` on it failed; one fix round is built, and the Reviewer's first critical pass on it is next.**
+Run `38539381661`: ubuntu 3.9 ended FAILED: 6, ubuntu 3.12 and macOS 3.12 FAILED: 4, and both Windows jobs a traceback after
+25 FAIL lines. No board render failed: "headless Chrome did not return index.html within 5 s" is the saw-text of FM-035's
+own control, inside an `ok` line. Windows did not run to the end: A1's `svn add` of a page no measured run had written
+raised from a `check=True` setup step, so A1's later checks, A2, the A corrections and every stage block after them have
+never run there. `test_core.py` has not run in CI at this head; it is the step after the failed one. This round: nine
+answer and act checks expect each copied command as the accepted `printed_arg` spells it, written out for Windows and
+POSIX; `--init` judges the key and the folder's name before its first metadata read, so a name with a line break is
+refused by name again (`init` alone changed in production); A1's search folder holds svn as svn names itself, its DLLs
+beside it on Windows, a fixture step that fails is a named FAIL and the next block runs, and A1's checks say what they
+saw; Python 3.9's tempdir probe, written through a second open of its descriptor, is admitted in exactly that shape.
 Current Owner main `80b60c8` includes R12 READY `246ccdf` and #171. This branch carries its exact
 AGENTS and signed TRIAGE changes through ordinary merge `2f373a8`; it adds no Owner ruling or consumer authority.
 RV-3040: recorded privately. Common READY `ef77527`, Reviewed `b72b9ae`, closes RV-3085–RV-3088;
@@ -84,7 +94,7 @@ board's own status start is caught before anything starts and admitted — POSIX
 in CI. Predicate and helper mutants each fail their control. Only `board_judge` changed in production
 (SHA-256 `fb4fde94142ca4bbb671d576d5b0fa3baffed259d0b33d39b74ea68465acbdd3`); scanner, list, ceiling and
 boundary hold; A1's 152 controls and unchanged core 303/303 pass. Round 2 of 2 by the same independent
-reviewer is next; then one Owner CI run on PR #173, the first full-suite and native Windows judgement.
+reviewer found it READY `d0f0f24`; the Owner's CI run on it is the one above.
 
 Composition preserves every parent's removal: 45 and 44 keys intersect to 29, and P's one migrated main call
 removes the final exact key to 28. Common boundary/cache/source/history semantics, scanner, fixed ceiling,
@@ -149,6 +159,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-14 13:46 CEST | Owner PR #173 CI run `38539381661` at `d0f0f24` failed — FAILED: 6, 4 and 4 on ubuntu 3.9, ubuntu 3.12 and macOS 3.12, and both Windows jobs ended in A1's setup traceback — and cost the Owner a CI run. Fix round: nine checks expect the copied commands as `printed_arg` spells them; `init` refuses a folder name with a line break before its first metadata read; A1's Windows search folder names svn as `svn.exe`, and a failed fixture step is a named FAIL; 3.9's tempdir probe is admitted in its exact shape. Focused blocks fail on `d0f0f24` and pass corrected; the stage tail gives 619/619 and unchanged core 303/303. The Reviewer's first critical pass, then one Owner CI run, remain due. |
 | 2026-10-14 10:09 CEST | The Owner's order on PR #173: the suite's in-process `run` returns a refusal as the program ends — exit status and both streams — so its check fails and the suite goes on. Its regression fails with the old helper (the child suite exits 4) and passes corrected; unchanged core 303/303 passes. Independent critical review, then one Owner CI run, remain due; earlier verdicts and holds stand. |
 | 2026-10-14 09:20 CEST | Owner PR #173 CI at `2dbaa80` stopped with exit 4 on old suite fixtures: an empty `.svn`, a board run assumed to start no `svn`, fake Tortoise paths. Four checks are corrected, test-only: their focused blocks fail on `2dbaa80` and pass corrected; unchanged core 303/303 passes. Independent critical review and native CI on the Owner's push remain due; earlier verdicts and holds stand. |
 | 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |

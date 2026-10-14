@@ -80,7 +80,7 @@ def actual_entry(spec):
             mode, flags = args[1:3]
             write = (isinstance(mode, str) and any(c in mode for c in "wax+")) or (isinstance(flags, int) and bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND)))
             names = [f.name for f in traceback.extract_stack()] if write else []
-            events.append({"event": event, "path": path(args[0]), "write": write,
+            events.append({"event": event, "path": path(args[0]), "write": write, "descriptor": isinstance(args[0], int),
                            "tempdir_discovery": "_get_default_tempdir" in names and "arm_tripwire" in names})
         elif event in ("os.mkdir", "os.remove", "os.rmdir", "os.rename", "os.symlink", "os.link", "os.chmod", "os.truncate"):
             names = [f.name for f in traceback.extract_stack()]
@@ -136,6 +136,25 @@ def command(root, *argv):
                GIT_COMMITTER_EMAIL="fixture@example.invalid", GIT_AUTHOR_DATE="2026-10-13T00:00:00+00:00",
                GIT_COMMITTER_DATE="2026-10-13T00:00:00+00:00")
     return subprocess.run(list(argv), cwd=root, env=env, capture_output=True, text=True, encoding="utf-8", check=True, timeout=30).stdout
+
+
+def stdlib_tempdir_probe(probes):
+    """Whether the writes of stdlib's one-time temporary-directory probe, before the tripwire, are that probe and nothing beside it: one
+    file opened by its name and removed by it, gone afterwards. CPython 3.9 writes its 4 bytes through `_io.open(fd, 'wb', closefd=False)`
+    — a second write `open`, of the descriptor, which resolves to the same file; 3.10 and later write them with `os.write`, which opens
+    nothing (PR #173's run 38539381661, ubuntu 3.9). Names compare under `os.path.normcase`; the descriptor's resolved path also under
+    `realpath`, since the system resolves it (macOS: `/private/var` for `/var`)."""
+    if not probes:
+        return True
+    if [e["event"] for e in probes] != (["open", "open", "os.remove"] if sys.version_info < (3, 10) else ["open", "os.remove"]):
+        return False
+    named, removed = probes[0], probes[-1]
+    if len(probes) == 3:
+        through = probes[1]
+        if through.get("descriptor") is not True or os.path.normcase(os.path.realpath(through["path"])) != os.path.normcase(os.path.realpath(named["path"])):
+            return False
+    return (named.get("descriptor") is False and os.path.normcase(named["path"]) == os.path.normcase(removed["path"])
+            and not Path(named["path"]).exists())
 
 
 def snapshot(root):
@@ -250,7 +269,7 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
             refused_before_binding = name == "tsvn-binding-refusal" and got["code"] == 4 and not processes and not got["phases"] and got["normalized"] == [None]
             check("entry: " + name + " keeps local query cwd and required consumer binding", all(correct_cwd(e) for e in processes) and all(p["root"] == got["root"] or (p["function"] == "board_run" and p["requested_root"] == got["root"]) for p in got["phases"]) and (bound or refused_before_binding))
             probes = [e for e in got["events"] if e.get("write") and e.get("tempdir_discovery")]
-            check("entry: " + name + " retains only paired stdlib tempdir probes before tripwire", not probes or (len(probes) == 2 and [e["event"] for e in probes] == ["open", "os.remove"] and probes[0]["path"] == probes[1]["path"] and not Path(probes[0]["path"]).exists()))
+            check("entry: " + name + " retains only paired stdlib tempdir probes before tripwire", stdlib_tempdir_probe(probes))
             writes = [e for e in got["events"] if e.get("write") and not e.get("tempdir_discovery")]
             check("entry: " + name + " writes only inside its consumer", all(e["path"] == got["root"] or e["path"].startswith(got["root"] + os.sep) for e in writes) and not any(p.startswith("tools/") for p in got["changed"]))
             if readonly:
