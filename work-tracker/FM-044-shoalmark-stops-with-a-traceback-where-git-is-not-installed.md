@@ -3,7 +3,7 @@ id: FM-044
 status: In Progress
 considered: FM-003
 tags: bug
-next: owner
+next: build
 triaged: 2026-10-13
 rank: 3
 tier: P1
@@ -12,6 +12,9 @@ ask: "Which disposition should the B readers take after RV-3092–RV-3094 exhaus
 ask-kind: ruling
 ask-since: 2026-10-13
 ask-proposal: "Keep the readers held; prepare structural XML validation for Owner disposition without a third review, while local components continue."
+answer: "accepted - Take the prepared structural XML validation and the five reader changes into production now, as their own change, with one bounded verification: the diff is the prepared fix, its checks pass, nothing else changes; no new finding below P1. RV-3092-RV-3094 get no third round."
+answered: 2026-10-15
+answered-by: holgo99
 ---
 
 # FM-044 — shoalmark stops with a traceback where git is not installed, on Subversion too
