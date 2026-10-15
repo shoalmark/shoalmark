@@ -1775,6 +1775,11 @@ if _browser("escape"):
 # --- FM-006: a private security report — the board's run reads only regular files inside the repository, starts only read-only git, writes only the board --------------
 # Inert markers only: a file that would appear, a sentinel text in a file outside the repository. Each control runs the tool as it was before (ae3c9e9) and must fail there.
 _has_rev = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
+
+
+def _sans_moment(page):
+    """A board's page but its line of what it read, and when (FM-057) — the one part two runs of the same trackers write differently: the time it was built."""
+    return re.sub(r'<p id="ra" class="m">.*?</p>', '<p id="ra" class="m"></p>', page, count=1, flags=re.S)
 def _old_tool(into, rev="ae3c9e9"):
     """The tool as it was before the board's run was read-only, beside its vendored `marked` — a control that must fail on it."""
     into = Path(into); (into / "vendor").mkdir(parents=True, exist_ok=True)
@@ -5269,6 +5274,23 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
+read.git.branch: "gelesen von {0} bei {1}"
+read.git.detached: "gelesen von einem losgelösten HEAD bei {0}"
+read.git.unborn: "gelesen von {0}, noch ohne Commit"
+read.git.clean: nichts geändert und nicht committet
+read.git.changed: "{0} Pfade geändert und nicht committet"
+read.git.changed.one: 1 Pfad geändert und nicht committet
+read.git.unread: was geändert und nicht committet ist, wird hier nicht gelesen
+read.svn: "gelesen von der Arbeitskopie bei r{0}"
+read.svn.unread: "gelesen von der Arbeitskopie: ihre Revision wird hier nicht gelesen"
+read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
+read.none: "gelesen aus dem Ordner {0}"
+read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
+read.at: "gebaut {0}"
+read.self: neu gebaut nur, wenn das Werkzeug läuft
+read.rebuild: "neu bauen:"
+read.copy: kopieren
+read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}
@@ -5818,8 +5840,9 @@ with tempfile.TemporaryDirectory() as d:
             fm.HERE = Path(d) / "a-copy-with-no-brand"; run(root, "--html-only"); bare = (wt / "index.html").read_text(encoding="utf-8")
         finally:
             fm.HERE = _here
-        check("FM-002 · a repository that chooses no theme sees no change: with the themes in the tool's brand/ its board is byte for byte the board of a copy that has no brand/ at all — no theme, no warning",
-              _th.is_dir() and code0 == 0 and page0 == bare and "<style data-from" not in page0 and "brand:" not in err0)
+        check("FM-002 · a repository that chooses no theme sees no change: with the themes in the tool's brand/ its board is byte for byte the board of a copy that has no brand/ at all, "
+              "but the time each was built (FM-057) — no theme, no warning",
+              _th.is_dir() and code0 == 0 and _sans_moment(page0) == _sans_moment(bare) and "<style data-from" not in page0 and "brand:" not in err0)
         _, rep_, _ = run(root, "--brand")
         check(f"FM-002 R3 · `--brand` marks the tool's brand/ as a place with no brand file, its themes starters no board wears — and every source still reads built in (saw {rep_.splitlines()[1:2]})",
               f"organisation  {HERE / 'brand'}  — no brand file here: its themes/ are starters, worn only once --from copies one" in rep_
@@ -11176,15 +11199,15 @@ with tempfile.TemporaryDirectory() as tmp:
         saved_ = subprocess.run(["git", "-C", str(root), "rev-parse", ref_], capture_output=True, text=True, env=_ENV).stdout.strip()
         git(root, "update-ref", "-d", ref_); run(root, "--html-only"); git(root, "update-ref", ref_, saved_)
     none_ = page_()
-    check("FM-030 · 0.18.6 · a board with nothing on its way is the board it was, byte for byte: a merged `answer/*` and a tip that carries no answer change no byte, and no row gains a cell",
-          read_ == none_ and '"answer/ap-50' not in read_)
+    check("FM-030 · 0.18.6 · a board with nothing on its way is the board it was, byte for byte but the time it was built (FM-057): a merged `answer/*` and a tip that carries no answer change no byte, and no row gains a cell",
+          _sans_moment(read_) == _sans_moment(none_) and '"answer/ap-50' not in read_)
     codes_ = [run(root, *a)[0] for a in (("--answer", "AP-501", "accept"), ("--answer", "AP-502", "reject", "not before the audit"), ("--done", "AP-503", "evidence/AP-503/key.md"))]
     fm.configure(root); way_ = fm.on_their_way(fm.load_trackers())
     run(root, "--html-only"); page2_ = page_()
     at_ = lambda tid: f"answer/{tid.lower()} @ {way_[tid]['commit'][:7]} · {way_[tid]['time'][:16].replace('T', ' ')}"
     check(f"FM-030 · 0.18.6 · the board's rows carry what is on its way — on those rows alone, and the same bytes built twice (saw {codes_})",
           codes_ == [0, 0, 0] and f'["answer", "answer/ap-501", "{way_["AP-501"]["tip"]}", ' in page2_ and f'["done", "answer/ap-503", "{way_["AP-503"]["tip"]}", ' in page2_
-          and '"answer/ap-505' not in page2_ and fm.render_html(fm.load_trackers()) == fm.render_html(list(reversed(fm.load_trackers())))
+          and '"answer/ap-505' not in page2_ and (lambda r_: fm.render_html(fm.load_trackers(), r_) == fm.render_html(list(reversed(fm.load_trackers())), r_))(fm.read_at())
           and all(f'"{k}"' in page2_ for k in ("way.title", "way.merge", "way.done", "way.answer", "way.signed")))
     code_o, out_o, _e = run(root, "--owner"); code_s, out_s, _e = run(root, "--standup")
     ways_ = (f"ON THEIR WAY — yours, signed and pushed, before your merge\n"
@@ -11292,7 +11315,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code_, _o, _e = run(root, "--html-only"); bj_ = _bj(root)
     stamps_ = [p_.stat().st_mtime_ns for p_ in [t_ / "index.html", *(t_ / "view").glob("*.js")]]
     check(f"FM-045 · C · the board built by `--html-only` at commit A records what it was built from in `view/built.json` — a SHA-256 each for the tracker folder, the configuration and the answer branches, and A for the line's wording — written after the page and every view (saw {bj_})",
-          code_ == 0 and bj_ is not None and sorted(bj_) == ["answers", "commit", "configuration", "trackers"] and bj_["commit"] == a_
+          code_ == 0 and bj_ is not None and sorted(bj_) == ["answers", "branch", "built_at", "changes", "commit", "configuration", "trackers", "vcs"] and bj_["commit"] == a_
           and all(re.fullmatch(r"[0-9a-f]{64}", str(bj_[k_])) for k_ in ("trackers", "configuration", "answers"))
           and all((t_ / "view/built.json").stat().st_mtime_ns >= m_ for m_ in stamps_))
     (root / "notes.txt").write_text("not a tracker\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "B"); git(root, "commit", "-q", "--allow-empty", "-m", "C")
@@ -11377,9 +11400,126 @@ for kind_ in ("Subversion", "a plain folder"):
         calls_ = argv_of(lambda: run(root, "--html-only")); code_ = run(root, "--html-only")[0]; run(root)
         started_ = [c_ for c_ in calls_ if c_ and c_ != _SVN_STATUS and (Path(str(c_[0])).name.lower() in ("svn", "svn.exe") or "for-each-ref" in c_ or "HEAD" in c_)]
         codes_, o_, s_ = _bj_says(root)
-        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records nothing — no `view/built.json`, from it or from the default run — starting no `svn`{' but the one local status FM-044 reads' if kind_ == 'Subversion' else ''} and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it (saw exit {code_}, {started_} · {o_} · {s_})",
-              code_ == 0 and (root / "docs/work-tracker/index.html").is_file() and not (root / "docs/work-tracker/view/built.json").exists() and started_ == []
+        bj_ = _bj(root)
+        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records no basis — `view/built.json`, from it or from the default run, holds only what the board read, and when "
+              f"(FM-057) — starting no `svn`{' but the one local status FM-044 reads' if kind_ == 'Subversion' else ''} and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it "
+              f"(saw exit {code_}, {started_}, {sorted(bj_ or {})} · {o_} · {s_})",
+              code_ == 0 and (root / "docs/work-tracker/index.html").is_file() and bj_ is not None
+              and sorted(bj_) == (["built_at", "revision", "vcs"] if kind_ == "Subversion" else ["built_at", "folder", "vcs"]) and started_ == []
               and codes_ == (0, 0) and o_ == s_ == [])
+fm.configure(HERE)
+
+# --- FM-057 · the quick win beside R11: the board says what it read, and when. On git — a clean tree, a tree with changes, a detached HEAD —, on Subversion
+#     and with no version control, the page's line names its own moment: the time it was built and, as each backend can give it, the commit and the branch and
+#     how many paths are changed and not committed, the working copy's revision, or the folder; and the command that rebuilds it, with its copy button. It
+#     never says *current*, *live* or *up to date*. `view/built.json` records the same, and the reader of b84b8af — the tool before it — reads that record and
+#     says no line of it. The mutants — the changes ignored, the time missing, the word *current* — are this tool with that one change, run the same way: each
+#     must fail the check.
+import html as _q4_html
+_Q4_REV = "b84b8af"
+_Q4_BAD = re.compile(r"\b(current|currently|live|up[ -]to[ -]date)\b", re.I)
+_Q4_MUTANTS = (
+    ("the changes flag ignored", 'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")',
+     'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), 0'),
+    ("the time missing", 'facts += [say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else "")), say("read.self")]',
+     'facts += [say("read.self")]'),
+    ("the word current", '"read.self": "rebuilt only when the tool runs"', '"read.self": "rebuilt only when the tool runs, and current until then"'),
+)
+def _q4_fixtures(base):
+    """The five shapes, each with one tracker: git with nothing changed, git with three paths changed and not committed (a tracker edited, a file staged, a
+    file new), git on a detached HEAD, a Subversion working copy updated to its newest revision, and a folder with no version control. {shape: its root}"""
+    out_ = {}
+    for k_ in ("git clean", "git changes", "git detached"):
+        r_ = base / k_.replace(" ", "-"); r_.mkdir(); git(r_, "init", "-q"); run(r_, "--init", "--key", "msr"); tracker(r_, "MSR-001"); run(r_)
+        git(r_, "add", "-A"); git(r_, "commit", "-qm", "base"); out_[k_] = r_
+    t_ = out_["git changes"] / "docs/work-tracker/MSR-001-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("One thing", "Two things"), encoding="utf-8")
+    (out_["git changes"] / "staged.txt").write_text("staged\n", encoding="utf-8"); git(out_["git changes"], "add", "staged.txt")
+    (out_["git changes"] / "new.txt").write_text("new\n", encoding="utf-8")
+    git(out_["git detached"], "switch", "-q", "--detach")
+    if _SVN:
+        subprocess.run(["svnadmin", "create", str(base / "svnrepo")], check=True, capture_output=True)
+        wc_ = base / "svn"; subprocess.run(["svn", "checkout", "-q", (base / "svnrepo").as_uri(), str(wc_)], check=True, capture_output=True)
+        run(wc_, "--init", "--key", "msr"); tracker(wc_, "MSR-001"); run(wc_)
+        subprocess.run(["svn", "add", "-q", "--force", "."], cwd=str(wc_), check=True, capture_output=True)
+        subprocess.run(["svn", "commit", "-q", "-m", "base"], cwd=str(wc_), check=True, capture_output=True)
+        subprocess.run(["svn", "update", "-q"], cwd=str(wc_), check=True, capture_output=True); out_["svn"] = wc_
+    plain_ = base / "plain"; plain_.mkdir(); run(plain_, "--init", "--key", "msr"); tracker(plain_, "MSR-001"); out_["none"] = plain_
+    fm.configure(HERE)
+    return out_
+def _q4_read(root):
+    """What a board's run left: (the line's text, as a reader sees it; the rebuild command; whether its copy button is there and wired; `view/built.json`)."""
+    t_ = root / "docs/work-tracker"; page_ = (t_ / "index.html").read_text(encoding="utf-8") if (t_ / "index.html").is_file() else ""
+    m_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S); c_ = re.search(r'<code id="rc">(.*?)</code>', page_)
+    line_ = _q4_html.unescape(re.sub(r"<[^>]+>", "", m_.group(1))).strip() if m_ else ""
+    wired_ = '<button type="button" id="rb" class="act">' in page_ and '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent)' in page_
+    try:
+        built_ = json.loads((t_ / "view/built.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        built_ = None
+    return line_, _q4_html.unescape(c_.group(1)) if c_ else "", wired_, built_
+def _q4_case(shape, root, tool):
+    """One shape's board's run, by `tool` as a program, and what the page and `view/built.json` say against what the shape holds."""
+    t0_ = datetime.datetime.now().astimezone().replace(microsecond=0)
+    code_, o_, e_ = _tool_run(tool, root, "--html-only")
+    t1_ = datetime.datetime.now().astimezone()
+    line_, cmd_, wired_, built_ = _q4_read(root)
+    rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    if shape.startswith("git"):
+        sha_, branch_ = rp_("rev-parse", "HEAD"), rp_("branch", "--show-current")
+        want_ = (["read from a detached HEAD at " + sha_[:7]] if shape == "git detached" else [f"read from {branch_} at {sha_[:7]}"]) \
+            + (["3 paths changed and not committed"] if shape == "git changes" else ["nothing changed and not committed"])
+        record_ = dict(vcs="git", commit=sha_, branch=branch_ or None, changes=3 if shape == "git changes" else 0)
+        keys_ = {"commit", "trackers", "configuration", "answers", "built_at", "vcs", "branch", "changes"}
+    elif shape == "svn":
+        rev_ = subprocess.run(["svn", "info", "--show-item", "revision", str(root)], capture_output=True, text=True).stdout.strip()
+        want_, record_, keys_ = [f"read from the working copy at r{rev_}"], dict(vcs="svn", revision=rev_), {"built_at", "vcs", "revision"}
+    else:
+        want_ = [f"read from the folder {root}", "no version control: no commit or revision to name"]
+        record_, keys_ = dict(vcs="none", folder=str(root)), {"built_at", "vcs", "folder"}
+    at_ = None
+    try:
+        at_ = datetime.datetime.fromisoformat((built_ or {}).get("built_at", ""))
+    except (TypeError, ValueError):
+        pass
+    shown_ = at_.strftime("%Y-%m-%d %H:%M ") + at_.strftime("%z")[:3] + ":" + at_.strftime("%z")[3:] if at_ and at_.tzinfo else None
+    return dict(shape=shape, code=code_, line=line_, cmd=cmd_, wired=wired_, built=built_, want=want_, record=record_, keys=keys_, shown=shown_,
+                timely=bool(at_ and at_.tzinfo and t0_ <= at_ <= t1_), said=(o_ + e_).strip()[-200:])
+def _q4_ok(g):
+    """The page's line holds each fact the shape holds, the time it was built as `view/built.json` records it — read within the run —, the words that it is
+    rebuilt only when the tool runs, and the rebuild command, `--html-only`, with its copy button on the clipboard's path; none of *current*, *live*, *up to
+    date*; and `view/built.json` holds exactly the shape's fields, with the same values."""
+    b_ = g["built"] or {}
+    return (g["code"] == 0 and all(w_ in g["line"] for w_ in g["want"]) and g["shown"] is not None and g["timely"] and f"built {g['shown']}" in g["line"]
+            and "rebuilt only when the tool runs" in g["line"] and g["cmd"].endswith(" --html-only") and g["cmd"] in g["line"] and g["wired"]
+            and not _Q4_BAD.search(g["line"]) and set(b_) == g["keys"] and all(b_.get(k_) == v_ for k_, v_ in g["record"].items()))
+def _q4_saw(gs):
+    return "; ".join(f"{g_['shape']}: exit {g_['code']}, {g_['line'][:150]!r}, built.json {sorted(g_['built'] or {})}" for g_ in gs)
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); fix_ = _q4_fixtures(base_)
+    if "svn" not in fix_:
+        _skipped("FM-057 · Q4 · the Subversion shape", 1, "svn or svnadmin is not installed here — the working copy's revision is not read here")
+    real_ = [_q4_case(k_, r_, HERE / "shoalmark.py") for k_, r_ in fix_.items()]
+    for g_ in real_:
+        check(f"FM-057 · Q4 · {g_['shape']}: the page names what it read, and when — {', '.join(g_['want'])}, built at its time, rebuilt only when the tool runs, "
+              f"the rebuild command with its copy button, and no *current*, *live* or *up to date*; `view/built.json` records the same (saw {_q4_saw([g_])})", _q4_ok(g_))
+    if _has_rev(_Q4_REV):
+        _old_tree(base_ / "b84", _Q4_REV)
+        olds_ = {k_: _tool_run(base_ / "b84" / "shoalmark.py", r_, "--owner") for k_, r_ in fix_.items()}
+        said_ = {k_: [l_ for l_ in (o_ + e_).splitlines() if l_.startswith(("the board records nothing", "the board is older than what it shows")) or "Traceback" in l_]
+                 for k_, (c_, o_, e_) in olds_.items()}
+        check(f"FM-057 · Q4 · `view/built.json` with the new fields is read by b84b8af's reader, the tool before it: its `--owner` in each shape says no line of what the "
+              f"board was built from — nothing is missing, nothing changed — and no traceback (saw {said_})", all(v_ == [] for v_ in said_.values()))
+    else:
+        _skipped("FM-057 · Q4 · the record read by the tool before it", 1, f"this clone does not hold {_Q4_REV}")
+    for what_, *change_ in _Q4_MUTANTS:
+        with tempfile.TemporaryDirectory() as m_:
+            tool_ = _r11_tool(Path(m_).resolve(), change_)
+            gs_ = [_q4_case(k_, r_, tool_) for k_, r_ in fix_.items()] if tool_ else []
+            check(f"FM-057 · Q4 · …the mutant, {what_}: this tool with that one change FAILS the same check (saw {_q4_saw([g_ for g_ in gs_ if not _q4_ok(g_)][:2]) if tool_ else 'the change is not there to make'})",
+                  tool_ is not None and not all(_q4_ok(g_) for g_ in gs_))
+    for r_ in fix_.values():
+        if (r_ / ".git").exists():
+            rm_git(r_)
 fm.configure(HERE)
 
 # --- FM-030, 0.18.6 — revoke: on what is on its way the board has ONE button, *revoke*, and it copies `--revoke <id> "<why>"` — a

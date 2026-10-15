@@ -124,6 +124,23 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: "Sitzungen · {0} am letzten Tag ({1} mit ihren Untersitzungen)"
+read.git.branch: "gelesen von {0} bei {1}"
+read.git.detached: "gelesen von einem losgelösten HEAD bei {0}"
+read.git.unborn: "gelesen von {0}, noch ohne Commit"
+read.git.clean: nichts geändert und nicht committet
+read.git.changed: "{0} Pfade geändert und nicht committet"
+read.git.changed.one: 1 Pfad geändert und nicht committet
+read.git.unread: was geändert und nicht committet ist, wird hier nicht gelesen
+read.svn: "gelesen von der Arbeitskopie bei r{0}"
+read.svn.unread: "gelesen von der Arbeitskopie: ihre Revision wird hier nicht gelesen"
+read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
+read.none: "gelesen aus dem Ordner {0}"
+read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
+read.at: "gebaut {0}"
+read.self: neu gebaut nur, wenn das Werkzeug läuft
+read.rebuild: "neu bauen:"
+read.copy: kopieren
+read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}

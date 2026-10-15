@@ -441,6 +441,7 @@ def tracker_folder_problem(what="the board is not refreshed"):
 
 
 _TRACKED = None
+_SVN_REVISION = None        # FM-057: the working copy's revision — its root's, "" where it has none — from the board's run's own local status snapshot, for that run only; None: not read
 
 
 def svn_local_status():
@@ -500,8 +501,10 @@ def svn_local_status():
 
 
 def svn_tracked_board_rels():
-    """Versioned board paths in the local snapshot. Unreadable metadata is not an empty inventory."""
+    """Versioned board paths in the local snapshot. Unreadable metadata is not an empty inventory. The snapshot's revision is kept for the page (FM-057)."""
+    global _SVN_REVISION
     status = svn_local_status()
+    _SVN_REVISION = svn_root_revision(status)
     wanted = (HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix())
     versioned = {"normal", "modified", "added", "replaced", "deleted", "missing", "conflicted", "merged"}
     out = []
@@ -3586,6 +3589,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg h4{margin:14px 0 4px;font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}#dlg ol{margin:4px 0;padding-left:20px}#dlg li{margin:2px 0}#dlg p{margin:4px 0}
 #dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
 #dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
+#ra{color:var(--mute);font-size:12px;margin:-8px 0 12px;line-height:1.7}#ra code{font:12px "Berkeley Mono",ui-monospace,monospace;color:var(--dim)}#ra .said{margin-left:6px}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
 /* three hooks a theme styles (FM-002), none of them seen without one: the Owner's box's title `.pt`, the label
    `owner.title`; the last line's one element `#F` — the claim `#f`, shown with the board only, as when it stood in it,
@@ -3599,6 +3603,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 @media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
 </style>__THEMES__
 <div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><button id="s"></button></div>
+<p id="ra" class="m">__READAT__</p>
 <header><input id="q" autofocus>
 <button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
 <p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
@@ -3840,6 +3845,9 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}<
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
 for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
+// FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so
+$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())
+  .then(()=>$("rs").textContent=L["read.copied"],()=>$("rs").textContent=L["answer.sign.nocopy"]);
 // light or dark is the viewer's choice: auto follows the system; the other two switch every theme's
 // `prefers-color-scheme` rule on or off — so a brand needs to know nothing about the button. Paper stays light.
 const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
@@ -3911,6 +3919,15 @@ LABELS = {
     "act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again",
     "act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log",
     "sessions.recent": "sessions · {0} in the last day ({1} with their sub-sessions)",
+    # FM-057: what the board read, and when — the page's own moment, never *current*, *live* or *up to date*
+    "read.git.branch": "read from {0} at {1}", "read.git.detached": "read from a detached HEAD at {0}", "read.git.unborn": "read from {0}, which has no commit yet",
+    "read.git.clean": "nothing changed and not committed", "read.git.changed": "{0} paths changed and not committed",
+    "read.git.changed.one": "1 path changed and not committed", "read.git.unread": "what is changed and not committed is not read here",
+    "read.svn": "read from the working copy at r{0}", "read.svn.unread": "read from the working copy: its revision is not read here",
+    "read.svn.new": "read from the working copy, which has no revision yet",
+    "read.none": "read from the folder {0}", "read.none.why": "no version control: no commit or revision to name",
+    "read.at": "built {0}", "read.self": "rebuilt only when the tool runs", "read.rebuild": "rebuild it:", "read.copy": "copy",
+    "read.copied": "Copied — run it in the repository's folder, then reload this page.",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
@@ -4541,6 +4558,80 @@ def head_commit():
     return sha if out.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) else ""
 
 
+# WHAT THE BOARD READ, AND WHEN (FM-057, the quick win beside R11): no hook rebuilds the board, so a page can be hours old and look as it did. The page names its
+# own moment — the time it was built; on git HEAD, the branch or a detached HEAD, and how many paths are changed and not committed; on Subversion the working
+# copy's revision, from the one local status the board reads; with no version control, the folder — and the command that rebuilds it. `view/built.json`
+# records the same. It never says *current*, *live* or *up to date*.
+def read_at():
+    """What the board reads, and when: {"built_at": the time, to the second, with its offset; "vcs": "git", "svn" or "none"; on git "commit" (HEAD's full sha,
+    "" before a first commit), "branch" (None on a detached HEAD) and "changes" (`tree_changes`); on Subversion "revision" (`svn_revision`); with none,
+    "folder", the repository's root}."""
+    out = {"built_at": datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), "vcs": vcs() or "none"}
+    if vcs() == "git":
+        out.update(commit=head_commit(), branch=built_on() or None, changes=tree_changes())
+    elif vcs() == "svn":
+        out["revision"] = svn_revision()
+    else:
+        out["folder"] = str(ROOT)
+    return out
+
+
+def tree_changes():
+    """How many paths of the working tree are changed and not committed, read as git reads them without writing: each file whose index differs from HEAD
+    (`diff --cached`), each whose file differs from the index, a deletion too (`ls-files --modified`), and each new path git does not ignore, a new folder
+    as one (`ls-files --others`) — each counted once. None where git cannot read it: a read that fails, as one in a partial clone may."""
+    staged = vcs_process("git", "diff", "--cached", "--name-only", "--no-renames", "-z", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                         errors="replace", env=nested_git_env())
+    tree = vcs_process("git", "ls-files", "-z", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory", cwd=ROOT,
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if staged.returncode or tree.returncode:
+        return None
+    return len({p for p in staged.stdout.split("\0") + tree.stdout.split("\0") if p})
+
+
+def svn_root_revision(status):
+    """The working copy's revision in a local status snapshot (`svn_local_status`): its root's — digits —, or "" where the root has none yet (scheduled for
+    addition, never committed)."""
+    root = status.get(".")
+    revision = root.get("revision") if root is not None else None
+    return revision if revision is not None and re.fullmatch(r"[0-9]+", revision) else ""
+
+
+def svn_revision():
+    """The working copy's revision — its root's, "" where it has none yet: from the board's run's own snapshot where it took one (`svn_tracked_board_rels`) —
+    so the run starts no second status —, else from one local status read here (`svn_local_status`), under the tool's Subversion rules; None where it cannot be
+    read."""
+    if _SVN_REVISION is not None:
+        return _SVN_REVISION
+    try:
+        return svn_root_revision(svn_local_status())
+    except (SvnUnreadable, OSError):
+        return None
+
+
+def read_at_html(read, labels):
+    """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it: each part escaped, the
+    rebuild command in a `<code>`, and its copy button. Every `_` is written as a character reference, so no placeholder of the page can match inside it. Each
+    part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
+    def say(key, *args):
+        return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
+    if read.get("vcs") == "git":
+        sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")
+        facts = [say("read.git.unborn", branch or "HEAD") if not sha else say("read.git.detached", sha) if branch is None else say("read.git.branch", branch, sha),
+                 say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n)]
+    elif read.get("vcs") == "svn":
+        revision = read.get("revision")
+        facts = [say("read.svn.unread") if revision is None else say("read.svn.new") if not revision else say("read.svn", revision)]
+    else:
+        facts = [say("read.none", read.get("folder", "")), say("read.none.why")]
+    at = datetime.datetime.fromisoformat(read["built_at"])
+    zone = at.strftime("%z")
+    facts += [say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else "")), say("read.self")]
+    esc = lambda text: html_escape(text).replace("_", "&#95;")
+    return (" · ".join(esc(f) for f in facts) + f' · {esc(say("read.rebuild"))} <code id="rc">{esc(CMD + " --html-only")}</code>'
+            f'<button type="button" id="rb" class="act">{esc(say("read.copy"))}</button><span id="rs" class="said" aria-live="polite"></span>')
+
+
 def board_basis():
     """FM-045 — what the board is built from, one SHA-256 per part, computed one way for the board's run, every run that writes the board, and
     `--owner` and `--standup`:
@@ -4571,13 +4662,15 @@ def board_basis():
             "answers": hashlib.sha256(f"{trunk or ''}\n{refs}".encode("utf-8")).hexdigest()}
 
 
-def write_built(basis, left):
-    """FM-045 — `view/built.json`: `basis`, read before the board was rendered, and HEAD for the line's wording, written by the board's own write —
-    last, and only where the page and every view were written in this run: nothing of them left alone since `left`, what was left before the writes.
-    Nothing on Subversion or in a plain folder (`basis` is {} there). A run that stops before it leaves the previous one. Returns whether it wrote."""
-    if not basis or len(BOARD_LEFT) != left:
+def write_built(basis, left, read):
+    """FM-045 — `view/built.json`: on git `basis`, read before the board was rendered, and HEAD for the line's wording; and, FM-057, what the board read, and
+    when (`read`, `read_at`) — on Subversion and in a plain folder that alone: no basis is recorded there (`basis` is {}). Written by the board's own write —
+    last, and only where the page and every view were written in this run: nothing of them left alone since `left`, what was left before the writes. A run
+    that stops before it leaves the previous one. Returns whether it wrote."""
+    if len(BOARD_LEFT) != left:
         return False
-    return board_write(VIEW_DIR / BUILT_NAME, json.dumps({"commit": head_commit(), **basis}) + "\n")
+    return board_write(VIEW_DIR / BUILT_NAME, json.dumps({**({"commit": read.get("commit") or ""} if basis else {}), **basis,
+                                                          **{k: v for k, v in read.items() if k != "commit"}}) + "\n")
 
 
 def board_basis_line():
@@ -4635,10 +4728,12 @@ def script_json(value):
             .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
 
 
-def render_html(trackers):
+def render_html(trackers, read=None):
     """one static page: data rows + ~25 lines of vanilla JS. No dates and no
-    counts are baked in (both are computed in the browser), so equal trackers give
+    counts are baked in (both are computed in the browser) but the moment the page
+    names (`read`, `read_at`, FM-057), so equal trackers read at one moment give
     equal bytes. The row layout is documented once, in the page's script."""
+    read = read or read_at()
 
     epics = {t.get("epic", "—") for t in trackers}
     by_id, verdicts, by_ask = {t["id"]: t for t in trackers}, latest_verdicts(), asks_by_key(trackers)
@@ -4670,6 +4765,7 @@ def render_html(trackers):
     themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
+    page = page.replace("__READAT__", read_at_html(read, labels))     # FM-057: what it read, and when — no `_` in it, so no later placeholder matches there
     # each place's theme is its OWN stylesheet, in order — `@import` and `@font-face` only work at the top of one
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
     # a wordmark is the mark and the name in one drawing: it takes their place, and the name stays the page's title and
@@ -4685,7 +4781,7 @@ def render_html(trackers):
                         f'<path d="{PRICKE}"></path></svg>shoalmark</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
                         f'aria-label="release v{v}">v{v}</a></p>')
     page = page.replace("__LABELS__", script_json(labels))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(built_on())).replace(
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(read.get("branch") or "")).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
@@ -10192,9 +10288,9 @@ def board_run(root):
     - it fetches nothing: every git it starts runs with lazy fetching switched off (`nested_git_env`); where git is too old to switch it off and the repository
       is a partial clone, it reads nothing, says so in one line, and exits 0; what a read met missing it does not say, and names in one line (`unread_line`).
     What it leaves alone it names, in one line — and where that is the page itself, it prints that line and no link; a tracker folder it refuses, in one line, exit 4."""
-    global SAFE_READS, SAFE_WRITES, _TRIPWIRE, _TRACKED
+    global SAFE_READS, SAFE_WRITES, _TRIPWIRE, _TRACKED, _SVN_REVISION
     saved = (sys.dont_write_bytecode, list(sys.path), os.environ.get("NoDefaultCurrentDirectoryInExePath"), SAFE_WRITES)
-    SAFE_READS, SAFE_WRITES, _TRACKED = True, True, None
+    SAFE_READS, SAFE_WRITES, _TRACKED, _SVN_REVISION = True, True, None, None
     BOARD_LEFT.clear(), TRIPPED.clear()
     sys.dont_write_bytecode = True
     os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
@@ -10214,6 +10310,7 @@ def board_run(root):
         tracked = tracked_board_rels() if TRACKER_DIR.is_dir() else []
         _TRACKED = {_norm(ROOT / rel) for rel in tracked}        # the single validated snapshot precedes every board write
         basis = board_basis()                                       # FM-045: what the board is built from, read before the trackers are
+        read = read_at()                                            # FM-057: what it reads, and when
         trackers = load_trackers()
         no_derived(trackers)                                        # no deriver: no derived column, file, note or key
         if TRACKER_DIR.is_dir():
@@ -10222,12 +10319,12 @@ def board_run(root):
                 if board_write(HTML_OUT, tracked_board_page(line)):     # a page git tracks itself is left as committed, with its line
                     print(line, file=sys.stderr)                    # in place of the link
             else:                                                   # a page git tracks is left as committed, its line said in place of the link
-                page, left = render_html(trackers), len(BOARD_LEFT)
+                page, left = render_html(trackers, read), len(BOARD_LEFT)
                 written = board_write(HTML_OUT, page)
                 if written or vcs() != "svn":                   # a versioned SVN page and all its existing views are left untouched
                     write_views(trackers)
                 if written:
-                    write_built(basis, left)                        # FM-045: last, only after the page and every view
+                    write_built(basis, left, read)                  # FM-045: last, only after the page and every view
                     print(board_link())                             # where the board is written, to open (FM-006) — only a board this run wrote; never with --print-written
             drift = hooks_copy_drift()
             if drift:
@@ -10245,7 +10342,7 @@ def board_run(root):
         return EXIT_OK
     finally:
         _TRIPWIRE = SAFE_READS = False
-        SAFE_WRITES = saved[3]
+        SAFE_WRITES, _SVN_REVISION = saved[3], None
         sys.dont_write_bytecode, sys.path[:] = saved[0], saved[1]
         if saved[2] is None:
             os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
@@ -10669,11 +10766,11 @@ def main(argv=None, *, _notice=True):
                 print(DERIVER_HOOK_LINE.format(cmd=CMD), file=sys.stderr)
             else:
                 put(OUT, body)
-            basis = board_basis()                                   # FM-045: what the board is built from, read before it is rendered
-            page, left = render_html(trackers), len(BOARD_LEFT)
+            basis, read = board_basis(), read_at()                  # FM-045: what the board is built from, read before it is rendered; FM-057: and when
+            page, left = render_html(trackers, read), len(BOARD_LEFT)
             board_write(HTML_OUT, page)                             # git-ignored; never staged
             write_views(trackers)
-            write_built(basis, left)                                # FM-045: last, only after the page and every view
+            write_built(basis, left, read)                          # FM-045: last, only after the page and every view
             if not DERIVER_LEFT:
                 print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
                 print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)
