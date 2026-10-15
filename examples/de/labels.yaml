@@ -151,7 +151,7 @@ answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zwei
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2} — und {3}"
-answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — ein Hardware-Schlüssel wartet auf Ihre Berührung"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel"
 answer.sign.step.push: pusht den Zweig
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
 answer.sign.success: Wenn es geklappt hat
@@ -161,4 +161,12 @@ answer.sign.fail: Wenn es scheitert
 answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
 answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
 answer.sign.url: "https://shoalmark.github.io/shoalmark/de/signing.html"
+answer.give.title: Ihre Antwort geben
+act.give.title: Ihre Handlung festhalten
+answer.give.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht ins Repository schreiben — Ihr Terminal tut es, unter Ihrem Namen. Diesen Befehl ausführen:"
+answer.give.step.commit: "committet sie unter Ihrem Namen: dieses Repository verlangt keine Signatur, also belegt der Commit nur den Autor"
+answer.give.step.commit.login: "Autor des Commits ist Ihre Server-Anmeldung, wie Subversion sie festhält — ohne Signatur"
+answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"
+answer.give.check.text: "{0} gibt Ihren Namen aus — den Autor, den git meldet, eine Zeichenkette, die jeder eintippen kann."
+answer.give.fail.text: "Er meldet, was ihn abgewiesen hat, und nimmt zurück, was er geschrieben hat; Ihre Worte werden erneut ausgegeben, mit dem Befehl, der sie wieder gibt."
 answer.done: Fertig
