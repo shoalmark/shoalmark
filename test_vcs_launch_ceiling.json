@@ -1,0 +1,380 @@
+[
+  {
+    "key": "acted_on|git/log|subprocess.run|636c61e65df3c17cef3ddece0503730aa88b6874f2b1bdef9c928510d0947e2e",
+    "function": "acted_on",
+    "operation": "git/log",
+    "call": "subprocess.run(['git', 'log', *board_diff_args(), '-1', '--full-history', '--format=%h %ct', '-G', line_regex('ask:'), '--', rel], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "addenda_between|git/log|subprocess.run|608dec90800394b0ac31535f038875b8776b56efd0dc0d4b676667f60d24fc77",
+    "function": "addenda_between",
+    "operation": "git/log",
+    "call": "subprocess.run(['git', '-c', 'core.quotePath=false', 'log', '--format=%x00%H %P', '--name-only', '--no-renames', '--ignore-submodules=none', f'{r}..{h}'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "answer_refs|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "answer_refs",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "board_after_act|<dynamic>|subprocess.run|3683c9f05d7d9823a5f5478b31a18bfbca24660412d553beec0ef7a08642d1a9",
+    "function": "board_after_act",
+    "operation": "<dynamic>",
+    "call": "subprocess.run([sys.executable, str(pathlib.Path(__file__).resolve()), '--root', str(ROOT), '--html-only'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env(), timeout=300)"
+  },
+  {
+    "key": "build_judgement|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "build_judgement",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "built_on|git/branch|subprocess.run|113b4c8494d032d4d68e1917eec26bdd452c988c3bdf8894bb796494448bd93a",
+    "function": "built_on",
+    "operation": "git/branch",
+    "call": "subprocess.run(['git', 'branch', '--show-current'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "cat_blobs|git/cat-file|subprocess.run|634bd4ceb60a9dc760a81f9511f348cacea9eb340bc98c107bd673d57e724b8b",
+    "function": "cat_blobs",
+    "operation": "git/cat-file",
+    "call": "subprocess.run(['git', 'cat-file', '--batch'], input=''.join((s_ + '\\n' for s_ in asked)).encode('utf-8'), cwd=ROOT, capture_output=True, env=env or nested_git_env())"
+  },
+  {
+    "key": "commit_msg_check|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "commit_msg_check",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "config_file_problem|git/config|subprocess.run|a0958c06593c58b95bfd4e4ca0d09fa564441fa195ebccaf568205449324c70c",
+    "function": "config_file_problem",
+    "operation": "git/config",
+    "call": "subprocess.run(['git', f'--git-dir={gitdir}', 'config', '--list', '--show-origin', '-z'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "default_branch|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "default_branch",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "done_cmd|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "done_cmd",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "forge_closed|<dynamic>|subprocess.run|701c1899a65e9c89c0c553320a52d9ee495ca0221812fcaf50b72841e5ca599c",
+    "function": "forge_closed",
+    "operation": "<dynamic>",
+    "call": "subprocess.run([shutil.which('gh') or 'gh', 'pr', 'list', '--state', state, '--limit', '50', '--json', 'number,headRefName,closedAt,mergedAt'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30, env=dict(nested_git_env(), GH_PROMPT_DISABLED='1'))"
+  },
+  {
+    "key": "forge_prs|<dynamic>|subprocess.run|976adc4d440c186981460607f043c139246775e109bb4c8a1b5e18bae63538dd",
+    "function": "forge_prs",
+    "operation": "<dynamic>",
+    "call": "subprocess.run([gh, 'pr', 'list', '--state', 'open', '--limit', '100', '--json', QUEUE_FIELDS], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30, env=env)"
+  },
+  {
+    "key": "forge_prs|git/fetch|subprocess.run|46f2a85a0442f605cefa4012aea6e6f5614b4487f6c39c7eb1f695caf0478276",
+    "function": "forge_prs",
+    "operation": "git/fetch",
+    "call": "subprocess.run(['git', 'fetch', '--quiet', 'origin', *specs], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, env=nested_git_env())"
+  },
+  {
+    "key": "git_ship_verdicts|git/<forwarded>|subprocess.run|87281152e0efa63b570854528bc3ced161fd7f6d7770d7c5ef4197e087cc81a1",
+    "function": "git_ship_verdicts",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env(), **k)"
+  },
+  {
+    "key": "git_user|git/config|subprocess.run|0be762f29ae9c85b93114858384eab75a0e89fea43f984456645c6edbd2ea612",
+    "function": "git_user",
+    "operation": "git/config",
+    "call": "subprocess.run(['git', 'config', 'user.name'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "git_version|git/version|subprocess.run|7641bc59b7be35629d038f58a121c7b4eb5148370240f1b711e385481dbc5fb8",
+    "function": "git_version",
+    "operation": "git/version",
+    "call": "subprocess.run(['git', 'version'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "have_not|git/cat-file|subprocess.run|d46b63825160bd6a22504869d76e21bb04ef2ea2a5238a446d54481e2cd6134b",
+    "function": "have_not",
+    "operation": "git/cat-file",
+    "call": "subprocess.run(['git', 'cat-file', '--batch-check'], input=''.join((f'{s_}^{{commit}}\\n' for s_ in shas)), cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "head_commit|git/rev-parse|subprocess.run|2f1e90ebdffb7227f6e39d828b807088580d59aadc74f8748128883b04087254",
+    "function": "head_commit",
+    "operation": "git/rev-parse",
+    "call": "subprocess.run(['git', 'rev-parse', '--verify', '-q', 'HEAD'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "install_copy|git/rev-parse|subprocess.run|b160a313dc01e9cb3e97df4ac0c999bec59cc748bb72ed434f9adc68539ef2d3",
+    "function": "install_copy",
+    "operation": "git/rev-parse",
+    "call": "subprocess.run(['git', '-C', str(ROOT), 'rev-parse', '--git-common-dir'], capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "install_hook_svn|svn/<forwarded>|subprocess.run|1d0b50665abd722b69d629e02b772fe032bae82c340db176a62fc9ed4c393788",
+    "function": "install_hook_svn",
+    "operation": "svn/<forwarded>",
+    "call": "subprocess.run(['svn', *a], capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=ROOT)"
+  },
+  {
+    "key": "install_hook|git/rev-parse|subprocess.run|2e1e0d1c0efb9fe6f2e3b3591964a93c737d2dbd958c048e97e48f526a399925",
+    "function": "install_hook",
+    "operation": "git/rev-parse",
+    "call": "subprocess.run(['git', '-C', str(ROOT), 'rev-parse', '--git-path', 'hooks'], capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "last_worked_on|git/log|subprocess.run|9c7b988b3881fe78f42829fada98f9d7ce34324b8065a2faa2cebd0df798e33c",
+    "function": "last_worked_on",
+    "operation": "git/log",
+    "call": "subprocess.run(['git', 'log', '--format=%H %cs %s', '--', str(path)], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "last_worked_on|git/show|subprocess.run|00b2889504d625ff502f6f64ddf5735e2eaf6b14d5fd2546da0332ffab2ef0f3",
+    "function": "last_worked_on",
+    "operation": "git/show",
+    "call": "subprocess.run(['git', 'show', '--name-only', '--ignore-submodules=none', '--format=', commit, '--', str(TRACKER_DIR.relative_to(ROOT).as_posix())], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "line_author|git/log|subprocess.run|6f45505246c833fe62d42e71f65b95f5f228cce0d22f8352cee6bd93677c75a3",
+    "function": "line_author",
+    "operation": "git/log",
+    "call": "subprocess.run(['git', 'log', *board_diff_args(), '-1', '--full-history', '--format=%H%n%an%n%ae', '-G', exact_line_regex(line), *tips, '--', rel], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "main|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "main",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "merge_heads|git/rev-parse|subprocess.run|004036aff2b1e4ad72e6068ca5c2602fcc11338e4a7600751b37cb8e95c5b277",
+    "function": "merge_heads",
+    "operation": "git/rev-parse",
+    "call": "subprocess.run(['git', 'rev-parse', '--git-path', 'MERGE_HEAD'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "on_their_way|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "on_their_way",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "origin_default|git/ls-remote|subprocess.run|dd6931412648c9dc1a3a3a7c92ac359455cc376ae3f16bafbb452bfcd15819ac",
+    "function": "origin_default",
+    "operation": "git/ls-remote",
+    "call": "subprocess.run(['git', 'ls-remote', '--symref', 'origin', 'HEAD'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, env=dict(nested_git_env(), GIT_TERMINAL_PROMPT='0'))"
+  },
+  {
+    "key": "owner_change|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "owner_change",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "owner_policy|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "owner_policy",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "owner_signature_problems|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "owner_signature_problems",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "path_mode|git/<forwarded>|subprocess.run|29217f76ed76a95bbd0420d131e280afe25eebe96c49d9ab6eb0114fa90e25ee",
+    "function": "path_mode",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=env or nested_git_env())"
+  },
+  {
+    "key": "pending_author|git/var|subprocess.run|5cc560fadc713bcdcfacb8be0a1a3229c3ba2ea28480a2ad446e95dd78511fb9",
+    "function": "pending_author",
+    "operation": "git/var",
+    "call": "subprocess.run(['git', 'var', 'GIT_AUTHOR_IDENT'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "pending_judgement|git/diff|subprocess.run|fe580f2cb5feab8c539eb006bf99e9c883b7ea239e46dfdce479ae58722b1937",
+    "function": "pending_judgement",
+    "operation": "git/diff",
+    "call": "subprocess.run(['git', 'diff', '--cached', '--name-only', '--relative', '--ignore-submodules=none'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=env)"
+  },
+  {
+    "key": "post_notice|<dynamic>|subprocess.run|3ae315fd35cdd26a5acc6a4b5e17b8ab3eff15f8f33ef4a20979961cb17d835e",
+    "function": "post_notice",
+    "operation": "<dynamic>",
+    "call": "subprocess.run(argv, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30, env=notify_env(title, body))"
+  },
+  {
+    "key": "promisor_remotes|git/config|subprocess.run|9be89450a4b30e8bc6940812ef9ecd0433f0954baec0669862984bb66b8b5032",
+    "function": "promisor_remotes",
+    "operation": "git/config",
+    "call": "subprocess.run(['git', 'config', '-z', '--get-regexp', PROMISOR_KEYS], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "queue_actions|git/<forwarded>|subprocess.run|60714ee7d27986b2d646074e31da2db1a71e26d7a5a5e299cf9a27d1799b7271",
+    "function": "queue_actions",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', '-c', 'core.quotePath=false', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env(), **k)"
+  },
+  {
+    "key": "ratio_cmd|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "ratio_cmd",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "read_changes|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "read_changes",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "recover_from_log|git/<forwarded>|subprocess.run|a2ce46f2c7d23132afff4e98230a3cc5d7ef3d7aa2e9e3c6469097194a90a5e9",
+    "function": "recover_from_log",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', '-c', 'core.quotePath=false', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "refusal_record|git/show|subprocess.run|14d39cc45171eb3a27d00ce2a242e137e1c989cd8514a22b81af426654d3aaef",
+    "function": "refusal_record",
+    "operation": "git/show",
+    "call": "subprocess.run(['git', '-c', 'core.quotePath=false', 'show', *board_diff_args(), '--format=%P%x00%s', '--unified=0', '--no-renames', '--no-color', '--no-ext-diff', '--ignore-submodules=none', commit], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "refusal_record|git/show|subprocess.run|5e20e6df13031a7526de099d94f727eebb10f1413930e02d5d0dfc682b8855ae",
+    "function": "refusal_record",
+    "operation": "git/show",
+    "call": "subprocess.run(['git', '-c', 'core.quotePath=false', 'show', '--format=', '--raw', '-z', '--no-renames', '--no-abbrev', '--ignore-submodules=none', commit], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "repos_naming|git/<forwarded>|subprocess.run|c945f88d835512a0875a2b36d3352eae937e348fb5dba4e65475ce74cd13b7c8",
+    "function": "repos_naming",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', '-C', str(ROOT / sub), *cmd], capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "resolve_commits|git/cat-file|subprocess.run|03b2d22b687653a5865aedf88f60861921fa0e68724f0fc066119d98888cde25",
+    "function": "resolve_commits",
+    "operation": "git/cat-file",
+    "call": "subprocess.run(['git', 'cat-file', '--batch-check'], cwd=ROOT, input=''.join((f'{n}^{{commit}}\\n' for n in lines)), capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "revoke_cmd|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "revoke_cmd",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "run_deriver|<dynamic>|subprocess.run|bda09326005f1b7c67d384dd906761f5d971595e3108483c5d9b3e7d49a248a0",
+    "function": "run_deriver",
+    "operation": "<dynamic>",
+    "call": "subprocess.run(([sys.executable] if os.name == 'nt' else []) + [str(exe)], input=ask, capture_output=True, text=True, encoding='utf-8', cwd=ROOT, env=deriver_env(), timeout=DERIVE_TIMEOUT)"
+  },
+  {
+    "key": "session_trailer|git/interpret-trailers|subprocess.run|870fbe3a5fdddd1c77dfe4efb2d5637cb98c7d1145364f00a884fa0ba8915528",
+    "function": "session_trailer",
+    "operation": "git/interpret-trailers",
+    "call": "subprocess.run(['git', 'interpret-trailers', '--in-place', '--if-exists', 'doNothing', *itertools.chain.from_iterable((('--trailer', t) for t in trailers)), message_file], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "specs_unread|git/ls-tree|subprocess.run|35975d786179f62375b17884b6a71795432f992c5ecafa3a141599f77d55516a",
+    "function": "specs_unread",
+    "operation": "git/ls-tree",
+    "call": "subprocess.run(['git', 'ls-tree', '-z', '--full-tree', rev, '--', *paths], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "staged_files|git/<forwarded>|subprocess.run|a631b6fc9925f25e87c139b82a4950e788b5dbff5c1deb2db06e03b2d9b6e1fc",
+    "function": "staged_files",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', '-c', 'diff.relative=false', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=env)"
+  },
+  {
+    "key": "staged_now|git/diff|subprocess.run|032956e6d1bff932f6cb573c6d77a6a0cf9e8dba5dc4af37fb796c500abf1ca2",
+    "function": "staged_now",
+    "operation": "git/diff",
+    "call": "subprocess.run(['git', 'diff', '--cached', '-z', '--name-only', '--relative', '--ignore-submodules=none'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=index_env())"
+  },
+  {
+    "key": "stray_below|git/log|subprocess.run|6225a79ea7e67b4e42ac6788fdef3a5882cdced4db836a0a249e48de90d48d58",
+    "function": "stray_below",
+    "operation": "git/log",
+    "call": "subprocess.run(['git', '-c', 'core.quotePath=false', 'log', '--format=%x00%H %P', '--name-only', '--no-renames', '--ignore-submodules=none', commit, '^' + base], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "svn_ignore_board|svn/<forwarded>|subprocess.run|1d0b50665abd722b69d629e02b772fe032bae82c340db176a62fc9ed4c393788",
+    "function": "svn_ignore_board",
+    "operation": "svn/<forwarded>",
+    "call": "subprocess.run(['svn', *a], capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=ROOT)"
+  },
+  {
+    "key": "svn_last_worked_on|svn/log|subprocess.run|33003eb6aeaf6ea169cec7fb22203ccd6fefda4a0da751873edd5616bc61c97b",
+    "function": "svn_last_worked_on",
+    "operation": "svn/log",
+    "call": "subprocess.run(['svn', 'log', '-v', '--xml', str(TRACKER_DIR)], capture_output=True, text=True, encoding='utf-8', errors='replace')"
+  },
+  {
+    "key": "tracked_board_rels|git/ls-files|subprocess.run|0f3a5765b6b07baded9a1e2750ce9151b72b55434b0efb848464e26c5dfbd8dd",
+    "function": "tracked_board_rels",
+    "operation": "git/ls-files",
+    "call": "subprocess.run(['git', 'ls-files', '-z', '--', *(':(literal)' + r for r in rels)], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "tree_paths|git/<forwarded>|subprocess.run|29217f76ed76a95bbd0420d131e280afe25eebe96c49d9ab6eb0114fa90e25ee",
+    "function": "tree_paths",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=env or nested_git_env())"
+  },
+  {
+    "key": "triage_guard|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "triage_guard",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "triage_pending|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "triage_pending",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "triage_reading|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "triage_reading",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "trunk_ref|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "trunk_ref",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "trusted_signers|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "trusted_signers",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "verified_as|git/<forwarded>|subprocess.run|1f6323627387e5b4f803872790a56443460c620e7558e9ab203093a5bc95798c",
+    "function": "verified_as",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *signers_args(), 'log', '-1', '--format=%G?%n%GS', commit], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  },
+  {
+    "key": "walk_problems|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
+    "function": "walk_problems",
+    "operation": "git/<forwarded>",
+    "call": "subprocess.run(['git', *a], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', errors='replace', env=nested_git_env())"
+  }
+]

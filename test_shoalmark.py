@@ -77,11 +77,24 @@ def _watch_git(event, args):
 sys.addaudithook(_watch_git)
 
 
+def _exit_status(code, err):
+    """The status a program ending in `SystemExit(code)` exits with, as the interpreter sets it: None is 0, a number is itself, anything else is 1 and
+    is printed to stderr — here into `err`, so what the refusal said is kept."""
+    if code is None:
+        return 0
+    if isinstance(code, int):
+        return code
+    print(code, file=err)
+    return 1
+
+
 def run(root, *argv, git_env=None):
     """The tool, in process. The ambient `GIT_*` variables are stripped for the call — git exports them into every hook,
     so the suite run by the pre-commit hook would otherwise answer for the repository being committed to, not for the
     scratch one it just built (`_ENV` strips them for the same reason). `git_env` puts chosen ones back, on purpose.
-    A board's run (`--html-only`) is watched: each git argv it starts is recorded (`_BOARD_GIT`)."""
+    A board's run (`--html-only`) is watched: each git argv it starts is recorded (`_BOARD_GIT`).
+    A run the tool ends with `SystemExit` — a refusal, said before it ends — is returned as the program would end: its exit status (`_exit_status`) and
+    both streams as written. The check that called it fails on it, and the suite goes on (the Owner's order on PR #173: every failure in one run)."""
     out, err = io.StringIO(), io.StringIO()
     saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
     os.environ.update(git_env or {})
@@ -89,7 +102,10 @@ def run(root, *argv, git_env=None):
     _BOARD_RUNS["in process"] += _WATCHING[0]
     try:
         with redirect_stdout(out), redirect_stderr(err):
-            code = fm.main(["--root", str(root), *argv])
+            try:
+                code = fm.main(["--root", str(root), *argv])
+            except SystemExit as e:
+                code = _exit_status(e.code, err)
     finally:
         _WATCHING[0] = False
         for k in git_env or {}:
@@ -222,6 +238,73 @@ with tempfile.TemporaryDirectory() as d:
     made[0].write_text(made[0].read_text().replace("considered: none\n", "considered: none\ntags: bug\n"))
     check("the kind of work is a tag — `bug` is in the vocabulary, a synonym is refused", run(root)[0] == 0
           and (made[0].write_text(made[0].read_text().replace("tags: bug", "tags: defect")) or run(root)[0] == fm.EXIT_LINT))
+
+# --- FM-044 · the Owner's order on PR #173: a refusal the tool ends with, in process, is a FAILED CHECK and the suite goes on — `run` returns it as the
+#     program ends, its exit status and both streams, never as success. Before, its `SystemExit` left `run` with the refusal's line captured and ended the
+#     suite there: exit 4, no FAIL line, no check after it (PR #173's CI, 2026-10-14). Each is compared with the same command as a program
+with tempfile.TemporaryDirectory() as d:
+    svn_ = Path(d).resolve() / "svn"; svn_.mkdir(); (svn_ / ".svn").mkdir()          # a `.svn` that holds no working-copy metadata: the tool refuses it, exit 4
+    plain_ = Path(d).resolve() / "plain"; plain_.mkdir()
+    prog_ = lambda root_, *a_: (lambda r_: (r_.returncode, r_.stdout, r_.stderr))(subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--root", str(root_), *a_], cwd=str(root_),
+                                                                                                  capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV))
+    def caught_(f_):
+        try:
+            return f_()
+        except SystemExit as e_:                    # what the helper let through: the check below fails on it, and the suite goes on to say so
+            return ("left run", e_.code, "")
+    os.environ["GIT_SUITE_AMBIENT"] = "kept"; streams_ = (sys.stdout, sys.stderr); counted_ = _BOARD_RUNS["in process"]
+    try:
+        init_ = caught_(lambda: run(svn_, "--init", "--key", "msr", git_env={"GIT_SUITE_CALL": "1"})); env_init_ = (os.environ.get("GIT_SUITE_AMBIENT"), os.environ.get("GIT_SUITE_CALL"))
+        board_ = caught_(lambda: run(svn_, "--html-only")); after_board_ = (_WATCHING[0], _BOARD_RUNS["in process"] - counted_, fm._TRIPWIRE, fm.SAFE_READS)
+        done_ = caught_(lambda: run(plain_, "--init", "--key", "msr"))
+        (plain_ / "shoalmark.toml").write_text((plain_ / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", "freeze_at = -1\n[kinds]", 1), encoding="utf-8")
+        said_ = caught_(lambda: run(plain_, "--check")); env_end_ = (os.environ.get("GIT_SUITE_AMBIENT"), os.environ.get("GIT_SUITE_CALL")); streams_end_ = (sys.stdout, sys.stderr)
+    finally:
+        os.environ.pop("GIT_SUITE_AMBIENT", None)
+    p_init_, p_board_, p_said_ = prog_(svn_, "--init", "--key", "msr"), prog_(svn_, "--html-only"), prog_(plain_, "--check")
+    metadata_ = "holds no working-copy metadata — nothing is written"
+    check(f"FM-044 · PR #173 · a refusal in process is returned as the program ends it, never as success: `--init` and the board's run in a `.svn` with no working-copy "
+          f"metadata exit 4 with the refusal's line on stderr, and a configuration refused with a message exits 1 with the message on stderr — each code and both streams "
+          f"the program's own (saw {init_[0]!r}, {board_[0]!r}, {said_[0]!r} · the program {p_init_[0]}, {p_board_[0]}, {p_said_[0]})",
+          init_ == p_init_ and board_ == p_board_ and said_ == p_said_ and init_[0] == board_[0] == fm.EXIT_LINT and said_[0] == 1
+          and metadata_ in init_[2] and metadata_ in board_[2] and said_[2].startswith("shoalmark.toml: `freeze_at` is a whole number"))
+    check(f"FM-044 · PR #173 · `run` puts back what it changed, refused or not: the ambient `GIT_*` variable, none of the call's own, the board's watch off and counted "
+          f"once, the tripwire disarmed, the suite's own stdout and stderr — and the run after the refusals succeeds (saw {env_init_}, {env_end_}, {after_board_}, exit {done_[0]})",
+          env_init_ == env_end_ == ("kept", None) and after_board_ == (False, 1, False, False) and streams_end_ == streams_ and done_[0] == 0 and "MSR-001" in done_[1])
+    # …and only SystemExit: a traceback or an interrupt inside the tool leaves `run` as raised, the same exception, with `run`'s state put back (RV-3063)
+    def raising_(raised_):
+        def main_(argv=None, **kw_):
+            raise raised_
+        return main_
+    real_main_, got_ = fm.main, []
+    os.environ["GIT_SUITE_AMBIENT"] = "kept"
+    try:
+        for raised_ in (RuntimeError("a traceback in the tool"), KeyboardInterrupt()):
+            fm.main = raising_(raised_)
+            try:
+                got_.append(("returned", run(plain_, "--html-only", git_env={"GIT_SUITE_CALL": "1"})[0]))
+            except BaseException as x_:
+                got_.append((type(x_).__name__, x_ is raised_, os.environ.get("GIT_SUITE_CALL"), os.environ.get("GIT_SUITE_AMBIENT"), _WATCHING[0], (sys.stdout, sys.stderr) == streams_))
+            finally:
+                fm.main = real_main_
+    finally:
+        os.environ.pop("GIT_SUITE_AMBIENT", None)
+    check(f"FM-044 · PR #173 · `run` returns only what the tool ends with SystemExit: a RuntimeError and a KeyboardInterrupt inside the tool leave it as raised, the same "
+          f"exception, with the call's `GIT_*` variable gone, the ambient one kept, the board's watch off and the suite's own streams (saw {got_})",
+          got_ == [("RuntimeError", True, None, "kept", False, True), ("KeyboardInterrupt", True, None, "kept", False, True)] and fm.main is real_main_)
+    # …and the suite goes on: these helpers as a program, a refused run checked and a check after it
+    suite_ = Path(d) / "refused_then_more.py"
+    src_ = (HERE / "test_shoalmark.py").read_text(encoding="utf-8")
+    suite_.write_text("__file__ = " + repr(str(HERE / "test_shoalmark.py")) + "\n" + src_[:src_.index("# --- a fresh repository: init, file, gate")]
+                      + "with tempfile.TemporaryDirectory() as d:\n"
+                        "    root = Path(d).resolve(); (root / '.svn').mkdir()\n"
+                        "    check('a refused run, checked', run(root, '--init', '--key', 'msr')[0] == 0)\n"
+                        "check('the check after it', True)\n"
+                        "if FAILS:\n    print(f'FAILED: {len(FAILS)}'); sys.exit(1)\nprint('all green')\n", encoding="utf-8")
+    went_ = subprocess.run([sys.executable, str(suite_)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV, timeout=120)
+    check(f"FM-044 · PR #173 · the suite goes on past a refusal: these helpers as a program, a refused run checked and a check after it — the refusal is a FAIL line, "
+          f"the check after it runs, and the program ends on its FAILED line with exit 1, not the refusal's 4 (saw exit {went_.returncode}, {went_.stdout.strip()[-160:]!r})",
+          went_.returncode == 1 and "  FAIL  a refused run, checked\n" in went_.stdout and "  ok    the check after it\n" in went_.stdout and went_.stdout.rstrip().endswith("FAILED: 1"))
 
 # --- configuration: kinds are the repository's own ------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
@@ -1793,6 +1876,13 @@ def _git_starts(src):
     the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`,
     any case. A word of any other program that names git is not read."""
     tree = ast.parse(src)
+    # FM-044: classify callers of the transparent process boundary as the starts they request. The process boundary is exercised separately by core controls.
+    # Keep the existing Git command classification and forwarding-helper analysis: git_out still forwards the caller's own command/keywords.
+    tree.body = [n for n in tree.body if not (isinstance(n, ast.FunctionDef) and n.name == "vcs_process")]
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "vcs_process":
+            n.func = ast.copy_location(ast.Attribute(value=ast.Name(id="subprocess", ctx=ast.Load()), attr="run", ctx=ast.Load()), n.func)
+            n.args = [ast.copy_location(ast.List(elts=n.args, ctx=ast.Load()), n)]
     every = list(ast.walk(tree))           # every node, walked once
     parent = {c: n for n in every for c in ast.iter_child_nodes(n)}
     defs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
@@ -2681,31 +2771,112 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root)
 fm.configure(HERE)
 
-# no Subversion call: a working copy that asks `svn blame` for who set `next: owner` — the board's run asks nothing of it. What starts `svn` is seen by a
-# stand-in in Python, on every system: a `sitecustomize` on the tool's PYTHONPATH whose audit hook leaves an inert marker where the process starts a program
-# named `svn` — before the tool's own tripwire could refuse it, so even an attempt shows
-if _has_rev("ae3c9e9"):
+# no Subversion call but its one local status: a working copy that asks `svn blame` for who set `next: owner` — the board's run asks nothing of it, nor of its
+# repository, which is away while it runs. What starts `svn` is seen by a stand-in in Python, on every system: a `sitecustomize` on the tool's PYTHONPATH whose
+# audit hook writes down each start of a program named `svn` — before the tool's own tripwire could refuse it, so even an attempt shows. FM-044 (A1, accepted):
+# the board's run reads which of its paths Subversion versions with one local `svn status`, this argv, in the working copy — and refuses a `.svn` that holds
+# no working-copy metadata, so the working copy here is a real one, checked out from a file:// repository
+_SVN_STATUS = ["svn", "status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", "--xml"]
+_SVN_HERE = bool(shutil.which("svn") and shutil.which("svnadmin"))
+if _has_rev("ae3c9e9") and _SVN_HERE:
     with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as o:
-        root = Path(d).resolve(); (root / ".svn").mkdir(); run(root, "--init", "--key", "msr")
+        repo_ = Path(o).resolve() / "repo"; subprocess.run(["svnadmin", "create", str(repo_)], check=True, capture_output=True)
+        root = Path(d).resolve() / "wc"; subprocess.run(["svn", "checkout", "-q", repo_.as_uri(), str(root)], check=True, capture_output=True)
+        run(root, "--init", "--key", "msr")
         (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", 'owner = "o@x"\n\n[seats]\nbuilder = "b@x"\n\n[kinds]', 1), encoding="utf-8")
         tracker(root, "MSR-001", extra='next: owner\nask: "Which one?"\n', title="asks")
         seen_ = Path(o) / "seen"; seen_.mkdir(); mark_ = Path(o) / "svn-ran"
-        (seen_ / "sitecustomize.py").write_text(
-            "import os, re, sys\n"
+        (seen_ / "sitecustomize.py").write_text(           # its log is opened before the run begins: the tripwire refuses a file opened inside the event
+            "import json, os, re, sys\n"
+            f"_log = open({str(mark_)!r}, 'a', encoding='utf-8')\n"
             "def _seen(event, args):\n"
             "    if event in ('subprocess.Popen', 'os.spawn', 'os.posix_spawn', 'os.exec'):\n"
             "        words = [w for w in re.split(r'[^A-Za-z0-9._-]+', ' '.join(str(a) for a in (args[0], args[1]) if a is not None)) if w]\n"
             "        if any(w.lower() in ('svn', 'svn.exe') for w in words[:3]):\n"
-            f"            open({str(mark_)!r}, 'a').write('svn\\n')\n"
+            "            argv = args[1] if isinstance(args[1], str) else [str(a) for a in args[1]] if isinstance(args[1], (list, tuple)) else str(args[1])\n"
+            "            _log.write(json.dumps([event, argv, str(args[2]) if event == 'subprocess.Popen' else '']) + '\\n'); _log.flush()\n"
             "sys.addaudithook(_seen)\n", encoding="utf-8")
         env_ = dict(_ENV, PYTHONPATH=str(seen_))
-        new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only", env=env_); ran_new_ = mark_.exists(); mark_.unlink(missing_ok=True)
-        old_ = _tool_run(_old_tool(Path(o) / "old"), root, "--html-only", env=env_); ran_old_ = mark_.exists()
-        check(f"FM-006 · a private security report · in a Subversion working copy the board's run starts no `svn`: with a seat to check and an ask to place, it writes the board and the marker never appears; "
-              f"the tool before it ran `svn` for the same repository (saw exit {new_[0]}, marker new {ran_new_} · old {ran_old_})",
-              new_[0] == 0 and not ran_new_ and (root / "docs/work-tracker/index.html").exists() and ran_old_)
+        starts_ = lambda: [json.loads(l_) for l_ in mark_.read_text(encoding="utf-8").splitlines()] if mark_.exists() else []
+        status_ = lambda s_: s_[0] == "subprocess.Popen" and (fm.split_cmdline(s_[1]) if isinstance(s_[1], str) else s_[1]) == _SVN_STATUS and Path(s_[2]).resolve() == root
+        repo_.rename(repo_.with_name("repo-away"))         # the repository is away: the board's run asks it nothing
+        new_ = _tool_run(HERE / "shoalmark.py", root, "--html-only", env=env_); seen_new_ = starts_(); mark_.unlink(missing_ok=True)
+        old_ = _tool_run(_old_tool(Path(o) / "old"), root, "--html-only", env=env_); seen_old_ = starts_()
+        check(f"FM-006 · a private security report · in a Subversion working copy the board's run starts no `svn` but the one local status FM-044 reads: with a seat to check, "
+              f"an ask to place and the repository away, it writes the board, and its only start of `svn` is `{' '.join(_SVN_STATUS)}` in the working copy; "
+              f"the tool before it ran `svn` beyond that for the same repository (saw exit {new_[0]}, new {seen_new_} · old {seen_old_[:2]})",
+              new_[0] == 0 and len(seen_new_) == 1 and status_(seen_new_[0]) and (root / "docs/work-tracker/index.html").exists() and any(not status_(s_) for s_ in seen_old_))
 else:
-    _skipped("FM-006 · the board's run starts no `svn`", 1, "this clone does not hold ae3c9e9")
+    _skipped("FM-006 · the board's run starts no `svn` but its one local status", 1, "svn or svnadmin is not installed here" if not _SVN_HERE else "this clone does not hold ae3c9e9")
+
+# FM-044 · RV-3061: the board's judge admits its one local status in each shape CPython audits it — POSIX fills in the program, `svn`, and keeps the list;
+#     Windows, given no program, audits None and the command line (subprocess's Windows `_execute_child`) — and nothing beside it. The shapes are simulated
+#     here, on every system, by calling the judge; then the event this system's Python actually audits for the board's own status start is caught before
+#     anything starts, and judged. The configuration is Subversion as A1's controls set it: the judge reads only the backend and ROOT, no metadata
+class _StartCaught(BaseException):
+    """The start `_catch_start` stopped — a BaseException, so no handler on the way can take it for a failed command."""
+
+
+_CATCH = [False, None]                 # on, and the one process start caught while on (`_catch_start`)
+
+
+def _catch_start(event, args):
+    """While on: the first process start's audited event is kept, and the start is stopped before anything runs."""
+    if _CATCH[0] and event == "subprocess.Popen":
+        _CATCH[0], _CATCH[1] = False, tuple(args)
+        raise _StartCaught()
+
+
+sys.addaudithook(_catch_start)
+with tempfile.TemporaryDirectory() as d:
+    from unittest import mock as _mock
+    wc_ = Path(d).resolve() / "wc"; wc_.mkdir(); fm.configure(wc_); line_ = subprocess.list2cmdline(_SVN_STATUS); tripped_ = list(fm.TRIPPED)
+    def judged_(args_):
+        try:
+            fm.board_judge("subprocess.Popen", args_)
+            return "admitted"
+        except fm.ReadOnlyRun:
+            return "refused"
+    shapes_ = {"Windows, simulated: no program, the status as its command line, in the working copy": ((None, line_, str(fm.ROOT), None), "admitted"),
+               "POSIX: `svn`, the status as its list, in the working copy": (("svn", list(_SVN_STATUS), fm.ROOT, None), "admitted"),
+               "no program, with the POSIX list": ((None, list(_SVN_STATUS), str(fm.ROOT), None), "refused"),
+               "an explicit `C:\\bin\\svn.exe`": (("C:\\bin\\svn.exe", line_, str(fm.ROOT), None), "refused"),
+               "an explicit `/usr/bin/svn`": (("/usr/bin/svn", list(_SVN_STATUS), fm.ROOT, None), "refused"),
+               "`-u`, which asks the server": ((None, subprocess.list2cmdline(_SVN_STATUS + ["-u"]), str(fm.ROOT), None), "refused"),
+               "spelled `svn.exe`": ((None, subprocess.list2cmdline(["svn.exe", *_SVN_STATUS[1:]]), str(fm.ROOT), None), "refused"),
+               "a shell's `& calc` after it": ((None, line_ + " & calc", str(fm.ROOT), None), "refused"),
+               "through `cmd /c`": ((None, subprocess.list2cmdline(["cmd", "/c", *_SVN_STATUS]), str(fm.ROOT), None), "refused"),
+               "through `env`": ((None, subprocess.list2cmdline(["env", *_SVN_STATUS]), str(fm.ROOT), None), "refused"),
+               "`svn info`": ((None, subprocess.list2cmdline(["svn", "info", "--xml"]), str(fm.ROOT), None), "refused"),
+               "`svn blame`": ((None, subprocess.list2cmdline(["svn", "blame", "docs/work-tracker/MSR-001-x.md", "--xml"]), str(fm.ROOT), None), "refused"),
+               "the parent folder as cwd": ((None, line_, str(fm.ROOT.parent), None), "refused"),
+               "the working copy spelled with `.`": ((None, line_, str(fm.ROOT) + os.sep + ".", None), "refused"),
+               "the working copy spelled through `..`": ((None, line_, os.path.join(str(fm.ROOT.parent), "x", "..", fm.ROOT.name), None), "refused"),
+               "no cwd": ((None, line_, None, None), "refused")}
+    if _SYMLINKS:
+        os.symlink(wc_, Path(d) / "alias"); shapes_["a symlink to the working copy as cwd"] = ((None, line_, str(Path(d).resolve() / "alias"), None), "refused")
+    with _mock.patch.object(fm, "_VCS", ("svn", fm.ROOT)):
+        seen_ = {name_: judged_(args_) for name_, (args_, _want) in shapes_.items()}
+        _CATCH[:] = [True, None]
+        try:
+            fm.svn_local_status()             # the board's own status start, through `svn_run` and `vcs_process`: caught before anything starts
+            native_ = None
+        except _StartCaught:
+            native_ = _CATCH[1]
+        finally:
+            _CATCH[0] = False
+        native_seen_ = judged_(native_) if native_ else "not caught"
+    fm.TRIPPED[:] = tripped_
+    check(f"FM-044 · RV-3061 · simulated event shapes: the board's judge admits its one local status as POSIX audits it, `svn` and the list, and as Windows does, "
+          f"no program and the command line, both in the working copy — and refuses no program with a list, any explicit program, a flag more, another spelling, a "
+          f"wrapper, another command, another cwd or a spelling of it{', a symlink among them' if _SYMLINKS else ' (no symlink alias: this system makes none)'}, and no cwd "
+          f"(saw {[n_ for n_, (_a, w_) in shapes_.items() if seen_[n_] != w_]} judged otherwise)",
+          all(seen_[n_] == w_ for n_, (_a, w_) in shapes_.items()))
+    check(f"FM-044 · RV-3061 · the event this system's Python actually audits for the board's own status start, caught before anything starts, is admitted by the "
+          f"board's judge — {'Windows: no program and the command line' if os.name == 'nt' else 'POSIX: `svn` and the list'} "
+          f"(saw {(repr(native_[0]), type(native_[1]).__name__) if native_ else 'nothing caught'}: {native_seen_})",
+          native_seen_ == "admitted" and (native_[0] is None and isinstance(native_[1], str) if os.name == "nt" else native_[0] == "svn" and isinstance(native_[1], list)))
+fm.configure(HERE)
 
 # what it reads: only regular files inside the repository — a tracker, the configuration, the Owner's path, the brand's files, a triage worksheet, each a symlink to a file outside
 if _SYMLINKS and _has_rev("ae3c9e9"):
@@ -6010,6 +6181,11 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
+# A command the tool prints for him to copy spells each argument as `printed_arg` does (FM-030 C, accepted at f59a1c1): a PowerShell literal on
+# Windows — every argument quoted, `'AP-421'` — and `shlex.quote` elsewhere — a text with a space quoted, an id or a path bare. The checks below write
+# the expected command out for each platform, never through `printed_arg` itself (PR #173's run 38539381661 met the old spelling)
+_WIN_ARGS = sys.platform == "win32"
+
 # --- FM-017: a failed --answer leaves nothing behind — and a leftover from one is named, with the command that undoes it -
 # What the Owner met: the gate refused the commit, and the run returned with his answer staged, INDEX.md rewritten by the
 # hook and an empty `answer/<id>` checked out. His next `--answer`, on another ask, said only "the working tree has changes".
@@ -6036,7 +6212,8 @@ with tempfile.TemporaryDirectory() as tmp:
           and "restored docs/work-tracker/AP-500-x.md, docs/work-tracker/INDEX.md" in err and "`answer/ap-500` deleted" in err)
     check("FM-017 · …and it says what refused it — the hook's own words, not git's last line — and the answer, with the command that gives it again: no answer is lost",
           "gate: AP-500 refused - the reason the Owner must read" in err and "your answer, not lost: accepted - count one week first" in err
-          and 'to give it again: ' in err and '--answer AP-500 accept "count one week first"' in err)
+          and 'to give it again: ' in err
+          and ("--answer 'AP-500' accept 'count one week first'" if _WIN_ARGS else "--answer AP-500 accept 'count one week first'") in err)
     # the leftover 0.17.3 left: the answer staged, INDEX.md rewritten — and a file of the Owner's own changed beside them
     p5_ = root / "docs/work-tracker/AP-500-x.md"
     p5_.write_text(p5_.read_text().replace('ask-proposal: "yes"\n', f'ask-proposal: "yes"\nanswer: "accepted - count one week first"\nanswered: {new_}\nanswered-by: holgo\n'), encoding="utf-8")
@@ -6435,7 +6612,8 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "-c", "answer/ap-301"); git(root, "switch", "-q", "-")
     code, _, err = run(root, "--answer", "AP-301", "accept", "the importer")
     check("8 · `--answer` refuses an `answer/<id>` that exists and is not merged — it may hold work, and nothing unmerged is deleted for him; the refusal names the one command that clears it",
-          code == fm.EXIT_LINT and "`answer/ap-301` exists and is not merged into `origin`" in err and "`git branch -D answer/ap-301`" in err and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-301")
+          code == fm.EXIT_LINT and "`answer/ap-301` exists and is not merged into `origin`" in err
+          and ("`git branch -D 'answer/ap-301'`" if _WIN_ARGS else "`git branch -D answer/ap-301`") in err and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-301")
     git(root, "branch", "-q", "-D", "answer/ap-301")
     t2.write_text(t2.read_text().replace('\nask: "Shall', '\n ask: "Shall'), encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-qm", "the ask, indented")      # --answer wants a clean tree; the ask still parses
@@ -7304,26 +7482,34 @@ else:
               and (root / "docs/work-tracker/index.html").exists())
         contract = (root / "AGENTS.md").read_text(encoding="utf-8")
         check("S3 · the contract says the true thing for Subversion: run the tool before `svn commit` — its command line has no hook", "before every `svn commit`" in contract and "gate on every\ncommit" not in contract)
+        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
         svn("update", cwd=root); code, out, _ = run(root, "--install-hook")
-        props = {p_: svn("propget", p_, ".", cwd=root).stdout for p_ in fm.TSVN_HOOKS}
+        props = {p_: svn("propget", "--strict", p_, ".", cwd=root).stdout for p_ in fm.TSVN_HOOKS}
         again = run(root, "--install-hook")[1]
-        check("S2 · --install-hook wires what Subversion has: the two TortoiseSVN properties, by repository URL, four-line form — says the command line runs no hook, and is idempotent",
-              code == 0 and all(v.startswith("python %REPOROOT%/trunk/") and f"--tsvn-hook {k}\ntrue\nhide" in v.replace("\r", "") for (p_, k), v in zip(fm.TSVN_HOOKS.items(), props.values()))
-              and "runs no hook" in out and "set tsvn" not in again)
+        check("S2 · --install-hook wires the actual installed tool in the two repository-relative TortoiseSVN properties, command/true/hide form — says the command line runs no hook, and is idempotent",
+              code == 0 and all(v.splitlines()[1:] == ["true", "hide"] and v.endswith("\n")
+                                and shlex.split(v.splitlines()[0]) == ["python", "%REPOROOT%/trunk/tools/shoalmark/shoalmark.py", "--tsvn-hook", k]
+                                for (p_, k), v in zip(fm.TSVN_HOOKS.items(), props.values()))
+              and (root / "tools/shoalmark/shoalmark.py").is_file() and "runs no hook" in out and "set tsvn" not in again)
         svn("propset", "tsvn:precommithook", "wscript theirs.js\ntrue\nhide\n", ".", cwd=root)
         code, _, err = run(root, "--install-hook")
         check("S2 · a TortoiseSVN hook that is not ours is left alone, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "theirs.js" in svn("propget", "tsvn:precommithook", ".", cwd=root).stdout)
-        hook = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
-        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
+        paths = base / "affected-paths.txt"; message = base / "commit-message.txt"
+        paths.write_text(str(made) + "\n", encoding="utf-8"); message.write_text("Keep this commit message — unchanged.\n", encoding="utf-8")
+        message_bytes = message.read_bytes()
+        hook = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths),
+                                            *(["3"] if kind == "pre" else []), str(message), str(root)], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
         hook("start")                                           # the vendored copy names its own command in INDEX.md — it writes it first
         ok = hook("pre"); made.write_text(made.read_text(encoding="utf-8").replace("status: Proposed", "status: Bogus"), encoding="utf-8"); bad = hook("pre")
         made.write_text(made.read_text(encoding="utf-8").replace("status: Bogus", "status: In Progress"), encoding="utf-8"); start = hook("start")
         check("S2 · called as TortoiseSVN calls it — from anywhere, with its own arguments — `pre` refuses a violation and `start` writes the INDEX.md the dialog will list",
-              ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "status" in bad.stdout + bad.stderr and start.returncode == 0 and "INDEX.md" in svn("status", cwd=root).stdout)
+              ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "status" in bad.stdout + bad.stderr and start.returncode == 0 and "INDEX.md" in svn("status", cwd=root).stdout
+              and message.read_bytes() == message_bytes)
         svn("propdel", "tsvn:precommithook", ".", cwd=root); svn("commit", "-m", "in Arbeit", cwd=root); svn("update", cwd=root); fm._SVN_LOG = None
         check("S1 · a pass's *last worked on* comes from `svn log` — one call for the whole directory", fm.last_worked_on(made) == datetime.date.today().isoformat() or re.fullmatch(r"\d{4}-\d\d-\d\d", fm.last_worked_on(made)))
-        # FM-008 · S4 · seats under Subversion: no signature to give and no client hook to run — the identity is the
-        # SERVER'S, read from `svn blame`, and the layer that refuses is the server's own pre-commit hook
+        # FM-008 · S4 · legacy account-string predicates on a local file:// fixture. Its --username strings
+        # authenticate nobody; these controls supply no consumer adoption or protected SVN acceptance.
+        svn_limit_ = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
         wt_ = root / "docs/work-tracker"
         for id_, who_, q_ in (("C2-002", "stranger", "Soll der Starter zuerst?"), ("C2-003", "principal", "Soll der Import zuerst?")):
             (wt_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nnext: owner\nask: "{q_}"\n'
@@ -7333,17 +7519,19 @@ else:
         cfg = (root / "shoalmark.toml").read_text(encoding="utf-8")
         (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
         code, _, err = run(root)
-        check("S4 · under Subversion the seat is the server's account: the ask committed by an account that is no seat is refused, naming it — and the one from the seat that holds `ask` passes",
+        check("S4 · the local file:// fixture compares untrusted account strings: the non-seat ask is refused by the legacy predicate, naming its string — the configured seat string passes that predicate",
               code == fm.EXIT_LINT and "C2-002: `next: owner` puts a question in front of the Owner" in err and "`stranger` is not a seat" in err
               and "--worktree user.email" not in err and "C2-003" not in err)
         (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal@example.org signed"\n', encoding="utf-8")      # a signed identity is an email (FM-024)
-        code, _, err = run(root)
-        check("S4 · `signed` under Subversion is refused as meaningless — the server authenticated the commit; name the account alone",
-              code == fm.EXIT_LINT and "asks for a signature, and Subversion has none to give" in err and "Name the SVN account alone" in err)
+        code, out, err = run(root)
+        check("S4 · a signed seat policy under Subversion is held, with the local verification limit stated exactly once",
+              code == fm.EXIT_LINT and "asks for a signature, and its signed policy is held under Subversion" in err
+              and (out + err).count(svn_limit_) == 1)
         (root / "shoalmark.toml").write_text('owner = "holgo@example.org signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
-        code, _, err = run(root)
+        code, out, err = run(root)
         check(f"S4 · RV-2200 · the Owner named at the top with `signed` under Subversion is refused as `owner`, never under `[seats]` (saw {err.strip()[-200:]!r})",
-              code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and Subversion has none to give" in err)
+              code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and its signed policy is held under Subversion" in err
+              and (out + err).count(svn_limit_) == 1)
         (root / "shoalmark.toml").write_text(cfg, encoding="utf-8")
         for id_ in ("C2-002", "C2-003"):
             (wt_ / f"{id_}-x.md").unlink()
@@ -7643,9 +7831,12 @@ else:
         code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-011")
         check(f"FM-006 · v0.19.1 · an unversioned new tracker — never `svn add`ed — carrying `close`, `ask` and `triage` lines is refused too, in one line naming all three (saw {code}, {len(lines_)})",
               code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-011: is not committed yet, and it carries lines that `ask`, `close` and `triage` guard"))
-        # the TortoiseSVN pre-commit run of the copy vendored into the working copy says the same line
+        # the TortoiseSVN pre-commit run of the copy vendored into the working copy says the same line — called with what TortoiseSVN hands it: its path list,
+        # its message file and the working copy, which FM-044's binding (P, accepted) reads before anything else and refuses where they are not real
         fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
-        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, "C:/t/paths", "3", "C:/t/msg", "C:/wc"], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        paths6_, message6_ = base / "affected-paths.txt", base / "commit-message.txt"
+        paths6_.write_text(str(p_) + "\n", encoding="utf-8"); message6_.write_text("C6-011\n", encoding="utf-8")
+        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths6_), "3", str(message6_), str(root)], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
         hook6_("start"); pre_ = hook6_("pre")
         check(f"FM-006 · v0.19.1 · `--tsvn-hook pre`, as TortoiseSVN calls it, refuses the same tracker with the same line, exit 4 (saw {pre_.returncode})",
               pre_.returncode == fm.EXIT_LINT and said6_(pre_.stdout + pre_.stderr, "C6-011") == lines_)
@@ -9913,8 +10104,10 @@ with tempfile.TemporaryDirectory() as tmp:
     code_x, _o, err_x = run(root, "--done", "AP-423", "evidence/AP-423/read.md")
     check(f"FM-030 · C · an unmerged `answer/<id>` that carries his commits is never cleared for him: where the act is open there, the refusal names `--done` on that branch; `git branch -D` only where nothing of his is on it (saw {err_o.strip()[-220:]!r} · {err_x.strip()[-160:]!r})",
           code_o == code_x == fm.EXIT_LINT and "it carries your commit(s) — " in err_o and "AP-421: due " in err_o
-          and "AP-421's act is open there: `git switch answer/ap-421`, then " in err_o and '--done AP-421 "evidence/AP-421/key.md"`' in err_o and "git branch -D" not in err_o
-          and "nothing of yours is on it — clear it with `git branch -D answer/ap-423`" in err_x and here_() == start_)
+          and ("AP-421's act is open there: `git switch 'answer/ap-421'`, then " if _WIN_ARGS else "AP-421's act is open there: `git switch answer/ap-421`, then ") in err_o
+          and ("--done 'AP-421' 'evidence/AP-421/key.md'`" if _WIN_ARGS else "--done AP-421 evidence/AP-421/key.md`") in err_o and "git branch -D" not in err_o
+          and ("nothing of yours is on it — clear it with `git branch -D 'answer/ap-423'`" if _WIN_ARGS else "nothing of yours is on it — clear it with `git branch -D answer/ap-423`") in err_x
+          and here_() == start_)
     # R1 (the pass on 52cfcc7): `--done` hands the move to the seat only where his ACCEPTED action answer left `next: owner` —
     # a `due:` beside a ruling he has not answered keeps it, and the question stays on his queue and his board
     tracker(root, "AP-426", extra=f'next: owner\nask: "Does the launcher ship before the site?"\nask-kind: ruling\nask-since: {since_}\n'
@@ -9936,7 +10129,8 @@ with tempfile.TemporaryDirectory() as tmp:
     code_r3, _o, err_r3 = run(root, "--done", "AP-424", "evidence/AP-424/logs.md")
     check(f"FM-030 · C · R3 · `--done` where the act is on an unmerged `answer/<id>` names that branch and his commit, never *owes no act* (saw {err_r3.strip()[-240:]!r})",
           code_a3 == 0 and code_r3 == fm.EXIT_LINT and "AP-424's act is on `answer/ap-424`, not merged into " in err_r3 and "owes the Owner no act" not in err_r3
-          and "it carries your commit(s) — " in err_r3 and "`git switch answer/ap-424`, then " in err_r3 and "--done AP-424 evidence/AP-424/logs.md`" in err_r3 and here_() == start_)
+          and "it carries your commit(s) — " in err_r3 and ("`git switch 'answer/ap-424'`, then " if _WIN_ARGS else "`git switch answer/ap-424`, then ") in err_r3
+          and ("--done 'AP-424' 'evidence/AP-424/logs.md'`" if _WIN_ARGS else "--done AP-424 evidence/AP-424/logs.md`") in err_r3 and here_() == start_)
     check("FM-030 · C · `--schema` says what `--done` does to the move: `next: build` where his answer left `next: owner`",
           "`--done` sets `next: build` — the act done, the seat's move is next" in fm.render_schema())
     if _browser("owe"):
@@ -10012,7 +10206,8 @@ with tempfile.TemporaryDirectory() as tmp:
     code_d, _o, err_d = run(root, "--invite", "AP-435")
     check(f"FM-030 · D · a moved act's invite carries a higher SEQUENCE — its records under `## Acts` — so importing it again replaces the event; an act with no `due:` yet and one that is done have none (saw {err_n.strip()!r})",
           "SEQUENCE:2\r\n" in seq_ and f"DTSTART:{utc_(300)}\r\n" in seq_ and code_n == code_d == fm.EXIT_LINT
-          and "AP-434's act has no `due:` yet — an invite needs a time" in err_n and "--due AP-434 <time>" in err_n and "AP-435 owes the Owner no act" in err_d)
+          and "AP-434's act has no `due:` yet — an invite needs a time" in err_n and ("--due 'AP-434' <time>" if _WIN_ARGS else "--due AP-434 <time>") in err_n
+          and "AP-435 owes the Owner no act" in err_d)
     check("FM-030 · D · the notifier is the system's own, each where present: macOS `osascript`, Linux `notify-send` — none on Windows, and none where there is none",
           [(fm.notify_argv("t", "b", p_, lambda n: "/usr/bin/" + n) or [None])[0] for p_ in ("darwin", "linux", "win32")] == ["osascript", "notify-send", None]
           and fm.notify_argv("t", "b", "darwin", lambda n: None) is None and fm.notify_argv("t", "b", "sunos5", lambda n: "/x") is None)
@@ -10501,10 +10696,12 @@ with tempfile.TemporaryDirectory() as tmp:
     t461_ = fm.extract(root / "docs/work-tracker/AP-461-x.md", show_("origin/answer/ap-461", "docs/work-tracker/AP-461-x.md"))
     check(f"FM-030 · 0.18.6 · a weekday alone is not read: no `due:`, the act shows *no date yet* as before, and `--answer` says why and names `--due` (saw {out_1.strip()!r})",
           code_1 == 0 and "due" not in front_("AP-461") and fm.act_state(fm.act_of(t461_)) == "nodate"
-          and "no date read in your answer — it names no date with an hour" in out_1 and "a weekday alone is not a date" in out_1 and "--due AP-461 <time>" in out_1)
+          and "no date read in your answer — it names no date with an hour" in out_1 and "a weekday alone is not a date" in out_1
+          and ("--due 'AP-461' <time>" if _WIN_ARGS else "--due AP-461 <time>") in out_1)
     check(f"FM-030 · 0.18.6 · a `due:` the seat set is left and the answer's time named beside it, with the `--due` that moves it; a ruling's answer seeds nothing (saw {out_2.strip()!r} · {out_3.strip()!r})",
           code_2 == code_3 == 0 and front_("AP-462").get("due") == "2026-10-05T10:00:00+02:00"
-          and f"`due:` is 2026-10-05T10:00:00+02:00 already and is left — " in out_2 and f"--due AP-462 {sat_.isoformat()}T10:00:00" in out_2
+          and f"`due:` is 2026-10-05T10:00:00+02:00 already and is left — " in out_2
+          and (f"--due 'AP-462' '{sat_.isoformat()}T10:00:00" if _WIN_ARGS else f"--due AP-462 {sat_.isoformat()}T10:00:00") in out_2
           and "due" not in front_("AP-463") and "due" not in out_3.replace("--due", "") and "no date read" not in out_3)
     check("FM-030 · 0.18.6 · `--schema` says `--answer` seeds `due:` and what it reads — a full date with its hour, the weekday checked; a weekday alone is not",
           "`--answer`, from an accepted action answer that names its hour" in fm.render_schema() and "`Sat 09-26 09:00`" in fm.render_schema()
@@ -10551,9 +10748,10 @@ with tempfile.TemporaryDirectory() as tmp:
     check(f"FM-030 · 0.18.6 · E0 row 20 · `--due`, `--done` and `--answer` refused after the cut each leave ONE line under `## Acts` on `answer/<id>` — "
           f"when, the command, what refused it — committed unsigned and pushed; the undo says so, and he is back on a clean tree (saw {err_d.strip()!r} · {rec_('AP-470')})",
           code_d == code_n == code_a == fm.EXIT_LINT and here_() == start_ and clean_() == ""
-          and [re.fullmatch(line_ % re.escape(f"--due AP-470 {when_}"), l_) is not None for l_ in rec_("AP-470")] == [True]
-          and [re.fullmatch(line_ % re.escape('--done AP-471 "evidence/AP-471/key.md"'), l_) is not None for l_ in rec_("AP-471")] == [True]
-          and [re.fullmatch(line_ % re.escape("--answer AP-472 accept"), l_) is not None for l_ in rec_("AP-472")] == [True]
+          and [re.fullmatch(line_ % re.escape(f"--due 'AP-470' '{when_}'" if _WIN_ARGS else f"--due AP-470 {when_}"), l_) is not None for l_ in rec_("AP-470")] == [True]
+          and [re.fullmatch(line_ % re.escape("--done 'AP-471' 'evidence/AP-471/key.md'" if _WIN_ARGS else "--done AP-471 evidence/AP-471/key.md"), l_) is not None
+               for l_ in rec_("AP-471")] == [True]
+          and [re.fullmatch(line_ % re.escape("--answer 'AP-472' accept" if _WIN_ARGS else "--answer AP-472 accept"), l_) is not None for l_ in rec_("AP-472")] == [True]
           and all("the commit was refused" in e_ and "recorded under `## Acts` on `answer/ap-47" in e_ and "`, unsigned — pushed" in e_ for e_ in (err_d, err_n, err_a))
           and log_("origin/answer/ap-470").startswith("N AP-470: --due refused — the commit was refused")
           and "due" not in fm.parse_frontmatter(show_("origin/answer/ap-470", "docs/work-tracker/AP-470-x.md"))[0]
@@ -10573,7 +10771,8 @@ with tempfile.TemporaryDirectory() as tmp:
     code_u, _o, err_u = run(root, "--due", "AP-470", when_)
     check(f"FM-030 · 0.18.6 · the unmerged path is unchanged: the next `--due` names `answer/<id>`, the refusal's commit as his, and the command to run there (saw {err_u.strip()[-240:]!r})",
           code_u == fm.EXIT_LINT and "`answer/ap-470` exists and is not merged" in err_u and "it carries your commit(s) — " in err_u and "AP-470: --due refused" in err_u
-          and "AP-470's act is open there: `git switch answer/ap-470`, then " in err_u and here_() == start_)
+          and ("AP-470's act is open there: `git switch 'answer/ap-470'`, then " if _WIN_ARGS else "AP-470's act is open there: `git switch answer/ap-470`, then ") in err_u
+          and here_() == start_)
     hook_.unlink()
     git(root, "merge", "-q", "--no-edit", "answer/ap-470"); git(root, "push", "-q", "origin", "HEAD:main")
     code_m, _o, err_m = run(root, "--due", "AP-470", when_)
@@ -10980,15 +11179,19 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 for kind_ in ("Subversion", "a plain folder"):
+    if kind_ == "Subversion" and not _SVN:
+        _skipped("FM-045 · C · Subversion: the board's run records nothing", 1, "svn or svnadmin is not installed here")
+        continue
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp).resolve()
-        if kind_ == "Subversion":
-            (root / ".svn").mkdir()
+        if kind_ == "Subversion":                           # FM-044: a real working copy — the tool refuses a `.svn` that holds no working-copy metadata
+            subprocess.run(["svnadmin", "create", str(root / "repo")], check=True, capture_output=True)
+            subprocess.run(["svn", "checkout", "-q", (root / "repo").as_uri(), str(root / "wc")], check=True, capture_output=True); root = root / "wc"
         run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
         calls_ = argv_of(lambda: run(root, "--html-only")); code_ = run(root, "--html-only")[0]; run(root)
-        started_ = [c_ for c_ in calls_ if c_ and (Path(str(c_[0])).name.lower() in ("svn", "svn.exe") or "for-each-ref" in c_ or "HEAD" in c_)]
+        started_ = [c_ for c_ in calls_ if c_ and c_ != _SVN_STATUS and (Path(str(c_[0])).name.lower() in ("svn", "svn.exe") or "for-each-ref" in c_ or "HEAD" in c_)]
         codes_, o_, s_ = _bj_says(root)
-        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records nothing — no `view/built.json`, from it or from the default run — starting no `svn` and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it (saw exit {code_}, {started_} · {o_} · {s_})",
+        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records nothing — no `view/built.json`, from it or from the default run — starting no `svn`{' but the one local status FM-044 reads' if kind_ == 'Subversion' else ''} and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it (saw exit {code_}, {started_} · {o_} · {s_})",
               code_ == 0 and (root / "docs/work-tracker/index.html").is_file() and not (root / "docs/work-tracker/view/built.json").exists() and started_ == []
               and codes_ == (0, 0) and o_ == s_ == [])
 fm.configure(HERE)
@@ -12000,10 +12203,7 @@ with tempfile.TemporaryDirectory() as tmp:
         if os.name != "nt":
             (root / "docs\\work-tracker").mkdir(); (root / "docs\\work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
     (c_bs1_,) = by_hand37_("ap/037-backslash", "main", ("AP-037: tidy the folder", backslash37_, SEAT_))
-    try:
-        code_bs_, said_bs_ = run(root, "--check")[0], ""
-    except SystemExit as e_:
-        code_bs_, said_bs_ = None, str(e_)
+    code_bs_, _o, err_bs_ = run(root, "--check"); said_bs_ = err_bs_.rstrip("\n") if code_bs_ == 1 else ""     # a refusal with a message: exit 1, the message on stderr
     git(root, "switch", "-q", "ap/037-backslash"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written with /", SEAT_)
     c_bs2_, g_bs_ = sha37_(), guard37_(); code_bs2_, _o, err_bs2_ = run(root, "--check")
     check(f"FM-006 · v0.19.1 · a `tracker_dir` holding a backslash is refused in one line ending \"write the folder with /\", and a commit carrying one is refused by `--check`, exit 4 (saw {said_bs_!r}, {code_bs2_}, {g_bs_[0]!r})",
@@ -12018,10 +12218,7 @@ with tempfile.TemporaryDirectory() as tmp:
         if os.name != "nt":
             (root / "C:" / "work-tracker").mkdir(parents=True); (root / "C:" / "work-tracker" / "TRIAGE.md").write_text(filled_.replace("lose a loan", "lose a ledger"))
     (c_dq1_,) = by_hand37_("ap/037-drive", "main", ("AP-037: tidy the folder", drive37_, SEAT_))
-    try:
-        code_dq_, said_dq_ = run(root, "--check")[0], ""
-    except SystemExit as e_:
-        code_dq_, said_dq_ = None, str(e_)
+    code_dq_, _o, err_dq_ = run(root, "--check"); said_dq_ = err_dq_.rstrip("\n") if code_dq_ == 1 else ""     # the same, as the program ends
     git(root, "switch", "-q", "ap/037-drive"); (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "AP-037: the folder written relative", SEAT_)
     c_dq2_, g_dq_ = sha37_(), guard37_(); code_dq2_ = run(root, "--check")[0]
     check(f"FM-006 · v0.19.1 · a `tracker_dir` some system reads as drive-qualified is refused as the configuration is read, in one line, and a commit carrying one is refused by `--check`, "
@@ -13461,25 +13658,53 @@ def _adopt_pins(read, tag_tool):
                    **{n: (tags, [x[:12] for x in sums]) for n, (tags, sums) in seen.items()}}
 
 
+def _adopt_pin_hint(ok, seen):
+    if not ok and "the head's shoalmark.py (no such tag here)" in seen:
+        return " — the named tag is not held here; run `git fetch --tags` and check again"
+    return ""
+
+
 _at_rev = lambda rev: (lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
-_pins_tags = subprocess.run(["git", "-C", str(HERE), "tag", "--list", "v*"], capture_output=True, text=True, env=_ENV).stdout.split() if (HERE / ".git").exists() else []
-if not _pins_tags:
-    _skipped("FM-006 · ADOPT's pins answer to the tag they name", 7, "this clone holds no release tag: the pins answer to the tag's own shoalmark.py (CI's fetch-depth 0 brings the tags)")
-else:
-    _pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
-    check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
-          f"blob, where the tag is here; the head's before it (saw {_pins_saw})", _pins_ok)
-    _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
-    _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
-                 ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
-                 *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
-                 ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
-    for _what, _rev, _read, _tags, _want in _pins_ctl:
-        if not _held(_rev):
-            _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
-            continue
-        _got, _seen = _adopt_pins(_read, _tags)
-        check(f"FM-006 · ADOPT's pins · {_what}: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+_pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
+check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
+      f"blob, where the tag is here; the head's before it (saw {_pins_saw})" + _adopt_pin_hint(_pins_ok, _pins_saw), _pins_ok)
+_changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
+_pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
+             ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
+             *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
+             ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
+for _what, _rev, _read, _tags, _want in _pins_ctl:
+    if not _held(_rev):
+        _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
+        continue
+    _got, _seen = _adopt_pins(_read, _tags)
+    check(f"FM-006 · ADOPT's pins · {_what}: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+
+
+# RV-3003/RV-3004: recorded privately.
+_fixture_tool = b"# a prepared release tool\n"
+_fixture_version = "0.19.4"
+_fixture_sum = hashlib.sha256(_fixture_tool).hexdigest()
+_fixture_docs = {"VERSION": (_fixture_version + "\n").encode(), "shoalmark.py": _fixture_tool,
+                 **{name: (chr(96) + "v" + _fixture_version + chr(96) + "\n" + _fixture_sum + "\n").encode()
+                    for name in ("ADOPT.md", "ADOPT.de.md")}}
+for _number, _documents, _expected in (
+        (1, _fixture_docs, True),
+        (2, {**_fixture_docs, "shoalmark.py": _fixture_tool.replace(b"\n", b"\r\n")}, True),
+        (3, {**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)}, False),
+        (4, {**_fixture_docs, "ADOPT.de.md": _fixture_docs["ADOPT.de.md"].replace(_fixture_sum.encode(), b"0" * 64)}, False)):
+    _result, _observed = _adopt_pins(_documents.__getitem__, lambda _tag: None)
+    check("RV-3003/RV-3004: recorded privately", _result == _expected)
+
+_fixture_changed = {**_fixture_docs, "shoalmark.py": _fixture_tool + b"# another change\n"}
+for _documents, _tags, _expected, _hinted in (
+        (_fixture_changed, lambda tag: _fixture_tool if tag == "v0.19.2" else None, False, True),
+        (_fixture_docs, lambda tag: _fixture_tool if tag == "v0.19.2" else None, True, False),
+        ({**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)},
+         lambda tag: _fixture_tool, False, False)):
+    _result, _observed = _adopt_pins(_documents.__getitem__, _tags)
+    check("RV-3003/RV-3004: recorded privately", _result == _expected
+          and ("git fetch --tags" in _adopt_pin_hint(_result, _observed)) == _hinted)
 
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
@@ -14161,8 +14386,190 @@ def _ci_wf_regressions(text, root, shapes):
     return out
 
 
+
+def _ci_declared_checks(source, powershell=False):
+    """Count declared CI outputs without running a shell or the properties."""
+    import ast
+    functions = {node.name: node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef)}
+
+    def appends(node):
+        return (isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Attribute) and isinstance(node.value.func.value, ast.Name)
+                and node.value.func.value.id == "out" and node.value.func.attr == "append")
+
+    def emits(node):
+        return any(isinstance(part, ast.Call) and isinstance(part.func, ast.Attribute)
+                   and isinstance(part.func.value, ast.Name) and part.func.value.id == "out"
+                   for part in ast.walk(node))
+
+    def outputs(nodes, declared):
+        count = 0
+        for node in nodes:
+            if appends(node):
+                count += 1
+            elif not emits(node):
+                continue
+            elif isinstance(node, ast.With):
+                count += outputs(node.body, declared)
+            elif isinstance(node, ast.For):
+                count += size(node.iter, declared) * outputs(node.body, declared)
+                if any(emits(part) for part in node.orelse):
+                    raise ValueError("the CI output count is conditional")
+            elif isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "pwsh":
+                count += outputs(node.body if powershell else node.orelse, declared)
+            else:
+                raise ValueError("the CI output count is conditional")
+        return count
+
+    def helper(name):
+        function = functions[name]
+        last = function.body[-1]
+        if not (isinstance(last, ast.Return) and isinstance(last.value, ast.Name) and last.value.id == "out"):
+            raise ValueError("the CI helper output cannot be counted")
+        declared = {target.id: node.value for node in function.body if isinstance(node, ast.Assign)
+                    for target in node.targets if isinstance(target, ast.Name)}
+        if not (isinstance(declared.get("out"), ast.List) and not declared["out"].elts):
+            raise ValueError("the CI helper output cannot be counted")
+        return outputs(function.body, declared)
+
+    def size(value, declared):
+        if isinstance(value, (ast.List, ast.Tuple)):
+            return len(value.elts)
+        if isinstance(value, ast.Name) and value.id in declared:
+            return size(declared[value.id], declared)
+        if isinstance(value, ast.BinOp) and isinstance(value.op, ast.Add):
+            return size(value.left, declared) + size(value.right, declared)
+        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+            if value.func.id == "_ci_job_paths":
+                return helper(value.func.id)
+            if value.func.id in ("tuple", "list") and len(value.args) == 1 and not value.keywords:
+                generator = value.args[0]
+                if isinstance(generator, ast.GeneratorExp) and not any(part.ifs or part.is_async for part in generator.generators):
+                    count = 1
+                    for part in generator.generators:
+                        count *= size(part.iter, declared)
+                    return count
+        raise ValueError("the CI declarations cannot be counted")
+
+    properties = functions["_ci_wf_properties"]
+    returns = [node.value for node in properties.body if isinstance(node, ast.Return)]
+    declared = {target.id: node.value for node in properties.body if isinstance(node, ast.Assign)
+                for target in node.targets if isinstance(target, ast.Name)}
+    if len(returns) != 1:
+        raise ValueError("the CI property declarations cannot be counted")
+    count = size(returns[0], declared)
+    rows = 0
+    for node in functions["_ci_wf_regressions"].body:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AugAssign) else []
+        if any(isinstance(target, ast.Name) and target.id == "rows" for target in targets):
+            if isinstance(node, ast.AugAssign):
+                if not isinstance(node.op, ast.Add):
+                    raise ValueError("the CI regression declarations cannot be counted")
+                rows += size(node.value, {})
+            else:
+                rows = size(node.value, {})
+        elif isinstance(node, ast.For):
+            multiplicity = rows if isinstance(node.iter, ast.Name) and node.iter.id == "rows" else size(node.iter, {})
+            if any(isinstance(part, (ast.If, ast.For, ast.While)) for part in node.body):
+                raise ValueError("the CI regression count is conditional")
+            if any(emits(part) for part in node.orelse):
+                raise ValueError("the CI regression count is conditional")
+            count += multiplicity * outputs(node.body, {})
+        else:
+            count += outputs([node], {})
+    return count + helper("_ci_install_failures") + helper("_ci_classifier_failures")
+
+
+def _ci_declaration_controls(source):
+    """Pure source controls; these run even where the CI shell is unavailable."""
+    import ast
+    count = _ci_declared_checks(source)
+    results = [_ci_declared_checks(source, powershell=True) == count + 2]
+    for name, variable in (("_ci_wf_properties", "return"), ("_ci_wf_regressions", "generator"),
+                           ("_ci_job_paths", "records"), ("_ci_install_failures", "name"),
+                           ("_ci_classifier_failures", "case")):
+        tree = ast.parse(source)
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == name)
+        if variable == "return":
+            value = next(node.value for node in function.body if isinstance(node, ast.Return))
+            value.right.elts.append(ast.Tuple(elts=[ast.Constant("control"), ast.Constant(True)], ctx=ast.Load()))
+        elif variable == "generator":
+            value = next(node.value.args[0] for node in function.body if isinstance(node, ast.AugAssign)
+                         and isinstance(node.value, ast.Call) and isinstance(node.value.args[0], ast.GeneratorExp))
+            value.generators[0].iter.elts.append(ast.Constant("control"))
+        else:
+            loop = next(node for node in ast.walk(function) if isinstance(node, ast.For)
+                        and isinstance(node.iter, ast.Tuple) and any(isinstance(part, ast.Expr)
+                        and isinstance(part.value, ast.Call) and isinstance(part.value.func, ast.Attribute)
+                        and part.value.func.attr == "append" and isinstance(part.value.func.value, ast.Name)
+                        and part.value.func.value.id == "out" for child in node.body for part in ast.walk(child)))
+            loop.iter.elts.append(loop.iter.elts[0])
+        results.append(_ci_declared_checks(ast.unparse(tree)) == count + 1)
+    tree = ast.parse(source)
+    function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_wf_regressions")
+    generator = next(node.value.args[0] for node in function.body if isinstance(node, ast.AugAssign)
+                     and isinstance(node.value, ast.Call) and isinstance(node.value.args[0], ast.GeneratorExp))
+    generator.generators[0].ifs.append(ast.Name(id="unknown", ctx=ast.Load()))
+    try:
+        _ci_declared_checks(ast.unparse(tree))
+    except ValueError:
+        results.append(True)
+    else:
+        results.append(False)
+    for mutation in ("conditional", "method"):
+        tree = ast.parse(source)
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_classifier_failures")
+        if mutation == "conditional":
+            function.body[-2] = ast.If(test=ast.Name(id="unknown", ctx=ast.Load()), body=[function.body[-2]], orelse=[])
+        else:
+            call = next(node for node in ast.walk(function.body[-2]) if isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute) and node.func.attr == "append")
+            call.func.attr = "extend"
+        try:
+            _ci_declared_checks(ast.unparse(ast.fix_missing_locations(tree)))
+        except ValueError:
+            results.append(True)
+        else:
+            results.append(False)
+    return results
+
+
+def _ci_regression_declaration_controls(source):
+    import ast
+    results = []
+    for shape in ("certain", "unknown", "loop-else", "nested-method"):
+        tree = ast.parse(source)
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_wf_regressions")
+        if shape in ("certain", "unknown"):
+            statement = ast.parse("if True:\n    out.append(('control', True))").body[0]
+            if shape == "unknown":
+                statement.test = ast.Name(id="unknown_condition", ctx=ast.Load())
+            function.body.insert(-1, statement)
+        else:
+            loop = next(node for node in function.body if isinstance(node, ast.For)
+                        and isinstance(node.iter, ast.Name) and node.iter.id == "rows")
+            if shape == "loop-else":
+                loop.orelse.append(ast.parse("out.append(('control', True))").body[0])
+            else:
+                loop.body.append(ast.parse("with context():\n    out.extend([('control', True)])").body[0])
+        try:
+            _ci_declared_checks(ast.unparse(ast.fix_missing_locations(tree)))
+        except ValueError:
+            results.append(True)
+        else:
+            results.append(False)
+    return results
+
+
+for _result in _ci_declaration_controls(_CI_SOURCES["test_shoalmark.py"]):
+    check("RV-3003/RV-3004: recorded privately", _result)
+
+
+for _result in _ci_regression_declaration_controls(_CI_SOURCES["test_shoalmark.py"]):
+    check("RV-3099: recorded privately", _result)
+
 if not _CI_BASH:
-    _skipped("FM-032 · ci.yml's tiers and time zones", 38, "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
+    _skipped("FM-032 · ci.yml's tiers and time zones", _ci_declared_checks(_CI_SOURCES["test_shoalmark.py"], powershell=bool(shutil.which("pwsh"))), "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
 else:
     with tempfile.TemporaryDirectory() as _ci_d:
         _ci_root = Path(_ci_d).resolve()
@@ -14192,16 +14599,17 @@ with tempfile.TemporaryDirectory() as tmp:
     run(plain_, "--html-only"); _tool_run(HERE / "shoalmark.py", plain_, "--html-only")
     never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
     hit_, moved_ = _started_never(_BOARD_GIT, never_), _started_never(_BOARD_GIT, {**never_, "ls-tree": "the control"})
-    other_, wrapped_ctl_ = _not_git_itself(_BOARD_GIT), _not_git_itself(_BOARD_GIT + [["env", "git", "log"], ["/usr/bin/GIT.EXE", "log"]])
+    seen_git_ = [a_ for a_ in _BOARD_GIT if a_ != _SVN_STATUS]      # FM-044 (A1, accepted): a Subversion board's run starts one local `svn status`, this argv
+    other_, wrapped_ctl_ = _not_git_itself(seen_git_), _not_git_itself(seen_git_ + [["env", "git", "log"], ["/usr/bin/GIT.EXE", "log"]])
     traced_ = _BOARD_RUNS["through git's trace"]
     check(f"FM-045 · the classification's runtime half: none of the git commands named as never started in the board's run is started by one — watched: each `--html-only` "
           f"the suite runs in process, each of this tool's own file it runs as a program in its own environment, and every board's run of the board matrix through git's trace "
           f"(the hooks' copy, the runner's, `--answer`'s, by hand), FM-045's shape among them; its control, `ls-tree` named so, is found (saw {_BOARD_RUNS['in process']} runs "
           f"in process, {_BOARD_RUNS['a program']} as a program and {traced_} through git's trace, {len(_BOARD_GIT)} git starts; started {hit_}; the control found {moved_})",
           "ls-remote" in never_ and _BOARD_RUNS["in process"] >= 3 and _BOARD_RUNS["a program"] >= 3 and not hit_ and moved_ == ["ls-tree"])
-    check(f"FM-045 · the classification's runtime half: every program recorded as started by a board's run it watches is git itself, as `read_only_git` reads argv[0] — "
-          f"never through `env` or another wrapper; its control, `env git log` among them, is found, and git by a path in another case is not (saw {len(_BOARD_GIT)} starts; not git "
-          f"itself {other_}; the control found {wrapped_ctl_})",
+    check(f"FM-045 · the classification's runtime half: every program recorded as started by a board's run it watches is git itself, as `read_only_git` reads argv[0], "
+          f"or FM-044's one local `svn status` by its exact argv — never through `env` or another wrapper; its control, `env git log` among them, is found, and git by a path "
+          f"in another case is not (saw {len(_BOARD_GIT)} starts, {len(_BOARD_GIT) - len(seen_git_)} of them that status; not git itself {other_}; the control found {wrapped_ctl_})",
           len(_BOARD_GIT) > 0 and not other_ and wrapped_ctl_ == ["env"])
     rm_git(root); rm_git(plain_)
 fm.configure(HERE)
@@ -14215,6 +14623,63 @@ for _label, _ok, _detail in test_tracker_text.run_checks(fm):
 
 import test_owner_exemption
 check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_exemption.run_checks())
+
+# FM-044 bounded local-stage runtime controls. Component-only AST assertions
+# remain with their immutable standalone reviews; core retains the unchanged
+# production/every-parent history ratchet for this composed tool.
+import unittest as _stage_unittest
+import test_vcs_shared as _stage_shared
+import test_vcs_shared_callers as _stage_callers
+import test_vcs_cli as _stage_cli
+import test_vcs_entry as _stage_entry
+import test_git_entry_differential as _stage_git_entry
+import test_tsvn_source_binding as _stage_binding
+
+# Each block below runs guarded: a fixture step that fails in it — a setup command `check=True` refuses, a program that does not start, a
+# fixture's precondition — is a named FAIL with what it saw, and the next block runs (PR #173's run 38539381661: A1's traceback ended Windows' suite)
+_stage_guard = _stage_shared.guarded
+_stage_svn = bool(shutil.which("svn") and shutil.which("svnadmin"))
+if _stage_svn:
+    _stage_shared.run_shared_controls(fm, check)                # A1, A2 and the A corrections, each guarded
+else:
+    _skipped("FM-044 local board/init/install", 152, "svn or svnadmin is not installed here")
+_stage_old_path = _stage_callers.baseline_source()
+_stage_old = _stage_callers.load(_stage_old_path)
+_stage_guard("FM-044 A callers, Git", check, _stage_callers.git_controls, fm, _stage_old, check)
+if _stage_svn:
+    _stage_guard("FM-044 A callers, SVN", check, _stage_callers.svn_controls, fm, _stage_old, check)
+else:
+    _skipped("FM-044 SVN caller runtime", 9, "svn or svnadmin is not installed here")
+if os.name == "nt":
+    _skipped("RV-3096 inherited deleted-directory runtime", 22,
+             "Windows prevents deleting an in-use current directory")
+elif _stage_svn:
+    _stage_guard("RV-3096 inherited directory", check, _stage_callers.inherited_cwd_controls, fm, check)
+else:
+    _skipped("RV-3096 inherited-directory runtime", 22, "svn or svnadmin is not installed here")
+fm.configure(HERE)
+for _stage_case in _stage_unittest.defaultTestLoader.loadTestsFromTestCase(_stage_cli.CliControls):
+    _stage_result = _stage_unittest.TestResult()
+    _stage_case.run(_stage_result)
+    _stage_label = "FM-044 CLI: " + _stage_case.id()
+    if _stage_result.skipped:
+        _skipped(_stage_label, 1, _stage_result.skipped[0][1])
+    else:
+        check(_stage_label, _stage_result.testsRun == 1 and _stage_result.wasSuccessful())
+        for _stage_test, _stage_detail in _stage_result.errors + _stage_result.failures:
+            print(_stage_detail)
+if _stage_svn:
+    _stage_guard("FM-044 actual local entry", check, _stage_entry.run_entry_controls, fm, check)
+else:
+    _skipped("FM-044 actual local entry", 162, "svn or svnadmin is not installed here")
+_stage_git_baseline = _stage_callers.baseline_source("615fb1d1f58c0936e7d5aa2037e2b3a655e0f107")
+_stage_guard("FM-044 Git entry differentials", check, _stage_git_entry.run_git_entry_differentials, fm.__file__, _stage_git_baseline,
+             payload=_stage_git_baseline.parent, check=check)
+if all(shutil.which(_name) for _name in ("git", "svn", "svnadmin")):
+    _stage_guard("FM-044 Tortoise source binding", check, _stage_binding.run_source_binding_controls, fm.__file__, check, payload=HERE)
+else:
+    _skipped("FM-044 Tortoise source binding", 92, "Git fixture setup or svn/svnadmin unavailable")
+fm.configure(HERE)
 
 print()
 print(skipped_line())

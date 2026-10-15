@@ -17,96 +17,58 @@ is designed or built.
 
 ## What is true now
 
-**2026-10-13 — the dispatched day's path.** v0.19.4 and its records close-out merged in #165/#166; R14 is shipped.
-The release-allocation answer of 12 October is applied to today's briefs: R12 first, bounded stage 1/archive next,
-and B1 with the final probe prompt and first outside-run needs in v0.20.1. This is an operational plan on the existing
-parked planning tracker, not a build of its proposed planning feature. Trial blockers take precedence when evidenced.
+**2026-10-13 — R12 merged; bounded components accepted; P first review NOT READY; correction goes to final verification.**
+Owner main `80b60c8` includes #167/#168/#170/#171 and R12 READY `246ccdf`; native/full CI is not inferred
+from ancestry. RV-3040: recorded privately. Common READY `ef77527` closes RV-3085–RV-3088; A1/A2 READY
+`6fe35f5`, Reviewed `a9a36d4`, closes RV-3089–RV-3091. A caller final READY `4ab9341`, Reviewed `7063dac`,
+closes RV-3096; RV-3097 is unused. C final READY `f59a1c1` closes RV-3095. Their acceptance is bounded to
+the named common, board/init/install, caller and CLI component scopes, not full Stage 1.
 
-The Owner's dispatch in the coordinating session, quoted as dispatch rather than a new signed policy answer:
+The Owner's coordinating-session dispatch remains:
 "Push URL stays DISABLED. Tell me when a branch is ready; I fetch from your clone and push."
 "R12's brief keeps SHOALMARK_CMD on the gate step (068c9e6) and adds a timeout to the Subversion install step."
 "R12 is critical: its Reviewer gets a session of its own."
 "Codex covers critical builds today, as ruled on 12 Oct; Claude takes over from tomorrow."
-Review IDs allocated to this dispatch: RV-3040–RV-3099; RV-3035–RV-3039 remain with the Auditor.
-Reservations: R12 3040–3054; records 3055–3069; archive 3070–3084; 3085–3099 reserve.
+Review IDs RV-3040–RV-3099 are allocated here; RV-3035–RV-3039 stay with the Auditor.
+Reservations remain R12 3040–3054, records 3055–3069, archive 3070–3084 and stage 3085–3099.
+P first critical verdict `62ecf9c`, Reviewed `de17860`, requires the RV-3098 consumer-binding correction.
+The correction is built; the same independent ROOT owes the one remaining final verification.
+RV-3099: recorded privately
+No exhausted finding receives a third round.
 
-| Order | Work | Seat | Initial estimate | Stop condition / next available move |
-|---|---|---|---|---|
-| 1 | Apply signed answers and reconcile today's judgement | Planner; one records Reviewer pass | 20–30 min | A contradiction needs an Owner ruling; independent records work continues. |
-| 2 | R12: Ubuntu/3.9 records gate, four truthful pass-throughs, retained command and bounded SVN installs | Codex Builder; separate root critical Reviewer | 1–2 h build; 30–45 min review | Unresolved critical findings or CI after the Owner pushes; advance the filing/archive meanwhile. |
-| 3 | FM-044: fresh-main bounded filing, then build judgement | Records Builder; Reviewer; Planner; Owner merges | 45–75 min | Owner replacement merge precedes implementation; analysis and archive preparation continue. |
-| 4 | Bounded SVN-without-git skeleton and dependent slices | Research/Planner brief; critical Builders; separate Reviewer | 45–60 min preparation; initial implementation estimate 4–8 h | Filing merge/judgement; no wider plain-folder or platform-proof scope inferred. |
-| 5 | Release archive: scoped source port, controls and dry run | Critical Builder; separate root Reviewer | 1–2 h | Integration/review findings or actual release qualification; no local release claim. |
-| 6 | Apply #154's signed RV-2734 wording and Part B allocation | Records Builder; Reviewer | 40–60 min | Records findings; signed wording is already supplied. |
-| 7 | Recover FM-043's historical upgrade filing | Records Builder; Reviewer | 35–55 min | Freshly verified adopter need determines any later implementation. |
-| 8 | B1 conflict inventory for v0.20.1 handoff | Planner/Research; Claude takes design/site implementation | 30–45 min preparation | Claude's next-day availability and stage/archive qualification; no site build today. |
-| 9 | Final heads, branch checks and local fetch-ready lines | Planner | 20–30 min | Pending checks/verdicts; only the Owner pushes and merges. |
+| Rank / step | Work and seat | Estimate | What stops it / next movable work |
+|---|---|---|---|
+| 1 | R12 READY `246ccdf` merged; Owner/CI supplies qualification evidence | evidence wait | Actual remaining CI failure; local stage work continues. |
+| 2 | Archive standalone READY `b2e5195`; common integration HELD RV-3072 at final NOT READY `eabee22`; outside strict-classification proposal complete | Owner disposition wait | Exhausted rounds; no third verification or production repair. Local work continues. |
+| 3a | A1/A2 and callers READY `6fe35f5` / `4ab9341`; ordinary local composition complete | complete | Component scopes remain bounded; P entry review is next. |
+| 3b | B readers HELD RV-3092–RV-3094 at final NOT READY `99968f2`; outside structural proposal complete | Owner disposition wait | Exhausted rounds; local entry work continues. |
+| 3c | C bounded CLI READY `f59a1c1`; actual main/preflight/Tortoise wiring assembled by P | build complete | Independent P review and native qualification remain due. |
+| 4 | P commits the first-pass correction, then the same independent ROOT performs final verification | 10–20 Planner min; 30–60 Reviewer min | New concrete integration findings or required CI; keep every parent reduction and all held scopes. |
+| 5 | B1 read-only conflict inventory complete; Claude takes design/site tomorrow | future 2–4 Builder h plus review | Next-day staffing and stage/archive dependencies; no site code today. |
 
-All estimates are seat time, excluding the Owner's merges and CI. No wait on an answer, verdict or merge stops another
-movable item. Every new session configures its actual harness identity before committing; the interruption's existing
-commits remain unchanged. Current local base: `e7ce074`; push URL remains `DISABLED`.
+These are seat estimates excluding Owner/CI waits, not a full-stage finish promise. The first P verdict
+is NOT READY. The corrected local source `344db0516be7876a796f19c40b3d4334208ae33524dee1a20b8dbdf489d9b1fe` passes
+compile 0.782 s, unchanged core 303/303 in 52.394 s and the exact new aggregate wiring
+619/619 with zero skips in 151.345 s. Seven required source-binding refusal controls
+fail before the three-line correction and pass after; current wiring includes 92 binding controls.
+Every parent's allowlist removal remains, leaving 28 starts. Boundary/scanner/ceiling/source/history
+proof limits remain frozen; held B and archive implementations stay excluded. These build checks are
+neither final P READY nor full CI. Component verdicts and their limits remain unchanged.
+RV-3003/RV-3004: recorded privately
 
-**2026-10-13 — preparation completed after restart.** The read-only [stage-1 inventory](evidence/stage-1-inventory-2026-10-13.md) covers current-main process launches and callers, the common skeleton, dependent slices and independent refusal controls. It revises row 4's initial 4–8 h build estimate to **6–10.5 Builder hours**, before archive integration and critical review; overlapping slices start only after the reviewed skeleton. The [B1 conflict handoff](evidence/b1-conflict-handoff-2026-10-13.md) identifies three paths/eight conflict groups and the retained security, CI and pin controls. It supplies Claude's next-day integration order, estimated **2–4 Builder hours** plus review and dependencies. Neither inventory executed runtime checks or built those features.
+Owner confirms no SVN consumer has adopted shoalmark. Full protected acceptance waits for authenticating
+consumer proof, recorded adoption and trial findings; held rulings return 20 October. Local entry says its
+signature/author verification limit once. Ordinary legacy-history-dependent controls explicitly use file://
+history without treating supplied account strings as authenticated authority. No new policy baseline, rights,
+source-HERE authority or blanket ordinary-operation refusal is introduced.
 
-Stage-1 filing review and Owner merge are complete at #167 / `e6d1e27`; today's command judgement keeps FM-044 P1 #3 build before the [common-skeleton dispatch](evidence/stage-1-builder-brief-2026-10-13.md). Its independent critical review precedes dependent implementation. Its brief must settle the guard capability contract: current main's SVN guard reports unsupported protection, while the recovered acceptance requires refusal when authority cannot be proved. The proposed bounded design keeps current server-author history and legacy configuration semantics, refuses a protected change where its configured proof cannot be obtained, permits harmless local reads, and makes no SVN signature claim. A design that would change authority rights needs a signed Owner decision before that slice; this preparation supplies no such decision. D3/D4 remain held.
-
-R12 is locally READY at `8b7f7f141ad3f4620091591e78a257cc34be53d3`: dedicated independent root Reviewer `01a13544` verified `7af848f`, with current main integrated. RV-3040: recorded privately. Owner fetch/push and required CI remain due. Archive source integration at `3c18008` passed 85 independent local controls, but RV-3070 P2 requires current-main records reconciliation before its final critical round; Builder integration is underway. The Owner merged combined Part B/upgrade records in #168 at `ab7ed3f`, retaining both READY verdicts. Main has the FM-044 filing and those records; it does not yet contain stage-1 implementation. The skeleton and next-day B1 handoff advance while other verdicts and acts wait.
-
-The completed [SVN guard contract analysis](evidence/svn-guard-contract-2026-10-13.md) preserves bare-account author-only and existing rights while refusing unavailable proof. The supplied records establish no consumer policy adoption baseline. The bounded proposal refuses protected acceptance without one and continues unguarded local operations; any new authority/adoption rule needs a signed decision before that case is accepted. Guard work is now estimated at **4.5–7 Builder hours plus 1–2 hours review**, with an initial **60–90 minute** contract/control/refusal deliverable. Full stage implementation is **8.5–14 Builder hours** before archive/integrated review; dependent seats may overlap only from the independently reviewed skeleton with separate function ownership. These seat-time estimates do not promise full stage completion today.
-
-**2026-10-13 — dependent seats held for common fixes.** The [ownership handoff](evidence/stage-dependent-ownership-2026-10-13.md) assigns each function once and reserves shared integration to Planner. Common product `6d0c239` integrates main `ab7ed3f`; its independent root critical verdict `05a95eb` and round-1 addendum `e511d57` are NOT READY. RV-3085–RV-3088 remain open P2 findings: scanner scope, refused-configuration caches, source confinement and merge-aware/fail-closed launch history. The original Builder fixes forward; one independent verification round remains per finding. No dependent code starts before COMMON SKELETON ONLY READY. A/B/C/Planner allowances remain **10–16.5 Builder seat hours**, including common work and excluding archive/integrated review; corrective work is additional. B first supplies a 60–90 minute proof-interface/refusal portion; new authority stays held. Each isolated branch removes only its own migrated keys and serial integration retains every parent reduction. RV-3003/RV-3004: recorded privately. The Owner supplied private source commit `7356d6e` and local inputs; the missing-source stop is removed and detailed tasking stays private. Archive remains locally READY at `1ba6fc4`, with RV-3070 closed; CI, integrated acceptance and release acts remain due.
-
-**2026-10-12 — release allocation for the Owner's sitting.** This proposal replaces the earlier dated release allocation; it adds no planning feature or process. The product proposal on this Parked tracker remains parked. R14's first priority and v0.20.0 inclusion come from the Owner's update, not from an unanswered Planner proposal. Signed scope is in [the rulings](evidence/rulings-2026-10-12.md); only the remaining allocations are offered for their decision. S/M are scope sizes. The known requirement is Subversion without git; no other trial scope is inferred.
-
-| Release / order | Work and replacement | Owner | Size | Dependencies | Confidence and reason |
-|---|---|---|---|---|---|
-| First; main as soon as ready; v0.20.0 | R14: Owner authorship exemption in hooks, verified Owner signature in CI; replaces application of seat rules to the Owner. | Critical Builder; independent Reviewer; Owner merges and reinstalls hooks | M | Signed R14; FM-033; staffing ask FM-031; trusted policy/signers; actual hook and CI checks | 99%: Owner reports two refusals; never blocking their signed word governs. |
-| Second; main as soon as ready, independently of stage 1 | R12: one Ubuntu/3.9 records gate, four truthful pass-through results; replaces five repeated records checks. | Critical Builder; independent Reviewer; Owner merges | S | Signed R12/R25; FM-032; preserve R14 enforcement if already merged | 97%: workflow read confirms repetition; Windows incident is reported, not reproduced. |
-| Before stage-1 build | New branch from current main carrying FM-044 as reviewed at 99050b9, RV-2735 to RV-2737 fixed, without RV-3023's sentence; INDEX.md regenerated by the tool. The Owner closes #152 with a pointer to the replacement, merges the new PR; Planner judges FM-044 In Progress through triage. | Records Builder; Reviewer; Owner closes/merges; Planner triages | S | Current main; fresh records pass; process PR already ancestral to edfa73b | 98%: Owner reports GitHub conflict and 137 commits behind; new base avoids the stale INDEX merge. |
-| v0.20.0 | Stage 1: Subversion with no git installed; backend dispatch replaces shared paths that assume git. | Builders 1–3; independent critical Reviewer | M | #152 replacement merged and triage; skeleton then dependent branches; R23; D3/D4 boundaries; staffing | 98%: signed scope is explicit; no stage-1 build commit is supplied. |
-| v0.20.0 | RV-3002: one printed-command quoting helper replaces inconsistent quoting. | Builder 3; independent Reviewer | S | PowerShell single quotes with doubled embedded quote; shlex.quote elsewhere | 98%: supplied Owner ruling resolves the shell choice. |
-| Before v0.20.0 release commit | RV-3003/RV-3004: recorded privately | Builder 3; independent Reviewer | S | fm/044-stage-1-ratchet | Original private tasking supplied; implementation and verification pending. |
-| v0.20.0 | Release archive: zip/checksum, RELEASE manifest and archive vendoring replace the git-only acquisition requirement. | Builder 4; separate critical Reviewer; Owner releases | M | Local 23e3f7a; scoped RV-3020/RV-3021 review, 6379acd..23e3f7a; stage-1 target integration; dry run; Owner release-script change | 98%: bundle verified; prior READY is reported, pending re-review stays open. |
-| Before v0.20.0 tag | R24: one privately chosen, independently verified credential minimum; replaces the expanded prerelease boundary programme. | Owner chooses/establishes; independent Auditor verifies | S | FM-037 ask; private evidence; retained authority checks | 99%: signed ruling makes this a bounded release condition. |
-| v0.20.0 qualification; planned tag 23 October | Candidate, final pins, relevant Mac checks and required CI; replaces repeated full local suites. | Release Builder; Reviewer; Owner dispatches/merges/tags | M | Accepted scope/reviews; first dispatch then separate fixes; final changed tree checked; archive dry run; R24 | 96%: R3 retains CI; required checks validate the final candidate revision. |
-| Records when answered | #154 RV-2734: Owner-supplied replacement wording; replaces withdrawn git-on-every-machine wording. | Owner supplies text; Records Builder; Reviewer | S | FM-004 ask; one records pass | 98%: fix text remains the Owner's, not the Planner's ruling. |
-| Now, policy | R1/R18/R19 cancel replacement programme, server IDs and compulsory trial reporting; R2–R4 replace mandatory review files/local suites/answer transactions as policy. | Owner's signed rulings; Planner and seats apply | S | 2d62fa1; keep Owner-allocated IDs, full review evidence and signed answers | 98%: these decisions are signed; residual product code is not thereby deleted. |
-| Done on current main | R15 switch: #162 / 4685efa sets freeze_at=0; replaces the active intake limit in current main configuration. | Owner | S | 4685efa is present and ancestral to e7ce074; current shoalmark.toml reads freeze_at=0 | 99%: verified in this clone; the separately allocated code deletion is not claimed. |
-| v0.20.1 | R15 removes freeze code; replaces obsolete intake refusals while retaining look-before-filing and prioritization. | Builder; Reviewer | S | Reported #162; relevant regressions; trial findings take priority | 95%: configuration switch already removes the operational limit. |
-| v0.20.1 | R13 removes ratio command/reporting; retain records classification used by Shipped. | Builder; Reviewer | S | Signed R13; inventory of Shipped consumers | 96%: classification has a surviving authority consumer. |
-| Optional earlier, v0.20.0 stage 1 | R13 command deletion only if it reduces stage 1's own routing/refusal work; replaces implementing that command's backend path. | Stage-1 Builder; independent Reviewer | S | FM-023 release-map answer; demonstrated smaller diff; retained Shipped classification; no schedule gate | 85%: --ratio appears in Builder 3's planned git-only refusal list. |
-| v0.20.1 | R17 removes partial/untagged trusted-vendor bypasses; replaces weaker source acceptance. | Critical Builder; independent Reviewer | S | Archive merged; verified-source/completeness acceptance; R26 history retained | 92%: archive source rules must settle before changing surviving vendor options. |
-| v0.20.1 | R21 removes generated date from committed INDEX and keeps deterministic content checking. | Builder; Reviewer | S | Signed R21; R12; preserve forge-readable index | 94%: source already normalizes the date during checking; Windows cause stays separate. |
-| v0.20.1, P2 | R22 repairs Windows drift and displays bounded published-content differences on STALE. | Builder; independent Reviewer where gate changes | M | R12 availability; R21 baseline; real Windows reproduction | 97% in priority/diagnostics; cause remains unverified. |
-| v0.21.0 | R5 removes executable producers from trusted core; validated data-only views replace core execution. | Critical Builder; independent Reviewer | M | Signed R5; surviving producer/view consumers inventoried | 94%: removes an authority-crossing surface; safe views still need acceptance. |
-| v0.21.0 | R9 removes invitation/notification channels and scheduler state; owed acts/due/completion/history remain. | Builder; Reviewer | S | Signed R9; retained act cases | 86%: prompting weakens, but visible owed work must survive. |
-| v0.21.0 | R10 removes runtime branding, fonts and theme copying; static mark, labels and semantic headings remain. | Builder; Reviewer | M | Signed R10; archive manifest/vendor adjustment; localized-heading checks | 91%: theme removal affects the archive's required file set. |
-| v0.21.0 | R11 removes global refresh hooks; explicit safe refresh, immediate act visibility and revision/freshness evidence replace triggers. | Critical Builder; independent Reviewer | M | Signed R11; retained act/refresh cases; stage-1 integration complete | 91%: implicit triggers cannot be removed without preserving visible committed results. |
-| v0.21.0 | R4 residual transaction-code removal; ordinary signed repository answers replace answer-branch choreography. | Critical Builder; independent Reviewer | M | R14; exact answer/act history and historical readers retained | 94%: signed canonical answers are already policy; code cleanup is separate. |
-| v0.21.0, after v0.20.0 | Broader R24 boundary work replaces the expanded release gate with follow-up scope. | Owner; independent Auditor; scoped Builders | M | Verified minimum; independently scoped execution/policy/review/stop controls | 99%: signed R24 explicitly defers this wider programme. |
-| v0.21.1, after deletions | R28: pytest modules, parallel workers and isolated template repositories replace surviving monolithic suite setup. | Builder; independent Reviewer | M | Deletions complete; independent expectations; five code jobs; measured comparison | 90%: gains remain unmeasured; test dependency only, no release gate. |
-| Held; review 20 October, no release assigned | D3 plain-folder scope; D4 where no-git proof runs; any additional Subversion work. | Owner decides from findings; Planner records | S | Actual trial findings; fresh signed scope; only known requirement is Subversion without git | 98%: R23 lifts stage 1/archive only and explicitly keeps these holds. |
-| Held; return 20 October, no automatic deletion | R6 sessions, R7 queue, R8 site, R16 sequencing, R20 configuration/history keys. | Owner and independent Reviewer | S | Attribution; usable queue substitute; arrival/guidance evidence; post-R14 sequencing comparison; bounded compatibility evidence | 98%: each held row has a named evidence condition and needs a fresh signed ruling. |
-| Retained through v0.20.0 | R25 five code jobs/names; R26 legacy interpretation; R27 name/mark/headline and truthful claims. | Builders and Reviewers | S | Signed R25–R27; surviving coverage and history | 98%: explicit retained scope prevents incidental deletion. |
-
-**Filed 2026-09-23; nothing is built.** A tracker today holds what and why, a `next:`, an ask and its answer, a ship log.
-It holds no plan: which seat does which step, how long each is expected to take, and when the person in charge is
-needed — before the work, updated while it runs, recorded when done. The board can say *what waits on you*; it cannot
-say *when you will be needed, for what, for how long*.
-
-**The Owner's requirement, 2026-09-23** *(spelling normalised at his request; the meaning unchanged)*: *"When this is
-tracked and updated, we can communicate to a person in charge, or even a seat, when they are expected to be involved or
-available. Better planning becomes possible only by giving an estimate before, then updating during, recording when
-done. This feeds back into the system. What I especially liked in the initial estimate was a time window listing the
-task splits with seats and their timing — having this available when planning what to take in or not, and when I have
-to be available, would be awesome."*
-
-**The instance that raised it (numbers only).** A release arc estimated at 12:55 as six seat steps and two Owner
-windows: Research ≈ 13:05 · filings ≈ 13:30 · build ≈ 14:30 · review + one fix round ≈ 15:30 → window 1 ≈ 15:30–16:00
-(open + merge, tag) · vendor + review ≈ 16:30 → window 2 ≈ 16:30–17:00 (the pin); three named things that would move it,
-+1 h each. Observed: Research 13:00 · build 13:44 · first review 14:12 · two fix-and-verify rounds the estimate did not
-have · window 1 not open at 15:15. The estimate lived in a chat message and one ship-log row; the update in another chat
-message; nothing in the tracker could be read by a person or a seat as *when am I needed*.
+Archive and B outside proposals are development evidence for existing board disposition asks, not verdicts
+or authority to apply the held repairs. The canonical [ownership/API record](evidence/stage-dependent-ownership-2026-10-13.md)
+and [Builder brief](evidence/stage-1-builder-brief-2026-10-13.md) remain the tasking. Protected-request/past-policy
+proof, native/full CI and release qualification remain held or due. All reports use actual identities; old
+stale trailers remain unchanged. Owner fetches/pushes/opens/merges and eventually tags; a wait never stops
+another ranked item that can move. This records operational dispatch on the parked planning tracker, not its
+proposed planning feature.
 
 ## Why
 
@@ -278,6 +240,11 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
+| 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
+| 2026-10-13 19:48 CEST | Current-main fetch confirms R12 READY merged at `3cac843`; A1/A2 independently READY `6fe35f5`. B/C corrections and archive final verification continue; local P/Tortoise entry work proceeds through those waits. No adopted SVN consumer exists; protected acceptance/trial holds return20Oct. |
+| 2026-10-13 18:18 CEST | RV-3057 P3 fixed forward: archive records READY `b2e5195` replaces the stale running-review paragraph and rank-2 row; inherited common records READY `84c8a6b` needs no re-pass. Serial integration and CI/release holds remain. |
+| 2026-10-13 17:42 CEST | **Dependent dispatch from critical common READY:** `ef77527` closes the four common findings; current-main merge `1fc12b0` retains its exact product and passes gate/ratchet. A first local board slice60–90 min (2.25–3.75 h total), B first missing-proof refusal60–90 min (4.5–7 h total), C first capability/control slice30–45 min (1.5–2.5 h plus private tasking). P owns serial shared/archive integration. RV-3003/RV-3004: recorded privately. |
 | 2026-10-13 | Stage-1 and B1 read-only preparation recorded with immutable-ref evidence; stage-1 build re-estimated from 4–8 h to 6–10.5 Builder hours before archive/review, and its guard capability contract remains a brief dependency. B1 has three conflicted paths/eight groups and a 2–4 h next-day integration estimate. R15 configuration switch verified on current main; no feature build, platform proof or publication claimed. |
 | 2026-09-23 | **Updated as if FM-024 had landed, on the Owner's word:** every seat step carries its session id (`@a9`, `@d8`), `plan-by:` and the updates name seat and session, the gate matches a step's session to the commit's `Session:` trailer, and the multi-session extract uses the registry's ids and rows. |
 | 2026-09-23 | **Four worked examples added on the Owner's ask, then reworked on his second word — *it must be visual on the board, so it must be in the front matter to be parseable*:** the plan is one `plan:` line (pipe-separated steps, fixed field order, re-estimates appended), *needed* is derived from the owner's rows, the body table holds only step texts; the estimate as filed, an update, the finished record with per-seat error, a multi-session extract, and what the parser needs. Illustrative; nothing built. |
