@@ -14694,6 +14694,13 @@ for _label, _ok, _detail in test_tracker_text.run_checks(fm):
 import test_owner_exemption
 check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_exemption.run_checks())
 
+import test_worktree_identity
+for _label, _ok, _detail in test_worktree_identity.run_checks(fm):
+    if _ok is None:
+        _skipped(_label, 1, _detail)
+    else:
+        check(_label + (f" — {_detail}" if _detail else ""), _ok)
+
 # FM-044 bounded local-stage runtime controls. Component-only AST assertions
 # remain with their immutable standalone reviews; core retains the unchanged
 # production/every-parent history ratchet for this composed tool.

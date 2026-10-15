@@ -55,6 +55,28 @@ convention is in [`requirements/README.md`](requirements/README.md); this is Sta
   reopened or marked ready, on release tags, and when dispatched by hand. The Owner authorized these PR triggers on
   2026-09-29 and these hooks on 2026-10-02. Say when a tag is due; never create one.
 
+## A new seat's worktree — one step (FM-024)
+
+`git worktree add` copies the worktree it is run in, its whole `config.worktree`: the worktree added for a seat is the
+adding seat (its name, address, session, harness id and signers file) until each key is written again. Whoever adds it
+runs this step with the new seat's values before the seat's first commit, and reads the list it prints:
+
+```bash
+w=../builder-3                                         # the new seat's worktree
+git worktree add "$w" -b fm/012-slug origin/main       # copies THIS worktree's config.worktree into "$w": every key below
+git -C "$w" config --worktree user.name 'Builder seat'
+git -C "$w" config --worktree user.email '336429412+shoalmark-builder[bot]@users.noreply.github.com'
+git -C "$w" config --worktree seat.session a9f3c2d1/builder-3
+git -C "$w" config --worktree gpg.ssh.allowedSignersFile work-tracker/allowed_signers
+git -C "$w" config --worktree --unset-all seat.harness # the copy's id is another seat's; from the spawn's result:
+                                                       #   git -C "$w" config --worktree seat.harness <its agent id>
+git -C "$w" config --worktree --list                   # every key is now the new seat's own
+```
+
+`--whoami` and the commit hook report another worktree that carries this one's `seat.harness` under another identity:
+one harness id is one session. A full, unchanged copy reads as the same seat's second worktree, and only the step
+closes it. README, *Sessions*, says what else the report cannot see.
+
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 
 Ruled by their signed answers to FM-031 (`d20bc89`, 11:08, and `eef0c2e`, 21:29), FM-032 (`ffa63b8`, 11:07) and FM-033 (`65f37a4`, 16:29). Each took effect on their answer,

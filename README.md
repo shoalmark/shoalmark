@@ -321,7 +321,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
 | `<tracker dir>/sessions.md` | gone since 0.18.0 — the registry of seat sessions is a report, `--sessions` (§*Sessions*); delete a file left from before, history keeps its rows |
-| a seat's worktree | three per-worktree git settings (`git config --worktree`), read by the tool and never by hand: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists them). **`--whoami`** prints `From: <session> <seat> (<worktree>) · <model> · <effort>` — the line a seat's report opens with; a message between sessions names its target by the same identity after `To:` |
+| a seat's worktree | its identity in five per-worktree git settings (`git config --worktree`), written when the worktree is added — `git worktree add` copies all five from the worktree it is run in (§*Sessions*, the step) — and read by the tool: `user.name` and the signers file `gpg.ssh.allowedSignersFile` beside these three: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists them). **`--whoami`** prints `From: <session> <seat> (<worktree>) · <model> · <effort>` — the line a seat's report opens with; a message between sessions names its target by the same identity after `To:` |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
@@ -409,14 +409,38 @@ begun under a seat's old name (`<id>/implementer-<n>`) still reads as the seat's
 The seat says **who may**; it cannot say **which run**: two sessions of one seat are one author in git. So a seat's
 worktree carries a second setting beside its badge, and every commit made there names its session.
 
+**A new seat's worktree — one step.** Under `extensions.worktreeConfig`, `git worktree add` copies the worktree it is run
+in: its whole `config.worktree`. The new worktree is then the seat it was added from — its name and address, its
+session, its harness id and its signers file — and commits as that seat, with its rights, until each is written again.
+Whoever adds the worktree writes every one before the seat's first commit, and reads the list back:
+
 ```bash
-git config --worktree user.email planner@seat        # the seat — read by the gate for rights
-git config --worktree seat.session a9f3c2d1          # the session — the harness's session id, its first eight hex characters;
-                                                     # a sub-agent derives its id from its parent's: a9f3c2d1/reviewer-1;
-                                                     # a session with no parent and a harness with no id: `<cmd> --session new`
-git config --worktree seat.harness aefd1a3520c000231 # the id the HARNESS gave this seat, written by whoever spawns it from the spawn's
-                                                     # result — Claude Code's session id, or a sub-agent's agent id; Codex's thread id
+w=../builder-3                                         # the new seat's worktree
+git worktree add "$w" -b fm/012-slug origin/main       # copies THIS worktree's config.worktree into "$w": every key below
+git -C "$w" config --worktree user.name 'Builder seat'
+git -C "$w" config --worktree user.email builder@seat  # the seat — read by the gate for rights
+git -C "$w" config --worktree seat.session a9f3c2d1/builder-3
+                                                       # the session — a sub-agent derives its id from its parent's; a session with
+                                                       # no parent takes the harness's session id, its first eight hex characters,
+                                                       # or, where the harness has no id, `<cmd> --session new`
+git -C "$w" config --worktree gpg.ssh.allowedSignersFile docs/work-tracker/allowed_signers
+git -C "$w" config --worktree --unset-all seat.harness
+                                                       # the id the HARNESS gives this seat: the copy's is another seat's. Whoever
+                                                       # spawns the seat writes it from the spawn's result — Claude Code's session id,
+                                                       # or a sub-agent's agent id; Codex's thread id:
+                                                       #   git -C "$w" config --worktree seat.harness <its id>
+git -C "$w" config --worktree --list                   # every key is now this seat's own; anything else listed came with the copy
 ```
+
+**One harness id is one session.** `--whoami` and the commit hook say, one line each, when another worktree of the
+repository carries this one's `seat.harness` under another identity — its `seat.session`, `user.email` or `user.name`
+differs — and name the worktree and each key. A line, never a refusal. One run reads at most 32 other worktrees, one git
+process each (28 to 70 ms each, measured on a quiet and on a busy machine), in the order `git worktree list` gives, and
+names how many it left unread; a commit with no `seat.session` or no harness id reads none. A worktree whose folder is
+gone, or whose key is set nowhere, is *not known*. What the line cannot see, and only the step closes: a full, unchanged
+copy, which reads as the seat's own second worktree; a copy that wrote its own `seat.harness` and kept the session; and
+one that kept only the author's name. A copy that kept the address under a sub-agent's session of its own
+(`<parent>/<seat>-<n>`) is refused by the session rule, which names both seats.
 
 **The trailers:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` and
 `Worktree: <the checkout's directory>` to every commit made in that worktree — never typed, and a trailer the message
