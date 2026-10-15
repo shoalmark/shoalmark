@@ -1681,6 +1681,504 @@ with tempfile.TemporaryDirectory() as d:
           and "no manifest — pinned before 0.17.8" in bare_)
 check("related skips German stop words as it skips English ones", "und" in fm._STOP and "the" in fm._STOP)
 
+# --- FM-004, item 8: the release archive (the Owner's D7 and their words of 2026-10-11) — release.yml as written, the one build script it runs and these
+#     checks run, the RELEASE manifest inside the zip, and `--vendor` from the unpacked zip. Each property has a control that undoes it and must fail.
+#     Windows, from 0.19.3: nothing here feeds a process's stdin, a script is written with `\n` line ends and read by bash from its file, and no check
+#     reads a process start as an argv only — each runs a program and reads what it wrote and its exit.
+import zipfile
+_REL_SCRIPT = HERE / "scripts" / "build_release_archive.py"
+_REL_FIVE = ("examples/de/shoalmark.toml", "examples/de/TEMPLATE.md", "examples/de/TRIAGE.md", "examples/de/labels.yaml", "requirements/README.md")   # the Owner's word of 2026-10-11
+
+
+def _rel_yaml(text):
+    """A workflow read as the shapes it is written in: block mappings and `- ` sequences by indentation, one-line flow mappings and sequences of plain or
+    quoted scalars, `|` blocks (their lines kept, less the block's own indentation), `#` comments. Anything else raises ValueError, and every property
+    read from it fails."""
+    lines = text.replace("\r\n", "\n").split("\n")
+
+    def bare(s):
+        quote = None
+        for i, ch in enumerate(s):
+            if quote:
+                quote = None if ch == quote else quote
+            elif ch in "\"'" and (i == 0 or s[i - 1] in " \t{[,:"):
+                quote = ch
+            elif ch == "#" and (i == 0 or s[i - 1] in " \t"):
+                return s[:i].rstrip()
+        return s.rstrip()
+
+    def scalar(s):
+        s = s.strip()
+        if s[:1] in ("{", "["):
+            value, end = flow(s, 0)
+            if s[end:].strip():
+                raise ValueError(f"after a flow collection: {s[end:]!r}")
+            return value
+        if len(s) > 1 and s[0] == s[-1] and s[0] in "\"'":
+            return s[1:-1]
+        return {"": None, "~": None, "null": None, "true": True, "false": False}.get(s, int(s) if re.fullmatch(r"-?\d+", s) else s)
+
+    def flow(s, i):
+        close, out = {"{": "}", "[": "]"}[s[i]], {} if s[i] == "{" else []
+        i += 1
+        while True:
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == close:
+                return out, i + 1
+            if isinstance(out, dict):
+                m = re.match(r"(\"[^\"]*\"|'[^']*'|[^:,{}\[\]\s][^:,{}\[\]]*):\s*", s[i:])
+                if not m:
+                    raise ValueError(f"a flow mapping's key at {s[i:]!r}")
+                key, i = scalar(m.group(1)), i + m.end()
+            if i < len(s) and s[i] in "{[":
+                value, i = flow(s, i)
+            else:
+                m = re.match(r"(\"[^\"]*\"|'[^']*'|[^,{}\[\]]*)", s[i:])
+                value, i = scalar(m.group(1)), i + m.end()
+            out.__setitem__(key, value) if isinstance(out, dict) else out.append(value)
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if i < len(s) and s[i] == ",":
+                i += 1
+            elif i >= len(s) or s[i] != close:
+                raise ValueError(f"an unclosed flow collection: {s!r}")
+
+    def skip(i):
+        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
+            i += 1
+        return i
+
+    indent = lambda l: len(l) - len(l.lstrip(" "))
+
+    def node(i, ind):
+        i = skip(i)
+        if i >= len(lines) or indent(lines[i]) < ind:
+            return None, i
+        ind = indent(lines[i])
+        if lines[i].lstrip().startswith("- ") or lines[i].strip() == "-":
+            out = []
+            while i < len(lines) and indent(lines[i]) == ind and lines[i].lstrip().startswith("-"):
+                rest = lines[i].lstrip()[1:]
+                if re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(\s|$)", rest):
+                    lines[i] = " " * (ind + 2) + rest.lstrip()      # `- key: value`: a mapping, its first key on the dash's line
+                    value, i = node(i, ind + 2)
+                else:
+                    value, i = scalar(bare(rest)), i + 1
+                out.append(value)
+                i = skip(i)
+            return out, i
+        out = {}
+        while i < len(lines) and indent(lines[i]) == ind:
+            m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(?:\s+(.*))?$", lines[i])
+            if not m:
+                raise ValueError(f"line {i + 1}: {lines[i].strip()!r}")
+            key, rest = scalar(m.group(1)), bare(m.group(2) or "")
+            if key in out:
+                raise ValueError(f"line {i + 1}: {key!r} twice")
+            if rest in ("|", "|-"):
+                j, block = i + 1, []
+                while j < len(lines) and (not lines[j].strip() or indent(lines[j]) > ind):
+                    block.append(lines[j].rstrip())
+                    j += 1
+                cut = min((indent(b) for b in block if b.strip()), default=0)
+                out[key], i = "\n".join(b[cut:] for b in block).strip("\n") + "\n", j
+            elif rest:
+                out[key], i = scalar(rest), i + 1
+            else:
+                out[key], i = node(i + 1, ind + 1)
+            i = skip(i)
+        if i < len(lines) and indent(lines[i]) > ind:
+            raise ValueError(f"line {i + 1} is indented under nothing: {lines[i].strip()!r}")
+        return out, i
+
+    value, end = node(0, 0)
+    if skip(end) < len(lines):
+        raise ValueError(f"line {skip(end) + 1}: {lines[skip(end)].strip()!r}")
+    return value
+
+
+def _rel_bash():
+    """The bash a workflow's `shell: bash` step runs — Git's own on Windows, as the runners have it — or None."""
+    if os.name == "nt":
+        found = shutil.which("git")
+        for up in ((Path(found).resolve().parents[1], Path(found).resolve().parents[2]) if found else ()):
+            for sub in ("bin", "usr/bin"):
+                if (up / sub / "bash.exe").is_file():
+                    return str(up / sub / "bash.exe")
+        return None
+    return shutil.which("bash")
+
+
+_REL_BASH = _rel_bash()
+_REL_CASES = {"no release": "", "github-actions[bot]'s own draft": "true github-actions[bot]", "a published release": "false github-actions[bot]",
+              "a draft someone else made": "true someone", "a draft and a published release": "true github-actions[bot]\nfalse someone"}
+
+
+def _rel_draft_runs(run):
+    """The draft step's script, as bash runs it with `shell: bash` (`-eo pipefail`), beside a stand-in `gh` that records each call and answers the
+    releases the tag has: {case: (exit, the calls)}. The script is written with `\\n` line ends and read by bash from its file; nothing goes in on stdin."""
+    stub = ('gh() {\n  echo "$*" >> gh.log\n  case "$1 $2" in\n    "api --paginate") [ -z "$FAKE_FOUND" ] || printf \'%s\\n\' "$FAKE_FOUND"; return 0 ;;\n'
+            '    "release create"|"release upload") return 0 ;;\n  esac\n  return 1\n}\n')
+    out = {}
+    with tempfile.TemporaryDirectory() as d_:
+        w_ = Path(d_)
+        (w_ / "dist").mkdir()
+        for n_ in ("shoalmark-9.9.9.zip", "shoalmark-9.9.9.zip.sha256", "shoalmark-9.9.8.zip", "shoalmark-9.9.8.zip.sha256"):
+            (w_ / "dist" / n_).write_bytes(b"x\n")              # a build for another version too: only the tag's own check stops the case that names it
+        (w_ / "step.sh").write_bytes((stub + run).encode("utf-8"))
+        for case_, found_ in list(_REL_CASES.items()) + [("a tag that is not v<VERSION>", None)]:
+            (w_ / "gh.log").write_bytes(b"")
+            env_ = dict(_ENV, FAKE_FOUND=found_ or "", GH_TOKEN="x", GH_REPO="shoalmark/shoalmark", TAG="v9.9.9", VERSION="9.9.8" if found_ is None else "9.9.9")
+            r_ = subprocess.run([_REL_BASH, "--noprofile", "--norc", "-eo", "pipefail", "step.sh"], cwd=str(w_), capture_output=True, env=env_)
+            out[case_] = (r_.returncode, (w_ / "gh.log").read_text(encoding="utf-8").splitlines())
+    return out
+
+
+def _rel_wf_props(text, others, bash=True):
+    """release.yml's properties, read from its text: [(what is asserted, whether it holds)]. `others`: every other workflow's text, by its file name.
+    `bash`: whether the draft step's script is run (it needs a bash)."""
+    try:
+        wf = _rel_yaml(text)
+        assert isinstance(wf, dict)
+    except (ValueError, AssertionError) as e:
+        return [(f"release.yml reads as a workflow ({e})", False)]
+    on, jobs = wf.get("on") or {}, wf.get("jobs") or {}
+    steps = lambda j: [s for s in ((jobs.get(j) or {}).get("steps") or []) if isinstance(s, dict)]
+    every = [s for j in jobs for s in steps(j)]
+    build = next((s for s in steps("build") if "scripts/build_release_archive.py" in str(s.get("run", ""))), {})
+    draft = next((s for s in steps("draft") if "gh release" in str(s.get("run", ""))), {})
+    writes = lambda p: p == "write-all" or (isinstance(p, dict) and p.get("contents") == "write")
+    def other_writes(name, t):
+        try:
+            o = _rel_yaml(t)
+        except ValueError:
+            return True
+        return not isinstance(o, dict) or "permissions" not in o or writes(o.get("permissions")) or any(writes((j or {}).get("permissions")) for j in (o.get("jobs") or {}).values())
+    pins = re.findall(r"^\s*-?\s*uses:\s*(\S+)(.*)$", text, re.M)
+    out = [("the triggers: a pushed tag v*, and by hand the dry run with its one input, `ref`; no pull-request trigger of either kind",
+            set(on) == {"push", "workflow_dispatch"} and on.get("push") == {"tags": ["v*"]} and set(((on.get("workflow_dispatch") or {}).get("inputs") or {})) == {"ref"}),
+           ("the rights: contents read for the workflow and its build job, write on the uploading job alone",
+            wf.get("permissions") == {"contents": "read"} and {j: (jobs[j] or {}).get("permissions") for j in jobs} == {"build": {"contents": "read"}, "draft": {"contents": "write"}}),
+           ("no other workflow grants contents: write, and each names its rights (docs.yml's pages and id-token rights deploy the site, not the repository)",
+            bool(others) and not any(other_writes(n, t) for n, t in others.items())),
+           ("every action is GitHub's own, pinned by its full commit, its version in a comment",
+            bool(pins) and len(pins) == len([s for s in every if "uses" in s])
+            and all(re.fullmatch(r"actions/[A-Za-z0-9_.-]+@[0-9a-f]{40}", u) and re.fullmatch(r"\s+# v\d+\.\d+\.\d+", c) for u, c in pins)),
+           ("no `${{ }}` inside any `run:`", bool(every) and all("${{" not in str(s.get("run", "")) for s in every)),
+           ("every checkout keeps no token: persist-credentials false",
+            any(str(s.get("uses", "")).startswith("actions/checkout@") for s in every)
+            and all((s.get("with") or {}).get("persist-credentials") is False for s in every if str(s.get("uses", "")).startswith("actions/checkout@"))),
+           ("the build runs scripts/build_release_archive.py — the file these checks run — on the pushed tag or the dry run's input, after `--`",
+            'python3 scripts/build_release_archive.py --out dist -- "$REF"\n' in str(build.get("run", ""))
+            and (build.get("env") or {}) == {"REF": "${{ github.event_name == 'push' && github.ref_name || inputs.ref }}"} and _REL_SCRIPT.is_file()),
+           ("the build job starts no gh and holds no write; the dry run attaches nothing: the uploading job runs on a pushed tag only",
+            not any("gh " in str(s.get("run", "")) for s in steps("build"))
+            and (jobs.get("draft") or {}).get("if") == "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')" and (jobs.get("draft") or {}).get("needs") == "build"),
+           ("the token reaches gh only through env: GH_TOKEN, the workflow's own",
+            (draft.get("env") or {}).get("GH_TOKEN") == "${{ github.token }}" and "GH_TOKEN" not in str(draft.get("run", ""))),
+           ("an upload in flight is never cancelled: no concurrency for the workflow, the uploading job's never cancelling",
+            "concurrency" not in wf and ((jobs.get("draft") or {}).get("concurrency") or {}).get("cancel-in-progress") is False
+            and not any((jobs[j] or {}).get("concurrency") for j in jobs if j != "draft"))]
+    if bash:
+        runs = _rel_draft_runs(str(draft.get("run", "")))
+        files = "dist/shoalmark-9.9.9.zip dist/shoalmark-9.9.9.zip.sha256"
+        calls = lambda c: runs[c][1][1:]                    # past the one `gh api` that reads the tag's releases
+        out += [("the upload, with no release for the tag: a draft made on the tag, verified to exist, then both files uploaded to it — and the tag's releases "
+                 "read by the tag itself",
+                 runs["no release"][0] == 0 and calls("no release") == ['release create v9.9.9 --draft --verify-tag --title v9.9.9 --notes ', f"release upload v9.9.9 {files}"]
+                 and "select(.tag_name == $ENV.TAG)" in (runs["no release"][1][:1] or [""])[0]),
+                ("a re-run onto github-actions[bot]'s own draft uploads both files again, with --clobber, and makes no release",
+                 runs["github-actions[bot]'s own draft"][0] == 0 and calls("github-actions[bot]'s own draft") == [f"release upload v9.9.9 {files} --clobber"]),
+                ("a published release, a draft anyone else made, or more than one, refuses: exit 1, nothing made, nothing attached",
+                 all(runs[c][0] == 1 and calls(c) == [] for c in ("a published release", "a draft someone else made", "a draft and a published release"))),
+                ("a tag that is not v<VERSION> refuses before gh is started", runs["a tag that is not v<VERSION>"][0] == 1 and runs["a tag that is not v<VERSION>"][1] == [])]
+    return out
+
+
+_REL_WF_TEXT = (HERE / ".github/workflows/release.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/release.yml").is_file() else ""
+_REL_OTHERS = {p_.name: p_.read_text(encoding="utf-8") for p_ in sorted((HERE / ".github/workflows").glob("*.yml")) if p_.name != "release.yml"}
+_REL_CONTROLS = [
+    ("a pull_request trigger", lambda t: t.replace("  workflow_dispatch:\n", "  pull_request: {types: [opened]}\n  workflow_dispatch:\n", 1), False),
+    ("a pull_request_target trigger", lambda t: t.replace("  workflow_dispatch:\n", "  pull_request_target: {types: [opened]}\n  workflow_dispatch:\n", 1), False),
+    ("the build job holding contents: write", lambda t: t.replace("    permissions: {contents: read}\n    outputs:", "    permissions: {contents: write}\n    outputs:", 1), False),
+    ("the workflow granting contents: write", lambda t: t.replace("permissions: {contents: read}\njobs:", "permissions: {contents: write}\njobs:", 1), False),
+    ("an action pinned by its tag", lambda t: re.sub(r"actions/checkout@[0-9a-f]{40}", "actions/checkout@v7", t, count=1), False),
+    ("an action not GitHub's own", lambda t: t.replace("actions/upload-artifact@", "someone/upload-artifact@", 1), False),
+    ("an action pinned by 39 hex digits", lambda t: re.sub(r"(actions/download-artifact@)[0-9a-f]{40}", lambda m_: m_.group(1) + "a" * 39, t, count=1), False),
+    ("an expression inside a run", lambda t: t.replace('-- "$REF"', '-- "${{ inputs.ref }}"', 1), False),
+    ("a checkout that keeps its token", lambda t: t.replace(", persist-credentials: false}", "}", 1), False),
+    ("another build script", lambda t: t.replace("python3 scripts/build_release_archive.py", "python3 scripts/other_build.py", 1), False),
+    ("the uploading job on the dry run too", lambda t: t.replace("if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')", "if: always()", 1), False),
+    ("an upload in flight cancelled", lambda t: t.replace("cancel-in-progress: false", "cancel-in-progress: true", 1), False),
+    ("the token on gh's command line", lambda t: t.replace('gh release upload "$TAG" "$zip" "$zip.sha256" --clobber', 'GH_TOKEN="$GH_TOKEN" gh release upload "$TAG" "$zip" "$zip.sha256" --clobber', 1), False),
+    ("a release made with no --draft", lambda t: t.replace(" --draft --verify-tag", " --verify-tag", 1), True),
+    ("a release made with no --verify-tag", lambda t: t.replace(" --draft --verify-tag", " --draft", 1), True),
+    ("a re-run onto the bot's draft with no --clobber", lambda t: t.replace(' "$zip.sha256" --clobber', ' "$zip.sha256"', 1), True),
+    ("any draft taken for the bot's", lambda t: t.replace('[ "$found" = "true github-actions[bot]" ]', '[ -n "$found" ]', 1), True),
+    ("no check of the tag against VERSION", lambda t: t.replace('&& [ "$TAG" = "v$VERSION" ] ', '', 1), True)]
+if _REL_BASH is None:
+    _skipped("FM-004 · release.yml: the draft step's script, run", 4 + sum(1 for c_ in _REL_CONTROLS if c_[2]), "no bash here: the draft step is a `shell: bash` step")
+for _what, _ok in _rel_wf_props(_REL_WF_TEXT, _REL_OTHERS, bash=_REL_BASH is not None):
+    check(f"FM-004 · release.yml: {_what}", _ok)
+for _what, _change, _needs_bash in _REL_CONTROLS:
+    if _needs_bash and _REL_BASH is None:
+        continue
+    _changed = _change(_REL_WF_TEXT)
+    check(f"FM-004 · release.yml's control: with {_what}, a property above fails" + (" — NOT JUDGED: the change finds no line to apply to" if _changed == _REL_WF_TEXT else ""),
+          _changed != _REL_WF_TEXT and not all(ok_ for _w, ok_ in _rel_wf_props(_changed, _REL_OTHERS, bash=_needs_bash)))
+_other_ = dict(_REL_OTHERS, **{"ci.yml": (_REL_OTHERS.get("ci.yml") or "").replace("permissions: {contents: read}", "permissions: {contents: write}", 1)})
+check("FM-004 · release.yml's control: with ci.yml granting contents: write, a property above that held fails" + ("" if _other_ != _REL_OTHERS else " — NOT JUDGED: ci.yml names no read right"),
+      _other_ != _REL_OTHERS and all(ok_ for _w, ok_ in _rel_wf_props(_REL_WF_TEXT, _REL_OTHERS, bash=False))
+      and not all(ok_ for _w, ok_ in _rel_wf_props(_REL_WF_TEXT, _other_, bash=False)))
+
+
+def _rel_repo(base, files, version, extra=()):
+    """A scratch repository holding `files` (paths of this tool, copied) and `extra` ({path: bytes}), with `VERSION` set to `version`, committed at a fixed
+    committer time and tagged `v<version>`: (the repository, its commit)."""
+    repo = base / "src"; repo.mkdir()
+    for rel in files:
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(HERE / rel, repo / rel)
+    for rel, data in dict(extra).items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True); (repo / rel).write_bytes(data)
+    (repo / "VERSION").write_bytes(f"{version}\n".encode("ascii"))
+    env = dict(_ENV, GIT_COMMITTER_DATE="2026-10-11T23:30:00+14:00", GIT_AUTHOR_DATE="2026-10-11T23:30:00+14:00")
+    for a in (("init", "-q"), ("add", "-A"), ("commit", "-qm", "the release"), ("tag", f"v{version}")):
+        subprocess.run(["git", "-C", str(repo), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "-c", "tag.gpgsign=false", *a], check=True, capture_output=True, env=env)
+    return repo, subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+
+
+def _rel_build(repo, out, ref, tz=None):
+    """The build script — the one release.yml runs — as a program: (exit, stdout, stderr)."""
+    env = dict(_ENV, **({"TZ": tz} if tz else {}))
+    r_ = subprocess.run([sys.executable, str(_REL_SCRIPT), "--out", str(out), "--repo", str(repo), "--", ref], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    return r_.returncode, r_.stdout, r_.stderr
+
+
+with tempfile.TemporaryDirectory() as d:
+    base = Path(d).resolve(); ver = fm.__version__
+    shipped_ = fm.vendor_files() if hasattr(fm, "vendor_files") else list(fm.TOOL_FILES)
+    src, commit_ = _rel_repo(base, list(shipped_) + list(_REL_FIVE), ver, {"scripts/not-shipped.py": b"print('no')\n", "brand/themes/.hidden": b"x\n", "test_shoalmark.py": b"# no\n"})
+    zipped, sums_ = base / f"out/shoalmark-{ver}.zip", base / f"out/shoalmark-{ver}.zip.sha256"
+    b1_ = _rel_build(src, base / "out", f"v{ver}")
+    z_ = zipfile.ZipFile(zipped) if zipped.is_file() else None
+    infos_ = z_.infolist() if z_ else []
+    names_ = [i_.filename for i_ in infos_]
+    release_ = z_.read("RELEASE").decode("utf-8") if z_ and "RELEASE" in names_ else ""
+    rel_, wrong_ = fm.release_manifest(release_) if hasattr(fm, "release_manifest") else ({}, "no reader")
+    stamp_ = time.gmtime(int(subprocess.run(["git", "-C", str(src), "show", "-s", "--format=%ct", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()))[:6]
+    check(f"FM-004 · the archive, built by scripts/build_release_archive.py from a scratch tag: the files `--vendor` copies at its root, no folder around them, and RELEASE — none of the tree's other files (saw exit {b1_[0]}, {len(names_)} entries, {b1_[2].strip()[:120]!r})",
+          b1_[0] == 0 and sorted(names_) == names_ and set(names_) == set(shipped_) | set(_REL_FIVE) | {"RELEASE"} and len(names_) == len(set(names_))
+          and not any(n_.endswith("/") or n_.startswith(("src/", f"shoalmark-{ver}/")) for n_ in names_) and "scripts/not-shipped.py" not in names_ and "brand/themes/.hidden" not in names_)
+    check(f"FM-004 · the zip carries the probe's five files at their repository paths — examples/de/shoalmark.toml, TEMPLATE.md, TRIAGE.md, labels.yaml and requirements/README.md — each as the tag holds it, and the tool names the same five (saw {[n_ for n_ in names_ if '/' in n_ and not n_.startswith(('brand/', 'vendor/'))]})",
+          all(f_ in names_ and z_.read(f_) == (HERE / f_).read_bytes() for f_ in _REL_FIVE) and tuple(getattr(fm, "ARCHIVE_FILES", ())) == _REL_FIVE)
+    check(f"FM-004 · its RELEASE names the version, the tag, the commit and every other entry of the zip with its SHA-256, each equal to the entry's (saw {wrong_ or 'read'}, {release_.splitlines()[:4]})",
+          not wrong_ and rel_.get("version") == ver and rel_.get("tag") == f"v{ver}" and rel_.get("commit") == commit_
+          and set(rel_.get("files", {})) == set(names_) - {"RELEASE"} == set(shipped_) | set(_REL_FIVE)
+          and all(hashlib.sha256(z_.read(n_)).hexdigest() == h_ for n_, h_ in rel_.get("files", {}).items()))
+    check("FM-004 · it is stored, sorted, one timestamp — the commit's committer time read in UTC — fixed modes and no extra field",
+          bool(infos_) and all(i_.compress_type == zipfile.ZIP_STORED and i_.date_time == stamp_ and i_.external_attr == 0o100644 << 16 and i_.extra == b"" and i_.create_system == 3 for i_ in infos_)
+          and z_.comment == b"")
+    first_ = hashlib.sha256(zipped.read_bytes()).hexdigest() if zipped.is_file() else ""
+    builds_ = {}
+    for tz_ in (None, "Pacific/Kiritimati", "Pacific/Pago_Pago"):
+        o_ = base / f"again-{tz_ or 'here'}".replace("/", "-")
+        r_ = _rel_build(src, o_, f"v{ver}", tz_)
+        builds_[tz_ or "again"] = (r_[0], hashlib.sha256((o_ / f"shoalmark-{ver}.zip").read_bytes()).hexdigest() if (o_ / f"shoalmark-{ver}.zip").is_file() else "")
+    check(f"FM-004 · built again from the same tag, it gives one SHA-256 — and under TZ=Pacific/Kiritimati (+14) and TZ=Pacific/Pago_Pago (−11) the same (saw {first_[:16]} · {builds_})",
+          bool(first_) and all(c_ == 0 and h_ == first_ for c_, h_ in builds_.values()))
+    sum_line_ = sums_.read_bytes() if sums_.is_file() else b""
+    shasum_ = shutil.which("shasum") or shutil.which("sha256sum")
+    verified_ = subprocess.run([shasum_, "-a", "256", "-c", sums_.name] if shasum_ and shasum_.endswith("shasum") else [shasum_, "-c", sums_.name], cwd=str(sums_.parent), capture_output=True, env=_ENV).returncode if shasum_ and sums_.is_file() else None
+    check(f"FM-004 · its .sha256 is `<hex>  shoalmark-<version>.zip` and a line end, the form `shasum -a 256 -c` reads — read so here, and by {'`' + Path(shasum_).name + '`' if shasum_ else 'no shasum on this system'} (saw {sum_line_[:90]!r}, {verified_})",
+          sum_line_ == f"{first_}  shoalmark-{ver}.zip\n".encode("ascii") and verified_ in (0, None))
+    refused_ = {k_: _rel_build(src, base / f"refused-{n_}", k_) for n_, k_ in enumerate(("--upload-pack=x", "v1.2", "a" * 39, ""))}
+    check(f"FM-004 · the input is checked before use: `--upload-pack=x`, `v1.2`, 39 hex digits and an empty value are each refused, exit 2, nothing written (saw {[(c_, e_.strip()[:60]) for c_, _o, e_ in refused_.values()]})",
+          all(c_ == 2 and "is neither a tag v<x.y.z> nor a 40-hex commit" in e_ for c_, _o, e_ in refused_.values()) and not any((base / f"refused-{n_}").exists() for n_ in range(4)))
+    arabic_ = _rel_build(src, base / "refused-arabic", "v\u0661.\u0662.\u0663")
+    check(f"FM-004 · RV-3021 · a tag written in other digits than ASCII's — v١.٢.٣, Arabic-Indic — is refused before git, exit 2, nothing written (saw {arabic_[0]}, {arabic_[2].strip()[:70]!r})",
+          arabic_[0] == 2 and "is neither a tag v<x.y.z> nor a 40-hex commit" in arabic_[2] and not (base / "refused-arabic").exists())
+    subprocess.run(["git", "-C", str(src), "-c", "tag.gpgsign=false", "tag", "v9.9.9"], check=True, capture_output=True, env=_ENV)
+    other_ = _rel_build(src, base / "other-tag", "v9.9.9"); dry_ = _rel_build(src, base / "dry", commit_)
+    dry_rel_ = fm.release_manifest(zipfile.ZipFile(base / f"dry/shoalmark-{ver}.zip").read("RELEASE").decode("utf-8"))[0] if hasattr(fm, "release_manifest") and (base / f"dry/shoalmark-{ver}.zip").is_file() else {}
+    check(f"FM-004 · a tag whose VERSION is another fails before anything is written; the dry run builds a 40-hex commit, its RELEASE naming no tag (saw {other_[0]}, {other_[2].strip()[:80]!r} · {dry_[0]}, {dry_rel_.get('tag')!r})",
+          other_[0] == 1 and "is '" + ver + "', not '9.9.9'" in other_[2] and not (base / "other-tag").exists()
+          and dry_[0] == 0 and dry_rel_.get("tag") == "" and dry_rel_.get("commit") == commit_)
+
+    # --- `--vendor` from the unpacked zip, as the probe unpacks it (W4: `python -m zipfile -e`)
+    def _unpack(into):
+        subprocess.run([sys.executable, "-m", "zipfile", "-e", str(zipped), str(into)], check=True, capture_output=True, env=_ENV)
+        return into
+    def _vend(tool_dir, project, *flags, env=None):
+        r_ = subprocess.run([sys.executable, str(tool_dir / "shoalmark.py"), "--root", str(project), "--vendor", str(project / "tools/shoalmark"), *flags],
+                            cwd=str(project), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+        return r_.returncode, r_.stdout, r_.stderr
+    def _project(name):
+        p_ = base / name; p_.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(p_)], check=True, capture_output=True, env=_ENV)
+        return p_
+    def _svn_project(name):
+        # Setup uses the real local tools before acquisition runs with an empty PATH.
+        repository_ = base / (name + "-repository")
+        subprocess.run(["svnadmin", "create", str(repository_)], check=True, capture_output=True, env=_ENV, timeout=30)
+        p_ = base / name
+        subprocess.run(["svn", "checkout", "-q", repository_.as_uri(), str(p_)], check=True, capture_output=True, env=_ENV, timeout=30)
+        return p_
+    today_ = datetime.date.today().isoformat()
+    unpacked_ = _unpack(base / "unpacked") if zipped.is_file() else base / "unpacked"
+    proj_ = _project("project"); v_ = _vend(unpacked_, proj_)   # PIN interpretation fixture only; no Git authority policy is invented
+    pin_ = (proj_ / "tools/shoalmark/PIN").read_text(encoding="utf-8") if (proj_ / "tools/shoalmark/PIN").is_file() else ""
+    pinned_ = sorted(l_.partition("  ")[2] for l_ in pin_.splitlines() if not l_.startswith("#"))
+    tool_ = [sys.executable, str(proj_ / "tools/shoalmark/shoalmark.py"), "--root", str(proj_)]
+    subprocess.run(tool_ + ["--init", "--key", "msr"], capture_output=True, env=_ENV); subprocess.run(tool_, capture_output=True, env=_ENV)
+    said_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+    check(f"FM-004 · `--vendor` from the unpacked zip copies only the complete tool set, and its PIN claims only what it checked — the tag and commit the manifest names, every file matched; the consumer's --check reads it (saw {v_[0]}, {pin_.splitlines()[:1]}, {said_.stdout.strip().splitlines()[-1:]})",
+          v_[0] == 0 and pin_.startswith(f"# shoalmark {ver} · vendored from an archive whose manifest names v{ver}, commit {commit_}, every file matched · {today_}\n")
+          and pinned_ == sorted(set(shipped_)) and not (proj_ / "tools/shoalmark/RELEASE").exists()
+          and all((proj_ / "tools/shoalmark" / n_).read_bytes() == z_.read(n_) for n_ in pinned_)
+          and said_.returncode == 0 and f"pinned {ver} from an archive whose manifest names v{ver} (commit {commit_[:10]}), every file matched, vendored {today_}, complete" in said_.stdout
+          and "warning" not in said_.stdout)
+    mutations_ = {"a changed byte": (lambda u: (u / "README.md").write_bytes((u / "README.md").read_bytes() + b"\n"), "changed: README.md"),
+                  "a missing file": (lambda u: (u / "NOTICE").unlink(), "missing NOTICE"),
+                  "an extra file in the set": (lambda u: (u / "brand/themes/shoalmark/extra.css").write_bytes(b"a{}\n"), "not in its RELEASE: brand/themes/shoalmark/extra.css"),
+                  "another VERSION": (lambda u: (u / "VERSION").write_bytes(b"9.9.9\n"), f"its RELEASE names {ver}, and its VERSION says 9.9.9")}
+    seen_ = {}
+    for n_, (what_, (change_, says_)) in enumerate(mutations_.items()):
+        u_ = _unpack(base / f"mutated-{n_}") if zipped.is_file() else base / f"mutated-{n_}"
+        if u_.is_dir():
+            change_(u_)
+        p_ = _project(f"refusing-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        seen_[what_] = (r_[0], r_[2].strip(), not (p_ / "tools").exists(), says_ in r_[2] and len(r_[2].strip().splitlines()) == 1)
+    check(f"FM-004 · from an unpacked zip, a changed byte, a missing file, an extra file in the set and another VERSION are each refused in one line naming it — exit 4, nothing written, `--partial` and `--allow-untagged` or not (saw {[(w_, s_[0], s_[1][-90:]) for w_, s_ in seen_.items()]})",
+          len(seen_) == 4 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in seen_.values()))
+    five_ = {}
+    for n_, (what_, rel_, change_, says_) in enumerate((("a changed byte", "examples/de/TRIAGE.md", lambda f: f.write_bytes(f.read_bytes() + b"\n"), "changed: examples/de/TRIAGE.md"),
+                                                        ("a missing file", "requirements/README.md", lambda f: f.unlink(), "missing requirements/README.md"))):
+        u_ = _unpack(base / f"five-{n_}") if zipped.is_file() else base / f"five-{n_}"
+        held_ = (u_ / rel_).is_file()
+        if held_:
+            change_(u_ / rel_)
+        p_ = _project(f"five-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        five_[what_] = (held_, r_[0], r_[2].strip()[-90:], not (p_ / "tools").exists(), says_ in r_[2] and len(r_[2].strip().splitlines()) == 1)
+    check(f"FM-004 · among the probe's five, a changed byte and a missing file are each refused in one line naming it — exit 4, nothing written (saw {five_})",
+          len(five_) == 2 and all(held_ and c_ == fm.EXIT_LINT and none_ and named_ for held_, c_, _e, none_, named_ in five_.values()))
+    check(f"FM-004 · the unpacked zip holds the five, and `--vendor` writes none of them into the target — it copies the tool's set alone (saw {[f_ for f_ in _REL_FIVE if (proj_ / 'tools/shoalmark' / f_).exists()]})",
+          all((unpacked_ / f_).is_file() for f_ in _REL_FIVE) and not any((proj_ / "tools/shoalmark" / f_).exists() for f_ in _REL_FIVE) and v_[0] == 0)
+    def _drop(u, rel):
+        """A file of the unpacked zip gone, and its RELEASE line with it: the folder and the manifest agree, and the set is not whole."""
+        (u / rel).unlink()
+        kept_ = [l_ for l_ in (u / "RELEASE").read_bytes().decode("utf-8").split("\n") if l_ and not l_.endswith("  " + rel)]
+        (u / "RELEASE").write_bytes(("\n".join(kept_) + "\n").encode("utf-8"))
+    renderer_ = next(r_ for r_ in fm.TOOL_FILES if r_.startswith("vendor/"))
+    whole_ = {}
+    for n_, rel_ in enumerate(("LICENSE-MIT", renderer_, "brand/themes/shoalmark/theme.css")):
+        u_ = _unpack(base / f"short-{n_}") if zipped.is_file() else base / f"short-{n_}"
+        if u_.is_dir():
+            _drop(u_, rel_)
+        p_ = _project(f"short-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        whole_[rel_] = (r_[0], r_[2].strip()[-110:], not (p_ / "tools").exists(), f"missing {rel_}" in r_[2] and len(r_[2].strip().splitlines()) == 1)
+    check(f"FM-004 · RV-3020 · from an unpacked zip, a file of the vendored set gone together with its RELEASE line — a licence, the renderer, a theme's file — is refused in one line naming it, exit 4, nothing written: the archive is vendored only whole (saw {whole_})",
+          len(whole_) == 3 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in whole_.values()))
+    check(f"FM-004 · RV-3020 · THEME_FILES names every file of the themes the tool ships, as brand/themes/ holds them, and no other (saw {len(getattr(fm, 'THEME_FILES', ()))} · {len(fm.theme_files())})",
+          tuple(sorted(getattr(fm, "THEME_FILES", ()))) == tuple(sorted(fm.theme_files())) and len(fm.theme_files()) > 0)
+    # Acquisition alone into a real local SVN working copy: its metadata must remain valid when Git/server tools are unavailable.
+    no_path_ = base / "empty-path"; no_path_.mkdir(); no_git_env_ = dict(_ENV, PATH=str(no_path_))
+    local_svn_ = shutil.which("svn") and shutil.which("svnadmin")
+    if not local_svn_:
+        _skipped("FM-004 · real SVN archive acquisition and administrative guards", 16, "svn and svnadmin are needed for fixture setup")
+    else:
+        no_git_ = _svn_project("no-git-target")
+        ng_ = _vend(unpacked_, no_git_, env=no_git_env_)
+        ng_pin_ = (no_git_ / "tools/shoalmark/PIN").read_text() if (no_git_ / "tools/shoalmark/PIN").is_file() else ""
+        check(f"FM-004 · archive acquisition into a real SVN working copy with no Git or SVN executable on PATH copies and pins the complete tool (saw {ng_[0]}, {ng_[2].strip()[-150:]!r})",
+              all(shutil.which(exe_, path=no_git_env_["PATH"]) is None for exe_ in ("git", "svn")) and ng_[0] == 0 and ng_pin_ == pin_
+              and all((no_git_ / "tools/shoalmark" / n_).read_bytes() == z_.read(n_) for n_ in pinned_))
+        absent_manifest_ = _unpack(base / "missing-manifest"); (absent_manifest_ / "RELEASE").unlink()
+        absent_target_ = _svn_project("missing-manifest-target")
+        absent_ = _vend(absent_manifest_, absent_target_, "--partial", "--allow-untagged", env=no_git_env_)
+        check(f"FM-004 · a missing RELEASE with no Git binary refuses in one line before writing, including with the legacy bypass flags (saw {absent_[0]}, {absent_[2].strip()[-150:]!r})",
+              absent_[0] == fm.EXIT_LINT and "holds no RELEASE manifest" in absent_[2]
+              and len(absent_[2].strip().splitlines()) == 1 and not (absent_target_ / "tools").exists())
+        from test_vcs_archive import run_archive_integration_controls
+        acquisition_ = run_archive_integration_controls(fm, check, unpacked_)
+        if acquisition_["skipped"]:
+            _skipped("RV-3071: administrative destination alias", acquisition_["skipped"], acquisition_["reason"])
+    malformed_ = {}
+    for n_, text_ in enumerate(("not a manifest\n", release_ + release_.splitlines()[4] + "\n", release_ + "0" * 64 + "  ../outside\n")):
+        u_ = _unpack(base / f"bad-manifest-{n_}")
+        (u_ / "RELEASE").write_text(text_, encoding="utf-8")
+        p_ = _project(f"bad-manifest-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        malformed_[n_] = (r_[0], not (p_ / "tools").exists(), len(r_[2].strip().splitlines()) == 1)
+    check(f"FM-004 · malformed, duplicate and outside manifest entries refuse in one line before writing (saw {malformed_})",
+          len(malformed_) == 3 and all(c_ == fm.EXIT_LINT and none_ and one_ for c_, none_, one_ in malformed_.values()))
+    symlink_cases_ = {}
+    try:
+        for n_, rel_ in enumerate(("NOTICE", "RELEASE", "brand/themes/shoalmark")):
+            u_ = _unpack(base / f"unsafe-{n_}"); target_ = base / f"link-outside-{n_}"
+            shutil.move(str(u_ / rel_), str(target_))
+            (u_ / rel_).symlink_to(target_, target_is_directory=target_.is_dir())
+            p_ = _project(f"unsafe-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+            symlink_cases_[rel_] = (r_[0], not (p_ / "tools").exists(), len(r_[2].strip().splitlines()) == 1,
+                                    "symlink" in r_[2])
+    except (OSError, NotImplementedError) as e:
+        _skipped("FM-004 · unsafe archive symlinks", 1, str(e))
+    else:
+        check(f"FM-004 · a source file, RELEASE or a theme directory reached through a symlink refuses before writing (saw {symlink_cases_})",
+              len(symlink_cases_) == 3 and all(c_ == fm.EXIT_LINT and none_ and one_ and named_ for c_, none_, one_, named_ in symlink_cases_.values()))
+    # The shared discovery change retains Git's own/common directories and the on-disk .git exclusion under the existing guard.
+    linked_ = base / "linked-worktree"; git(src, "worktree", "add", "--detach", str(linked_), "HEAD")
+    fm.configure(linked_)
+    gd_ = subprocess.run(["git", "rev-parse", "--absolute-git-dir", "--git-common-dir"], cwd=str(linked_), capture_output=True, text=True, env=_ENV)
+    expected_gd_ = sorted({fm._norm(linked_ / ".git"), *(fm._norm(linked_ / l_) for l_ in gd_.stdout.splitlines() if l_.strip())})
+    actual_gd_ = fm.git_dirs()
+    old_safe_ = fm.SAFE_WRITES; fm.SAFE_WRITES = True
+    refused_gd_ = []
+    try:
+        for d_ in actual_gd_:
+            try:
+                fm.guard_write(Path(d_) / "archive-probe")
+            except fm.ReadOnlyRun:
+                refused_gd_.append(d_)
+    finally:
+        fm.SAFE_WRITES = old_safe_
+    check(f"FM-004 · Git worktree acquisition keeps Git's own/common directories and on-disk .git exclusion, each refused by the existing write guard (saw {actual_gd_})",
+          gd_.returncode == 0 and set(expected_gd_).issubset(actual_gd_) and fm._norm(linked_ / ".svn") in actual_gd_ and refused_gd_ == actual_gd_)
+    if local_svn_:
+        fm.configure(no_git_)
+        real_run_ = subprocess.run; called_ = []
+        def _no_git_run(*a, **k):
+            called_.append(a[0] if a else k.get("args")); raise AssertionError("a non-Git destination started a process")
+        subprocess.run = _no_git_run
+        try:
+            ng_dirs_ = fm.git_dirs()
+        finally:
+            subprocess.run = real_run_
+        old_safe_ = fm.SAFE_WRITES; fm.SAFE_WRITES = True
+        disk_refused_ = []
+        try:
+            for d_ in ng_dirs_:
+                try:
+                    fm.guard_write(Path(d_) / "archive-probe")
+                except fm.ReadOnlyRun:
+                    disk_refused_.append(d_)
+        finally:
+            fm.SAFE_WRITES = old_safe_
+        check("FM-004 · SVN acquisition starts no directory-discovery process and guards all expanded administrative paths, including disk .git and .svn",
+              {fm._norm(no_git_ / marker_) for marker_ in (".git", ".svn")}.issubset(ng_dirs_) and not called_ and disk_refused_ == ng_dirs_)
+    fm.configure(HERE)
+    inside_ = _project("host"); nested_ = _unpack(inside_ / "third_party/shoalmark-unpacked") if zipped.is_file() else inside_
+    subprocess.run(["git", "-C", str(inside_), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "add", "-A"], capture_output=True, env=_ENV)
+    subprocess.run(["git", "-C", str(inside_), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "an archive kept in the repository"], capture_output=True, env=_ENV)
+    n_ = _vend(nested_, inside_); npin_ = (inside_ / "tools/shoalmark/PIN").read_text(encoding="utf-8") if (inside_ / "tools/shoalmark/PIN").is_file() else ""
+    (base / "gitsrc").mkdir(); git_src_, git_commit_ = _rel_repo(base / "gitsrc", shipped_, ver, {"RELEASE": release_.encode("utf-8")})
+    g_ = _vend(git_src_, _project("from-git")); gpin_ = (base / "from-git/tools/shoalmark/PIN").read_text(encoding="utf-8") if (base / "from-git/tools/shoalmark/PIN").is_file() else ""
+    check(f"FM-004 · an archive unpacked inside a git repository's subfolder is still judged as an archive; a git checkout whose top level holds a RELEASE file is judged by git, as before — its tag and commit (saw {n_[0]}, {npin_.splitlines()[:1]} · {g_[0]}, {gpin_.splitlines()[:1]})",
+          n_[0] == 0 and npin_.startswith(f"# shoalmark {ver} · vendored from an archive whose manifest names v{ver}, commit {commit_}, every file matched · ")
+          and g_[0] == 0 and gpin_.startswith(f"# shoalmark {ver} · tag v{ver} · commit {git_commit_} · vendored {today_} · complete\n"))
+    if z_:
+        z_.close()
+fm.configure(HERE)
+
 # --- the board, seen: rendered in a real browser where one is installed -------------------------------------
 if _browser("board"):
     try:
