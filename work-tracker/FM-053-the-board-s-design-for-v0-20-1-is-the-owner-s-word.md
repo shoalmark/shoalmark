@@ -3,18 +3,24 @@ id: FM-053
 status: In Progress
 considered: FM-002, FM-023, FM-024, FM-031, FM-006
 tags: process
-next: build
+next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
+ask: "Do you adopt brand/design-guide.md, as it stands at the commit that filed this ask, as the design the v0.20.1 board is built to?"
+ask-kind: ruling
+ask-since: 2026-10-15
+ask-options: "yes | no: the guide stays a draft"
+ask-proposal: "yes"
 ---
 
 # FM-053 — the board's design for v0.20.1 is the Owner's word in a sitting, not yet a signed answer
 
 ## What is true now
 
-**Filed and judged 2026-10-15: In Progress, P2.** The next commit adds `brand/design-guide.md` and `brand/icons/`
-under this tracker, and files the ask that adopts them; nothing in them is built into the board.
+**Filed and judged 2026-10-15: In Progress, P2.** `brand/design-guide.md` and `brand/icons/` were added under this
+tracker in `ef33598`. This commit files the ask that adopts the guide, and with its §4 the icons, as they stand here.
+Nothing in them is built into the board.
 - On 15 October the Owner decided how the board looks and reads: one look, `monochrome`, on the board's own tokens, in
   the system's monospace, with no chart behind it; a box only for an action; type, state and action told apart; what
   waits for you first. The guide is the public form of those decisions, the v0.20.x rules only.
@@ -56,3 +62,5 @@ under this tracker, and files the ask that adopts them; nothing in them is built
 | Date | Event |
 |---|---|
 | 2026-10-15 | Filed and judged on `release/v0.20.1`: In Progress, P2. The guide and its icons are built under it, with its ask. |
+| 2026-10-15 | `brand/design-guide.md` and `brand/icons/` (four SVGs and the README of their rule) added under this tracker, `ef33598`. |
+| 2026-10-15 | The ask filed: it adopts the guide as it stands at this commit. Nothing is built into the board. |
