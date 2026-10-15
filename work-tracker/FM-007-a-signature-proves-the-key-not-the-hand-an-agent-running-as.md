@@ -15,6 +15,12 @@ hook: "The gate accepts an answer only from a commit signed by the Owner's key. 
 
 ## What is true now
 
+**2026-10-15 — the proof line, built on `fm/054-proof`, not merged** (`970c9fd`, on FM-054's `e80d080`). On one repository's board
+the heading of *waiting for you* says once, and the answer dialog again before OK, how an answer here is proved — *your answers
+here:* **signed**, **author only**, **server login** (Subversion) or **no author** (no version control) — read as the gate reads
+the default branch's configuration; under *author only* one consequence line follows in the warning colour. The second screen's
+lines are conditional on the same reading, in English and German, and no longer promise a touch: the defect of 2026-10-14 below.
+
 **2026-10-14 — the board's signing dialog promises a signature in every repository.**
 - The dialog step `answer.sign.step.commit` (`shoalmark.py:3739`, used only at `:3548`) reads "commits them, signed
   with your key — a hardware key waits for your touch".
@@ -127,6 +133,7 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | The proof line built on `fm/054-proof` (`970c9fd`) with FM-054's defect 8 (`e80d080`): *signed* said only where the default branch's configuration asks for it, and said before *accept*; not merged. |
 | 2026-09-25 | The Reviewer's R4 on PR 69, fixed forward: the filed *site conversion* block begins at *2.* because the Owner's paste did — the numbering is the paste's, and the board renders the five points after it as 3–7; the text stays word for word. |
 | 2026-09-25 | The Auditor seat's five points for the site conversion filed word for word (the Reviewer's R2 on this branch: the record named them as the GtM seat's and listed three); main merged after PR 68 (the Reviewer's R1: INDEX.md conflicted, regenerated). |
 | 2026-09-25 | The site's signing pages rewritten by the GtM seat under this tracker (`56d08bb` English, `007f279` German): the threat and the four tiers first, Route A a separate signing key, tier 3 walked through — two FIDO2 keys, or the Mac's Secure Enclave — a phone passkey ruled out, *an agent can pass -S* corrected, the old key retired last. Two lines under the freeze for 0.18.4, found by that seat: the tool's link to the page (`…/signing/`, and `…/de/signing/` in the German labels) will 404 on the deployed site, which builds `signing.html` (`use_directory_urls = false`); and the tier of a Secure Enclave key cannot be read from its type, so the pages declare it as a comment line above the key in `allowed_signers` (`# tier 3: …`) — the tool's coming tier line reads that form or the pages change. |
