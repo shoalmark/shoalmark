@@ -10700,7 +10700,7 @@ def main(argv=None, *, _notice=True):
     if diagnostic is not None:
         print(diagnostic + (" — " + limitation if limitation else ""), file=sys.stderr)
         return code
-    if limitation:
+    if limitation and not args.vendor:                      # a --vendor run says it with its own result, below
         print(limitation, file=sys.stderr)
     owner_refused = owner_signature_problems() if args.check else []
     for problem in owner_refused:
@@ -10715,7 +10715,27 @@ def main(argv=None, *, _notice=True):
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
-        return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+        if not limitation:
+            return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+        # FM-004: a --vendor refusal keeps its one line, the Subversion notice folded in (" — " + notice) as --tsvn-hook's and the
+        # preflight's are, whichever function refuses, returning or raising; any other run of it says the notice once, on its own line
+        import io
+        said, code = io.StringIO(), None
+        stderr, sys.stderr = sys.stderr, said
+        try:
+            code = vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+        except SystemExit as stop:
+            code = stop.code
+            raise
+        finally:
+            sys.stderr = stderr
+            text = said.getvalue()
+            if code == EXIT_LINT and text.endswith("\n") and text.count("\n") == 1:
+                print(text[:-1] + " — " + limitation, file=sys.stderr)
+            else:
+                print(limitation, file=sys.stderr)
+                sys.stderr.write(text)
+        return code
     if args.brand is not None:
         return brand_report(args.brand or None, args.theme)
     if args.init:
