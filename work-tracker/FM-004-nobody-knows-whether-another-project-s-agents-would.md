@@ -8,13 +8,6 @@ triaged: 2026-10-13
 tier: P1
 rank: 2
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
-ask: "Which disposition should the archive/common integration take after RV-3072 exhausted its review rounds?"
-ask-kind: ruling
-ask-since: 2026-10-13
-ask-proposal: "Keep the integration held; prepare strict complete diagnostic and source-root checks for Owner disposition, without a third review."
-answer: "accepted - Take the prepared strict classification into production now, as its own change, with one bounded verification: the diff is the prepared fix, its checks pass, nothing else changes; no new finding below P1. RV-3072 gets no third round."
-answered: 2026-10-15
-answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
@@ -92,6 +85,11 @@ the limits are said: three runs, one model family, an invented project.
 **answered** — accepted - with a change: in #154 the clause reads (Python on every machine; git on Git; svn's command-line tools on Subversion, where from v0.20.0 git is not needed) · holgo99
 **relation** — accepted with a change
 **signed** — adaec88 · G
+
+**2026-10-15** · Which disposition should the archive/common integration take after RV-3072 exhausted its review rounds?
+**answered** — accepted - Take the prepared strict classification into production now, as its own change, with one bounded verification: the diff is the prepared fix, its checks pass, nothing else changes; no new finding below P1. RV-3072 gets no third round. · holgo99
+**relation** — accepted with a change
+**signed** — fcff753 · G
 
 ## Ship log
 
