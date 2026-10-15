@@ -22,7 +22,24 @@ standup_minutes = 15
 ```
 
 The agenda's first line carries that time and length. The slot in your calendar is yours to make: the tool writes no
-calendar file and posts no notification (R9). **Several repositories?** One slot each, and they must not overlap.
+calendar file and posts no notification (R9). **Several repositories?** One sitting can hold them: the next section.
+
+## Several repositories, one sitting
+
+```
+python3 tools/shoalmark/shoalmark.py --standup ~/code/notes-app ~/work/client-site ~/code/side-project
+```
+
+One agenda, by kind, across the repositories you name — each item with its repository. Each is read as it stands: a
+git repository with its branch and its commit, a Subversion working copy with its revision, a plain folder as it is. A
+folder it cannot read is named with why and counted in nothing. Every count is a repository's own, then added: FM-001 in
+two repositories is two items.
+
+It runs nothing of theirs — no repository's own tool, deriver, hook or configured program, and no fetch — and writes
+nothing, in a repository or anywhere else. So it leaves unread what each repository's own `--standup` reads by those
+means, and says so: whether a git working tree has changes; what you answered or did that is on its way on an answer
+branch — an ask you answered shows until your merge; the pull-request queue; and, where a repository has `[seats]`, who
+asked. You answer in each repository, as ever, and its own `--standup` there tells the rest.
 
 ## What agents do with it
 
