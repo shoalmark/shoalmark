@@ -40,15 +40,50 @@ def r21_dropped(data):
     return head + sep + rest if found else None
 
 
+# FM-054 and FM-007 (v0.20.1): the board's page carries how an answer is proved, read as the gate reads it from the default branch's
+# configuration (`PROOF`, `proof_reading`), and says it before *accept*. The page the 615fb1d baseline writes holds neither, and the
+# board's run of the candidate reads that configuration: the second difference the consumer's snapshots may show, and the one in
+# what is started — every start and `subprocess.run` call the candidate makes inside `proof_reading`, each a read (FM054_READS).
+PAGE_PATH = "work-tracker/index.html"
+PROOF_MARK = b',PROOF={"state": '
+FM054_READS = (("symbolic-ref",), ("rev-parse",), ("config", "--get"), ("cat-file", "--batch"), ("ls-tree",))
+
+
+def fm054_reads(rows):
+    """The starts, or `subprocess.run` calls, FM-054's reading makes: those with `proof_reading` on the tool's own stack."""
+    return [row for row in rows if "proof_reading" in (row.get("product_stack") or [])]
+
+
+def fm054_read(argv):
+    """Whether one argv is a read FM-054's reading of the default branch's configuration may start: git, and one of FM054_READS."""
+    argv = [str(a) for a in argv] if isinstance(argv, list) else []
+    return (len(argv) > 1 and Path(argv[0]).name.lower() in ("git", "git.exe")
+            and any(tuple(argv[1:1 + len(form)]) == form for form in FM054_READS))
+
+
+def fm054_page(baseline, candidate):
+    """FM-054's difference in the board's page: the candidate's page, as the run left it, carries PROOF, and the baseline's does not."""
+    pages = [base64.b64decode(row["page_after"]["bytes_base64"]) if isinstance(row.get("page_after"), dict) else None for row in (baseline, candidate)]
+    return (None not in pages and [hashlib.sha256(p).hexdigest() for p in pages] == [baseline["after"].get(PAGE_PATH), candidate["after"].get(PAGE_PATH)]
+            and PROOF_MARK not in pages[0] and PROOF_MARK in pages[1])
+
+
 def snapshots_match(baseline, candidate):
     """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
     entry and hook — but for R21's difference: INDEX.md after the run may differ where the baseline's, its header line
-    dropped (`r21_dropped`), is the candidate's bytes."""
+    dropped (`r21_dropped`), is the candidate's bytes; and FM-054's: the board's page may differ where the candidate's carries
+    PROOF and the baseline's does not (`fm054_page`)."""
     if baseline["before"] != candidate["before"]:
         return False
     if baseline["after"] == candidate["after"]:
         return True
     old, new = dict(baseline["after"]), dict(candidate["after"])
+    if old.get(PAGE_PATH) != new.get(PAGE_PATH):
+        if not fm054_page(baseline, candidate):
+            return False
+        old.pop(PAGE_PATH, None), new.pop(PAGE_PATH, None)
+        if old == new:
+            return True
     if not (isinstance(old.pop(INDEX_PATH, None), str) and isinstance(new.pop(INDEX_PATH, None), str)) or old != new:
         return False
     old_bytes, new_bytes = (base64.b64decode(row["index_after"]["bytes_base64"]) if isinstance(row.get("index_after"), dict) else None
@@ -215,10 +250,11 @@ def invoke(tool, root, flags, cwd, env):
         for row in report["starts"]:
             if "raw" in row:
                 row["argv"] = read_back(row["raw"])
-    index = root / INDEX_PATH
+    index, page = root / INDEX_PATH, root / PAGE_PATH
     report.update(status=result.returncode, stdout=result.stdout,
                   stderr="".join(line for line in lines if not line.startswith(MARKER)), before=before, after=snapshot(root),
                   index_after=serial(index.read_bytes()) if index.is_file() and not index.is_symlink() else None,
+                  page_after=serial(page.read_bytes()) if page.is_file() and not page.is_symlink() else None,
                   source_sha256=hashlib.sha256(tool.read_bytes()).hexdigest(), flags=flags,
                   invocation_cwd=str(cwd), consumer=str(root), invocation_environment=serial(env))
     return report
@@ -334,8 +370,13 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
                            (before["status"], before["stdout"], before["stderr"]) == (after["status"], after["stdout"], after["stderr"]))
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
-            assert_control(label_prefix + "all actual process argv/effective cwd/env match", strip_stack(before["starts"]) == strip_stack(after["starts"]))
-            assert_control(label_prefix + "run options and actual process results match", strip_stack(before["run_calls"]) == strip_stack(after["run_calls"]))
+            own = lambda entries: [row for row in entries if "proof_reading" not in (row.get("product_stack") or [])]      # FM-054's reads aside
+            assert_control(label_prefix + "all actual process argv/effective cwd/env match — FM-054's reads of the default branch's configuration aside, each a read",
+                           strip_stack(before["starts"]) == strip_stack(own(after["starts"])) and not fm054_reads(before["starts"])
+                           and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"])))
+            assert_control(label_prefix + "run options and actual process results match — FM-054's reads aside, each a read",
+                           strip_stack(before["run_calls"]) == strip_stack(own(after["run_calls"])) and not fm054_reads(before["run_calls"])
+                           and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"])))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
             assert_control(label_prefix + "actual main state/result and selected origin policy match", before["main_returns"] == after["main_returns"]
                            and bool(after["main_returns"]) and after["main_returns"][-1]["ASK_ORIGIN"] is ask)
@@ -379,6 +420,24 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(allowance + "a `> Generated` line below the header, or a second one in it, is not removed and does not match",
                        bool(line) and not snapshots_match(with_index(old, new_index + line.group(0)[1:] + b"\n"), new)
                        and not snapshots_match(with_index(old, old_index.replace(line.group(0), line.group(0) * 2, 1)), new))
+        # FM-054's allowance is held to its difference on the same pair: the page carries PROOF, and only `proof_reading`'s reads are new
+        fm054 = "Git entry FM-054 allowance: "
+        reads = fm054_reads(new["starts"])
+        assert_control(fm054 + "the default run's board reads the default branch's configuration — starts inside `proof_reading`, each a read, which the baseline never makes",
+                       bool(reads) and all(fm054_read(row["argv"]) for row in reads) and not fm054_reads(old["starts"]))
+        unstacked = [dict(row, product_stack=[s for s in row["product_stack"] if s != "proof_reading"]) for row in new["starts"]]
+        strip = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
+        assert_control(fm054 + "the same reads made outside `proof_reading` are not set aside, and do not match the baseline's starts",
+                       strip(old["starts"]) != strip([row for row in unstacked if "proof_reading" not in row["product_stack"]]))
+        writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
+        assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
+                       bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))
+        page = base64.b64decode(new["page_after"]["bytes_base64"]) if isinstance(new.get("page_after"), dict) else b""
+        unproved = page.replace(PROOF_MARK, b',PRUEF={"state": ')
+        as_page = lambda data: dict(new, page_after=serial(data), after=dict(new["after"], **{PAGE_PATH: hashlib.sha256(data).hexdigest()}))
+        assert_control(fm054 + "the candidate's page carries PROOF, and a page that differs from the baseline's without it does not match",
+                       PROOF_MARK in page and snapshots_match(old, new) and not snapshots_match(old, as_page(unproved))
+                       and not snapshots_match(old, dict(as_page(page), page_after=None)))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),
