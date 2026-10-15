@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-10-14 · 47 trackers (47 work).
+> Generated 2026-10-15 · 47 trackers (47 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -20,24 +20,18 @@
 
 *The Owner's. A pass judges every tier against it; only the Owner changes it.*
 
-1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. Work that serves neither waits, and deleting comes before adding ([the rulings of 12 October](evidence/rulings-2026-10-12.md)). A security fix for a released version does not wait: it ships as a patch release on the Owner's word (v0.19.4, 13 October).
+1. v0.20.0 is a simple trust layer for the Owner and an effective workbench for the agents: Subversion without git, and the release archive. For v0.20.0, work that serves neither waits. A security fix for a released version does not wait: it ships as a patch release on the Owner's word (v0.19.4, 13 October).
 2. A pull request merges on a verdict that names what it covers: the reviewed commit, its base, the tier and the checks run, as a Reviewed: line in the commit. The review commit carries the findings, their evidence and dispositions, its limits and who reviewed; a separate file only where the evidence needs one. Critical work takes a Reviewer in a session of its own, never one the building session started, and at most two rounds per finding. Critical means: a release, the gate or hooks, signing and rights, auth, migrations, deploy and secrets tooling, run sheets for the Owner, TRIAGE.md or AGENTS.md rules changed by a seat, and rules and code under a P1 or security tracker. Other code takes one inline Reviewer pass; records take one pass; neither runs re-check rounds: findings are fixed forward and named in the commit. Relevant local checks run before a pull request; the complete suites run in CI, not locally before every pull request. A review of the Owner's own answers and TRIAGE lines reports and never blocks. The Owner merges on a ready line, or over any other verdict with a signed reason.
 3. The trial decides what comes next. Until its findings are in, v0.20.0 holds only what item 1 names (R23); nothing else on Subversion is built, and on Subversion the tool says once what it cannot verify — no signature, and without a server's login no author — and never claims it. What the trial finds is filed as trackers and comes first; the held rulings, the plain folder among them, are looked at again on 20 October.
 4. A seat's question for the Owner goes on the board as an ask, with its proposal, and the seat keeps working; the Owner answers in one sitting. A seat interrupts the Owner only to stop harm.
+5. The v0.20.x releases after v0.20.0 make shoalmark reliable and simpler first, then quick to use: the deletions of the 12 October rulings, each shipped with the quick win that takes its place where one exists, and B1's landing with Copy the prompt. Within a release, deleting comes before adding. A quick win is small, reads only and runs nothing for the Owner, works the same for every harness, says what each version control cannot give, and needs no research.
+6. Research and complex work waits for v0.21.x, each piece starting from a research or design round the Owner allocates: check-ins and silent sessions, switching to a running session, the plain folder.
 
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
 | 1 | P1 | owner | *complicated* | intended | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress |
 | 2 | P1 | build | — | intended, kind | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress |
 | 3 | P1 | build | — | intended, kind | [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress |
-
-### Acts owed to the Owner — with their time
-
-> Due, overdue or missed is the board's to say: it has a clock, and this file has none. `done:` takes an act off.
-
-| ID | Act | Promised | Due | Window |
-|----|-----|----------|-----|--------|
-| [FM-007](FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) | after the scoring, once the key is delivered. | 2026-09-25: accepted - after the scoring, once the key is delivered. | 2026-10-15 18:00:00+02:00 | 60 min |
 
 
 ## Work

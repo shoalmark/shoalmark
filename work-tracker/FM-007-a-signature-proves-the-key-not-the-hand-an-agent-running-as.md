@@ -4,7 +4,7 @@ status: In Progress
 considered: FM-005, FM-006
 tags: security
 tier: P1
-next: owner
+next: build
 triaged: 2026-09-25
 ask: "Which day this week do you set up the hardware key that needs a touch — your answer of 09-22 — so that the key signing your answers stops being a software key in the shared agent?"
 ask-kind: action
@@ -15,6 +15,7 @@ answer: "accepted - after the scoring, once the key is delivered."
 answered: 2026-09-25
 answered-by: holgo99
 due: 2026-10-15T18:00:00+02:00
+done: "2026-10-15T06:22:25+02:00 · `fm/007-hardware-signature-test`@`b9f9516` PR #174 CI green, closed."
 hook: "The gate accepts an answer only from a commit signed by the Owner's key. But a signature proves which key was used, not which hand: an agent running as the Owner on his machine, with his key loaded, signs as him — and with commit.gpgsign true set, every agent commit did, until it was caught. Nothing in git, the forge or the tool can tell the difference. Named by the Owner: a doorway for any rogue agent."
 ---
 
@@ -122,6 +123,9 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 **answered** — accepted - a hardware key that needs a touch · holgo99
 **relation** — accepted the proposal
 
+## Acts
+
+**2026-10-15** · done — `fm/007-hardware-signature-test`@`b9f9516` PR #174 CI green, closed. · after the scoring, once the key is delivered. · due 2026-10-15T18:00:00+02:00 · holgo99
 ## Ship log
 
 | Date | Event |
