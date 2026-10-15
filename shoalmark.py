@@ -5305,16 +5305,13 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
 
 
 WORKTREE_KEYS = {         # a seat's worktree carries its identity in git's own per-worktree settings, `git config --worktree` — `--schema` prints them last
-    "user.name": ("the seat's name", "the author's name on every commit made here; `[seats]` may name a seat by it"),
     "user.email": ("the seat's address in `[seats]`", "who may: the gate reads a commit's rights from its author; the badge of the worktree"),
     "seat.session": ("eight hex characters, or `<parent>/<seat>-<n>` for a sub-agent",
                      "which run: the prepare-commit-msg hook appends it as the `Session:` trailer of every commit made here; `--session new` prints an id"),
     "seat.harness": ("the id the harness gave this seat: Claude Code's session id, or a sub-agent's agent id; Codex's thread id",
                      "which log: whoever spawns the seat writes it, from the spawn's result. `--whoami` opens the one log file whose name carries the id — "
                      "`~/.claude/projects/<slug>/<id>.jsonl`, `…/<session>/subagents/agent-<id>.jsonl`, or `~/.codex/sessions/…/rollout-*-<id>.jsonl` — "
-                     "and reads its newest model and effort, top-level fields only; the hook appends them as `Model:` and `Effort:`. Two files for one id refuse; none is `—`. "
-                     "One harness id is one session: `--whoami` and the hook report another worktree that carries it under another identity"),
-    "gpg.ssh.allowedSignersFile": ("the repository's signers file, `<tracker dir>/allowed_signers`", "the keys a signed identity is verified against"),
+                     "and reads its newest model and effort, top-level fields only; the hook appends them as `Model:` and `Effort:`. Two files for one id refuse; none is `—`"),
 }
 
 
@@ -5324,8 +5321,7 @@ def render_schema():
     return "\n".join(["| Key | Value | Written by | Says |", "|---|---|---|---|"] + rows
                      + ["", f"`{CONFIG_NAME}`, at its top level:", "", "| Key | Value | Says |", "|---|---|---|"]
                      + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()]
-                     + ["", "A seat's worktree, `git config --worktree <key> <value>` — `git worktree add` copies every one from the worktree it is run in, "
-                            "so a new seat's worktree writes each (README, *Sessions*):", "", "| Key | Value | Says |", "|---|---|---|"]
+                     + ["", "A seat's worktree, `git config --worktree <key> <value>`:", "", "| Key | Value | Says |", "|---|---|---|"]
                      + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in WORKTREE_KEYS.items()]
                      + ["", "No key chooses the board's look: a brand is files in its places, the later one winning (`--brand` says which gave "
                             "what). `--brand DIR --from THEME` writes a starter from a theme the tool ships in `brand/themes/`: "

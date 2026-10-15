@@ -179,12 +179,11 @@ def identity_checks(fm, base, docs, check, skip):
     git(parent, "add", "-A")
     git(parent, "-c", f"core.hooksPath={base / 'nohooks'}", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "start\n\nSession: aaaaaaaa")
 
-    # the setup line `--init` prints, and `--schema`: every key named, and the copy said
+    # the setup line `--init` prints: every key named, and the copy said. (`--schema` keeps its text: FM-044's Git entry differential holds it to
+    # its immutable baseline, byte for byte)
     line = next((l for l in init_out.splitlines() if l.startswith("next:")), "")
-    schema = tool(fm, parent, "--schema")[1]
-    check("`--init`'s setup line names every identity key of a seat's worktree and says that `git worktree add` copies them; `--schema` lists all five",
-          all(f"`{k}`" in line for k in (*KEYS, SIGNERS)) and "`git worktree add` copies every one" in line
-          and all(f"| `{k}` |" in schema for k in (*KEYS, SIGNERS)) and "`git worktree add` copies every one" in schema, line[-400:])
+    check("`--init`'s setup line names every identity key of a seat's worktree and says that `git worktree add` copies them",
+          all(f"`{k}`" in line for k in (*KEYS, SIGNERS)) and "`git worktree add` copies every one" in line, line[-400:])
 
     # the defect's fact: git's own `worktree add` copies the parent's whole `config.worktree`
     git(parent, "worktree", "add", "-q", "--detach", str(child))
