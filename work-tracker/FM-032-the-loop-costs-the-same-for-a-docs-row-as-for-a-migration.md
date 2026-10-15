@@ -5,15 +5,7 @@ considered: FM-031, FM-024, FM-027, FM-005
 tags: process
 triaged: 2026-10-13
 tier: P1
-next: owner
-ask: "After a READY WITH FINDINGS verdict, how does a fix of its findings reach main without a second Reviewer pass?"
-ask-kind: ruling
-ask-since: 2026-09-28
-ask-options: "the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts | a docs verdict with only sub-P1 findings and exact fixes reads READY WITH FINDINGS; no fix commit before the merge | as today: every commit after a verdict is a new head; the same seat re-checks the lines the finding names"
-ask-proposal: "the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts"
-answer: "accepted - the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts"
-answered: 2026-09-28
-answered-by: holgo99
+next: build
 rank: 1
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
@@ -21,6 +13,8 @@ hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merg
 # FM-032 — the loop costs the same for a docs row as for a migration — overregulation, named by the Owner
 
 ## What is true now
+
+**2026-10-15 — next: build: defect 3.** The S5 answer is carried by R2 and the current path's line 2: findings are fixed forward and named in the commit, with no decision file.
 
 **2026-10-15 — every change to FM-007's tracker runs the full suites, though the one test that reads it cannot break from one; nothing is built.**
 
@@ -231,6 +225,11 @@ scorer; the Owner took it out of this branch (19:16:21), so it stays on main as 
 **answered** — accepted - one Reviewer docs pass until FM-007's hardware key signs your answers, the signature alone after — written into path 3 · holgo99
 **relation** — accepted the proposal
 **signed** — 97fa87a · G
+
+**2026-09-28** · After a READY WITH FINDINGS verdict, how does a fix of its findings reach main without a second Reviewer pass?
+**answered** — accepted - the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts · holgo99
+**relation** — accepted the proposal
+**signed** — 1061472 · G
 
 ## Ship log
 

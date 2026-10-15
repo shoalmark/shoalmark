@@ -4,14 +4,6 @@ status: In Progress
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
 next: wait
-ask: "Does a sourced raise that names a signed rule it undermines trigger a same-day pass, as a now does?"
-ask-kind: ruling
-ask-since: 2026-09-24
-ask-options: "a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass | every raise waits for the next pass | a raise re-ranks nothing; the pass reads it when it runs"
-ask-proposal: "a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass"
-answer: "accepted - a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass"
-answered: 2026-09-24
-answered-by: holgo99
 triaged: 2026-10-13
 tier: P2
 hook: "On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four pieces of work was built before any pass had judged it, one of them under no tracker at all, and the record said nothing."
@@ -104,6 +96,11 @@ Today the seats read *"all four now"* and *"all three rules now"* as leave to bu
 **2026-09-24** · Does a signed answer that says *now* count as the judgement?
 **answered** — accepted - a pass judges before the first build commit, the same day as a now, and a pass that finds it not ready asks you again · holgo99
 **relation** — accepted the proposal
+
+**2026-09-24** · Does a sourced raise that names a signed rule it undermines trigger a same-day pass, as a now does?
+**answered** — accepted - a raise naming a signed rule re-judges the tracker the same day; any other raise waits for the next pass · holgo99
+**relation** — accepted the proposal
+**signed** — 9e48ee8 · G
 
 ## Ship log
 

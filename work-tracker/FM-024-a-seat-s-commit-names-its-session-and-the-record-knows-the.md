@@ -8,14 +8,6 @@ triaged: 2026-10-13
 tier: P2
 done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
 next: wait
-ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
-ask-kind: ruling
-ask-since: 2026-09-28
-ask-options: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami | the status line only: --statusline and its install, no rule and no --whoami | the rule only: To: <session> <seat> (<worktree>) in AGENTS.md and --whoami, no status line"
-ask-proposal: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"
-answer: "accepted - all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"
-answered: 2026-09-28
-answered-by: holgo99
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -26,6 +18,8 @@ and trace back to the record; what if I run a session in parallel with another P
 it was? Let us reason about how to solve this right from the start."* Written to be attacked.
 
 ## What is true now
+
+**2026-10-15 — what is left of the answer of 28 September:** `--statusline` and its install, not built; they wait for R6, held to 20 October.
 
 **2026-10-15 — a worktree a seat adds carries the seat's whole identity; nothing is built.** It is fixed first on the session list's branch in v0.20.1 (FM-023's table of 2026-10-15).
 
@@ -443,6 +437,11 @@ row.
 The paste's own stamp, *≈06:55 CEST*, is its writer's estimate, kept as written; it reached this session at 06:48:37 (the transcript's stamp), the time this record and the ledger's row 56 use.
 
 The Principal's counsel, disclosed as such: the first option — all three, as a slice on this tracker (its problem is the one that bit on 2026-09-28: two sessions of one seat are one author); to settle in the build, as the Auditor names them: PortDive ignores `.claude/` except output styles, and the cwd a project statusLine command runs in. Code tier, the full loop; the Auditor seals its verification plan before the build. Nothing is built before his answer and the pass that judges the slice.
+
+**2026-09-28** · Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?
+**answered** — accepted - all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami · holgo99
+**relation** — accepted the proposal
+**signed** — 4127dba · G
 
 ## Ship log
 
