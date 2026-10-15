@@ -5241,6 +5241,34 @@ viewer.from_move: aus dem Schritt
 viewer.true_now: was jetzt gilt
 viewer.no_move: ohne benannten Schritt
 viewer.none_in_progress: nichts in Arbeit
+day.standup.title: Standup
+day.standup.row: "ein Prompt, der eine Sitzung bittet, Ihren Standup nach der Tagesordnung oben zu halten, einen Punkt nach dem anderen"
+day.standup.button: Standup-Prompt
+day.standup.spoken: den Standup-Prompt kopieren
+day.closeout.title: Tagesabschluss
+day.closeout.row: "ein Prompt, der eine Sitzung bittet, den Tag aus dem Verlauf vorzulesen und nichts zu ändern"
+day.closeout.button: Abschluss-Prompt
+day.closeout.spoken: den Abschluss-Prompt kopieren
+day.standup.dialog: Der Standup-Prompt
+day.closeout.dialog: Der Abschluss-Prompt
+day.paste: "Fügen Sie ihn in die Sitzung ein, die Sie für dieses Repository nutzen — Claude Code, Codex oder eine andere —, auf dem Rechner, auf dem das Repository liegt."
+day.asks: Worum er bittet
+day.standup.asks: "Er bittet die Sitzung, einen Punkt nach dem anderen zu nehmen und auf Ihr Wort zu warten. Ein Prompt bittet; er kann keine Sitzung zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Ihre Entscheidung hält der Befehl fest, den Sie in Ihrem eigenen Terminal ausführen."
+day.closeout.asks: "Er bittet die Sitzung, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Sitzung über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält Ihre Zahl getragener Nachrichten aus den Händen der Sitzung. Eine Nachricht ist nie eine Antwort."
+day.runs: Was die Sitzung ausführen soll
+day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
+day.closeout.runs: "{0} und {1}, und ein git log des Standardzweigs. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
+day.not: Was der Knopf nicht tut
+day.not.text: "Er kopiert Text. Er führt nichts aus, plant nichts und sendet nichts; wann Sie sich setzen, entscheiden Sie."
+day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standardzweigs füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
+day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
+day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
+day.refused.long: "ist länger als {0} Zeichen"
+day.refused.none: ist hier nicht bekannt
+day.value.name: der Ordnername des Repositorys
+day.value.path: sein Pfad
+day.value.cmd: der Befehl des Werkzeugs
+day.value.branch: der Name des Standardzweigs
 """
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
 # a wordmark as a person draws one: the mark stroked, the name filled, both in the page's ink; an id the page also uses
@@ -6088,7 +6116,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     tracker(root, "AP-090", extra=f'next: owner\nask: "Welches Format?"\nask-kind: ruling\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
     run(root); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
-    two_ = page.split("const sign=")[1].split('d.querySelector(".copy")')[0]
+    two_ = page.split("const sign=")[1].split("clip(d,line)")[0]          # the second screen, up to its copy through the shared clipboard path (FM-030)
     menus_ = re.findall(r"<menu>(.*?)</menu>", two_)
     check("FM-013 · the built board carries the second screen: its words in the labels, the branch the board was built from, and exactly one button in its menu — Done",
           '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
@@ -14343,6 +14371,16 @@ check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_ex
 # R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
 import test_r9_removals
 for _label, _ok, _detail in test_r9_removals.run_checks():
+    if _ok is None:
+        _skipped(_label, 1, _detail)
+    else:
+        check(_label, _ok)
+        if not _ok and _detail:
+            print(f"        {_detail}")
+
+# FM-030, R9's two quick wins: the stand-up and close-out prompts, copied from the board — their class test, a program of its own for its mutants
+import test_day_prompts
+for _label, _ok, _detail in test_day_prompts.run_checks():
     if _ok is None:
         _skipped(_label, 1, _detail)
     else:

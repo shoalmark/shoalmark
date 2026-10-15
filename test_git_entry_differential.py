@@ -30,6 +30,20 @@ POISON_KEYS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_
 # bare `>` line. The one difference the consumer's snapshots may show; CI run 38744072206 failed the two default cases on it.
 INDEX_PATH = "work-tracker/INDEX.md"
 R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
+# FM-030, R9's two quick wins: the candidate's board page carries the stand-up's and the close-out's rows and dialogs — four inert `<template>`s
+# after the dialog —, the prompts they copy (`,DAY={…}` before `BRANCH=` in the script's data), its twenty-eight `day.*` words in the label table, and ten lines of
+# script, each marked `FM-030 day`; the answer's
+# second screen copies through their shared clipboard helper, one line in place of its own three. Taken out, the page is the baseline's.
+BOARD_PATH = "work-tracker/index.html"
+DAY_TEMPLATE = re.compile(rb'\n<template id="day-(?:row-)?(?:standup|closeout)">.*?</template>', re.S)
+DAY_DATA = re.compile(rb",DAY=\{[^{}]*\}(?=,BRANCH=)")
+DAY_LINE = re.compile(rb"\n[^\n]*FM-030 day[^\n]*(?=\n)")
+DAY_LABEL = re.compile(rb', "day\.[a-z.]+": "(?:[^"\\\\]|\\\\.)*"')         # each of its words in the page's label table, `L`
+DAY_LABELS = 28
+DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
+            b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
+            b'        .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);\n'
+            b'      d.querySelector(".copy").onclick=copy;copy();d.querySelector(".go").focus()};\n')
 
 
 def r21_dropped(data):
@@ -40,29 +54,49 @@ def r21_dropped(data):
     return head + sep + rest if found else None
 
 
+def day_dropped(data):
+    """The candidate's board page without FM-030's day: its four templates, its prompts' data, its ten marked lines and its twenty-eight words in
+    the label table taken out, and the
+    answer's second screen's own clipboard lines put back in place of the shared helper's call. None where any of them is not there as written."""
+    data, templates = DAY_TEMPLATE.subn(b"", data)
+    data, held = DAY_DATA.subn(b"", data)
+    data, lines = DAY_LINE.subn(b"", data)
+    data, words = DAY_LABEL.subn(b"", data)
+    if (templates, held, lines, words) != (4, 1, 10, DAY_LABELS) or data.count(DAY_SIGN[0]) != 1:
+        return None
+    return data.replace(*DAY_SIGN)
+
+
+def differs_only_by(baseline, candidate, path, key, rule):
+    """Whether `path` after the run is the same file in both, or a file in both whose bytes, recorded under `key`, `rule(old, new)` allows."""
+    old_hash, new_hash = baseline["after"].get(path), candidate["after"].get(path)
+    if old_hash == new_hash:
+        return True
+    old_bytes, new_bytes = (base64.b64decode(row[key]["bytes_base64"]) if isinstance(row.get(key), dict) else None for row in (baseline, candidate))
+    return (isinstance(old_hash, str) and isinstance(new_hash, str) and old_bytes is not None and new_bytes is not None
+            and hashlib.sha256(old_bytes).hexdigest() == old_hash and hashlib.sha256(new_bytes).hexdigest() == new_hash and rule(old_bytes, new_bytes))
+
+
 def snapshots_match(baseline, candidate):
     """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
-    entry and hook — but for R21's difference: INDEX.md after the run may differ where the baseline's, its header line
-    dropped (`r21_dropped`), is the candidate's bytes."""
+    entry and hook — but for two named differences: INDEX.md after the run may differ where the baseline's, its header line
+    dropped (`r21_dropped`, R21), is the candidate's bytes; and the board page where the candidate's, FM-030's day taken out
+    (`day_dropped`), is the baseline's bytes."""
     if baseline["before"] != candidate["before"]:
         return False
     if baseline["after"] == candidate["after"]:
         return True
     old, new = dict(baseline["after"]), dict(candidate["after"])
-    if not (isinstance(old.pop(INDEX_PATH, None), str) and isinstance(new.pop(INDEX_PATH, None), str)) or old != new:
-        return False
-    old_bytes, new_bytes = (base64.b64decode(row["index_after"]["bytes_base64"]) if isinstance(row.get("index_after"), dict) else None
-                            for row in (baseline, candidate))
-    return (old_bytes is not None and new_bytes is not None
-            and hashlib.sha256(old_bytes).hexdigest() == baseline["after"][INDEX_PATH]
-            and hashlib.sha256(new_bytes).hexdigest() == candidate["after"][INDEX_PATH]
-            and r21_dropped(old_bytes) == new_bytes)
+    for path in (INDEX_PATH, BOARD_PATH):
+        old.pop(path, None), new.pop(path, None)
+    return (old == new and differs_only_by(baseline, candidate, INDEX_PATH, "index_after", lambda o, n: r21_dropped(o) == n)
+            and differs_only_by(baseline, candidate, BOARD_PATH, "board_after", lambda o, n: day_dropped(n) == o))
 
 
 def with_index(observed, data, path=INDEX_PATH):
     """A copy of an observed run whose file `path` held `data` after the run — for the allowance's controls."""
     after = dict(observed["after"], **{path: hashlib.sha256(data).hexdigest()})
-    return dict(observed, after=after, **({"index_after": serial(data)} if path == INDEX_PATH else {}))
+    return dict(observed, after=after, **({"index_after": serial(data)} if path == INDEX_PATH else {"board_after": serial(data)} if path == BOARD_PATH else {}))
 
 
 def remove_tree(path):
@@ -215,10 +249,11 @@ def invoke(tool, root, flags, cwd, env):
         for row in report["starts"]:
             if "raw" in row:
                 row["argv"] = read_back(row["raw"])
-    index = root / INDEX_PATH
+    index, page = root / INDEX_PATH, root / BOARD_PATH
     report.update(status=result.returncode, stdout=result.stdout,
                   stderr="".join(line for line in lines if not line.startswith(MARKER)), before=before, after=snapshot(root),
                   index_after=serial(index.read_bytes()) if index.is_file() and not index.is_symlink() else None,
+                  board_after=serial(page.read_bytes()) if page.is_file() and not page.is_symlink() else None,
                   source_sha256=hashlib.sha256(tool.read_bytes()).hexdigest(), flags=flags,
                   invocation_cwd=str(cwd), consumer=str(root), invocation_environment=serial(env))
     return report
@@ -379,6 +414,16 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(allowance + "a `> Generated` line below the header, or a second one in it, is not removed and does not match",
                        bool(line) and not snapshots_match(with_index(old, new_index + line.group(0)[1:] + b"\n"), new)
                        and not snapshots_match(with_index(old, old_index.replace(line.group(0), line.group(0) * 2, 1)), new))
+        # FM-030's allowance, held the same way: the page differs by the day's additions alone, and no variant below matches.
+        old_page, new_page = (base64.b64decode(row["board_after"]["bytes_base64"]) if isinstance(row.get("board_after"), dict) else b"" for row in (old, new))
+        day = "Git entry FM-030 day allowance: "
+        assert_control(day + "the default run's board page differs from the baseline's by the stand-up's and the close-out's rows, dialogs, prompts and marked "
+                       "script lines alone, and equal snapshots still match",
+                       bool(old_page) and old_page != new_page and day_dropped(new_page) == old_page and snapshots_match(old, new) and snapshots_match(new, new))
+        assert_control(day + "a candidate page that also changes one byte outside the day, carries a fifth template, or drops one line's mark does not match",
+                       not snapshots_match(old, with_index(new, new_page.replace(b'<dialog id="dlg"></dialog>', b'<dialog id="dlg" open></dialog>', 1), BOARD_PATH))
+                       and not snapshots_match(old, with_index(new, new_page.replace(b'\n<template id="day-standup">', b'\n<template id="day-closeout"></template>\n<template id="day-standup">', 1), BOARD_PATH))
+                       and not snapshots_match(old, with_index(new, new_page.replace(b"   // FM-030 day\n", b"\n", 1), BOARD_PATH)))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),

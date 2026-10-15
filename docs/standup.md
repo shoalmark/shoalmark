@@ -24,6 +24,11 @@ standup_minutes = 15
 The agenda's first line carries that time and length. The slot in your calendar is yours to make: the tool writes no
 calendar file and posts no notification (R9). **Several repositories?** One slot each, and they must not overlap.
 
+On the board, the box of what waits for you carries two buttons: **stand-up prompt**, before the sessions of the last day, and
+**close-out prompt**, at its end. Each copies a fixed prompt for the session you use — Claude Code, Codex or another: one asks it
+to hold your sitting from this agenda, one item at a time; the other, to read the day back from the record and change nothing.
+Neither runs anything, and a message is never an answer: what records your decision is the command you run yourself.
+
 ## What agents do with it
 
 Before the standup, every question to you is written as an `ask:` in its work item — one sentence you can answer.

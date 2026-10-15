@@ -26,6 +26,12 @@ Die erste Zeile der Tagesordnung trägt diese Uhrzeit und Dauer. Den Termin in I
 Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Jedes bekommt
 einen eigenen Termin, und sie dürfen sich nicht überschneiden.
 
+Auf der Tafel trägt der Kasten mit dem, was auf Sie wartet, zwei Knöpfe: **Standup-Prompt** vor den Sitzungen des letzten Tages
+und **Abschluss-Prompt** an seinem Ende. Jeder kopiert einen festen Prompt für die Sitzung, die Sie nutzen — Claude Code, Codex
+oder eine andere: der eine bittet sie, Ihren Standup nach dieser Tagesordnung zu halten, einen Punkt nach dem anderen; der andere,
+den Tag aus dem Verlauf vorzulesen und nichts zu ändern. Keiner führt etwas aus, und eine Nachricht ist nie eine Antwort: Ihre
+Entscheidung hält der Befehl fest, den Sie selbst ausführen. Die Prompts sind englisch.
+
 ## Was die Agenten damit tun
 
 Vor dem Standup steht jede Frage an Sie als `ask:` im Arbeitspaket: ein Satz, den Sie beantworten können. Zwischen den
