@@ -36,10 +36,11 @@ folder it cannot read is named with why and counted in nothing. Every count is a
 two repositories is two items.
 
 It runs nothing of theirs — no repository's own tool, deriver, hook or configured program, and no fetch — and writes
-nothing, in a repository or anywhere else. So it leaves unread what each repository's own `--standup` reads by those
-means, and says so: whether a git working tree has changes; what you answered or did that is on its way on an answer
-branch — an ask you answered shows until your merge; the pull-request queue; and, where a repository has `[seats]`, who
-asked. You answer in each repository, as ever, and its own `--standup` there tells the rest.
+nothing, in a repository or anywhere else. It says what that leaves unread: whether a git working tree has changes,
+which `git status` there tells; and what each repository's own `--standup` reads by those means — what you answered or
+did that is on its way on an answer branch (an ask you answered shows until your merge), the pull-request queue, and,
+where a repository has `[seats]`, who asked. You answer in each repository, as ever, and its own `--standup` there tells
+the rest.
 
 ## What agents do with it
 

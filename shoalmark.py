@@ -2172,8 +2172,8 @@ STANDUP_GIT = (("rev-parse", "--verify", "-q", "HEAD"),                 # its co
                ("branch", "--show-current"),                           # its branch, as `built_on` reads it
                ("rev-parse", "--absolute-git-dir", "--git-common-dir"))  # its git directories, which the reading rule keeps out of (`git_dirs`)
 STANDUP_NOT_READ = ("not read here: whether a git working tree has changes (`git status` there tells it); what you answered or did that is on its "
-                    "way on a repository's answer branches — an ask you answered shows here until your merge; the pull-request queue, which "
-                    "fetches. `--standup` and `--queue` in that repository read them")
+                    "way on a repository's answer branches — an ask you answered shows here until your merge (`--standup` there reads it); the "
+                    "pull-request queue, which fetches (`--queue` there reads it)")
 STANDUP_NOT_RUN = ("not run here: a repository's own tool, its deriver — `--standup` in that repository still runs it —, its hooks, or a program "
                    "its configuration names; nothing was written")
 STANDUP_SEATS = "who asked is not checked here (`[seats]`) — `--standup` there checks it"
@@ -2183,8 +2183,8 @@ _STANDUP_WIRE = [False, False, False]   # on while `--standup DIR …` reads one
 def standup_judge(event, args):
     """What `standup_tripwire` decides for one event while one folder is read: nothing, or `ReadOnlyRun`. No program but a read of `STANDUP_GIT`
     in that repository, or Subversion's one local status there; no network; nothing written, made, moved or removed, anywhere; no file of the
-    repository opened, nor a folder of it listed, but a regular one reached through no symlink — the board's run's own rules (`board_judge`), with
-    its writes and two of its git reads taken away."""
+    repository opened, nor a folder of it listed, but a regular one reached through no symlink — the board's run's rules (`board_judge`) without
+    its writes, and with its git narrowed from `read_only_git` to the three argument lists of `STANDUP_GIT`."""
     why = ""
     if event == "subprocess.Popen":
         argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]

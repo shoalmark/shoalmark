@@ -38,12 +38,12 @@ Revision, ein einfacher Ordner, wie er ist. Ein Ordner, der sich nicht lesen lä
 nirgends gezählt. Jede Zahl gehört einem Repository und wird dann addiert: FM-001 in zwei Repositories sind zwei Punkte.
 
 Es führt nichts von ihnen aus — kein eigenes Werkzeug eines Repositorys, keinen Deriver, keinen Hook und kein
-konfiguriertes Programm, und es holt nichts — und es schreibt nichts, weder in einem Repository noch anderswo. Darum
-lässt es ungelesen, was das eigene `--standup` eines Repositorys auf diesen Wegen liest, und sagt es: ob ein
-git-Arbeitsbaum Änderungen hat; was Sie beantwortet oder getan haben und auf einem Antwort-Branch unterwegs ist — eine
-Frage, die Sie beantwortet haben, steht hier bis zu Ihrem Merge; die Warteschlange der Pull Requests; und, wo ein
-Repository `[seats]` hat, wer gefragt hat. Sie antworten in jedem Repository wie bisher, und sein eigenes `--standup`
-dort sagt den Rest.
+konfiguriertes Programm, und es holt nichts — und es schreibt nichts, weder in einem Repository noch anderswo. Es sagt,
+was dadurch ungelesen bleibt: ob ein git-Arbeitsbaum Änderungen hat, was `git status` dort sagt; und was das eigene
+`--standup` eines Repositorys auf diesen Wegen liest — was Sie beantwortet oder getan haben und auf einem Antwort-Branch
+unterwegs ist (eine Frage, die Sie beantwortet haben, steht hier bis zu Ihrem Merge), die Warteschlange der Pull
+Requests und, wo ein Repository `[seats]` hat, wer gefragt hat. Sie antworten in jedem Repository wie bisher, und sein
+eigenes `--standup` dort sagt den Rest.
 
 ## Was die Agenten damit tun
 
