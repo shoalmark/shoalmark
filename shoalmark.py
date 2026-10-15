@@ -3096,9 +3096,12 @@ def answer_signing(name, email):
 
 def proof_page():
     """What the board's page carries of `answer_proof` (`PROOF`): the state, the label of each line of the second screen that says how the
-    commit is proved (`PROOF_KEYS`), the terminal's word it previews, and what its check asks git for — "" where it previews or checks nothing."""
+    commit is proved (`PROOF_KEYS`), the terminal's word it previews, and what its check asks git for — "" where it previews or checks nothing;
+    and for the proof line said before *accept* (FM-007, the quick-wins design of 15 October), in the heading of *waiting for you* and in the
+    answer dialog: the state's word (`proof.<state>`) and, under *author only*, its consequence (`proof.author.why`), else ""."""
     state = answer_proof()
-    return {"state": state, "keys": PROOF_KEYS[state], "said": PROOF_SAID.get(state, ""), "format": PROOF_FORMAT.get(state, "")}
+    return {"state": state, "keys": PROOF_KEYS[state], "said": PROOF_SAID.get(state, ""), "format": PROOF_FORMAT.get(state, ""),
+            "word": f"proof.{state}", "why": "proof.author.why" if state == "author" else ""}
 
 
 def owner_change(tid, t, how):
@@ -3660,6 +3663,8 @@ tr.c td:first-child{padding-left:20px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 /* an act that is a promise: what they promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
 #p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
+/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */
+#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--coral)}#p .cq{display:inline-block;padding-left:2ch}#dlg .cq{margin:0 0 8px}
 #p summary{cursor:pointer}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
@@ -3795,6 +3800,7 @@ function draw(){
         +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
       d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
         <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
+        <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}
         ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
         :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
         <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
@@ -3855,7 +3861,10 @@ function draw(){
         sign(d,id,`${cmd} --revoke ${id} ${sq(why)}`,w[0]=="done"?`done revoked: ${why}`:`answered: revoked - ${why}`,w[0]=="done"?"revoke.done":"revoke.answer")};
       d.showModal()};
     window.REV=rev;
-    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
+    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")
+      // FM-007: how an answer here is proved — the same for every ask on one repository's board, so said once, here, before *accept*:
+      // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour's (PROOF, `proof_page`)
+      +" · "+lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)+(PROOF.why?`\n<span class="cq">${l(PROOF.why)}</span>`:"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])))
@@ -4024,6 +4033,10 @@ LABELS = {
     "answer.give.step.commit.none": "with no version control, nothing records who wrote them",
     "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.",
     "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.",
+    # how an answer here is proved, said before *accept* (FM-007): a state, never *proves: signed* — a signature proves the key, not the hand
+    "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}",
+    "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author",
+    "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name",
     "answer.done": "Done",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.shipped": "shipped", "story.closed": "closed", "story.open": "open", "story.parked": "parked",

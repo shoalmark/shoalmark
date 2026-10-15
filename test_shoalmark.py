@@ -5195,6 +5195,13 @@ answer.give.step.commit.login: "Autor des Commits ist Ihre Server-Anmeldung, wie
 answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"
 answer.give.check.text: "{0} gibt Ihren Namen aus — den Autor, den git meldet, eine Zeichenkette, die jeder eintippen kann."
 answer.give.fail.text: "Er meldet, was ihn abgewiesen hat, und nimmt zurück, was er geschrieben hat; Ihre Worte werden erneut ausgegeben, mit dem Befehl, der sie wieder gibt."
+proof.here: "Ihre Antworten hier: {0}"
+proof.dialog: "Ihre Antwort hier: {0}"
+proof.signed: signiert
+proof.author: nur der Autor
+proof.login: Server-Anmeldung
+proof.none: kein Autor
+proof.author.why: "eine Antwort hier belegt nur den Autor: jede Sitzung, die hier committen kann, kann eine in Ihrem Namen schreiben"
 answer.done: Fertig
 col.id: Id
 col.tier: Stufe

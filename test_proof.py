@@ -103,6 +103,10 @@ def screen_lines(fm, proof, german):
     for lang, labels in (("en", fm.LABELS), ("de", {**fm.LABELS, **german})):
         for surface, key in proof["keys"].items():
             out[f"{lang} {surface}"] = labels.get(key, "") if key else ""
+        word = labels.get(proof["word"], "")              # FM-007: the proof line, before *accept* — the heading, the answer dialog, the consequence
+        out[f"{lang} heading"] = labels.get("proof.here", "").replace("{0}", word)
+        out[f"{lang} dialog"] = labels.get("proof.dialog", "").replace("{0}", word)
+        out[f"{lang} consequence"] = labels.get(proof["why"], "") if proof["why"] else ""
     out["end"] = f"  {proof['said']}, on `answer/ap-001`, pushed" if proof["said"] else ""
     out["check"] = f"git log -1 --format={proof['format']} answer/ap-001" if proof["format"] else ""
     return out
@@ -140,12 +144,18 @@ def table(fm, rows=((True, True), (True, False), (False, True), (False, False)))
                 continue
             if proof["state"] != want or proof["keys"] != fm.PROOF_KEYS[want]:
                 bad.append(f"{name}: the page reads {proof['state']!r}, the default branch {want!r}")
+            if proof["word"] != f"proof.{want}" or proof["why"] != ("proof.author.why" if want == "author" else ""):
+                bad.append(f"{name}: the proof line reads {proof['word']!r}, its consequence {proof['why']!r}")
             lines = screen_lines(fm, proof, german)
             for surface, text in lines.items():
                 if not trunk_signed and text and SIGNED_WORDS.search(text):
                     bad.append(f"{name}: the second screen's {surface} reads {text!r}")
-            if trunk_signed and not (lines["end"].startswith("  signed, on") and "%G?" in lines["check"] and "signed" in lines["en commit"]):
-                bad.append(f"{name}: the second screen does not say signed where origin/main asks for it ({lines['end']!r}, {lines['check']!r})")
+            if trunk_signed and not (lines["end"].startswith("  signed, on") and "%G?" in lines["check"] and "signed" in lines["en commit"]
+                                     and lines["en heading"] == "your answers here: signed" and lines["en dialog"] == "your answer here: signed"
+                                     and not lines["en consequence"]):
+                bad.append(f"{name}: the board does not say signed where origin/main asks for it ({lines['en heading']!r}, {lines['end']!r}, {lines['check']!r})")
+            if not trunk_signed and not (lines["en heading"] == "your answers here: author only" and lines["en consequence"].startswith("an answer here proves the author only")):
+                bad.append(f"{name}: the board's proof line reads {lines['en heading']!r} — {lines['en consequence']!r}")
             code, out, err = run(fm, root, "--answer", "AP-001", "accept")
             word = fm.PROOF_SAID[want]
             if code != 0 or not out.startswith(f"AP-001 answered: accepted\n  {word}, on `answer/ap-001`, pushed\n"):
@@ -195,7 +205,8 @@ def other_backends(fm):
         (root / "docs/work-tracker").mkdir(parents=True)
         (root / "docs/work-tracker/AP-001-x.md").write_text(ASK, encoding="utf-8")
         proof, code, err = page_proof(fm, root)
-        if code != 0 or not proof or proof["state"] != "none" or proof["said"] or proof["format"] or proof["keys"] != fm.PROOF_KEYS["none"]:
+        if code != 0 or not proof or proof["state"] != "none" or proof["said"] or proof["format"] or proof["keys"] != fm.PROOF_KEYS["none"] \
+                or proof["word"] != "proof.none" or proof["why"] or fm.LABELS["proof.none"] != "no author":
             bad.append(f"no version control: the page reads {proof} ({code}, {err.strip()[-160:]!r})")
     if shutil.which("svn") and shutil.which("svnadmin"):
         with tempfile.TemporaryDirectory() as tmp:
@@ -209,7 +220,8 @@ def other_backends(fm):
             subprocess.run(["svn", "add", "-q", "shoalmark.toml", "docs"], cwd=root, check=True, capture_output=True)
             subprocess.run(["svn", "commit", "-q", "-m", "the ask", "--username", "s@x"], cwd=root, check=True, capture_output=True)
             proof, code, err = page_proof(fm, root)
-            if code != 0 or not proof or proof["state"] != "login" or proof["said"] or proof["format"] or proof["keys"] != fm.PROOF_KEYS["login"]:
+            if code != 0 or not proof or proof["state"] != "login" or proof["said"] or proof["format"] or proof["keys"] != fm.PROOF_KEYS["login"] \
+                    or proof["word"] != "proof.login" or proof["why"] or fm.LABELS["proof.login"] != "server login":
                 bad.append(f"Subversion: the page reads {proof} ({code}, {err.strip()[-160:]!r})")
     else:
         bad.append(None)                               # no svn here: said by the caller as a skip
@@ -242,6 +254,20 @@ def template_reads_proof(fm):
     bad += [f"the second screen does not read {w}" for w in ("P.title", "P.act", "P.intro", "P.commit", "P.check", "P.fail", "PROOF.said", "PROOF.format") if w not in two]
     if "touch" in fm.LABELS["answer.sign.step.commit"] or "Berührung" in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))["answer.sign.step.commit"]:
         bad.append("the signed commit step still promises a touch")
+    # FM-007: the proof line said before *accept* — once, in the heading of *waiting for you*, and in the answer dialog before OK —
+    # from PROOF and its labels, a state in ink, its consequence the line beneath in the warning colour, never a box
+    page = fm.HTML_PAGE
+    heading, dialog = page.split('l("waiting.title")}: ${w.length}</b>`')[-1].split("w.slice(0,14)")[0], page.split("const act=")[1].split("const sign=")[0]
+    if 'lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)' not in heading or "l(PROOF.why)" not in heading or 'class="cq"' not in heading:
+        bad.append("the heading of *waiting for you* does not say the proof from PROOF")
+    if dialog.find('lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)') < 0 or not -1 < dialog.find("proof.dialog") < dialog.find('l("answer.ok")') \
+            or "l(PROOF.why)" not in dialog:
+        bad.append("the answer dialog does not say the proof before OK")
+    if page.count("proof.here") != 1 or any(w in page for w in ("your answers here", "your answer here", '"author only', ">author only", "`author only")):
+        bad.append("the proof line is said more than once on one repository's board, or as a literal, not a label")
+    cq = re.findall(r"\.cq\{[^}]*\}", page)
+    if not cq or any("border" in c or "background" in c for c in cq) or ".cq{color:var(--coral)}" not in page:
+        bad.append(f"the consequence is not a line in the warning colour (saw {cq})")
     return bad
 
 
