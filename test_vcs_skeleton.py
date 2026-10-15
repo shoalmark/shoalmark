@@ -787,11 +787,15 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
         def commit(message):
             git("add", "."); git("commit", "-qm", message); return git("rev-parse", "HEAD")
 
+        refused = [""]                                 # what the last read of history refused with, for the check's own line
+
         def passes(source, keys):
             try:
                 history = scanner.previous_allowlists(fixture)
-            except (ValueError, OSError):
+            except scanner.RatchetHistoryError as error:   # that type only: the check fails on its own line with its text (RV-3251)
+                refused[0] = f" (refused: {error})"
                 return False
+            refused[0] = ""
             return not scanner.ratchet_problems(source, keys, ceiling, history)
 
         def proof_refuses():
@@ -806,11 +810,14 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
         (root / "record.txt").write_text("before introduction\n", encoding="utf-8"); first = commit("before introduction")
         write(original, allowed)
         with patch.object(scanner, "HERE", root):
-            check("RV-3088: readable first introduction with no earlier list succeeds", passes(original, allowed))
+            ok_ = passes(original, allowed)
+            check("RV-3088: readable first introduction with no earlier list succeeds" + refused[0], ok_)
             initial = commit("introduce launch ratchet")
-            check("RV-3088: readable absent introduction parent succeeds", passes(original, allowed))
+            ok_ = passes(original, allowed)
+            check("RV-3088: readable absent introduction parent succeeds" + refused[0], ok_)
             git("checkout", "-qb", "shrinking"); write(smaller, small_keys); shrunk = commit("migrate historical version launch")
-            check("RV-3088: committed one-to-zero fixture migration succeeds", passes(smaller, small_keys))
+            ok_ = passes(smaller, small_keys)
+            check("RV-3088: committed one-to-zero fixture migration succeeds" + refused[0], ok_)
             write(original, allowed)
             check("RV-3088: working-tree resurrection refuses readable history", not passes(original, allowed))
             hidden = root / ".git-hidden"
@@ -843,7 +850,8 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
             finally:
                 git("replace", "-d", bad_merge)
             git("checkout", "-fqb", "valid-merge", records_base); git("merge", "--no-ff", "-m", "valid shrinking merge", "shrinking")
-            check("RV-3088: valid merge retaining the reduction succeeds", passes(smaller, small_keys))
+            ok_ = passes(smaller, small_keys)
+            check("RV-3088: valid merge retaining the reduction succeeds" + refused[0], ok_)
             for label, rev in (("list blob", "HEAD:" + ALLOWLIST_PATH), ("root tree", "HEAD^{tree}"), ("required parent commit", initial)):
                 sha = git("rev-parse", rev); obj = root / ".git" / "objects" / sha[:2] / sha[2:]; hidden_obj = obj.with_name(obj.name + ".hidden")
                 obj.rename(hidden_obj)
@@ -857,7 +865,11 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
                 (root / ALLOWLIST_PATH).write_bytes(raw); commit("historical " + label); write(original, allowed)
                 check("RV-3088: " + label + " in reachable history refuses deliberately", proof_refuses())
             git("checkout", "-fqb", "empty-list", first); write(original, []); commit("explicit empty metadata list")
-            check("RV-3088: valid explicit zero-entry historical list is readable", scanner.previous_allowlists(fixture) == [[]])
+            try:
+                zero_, said_ = scanner.previous_allowlists(fixture), ""
+            except scanner.RatchetHistoryError as error:   # that type only: it fails here, on its own line, and the suite goes on (RV-3251)
+                zero_, said_ = None, f" (refused: {error})"
+            check("RV-3088: valid explicit zero-entry historical list is readable" + said_, zero_ == [[]])
             git("checkout", "-fqb", "duplicate-growth", initial); write(original, allowed + allowed[:1]); commit("duplicate multiset growth"); write(original, allowed)
             check("RV-3088: historical duplicate-key growth refuses", proof_refuses())
             git("checkout", "-fqb", "deleted-list", initial); (root / ALLOWLIST_PATH).unlink(); commit("delete introduced list"); write(original, allowed)
@@ -887,7 +899,8 @@ def run_review_history_controls(fm, check, scanner, original, allowed, ceiling):
             finally:
                 graft.unlink()
             git("checkout", "--orphan", "root-introduction", initial); write(original, allowed); commit("genuine root introduction")
-            check("RV-3088: readable genuine root introduction succeeds", passes(original, allowed))
+            ok_ = passes(original, allowed)
+            check("RV-3088: readable genuine root introduction succeeds" + refused[0], ok_)
         clone = root / "shallow"
         real_run(["git", "clone", "-q", "--depth=1", root.as_uri(), str(clone)], capture_output=True, check=True, env=env)
         (clone / CEILING_PATH).write_bytes(ceiling_bytes)

@@ -18,8 +18,15 @@ ask-proposal: "Keep the readers held; prepare structural XML validation for Owne
 
 ## What is true now
 
-**2026-10-14 — PR #173's fix round READY `46f8732` (round 2 of 2); the Owner's run `38589202689` on it is green on Linux and macOS, `test_core.py` included, and runs the whole suite on Windows with 5 FAIL; a second fix round, RV-3230–RV-3234, is built, and the Reviewer's first critical pass on it is next.**
-On Windows that run counts 1867 ok, 5 FAIL and 47 checks skipped in 15 blocks; `test_core.py` was skipped after the failed
+**2026-10-15 — PR #173's second fix round READY `3932e7f` (round 2 of 2); the Owner's run `38614474342` on it is green on Linux and macOS, and on Windows 3.12 `test_shoalmark.py` is all green while `test_core.py` fails the launch ceiling; a third fix round, RV-3250–RV-3251, is built, and the Reviewer's first critical pass on it is next.**
+Git converts both pinned launch files to CRLF at a Windows checkout, so the ceiling's working-tree bytes no longer hash to
+its pin: six FAIL lines, then a `RatchetHistoryError` that `test_vcs_skeleton.py:860` let escape, ending `test_core.py`. A
+CRLF checkout made by macOS Git reproduces both exactly. `.gitattributes` now keeps `test_vcs_launch_ceiling.json` and
+`test_vcs_launch_allowlist.json` as committed (`-text`); the files and the pin are unchanged (RV-3250). The RV-3088 checks
+that read history catch `RatchetHistoryError` alone and fail on their own line with its text (RV-3251). Windows 3.9's
+FM-039 board render timed out against a 10.0 s control; #173 changes no render code, and a rerun or a budget is the
+Owner's call (RV-3252, recorded only). Windows 3.9's `test_core.py` has never run. The second round answered run
+`38589202689`: on Windows it counted 1867 ok, 5 FAIL and 47 checks skipped in 15 blocks; `test_core.py` was skipped after the failed
 step, so it has still never run there at this branch. The five are new and Windows-only. A1's board link compared a raw
 path with the URI the product prints (RV-3230); A1's reconfigure compared raw spellings with the product's normcased
 inventory, its second clause passing vacuously (RV-3231). A2's ignore setup met a product defect: `proplist --xml` prints
@@ -176,6 +183,7 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
 
 | Date | Event |
 |---|---|
+| 2026-10-15 08:11 CEST | Owner PR #173 CI run `38614474342` at `3932e7f`: Linux and macOS green; on Windows 3.12 `test_core.py` failed the launch ceiling under a CRLF checkout and ended in a traceback, and Windows 3.9's FM-039 board render timed out — and cost the Owner a CI run. Third fix round, Owner-approved: `-text` for the two pinned launch files (RV-3250); RV-3088's history checks catch `RatchetHistoryError` alone, on their own line (RV-3251). A macOS CRLF clone reproduces CI's six FAIL lines and the traceback at `3932e7f` and is all green corrected; RV-3252 stays the Owner's. The Reviewer's critical pass, then one Owner CI run, remain due. |
 | 2026-10-14 19:02 CEST | Owner PR #173 CI run `38589202689` at `46f8732`: Linux and macOS green, `test_core.py` included; both Windows jobs ran the suite to its end with 5 FAIL and skipped `test_core.py` — and cost the Owner a CI run. Second fix round, Owner-approved: A1's board link and reconfigure checks compare as the product spells paths (RV-3230, RV-3231); `svn_local_properties` returns `svn:` values with LF as stored, which Windows' `proplist --xml` prints with CRLF (RV-3232, the one product change); the POSIX-shell CLI test skips by name on Windows (RV-3233); the differential clears Git's read-only bit before removing (RV-3234). Each control fails on `46f8732` and passes corrected; the stage tail gives 619/619. The Reviewer's critical pass, then one Owner CI run, remain due. |
 | 2026-10-14 13:46 CEST | Owner PR #173 CI run `38539381661` at `d0f0f24` failed — FAILED: 6, 4 and 4 on ubuntu 3.9, ubuntu 3.12 and macOS 3.12, and both Windows jobs ended in A1's setup traceback — and cost the Owner a CI run. Fix round: nine checks expect the copied commands as `printed_arg` spells them; `init` refuses a folder name with a line break before its first metadata read; A1's Windows search folder names svn as `svn.exe`, and a failed fixture step is a named FAIL; 3.9's tempdir probe is admitted in its exact shape. Focused blocks fail on `d0f0f24` and pass corrected; the stage tail gives 619/619 and unchanged core 303/303. The Reviewer's first critical pass, then one Owner CI run, remain due. |
 | 2026-10-14 10:09 CEST | The Owner's order on PR #173: the suite's in-process `run` returns a refusal as the program ends — exit status and both streams — so its check fails and the suite goes on. Its regression fails with the old helper (the child suite exits 4) and passes corrected; unchanged core 303/303 passes. Independent critical review, then one Owner CI run, remain due; earlier verdicts and holds stand. |
