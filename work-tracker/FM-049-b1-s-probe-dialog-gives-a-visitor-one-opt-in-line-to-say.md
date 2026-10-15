@@ -4,12 +4,15 @@ status: Proposed
 epic: FM-006
 considered: FM-006, FM-004, FM-026
 tags: process
-next: owner
+next: build
 ask: "Does B1's probe dialog gain one opt-in line after its third step, in English and German, asking a visitor to say in one line what their agent found, even no fit, and where does that line lead?"
 ask-kind: ruling
 ask-since: 2026-10-14
 ask-options: "yes, to an issue form in this repository | yes, to a Discussions category, which you turn on | not now"
 ask-proposal: "yes, to an issue form in this repository"
+answer: "accepted - yes, to an issue form in this repository"
+answered: 2026-10-15
+answered-by: holgo99
 hook: "B1's probe dialog gives a visitor one opt-in line to say what their agent found"
 ---
 
