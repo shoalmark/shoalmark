@@ -9,8 +9,6 @@
 > same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `ended` shipped or closed.
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
->
-> Generated 2026-10-15 · 53 trackers (53 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -30,8 +28,8 @@
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
 | 1 | P1 | build | — | intended, kind | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress |
-| 2 | P1 | owner | *complicated* | intended | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress |
-| 3 | P1 | owner | *complicated* | intended | [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress |
+| 2 | P1 | build | — | intended, kind | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress |
+| 3 | P1 | build | — | intended, kind | [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress |
 
 
 ## Work

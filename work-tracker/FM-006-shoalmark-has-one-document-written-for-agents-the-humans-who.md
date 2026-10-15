@@ -3,7 +3,7 @@ id: FM-006
 status: In Progress
 considered: FM-005, FM-003
 tags: process
-next: owner
+next: build
 triaged: 2026-10-13
 tier: P2
 ask: "Do the corrections in the body, M1 to M10, S3, S4 and Board for Tafel, land in v0.20.1, integrated now and re-read at the words freeze after v0.20.0's tag, with the signing page stating your key file as it stands after FM-007's act of 15 October?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-10-14
 ask-options: "M1 to M10, S3, S4 and Board for Tafel | all except the signing page's key state, which you describe yourself | only the lines the B1 handoff already names: M4, M9 and M1's push, and Board for Tafel"
 ask-proposal: "M1 to M10, S3, S4 and Board for Tafel"
+answer: "accepted - M1 to M10, S3, S4 and Board for Tafel. The latest design-guide.md, `v2` design and the go-to-market wordings override any collision and GTM wording takes precedence"
+answered: 2026-10-15
+answered-by: holgo99
 done: "2026-09-30T08:14:56+02:00 · Public repository: https://github.com/shoalmark/shoalmark/ · Documentation: https://shoalmark.github.io/shoalmark/ · Migration merged: 80d0811974a1d39b679cfd374c80109ddd62acce · Independent migration review: 5e26a88e75b992c243148c2786e44f443e0f7437 · Port-evidence cleanup merged: b041cb2dca136623ee9160d74ae5b39b0f1a7ba2 · Publication gates merged and deployed: 792dbca9caa74629d12645dcc5ae7f55a2bb2340 · Independent publication review: b9b3971c21f3b84f332249bbc976fe9af7580f0d · Scoring completed; publication preceded scoring under my previously recorded risk acceptance."
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
