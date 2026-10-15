@@ -13,6 +13,8 @@ hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests
 
 ## What is true now
 
+**2026-10-15 — Q7 built, not yet reviewed:** `--standup DIR …` gives one agenda across the repositories named; it runs nothing of theirs and writes nothing (`afdd29a` on `fm/031-standup-repos`, from R9's `ac8899d`; class test `test_standup_repos.py`).
+
 **2026-10-15 — the queue says merge over failed required checks; nothing is built.**
 
 **Facts,** read at main `70fe288`.
@@ -262,6 +264,7 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 
 | Date | Event |
 |---|---|
+| 2026-10-15 21:03 CEST | Q7 built by the Builder seat (`27f31560/builder-9`) in `afdd29a` on `fm/031-standup-repos`, from R9's deletion `ac8899d`, on the quick-wins design of 15 October, recorded privately: `--standup DIR [DIR …]`, one agenda by kind across the repositories named — each folder's branch and commit, a Subversion working copy's revision, or no version control; a folder it cannot read named with why and counted in nothing; counts per repository, then added, never joined by id. It runs nothing of a repository's own and writes nothing, held by an audit hook on each folder's read; it says it leaves unread whether a git tree has changes, what is on its way, the queue and, under `[seats]`, who asked. `--standup` alone is unchanged. Class test `test_standup_repos.py`; eight mutants each fail it. Next: the critical Reviewer's pass. |
 | 2026-10-15 | Defect filed: the queue and `--standup` say `merge` over failed required checks. Nothing is built. |
 | 2026-09-28 21:47 CEST | The Owner's cold re-check of `2185250`: READY at `0842ce8` (21:44:11; no findings; RV-717…719 not minted; his adversarial replay: the genuine bounded Acts insertion merges, a forged insertion in a later section waits). His word after it: the coverage his cold session listed is added as one tests-only commit on top — the RV-715 line under `## What is true now` itself under his signed `due:` (row 30), and `refusal_record` asserted directly on all seven shapes (True for the tool's three placements, False for the four forged) — the reader untouched. |
 | 2026-09-28 21:09 CEST | RV-716 (the Owner's cold re-check of `729ddae`, `dce3165`, P1: the Acts section read unbounded — a line appended inside a later `## Asks` passed, the tool's own record before it failed) fixed by the Principal seat (`8e509911`): the section bounded at the next heading as `append_record` bounds it, the suffix compared; two checks pin both shapes. Next: the Owner's cold re-check. |
