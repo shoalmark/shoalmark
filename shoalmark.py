@@ -8807,12 +8807,11 @@ def lint(trackers, committing=False):
 EXIT_OK = 0
 EXIT_DRIFT = 3
 EXIT_LINT = 4
-# The header stamps the generation date, so a byte-compare would report drift on
-# every day after the last write — a gate firing on green code, which is how you
-# train people to ignore a gate.
-# The date is provenance, not ledger content: the one line whose change means
-# nothing.
-GENERATED_RE = re.compile(r"^> Generated \d{4}-\d{2}-\d{2} ", re.M)
+# R21 (FM-032): the header holds no date and no count. A dated, counted line changed with every day and every filing,
+# so any two tracker pull requests conflicted on it. Every version through 0.19.4 ended the header with that line, after
+# a bare `>` line: `> Generated <date> · <n> trackers (<counts>).` The check ignores that one line in the header,
+# so upgrading the tool alone never fails `--check`, and the next run drops it. Any other difference is drift.
+GENERATED_RE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)")
 
 
 def board_link():
@@ -8821,8 +8820,9 @@ def board_link():
 
 
 def drift_normalize(text):
-    """Blank the generation date so only ledger content can count as drift."""
-    return GENERATED_RE.sub("> Generated <date> ", text)
+    """Drop an earlier version's dated, counted line from the header — before the first `## ` section — so only ledger content can count as drift."""
+    head, sep, rest = text.partition("\n## ")
+    return GENERATED_RE.sub("", head, count=1) + sep + rest
 
 
 
@@ -10574,9 +10574,7 @@ def main(argv=None, *, _notice=True):
                                                                      errors="replace", env=nested_git_env())))      # runs that walk the branch's commits — no hook's (v0.19.1)
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
-    today = datetime.date.today().isoformat()
-    counts = ", ".join(f"{sum(t['kind'] == k for t in trackers)} {KIND_LABELS[k].lower()}" for k in KINDS)
-    header = (
+    header = (                  # R21: no line here changes with the day or with another tracker, so branches that change different trackers merge
         "# Work Tracker — Index\n\n"
         f"> **GENERATED — do not hand-edit.** Run `{CMD}` after changing any tracker's front matter\n"
         "> (or its `# title`). Rows are *pointers* — the detail lives in the tracker, never duplicated here.\n>\n"
@@ -10584,9 +10582,8 @@ def main(argv=None, *, _notice=True):
         "> **Tier · Board · Triaged** = the triage picture — the same one the board (`index.html`) shows, from the\n"
         "> same function: `progress` kept by a pass · `triage` owed a pass · `backlog` waiting · `ended` shipped or closed.\n"
         f"> One rule this file cannot show, because it has no clock: a judgement on work in progress older than {TRIAGE_DAYS} days\n"
-        "> counts as `triage` again.\n>\n"
-        + "".join("> " + n.replace("\n", "\n> ") + "\n>\n" for n in DERIVED_NOTES)
-        + f"> Generated {today} · {len(trackers)} trackers ({counts})."
+        "> counts as `triage` again."
+        + "".join("\n>\n> " + n.replace("\n", "\n> ") for n in DERIVED_NOTES)
     )
     banner = [p for p in ledger if not pending_finding(p)]          # the commit being made is judged on stderr, not in INDEX.md
     if banner:

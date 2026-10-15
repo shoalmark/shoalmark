@@ -128,22 +128,27 @@ code, _, err = run(["--check"])
 check(f"--check on a clean tree -> {gti.EXIT_OK}", code == gti.EXIT_OK)
 check("no lint lines on a clean tree", "lint:" not in err)
 
-print("\nthe date stamp is NOT drift — the false-positive that would kill the gate")
-# The header stamps today's date. A byte-compare would call the INDEX stale every
-# day after it was written, and a gate that fires on green code gets ignored.
-stamped = "> Generated 2026-07-15 · 165 trackers (x)\n| row |\n"
-later = "> Generated 2099-01-01 · 165 trackers (x)\n| row |\n"
+print("\nthe previous version's dated, counted line is NOT drift — and nothing else is ignored (FM-032, R21)")
+# Through 0.19.4 the header ended with `> Generated <date> · <n> trackers (<counts>).` after a bare `>` line, and any two
+# tracker pull requests conflicted on it. The generator writes no such line now. `--check` ignores it in the header alone,
+# so upgrading the tool never fails the gate, and the next run drops it.
+fresh = "# Work Tracker — Index\n\n> **GENERATED — do not hand-edit.**\n\n## Work\n\n| row |\n"
+stamped = fresh.replace("\n\n## Work", "\n>\n> Generated 2026-07-15 · 165 trackers (165 work).\n\n## Work", 1)
 check(
-    "same content, different date -> NOT drift",
-    gti.drift_normalize(stamped) == gti.drift_normalize(later),
-)
-changed = "> Generated 2026-07-15 · 165 trackers (x)\n| DIFFERENT |\n"
-check(
-    "same date, different content -> IS drift",
-    gti.drift_normalize(stamped) != gti.drift_normalize(changed),
+    "the previous version's line, on any day, with any count -> NOT drift",
+    gti.drift_normalize(stamped) == gti.drift_normalize(fresh) == fresh
+    and gti.drift_normalize(stamped.replace("2026-07-15 · 165", "2099-01-01 · 166")) == fresh,
 )
 check(
-    "normalize only touches the Generated line",
+    "that line beside different content -> IS drift",
+    gti.drift_normalize(stamped.replace("| row |", "| DIFFERENT |")) != gti.drift_normalize(fresh),
+)
+check(
+    "the same line below the header -> IS drift",
+    gti.drift_normalize(fresh + ">\n> Generated 2026-07-15 · 165 trackers (165 work).\n") != gti.drift_normalize(fresh),
+)
+check(
+    "normalize leaves the rows alone",
     gti.drift_normalize(stamped).count("| row |") == 1,
 )
 
@@ -770,6 +775,9 @@ run_boundary_controls(gti, check)
 run_dispatch_controls(gti, check)
 run_ratchet_controls(gti, check)
 run_review_controls(gti, check)
+
+from test_index_merges import run_index_merge_controls
+run_index_merge_controls(gti, check)
 
 print()
 if FAILS:

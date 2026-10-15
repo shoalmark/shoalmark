@@ -12910,8 +12910,8 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 
 # --- FM-034, 0.18.3 (the Auditor seat's check 20): a fresh clone's `--check` — the checkout's own finding is said once, on
-#     stderr, and never written into INDEX.md; the committed INDEX and the one any clone generates are the same under
-#     `drift_normalize` — the `Generated` date aside, which a clone generating it the next day writes anew (the cold R2) ----
+#     stderr, and never written into INDEX.md; the committed INDEX and the one any clone generates are the same — since R21
+#     (FM-032) byte for byte on another day too, for the header holds no date (the cold R2) ----
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
     subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
@@ -12939,16 +12939,18 @@ with tempfile.TemporaryDirectory() as tmp:
     said_ = [l_ for l_ in err_.splitlines() if "cannot verify" in l_]
     wcode_, _o, _e = run(fresh_)
     status_ = subprocess.run(["git", "-C", str(fresh_), "status", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout
-    tomorrow_ = re.sub(r"Generated \d{4}-\d{2}-\d{2}", "Generated 2999-01-01", index_)     # the same INDEX, generated another day
     generated_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
-    (fresh_ / "docs/work-tracker/INDEX.md").write_text(tomorrow_, encoding="utf-8"); later_ = run(fresh_, "--check")[1]
-    check(f"FM-034 · a fresh clone without the signers file: `--check` prints ONE finding, the signers file, naming the answers it could not check — and no STALE; the INDEX it writes is the committed one under `drift_normalize` — the date aside, so on another day too — and `--check` reads it so (saw {err_.strip()!r})",
+    from unittest import mock as _mock
+    with _mock.patch.object(fm.datetime, "date", type("_Later", (datetime.date,), {"today": classmethod(lambda cls: cls(2999, 1, 1))})):
+        run(fresh_)                                                                         # the same clone, generating it another day
+    tomorrow_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8"); later_ = run(fresh_, "--check")[1]
+    check(f"FM-034 · a fresh clone without the signers file: `--check` prints ONE finding, the signers file, naming the answers it could not check — and no STALE; the INDEX it writes is the committed one, on another day too (R21: no date in it) — and `--check` reads it so (saw {err_.strip()!r})",
           code_ == fm.EXIT_LINT and len(said_) == 1 and "STALE" not in out_ + err_ and "INDEX.md is up to date" in out_
           and said_[0].startswith(f"  checkout: it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see {fm.SIGNING_PAGE} — 2 signed commit(s) it could not check: ")
           and f"MSR-001 `{signed_[0][:10]}`" in said_[0] and f"MSR-002 `{signed_[1][:10]}`" in said_[0]      # in the order the rules met them: under `[seats]` the rights rule first, newest first
           and "FAILED: this checkout's own finding — the ledger is sound" in err_ and "ledger-integrity" not in err_
           and fm.drift_normalize(generated_) == fm.drift_normalize(index_) and "INDEX.md is up to date" in later_
-          and fm.drift_normalize(tomorrow_) == fm.drift_normalize(index_) and tomorrow_ != index_
+          and tomorrow_ == generated_ == index_
           and "cannot verify" not in index_ and status_ in ("", " M docs/work-tracker/INDEX.md\n"))
     check("FM-034 · the clone with the signers file configured: no finding, exit 0",
           ok_code == 0 and "cannot verify" not in ok_err and "checkout:" not in ok_err)
