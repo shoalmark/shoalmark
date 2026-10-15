@@ -3,7 +3,7 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: owner
+next: build
 triaged: 2026-10-13
 tier: P1
 rank: 2
@@ -12,6 +12,9 @@ ask: "Which disposition should the archive/common integration take after RV-3072
 ask-kind: ruling
 ask-since: 2026-10-13
 ask-proposal: "Keep the integration held; prepare strict complete diagnostic and source-root checks for Owner disposition, without a third review."
+answer: "accepted - Take the prepared strict classification into production now, as its own change, with one bounded verification: the diff is the prepared fix, its checks pass, nothing else changes; no new finding below P1. RV-3072 gets no third round."
+answered: 2026-10-15
+answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
