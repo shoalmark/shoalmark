@@ -354,6 +354,7 @@ The theme's other drawn markers stay: they label structure, never an action.
   | reviews' heading and rows | independent *n* · same session *m* | *n* by another session · *m* by the same session | German after the native read. The README's line that quotes the old label changes with it, and so do the tests that pin it |
   | `sessions.recent`, `sessions.none.day` | {0} in the last 24 hours · none in the last 24 hours | {0} with a commit in the last 24 hours · none with a commit in the last 24 hours | German after the native read. It says what a row is and what *12 min ago* measures, so a resume button beside it never reads as a live view; it is the README's own *with a commit in the last day* |
   | receipts' relay line | where the Owner keeps the count | where you keep the count | the same |
+  | `viewer.handover` | hand-over | handover | *Übergabe*, unchanged |
 - **Help** is one plain sentence, or facts joined by ` · `. It explains how to read, or names a limit; it never instructs
   an agent and never promises an outcome.
 - **Formats:**
