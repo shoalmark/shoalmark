@@ -73,13 +73,6 @@ DEFAULTS = {
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
     "triage_days": 7,
-    # THE FILING FREEZE (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a
-    # filing that carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits.
-    # Filing outran closing two to one, and the open count only grew. 0 = off.
-    "freeze_at": 0,
-    # the tag that passes the freeze — a repository's own `[tags]` may have no `bug`; one that names none of its tags
-    # freezes nothing, and `--check` says so
-    "freeze_tag": "bug",
     # A PASS JUDGES BEFORE THE FIRST BUILD COMMIT (FM-033, the Owner's rule of 2026-09-24): a commit that changes a path
     # outside the tracker directory names a tracker that, at the commit's parent, a pass has kept `In Progress`. Off by
     # default: a repository that vendors the tool may carry no `triaged:` yet.
@@ -804,14 +797,14 @@ def configure(root=None):
     global HEAD, STATE_HEAD_RE, DONE_RE
     global _VCS, _GIT_DIRS, _TRACKED, _SVN_LOG, _GIT_USER
     global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED
-    global FREEZE_AT, FREEZE_TAG, CMD_OWN, WANTED_NUM
+    global CMD_OWN, WANTED_NUM
     global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT
     # No path discovery, metadata/configuration read or validation may see the previous repository's state.
     ROOT = TRACKER_DIR = OUT = HTML_OUT = VIEW_DIR = None
     CONFIG, TAGS, CONSIDERED_FROM, KIND_LABELS, HEAD, FRONT_MATTER = {}, {}, {}, {}, {}, {}
     ANSWERERS, SEATS, SEAT_RIGHTS = {}, {}, {}
     KINDS, REPO_BLOB, _IDS, CMD, CMD_OWN = (), "", "", "", ""
-    TRIAGE_DAYS, FREEZE_AT, FREEZE_TAG, WANTED_NUM = 0, 0, "", None
+    TRIAGE_DAYS, WANTED_NUM = 0, None
     KIND_RE = TITLE_RE = TRACKER_LINK_RE = H1_ID_RE = ROW_ID_RE = None
     STATE_HEAD_RE = DONE_RE = ASKS_HEAD_RE = RAISED_HEAD_RE = ACTS_HEAD_RE = None
     _VCS, _GIT_DIRS, _TRACKED, _SVN_LOG, _GIT_USER = ("", None), None, None, None, None
@@ -848,13 +841,6 @@ def configure(root=None):
     TRACKER_DIR = ROOT / tracker_folder(CONFIG)
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
-    FREEZE_AT = CONFIG["freeze_at"]
-    if isinstance(FREEZE_AT, bool) or not isinstance(FREEZE_AT, int) or FREEZE_AT < 0:
-        raise SystemExit(f"{CONFIG_NAME}: `freeze_at` is a whole number of open trackers — the filing freeze holds at that count and above; 0 turns it off. Got {FREEZE_AT!r}")
-    FREEZE_TAG = CONFIG["freeze_tag"]
-    if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
-        raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
-    FREEZE_TAG = FREEZE_TAG.strip()
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
@@ -5289,12 +5275,6 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                         "path is that one file; every other path is product. A repository without a `[ratio]` section has no ratio: `--ratio` says so, exit 2"),
     "[ratio] exclude": ("a list of repository-relative prefixes; `[]` (the default)",
                         "prefixes `--ratio` leaves out of both sides — neither a record nor product (a vendored copy, a generated tree)"),
-    "freeze_at": ("a whole number; `0` = off (the default)",
-                  "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
-                  "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
-                  "open tracker's body, or waits. The configured Owner may file any tag. `--check` says when it holds"),
-    "freeze_tag": ("one tag from `[tags]`; `bug` (the default)",
-                   "the tag that passes the filing freeze. Where `[tags]` does not carry it, the freeze refuses nothing, and `--check` says so in one line"),
     "judged_before_build": ("`true` or `false` (the default)",
                             "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
                             "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
@@ -8897,7 +8877,7 @@ def parse_args(argv):
              "prints what is related, writes the id with a front matter whose `considered:` is yours to fill; `<tracker dir>/TEMPLATE.md`, if there is one, is the template; "
              "the id prefix is needed only where the configuration names several")
     add("--tags", metavar="TAG,TAG", help="with --new: the kind of work, as it is filed — `--new KIND \"the title\" --tags bug,process` writes `tags:` into the new tracker; "
-                                           "comma-separated, deduplicated, each from [tags] in the configuration. Under the filing freeze (`freeze_at`) only a `bug` filing is written")
+                                           "comma-separated, deduplicated, each from [tags] in the configuration")
     add("--triage", action="store_true",
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
@@ -10079,20 +10059,20 @@ def next_up(trackers):
 WANTED_NUM = None
 
 
-def filing_freeze(trackers):
-    """FM-032 S4 — (open, the line) while the filing freeze holds: the trackers whose status is open number `freeze_at` or
-    more. None while they do not, where `freeze_at` is 0, and where `[tags]` has no `freeze_tag` — a freeze nothing could
-    pass would refuse even the defect it exists to let through (`freeze_unpassable` says so)."""
-    n = sum(t["status"] in OPEN_STATUSES for t in trackers)
-    return (n, FREEZE_AT) if FREEZE_AT and n >= FREEZE_AT and not freeze_unpassable() else None
+# R15 (FM-032): the filing freeze is gone — the Owner's ruling of 12 October. Until then, at `freeze_at` open trackers or more, `--new`
+# refused every filing but a product defect (`freeze_tag`). A configuration that still sets either key is named in one line where `--new`
+# and `--check` speak, and is never refused (R26): the keys are not read.
+FREEZE_KEYS = ("freeze_at", "freeze_tag")
 
 
-def freeze_unpassable():
-    """The one line `--check` owes a repository whose freeze is set and whose `[tags]` cannot pass it — or ""."""
-    if FREEZE_AT and FREEZE_TAG.lower() not in {k.lower() for k in TAGS}:
-        return (f"filing freeze: off — `freeze_tag` {FREEZE_TAG!r} is not in [tags] ({', '.join(sorted(TAGS)) or 'none'}); "
-                f"add it there, or set `freeze_tag` in {CONFIG_NAME} to the tag a product defect carries")
-    return ""
+def freeze_retired():
+    """R15: the one line naming the filing freeze's keys this configuration still sets — or "". Never a refusal."""
+    keys = [k for k in FREEZE_KEYS if k in CONFIG]
+    if not keys:
+        return ""
+    return (f"{CONFIG_NAME}: " + " and ".join(f"`{k}`" for k in keys) + (" is" if len(keys) == 1 else " are")
+            + " not read — R15, the Owner's ruling of 12 October, removed the filing freeze, so every filing is written; looking before "
+            "filing (`--new` prints the closest trackers first, `--related`) and the ranking (`rank:`, `--triage`, `--next`) stay. Delete the line")
 
 
 def new_tracker(words, trackers, tags_arg=None):
@@ -10112,7 +10092,6 @@ def new_tracker(words, trackers, tags_arg=None):
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
     house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
     template = board_text(house) or TRACKER_TEMPLATE        # the reading rule
-    frozen = filing_freeze(trackers)
     tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
     if tags_arg is not None:                                # `--tags bug,process`: the kind of work, said as it is filed
         vocab = {k.lower(): k for k in TAGS}                # matched as the template's are, case aside; written as [tags] spells it
@@ -10124,11 +10103,8 @@ def new_tracker(words, trackers, tags_arg=None):
                    else f"at most {MAX_TAGS} tags, from [tags] in {CONFIG_NAME}")
             print(f"--new: --tags {tags_arg!r} — {why} — nothing was written", file=sys.stderr)
             return EXIT_LINT
-    if frozen and FREEZE_TAG.lower() not in {x.lower() for x in tags} and not pending_owner():
-        print(f"--new: filing freeze — {frozen[0]} open, at or above {frozen[1]} (`freeze_at` in {CONFIG_NAME}): only product defects are filed; "
-              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `{FREEZE_TAG}` tag — "
-              f"a product defect is filed with `--tags {FREEZE_TAG}`; nothing was written", file=sys.stderr)
-        return EXIT_LINT
+    if freeze_retired():                                    # R15: the freeze's keys are named, and the filing is written
+        print(freeze_retired(), file=sys.stderr)
     # a repository that already numbers its work keeps its numbers: `--new AP-037 "title"` takes that id if it is free
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
     if WANTED_NUM is not None:
@@ -10615,11 +10591,8 @@ def main(argv=None, *, _notice=True):
             print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
         elif vcs() == "git" and _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
             print("the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits", file=log)
-        frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
-        if frozen:
-            print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
-        elif freeze_unpassable():
-            print(freeze_unpassable(), file=log)
+        if freeze_retired():                                # R15: a key of the filing freeze is named, never refused (R26)
+            print(freeze_retired(), file=log)
     else:
         refused = tracker_folder_problem("nothing is written, and the commit is refused") if SAFE_WRITES else ""
         if refused:                                             # a hook's run of the copy writes nothing where the tracker folder may lead it out

@@ -325,7 +325,7 @@ with tempfile.TemporaryDirectory() as d:
         init_ = caught_(lambda: run(svn_, "--init", "--key", "msr", git_env={"GIT_SUITE_CALL": "1"})); env_init_ = (os.environ.get("GIT_SUITE_AMBIENT"), os.environ.get("GIT_SUITE_CALL"))
         board_ = caught_(lambda: run(svn_, "--html-only")); after_board_ = (_WATCHING[0], _BOARD_RUNS["in process"] - counted_, fm._TRIPWIRE, fm.SAFE_READS)
         done_ = caught_(lambda: run(plain_, "--init", "--key", "msr"))
-        (plain_ / "shoalmark.toml").write_text((plain_ / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", "freeze_at = -1\n[kinds]", 1), encoding="utf-8")
+        (plain_ / "shoalmark.toml").write_text((plain_ / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", "judged_before_build = \"yes\"\n[kinds]", 1), encoding="utf-8")
         said_ = caught_(lambda: run(plain_, "--check")); env_end_ = (os.environ.get("GIT_SUITE_AMBIENT"), os.environ.get("GIT_SUITE_CALL")); streams_end_ = (sys.stdout, sys.stderr)
     finally:
         os.environ.pop("GIT_SUITE_AMBIENT", None)
@@ -335,7 +335,7 @@ with tempfile.TemporaryDirectory() as d:
           f"metadata exit 4 with the refusal's line on stderr, and a configuration refused with a message exits 1 with the message on stderr — each code and both streams "
           f"the program's own (saw {init_[0]!r}, {board_[0]!r}, {said_[0]!r} · the program {p_init_[0]}, {p_board_[0]}, {p_said_[0]})",
           init_ == p_init_ and board_ == p_board_ and said_ == p_said_ and init_[0] == board_[0] == fm.EXIT_LINT and said_[0] == 1
-          and metadata_ in init_[2] and metadata_ in board_[2] and said_[2].startswith("shoalmark.toml: `freeze_at` is a whole number"))
+          and metadata_ in init_[2] and metadata_ in board_[2] and said_[2].startswith("shoalmark.toml: `judged_before_build` is true or false"))
     check(f"FM-044 · PR #173 · `run` puts back what it changed, refused or not: the ambient `GIT_*` variable, none of the call's own, the board's watch off and counted "
           f"once, the tripwire disarmed, the suite's own stdout and stderr — and the run after the refusals succeeds (saw {env_init_}, {env_end_}, {after_board_}, exit {done_[0]})",
           env_init_ == env_end_ == ("kept", None) and after_board_ == (False, 1, False, False) and streams_end_ == streams_ and done_[0] == 0 and "MSR-001" in done_[1])
@@ -9722,64 +9722,40 @@ with tempfile.TemporaryDirectory() as d:
           and not fm.github_remote("/tmp/github/b.git") and not fm.github_remote("ssh://git@gitlab.com/a/b") and not fm.github_remote(""))
 fm.configure(HERE)
 
-# --- FM-032 S4: the filing freeze — at `freeze_at` open trackers or more, `--new` files only a product defect ----------
+# --- FM-032: `--new … --tags` writes `tags:` from [tags]. R15 removed the filing freeze; its class test is test_freeze_removed.py ---------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q"); run(root, "--init", "--key", "msr")
-    cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text().replace("triage_days = 7\n", "triage_days = 7\nfreeze_at = 2\n"))
     wt_ = root / "docs/work-tracker"
-    tracker(root, "MSR-001"); tracker(root, "MSR-002", status="Shipped"); run(root)
-    code, out, err = run(root, "--new", "a first thing that is not a defect")
-    below_ = code == 0 and (wt_ / "MSR-003-a-first-thing-that-is-not-a-defect.md").exists()
-    (wt_ / "MSR-003-a-first-thing-that-is-not-a-defect.md").unlink(); tracker(root, "MSR-003"); run(root)
-    before_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md"))
-    code, out, err = run(root, "--new", "a second thing that is not a defect")
-    check(f"FM-032 S4 · below the line `--new` files anything; at the line it refuses a filing without `bug` — exit 4, the count, the line, the rule's words — after the closest trackers, and writes nothing (saw {err.strip()!r})",
-          below_ and code == fm.EXIT_LINT and "filing freeze — 2 open, at or above 2" in err
-          and "only product defects are filed; anything else goes as one line into the closest open tracker's body, or waits" in err
-          and "carries no `bug` tag" in err and sorted(p_.name for p_ in wt_.glob("MSR-*.md")) == before_ and ("closest trackers" in out or "Nothing related" in out))
-    code_c, out_c, _ = run(root, "--check")
+    tracker(root, "MSR-001"); tracker(root, "MSR-002", status="Shipped"); tracker(root, "MSR-003"); run(root)
     (wt_ / "TEMPLATE.md").write_text(fm.TRACKER_TEMPLATE.replace("considered:\n", "considered:\ntags: bug\n"))
     code_b, _, _ = run(root, "--new", "the export drops the last row")
     (wt_ / "TEMPLATE.md").unlink()
-    check(f"FM-032 S4 · `--check` says the freeze holds in one line, its exit unchanged; a filing that carries `tags: bug` passes the freeze (saw {code_c}, {code_b})",
-          code_c == 0 and "filing freeze: 2 open, at or above 2 — only bug filings" in out_c and code_b == 0
-          and "tags: bug" in next(wt_.glob("MSR-004-*.md")).read_text())
+    check(f"FM-032 · a house template's `tags: bug` is written into the tracker `--new` files (saw {code_b})",
+          code_b == 0 and "tags: bug" in next(wt_.glob("MSR-004-*.md")).read_text())
     before_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md"))
-    code_nb, _, err_nb = run_safe(root, "--new", "a process change", "--tags", "process")
     code_uk, _, err_uk = run_safe(root, "--new", "the importer drops a row", "--tags", "bug,defect")
     unwritten_ = sorted(p_.name for p_ in wt_.glob("MSR-*.md")) == before_
     code_tb, _, _ = run_safe(root, "--new", "the importer drops a row", "--tags", "bug, process,bug")
     tagged_ = next(iter(wt_.glob("MSR-005-*.md")), None)
-    check(f"FM-032 S4 · `--new … --tags bug,process` writes `tags:` into the new tracker, deduplicated — a bug filing passes the freeze; a filing tagged `process` only is refused, and a tag outside [tags] is refused, before anything is written (saw {code_nb}, {code_uk}, {code_tb})",
-          code_nb == fm.EXIT_LINT and "carries no `bug` tag" in err_nb and "--tags bug" in err_nb and code_uk == fm.EXIT_LINT and "defect not in the vocabulary" in err_uk
+    check(f"FM-032 · `--new … --tags bug,process` writes `tags:` into the new tracker, deduplicated; a tag outside [tags] is refused before anything is written (saw {code_uk}, {code_tb})",
+          code_uk == fm.EXIT_LINT and "defect not in the vocabulary" in err_uk
           and unwritten_ and code_tb == 0 and tagged_ is not None and fm.parse_frontmatter(tagged_.read_text())[0].get("tags") == "bug, process"
           and "--tags bug" in fm.render_schema())
-    cfg_.write_text(cfg_.read_text().replace("freeze_at = 2\n", "freeze_at = 0\n")); code0, _, _ = run(root, "--new", "anything at all"); check0 = run(root, "--check")[1]
-    cfg_.write_text(cfg_.read_text().replace("freeze_at = 0\n", "freeze_at = -1\n")); refused_ = not _try(lambda: fm.configure(root))
-    cfg_.write_text(cfg_.read_text().replace("freeze_at = -1\n", ""))
-    check("FM-032 S4 · `freeze_at = 0` is off, whatever is open; a negative number is refused by name; `--schema` documents the key",
-          code0 == 0 and "filing freeze" not in check0 and refused_ and "`freeze_at`" in fm.render_schema() and "only a product defect" in fm.render_schema())
+    check("R15 · `--schema` documents neither key of the removed filing freeze", "`freeze_at`" not in fm.render_schema() and "`freeze_tag`" not in fm.render_schema())
 fm.configure(HERE)
 
-# --- R4, R6: the freeze passes `freeze_tag`, and a `[tags]` without it freezes nothing; lone flags are refused -----
+# --- R6: `--tags` is written as [tags] spells it; lone flags are refused -------------------------------------------------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q"); run(root, "--init", "--key", "msr")
-    cfg_ = root / "shoalmark.toml"; base_cfg = cfg_.read_text()
-    wt_ = root / "docs/work-tracker"
-    cfg_.write_text(re.sub(r'(?m)^bug = .*\n', "", base_cfg).replace("triage_days = 7\n", "triage_days = 7\nfreeze_at = 1\n"))
+    cfg_ = root / "shoalmark.toml"; wt_ = root / "docs/work-tracker"
+    cfg_.write_text(cfg_.read_text() + 'defect = "the tool does wrong for the person using it"\n')
     tracker(root, "MSR-001"); run(root)
-    said_ = run(root, "--check")[1]; code_free, _, _ = run(root, "--new", "a process change while nothing can pass")
-    cfg_.write_text(cfg_.read_text().replace("freeze_at = 1\n", 'freeze_at = 1\nfreeze_tag = "defect"\n') + 'defect = "the tool does wrong for the person using it"\n'); run(root)
-    code_no, _, err_no = run(root, "--new", "another process change")
     code_yes, _, _ = run_safe(root, "--new", "the export drops a row", "--tags", "Defect")
-    wrote_ = next(iter(wt_.glob("MSR-003-*.md")), None)
-    check(f"R4 · with `freeze_at` set and no `freeze_tag` in [tags], `--check` says so in one line and the freeze refuses nothing; with `freeze_tag = \"defect\"` in [tags] the freeze holds and `--tags Defect` passes it, written as [tags] spells it (saw {said_.strip()[-160:]!r})",
-          "filing freeze: off — `freeze_tag` 'bug' is not in [tags]" in said_ and code_free == 0
-          and code_no == fm.EXIT_LINT and "carries no `defect` tag" in err_no and "--tags defect" in err_no
-          and code_yes == 0 and wrote_ is not None and fm.parse_frontmatter(wrote_.read_text())[0].get("tags") == "defect"
-          and "`freeze_tag`" in fm.render_schema())
+    wrote_ = next(iter(wt_.glob("MSR-002-*.md")), None)
+    check(f"R4 · `--tags Defect` is written as [tags] spells it, `defect` (saw {code_yes})",
+          code_yes == 0 and wrote_ is not None and fm.parse_frontmatter(wrote_.read_text())[0].get("tags") == "defect")
     code_t, _, err_t = run_safe(root, "--tags", "bug"); code_s, _, err_s = run_safe(root, "--supersede"); code_e, _, err_e = run_safe(root, "--new", "x", "--tags", " , ")
     check(f"R6 · `--tags` without `--new` and `--supersede` without `--answer` are refused in one line, exit 2; an empty `--tags` says no tag was given (saw {err_t.strip()!r}, {err_s.strip()!r})",
           (code_t, code_s) == (2, 2) and len(err_t.strip().splitlines()) == 1 and len(err_s.strip().splitlines()) == 1
