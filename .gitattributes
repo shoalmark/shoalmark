@@ -1,1 +1,4 @@
 CHANGELOG.md merge=union
+# FM-044's two pinned launch files keep their reviewed bytes on every checkout; a CRLF checkout changes the ceiling's pinned SHA-256 (RV-3250)
+test_vcs_launch_ceiling.json -text
+test_vcs_launch_allowlist.json -text
