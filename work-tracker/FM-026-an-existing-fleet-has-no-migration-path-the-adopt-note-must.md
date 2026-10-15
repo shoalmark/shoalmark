@@ -4,9 +4,14 @@ status: Parked
 considered: FM-004, FM-006
 tags: research
 kind-of-problem: complex
-next: review
+next: owner
 triaged: 2026-09-24
 tier: P3
+ask: "Is shoalmark positioned as the record and the gate for one person directing agents, in its own built-in tracker, and presented on the site as a work tracker built for agents, not as a layer beside or beneath another tracker?"
+ask-kind: ruling
+ask-since: 2026-10-14
+ask-options: "yes | no: a ledger and gate beneath Linear, GitHub Issues or beads, with a coexistence path built first (FM-026, size L)"
+ask-proposal: "yes"
 hook: "Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because nothing tells an existing fleet how its trackers, seats and habits move over; the adopt note must carry that migration, and the case its agents make to their owner"
 ---
 
@@ -18,6 +23,18 @@ the gist prompt that instructs agents how to do it and how they can convince the
 attacked.
 
 ## What is true now
+
+**2026-10-14 — the placement, as the go-to-market seat words it after reviewing B1.**
+- **Why the proposal:**
+  - Both go-to-market seats reached it independently, and every round since kept it (the go-to-market
+    consolidation, recorded privately).
+  - B1's public category, *a work tracker built for your agents*, is the same placement in the reader's words (the
+    go-to-market review of B1, recorded privately).
+- The product supports every clause of it.
+- *Replace, do not add* (`ADOPT.md:70`) rules out the coexistence option without new product work: this tracker's
+  path, size L.
+- **Confidence:** 85 %.
+- **Holds up:** every word on the site, the README and the adoption notes.
 
 **Filed 2026-09-23; nothing is built.** FM-004's run on 2026-09-21: 0 of 3 outside fleets recommended adopting, and
 all three named *two sources of truth* — their tracker and this one. The note their agents were handed,

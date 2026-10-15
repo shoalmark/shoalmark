@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-10-15 · 46 trackers (46 work).
+> Generated 2026-10-15 · 47 trackers (47 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -59,6 +59,7 @@
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | P2 | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | Parked | backlog | 2026-10-13 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-049](FM-049-b1-s-probe-dialog-gives-a-visitor-one-opt-in-line-to-say.md) | — | B1's probe dialog gives a visitor one opt-in line to say what their agent found | Proposed | triage | — |
 | [FM-043](FM-043-the-upgrade-notes-leave-an-adopter-with-a-hook-runner-short.md) | — | the upgrade notes leave an adopter with a hook runner short of 0.19.0 | Proposed | triage | — |
 | [FM-038](FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md) | P3 | the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time | Proposed | backlog | 2026-09-27 |
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
