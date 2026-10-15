@@ -56,10 +56,21 @@ def _try(f):
         return False
 
 
+def _rm_again(function, path, _error):
+    """`rm_git`'s handler. A path already gone is skipped: git's background housekeeping can remove a file between the listing
+    and its removal (CI run 38744072206, Ubuntu 3.9: `.git/objects/bitmap-ref-tips_…` vanished, the old handler's chmod raised
+    again, and the traceback ended the suite). Any other error: the path is made writable and the call tried once more; a second
+    failure is raised."""
+    import stat
+    if not os.path.lexists(path):
+        return
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
+
+
 def rm_git(root):
     """Remove a scratch .git — Windows refuses to delete git's read-only objects unless they are made writable first."""
-    import stat
-    shutil.rmtree(root / ".git", onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
+    shutil.rmtree(root / ".git", onerror=_rm_again)
 
 
 # FM-045: every git argv started by a board's run the suite watches — each `--html-only` in process (`run`) and each `--html-only` of this tool's own file as a
@@ -143,6 +154,63 @@ def tracker(root, tid, status="In Progress", extra="", body="## What is true now
     p = d / f"{tid}-x.md"
     p.write_text(f'---\nid: {tid}\nstatus: {status}\nconsidered: none\n{extra}hook: "h of {tid}"\n---\n\n# {tid} — {title}\n\n{body}', encoding="utf-8")
     return p
+
+
+# --- `rm_git` skips a file already gone, and nothing else (CI run 38744072206: Ubuntu 3.9 aborted in it) ----
+with tempfile.TemporaryDirectory() as tmp:
+    from unittest import mock as _mock
+    base, real_unlink_ = Path(tmp).resolve(), os.unlink
+
+    def _objects(root):
+        """A scratch .git with three object files, read-only as git writes them."""
+        objects = root / ".git" / "objects" / "ab"
+        objects.mkdir(parents=True)
+        for name in ("cd01", "cd02", "bitmap-ref-tips"):
+            (objects / name).write_bytes(b"object")
+            os.chmod(objects / name, 0o444)
+        return objects
+
+    def _unlinking(name, error, times):
+        """`os.unlink` as rmtree meets it: for the file `name`, `error` the first `times` calls. FileNotFoundError: git's housekeeping
+        removed the file first. PermissionError: Windows refuses a read-only file until it is made writable."""
+        seen = []
+
+        def unlink(path, *a, **k):
+            if os.fsdecode(path).endswith(name) and len(seen) < times:
+                seen.append(path)
+                if error is FileNotFoundError:
+                    real_unlink_(path, *a, **k)
+                raise error(2 if error is FileNotFoundError else 13, "refused", os.fsdecode(path))
+            return real_unlink_(path, *a, **k)
+        return unlink, seen
+
+    def _rm(root, unlink):
+        with _mock.patch.object(os, "unlink", unlink):
+            try:
+                rm_git(root)
+            except OSError as e:
+                return e
+        return None
+
+    gone_ = base / "gone"; _objects(gone_); unlink_, seen_ = _unlinking("bitmap-ref-tips", FileNotFoundError, 1)
+    raised_ = _rm(gone_, unlink_)
+    try:                                                    # the handler itself, on every Python: Python 3.15's rmtree skips a vanished file before
+        direct_ = _rm_again(os.unlink, base / "never-there", None)     # any handler, while 3.9's — CI's — hands it to the handler
+    except OSError as e:
+        direct_ = e
+    check(f"rm_git: a file git's housekeeping removed first is skipped — nothing raised, and .git is gone; the handler skips a path "
+          f"already gone (saw {raised_!r}, {direct_!r})",
+          len(seen_) == 1 and raised_ is None and not (gone_ / ".git").exists() and direct_ is None)
+    readonly_ = base / "readonly"; _objects(readonly_); unlink_, seen_ = _unlinking("cd01", PermissionError, 1)
+    raised_ = _rm(readonly_, unlink_)
+    check(f"rm_git: a read-only file refused once is made writable and removed, with the whole .git (saw {raised_!r})",
+          len(seen_) == 1 and raised_ is None and not (readonly_ / ".git").exists())
+    stuck_ = base / "stuck"; _objects(stuck_); unlink_, seen_ = _unlinking("cd02", PermissionError, 2)
+    raised_ = _rm(stuck_, unlink_)
+    check(f"rm_git: an error that is not a vanished path still raises, after the one retry (saw {raised_!r})",
+          len(seen_) == 2 and isinstance(raised_, PermissionError) and (stuck_ / ".git").exists())
+    # On macOS, Python 3.15's rmtree hands that raise to the handler again, as its folder's error: the folder is made write-only, as
+    # before this change, and the file in it can no longer be seen — so the check reads .git, not the file.
 
 
 # --- a fresh repository: init, file, gate ---------------------------------------------------------------
@@ -12910,8 +12978,8 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 
 # --- FM-034, 0.18.3 (the Auditor seat's check 20): a fresh clone's `--check` — the checkout's own finding is said once, on
-#     stderr, and never written into INDEX.md; the committed INDEX and the one any clone generates are the same under
-#     `drift_normalize` — the `Generated` date aside, which a clone generating it the next day writes anew (the cold R2) ----
+#     stderr, and never written into INDEX.md; the committed INDEX and the one any clone generates are the same — since R21
+#     (FM-032) byte for byte on another day too, for the header holds no date (the cold R2) ----
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
     subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
@@ -12939,16 +13007,18 @@ with tempfile.TemporaryDirectory() as tmp:
     said_ = [l_ for l_ in err_.splitlines() if "cannot verify" in l_]
     wcode_, _o, _e = run(fresh_)
     status_ = subprocess.run(["git", "-C", str(fresh_), "status", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout
-    tomorrow_ = re.sub(r"Generated \d{4}-\d{2}-\d{2}", "Generated 2999-01-01", index_)     # the same INDEX, generated another day
     generated_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
-    (fresh_ / "docs/work-tracker/INDEX.md").write_text(tomorrow_, encoding="utf-8"); later_ = run(fresh_, "--check")[1]
-    check(f"FM-034 · a fresh clone without the signers file: `--check` prints ONE finding, the signers file, naming the answers it could not check — and no STALE; the INDEX it writes is the committed one under `drift_normalize` — the date aside, so on another day too — and `--check` reads it so (saw {err_.strip()!r})",
+    from unittest import mock as _mock
+    with _mock.patch.object(fm.datetime, "date", type("_Later", (datetime.date,), {"today": classmethod(lambda cls: cls(2999, 1, 1))})):
+        run(fresh_)                                                                         # the same clone, generating it another day
+    tomorrow_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8"); later_ = run(fresh_, "--check")[1]
+    check(f"FM-034 · a fresh clone without the signers file: `--check` prints ONE finding, the signers file, naming the answers it could not check — and no STALE; the INDEX it writes is the committed one, on another day too (R21: no date in it) — and `--check` reads it so (saw {err_.strip()!r})",
           code_ == fm.EXIT_LINT and len(said_) == 1 and "STALE" not in out_ + err_ and "INDEX.md is up to date" in out_
           and said_[0].startswith(f"  checkout: it is signed, but this clone cannot verify: `gpg.ssh.allowedSignersFile` is not set — see {fm.SIGNING_PAGE} — 2 signed commit(s) it could not check: ")
           and f"MSR-001 `{signed_[0][:10]}`" in said_[0] and f"MSR-002 `{signed_[1][:10]}`" in said_[0]      # in the order the rules met them: under `[seats]` the rights rule first, newest first
           and "FAILED: this checkout's own finding — the ledger is sound" in err_ and "ledger-integrity" not in err_
           and fm.drift_normalize(generated_) == fm.drift_normalize(index_) and "INDEX.md is up to date" in later_
-          and fm.drift_normalize(tomorrow_) == fm.drift_normalize(index_) and tomorrow_ != index_
+          and tomorrow_ == generated_ == index_
           and "cannot verify" not in index_ and status_ in ("", " M docs/work-tracker/INDEX.md\n"))
     check("FM-034 · the clone with the signers file configured: no finding, exit 0",
           ok_code == 0 and "cannot verify" not in ok_err and "checkout:" not in ok_err)

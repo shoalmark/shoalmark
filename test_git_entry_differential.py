@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import runpy
 import shutil
 import stat
@@ -25,6 +26,43 @@ HERE = Path(__file__).resolve().parent
 MARKER = "__GIT_ENTRY_DIFFERENTIAL__"
 PAYLOAD = ("VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md", "vendor/marked-18.0.13.umd.js")
 POISON_KEYS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS")
+# R21 (FM-032): the candidate's INDEX.md drops the header's dated, counted line, which the 615fb1d baseline still writes after a
+# bare `>` line. The one difference the consumer's snapshots may show; CI run 38744072206 failed the two default cases on it.
+INDEX_PATH = "work-tracker/INDEX.md"
+R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
+
+
+def r21_dropped(data):
+    """The baseline's INDEX.md bytes without the header's separator and dated, counted line, removed once and in the header
+    (before the first `## ` section) only. None where the header holds no such line."""
+    head, sep, rest = data.partition(b"\n## ")
+    head, found = R21_LINE.subn(b"", head, count=1)
+    return head + sep + rest if found else None
+
+
+def snapshots_match(baseline, candidate):
+    """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
+    entry and hook — but for R21's difference: INDEX.md after the run may differ where the baseline's, its header line
+    dropped (`r21_dropped`), is the candidate's bytes."""
+    if baseline["before"] != candidate["before"]:
+        return False
+    if baseline["after"] == candidate["after"]:
+        return True
+    old, new = dict(baseline["after"]), dict(candidate["after"])
+    if not (isinstance(old.pop(INDEX_PATH, None), str) and isinstance(new.pop(INDEX_PATH, None), str)) or old != new:
+        return False
+    old_bytes, new_bytes = (base64.b64decode(row["index_after"]["bytes_base64"]) if isinstance(row.get("index_after"), dict) else None
+                            for row in (baseline, candidate))
+    return (old_bytes is not None and new_bytes is not None
+            and hashlib.sha256(old_bytes).hexdigest() == baseline["after"][INDEX_PATH]
+            and hashlib.sha256(new_bytes).hexdigest() == candidate["after"][INDEX_PATH]
+            and r21_dropped(old_bytes) == new_bytes)
+
+
+def with_index(observed, data, path=INDEX_PATH):
+    """A copy of an observed run whose file `path` held `data` after the run — for the allowance's controls."""
+    after = dict(observed["after"], **{path: hashlib.sha256(data).hexdigest()})
+    return dict(observed, after=after, **({"index_after": serial(data)} if path == INDEX_PATH else {}))
 
 
 def remove_tree(path):
@@ -177,8 +215,10 @@ def invoke(tool, root, flags, cwd, env):
         for row in report["starts"]:
             if "raw" in row:
                 row["argv"] = read_back(row["raw"])
+    index = root / INDEX_PATH
     report.update(status=result.returncode, stdout=result.stdout,
                   stderr="".join(line for line in lines if not line.startswith(MARKER)), before=before, after=snapshot(root),
+                  index_after=serial(index.read_bytes()) if index.is_file() and not index.is_symlink() else None,
                   source_sha256=hashlib.sha256(tool.read_bytes()).hexdigest(), flags=flags,
                   invocation_cwd=str(cwd), consumer=str(root), invocation_environment=serial(env))
     return report
@@ -296,7 +336,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             assert_control(label_prefix + "all actual process argv/effective cwd/env match", strip_stack(before["starts"]) == strip_stack(after["starts"]))
             assert_control(label_prefix + "run options and actual process results match", strip_stack(before["run_calls"]) == strip_stack(after["run_calls"]))
-            assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", before["before"] == after["before"] and before["after"] == after["after"])
+            assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
             assert_control(label_prefix + "actual main state/result and selected origin policy match", before["main_returns"] == after["main_returns"]
                            and bool(after["main_returns"]) and after["main_returns"][-1]["ASK_ORIGIN"] is ask)
             assert_control(label_prefix + "Git entry emits no SVN limitation", "protected SVN acceptance" not in before["stdout"] + before["stderr"] + after["stdout"] + after["stderr"])
@@ -321,6 +361,24 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                     assert_control(label_prefix + "clean default actually reads local origin once", all(sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts"]) == 1 for observed in pair))
                 if label == "dirty-default-fallback":
                     assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts"]) for observed in pair))
+
+        # R21's allowance is held to its one difference on the real default pair: equal snapshots match, and no variant below does.
+        old, new = (next(row for row in rows if row["case"] == "clean-default-origin" and row["version"] == version) for version in ("baseline", "candidate"))
+        old_index, new_index = (base64.b64decode(row["index_after"]["bytes_base64"]) for row in (old, new))
+        line = R21_LINE.search(old_index)
+        allowance = "Git entry R21 allowance: "
+        assert_control(allowance + "the default run's INDEX.md differs by the header's dated, counted line alone, and equal snapshots still match",
+                       old["after"] != new["after"] and r21_dropped(old_index) == new_index and snapshots_match(old, new) and snapshots_match(new, new))
+        work = next(row for row in new_index.split(b"\n") if row.startswith(b"| [WORK-001]("))
+        assert_control(allowance + "a candidate that also changes one row of INDEX.md does not match",
+                       not snapshots_match(old, with_index(new, new_index.replace(work, work.replace(b"entry origin selection", b"entry origin, changed"), 1))))
+        assert_control(allowance + "a candidate that writes another consumer file differently, or one more, does not match",
+                       not snapshots_match(old, with_index(new, b"product, changed\n", "product.txt"))
+                       and not snapshots_match(old, with_index(new, b"one more\n", "work-tracker/more.md"))
+                       and not snapshots_match(dict(old, before=dict(old["before"], **{"product.txt": "0" * 64})), new))
+        assert_control(allowance + "a `> Generated` line below the header, or a second one in it, is not removed and does not match",
+                       bool(line) and not snapshots_match(with_index(old, new_index + line.group(0)[1:] + b"\n"), new)
+                       and not snapshots_match(with_index(old, old_index.replace(line.group(0), line.group(0) * 2, 1)), new))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),
