@@ -14,7 +14,6 @@
   "path_mode|git/<forwarded>|subprocess.run|29217f76ed76a95bbd0420d131e280afe25eebe96c49d9ab6eb0114fa90e25ee",
   "pending_author|git/var|subprocess.run|5cc560fadc713bcdcfacb8be0a1a3229c3ba2ea28480a2ad446e95dd78511fb9",
   "pending_judgement|git/diff|subprocess.run|fe580f2cb5feab8c539eb006bf99e9c883b7ea239e46dfdce479ae58722b1937",
-  "post_notice|<dynamic>|subprocess.run|3ae315fd35cdd26a5acc6a4b5e17b8ab3eff15f8f33ef4a20979961cb17d835e",
   "read_changes|git/<forwarded>|subprocess.run|6880e1b3761494a6e666d02d90454f2eb97112c63e0c502172f276619366d1a0",
   "resolve_commits|git/cat-file|subprocess.run|03b2d22b687653a5865aedf88f60861921fa0e68724f0fc066119d98888cde25",
   "run_deriver|<dynamic>|subprocess.run|bda09326005f1b7c67d384dd906761f5d971595e3108483c5d9b3e7d49a248a0",

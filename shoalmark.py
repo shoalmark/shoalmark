@@ -963,7 +963,6 @@ _OWNER = r"Owner(?:\s+—\s+[^,]+)?"      # `Owner`, or `Owner — the ruling aw
 # alike (the pass's R8); its hours are refused there from 24 up.
 DUE_SHAPE = r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):\d{2}(?::\d{2})?Z?(?:[+-]\d{2}:[0-5]\d)?"     # hour 24 refused (R5); a zone's minutes 00–59 (R8)
 WINDOW_DEFAULT = 60           # minutes after `due:` in which the act can still be done; past it with no `done:`, it is missed
-NOTIFY_AHEAD = 30             # minutes before `due:` that `--notify` posts an act, and its invite's alarm rings (FM-030 D)
 # WHAT AN ASK MUST BE, in numbers. The flow held only while every agent had read the contract and chose to obey it;
 # these are the same sentences, held by the gate instead (FM-008). They are deliberately generous: an ask that trips
 # one of them is not borderline, it is a paragraph, a second question, or a question already asked.
@@ -2118,32 +2117,10 @@ STANDUP_ORDER = (("ruling", "RULINGS — answer; a provisional answer is an answ
                  ("ceremony", "BUTTONS — reviewed and accepted, waiting for a click"))
 
 
-def standup(trackers, invite=None):
-    """`--standup`: the agenda of the Owner's one sitting — by kind, and inside a kind by what frees the most.
-    `--standup FILE.ics`: the recurring calendar invite for it, weekdays at `standup` for `standup_minutes`."""
+def standup(trackers):
+    """`--standup`: the agenda of the Owner's one sitting — by kind, and inside a kind by what frees the most. Its calendar
+    file, `--standup FILE.ics`, went with R9 (`R9_REMOVED`); a file it wrote is named by `r9_leftovers`."""
     at = str(CONFIG.get("standup") or "").strip()
-    if invite is not None and invite != "":
-        if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", at):
-            print(f'--standup FILE: set the time first — `standup = "09:00"` in {CONFIG_NAME}', file=sys.stderr)
-            return EXIT_LINT
-        day = datetime.date.today()
-        while day.weekday() > 4:
-            day += datetime.timedelta(days=1)
-        start = datetime.datetime.combine(day, datetime.time(int(at[:2]), int(at[3:])))
-        end = start + datetime.timedelta(minutes=int(CONFIG.get("standup_minutes") or 15))
-        name = CONFIG["name"] or ROOT.name
-        f = lambda d: d.strftime("%Y%m%dT%H%M%S")                # floating time: the Owner's own clock, wherever they are
-        lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//standup//EN", "BEGIN:VEVENT",
-                 f"UID:standup-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", f"DTSTAMP:{f(datetime.datetime(2000, 1, 1))}Z",
-                 f"DTSTART:{f(start)}", f"DTEND:{f(end)}", "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
-                 f"SUMMARY:{name} — standup: what needs you", f"DESCRIPTION:Run `{CMD} --standup` — or open the board: its first lines are the agenda.",
-                 "END:VEVENT", "END:VCALENDAR"]
-        named = pathlib.Path(invite).absolute()
-        out = pathlib.Path(os.path.realpath(named.parent)) / named.name      # a destination a person names: its folder resolved once, where it is named
-        write_rule(named)                                   # the write rule, as the path is named; `put` asks it again where it resolves
-        put(out, "\r\n".join(lines) + "\r\n")              # a calendar file ends its lines with CRLF, on every system — `put` writes them as they are
-        print(f"wrote {invite} — weekdays {at}, {int(CONFIG.get('standup_minutes') or 15)} minutes; import it into the Owner's calendar")
-        return EXIT_OK
     way = on_their_way(trackers)
     (q, acts), ways = owed_now(trackers, way), way_lines(way)
     line = bottleneck(q)
@@ -2860,71 +2837,37 @@ def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
             f"or `git switch {printed_arg(branch)}` and run it there")
 
 
-def ics_text(value):
-    """RFC 5545 3.3.11: a TEXT value, its backslash, semicolon, comma and line breaks escaped."""
-    return value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r\n", "\\n").replace("\n", "\\n")
+# R9 — the ruling signed on 2026-10-12: invites, notifications and their scheduler state go; owed acts, `due:`, `done:` and their
+# signed history stay. Gone: `--invite <id>`, `--notify`, and `--standup FILE.ics` — `--standup` alone is the agenda, as it was.
+# Each removed flag says so in one line and exits 2 (`cli_removed`). What they left on a machine is named by `--standup` and
+# `--owner` on every run that sees it, with what replaces it, and is never read, run or removed by the tool (`r9_leftovers`).
+R9_INSTEAD = "`--standup` and `--owner` list each act owed with its time, and so does the board"
+R9_REMOVED = {
+    "invite": f"--invite: removed by R9 — no calendar file is written; {R9_INSTEAD}",
+    "notify": f"--notify: removed by R9 — no notice is posted and nothing is remembered; {R9_INSTEAD}",
+    "standup": "--standup FILE.ics: removed by R9 — no calendar file is written; `--standup` alone is the agenda, and it and `--owner` list "
+               "each act owed with its time, and so does the board",
+}
+R9_TITLE = (f"LEFT BY INVITES AND NOTIFICATIONS, which R9 removed — {R9_INSTEAD}. "
+            "The tool reads, runs and removes none of these; each is yours to remove:")
+# the first three lines of every calendar file the tool wrote — `--invite`'s (`act`) and `--standup FILE.ics`'s (`standup`) — CRLF as written, LF if converted since
+R9_ICS_HEAD = re.compile(rb"BEGIN:VCALENDAR\r?\nVERSION:2\.0\r?\nPRODID:-//shoalmark//(act|standup)//EN\r?\n")
+R9_LAUNCHD = "app.shoalmark.notify"         # the launchd agent's label and file name the README gave for `--notify`, before R9
 
 
-def ics_fold(line):
-    """RFC 5545 3.1: a content line longer than 75 octets, folded — CRLF and one space — never inside a UTF-8 character."""
-    parts, cur, size = [], "", 0
-    for ch in line:
-        n = len(ch.encode("utf-8"))
-        if size + n > (74 if parts else 75):              # a continuation's leading space is one of its 75 octets
-            parts.append(cur)
-            cur, size = "", 0
-        cur, size = cur + ch, size + n
-    return "\r\n ".join(parts + [cur])
-
-
-ACT_RECORD_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2}\*\* · ", re.M)     # one record under `## Acts`: done, scheduled, rescheduled
-
-
-def invite_cmd(tid, trackers):
-    """`--invite <id>` (FM-030 D; their word: *invites + notifications*) — one calendar file for the act a tracker owes the
-    Owner, beside its evidence: `<tracker dir>/evidence/<id>/<id>-act.ics`. RFC 5545, as the standup's invite is, but at
-    the act's own instant, in UTC: DTSTART its `due:`, a DURATION of its `window:`, an alarm NOTIFY_AHEAD minutes before.
-    The UID is the act's and SEQUENCE counts its records under `## Acts`, so the file written after a `--due` replaces
-    the event when it is imported again. Deterministic: the same act writes the same bytes. The file is the Owner's to
-    import, and to commit or not; nothing else is written."""
-    tid = tid.upper()
-    t = next((x for x in trackers if x["id"] == tid), None)
-    act = act_of(t) if t else None
-    if not act:
-        print(f"--invite: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`", file=sys.stderr)
-        return EXIT_LINT
-    when = parse_due(act[3])
-    if not when:
-        print(f"--invite: {tid}'s act has no `due:` yet — an invite needs a time: `{CMD} --due {printed_arg(tid)} <time>` first", file=sys.stderr)
-        return EXIT_LINT
-    what, answer, answered, due, window, asked = act
-    body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))[1]
-    at = ACTS_HEAD_RE.search(body)
-    records = re.split(r"^#{1,3}\s", body[at.end():], maxsplit=1, flags=re.M)[0] if at else ""
-    sequence = len(ACT_RECORD_RE.findall(records))
-    utc = lambda d: d.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    name = CONFIG["name"] or ROOT.name
-    said = ((f"{what}\nAsked: {asked}\n" if asked else "") + (f"Promised {answered}: {answer}. " if answer else "")
-            + f"Owed to you, due {due}; it can still be done {window} minutes after. "
-             f'Done: {CMD} --done {printed_arg(tid)} "<where the result is>" — moved: {CMD} --due {printed_arg(tid)} <time>')
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT",
-             f"UID:act-{tid.lower()}-{hashlib.sha256(name.encode()).hexdigest()[:16]}@shoalmark", "DTSTAMP:20000101T000000Z",
-             f"SEQUENCE:{sequence}", f"DTSTART:{utc(when)}", f"DURATION:PT{window}M",
-             "SUMMARY:" + ics_text(f"{name} — {tid}: {what}"), "DESCRIPTION:" + ics_text(said),
-             "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + ics_text(f"{tid}: {what}"), f"TRIGGER:-PT{NOTIFY_AHEAD}M", "END:VALARM",
-             "END:VEVENT", "END:VCALENDAR"]
-    out = TRACKER_DIR / "evidence" / tid / f"{tid}-act.ics"
-    write_rule(out)                                         # the write rule, before its folder is made
-    out.parent.mkdir(parents=True, exist_ok=True)
-    put(out, "\r\n".join(ics_fold(l) for l in lines) + "\r\n")      # CRLF, on every system — `put` writes them as they are
-    print(f"wrote {out.relative_to(ROOT).as_posix()} — {tid} due {due} ({utc(when)} UTC), {window} minutes, a reminder "
-          f"{NOTIFY_AHEAD} minutes before; import it into your calendar")
-    return EXIT_OK
+def cli_removed(args):
+    """R9's one line for the operation `cli_operation` selects, where that operation is gone — `--invite`, `--notify`, or
+    `--standup` with a file — else None. Pure: what a run says before it reads anything; the caller prints it and exits 2."""
+    operation = cli_operation(args)
+    if operation in ("invite", "notify") or (operation == "standup" and args.standup):
+        return R9_REMOVED[operation]
+    return None
 
 
 def state_dir():
-    """The tool's own state — never committed, never in the repository: `$XDG_STATE_HOME/shoalmark`, else
-    `%LOCALAPPDATA%/shoalmark` on Windows, else `~/.local/state/shoalmark`. None where there is no home at all."""
+    """Where `--notify` kept its state before R9 — never committed, never in the repository: `$XDG_STATE_HOME/shoalmark`, else
+    `%LOCALAPPDATA%/shoalmark` on Windows, else `~/.local/state/shoalmark`. None where there is no home at all. Read only by
+    `r9_leftovers`, to name what is left there."""
     try:
         base = (os.environ.get("XDG_STATE_HOME") or (os.environ.get("LOCALAPPDATA") if sys.platform == "win32" else "")
                 or pathlib.Path.home() / ".local" / "state")
@@ -2933,104 +2876,73 @@ def state_dir():
     return pathlib.Path(base) / "shoalmark"
 
 
-NOTICE_ON_WINDOWS = "printed — no notice is posted on Windows"      # a notice's line on Windows, where `--notify` starts no program
+def r9_leftovers():
+    """What invites and notifications left that R9 no longer reads, runs or writes, as (where, what it is and what to do), in
+    a fixed order: the calendar files the tool wrote inside the repository — `--invite`'s, `<tracker dir>/evidence/<ID>/<ID>-act.ics`,
+    and `--standup FILE.ics`'s at the repository's top or the tracker folder's — each known by its own first three lines; then,
+    outside it, the state `--notify` kept (`notified.json`), the log of the README's cron line, the README's launchd agent and its
+    log. A file inside the repository is opened only where `real_inside` holds and it is a regular file, and only its first
+    bytes are read — one reached through a symlink is no file the tool wrote, since its write rule refused that; outside it,
+    each known path is asked whether it is a file, and a log when it was last written. No folder outside the repository is
+    walked, no program is started — a crontab is not read: the README's cron line is seen by the log it writes — and nothing
+    is written or removed. A calendar file written elsewhere, a schedule with another name or log, and the events imported
+    into a calendar are not seen here; the README's section on R9 names them."""
+    found = []
 
+    def shown(p):
+        return os.path.relpath(p, ROOT).replace(os.sep, "/") if in_tree(p) else str(p)
 
-def notice_text(text):
-    """A notice's title or body as the data it travels as: a NUL, which no argv and no environment can hold, as U+FFFD."""
-    return text.replace("\0", "\ufffd")
-
-
-def notify_env(title, body, environ=None):
-    """The environment a notice's command runs in: this process's (or `environ`), with the title as `SM_TITLE` and the body as
-    `SM_BODY` — the data the fixed code `notify_argv` hands macOS reads. Pure, so a test reads it."""
-    return {**(os.environ if environ is None else environ), "SM_TITLE": notice_text(title), "SM_BODY": notice_text(body)}
-
-
-def notify_argv(title, body, platform=None, which=None):
-    """The command that posts one system notification on `platform`, or None where none is present: macOS `osascript`,
-    Linux `notify-send`; on Windows None, always — there the notice is printed. Pure — what it WOULD run — so a test reads
-    every platform's. macOS is handed fixed code, the same on every run, which reads the title and body from the environment
-    `notify_env` builds; Linux's `notify-send` takes them as its own arguments, after `--`."""
-    platform, which = platform or sys.platform, which or shutil.which
-    if platform == "darwin" and which("osascript"):
-        return ["osascript", "-e", 'use framework "Foundation"\nuse scripting additions\n'
-                                   "set e to current application's NSProcessInfo's processInfo()'s environment()\n"
-                                   """display notification ((e's objectForKey:"SM_BODY") as text) with title ((e's objectForKey:"SM_TITLE") as text)"""]
-    if platform.startswith("linux") and which("notify-send"):
-        return ["notify-send", "--app-name=shoalmark", "--", notice_text(title), notice_text(body)]
-    return None
-
-
-def post_notice(title, body):
-    """Post one notification: `posted`; `printed` where this system has no notifier, and on Windows — the printed line is
-    the notice; or `NOT posted — why`, which is not remembered, so the next run tries again."""
-    argv = notify_argv(title, body)
-    if not argv:
-        return NOTICE_ON_WINDOWS if sys.platform == "win32" else "printed — no notifier here"
-    try:
-        r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, env=notify_env(title, body))
-    except (OSError, ValueError, subprocess.TimeoutExpired) as e:        # a notice that cannot be started is that notice's failure alone
-        return f"NOT posted — {type(e).__name__}"
-    return "posted" if r.returncode == 0 else "NOT posted — " + ((r.stderr or r.stdout or "").strip().splitlines() or [f"exit {r.returncode}"])[-1][:120]
-
-
-def notify_cmd(trackers):
-    """`--notify` (FM-030 D; their word: *invites + notifications*) — one system notification for every act with a `due:`
-    that falls due within NOTIFY_AHEAD minutes, is overdue, or was missed: ONE per act per state. What was posted is
-    remembered in `state_dir()/notified.json`, per repository, keyed on the act, its `due:` and the state — a `--due` that
-    moves it posts again, and nothing else does; a notice that could not be posted is not remembered. Meant to be
-    scheduled by the person — the README has a launchd and a cron line; the tool installs nothing. It reads the
-    trackers and writes nothing in the repository. Exit 1 when a notice could not be posted — a schedule's log shows it."""
-    now, name = datetime.datetime.now(datetime.timezone.utc), CONFIG["name"] or ROOT.name
-    store = state_dir()
-    path = store / "notified.json" if store else None
-    try:
-        seen = json.loads(path.read_text(encoding="utf-8")) if path and path.is_file() else {}
-        seen = seen if isinstance(seen, dict) else {}
-    except (OSError, ValueError):
-        seen = {}
-    had, keep, lines, before, later, failed = set(seen.get(str(ROOT)) or []), set(), [], 0, 0, 0
-    for t in sorted(trackers, key=lambda t: (t["kind"], t["num"])):
-        act = act_of(t)
-        when = parse_due(act[3]) if act else None
-        if not when:
-            continue
-        state = act_state(act, now)
-        if state == "due" and now < when - datetime.timedelta(minutes=NOTIFY_AHEAD):
-            later += 1
-            continue
-        mark = f"{t['id']} {act[3]} {state}"
-        if mark in had:
-            keep.add(mark)
-            before += 1
-            continue
-        said = f"due in {max(1, math.ceil((when - now).total_seconds() / 60))} min" if state == "due" else state
-        how = NOTICE_ON_WINDOWS if sys.platform == "win32" else post_notice(f"{name} · {t['id']} — {said}", f"{act[0]} · {act_words(act, now)}"
-                                                                            + (f"\n{LABELS['acts.asked'].format(act[5])}" if act[5] else ""))
-        lines.append(f"  {t['id']} — {said} · {act[0]} · {act_words(act, now)} — {how}")
-        if how.startswith("NOT"):
-            failed += 1
-        else:
-            keep.add(mark)
-    where = "NOT remembered — there is no home for the tool's state; the next run posts again"
-    if path:
-        seen = {k: v for k, v in seen.items() if k != str(ROOT)}
-        if keep:
-            seen[str(ROOT)] = sorted(keep)
+    def ics_kind(p):
+        if not (real_inside(p) and os.path.isfile(p)):
+            return None
         try:
-            write_rule(path)                                # the write rule, before its folder is made
-            path.parent.mkdir(parents=True, exist_ok=True)
-            put(path, json.dumps(seen, indent=1, ensure_ascii=False) + "\n")
-            where = f"remembered in {path}" if keep else f"nothing remembered — {path}"
-        except OSError as e:
-            where = f"NOT remembered — {path}: {e.strerror or e}; the next run posts again"
-    done = "printed" if sys.platform == "win32" else "posted"              # on Windows each notice is printed
-    print(f"--notify: {len(lines) - failed} {done} · {before} {done} before · {later} not yet within {NOTIFY_AHEAD} minutes"
-          + (f" · {failed} NOT posted" if failed else "") + f" — {where}")
-    for l in lines:
-        print(l)
-    return 1 if failed else EXIT_OK                         # a notice that could not be posted is a failure a schedule must see (R6)
+            with open(p, "rb") as f:
+                head = R9_ICS_HEAD.match(f.read(96))
+        except OSError:
+            return None
+        return head.group(1).decode() if head else None
+
+    def written(p):
+        try:
+            return datetime.datetime.fromtimestamp(os.stat(p).st_mtime).strftime("%Y-%m-%d %H:%M")
+        except (OSError, ValueError, OverflowError):
+            return "at a time not read here"
+
+    tops = sorted({*ROOT.glob("*.ics"), *TRACKER_DIR.glob("*.ics")}) if TRACKER_DIR.is_dir() else sorted(ROOT.glob("*.ics"))
+    for p in sorted(TRACKER_DIR.glob("evidence/*/*-act.ics")) + tops:
+        kind = ics_kind(p)
+        if kind == "act" and p.name == f"{p.parent.name}-act.ics":
+            found.append((shown(p), "a calendar file `--invite` wrote: delete it, and the event imported from it"))
+        elif kind == "standup" and p.parent in (ROOT, TRACKER_DIR):
+            found.append((shown(p), "the stand-up's calendar file `--standup FILE.ics` wrote: delete it — the weekly event imported from it "
+                                    "says to run `--standup`, which stays"))
+    try:
+        home = pathlib.Path.home()
+    except (RuntimeError, KeyError):
+        home = None
+    states = list(dict.fromkeys(p for p in (state_dir(), home / ".local" / "state" / "shoalmark" if home else None) if p))
+    for d in states:
+        if (d / "notified.json").is_file():
+            found.append((shown(d / "notified.json"), "what `--notify` remembered: delete it, then its folder once it is empty"))
+    for d in states:
+        if (d / "notify.log").is_file():
+            found.append((shown(d / "notify.log"), f"the log the README's cron line writes, last written {written(d / 'notify.log')}: that line "
+                                                   "runs `--notify`, which now only says it is removed — take it out of your crontab (`crontab -e`), "
+                                                   "then delete the log"))
+    if home:
+        agent, log = home / "Library" / "LaunchAgents" / f"{R9_LAUNCHD}.plist", home / "Library" / "Logs" / "shoalmark-notify.log"
+        if agent.is_file():
+            found.append((shown(agent), "the launchd agent the README gave, which runs `--notify`: `launchctl unload` it, then delete it"))
+        if log.is_file():
+            found.append((shown(log), f"that agent's log, last written {written(log)}: delete it once the agent is gone"))
+    return found
+
+
+def say_r9_leftovers():
+    """`--standup` and `--owner`: each of `r9_leftovers` in one line under its title, after a blank line, where there is one."""
+    found = r9_leftovers()
+    if found:
+        print(f"\n{R9_TITLE}\n" + "\n".join(f"  {where} — {what}" for where, what in found))
 
 
 def owner_change(tid, t, how):
@@ -5248,8 +5160,8 @@ def act_of(t):
 
 
 def act_state(act, now=None):
-    """An act's state by the clock — the page's second rule (`actstate`), read in Python for `--standup`, `--owner` and
-    `--notify`: `nodate` · `due` before its time · `overdue` after it · `missed` once `window:` minutes have passed."""
+    """An act's state by the clock — the page's second rule (`actstate`), read in Python for `--standup` and `--owner`:
+    `nodate` · `due` before its time · `overdue` after it · `missed` once `window:` minutes have passed."""
     when = parse_due(act[3])
     if not when:
         return "nodate"
@@ -8907,7 +8819,8 @@ def parse_args(argv):
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
              "tracks; its board carries no derived columns. It stands alone, with --root. The checkout and merge hooks run it from the copy of the tool kept in the git directory")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, and post-checkout, post-merge and post-rewrite, which refresh the board — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
-    add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
+    add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first; "
+                                                                   "then what invites and notifications left here, each named, never removed (R9). With FILE.ics: removed by R9 — one line, exit 2")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
              "origin's default branch, and refused, naming `git branch -D`, when it is not. An answer given already: `--answer <id> revoke \"<reason>\"`, or "
@@ -8915,12 +8828,9 @@ def parse_args(argv):
              "prints the answer and the command to give it again. The word it writes stays the button's; every reading names the answer's relation to the proposal")
     add("--supersede", action="store_true", help="with --answer, on a tracker they have answered already: the new answer replaces the old one, which moves into the ship log "
                                                  "with the commit that wrote it — `--answer <id> accept|reject \"<option>\" --supersede`; `--answer <id> revoke \"<reason>\"` takes an answer back the same way")
-    add("--invite", metavar="ID", help="an act owed to the Owner as a calendar file (FM-030): `<tracker dir>/evidence/<id>/<id>-act.ics` — its `due:` in "
-                                       "UTC, a DURATION of its `window:`, a reminder 30 minutes before; RFC 5545. Import it; after a `--due`, write it again")
-    add("--notify", action="store_true", help="one system notification per act owed to the Owner that falls due within 30 minutes, is overdue or was "
-                                              "missed (FM-030) — once per act per state, remembered outside the repository: $XDG_STATE_HOME/shoalmark/"
-                                              "notified.json, else ~/.local/state/shoalmark on macOS and Linux, %%LOCALAPPDATA%%/shoalmark on Windows. "
-                                              "Schedule it yourself: the README has a launchd and a cron line")
+    add("--invite", metavar="ID", help="removed by R9 — one line, exit 2: `--standup` and `--owner` list each act owed with its time, and name a calendar file it wrote")
+    add("--notify", action="store_true", help="removed by R9 — one line, exit 2: `--standup` and `--owner` list each act owed with its time, and name the state, "
+                                              "the log and the launchd agent it left")
     add("--done", nargs=2, metavar=("ID", "WHERE"), help="the Owner's act is done (FM-030): `--done <id> \"<where the result is>\"` writes `done:` — the time and "
                                                         "where its result is — and its record under `## Acts`; the act leaves their list. Made as --answer makes their answer: on "
                                                         "`answer/<id>`, signed where their `owner` is `signed`, pushed. The board's *done* button copies it")
@@ -8937,6 +8847,7 @@ def parse_args(argv):
     add("--clear-ask", nargs="+", metavar="WORD",
         help="`--clear-ask <id> <next move>` — the answer has been acted on: moves the exchange into the body under `## Asks` (date · question · answer · answered-by · the answer's relation to the proposal), clears the ask and answer lines and sets the next move — the `ask` right's move under [seats]. The gate refuses an answer removed without its record")
     add("--owner", action="store_true", help="the digest: what needs the Owner — how many, how old, what each holds up, each as the question it is. What a session's last message leads with; "
+                                            "then what invites and notifications left here, each named, never removed (R9); "
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — wait: from a fork, read it yourself (first) · merge · closes with PR N · "
                                             "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned (FM-037) · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
@@ -10396,7 +10307,11 @@ def main(argv=None, *, _notice=True):
         if alone:                                           # a flag that means nothing alone is refused, never silently ignored
             print(f"{flag} goes with {needs} — {like}", file=sys.stderr)
             return 2
-    if args.html_only:                                      # …and nothing else, whatever else was said: the board's run is read-only and stands alone
+    removed = cli_removed(args)
+    if removed:                                             # R9: a flag that is gone says so in one line, before anything is read
+        print(removed, file=sys.stderr)
+        return 2
+    if args.html_only:                                    # …and nothing else, whatever else was said: the board's run is read-only and stands alone
         others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
         if others:
             print(f"--html-only is the board's read-only run and stands alone, with --root: {', '.join(others)} goes with another run", file=sys.stderr)
@@ -10472,7 +10387,7 @@ def main(argv=None, *, _notice=True):
         if words:
             answer_step(words[0].upper(), 1, "reading the trackers", verb)
     digest = "--owner" if args.owner else "--standup" if args.standup == "" and not (args.answered or args.answer or args.done or args.due or args.revoke or args.clear_ask) else ""
-    if digest and not (args.schema or args.new or args.invite or args.notify):     # the Owner's digest reads what the board reads: it fetches nothing, up to its queue
+    if digest and not (args.schema or args.new):     # the Owner's digest reads what the board reads: it fetches nothing, up to its queue
         lazy_fetch_off()
         why = lazy_fetch_problem()
         if why:
@@ -10482,7 +10397,7 @@ def main(argv=None, *, _notice=True):
     trackers = load_trackers()
     global COMMITTING
     COMMITTING = bool(args.print_written)                 # the pre-commit run: what it stages is what its git calls are spent on
-    mode = "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related or args.notify or args.invite) else "read"
+    mode = "check" if args.check else "write" if not (args.schema or args.new or args.next or args.related) else "read"
     refused, derived_problems = run_deriver(trackers, mode, args.derive_flag)
     if args.schema:
         print(render_schema())
@@ -10494,13 +10409,10 @@ def main(argv=None, *, _notice=True):
         return EXIT_LINT if owner_refused else refused
     if args.new:
         return new_tracker(args.new, trackers, args.tags)
-    if args.invite:
-        return invite_cmd(args.invite, trackers)
-    if args.notify:
-        return notify_cmd(trackers)
     if args.owner:
         code = digest_read(owner_digest, trackers, "--owner")
         say_board_basis()                                   # FM-045: where the board is older than what it shows, one line
+        say_r9_leftovers()                                  # R9: what invites and notifications left here, named — never removed
         queue_section()
         return code
     if args.answered:
@@ -10515,11 +10427,10 @@ def main(argv=None, *, _notice=True):
         return revoke_cmd(args.revoke, trackers)
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
-    if args.standup is not None:
-        if args.standup:                                    # the calendar invite, not the agenda
-            return standup(trackers, args.standup)
+    if args.standup is not None:                            # `--standup` alone: a file after it is refused above (R9)
         code = digest_read(standup, trackers, "--standup")
         say_board_basis()                                   # FM-045: where the board is older than what it shows, one line
+        say_r9_leftovers()                                  # R9: what invites and notifications left here, named — never removed
         queue_section()
         return code
     if args.next:
