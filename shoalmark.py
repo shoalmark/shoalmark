@@ -3301,7 +3301,7 @@ def origin_default():
     global _ORIGIN_DEFAULT
     if _ORIGIN_DEFAULT is None:
         try:
-            r = subprocess.run(["git", "ls-remote", "--symref", "origin", "HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            r = vcs_process("git", "ls-remote", "--symref", "origin", "HEAD", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                                errors="replace", timeout=60, env=dict(nested_git_env(), GIT_TERMINAL_PROMPT="0"))
         except (OSError, subprocess.TimeoutExpired):
             r = None
@@ -5368,17 +5368,22 @@ def svn_merged(rev):
     """Whether revision `rev` merged anything — `svn log -g` lists the revisions it merged under it — read at the repository's root,
     which this run reads once, and kept by revision: each revision's log is asked once per run. Where Subversion cannot
     answer, SvnUnreadable (v0.19.1)."""
-    if ("root",) not in _SVN_BLAME:
-        _SVN_BLAME[("root",)] = (svn_run("info", "--show-item", "repos-root-url", ".") or "").strip()
-    if not _SVN_BLAME[("root",)]:
-        raise SvnUnreadable("svn info did not name the repository's root")
-    if ("merged", rev) not in _SVN_BLAME:
-        log = svn_run("log", "-q", "-g", "-r", str(rev), f'{_SVN_BLAME[("root",)]}@{rev}', xml=True)
-        top = log.find("logentry") if log is not None else None
-        if top is None:
-            raise SvnUnreadable(f"svn log did not answer for revision {rev}")
-        _SVN_BLAME[("merged", rev)] = top.find("logentry") is not None
-    return _SVN_BLAME[("merged", rev)]
+    key = ("merged", rev)
+    if key not in _SVN_BLAME:
+        try:
+            if ("root",) not in _SVN_BLAME:
+                root = (svn_run("info", "--show-item", "repos-root-url", ".") or "").strip()
+                if not root or "\n" in root or "\r" in root:
+                    raise SvnUnreadable("svn info did not name the repository's root")
+                _SVN_BLAME[("root",)] = root
+            log = svn_run("log", "-q", "-g", "-r", str(rev), f'{_SVN_BLAME[("root",)]}@{rev}', xml=True)
+            entries = svn_log_proof(log, requested=rev, merged=True)
+            _SVN_BLAME[key] = entries[0].find("logentry") is not None
+        except SvnUnreadable as e:
+            _SVN_BLAME[key] = e
+    if isinstance(_SVN_BLAME[key], Exception):
+        raise _SVN_BLAME[key]
+    return _SVN_BLAME[key]
 
 
 def svn_tracker_new(t):
@@ -5407,37 +5412,70 @@ def svn_blame(rel):
         return _SVN_BLAME[rel]
     out = {}
     try:
-        blame = svn_run("blame", "-g", rel, xml=True, answers=BLAME_ANSWERS)     # `-g`: a line a merge brought is its author's, never the merger's (v0.19.1)
+        svn_proof_path(rel)
+        blame = svn_run("blame", "-g", rel, xml=True, answers=BLAME_ANSWERS)
+        if blame is None:
+            if not svn_new(rel):
+                raise SvnUnreadable("svn blame did not report the committed path")
+        else:
+            targets = list(blame)
+            if blame.tag != "blame" or len(targets) != 1 or targets[0].tag != "target" or targets[0].get("path") != rel:
+                raise SvnUnreadable("svn blame did not report one matching target")
+            for e in targets[0]:
+                number = e.get("line-number") or ""
+                if e.tag != "entry" or not re.fullmatch(r"[1-9][0-9]*", number) or int(number) != len(out) + 1:
+                    raise SvnUnreadable("svn blame printed invalid, repeated or unordered lines")
+                commits, merges = e.findall("commit"), e.findall("merged")
+                if len(commits) > 1 or len(merges) > 1 or any(c.tag not in ("commit", "merged") for c in e):
+                    raise SvnUnreadable("svn blame printed ambiguous committed lines")
+                current = svn_proof_commit(commits[0], author=True) if commits else (None, "")
+                if merges:
+                    merge = merges[0]
+                    svn_proof_path(merge.get("path"), absolute=True)
+                    if not commits or len(merge) != 1 or merge[0].tag != "commit":
+                        raise SvnUnreadable("svn blame printed invalid merged-line proof")
+                    current = svn_proof_commit(merge[0], author=True)
+                    if int(current[1]) > int(commits[0].get("revision")):
+                        raise SvnUnreadable("svn blame printed inconsistent merged revisions")
+                out[int(number)] = current
+        if out:
+            info = svn_run("info", rel, xml=True)
+            if info is None or info.tag != "info" or len(info) != 1 or info[0].tag != "entry" or info[0].get("path") != rel:
+                raise SvnUnreadable("svn info did not report one matching blame path")
+            entry = info[0]
+            if not re.fullmatch(r"[0-9]+", entry.get("revision") or "") or len(entry.findall("commit")) != 1 or len(entry.findall("relative-url")) != 1:
+                raise SvnUnreadable("svn info did not bind the path's committed revision")
+            _author, last = svn_proof_commit(entry.find("commit"))
+            path = svn_relative_path(entry.findtext("relative-url"))
+            if int(last) > int(entry.get("revision")) or path != svn_consumer_prefix() + "/" + rel:
+                raise SvnUnreadable("svn info printed inconsistent blame-path metadata")
+            log = svn_run("log", "-q", "-v", "--stop-on-copy", "-r", last + ":1", rel, xml=True)
+            entries = svn_log_proof(log, paths=True)
+            revisions = [int(e.get("revision")) for e in entries]
+            if revisions[0] != int(last) or any(a <= b for a, b in zip(revisions, revisions[1:])):
+                raise SvnUnreadable("svn log did not bind the ordered path history to its committed revision")
+            if any(not any(path == p.text or path.startswith(p.text + "/") for p in e.find("paths")) for e in entries):
+                raise SvnUnreadable("svn log reported history for another path")
+            first = entries[-1]
+            if not any(p.get("action") in ("A", "R") and (path == p.text or path.startswith(p.text + "/")) for p in first.find("paths")):
+                raise SvnUnreadable("svn log did not report the path's first creation or copy")
+            at, by = int(first.get("revision")), first.findtext("author")
+            if any(rev.isdigit() and int(rev) > int(last) for _who, rev in out.values()):
+                raise SvnUnreadable("svn blame named a revision outside the path's committed history")
+            through = {}
+            if any(rev.isdigit() and int(rev) < at for _who, rev in out.values()):
+                by = MERGED_IN if svn_merged(at) else by
+                if by is not MERGED_IN:
+                    if not (by or "").strip():
+                        raise SvnUnreadable(f"svn log did not name the copied path's author at revision {at}")
+                    through = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
+                out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
+            if through:
+                _SVN_BLAME[("through", rel)] = through
+            _SVN_BLAME[("first", rel)] = str(at)
     except SvnUnreadable as e:
         _SVN_BLAME[rel] = e
         raise
-    try:
-        for e in (blame.iter("entry") if blame is not None else []):
-            c = e.find("merged/commit") if e.find("merged/commit") is not None else e.find("commit")
-            who = c.find("author") if c is not None else None
-            out[int(e.get("line-number"))] = (who.text if who is not None else None, c.get("revision") if c is not None else "")
-    except (ValueError, TypeError):                     # a blame that cannot be read is no answer of the history's: refused, never read as nothing committed
-        _SVN_BLAME[rel] = SvnUnreadable("svn blame printed lines that could not be read")
-        raise _SVN_BLAME[rel]
-    if out:
-        try:
-            log = svn_run("log", "-q", "--stop-on-copy", rel, xml=True)
-        except SvnUnreadable as e:
-            _SVN_BLAME[rel] = e
-            raise
-        first = log.findall("logentry")[-1] if log is not None and log.findall("logentry") else None
-        if first is not None and (first.get("revision") or "").isdigit():
-            at, by = int(first.get("revision")), first.findtext("author")
-            if any(rev.isdigit() and int(rev) < at for _w, rev in out.values()):
-                try:
-                    by = MERGED_IN if svn_merged(at) else by      # a merge that put the path here: its older lines are no one's here
-                except SvnUnreadable as e:
-                    _SVN_BLAME[rel] = e
-                    raise
-                if by is not MERGED_IN:                         # a copy: each older line's own author, read through it by the same blame (v0.19.1)
-                    _SVN_BLAME[("through", rel)] = {n: (who, rev) for n, (who, rev) in out.items() if rev.isdigit() and int(rev) < at}
-                out = {n: ((by, str(at)) if rev.isdigit() and int(rev) < at else (who, rev)) for n, (who, rev) in out.items()}
-            _SVN_BLAME[("first", rel)] = str(at)        # the revision that filed the path: a line it wrote was written at the filing
     _SVN_BLAME[rel] = out
     return out
 
@@ -5602,7 +5640,7 @@ def line_author(path, needle):
             out = (None, None, "unattributed", "")
         elif line in _LINE_AUTHOR[("tips", rel)]:
             try:
-                log = subprocess.run(["git", "log", *board_diff_args(), "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel], cwd=ROOT, capture_output=True,
+                log = vcs_process("git", "log", *board_diff_args(), "-1", "--full-history", "--format=%H%n%an%n%ae", "-G", exact_line_regex(line), *tips, "--", rel, cwd=ROOT, capture_output=True,
                                      text=True, encoding="utf-8", errors="replace", env=nested_git_env())
             except ValueError:                          # a NUL in the line: no argument can carry it
                 log = None
@@ -5639,7 +5677,7 @@ def unattributed(t, needle, how, named=True):
 def pending_author():
     """The author git WOULD write for the commit being made right now — `user.email`, unless the environment imposes
     another (`GIT_AUTHOR_EMAIL`). In the pre-commit run the line is not committed yet, and this is who is committing it."""
-    out = subprocess.run(["git", "var", "GIT_AUTHOR_IDENT"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    out = vcs_process("git", "var", "GIT_AUTHOR_IDENT", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     name, _, rest = out.stdout.partition(" <")
     return (name.strip(), rest.partition(">")[0].strip()) if out.returncode == 0 else ("", "")
 
@@ -5651,7 +5689,7 @@ def owner_policy():
     """The configured Owner identities from the default branch, read once per run."""
     global _OWNER_POLICY
     if _OWNER_POLICY is None:
-        git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         why = []
         owners = owners_at(default_trunk(git), why, owner_only=True)
         _OWNER_POLICY = owners, why
@@ -5682,7 +5720,7 @@ def owner_signature_problems():
     """R14: signed Owner identities in the branch's own committed history verify as an Owner principal."""
     if vcs() != "git":
         return []
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git, ask=True)
     if not trunk:
         return []
@@ -5740,7 +5778,7 @@ def verified_as(commit, identity):
     Owner's email vouches for nothing); and the principal that file trusts the key for (`%GS`) IS the identity's email — equal, never containing it."""
     if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or signature_gap(commit):
         return False
-    v = subprocess.run(["git", *signers_args(), "log", "-1", "--format=%G?%n%GS", commit], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    v = vcs_process("git", *signers_args(), "log", "-1", "--format=%G?%n%GS", commit, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     good, signer = (v.stdout.split("\n") + ["", ""])[:2]
     return good.strip() == "G" and signer.strip() == identity
 
@@ -5782,7 +5820,7 @@ def trusted_signers():
         _SIGNERS = {"file": None, "why": f"`gpg.ssh.allowedSignersFile` names {conf}, inside another checkout ({other}): the signers file is inside another checkout, "
                                          "where a branch writes it — name this repository's own file, or one outside every checkout", "rel": None, "trunk": None}
         return _SIGNERS
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git) if top is not None else None
     rel = signers_rel(top, below, str(path), trunk) if top is not None else None
     blob = cat_blobs([f"{trunk}:{rel}"], raw=True).get(f"{trunk}:{rel}") if trunk else None
@@ -5949,7 +5987,7 @@ def staged_now():
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = subprocess.run(["git", "diff", "--cached", "-z", "--name-only", "--relative", "--ignore-submodules=none"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
+        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
         _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
@@ -6196,7 +6234,7 @@ def transitions(before, after, new_file=False):
 
 def merge_heads():
     """The other parents of a merge being committed right now — `MERGE_HEAD`, one line per head — or none."""
-    out = subprocess.run(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    out = vcs_process("git", "rev-parse", "--git-path", "MERGE_HEAD", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     f = pathlib.Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else None
     f = f if f is None or f.is_absolute() else ROOT / f
     return f.read_text(encoding="utf-8").split() if f is not None and f.is_file() else []
@@ -6238,7 +6276,7 @@ def read_changes():
     (the Owner's ruling of 2026-10-04, v0.19.1). Where no default branch is found (`default_trunk`), the newest commit
     alone is judged, as before, and `--check` says so in one line — never the whole history."""
     global _WALK
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     names = lambda r: set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else set()          # every name list is read with `-z`: git quotes a name it finds odd (RV-2151)
 
     def brought(tips, first, why="which the merge brings", exclude=()):
@@ -6314,7 +6352,7 @@ def walk_problems():
     if _WALK_FAILED:
         return [_WALK_FAILED]
     if vcs() == "git":
-        default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
+        default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
     return [_TRUNK_UNTOLD] if _TRUNK_UNTOLD else []
 
 
@@ -6459,7 +6497,7 @@ def git_ship_verdicts(names, bases, records):
     """{name: "" when that commit is a commit behind the change, else why it is not} — in the change's history (reachable from its
     parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
     At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
-    git = lambda *a, **k: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    git = lambda *a, **k: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}\n{n}^{{commit}}\n" for n in names))     # each name twice: as written, where git says *ambiguous*, and peeled to its commit
     lines = found.stdout.split("\n") + [""] * (2 * len(names))
     shas = {n: lines[2 * i + 1].partition(" ")[0] for i, n in enumerate(names) if lines[2 * i + 1].partition(" ")[2] == "commit"}
@@ -6552,10 +6590,136 @@ def svn_run(*args, xml=False, answers=()):
         raise SvnUnreadable("svn printed XML that could not be read")
 
 
+def svn_proof_path(value, absolute=False):
+    """A canonical SVN proof path; aliases never stand for a broader namespace."""
+    if not isinstance(value, str) or not value or "\\" in value or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        raise SvnUnreadable("svn printed an invalid proof path")
+    if absolute and value == "/":
+        return value
+    parts = value[1:].split("/") if absolute and value.startswith("/") else value.split("/")
+    if value.startswith("/") != absolute or any(p in ("", ".", "..") for p in parts):
+        raise SvnUnreadable("svn printed a noncanonical proof path")
+    return value
+
+
+def svn_relative_path(relative):
+    """Decode one canonical repository-relative URL, retaining the genuine ^/ root."""
+    if not isinstance(relative, str) or not relative.startswith("^/") or any(c in relative for c in "\r\n?#\\"):
+        raise SvnUnreadable("svn info did not name a canonical repository-relative path")
+    raw = relative[2:]
+    if not raw:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9._~!$&'()*+,;=:@%/-]+", raw) or re.search(r"%(?![0-9a-fA-F]{2})", raw):
+        raise SvnUnreadable("svn info printed malformed repository-relative URL encoding")
+    parts = raw.split("/")
+    try:
+        decoded = [urllib.parse.unquote(p, encoding="utf-8", errors="strict") for p in parts]
+    except UnicodeError:
+        raise SvnUnreadable("svn info printed unreadable repository-relative URL encoding")
+    if any(not p or "/" in p for p in decoded):
+        raise SvnUnreadable("svn info printed malformed repository-relative URL separators")
+    return svn_proof_path("/" + "/".join(decoded), absolute=True)
+
+
+def svn_proof_commit(commit, author=False):
+    """One unambiguous committed revision, with an author where attribution needs it."""
+    if not re.fullmatch(r"[1-9][0-9]*", commit.get("revision") or ""):
+        raise SvnUnreadable("svn printed an unavailable committed revision")
+    for tag in ("author", "date"):
+        fields = commit.findall(tag)
+        if len(fields) > 1 or any(len(f) for f in fields):
+            raise SvnUnreadable("svn printed ambiguous committed fields")
+    if any(c.tag not in ("author", "date") for c in commit):
+        raise SvnUnreadable("svn printed invalid commit structure")
+    who = commit.findtext("author")
+    if author and not (who or "").strip():
+        raise SvnUnreadable("svn did not name the required committed author")
+    return who, commit.get("revision")
+
+
+def svn_log_proof(log, requested=None, paths=False, merged=False, empty=False):
+    """Validate required log structure and bindings before any history classification."""
+    if log is None or log.tag != "log" or any(e.tag != "logentry" for e in log):
+        raise SvnUnreadable("svn log did not report the required history")
+    entries = list(log)
+    if not entries and not empty:
+        raise SvnUnreadable("svn log did not report the required committed revision")
+    if requested is not None and (len(entries) != 1 or entries[0].get("revision") != str(requested)):
+        raise SvnUnreadable("svn log did not bind one entry to the requested revision")
+
+    def validate(entry, ceiling=None):
+        revision = entry.get("revision") or ""
+        if not re.fullmatch(r"[1-9][0-9]*", revision) or (ceiling is not None and int(revision) > ceiling):
+            raise SvnUnreadable("svn log printed an inconsistent committed revision")
+        for attr in ("reverse-merge", "non-inheritable"):
+            if attr in entry.attrib and entry.get(attr) not in ("true", "false"):
+                raise SvnUnreadable("svn log printed an invalid merge flag")
+        allowed = {"author", "date", "msg", "paths"} | ({"logentry"} if merged else set())
+        if any(c.tag not in allowed for c in entry):
+            raise SvnUnreadable("svn log printed invalid entry structure")
+        for tag in ("author", "date", "msg", "paths"):
+            fields = entry.findall(tag)
+            if len(fields) > 1 or (tag != "paths" and any(len(f) for f in fields)):
+                raise SvnUnreadable("svn log printed ambiguous required fields")
+        changed = entry.find("paths")
+        if paths and (changed is None or not len(changed)):
+            raise SvnUnreadable("svn log did not report the required changed paths")
+        seen = set()
+        for p in changed if changed is not None else []:
+            name = svn_proof_path(p.text, absolute=True)
+            if p.tag != "path" or len(p) or name in seen or p.get("action") not in ("M", "A", "R", "D"):
+                raise SvnUnreadable("svn log printed ambiguous or invalid changed paths")
+            seen.add(name)
+            if "kind" in p.attrib and p.get("kind") not in ("file", "dir", "unknown"):
+                raise SvnUnreadable("svn log printed an invalid changed-path kind")
+            for attr in ("text-mods", "prop-mods"):
+                if attr in p.attrib and p.get(attr) not in ("true", "false", "unknown"):
+                    raise SvnUnreadable("svn log printed an invalid changed-path flag")
+            copied = "copyfrom-path" in p.attrib or "copyfrom-rev" in p.attrib
+            if copied:
+                svn_proof_path(p.get("copyfrom-path"), absolute=True)
+                if p.get("action") not in ("A", "R") or not re.fullmatch(r"[0-9]+", p.get("copyfrom-rev") or "") or int(p.get("copyfrom-rev")) >= int(revision):
+                    raise SvnUnreadable("svn log printed an inconsistent copy binding")
+        children = entry.findall("logentry")
+        numbers = [int(validate(child, int(revision) - 1)) for child in children]
+        if any(a <= b for a, b in zip(numbers, numbers[1:])):
+            raise SvnUnreadable("svn log printed duplicate or unordered merged revisions")
+        return revision
+
+    revisions = [validate(entry) for entry in entries]
+    if len(revisions) != len(set(revisions)):
+        raise SvnUnreadable("svn log printed duplicate revisions")
+    return entries
+
+
 def svn_entry(*args, answers=()):
     """The one `<logentry>` that `svn log <args> .` prints for the working copy, or None."""
     log = svn_run("log", *args, ".", xml=True, answers=answers)
-    return log.find("logentry") if log is not None else None
+    revision = args[args.index("-r") + 1] if "-r" in args else None
+    if log is None:
+        if revision is not None and revision.isdigit() and svn_run("info", "-r", revision, ".", xml=True, answers=answers) is not None:
+            raise SvnUnreadable("svn log did not report the checked existing revision")
+        return None                                      # an explicitly checked absent revision never proves product
+    entries = svn_log_proof(log, paths="-v" in args, empty=True)
+    if len(entries) > 1:
+        raise SvnUnreadable("svn log printed more than the one requested entry")
+    if not entries:
+        return None
+    if revision is not None and revision.isdigit() and entries[0].get("revision") != revision:
+        raise SvnUnreadable("svn log did not bind the entry to the requested revision")
+    if revision is not None and re.fullmatch(r"[1-9][0-9]*:1", revision) and int(entries[0].get("revision")) > int(revision.split(":")[0]):
+        raise SvnUnreadable("svn log named a revision outside the requested newest-history range")
+    return entries[0]
+
+
+def svn_consumer_prefix():
+    """The consumer's repository-relative path, not an authority/policy anchor. Missing metadata is not the root."""
+    relative = svn_run("info", "--show-item", "relative-url", ".") or ""
+    if relative.endswith("\n"):
+        relative = relative[:-1]
+        if relative.endswith("\r"):
+            relative = relative[:-1]
+    return svn_relative_path(relative)
 
 
 def svn_shipped_moves(rels):
@@ -6571,23 +6735,96 @@ def svn_shipped_moves(rels):
         except SvnUnreadable as e:
             e.tracker = rels[rel]["id"]; raise                             # a failed read for this tracker names it
 
-    status, pending = svn_run("status", TRACKER_DIR.relative_to(ROOT).as_posix(), xml=True), {}
-    for e in (status.iter("entry") if status is not None else []):
-        wc, rel = e.find("wc-status"), pathlib.PurePath(e.get("path") or "").as_posix()
-        if rel in rels and wc is not None and wc.get("item") in ("modified", "added", "replaced", "unversioned"):
+    pending = {}
+    try:
+        base = svn_consumer_prefix()                    # namespace metadata is required for either selected change
+        target = svn_proof_path(TRACKER_DIR.relative_to(ROOT).as_posix())
+        status = svn_run("status", target, xml=True)
+        if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != target:
+            raise SvnUnreadable("svn status did not report the required working-copy change view")
+        if any(c.tag not in ("target", "changelist") for c in status) or any(e.tag != "entry" for c in status for e in c):
+            raise SvnUnreadable("svn status printed an inconsistent working-copy structure")
+        entries, seen = [], set()
+        for container in status:
+            for e in container:
+                rel = svn_proof_path(e.get("path"))
+                if rel in seen or not (rel == target or rel.startswith(target + "/")) or len(e) != 1 or e[0].tag != "wc-status":
+                    raise SvnUnreadable("svn status printed ambiguous or foreign working-copy bindings")
+                seen.add(rel)
+                local = ROOT / rel
+                if local.resolve() != local:
+                    raise SvnUnreadable("svn status names a local path alias or a foreign file")
+                wc = e[0]
+                item, props, revision = wc.get("item"), wc.get("props"), wc.get("revision")
+                legal = ("none", "normal", "added", "missing", "deleted", "replaced", "modified", "merged", "conflicted", "ignored", "obstructed", "external", "unversioned", "incomplete")
+                if item not in legal or props not in ("none", "normal", "modified", "conflicted"):
+                    raise SvnUnreadable("svn status printed unsupported working-copy status values")
+                if item in ("missing", "conflicted", "obstructed", "external", "incomplete") or props == "conflicted":
+                    raise SvnUnreadable("svn status reports an external or inconsistent working-copy view")
+                if item != "deleted" and not local.exists():
+                    raise SvnUnreadable("svn status names a path absent from the reported local view")
+                for known in rels:
+                    other = ROOT / known
+                    if rel != known and local.exists() and other.exists() and local.samefile(other):
+                        raise SvnUnreadable("svn status names an alias of another local tracker binding")
+                for flag in ("switched", "file-external", "copied", "wc-locked", "tree-conflicted"):
+                    if flag in wc.attrib and wc.get(flag) not in ("true", "false"):
+                        raise SvnUnreadable("svn status printed invalid working-copy flags")
+                if any(wc.get(flag) == "true" for flag in ("switched", "file-external", "tree-conflicted")):
+                    raise SvnUnreadable("svn status reports a switched, external or conflicted consumer path")
+                if revision is not None and not re.fullmatch(r"(?:0|[1-9][0-9]*|-1)", revision):
+                    raise SvnUnreadable("svn status printed an invalid working-copy revision")
+                if item not in ("added", "unversioned", "ignored", "none") and (revision is None or revision == "-1"):
+                    raise SvnUnreadable("svn status omitted the committed working-copy revision")
+                if len(wc.findall("commit")) > 1 or any(c.tag not in ("commit", "lock") for c in wc):
+                    raise SvnUnreadable("svn status printed ambiguous working-copy metadata")
+                if wc.find("commit") is not None:
+                    _who, changed = svn_proof_commit(wc.find("commit"))
+                    copied_add = item == "added" and wc.get("copied") == "true" and revision is None
+                    if not copied_add and (revision is None or revision == "-1" or int(changed) > int(revision)):
+                        raise SvnUnreadable("svn status printed inconsistent committed metadata")
+                entries.append((rel, wc))
+        for rel in rels:
+            svn_proof_path(rel)
+            local = ROOT / rel
+            if not rel.startswith(target + "/") or local.resolve() != local:
+                raise SvnUnreadable("the local tracker is not bound to the consumer's tracker namespace")
+    except SvnUnreadable as e:
+        e.checked = True                               # neither the pending nor newest checked change can be selected safely
+        raise
+    except (OSError, RuntimeError, ValueError) as error:
+        e = SvnUnreadable(f"the reported local working-copy paths could not be checked: {error}")
+        e.checked = True
+        raise e from error
+    for rel, wc in entries:
+        if rel in rels and wc.get("item") in ("modified", "added", "replaced", "unversioned"):
             pending[rel] = wc.get("item") != "modified"                     # is it new to the repository
     at, touched = None, {}
     if pending:
-        touched = {rel: (ROOT / rel).read_text(encoding="utf-8") for rel in pending}
+        for rel in pending:
+            try:
+                touched[rel] = (ROOT / rel).read_text(encoding="utf-8")
+            except (OSError, UnicodeError) as error:
+                e = SvnUnreadable(f"the pending tracker's local content could not be read: {error}")
+                e.tracker = rels[rel]["id"]
+                raise e from error
         was = lambda rel: None if pending[rel] else read(rel, "cat", "-r", "BASE", rel)
     else:
         try:
-            newest = svn_entry("-l", "1", "-v", "-r", "HEAD:1")              # HEAD, not the working copy's BASE: a commit made and not yet updated to is the newest too
+            head = (svn_run("info", "--show-item", "revision", "-r", "HEAD", ".") or "").rstrip("\r\n")
+            if not re.fullmatch(r"[1-9][0-9]*", head):
+                raise SvnUnreadable("svn info did not bind the newest-history range to HEAD")
+            newest = svn_entry("-l", "1", "-v", "-r", head + ":1")        # HEAD, not BASE; bind the checked range to the server's numeric snapshot
+            if newest is None or not re.fullmatch(r"[1-9][0-9]*", newest.get("revision") or ""):
+                raise SvnUnreadable("svn log did not name the required newest committed revision")
+            all_paths = list(newest.iter("path"))
+            if not all_paths or any(not p.text or not p.text.startswith("/") or p.get("action") not in ("M", "A", "R", "D") for p in all_paths):
+                raise SvnUnreadable("svn log did not report the newest revision's required changed paths")
         except SvnUnreadable as e:
             e.newest = True; raise
-        at = int(newest.get("revision")) if newest is not None else None
-        paths = [p.text or "" for p in newest.iter("path") if p.get("action") in ("M", "A", "R")] if newest is not None else []
-        touched = {rel: read(rel, "cat", "-r", str(at), rel) for rel in rels if any(p.endswith("/" + rel) for p in paths)}
+        at = int(newest.get("revision"))
+        paths = {p.text for p in all_paths if p.get("action") in ("M", "A", "R")}
+        touched = {rel: read(rel, "cat", "-r", str(at), rel) for rel in rels if base + "/" + rel in paths}
         was = lambda rel: read(rel, "cat", "-r", str(at - 1), rel, answers=SVN_ANSWERS)
     for rel, now in touched.items():
         if is_shipped(now) and not is_shipped(was(rel)):
@@ -6598,11 +6835,12 @@ def svn_ship_verdicts(names, at, records):
     """{name: "" when that revision is a revision behind the change, else why it is not} — one before `at`, the revision being judged
     (any, for a change not yet committed), that changed something under this working copy, with a path outside `records`, which are
     read from the working copy's root. One `svn info`, and one `svn log` for each revision named."""
-    base = ("/" + urllib.parse.unquote((svn_run("info", "--show-item", "relative-url", ".") or "^/").strip()[2:]).strip("/")).rstrip("/")   # the working copy's own path in the repository — "" at its root
+    base = svn_consumer_prefix()
     out = {}
     for n in names:
         entry = None if at is not None and int(n[1:]) >= at else svn_entry("-r", n[1:], "-v", answers=SVN_ANSWERS)
-        inside = [p.text[len(base) + 1:] if p.text.startswith(base + "/") else p.text for p in entry.iter("path") if p.text] if entry is not None else []
+        inside = [(p.text[len(base) + 1:] if p.text.startswith(base + "/") else ".") for p in entry.iter("path")
+                  if p.text and (p.text == base or p.text.startswith(base + "/"))] if entry is not None else []
         out[n] = ("is not in the history" if entry is None
                   else "" if any(ratio_class(p, records, []) == "product" for p in inside) else f"changes nothing outside the records ({', '.join(records)})")
     return out
@@ -6650,7 +6888,8 @@ def ship_problems(trackers):
     rels = {}
     for t in trackers:
         try:
-            rels[(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()] = t
+            path = TRACKER_DIR / t["file"]
+            rels[(path if vcs() == "svn" else path.resolve()).relative_to(ROOT).as_posix()] = t
         except (KeyError, ValueError):
             continue                                     # no file, or a link to one outside the repository — as `in_this_commit` reads it
     if vcs() == "git":
@@ -6659,13 +6898,15 @@ def ship_problems(trackers):
         return []                                        # no tracker read from a file: nothing a change could have moved
     records, out, noun = [], [], "revision" if vcs() == "svn" else "commit"
 
-    def unread(why, named=None, newest=False):
+    def unread(why, named=None, newest=False, checked=False):
         """F1: Subversion's history could not be read, so a move to Shipped cannot be judged — and is refused, not passed. The tracker it was
         reading for, where that is known; else every tracker that is Shipped in the working copy, the ones such a move could be. Where the
         read that failed is the NEWEST revision's — the change judged where nothing is pending, which only the server holds — and no tracker
         in the working copy is Shipped to name, the refusal says that instead: the newest revision is not judged, and is not passed unread (RV-2267)."""
         ids = [named] if named else [t["id"] for t in trackers if t.get("status") == "Shipped"]
-        if not ids and newest:
+        if not ids and checked:
+            out.append(f"Subversion's checked change could not be read, so a pending or newest move to `Shipped` is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again")
+        elif not ids and newest:
             out.append(f"Subversion's newest revision could not be read, so a move to `Shipped` in it is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again")
         if ids:
             out.append(f'{", ".join(ids[:5])}{f" and {len(ids) - 5} more" if len(ids) > 5 else ""}: Subversion\'s history could not be read, so a move to `Shipped` '
@@ -6691,7 +6932,7 @@ def ship_problems(trackers):
                        + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
                        + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
     except SvnUnreadable as e:
-        unread(e, e.tracker, e.newest)
+        unread(e, e.tracker, e.newest, getattr(e, "checked", False))
     return out
 
 
@@ -7243,7 +7484,7 @@ def cat_blobs(specs, env=None, types=None, *, raw=False):
     asked = [s_ for s_ in specs if s_ not in got]
     if not asked:
         return got
-    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s_ + "\n" for s_ in asked).encode("utf-8"), cwd=ROOT,
+    r = vcs_process("git", "cat-file", "--batch", input="".join(s_ + "\n" for s_ in asked).encode("utf-8"), cwd=ROOT,
                        capture_output=True, env=env or nested_git_env())
     data, i = r.stdout, 0
     for spec in asked:
@@ -7349,7 +7590,7 @@ def build_judgement(subject=None):
     if vcs() != "git":
         _BUILD = ([], "judged before build: on — this is no git repository: nothing is judged")
         return _BUILD
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         _BUILD = ([], f"judged before build: on — `{branch}` is the default branch: nothing on it is judged")
@@ -7381,7 +7622,7 @@ def pending_judgement(subject, git, trunk, branch):
         return []                                          # a first commit has no parent to be judged at
     # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-    staged = subprocess.run(["git", "diff", "--cached", "--name-only", "--relative", "--ignore-submodules=none"], cwd=ROOT, capture_output=True, text=True,
+    staged = vcs_process("git", "diff", "--cached", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True,
                             encoding="utf-8", errors="replace", env=env).stdout
     return judge_commits([("", "HEAD", set(staged.split("\n")) - {""}, subject)], branch)
 
@@ -7422,7 +7663,7 @@ def commit_msg_check(message_file):
         return EXIT_LINT
     if not CONFIG.get("judged_before_build") or vcs() != "git":
         return EXIT_OK
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if trunk and branch == ref_name(trunk).split("/", 1)[1]:
         return EXIT_OK                                     # on the default branch nothing is judged
@@ -7500,7 +7741,7 @@ def tree_paths(rev, env=None):
     key = (str(ROOT), rev)
     if key not in _TREES:
         args = ["ls-files", "-z", "--full-name", "--", ":/"] if rev == "" else ["ls-tree", "-r", "-z", "--name-only", "--full-tree", rev]
-        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        r = vcs_process("git", *args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
         _TREES[key] = [x for x in r.stdout.split("\x00") if x] if r.returncode == 0 else None
     return _TREES[key]
 
@@ -7513,7 +7754,7 @@ def path_mode(rev, path, env=None):
     key = (str(ROOT), rev, path)
     if key not in _MODES:
         args = ["ls-files", "-s", "-z", "--full-name", "--", f":/{path}"] if rev == "" else ["ls-tree", "-z", "--full-tree", rev, "--", path]
-        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
+        r = vcs_process("git", *args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or nested_git_env())
         rows = [row.partition("\t") for row in r.stdout.split("\x00") if row]
         _MODES[key] = ("?" if r.returncode != 0 else next((m.split(" ", 1)[0] for m, _t, name in rows if name == path), "040000" if rows else ""))
     return _MODES[key]
@@ -7893,7 +8134,7 @@ def triage_pending(subject):
     what it says."""
     if vcs() != "git":
         return [], []
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, why = default_trunk(git), []
     owners = owners_at(trunk, why)
     if not owners and not why:
@@ -7930,7 +8171,7 @@ def triage_pending(subject):
 def staged_files(parents, env):
     """The files the commit being made changes, from the repository's root: what its index (`env`) holds that differs from
     every parent — a merge being made, from each of its parents; a first commit, all it holds. One `git diff` a parent."""
-    run = lambda *a: subprocess.run(["git", "-c", "diff.relative=false", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    run = lambda *a: vcs_process("git", "-c", "diff.relative=false", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     every_file = lambda: run("ls-files", "-z", "--full-name", "--", ":/")
     sets = [run("diff", "--cached", "--name-only", "-z", "--no-renames", "--ignore-submodules=none", p) for p in parents] or [every_file()]
     names = [set(r.stdout.split("\x00")) - {""} if r.returncode == 0 else None for r in sets]
@@ -7985,6 +8226,23 @@ def tip_variants(trunk, tip=None):
             for p in sorted(held) for h in homes if p not in homes and fs_fold(p) == fs_fold(h)]
 
 
+def svn_guard():
+    """A requested protected SVN acceptance, not a local-rendering check: (refusals, report line).
+
+    No adopted committed consumer policy boundary is available here. The candidate's configuration can request proof,
+    but cannot authorize itself or prove older obligations absent. Local text, BASE, HEAD, a username, or the tool's
+    source policy is no substitute. Refuse before any process or write; ordinary local rendering does not request this
+    proof. A future accepted-policy reader requires the consumer's established authority, not a new guessed anchor.
+    """
+    signed = any(mode == "signed" for ids in SEATS.values() for _who, mode in ids) or "signed" in ANSWERERS.values()
+    why = "the adopted committed consumer policy and its checked history cannot be established"
+    if signed:
+        why += "; configured `signed` proof requires a signature, which Subversion cannot supply"
+    report = ("the Owner's two sections: protected Subversion acceptance is refused — the adopted committed consumer policy "
+              "and its checked history are unavailable; Subversion supplies no signature, and an author requires the repository's authenticated history")
+    return [f"refused: protected Subversion acceptance — {why}; no protected change is passed unread"], report
+
+
 def triage_guard():
     """(refusals, the one line `--check` says) — FM-037 over the branch's own commits, `HEAD` less `origin`'s default branch,
     merges walked and judged by the text they bring — where this tool refuses the default branch's configuration, each commit
@@ -7999,7 +8257,7 @@ def triage_guard():
     if vcs() != "git":
         _GUARD = ([], GUARD_SVN if vcs() == "svn" else "the Owner's two sections: this is no git repository — nothing is judged")
         return _GUARD
-    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
     if not trunk:
         _GUARD = ([], "the Owner's two sections: " + ("the default branch cannot be told — nothing is judged until it can" if _TRUNK_UNTOLD
@@ -8137,7 +8395,7 @@ def resolve_commits(names):
     got = {n: "" for n in names}
     lines = [n for n in names if n and "\n" not in n and "\r" not in n]
     if lines:
-        r = subprocess.run(["git", "cat-file", "--batch-check"], cwd=ROOT, input="".join(f"{n}^{{commit}}\n" for n in lines), capture_output=True,
+        r = vcs_process("git", "cat-file", "--batch-check", cwd=ROOT, input="".join(f"{n}^{{commit}}\n" for n in lines), capture_output=True,
                            text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         answers = r.stdout.split("\n") if r.returncode == 0 else []
         if len(answers) >= len(lines):
@@ -8163,7 +8421,7 @@ def trunk_ref():
     """The trunk a verdict's branch is measured against — a report's, never a refusal's: the default branch as `--check` reads it
     (`default_trunk`, asking no server: origin's answer where this run has it), else the local `main`, else `master` — each by its
     full ref (v0.19.1)."""
-    held = default_trunk(lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
+    held = default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
     return held or next((ref for ref in ("refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
 
