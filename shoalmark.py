@@ -9196,40 +9196,146 @@ def release_manifest(text):
 
 
 def archive_source():
-    """FM-004: whether this copy of the tool is an unpacked release archive — it holds a `RELEASE` file and is not a git work tree's top level. An archive
-    unpacked inside a project's repository is still an archive; a clone of this repository, whose top level is the tool's own, never is."""
+    """Classify the source, preserving the existing constrained process read.
+
+    No supported diagnostic or success relationship means refusal, never an
+    archive fallback. This is only a development proposal, pending Owner
+    disposition of the exhausted independent-review finding.
+    """
     if not os.path.lexists(HERE / RELEASE_NAME):
         return False
+
     def unreadable(why):
         print(f"--vendor: source Git classification cannot be verified: {' '.join(str(why).split())[:240]} — nothing was written", file=sys.stderr)
         raise SystemExit(EXIT_LINT)
+
+    def discovery_scope():
+        # Mirrors only local discovery bounds; it supplies no repository proof.
+        home = HERE.resolve(strict=True)
+        ceilings, literal = set(), False
+        for entry in nested_git_env().get("GIT_CEILING_DIRECTORIES", "").split(os.pathsep):
+            if not entry:
+                literal = True
+                continue
+            if not pathlib.Path(entry).is_absolute():
+                continue
+            if literal:
+                named = entry.rstrip(os.sep) or os.sep
+            else:
+                try:
+                    named = str(pathlib.Path(entry).resolve(strict=True))
+                except FileNotFoundError:
+                    continue
+            ceilings.add(os.path.normcase(named))
+        across = nested_git_env().get("GIT_DISCOVERY_ACROSS_FILESYSTEM", "").lower()
+        if across in ("", "false", "no", "off", "0"):
+            across = False
+        elif across in ("true", "yes", "on", "1"):
+            across = True
+        else:
+            unreadable("unsupported discovery boolean; its boundary cannot be verified")
+        folders = [home]
+        device = home.stat().st_dev
+        for parent in home.parents:
+            if os.path.normcase(str(parent)) in ceilings:
+                return folders, "ceiling", parent
+            if not across and parent.stat().st_dev != device:
+                return folders, "filesystem", parent
+            folders.append(parent)
+        return folders, "root", home.anchor
+
+    def marker_exists(folder):
+        try:
+            os.lstat(folder / ".git")
+        except FileNotFoundError:
+            return False
+        return True
+
+    def metadata(top):
+        # Structural consistency supplement to Git's successful result. These
+        # reads do not reproduce Git's format/config/object/history validation.
+        marker = top / ".git"
+        target = marker.resolve(strict=True)
+        if target.is_file():
+            with open(target, "rb") as stream:
+                raw = stream.read(1024 * 1024 + 1)
+            if len(raw) > 1024 * 1024:
+                unreadable("source gitfile is too large")
+            text = raw.decode("utf-8").rstrip("\r\n")
+            if not text.startswith("gitdir: ") or not text[8:] or "\n" in text or "\r" in text or "\0" in text:
+                unreadable("source gitfile does not identify one metadata directory")
+            target = (top / text[8:]).resolve(strict=True)
+        if not target.is_dir():
+            unreadable("source Git metadata is not a directory")
+        with os.scandir(target) as entries:
+            next(entries, None)
+        head = target / "HEAD"
+        if not head.is_file():
+            unreadable("source Git metadata has no readable HEAD")
+        with open(head, "rb") as stream:
+            value = stream.read(4097)
+        if len(value) > 4096:
+            unreadable("source HEAD is too large to verify")
+        value = value.rstrip(b"\r\n")
+        symbolic = value.startswith(b"ref: refs/") and len(value) > len(b"ref: refs/") and not any(c in b" \t\r\n\v\f\0" for c in value[len(b"ref: "):])
+        detached = len(value) in (40, 64) and all(c in b"0123456789abcdefABCDEF" for c in value)
+        if not (symbolic or detached):
+            unreadable("source Git metadata has an invalid HEAD")
+        common = target
+        link = target / "commondir"
+        if os.path.lexists(link):
+            if not link.is_file():
+                unreadable("source common-directory link is not readable metadata")
+            with open(link, "rb") as stream:
+                raw = stream.read(4097)
+            text = raw.decode("utf-8").rstrip("\r\n")
+            if len(raw) > 4096 or not text or any(c in text for c in ("\n", "\r", "\0")):
+                unreadable("source common-directory link does not identify one directory")
+            common = (target / text).resolve(strict=True)
+        for folder in (common, common / "objects", common / "refs"):
+            if not folder.is_dir():
+                unreadable("source Git metadata lacks its common objects/ref directories")
+            with os.scandir(folder) as entries:
+                next(entries, None)
+
     try:
         done = vcs_process("git", "rev-parse", "--show-toplevel", cwd=HERE, source=True,
                            capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    except FileNotFoundError as e:
-        if not disk_marker(HERE / ".git") and shutil.which("git") is None:
-            return True                                    # truly absent executable, with no tool-root Git marker
-        unreadable(e)
-    except OSError as e:
-        unreadable(e)                                      # permission/launcher errors are not absent Git
-    if done.returncode:
-        marked = any(disk_marker(p / ".git") for p in (HERE, *HERE.parents))
-        diagnostic = done.stderr.strip()
-        # Git's ordinary no-repository answer, including its mount-boundary form. Other failures stay failures.
-        absent = done.returncode == 128 and not marked and not done.stdout.strip() and (
-            diagnostic.endswith(": .git") or "GIT_DISCOVERY_ACROSS_FILESYSTEM" in diagnostic)
-        if absent:
+    except FileNotFoundError as error:
+        try:
+            folders, _, _ = discovery_scope()
+            marked = any(marker_exists(folder) for folder in folders)
+        except (OSError, RuntimeError, ValueError) as failure:
+            unreadable(failure)
+        if shutil.which("git") is None and not marked:
             return True
-        unreadable(done.stderr or f"Git exited {done.returncode}")
-    tops = done.stdout.splitlines()
-    if len(tops) != 1 or not tops[0].strip() or not pathlib.Path(tops[0]).is_absolute():
-        unreadable("Git did not identify one absolute source top level")
+        unreadable(error)
+    except OSError as error:
+        unreadable(error)
     try:
+        folders, bound, boundary = discovery_scope()
+        marked = [folder for folder in folders if marker_exists(folder)]
+        if done.returncode:
+            # Full diagnostic equality: no loose suffix, token or stripped warning.
+            diagnostic = done.stderr.replace("\r\n", "\n")
+            if diagnostic.endswith("\n"):
+                diagnostic = diagnostic[:-1]
+            ordinary = diagnostic == "fatal: not a git repository (or any of the parent directories): .git"
+            mount = (bound == "filesystem" and diagnostic ==
+                     f"fatal: not a git repository (or any parent up to mount point {boundary})\n"
+                     "Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).")
+            if done.returncode == 128 and done.stdout == "" and not marked and ((ordinary and bound != "filesystem") or mount):
+                return True
+            unreadable(done.stderr or f"Git exited {done.returncode}")
+        tops = done.stdout.splitlines()
+        if done.stderr or len(tops) != 1 or not tops[0] or not pathlib.Path(tops[0]).is_absolute():
+            unreadable("Git did not identify one clean absolute source top level")
         top = pathlib.Path(tops[0]).resolve(strict=True)
-    except (OSError, RuntimeError) as e:
-        unreadable(e)
-    if not top.is_dir():
-        unreadable("Git's source top level is not a directory")
+        if not top.is_dir() or top not in folders or not marked or marked[0] != top:
+            unreadable("Git's source top level disagrees with source ancestry or discovery metadata")
+        metadata(top)
+    except (OSError, RuntimeError, ValueError, UnicodeError) as error:
+        unreadable(error)
     return os.path.normcase(str(top)) != os.path.normcase(str(HERE))
 
 
