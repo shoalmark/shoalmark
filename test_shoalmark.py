@@ -7415,7 +7415,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text(plain5_ + '[ratio]\nrecords = "docs/work-tracker/"\n', encoding="utf-8")
     code, _, err = made5_(512, f"built in {built5_[:7]}")
     (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")
-    check("FM-005 · a `[ratio] records` that is no list is refused by the line `--ratio` prints, for the move that needs it — never a traceback",
+    check("FM-005 · a `[ratio] records` that is no list is refused in one line, for the move that needs it — never a traceback",
           code == fm.EXIT_LINT and "AP-512: moved to `Shipped`, which needs the records told from the product" in err and "`[ratio] records` is a list of repository-relative prefixes" in err and "Traceback" not in err)
     # a merge is judged commit by commit: each commit it brings, against its own parent
     merged5_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
@@ -13336,7 +13336,8 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# --- FM-032 · `--ratio`: records added : product added, per Europe/Berlin day of the merge --------------------------------------
+# --- FM-032 · R13 removed `--ratio`, `--since` and `--until`: their class test is test_ratio_removed.py, run by test_core.py. What stays ---
+# here: the git helper the check outputs' section below reads, whether a tz database for Europe/Berlin is here, and the schema's two keys.
 def _ratio_g(root, *a, when=None):
     """One git call in the scratch repository; `when` dates the commit or merge it makes (author and committer, an explicit offset)."""
     env = dict(_ENV, **({"GIT_COMMITTER_DATE": when, "GIT_AUTHOR_DATE": when} if when else {}))
@@ -13344,154 +13345,18 @@ def _ratio_g(root, *a, when=None):
                           check=True, capture_output=True, text=True, env=env).stdout.strip()
 
 
-def _ratio_merge(root, name, when, files, gone=(), pointer=False):
-    """A pull request as the forge merges it: a branch with one commit, then `--no-ff` into main, the merge dated `when`."""
-    _ratio_g(root, "switch", "-q", "-c", name, "main")
-    for rel, data in files.items():
-        (root / rel).parent.mkdir(parents=True, exist_ok=True)
-        (root / rel).write_bytes(data)
-    for rel in gone:
-        _ratio_g(root, "rm", "-q", rel)
-    if pointer:                                   # a submodule pointer: mode 160000, whatever commit it names
-        _ratio_g(root, "update-index", "--add", "--cacheinfo", f"160000,{_ratio_g(root, 'rev-parse', 'HEAD')},sub")
-    _ratio_g(root, "add", "-A")
-    _ratio_g(root, "commit", "-q", "-m", name, when=when)
-    _ratio_g(root, "switch", "-q", "main")
-    _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge " + name, name, when=when)
+def _berlin_zone():
+    """Whether this Python loads a tz database for Europe/Berlin — what the days facts.mjs writes need (below)."""
+    try:
+        import zoneinfo
+        zoneinfo.ZoneInfo("Europe/Berlin")
+        return True
+    except Exception:                                     # no zoneinfo module, or no tzdata on this machine
+        return False
 
 
-def _lines(n, word="x"):
-    return ("".join(f"{word} {i}\n" for i in range(n))).encode()
-
-
-_zone_ok = fm.ratio_zone()[1]
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    _ratio_g(root, "init", "-q", "-b", "main")
-    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "work-tracker"\n\n[ratio]\nrecords = ["work-tracker/", "NOTES.txt"]\nexclude = ["vendor/"]\n')
-    (root / "README.md").write_text("start\n")
-    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
-    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"work-tracker/a.md": _lines(3), "src/a.py": _lines(5)})
-    # 23:30 UTC on the 22nd is 01:30 on the 23rd in Berlin: the day is Berlin's, not UTC's
-    _ratio_merge(root, "two", "2026-09-22T23:30:00+00:00",
-                 {"work-tracker/b.md": _lines(4), "NOTES.txt": _lines(2), "vendor/x.js": _lines(100), "src/b.py": _lines(7), "bin.dat": b"\0\1\2\0"},
-                 gone=("work-tracker/a.md",), pointer=True)
-    _ratio_merge(root, "three", "2026-09-24T12:00:00+02:00", {"work-tracker/c.md": _lines(2)})
-    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-24")
-    day_ = lambda s: next((l for l in out_.splitlines() if l.startswith(s)), "")      # a line of the latest `out_`
-    check("FM-032 · `--ratio` counts the four numbers per day of a planted trunk — records and product added and deleted, a plain path a record, an `exclude` prefix "
-          f"in neither, the submodule pointer no line, the deletion never subtracted (saw {out_!r})",
-          code_ == 0 and day_("2026-09-22") == ("2026-09-22  records +3 \u22120  product +5 \u22120  0.6:1  (1 merge)" if _zone_ok else
-                                                "2026-09-22  records +9 \u22123  product +12 \u22120  0.8:1  (2 merges, 1 binary)")   # no tz database: 23:30 UTC stays the 22nd
-          and day_("window") == "window      records +11 \u22123  product +12 \u22120  0.9:1  (3 merges, 1 binary)")
-    if _zone_ok:
-        check("FM-032 · the day is the merge's committer date in Europe/Berlin — 23:30 UTC on the 22nd is the 23rd — and a binary file is 0 lines and counted as a file",
-              day_("2026-09-23") == "2026-09-23  records +6 \u22123  product +7 \u22120  0.9:1  (1 merge, 1 binary)" and "NOT: no time zone database" not in out_)
-    else:
-        SKIPS.append(("FM-032 · the Berlin day", 1, "no tz database for Europe/Berlin here (zoneinfo cannot load it)"))
-        print("  skip  FM-032 · the Berlin day — no tz database for Europe/Berlin here; 1 check(s) did not run")
-        check("FM-032 · without a tz database the header says the day is the merge's own offset", "NOT: no time zone database" in out_)
-    check("FM-032 · a day with no product added prints its counts and `no finite ratio`, never a division",
-          day_("2026-09-24") == "2026-09-24  records +2 \u22120  product +0 \u22120  no finite ratio  (1 merge)")
-    code_, out_, _ = run(root, "--ratio", "--since", "2026-09-24", "--until", "2026-09-24")
-    sums_ = out_.split("day sums")[1].splitlines() if "day sums" in out_ else []
-    check(f"FM-032 · the seven-day sums reach back before `--since`: a window of the 24th alone still sums the two merges before it (saw {sums_[-1:]})",
-          code_ == 0 and day_("window").startswith("window      records +2 \u22120  product +0 \u22120") and any(l.startswith("2026-09-24  records +11 \u22123  product +12 \u22120  0.9:1  (3 merges, 1 binary)") for l in sums_)
-          and not any(l.startswith("2026-09-23") for l in sums_))
-    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-25", "--until", "2026-09-24")
-    code2_, _, err2_ = run(root, "--since", "2026-09-22")
-    check("FM-032 · `--since` after `--until` is refused, and so are `--since`/`--until` without `--ratio`", code_ == 2 and "after --until" in err_ and code2_ == 2 and "go with --ratio" in err2_)
-    rm_git(root)
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    _ratio_g(root, "init", "-q", "-b", "main")
-    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "work-tracker"\n')
-    code_, out_, err_ = run(root, "--ratio")
-    check(f"FM-032 · a repository without a `[ratio]` section says so and exits 2 — it has no ratio to count (saw {err_.strip()!r})", code_ == 2 and "no [ratio] section" in err_ and out_ == "")
-    rm_git(root)
-# RV-726: the default `records` is the tracker directory the tool is configured with, not shoalmark's own `work-tracker/`
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    _ratio_g(root, "init", "-q", "-b", "main")
-    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\n')          # no `tracker_dir` (the tool's default, docs/work-tracker), `[ratio]` with no keys
-    (root / "README.md").write_text("start\n")
-    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
-    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"docs/work-tracker/FM-1.md": _lines(2), "src/x.py": _lines(1)})
-    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-22")
-    check(f"FM-032 · `[ratio]` alone counts the configured tracker directory (`docs/work-tracker/`, no `tracker_dir` key) as records, the other path as product (saw {out_!r})",
-          code_ == 0 and "records: docs/work-tracker/" in out_ and "2026-09-22  records +2 \u22120  product +1 \u22120  2.0:1  (1 merge)" in out_)
-    (root / "shoalmark.toml").write_text('name = "r"\ntracker_dir = "notes/tracker/"\n')
-    code_, out_, err_ = run(root, "--ratio")
-    check(f"FM-032 · the refusal without `[ratio]` advises the configured tracker directory, not shoalmark's own (saw {err_.strip()!r})",
-          code_ == 2 and 'records = ["notes/tracker/"]' in err_ and "work-tracker/\"]" not in err_.replace("notes/tracker/", ""))
-    # RV-727 a: a `records` or `exclude` that is no list is one refused line, exit 2, never a traceback
-    _bad = {}
-    for _val in ("5", "true", '"work-tracker/"'):
-        for _key in ("records", "exclude"):
-            (root / "shoalmark.toml").write_text(f'name = "r"\n\n[ratio]\n{_key} = {_val}\n')
-            _bad[(_key, _val)] = run(root, "--ratio")
-    check(f"FM-032 · a scalar `records` or `exclude` (5, true, a string) is refused in one line, exit 2, no traceback (saw {_bad[('records', '5')][2]!r})",
-          all(c == 2 and o == "" and "Traceback" not in e and len(e.strip().splitlines()) == 1 and f"`[ratio] {k}` is a list" in e for (k, _), (c, o, e) in _bad.items()))
-    rm_git(root)
-# RV-727 b: the trunk is origin's default branch as this clone fetched it — `origin/HEAD`'s target — before a local branch that may be behind
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    _ratio_g(root, "init", "-q", "-b", "main")
-    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
-    (root / "README.md").write_text("start\n")
-    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when="2026-09-20T12:00:00+02:00")
-    _ratio_merge(root, "one", "2026-09-22T12:00:00+02:00", {"src/a.py": _lines(2)})
-    _ratio_g(root, "branch", "behind", "HEAD~1")                       # a local `master` that lags: the start, no merge
-    _ratio_merge(root, "two", "2026-09-23T12:00:00+02:00", {"src/b.py": _lines(3)})
-    _ratio_g(root, "update-ref", "refs/remotes/origin/develop", "main")
-    _ratio_g(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop")
-    _ratio_g(root, "branch", "-m", "main", "master"); _ratio_g(root, "update-ref", "refs/heads/master", "behind")
-    code_, out_, err_ = run(root, "--ratio", "--since", "2026-09-22", "--until", "2026-09-23")
-    check(f"FM-032 · the trunk is `origin/HEAD`'s target (`origin/develop`) when the clone has one, not a local `master` that is behind (saw {out_.splitlines()[:2]!r} {err_!r})",
-          code_ == 0 and "trunk origin/develop " in out_ and "window      records +0 \u22120  product +5 \u22120" in out_ and "(2 merges)" in out_)
-    rm_git(root)
-# RV-727 c: the first-parent line — a merge inside a branch that then merges into main is one merge, its lines counted once — and the default window
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    _today = datetime.datetime.now(fm.ratio_zone()[0]).date() if _zone_ok else datetime.date.today()
-    _at = lambda back: f"{_today - datetime.timedelta(days=back)}T12:00:00+02:00"
-    _ratio_g(root, "init", "-q", "-b", "main")
-    (root / "shoalmark.toml").write_text('name = "r"\n\n[ratio]\nrecords = ["work-tracker/"]\n')
-    (root / "README.md").write_text("start\n")
-    _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "start", when=_at(9))
-    _ratio_merge(root, "outside", _at(7), {"src/old.py": _lines(50)})            # the day before the window: not in it
-    _ratio_merge(root, "first", _at(6), {"src/first.py": _lines(4)})             # the window's first day
-    # a branch that carries a merge of its own: side -> feature (--no-ff) -> main
-    _ratio_g(root, "switch", "-q", "-c", "feature", "main")
-    (root / "src").mkdir(exist_ok=True); (root / "src/f.py").write_bytes(_lines(6)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "f", when=_at(1))
-    _ratio_g(root, "switch", "-q", "-c", "side", "feature")
-    (root / "src/s.py").write_bytes(_lines(9)); _ratio_g(root, "add", "-A"); _ratio_g(root, "commit", "-q", "-m", "s", when=_at(1))
-    _ratio_g(root, "switch", "-q", "feature"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge side", "side", when=_at(1))
-    _ratio_g(root, "switch", "-q", "main"); _ratio_g(root, "merge", "-q", "--no-ff", "-m", "Merge feature", "feature", when=_at(1))
-    code_, out_, err_ = run(root, "--ratio")
-    _win = next((l for l in out_.splitlines() if l.startswith("window")), "")
-    check(f"FM-032 · a merge inside a merged branch is not on the first-parent line: that day is `(1 merge)` with the branch's 15 lines counted once (saw {_win!r})",
-          code_ == 0 and f"{_today - datetime.timedelta(days=1)}  records +0 \u22120  product +15 \u22120  0.0:1  (1 merge)" in out_)
-    check(f"FM-032 · with no dates the window is the seven Berlin days ending today — the header says {_today - datetime.timedelta(days=6)} to {_today}, "
-          f"the merge dated the day before it is left out and the one on its first day is in (saw {_win!r})",
-          f"\u00b7 {_today - datetime.timedelta(days=6)} to {_today} \u00b7" in out_
-          and _win.startswith("window      records +0 \u22120  product +19 \u22120") and "(2 merges)" in _win)
-    rm_git(root)
-fm.configure(HERE)
+_zone_ok = _berlin_zone()
 check("FM-032 · `--schema` lists both `[ratio]` keys", "`[ratio] records`" in fm.render_schema() and "`[ratio] exclude`" in fm.render_schema())
-_shallow = _ratio_g(HERE, "rev-parse", "--is-shallow-repository") if (HERE / ".git").exists() else "true"
-_trunk_here = subprocess.run(["git", "-C", str(HERE), "rev-parse", "--verify", "-q", "origin/main^{commit}"], capture_output=True, env=_ENV).returncode == 0
-if _shallow != "false" or not _trunk_here or not _zone_ok:
-    _why = ("this clone is shallow" if _shallow != "false" else "origin/main is not here (CI, or a clone without it)" if not _trunk_here
-            else "no tz database for Europe/Berlin here, so the days would not be Berlin's")
-    SKIPS.append(("FM-032 · the reproduction on this repository", 1, _why))
-    print(f"  skip  FM-032 · the reproduction on this repository — {_why}; 1 check(s) did not run")
-else:
-    _code, _out, _err = run(HERE, "--ratio", "--since", "2026-09-22", "--until", "2026-09-29")
-    check("FM-032 · the reproduction: `--ratio --since 2026-09-22 --until 2026-09-29` on this repository prints the window the definition page states — "
-          f"records +65,711 \u2212972, product +15,713 \u22121,764 (saw {next((l for l in _out.splitlines() if l.startswith('window')), _err)!r})",
-          _code == 0 and next((l for l in _out.splitlines() if l.startswith("window")), "").startswith("window      records +65,711 \u2212972  product +15,713 \u22121,764  4.2:1  "))
-fm.configure(HERE)
 
 # --- FM-032 · a check output that regenerates is kept as its summary, and the summary is proved -----------------------------------
 # The Owner's ruling of 2026-09-30: *if a check output regenerates, keep only its summary; if it doesn't, it stays in git.* Each

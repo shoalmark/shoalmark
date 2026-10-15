@@ -32,6 +32,20 @@ INDEX_PATH = "work-tracker/INDEX.md"
 R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
 
 
+# R13 (FM-032): `--since` and `--until` are named as R13's, where the 615fb1d baseline said they go with `--ratio`. The one
+# difference the two ratio-window cases may show: that line in stderr, as each version prints it, and nothing else.
+R13_CASES = ("ratio-window-before-queue", "check-ratio-window-before-queue")
+R13_OLD = "--since and --until go with --ratio\n"
+R13_NEW = "--since: R13, the Owner's ruling of 12 October, removed it with --ratio — no counting view replaces it until the receipts ship\n"
+
+
+def r13_named(observed):
+    """(status, stdout, stderr) of a baseline run of an R13 case, its one line said as R13 says it; None where that line is not there once."""
+    if observed["stderr"].count(R13_OLD) != 1:
+        return None
+    return observed["status"], observed["stdout"], observed["stderr"].replace(R13_OLD, R13_NEW)
+
+
 def r21_dropped(data):
     """The baseline's INDEX.md bytes without the header's separator and dated, counted line, removed once and in the header
     (before the first `## ` section) only. None where the header holds no such line."""
@@ -331,8 +345,13 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 rows.append(observed); pair.append(observed)
             before, after = pair
             label_prefix = "Git entry " + label + ": "
-            assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
-                           (before["status"], before["stdout"], before["stderr"]) == (after["status"], after["stdout"], after["stderr"]))
+            said = (after["status"], after["stdout"], after["stderr"])
+            if label in R13_CASES:
+                assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, its one line named as R13 names `--since`",
+                               r13_named(before) == said)
+            else:
+                assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
+                               (before["status"], before["stdout"], before["stderr"]) == said)
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             assert_control(label_prefix + "all actual process argv/effective cwd/env match", strip_stack(before["starts"]) == strip_stack(after["starts"]))
             assert_control(label_prefix + "run options and actual process results match", strip_stack(before["run_calls"]) == strip_stack(after["run_calls"]))
@@ -361,6 +380,18 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                     assert_control(label_prefix + "clean default actually reads local origin once", all(sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts"]) == 1 for observed in pair))
                 if label == "dirty-default-fallback":
                     assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts"]) for observed in pair))
+
+        # R13's allowance is held to its one line on the real ratio-window pair: anything else the candidate says differently does not match.
+        old13, new13 = (next(row for row in rows if row["case"] == R13_CASES[0] and row["version"] == version) for version in ("baseline", "candidate"))
+        r13 = "Git entry R13 allowance: "
+        assert_control(r13 + "the baseline says the one line once, and the candidate says R13's in its place and nothing else differs",
+                       old13["stderr"].count(R13_OLD) == 1 and R13_OLD not in new13["stderr"] and r13_named(old13) == (new13["status"], new13["stdout"], new13["stderr"]))
+        assert_control(r13 + "a candidate that also changes its exit, its stdout, or another line of stderr does not match",
+                       r13_named(old13) != (0, new13["stdout"], new13["stderr"]) and r13_named(old13) != (new13["status"], new13["stdout"] + "more\n", new13["stderr"])
+                       and r13_named(old13) != (new13["status"], new13["stdout"], new13["stderr"] + "one more line\n")
+                       and r13_named(old13) != (new13["status"], new13["stdout"], new13["stderr"].replace("R13", "R14")))
+        assert_control(r13 + "a baseline run that does not say the line once is not allowed at all",
+                       r13_named(dict(old13, stderr="")) is None and r13_named(dict(old13, stderr=R13_OLD * 2)) is None)
 
         # R21's allowance is held to its one difference on the real default pair: equal snapshots match, and no variant below does.
         old, new = (next(row for row in rows if row["case"] == "clean-default-origin" and row["version"] == version) for version in ("baseline", "candidate"))

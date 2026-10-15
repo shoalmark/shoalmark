@@ -40,7 +40,8 @@ OPERATIONS = (
     ("related", ["--related", "FM-044"]),
 )
 GIT_ONLY = {"session_trailer": 4, "whoami": 4, "session_check": 4, "commit_msg": 4, "sessions": 4,
-            "ratio": 2, "queue": 3, "answer": 4, "done": 4, "due": 4, "revoke": 4}
+            "queue": 3, "answer": 4, "done": 4, "due": 4, "revoke": 4}
+REMOVED = ("ratio", "ratio_window")       # R13 removed `--ratio`, `--since` and `--until`: each is named, exit 2, on every backend
 TOKENS = ("", "FM-044", "two words", "O'Brien", 'say "yes"', "C:\\Program Files\\O'Brien\\result.txt",
           '$env:USERPROFILE; $(Write-Output "x")', "`a · Grüße", "a\nb\tc", "*?[x]", "--leading", "$(touch nope)")
 
@@ -63,7 +64,7 @@ class CliControls(unittest.TestCase):
                     args = fm.parse_args(argv + later_argv)
                     self.assertEqual(fm.cli_operation(args), name)
                     diagnostic, code = fm.cli_preflight(args, "svn")
-                    expected = GIT_ONLY.get(name, 2 if name == "ratio_window" else 0)
+                    expected = GIT_ONLY.get(name, 2 if name in REMOVED else 0)
                     self.assertEqual(code, expected)
                     self.assertEqual(diagnostic is None, expected == 0)
 
@@ -77,12 +78,14 @@ class CliControls(unittest.TestCase):
     def test_ratio_window_barrier_remains_after_earlier_handlers(self):
         for backend in ("git", "svn"):
             self.assertEqual(fm.cli_preflight(fm.parse_args(["--until", "2026-10-14", "--queue"]), backend),
-                             ("--since and --until go with --ratio", 2))
+                             ("--until: R13, the Owner's ruling of 12 October, removed it with --ratio — no counting view replaces it until the receipts ship", 2))
+            self.assertEqual(fm.cli_preflight(fm.parse_args(["--ratio", "--queue"]), backend),
+                             ("--ratio: R13, the Owner's ruling of 12 October, removed it — no counting view replaces it until the receipts ship", 2))
             self.assertEqual(fm.cli_preflight(fm.parse_args(["--init", "--until", "2026-10-14", "--queue"]), backend), (None, 0))
 
     def test_git_admission_continues_existing_handler_proof(self):
         for name, argv in OPERATIONS:
-            if name != "ratio_window":
+            if name not in REMOVED:
                 self.assertEqual(fm.cli_preflight(fm.parse_args(argv), "git"), (None, 0))
 
     def test_each_selected_git_only_refusal_is_one_line_with_retained_code(self):
@@ -317,7 +320,7 @@ class UnreadableTrackers:
     def __iter__(self): raise AssertionError('tracker iteration before capability refusal')
 trackers=UnreadableTrackers()
 handlers=[('session_trailer',lambda:fm.session_trailer('must not read or write')),
-          ('whoami',fm.whoami),('sessions',fm.sessions_cmd),('ratio',fm.ratio_cmd),('queue',fm.queue_cmd),
+          ('whoami',fm.whoami),('sessions',fm.sessions_cmd),('queue',fm.queue_cmd),
           ('answer',lambda:fm.answer_cmd(['FM-044','accept'],trackers)),
           ('done',lambda:fm.done_cmd(['FM-044','result'],trackers)),
           ('due',lambda:fm.due_cmd(['FM-044','2026-10-14T12:00Z'],trackers)),
