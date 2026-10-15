@@ -36,6 +36,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-053](FM-053-the-board-s-design-for-v0-20-1-is-the-owner-s-word.md) | P2 | The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word | In Progress | progress | 2026-10-15 |
 | [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | P1 | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress | progress | 2026-10-13 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
 | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | P1 | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress | progress | 2026-09-25 |
