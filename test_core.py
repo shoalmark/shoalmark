@@ -779,6 +779,9 @@ run_review_controls(gti, check)
 from test_index_merges import run_index_merge_controls
 run_index_merge_controls(gti, check)
 
+from test_stale_shown import run_stale_shown_controls
+run_stale_shown_controls(gti, check)
+
 print()
 if FAILS:
     print(f"FAILED: {len(FAILS)} — {', '.join(FAILS)}")

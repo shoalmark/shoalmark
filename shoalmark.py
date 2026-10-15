@@ -8825,6 +8825,61 @@ def drift_normalize(text):
     return GENERATED_RE.sub("", head, count=1) + sep + rest
 
 
+# R22 (FM-032): a STALE line shows what differs — the file as it stands against what the tool would write there — so a drift whose cause
+# nobody can see, such as one only Windows meets, reads as itself. The difference is bounded; what is invisible is marked.
+STALE_SHOWN = 40
+SHOWN_MARKS = {"\r": ("␍", "a carriage return"), "\t": ("␉", "a tab"), "\ufeff": ("⟨BOM⟩", "a byte-order mark"),
+               " ": ("␠", "a space at the line's end"), "": ("⟨U+…⟩", "another invisible character, by its code point")}
+NO_FINAL_NEWLINE = "\\ No newline at end of file"
+
+
+def shown_line(line, used):
+    """One line of a STALE file's difference as it is printed: a carriage return, a tab, a byte-order mark, a space at the line's end and any
+    other control, format or non-ASCII space character each become a visible mark, and the mark is added to `used`. Nothing the file holds
+    reaches the terminal as a control character."""
+    tail = len(line) - len(line.rstrip())                 # the line's trailing whitespace: there, a space is marked too
+    out = []
+    for i, ch in enumerate(line):
+        key = ch if ch in SHOWN_MARKS and (ch != " " or i >= len(line) - tail) else None
+        if key is None and ch != " " and unicodedata.category(ch) in ("Cc", "Cf", "Zs", "Zl", "Zp"):
+            key = ""
+        if key is None:
+            out.append(ch)
+        else:
+            used.add(key)
+            out.append(SHOWN_MARKS[key][0] if key else f"⟨U+{ord(ch):04X}⟩")
+    return "".join(out)
+
+
+def stale_lines(path, would):
+    """R22 (FM-032): the lines `--check` prints under a STALE line — a unified diff, with no context, of `path` as it stands against `would`,
+    what the tool writes there. At most STALE_SHOWN lines of it, then how many more, then the marks it used. The file is read as its bytes,
+    so a carriage return, a byte-order mark and a missing final newline show where they are. A CRLF line end is compared as the check reads
+    it, as LF: a checkout that writes CRLF line ends is not drift, and on a line that differs its carriage return still shows."""
+    rel = path.relative_to(ROOT).as_posix()
+    stands = pathlib.Path(path).read_bytes().decode("utf-8", errors="replace") if board_text(path) is not None else ""   # the reading rule
+    a, b = (re.findall(r"[^\n]*\n|[^\n]+\Z", text) for text in (stands, would))
+    key = lambda line: line[:-2] + "\n" if line.endswith("\r\n") else line
+    span = lambda lo, hi: f"{lo + 1}" if hi - lo == 1 else f"{lo + (hi > lo)},{hi - lo}"
+    diff, used = [], set()
+    for group in difflib.SequenceMatcher(None, [key(x) for x in a], [key(x) for x in b]).get_grouped_opcodes(0):
+        diff.append(f"@@ -{span(group[0][1], group[-1][2])} +{span(group[0][3], group[-1][4])} @@")
+        for _, i1, i2, j1, j2 in group:
+            for sign, lines in (("-", a[i1:i2]), ("+", b[j1:j2])):
+                for line in lines:
+                    diff.append(sign + shown_line(line[:-1] if line.endswith("\n") else line, used))
+                    if not line.endswith("\n"):
+                        diff.append(NO_FINAL_NEWLINE)
+    shown = diff[:STALE_SHOWN]
+    out = [f"--- {rel}, as it stands", f"+++ {rel}, as the tool would write it"] + shown
+    if len(diff) > len(shown):
+        out.append(f"… and {len(diff) - len(shown)} more lines")
+    if any(k in used for k in SHOWN_MARKS):
+        out.append("marks: " + " · ".join(f"{m} {what}" for k, (m, what) in SHOWN_MARKS.items() if k in used)
+                   + (" — a CRLF line end alone is not drift: the check reads it as LF" if "\r" in used else ""))
+    return [f"  {line}" for line in out]
+
+
 
 def printed_arg(token):
     """Spell one argument for a copied command: a PowerShell literal on Windows, shlex.quote elsewhere.
@@ -10600,10 +10655,12 @@ def main(argv=None, *, _notice=True):
         drifted = drift_normalize(on_disk) != drift_normalize(body)
         if drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is STALE — a tracker changed without regenerating. Run: {CMD}", file=sys.stderr)
+            print("\n".join(stale_lines(OUT, body)), file=sys.stderr)          # R22: what differs, under its STALE line
         for path, text in sorted(DERIVED_FILES.items()):
             if board_text(path) != text:
                 drifted = True
                 print(f"{path.relative_to(ROOT).as_posix()} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
+                print("\n".join(stale_lines(path, text)), file=sys.stderr)
         if not drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
         for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
