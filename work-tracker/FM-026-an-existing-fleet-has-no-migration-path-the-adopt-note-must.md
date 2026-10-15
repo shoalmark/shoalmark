@@ -4,7 +4,7 @@ status: Parked
 considered: FM-004, FM-006
 tags: research
 kind-of-problem: complex
-next: owner
+next: build
 triaged: 2026-09-24
 tier: P3
 ask: "Is shoalmark positioned as the record and the gate for one person directing agents, in its own built-in tracker, and presented on the site as a work tracker built for agents, not as a layer beside or beneath another tracker?"
@@ -12,6 +12,9 @@ ask-kind: ruling
 ask-since: 2026-10-14
 ask-options: "yes | no: a ledger and gate beneath Linear, GitHub Issues or beads, with a coexistence path built first (FM-026, size L)"
 ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-15
+answered-by: holgo99
 hook: "Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because nothing tells an existing fleet how its trackers, seats and habits move over; the adopt note must carry that migration, and the case its agents make to their owner"
 ---
 
