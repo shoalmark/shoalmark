@@ -1,13 +1,13 @@
 ---
 id: FM-024
-status: Parked
+status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-triaged: 2026-10-13
+triaged: 2026-10-15
 tier: P2
 done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
-next: wait
+next: build
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -18,6 +18,10 @@ and trace back to the record; what if I run a session in parallel with another P
 it was? Let us reason about how to solve this right from the start."* Written to be attacked.
 
 ## What is true now
+
+**2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
+`--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
+brings it back.
 
 **2026-10-15 — what is left of the answer of 28 September:** `--statusline` and its install, not built; they wait for R6, held to 20 October.
 
@@ -447,6 +451,7 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | Judged In Progress for v0.20.1: defect 7 first, on `fm/024-sessions`. |
 | 2026-10-15 | Defect filed: `git worktree add` copies a seat's whole identity into the worktree it adds. Nothing is built. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
 | 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |

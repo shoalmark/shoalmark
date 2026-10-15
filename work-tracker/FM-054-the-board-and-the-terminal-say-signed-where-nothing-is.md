@@ -1,15 +1,20 @@
 ---
 id: FM-054
-status: Proposed
+status: In Progress
 considered: FM-007, FM-015, FM-030, FM-037
 tags: bug
-next: wait
+next: build
+tier: P1
+triaged: 2026-10-15
 hook: "The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner line asks for it"
 ---
 
 # FM-054 — the board and the terminal say signed where nothing is signed
 
 ## What is true now
+
+**Judged 2026-10-15: In Progress, P1.** It is built on `fm/054-proof` for v0.20.1, first, with the board's proof line
+beside it (FM-007).
 
 **Filed 2026-10-15; nothing is built.** Held against FM-007, *a signature proves the key, not the hand*: a claim of
 *signed* where nothing is signed is the same honesty, from the other side.
@@ -49,3 +54,4 @@ the same reading and says so where this checkout's configuration differs, and th
 | Date | Event |
 |---|---|
 | 2026-10-15 | Filed. |
+| 2026-10-15 | Judged In Progress, P1, for v0.20.1, on `fm/054-proof`. |
