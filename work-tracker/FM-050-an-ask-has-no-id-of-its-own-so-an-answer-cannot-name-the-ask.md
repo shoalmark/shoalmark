@@ -163,6 +163,8 @@ that removed the line (FM-056). The design does not rely on it. It needs the id 
   does today. An answer lands by a merge or a fast-forward.
 - **Cost per run:** one `git log` for every standing answer with an id, one `cat_blobs`, one read of the signatures
   (as `guard_verdicts` makes it), and `merge-base` only where an id has two candidates.
+- **Where no default branch is known,** `owners_at(None)` reads the checkout's configuration (`:7783`) and
+  `trusted_signers` the clone's file, as they do today, and `walk_problems` says so in `--check`.
 
 **3c. The commands and the board's dialog.** Nothing cuts `answer/<id>`, pushes or switches branch any more.
 
@@ -176,6 +178,8 @@ that removed the line (FM-056). The design does not rely on it. It needs the id 
     `:3225`). This is R11's explicit refresh;
   - it prints: `FM-050-Q2 answered: accepted` · `signed, committed on <branch> as <sha>` · `it counts once this commit is
     on origin/main: push it, or merge the branch that carries it`.
+- **An answer given on a seat's branch** (a board built from it) is on that branch, and counts once that branch lands
+  on the default branch, with its own verdict.
 - **A refusal:** before the commit, nothing is written; after writing, the file is restored (FM-017; `undo`, `:3092`,
   with no branch to delete). It records nothing under `## Acts`.
 - **`owner_change`** (`:3036`) keeps who may answer (`:3051`), the tree check (`:3067`), the signing key (`:3071`), the
@@ -426,8 +430,8 @@ for every author, the Owner included: a reused number is not a right. `changes_u
     3. `--queue` reads every pull request alike, and the Owner's own commits read `merge: yours — signed`. The
        answer-branch readers leave.
     4. The dialog's second screen and its labels, in English and German.
-    5. Docs: the README's rows, `docs/signing.md` and `docs/standup.md` with their German pages, `--schema`, and the
-       CHANGELOG.
+    5. Docs: the README's rows; `docs/index.md`, `docs/signing.md` and `docs/standup.md` with their German pages;
+       `--schema`; the CHANGELOG.
   - **The ids:**
     6. `ask-id:`: the schema, `ASK_LINES`, `GUARDED_KEYS`, `extract`, and F1–F3.
     7. C1–C4 in the walk, and `ask_numbers`, on all three backends.
