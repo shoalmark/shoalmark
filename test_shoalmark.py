@@ -9741,7 +9741,7 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-032 · `--new … --tags bug,process` writes `tags:` into the new tracker, deduplicated; a tag outside [tags] is refused before anything is written (saw {code_uk}, {code_tb})",
           code_uk == fm.EXIT_LINT and "defect not in the vocabulary" in err_uk
           and unwritten_ and code_tb == 0 and tagged_ is not None and fm.parse_frontmatter(tagged_.read_text())[0].get("tags") == "bug, process"
-          and "--tags bug" in fm.render_schema())
+          and "| `tags:` |" in fm.render_schema())
     check("R15 · `--schema` documents neither key of the removed filing freeze", "`freeze_at`" not in fm.render_schema() and "`freeze_tag`" not in fm.render_schema())
 fm.configure(HERE)
 
