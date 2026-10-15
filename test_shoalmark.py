@@ -56,10 +56,21 @@ def _try(f):
         return False
 
 
+def _rm_again(function, path, _error):
+    """`rm_git`'s handler. A path already gone is skipped: git's background housekeeping can remove a file between the listing
+    and its removal (CI run 38744072206, Ubuntu 3.9: `.git/objects/bitmap-ref-tips_…` vanished, the old handler's chmod raised
+    again, and the traceback ended the suite). Any other error: the path is made writable and the call tried once more; a second
+    failure is raised."""
+    import stat
+    if not os.path.lexists(path):
+        return
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
+
+
 def rm_git(root):
     """Remove a scratch .git — Windows refuses to delete git's read-only objects unless they are made writable first."""
-    import stat
-    shutil.rmtree(root / ".git", onerror=lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)))
+    shutil.rmtree(root / ".git", onerror=_rm_again)
 
 
 # FM-045: every git argv started by a board's run the suite watches — each `--html-only` in process (`run`) and each `--html-only` of this tool's own file as a
@@ -143,6 +154,63 @@ def tracker(root, tid, status="In Progress", extra="", body="## What is true now
     p = d / f"{tid}-x.md"
     p.write_text(f'---\nid: {tid}\nstatus: {status}\nconsidered: none\n{extra}hook: "h of {tid}"\n---\n\n# {tid} — {title}\n\n{body}', encoding="utf-8")
     return p
+
+
+# --- `rm_git` skips a file already gone, and nothing else (CI run 38744072206: Ubuntu 3.9 aborted in it) ----
+with tempfile.TemporaryDirectory() as tmp:
+    from unittest import mock as _mock
+    base, real_unlink_ = Path(tmp).resolve(), os.unlink
+
+    def _objects(root):
+        """A scratch .git with three object files, read-only as git writes them."""
+        objects = root / ".git" / "objects" / "ab"
+        objects.mkdir(parents=True)
+        for name in ("cd01", "cd02", "bitmap-ref-tips"):
+            (objects / name).write_bytes(b"object")
+            os.chmod(objects / name, 0o444)
+        return objects
+
+    def _unlinking(name, error, times):
+        """`os.unlink` as rmtree meets it: for the file `name`, `error` the first `times` calls. FileNotFoundError: git's housekeeping
+        removed the file first. PermissionError: Windows refuses a read-only file until it is made writable."""
+        seen = []
+
+        def unlink(path, *a, **k):
+            if os.fsdecode(path).endswith(name) and len(seen) < times:
+                seen.append(path)
+                if error is FileNotFoundError:
+                    real_unlink_(path, *a, **k)
+                raise error(2 if error is FileNotFoundError else 13, "refused", os.fsdecode(path))
+            return real_unlink_(path, *a, **k)
+        return unlink, seen
+
+    def _rm(root, unlink):
+        with _mock.patch.object(os, "unlink", unlink):
+            try:
+                rm_git(root)
+            except OSError as e:
+                return e
+        return None
+
+    gone_ = base / "gone"; _objects(gone_); unlink_, seen_ = _unlinking("bitmap-ref-tips", FileNotFoundError, 1)
+    raised_ = _rm(gone_, unlink_)
+    try:                                                    # the handler itself, on every Python: Python 3.15's rmtree skips a vanished file before
+        direct_ = _rm_again(os.unlink, base / "never-there", None)     # any handler, while 3.9's — CI's — hands it to the handler
+    except OSError as e:
+        direct_ = e
+    check(f"rm_git: a file git's housekeeping removed first is skipped — nothing raised, and .git is gone; the handler skips a path "
+          f"already gone (saw {raised_!r}, {direct_!r})",
+          len(seen_) == 1 and raised_ is None and not (gone_ / ".git").exists() and direct_ is None)
+    readonly_ = base / "readonly"; _objects(readonly_); unlink_, seen_ = _unlinking("cd01", PermissionError, 1)
+    raised_ = _rm(readonly_, unlink_)
+    check(f"rm_git: a read-only file refused once is made writable and removed, with the whole .git (saw {raised_!r})",
+          len(seen_) == 1 and raised_ is None and not (readonly_ / ".git").exists())
+    stuck_ = base / "stuck"; _objects(stuck_); unlink_, seen_ = _unlinking("cd02", PermissionError, 2)
+    raised_ = _rm(stuck_, unlink_)
+    check(f"rm_git: an error that is not a vanished path still raises, after the one retry (saw {raised_!r})",
+          len(seen_) == 2 and isinstance(raised_, PermissionError) and (stuck_ / ".git").exists())
+    # On macOS, Python 3.15's rmtree hands that raise to the handler again, as its folder's error: the folder is made write-only, as
+    # before this change, and the file in it can no longer be seen — so the check reads .git, not the file.
 
 
 # --- a fresh repository: init, file, gate ---------------------------------------------------------------
