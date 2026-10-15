@@ -21,6 +21,8 @@ answered-by: holgo99
 
 ## What is true now
 
+**2026-10-15 — FM-004's answer carried onto main; 11 archive checks fail on #173's Subversion notice, a finding for the Owner.** Merge `9bed976` brings `fm/004-stage-integration` (`284a4e8`, final verdict `eabee22`) onto main `5f792d6` as git's own three-way result for every product file; `9d735ab` replaces `archive_source()` alone with the prepared fix of 13 October, recorded privately (its AST equal, every other definition's unchanged). On Python 3.15 and 3.9.6, `test_core.py` 321 ok (LF and a CRLF checkout), release.yml's 33 controls, every other block that names or calls `--vendor`, `test_vcs_cli.py`, py_compile, `--check` and two time-zone builds of identical bytes pass. 11 of the archive block's 35 checks fail, identically at the merge before the classification: #173 prints one Subversion notice line before each refusal those checks require to be one line; with it off, all 35 pass. The prepared fix's 28 development contrasts give 0 of 28 as written for the same reason, 28 of 28 with that line excluded. RV-3072 gets no third round.
+
 **2026-10-13 — standalone archive accepted; archive/common integration HELD after its final review.**
 Owner #168 preserves Part B's signed RV-2734 replacement and archived exchange; #170 records remain merged.
 B1/final probe preparation stays allocated to v0.20.1, with Claude's site work tomorrow. The adoption result
@@ -95,6 +97,7 @@ the limits are said: three runs, one model family, an invented project.
 
 | Date | Event |
 |---|---|
+| 2026-10-15 19:50 CEST | FM-004 carried as answered: merge `9bed976` (integration `284a4e8`, verdict `eabee22`) and `9d735ab` (`archive_source()` from the prepared fix of 13 October, recorded privately). Core 321, release.yml 33, the other `--vendor` blocks, `--check` and reproducible builds pass on 3.15 and 3.9.6; 11 of 35 archive checks fail on #173's Subversion notice line, a finding for the Owner. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
 | 2026-10-13 18:18 CEST | Serial archive/common wiring retains both independently accepted products: common `git_dirs` unchanged, existing archive HERE read marked source, real SVN positive fixtures and expanded administrative guards retained. Compile, 302 core and 55 scoped archive controls pass; exact-head artifact and separate critical integration review remain due. |
 | 2026-10-13 17:24 CEST | **Owner #170 records integrated locally** from `cab89ed`, retaining archive critical READY `1ba6fc4` and its exact product/workflow/release-script blobs. Current command-applied judgement and signed Part B/exchanges remain; INDEX regenerated. Scoped records verification and Owner-pushed CI remain. |
