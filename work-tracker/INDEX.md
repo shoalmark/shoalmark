@@ -10,7 +10,7 @@
 > One rule this file cannot show, because it has no clock: a judgement on work in progress older than 7 days
 > counts as `triage` again.
 >
-> Generated 2026-10-15 · 50 trackers (50 work).
+> Generated 2026-10-15 · 51 trackers (51 work).
 
 ## Triage — the current path, and what to work on next
 
@@ -59,6 +59,7 @@
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | P2 | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | Parked | backlog | 2026-10-13 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | — | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | Proposed | triage | — |
 | [FM-052](FM-052-a-fixture-that-watches-git-lets-git-s-own-housekeeping-run.md) | — | A fixture that watches .git lets git's own housekeeping run inside the watch, so a green commit can fail once | Proposed | triage | — |
 | [FM-051](FM-051-dependency-updates-have-no-path-the-gate-refuses-every.md) | — | Dependency updates have no path: the gate refuses every Dependabot pull request, and the site's dependencies are first… | Proposed | triage | — |
 | [FM-050](FM-050-an-ask-has-no-id-of-its-own-so-an-answer-cannot-name-the-ask.md) | — | An ask has no id of its own, so an answer, the stand-up and the receipts cannot name the ask they mean | Proposed | triage | — |
