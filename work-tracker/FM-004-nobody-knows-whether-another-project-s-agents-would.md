@@ -3,16 +3,29 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: build
+next: owner
 triaged: 2026-10-13
 tier: P1
 rank: 2
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
+ask: "The carried archive fails 11 of its checks on main: #173 prints a Subversion notice before each refusal those checks pin to one line. Which way do you take it?"
+ask-kind: ruling
+ask-since: 2026-10-15
+ask-options: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do | a: the 11 checks accept the notice line before the refusal line, a test change only | c: --vendor prints no Subversion notice | hold: the carry waits, and FM-004 leaves v0.20.0"
+ask-proposal: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do"
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
 
 ## What is true now
+
+**2026-10-15 — how the carry meets #173's notice line is the Owner's to rule (the ask above).** On this branch,
+`258cc3c` follows the carry as option (b): `--vendor`'s four refusals fold the notice into their one line, as
+`--tsvn-hook`'s already do, and the notice still prints once on every Subversion run. With it the archive block passes
+35 of 35 and `test_vcs_archive.py` 13 of 13 on Python 3.15 and 3.9.6; the prepared fix's development contrasts give 18
+of 28 as written, their 10 success rows differing only by the notice line. (a) would change only the 11 checks; (c)
+would drop the notice from `--vendor`. Proposed: (b), with the contrasts' success rows read without the notice line, in
+the evidence only. The bounded verification reviews the carry with `258cc3c` on top; the answer gates only the merge.
 
 **2026-10-15 — FM-004's answer carried onto main; 11 archive checks fail on #173's Subversion notice, a finding for the Owner.** Merge `9bed976` brings `fm/004-stage-integration` (`284a4e8`, final verdict `eabee22`) onto main `5f792d6` as git's own three-way result for every product file; `9d735ab` replaces `archive_source()` alone with the prepared fix of 13 October, recorded privately (its AST equal, every other definition's unchanged). On Python 3.15 and 3.9.6, `test_core.py` 321 ok (LF and a CRLF checkout), release.yml's 33 controls, every other block that names or calls `--vendor`, `test_vcs_cli.py`, py_compile, `--check` and two time-zone builds of identical bytes pass. 11 of the archive block's 35 checks fail, identically at the merge before the classification: #173 prints one Subversion notice line before each refusal those checks require to be one line; with it off, all 35 pass. The prepared fix's 28 development contrasts give 0 of 28 as written for the same reason, 28 of 28 with that line excluded. RV-3072 gets no third round.
 
@@ -95,6 +108,7 @@ the limits are said: three runs, one model family, an invented project.
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | Ask filed: how the carried archive meets #173's Subversion notice line; option (b), `258cc3c`, on this branch after the carry. |
 | 2026-10-15 19:50 CEST | FM-004 carried as answered: merge `9bed976` (integration `284a4e8`, verdict `eabee22`) and `9d735ab` (`archive_source()` from the prepared fix of 13 October, recorded privately). Core 321, release.yml 33, the other `--vendor` blocks, `--check` and reproducible builds pass on 3.15 and 3.9.6; 11 of 35 archive checks fail on #173's Subversion notice line, a finding for the Owner. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
 | 2026-10-13 18:18 CEST | Serial archive/common wiring retains both independently accepted products: common `git_dirs` unchanged, existing archive HERE read marked source, real SVN positive fixtures and expanded administrative guards retained. Compile, 302 core and 55 scoped archive controls pass; exact-head artifact and separate critical integration review remain due. |
