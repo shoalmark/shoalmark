@@ -5354,6 +5354,8 @@ def svn_new(rel):
         return _SVN_NEW[rel]
     try:
         info = svn_run("info", rel, xml=True, answers=("E200009",))      # E200009: not in version control
+        if info is not None:
+            svn_xml_proof(info, "info")
     except SvnUnreadable as e:
         _SVN_NEW[rel] = e
         raise
@@ -5418,6 +5420,7 @@ def svn_blame(rel):
             if not svn_new(rel):
                 raise SvnUnreadable("svn blame did not report the committed path")
         else:
+            svn_xml_proof(blame, "blame")
             targets = list(blame)
             if blame.tag != "blame" or len(targets) != 1 or targets[0].tag != "target" or targets[0].get("path") != rel:
                 raise SvnUnreadable("svn blame did not report one matching target")
@@ -5440,6 +5443,7 @@ def svn_blame(rel):
                 out[int(number)] = current
         if out:
             info = svn_run("info", rel, xml=True)
+            svn_xml_proof(info, "info")
             if info is None or info.tag != "info" or len(info) != 1 or info[0].tag != "entry" or info[0].get("path") != rel:
                 raise SvnUnreadable("svn info did not report one matching blame path")
             entry = info[0]
@@ -6590,6 +6594,51 @@ def svn_run(*args, xml=False, answers=()):
         raise SvnUnreadable("svn printed XML that could not be read")
 
 
+def svn_xml_proof(root, document):
+    """SVN proof XML has structural containers and scalar leaves, never mixed content.
+    Check the whole required document before publishing a cache or selecting a change.
+    This validates protocol shape only; existing readers still bind paths/revisions and
+    decide which authors or fields are required. Scalar values are retained verbatim."""
+    structures = {
+        "blame": {"blame": ("target",), "target": ("entry",),
+                  "entry": ("commit", "merged"), "merged": ("commit",)},
+        "info": {"info": ("entry",),
+                 "entry": ("url", "relative-url", "repository", "wc-info", "commit", "conflict", "lock", "tree-conflict"),
+                 "repository": ("root", "uuid"),
+                 "wc-info": ("wcroot-abspath", "schedule", "changelist", "copy-from-url", "copy-from-rev", "depth",
+                             "text-updated", "prop-updated", "checksum", "moved-from", "moved-to"),
+                 "conflict": ("version", "prev-base-file", "prev-wc-file", "cur-base-file", "prop-file"),
+                 "tree-conflict": ("version",), "version": ()},
+        "status": {"status": ("target", "changelist"), "target": ("entry", "against"),
+                   "changelist": ("entry", "against"), "entry": ("wc-status", "repos-status"),
+                   "wc-status": ("commit", "lock"), "repos-status": ("lock",), "against": ()},
+        "log": {"log": ("logentry",), "logentry": ("author", "date", "paths", "msg", "logentry"),
+                "paths": ("path",)},
+        "commit": {},
+    }
+    shared = {"commit": ("author", "date"), "lock": ("token", "owner", "comment", "created", "expires")}
+    scalars = {"author", "date", "path", "msg", "url", "relative-url", "root", "uuid", "wcroot-abspath", "schedule",
+               "changelist", "copy-from-url", "copy-from-rev", "depth", "text-updated", "prop-updated", "checksum",
+               "moved-from", "moved-to", "prev-base-file", "prev-wc-file", "cur-base-file", "prop-file",
+               "token", "owner", "comment", "created", "expires"}
+    if root is None or root.tag != document or document not in structures:
+        raise SvnUnreadable("svn did not print the required proof document")
+    rules = dict(shared, **structures[document])
+
+    def validate(node):
+        if (node.tail or "").strip(" \t\r\n"):
+            raise SvnUnreadable("svn printed content outside a proof field")
+        if node.tag in rules:
+            if (node.text or "").strip(" \t\r\n") or any(child.tag not in rules[node.tag] for child in node):
+                raise SvnUnreadable("svn printed invalid structural proof content")
+            for child in node:
+                validate(child)
+        elif node.tag not in scalars or len(node):
+            raise SvnUnreadable("svn printed invalid scalar proof structure")
+
+    validate(root)
+
+
 def svn_proof_path(value, absolute=False):
     """A canonical SVN proof path; aliases never stand for a broader namespace."""
     if not isinstance(value, str) or not value or "\\" in value or any(ord(c) < 32 or ord(c) == 127 for c in value):
@@ -6623,6 +6672,7 @@ def svn_relative_path(relative):
 
 def svn_proof_commit(commit, author=False):
     """One unambiguous committed revision, with an author where attribution needs it."""
+    svn_xml_proof(commit, "commit")
     if not re.fullmatch(r"[1-9][0-9]*", commit.get("revision") or ""):
         raise SvnUnreadable("svn printed an unavailable committed revision")
     for tag in ("author", "date"):
@@ -6639,6 +6689,7 @@ def svn_proof_commit(commit, author=False):
 
 def svn_log_proof(log, requested=None, paths=False, merged=False, empty=False):
     """Validate required log structure and bindings before any history classification."""
+    svn_xml_proof(log, "log")
     if log is None or log.tag != "log" or any(e.tag != "logentry" for e in log):
         raise SvnUnreadable("svn log did not report the required history")
     entries = list(log)
@@ -6740,6 +6791,7 @@ def svn_shipped_moves(rels):
         base = svn_consumer_prefix()                    # namespace metadata is required for either selected change
         target = svn_proof_path(TRACKER_DIR.relative_to(ROOT).as_posix())
         status = svn_run("status", target, xml=True)
+        svn_xml_proof(status, "status")
         if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != target:
             raise SvnUnreadable("svn status did not report the required working-copy change view")
         if any(c.tag not in ("target", "changelist") for c in status) or any(e.tag != "entry" for c in status for e in c):

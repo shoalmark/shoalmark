@@ -572,6 +572,26 @@ def run_binding_controls(fm, check, env, programs):
 
         refused = lambda value, _starts: isinstance(value, fm.SvnUnreadable)
         outer_refused = lambda value, _starts: isinstance(value, list) and bool(value) and all(isinstance(line, str) for line in value)
+        def formatted(tree):
+            for node in tree.iter():
+                node.tail = " \t\r\n"
+                if len(node) or node.tag in ("blame", "target", "log", "status"):
+                    node.text = " \t\r\n"
+
+        def checked_view(tool):
+            reads, actual_open = [], io.open
+            def opened(file, *args, **kwargs):
+                if isinstance(file, (str, os.PathLike)) and Path(file) == consumer / original:
+                    reads.append(str(file))
+                return actual_open(file, *args, **kwargs)
+            with patch.object(io, "open", side_effect=opened):
+                return tool.ship_problems([tracker]), reads
+
+        def checked_before_selection(value, starts):
+            return (isinstance(value, tuple) and outer_refused(value[0], starts) and not value[1]
+                    and "could not be read" in " ".join(value[0])
+                    and [cmd[1] for cmd, _cwd in starts] == ["info", "status"])
+
         exercise("RV-3092: real copied lines retain copier and source", lambda tool: tool.line_author(consumer / copied, "answer:"),
                  lambda value, _starts: isinstance(value, tuple) and value[0] == "copier" and value[2:] == ("svn", "2"))
         exercise("RV-3092: real committed empty blame is genuinely empty", lambda tool: tool.svn_blame("empty.txt"), lambda value, _starts: value == {})
@@ -603,6 +623,20 @@ def run_binding_controls(fm, check, env, programs):
             exercise("RV-3092: " + label + " is one cached controlled blame refusal", cached_blame(copied), cache_refused, fault)
         exercise("RV-3092: blank successful committed blame cannot mean pending", cached_blame(copied), cache_refused,
                  lambda cmd, _data: b"" if cmd[1] == "blame" else None)
+        exercise("RV-3092: target structural text cannot be cached as genuine empty blame", cached_blame(copied), cache_refused,
+                 lambda cmd, _data: ('<blame><target path="' + copied + '">LOST ENTRY DATA</target></blame>').encode()
+                 if cmd[1] == "blame" else None)
+        for field in (".", "target", "target/entry", "target/entry/commit", "target/entry/merged", "target/entry/merged/commit"):
+            for slot in ("text", "tail"):
+                exercise("RV-3092: blame " + field + " structural " + slot + " is one cached refusal", cached_blame(copied), cache_refused,
+                         xml_fault("blame", lambda tree, field=field, slot=slot: setattr(tree.find(field), slot, "LOST PROOF DATA")))
+        for field in ("target/entry/commit/author", "target/entry/commit/date", "target/entry/merged/commit/author"):
+            exercise("RV-3092: blame scalar " + field + " tail cannot escape its field", cached_blame(copied), cache_refused,
+                     xml_fault("blame", lambda tree, field=field: setattr(tree.find(field), "tail", "LOST PROOF DATA")))
+        exercise("RV-3092: formatting whitespace retains copied source/copier", lambda tool: tool.line_author(consumer / copied, "answer:"),
+                 lambda value, _starts: value == ("copier", None, "svn", "2"), xml_fault("blame", formatted))
+        exercise("RV-3092: formatted genuine empty blame remains empty", lambda tool: tool.svn_blame("empty.txt"),
+                 lambda value, _starts: value == {}, xml_fault("blame", formatted))
         first_faults = (
             ("wrong first-log root", lambda tree: setattr(tree, "tag", "unrelated")),
             ("duplicate first revision", lambda tree: tree.append(copy.deepcopy(tree[0]))),
@@ -615,6 +649,12 @@ def run_binding_controls(fm, check, env, programs):
         for label, change in first_faults:
             exercise("RV-3092: " + label + " cannot certify a copy", cached_blame(copied), cache_refused,
                      xml_fault("log", change, lambda cmd: "--stop-on-copy" in cmd))
+        for field in (".", "logentry", "logentry/paths"):
+            for slot in ("text", "tail"):
+                exercise("RV-3092: creation " + field + " structural " + slot + " cannot credit copier", cached_blame(copied), cache_refused,
+                         xml_fault("log", lambda tree, field=field, slot=slot: setattr(tree.find(field), slot, "LOST PATH DATA"), lambda cmd: "--stop-on-copy" in cmd))
+        exercise("RV-3092: formatted creation proof retains copied source/copier", lambda tool: tool.line_author(consumer / copied, "answer:"),
+                 lambda value, _starts: value == ("copier", None, "svn", "2"), xml_fault("log", formatted, lambda cmd: "--stop-on-copy" in cmd))
         exercise("RV-3092: reversed multi-revision first-path history refuses", cached_blame(original), cache_refused,
                  xml_fault("log", lambda tree: tree.__setitem__(slice(None), list(reversed(list(tree)))), lambda cmd: "--stop-on-copy" in cmd))
         for label, change in (
@@ -632,6 +672,12 @@ def run_binding_controls(fm, check, env, programs):
             exercise("RV-3092: " + label + " cannot bind first-path history", cached_blame(copied), cache_refused,
                      xml_fault("info", change, lambda cmd: "--show-item" not in cmd))
         retained_author = lambda value, _starts: isinstance(value, dict) and value.get(4) == ("owner", "1")
+        for field in (".", "entry", "entry/repository", "entry/wc-info", "entry/commit"):
+            for slot in ("text", "tail"):
+                exercise("RV-3092: info " + field + " structural " + slot + " cannot certify blame", cached_blame(copied), cache_refused,
+                         xml_fault("info", lambda tree, field=field, slot=slot: setattr(tree.find(field), slot, "LOST INFO DATA"), lambda cmd: "--show-item" not in cmd))
+        exercise("RV-3092: nested relative URL scalar cannot certify blame", cached_blame(copied), cache_refused,
+                 xml_fault("info", lambda tree: tree[0].find("relative-url").append(ET.fromstring("<rogue/>")), lambda cmd: "--show-item" not in cmd))
         exercise("RV-3092: unused info author is not required for the checked original blame", lambda tool: tool.svn_blame(original), retained_author,
                  xml_fault("info", lambda tree: tree[0].find("commit").remove(tree[0].find("commit/author")), lambda cmd: "--show-item" not in cmd))
         exercise("RV-3092: unused later path-log author cannot erase valid original attribution", lambda tool: tool.svn_blame(original), retained_author,
@@ -665,6 +711,12 @@ def run_binding_controls(fm, check, env, programs):
         setup("changelist", "--remove", original, cwd=consumer)
         (consumer / original).write_text(shipped.replace("r1", "no revision"), encoding="utf-8")
         exercise("RV-3093: actual pending move with no revision refuses", lambda tool: tool.ship_problems([tracker]), outer_refused)
+        exercise("RV-3093: target text-only garbage cannot select newest history over pending content", checked_view, checked_before_selection,
+                 lambda cmd, _data: b'<status><target path="docs/work-tracker">LOST ENTRY DATA</target></status>' if cmd[1] == "status" else None)
+        for field in (".", "target", "target/entry", "target/entry/wc-status", "target/entry/wc-status/commit"):
+            for slot in ("text", "tail"):
+                exercise("RV-3093: status " + field + " structural " + slot + " refuses before selection/read", checked_view, checked_before_selection,
+                         xml_fault("status", lambda tree, field=field, slot=slot: setattr(tree.find(field), slot, "LOST STATUS DATA")))
         status_faults = (
             ("foreign target", lambda tree: tree[0].set("path", "elsewhere/foreign")),
             ("duplicate target", lambda tree: tree.append(copy.deepcopy(tree[0]))),
@@ -703,6 +755,13 @@ def run_binding_controls(fm, check, env, programs):
             fault = xml_fault("log", change)
             exercise("RV-3094: referenced " + label + " cannot prove product", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["docs/"]), refused, fault)
             exercise("RV-3094: referenced " + label + " refuses through outer Shipped gate", lambda tool: tool.ship_problems([tracker]), outer_refused, fault)
+        for field in (".", "logentry", "logentry/paths"):
+            for slot in ("text", "tail"):
+                fault = xml_fault("log", lambda tree, field=field, slot=slot: setattr(tree.find(field), slot, "LOST LOG DATA"))
+                exercise("RV-3094: referenced " + field + " structural " + slot + " cannot prove product", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["docs/"]), refused, fault)
+                exercise("RV-3094: referenced " + field + " structural " + slot + " refuses through outer gate", lambda tool: tool.ship_problems([tracker]), outer_refused, fault)
+        exercise("RV-3094: formatted scalar path/author/date and surrounding log preserve product", lambda tool: tool.ship_problems([tracker]),
+                 lambda value, _starts: value == [], xml_fault("log", formatted))
         blank_log = lambda cmd, _data: b"" if cmd[1] == "log" else None
         exercise("RV-3094: blank successful existing-revision log is missing proof", lambda tool: tool.svn_ship_verdicts(["r1"], None, ["docs/"]), refused, blank_log)
         exercise("RV-3094: blank successful referenced log refuses through outer gate", lambda tool: tool.ship_problems([tracker]), outer_refused, blank_log)
@@ -772,6 +831,8 @@ def run_binding_controls(fm, check, env, programs):
         setup("commit", "-qm", "merge existing guarded line", "--username", "owner", cwd=consumer)
         exercise("RV-3092: real merge into an existing path retains the original line author", lambda tool: tool.line_author(consumer / original, "answer:"),
                  lambda value, _starts: value == ("intruder", None, "svn", changed_revision))
+        exercise("RV-3092: formatted merged blame retains original scalar author/date", lambda tool: tool.line_author(consumer / original, "answer:"),
+                 lambda value, _starts: value == ("intruder", None, "svn", changed_revision), xml_fault("blame", formatted))
         lower = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
         for step in ("one", "two"):
             (branch / "product.txt").write_text("branch product " + step + "\n", encoding="utf-8")
