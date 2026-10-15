@@ -25,7 +25,7 @@ brings it back.
 
 **2026-10-15 — what is left of the answer of 28 September:** `--statusline` and its install, not built; they wait for R6, held to 20 October.
 
-**2026-10-15 — a worktree a seat adds carries the seat's whole identity; nothing is built.** It is fixed first on the session list's branch in v0.20.1 (FM-023's table of 2026-10-15).
+**2026-10-15 — a worktree a seat adds carries the seat's whole identity: built on `fm/024-sessions` (`f09c579`), for the Reviewer.** One documented step writes every identity key of a new seat's worktree and prints the list (README, *Sessions*; AGENTS.md); `--whoami` and the commit hook report another worktree that carries this one's `seat.harness` under another identity, reading at most 32 worktrees a run; `test_worktree_identity.py` holds all sixteen subsets of the `user.*` and `seat.*` keys to their outcomes. Named limits, which only the step closes: a full, unchanged copy; a copy that kept the session under its own harness id; one that kept only the author's name.
 
 **Facts,** read at main `272e374` and probed with Git 2.50.1.
 - **What Git does:** with `extensions.worktreeConfig` set, `git worktree add` copies the current worktree's whole
@@ -451,6 +451,7 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | Defect 7 built on `fm/024-sessions` (`f09c579`): the setup step in README and AGENTS.md, the report in `--whoami` and the hook, `--init`'s line and `--schema` naming every key, the class test with its mutants. Critical tier: the Reviewer's pass is next. |
 | 2026-10-15 | Judged In Progress for v0.20.1: defect 7 first, on `fm/024-sessions`. |
 | 2026-10-15 | Defect filed: `git worktree add` copies a seat's whole identity into the worktree it adds. Nothing is built. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
