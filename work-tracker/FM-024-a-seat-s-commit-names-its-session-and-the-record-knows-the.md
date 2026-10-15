@@ -27,6 +27,42 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**2026-10-15 — a worktree a seat adds carries the seat's whole identity; nothing is built.** It is fixed first on the session list's branch in v0.20.1 (FM-023's table of 2026-10-15).
+
+**Facts,** read at main `272e374` and probed with Git 2.50.1.
+- **What Git does:** with `extensions.worktreeConfig` set, `git worktree add` copies the current worktree's whole
+  `config.worktree` into the new one.
+- **A fixture probe:** the child carried the parent's `user.name`, `user.email`, `seat.session`, `seat.harness` and
+  signers path. The child's first commit was authored as the parent.
+- **What the tool reads from those keys:**
+  - the gate gives rights by author: `seat_of(name, email)` (`shoalmark.py:6018`, called at `:6106`, `:6143`);
+  - the trailer hook writes `Session:` and, from `seat.harness`'s log, `Model:` and `Effort:` (`:7066–7077`);
+  - `--whoami` reads the same keys (`:7038–7044`).
+- **The tool's own setup line names two keys** (`:10030`), and says nothing of the copy.
+- **Seen today:** a Builder worktree added from the Planner's carried the Planner's `seat.harness` until the Planner
+  unset it. Unset, the Builder's `--whoami` would have reported the Planner's model as its own.
+
+**What it breaks:**
+- a child seat commits under its parent's address, with the parent seat's rights;
+- the child's commits carry the parent's `Session:`, `Model:` and `Effort:`;
+- the session list would map the child's worktree to the parent's session.
+
+**Fix:**
+- one documented step writes every identity key of a new seat's worktree, and prints `git config --worktree --list`;
+- `--whoami` and the commit hook report a worktree whose `seat.harness` equals another linked worktree's while its
+  `seat.session` differs: one harness id is one session.
+- **Named limit:** a full, unchanged copy looks exactly like the same seat's second worktree. Only the setup step
+  closes it.
+
+**Test for the class.** A fixture repository with `extensions.worktreeConfig`, and a parent worktree carrying every
+`user.*` and `seat.*` key.
+- Add a child, then overwrite every subset of those keys in turn. Each mixed identity is reported by name; the setup
+  step leaves none inherited.
+- A mutant that skips one key in the setup step fails the test.
+- The full-copy limit is pinned as a named case.
+
+**Tier:** critical: the gate's rights and the hooks.
+
 **2026-10-02 — the Builder's model, by tier.** The Owner's ruling is filed below, in *The Builder's model, by tier — after v0.19.0*; `builder.md` says it on `fm/024-the-builder-s-model-by-tier`. **What is left:** the Owner's merge.
 
 **2026-10-01 — the `[seats]` switch is built on `fm/024-the-seats-switch`; the full local run on its tip comes next, then the Owner's cold session and the Reviewer, in parallel.** The Owner's ruling is filed
@@ -412,6 +448,7 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | Defect filed: `git worktree add` copies a seat's whole identity into the worktree it adds. Nothing is built. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
 | 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |
 | 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |
