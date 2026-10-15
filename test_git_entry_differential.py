@@ -39,6 +39,22 @@ R13_OLD = "--since and --until go with --ratio\n"
 R13_NEW = "--since: R13, the Owner's ruling of 12 October, removed it with --ratio — no counting view replaces it until the receipts ship\n"
 
 
+# R13 also rewrites what `--schema` says of `[ratio] records` and `exclude`: what a move to `Shipped` reads, where the 615fb1d baseline
+# said what `--ratio` counts. The one difference the schema case may show: those two rows of stdout, each there once, and nothing else.
+R13_SCHEMA_CASE = "schema-check-priority"
+R13_SCHEMA_ROWS = ("| `[ratio] records` |", "| `[ratio] exclude` |")
+
+
+def r13_schema_matches(before, after):
+    """Whether a candidate's run of the schema case matches the baseline's but for R13's two `[ratio]` rows, each still one row of its key."""
+    if (before["status"], before["stderr"]) != (after["status"], after["stderr"]):
+        return False
+    old, new = before["stdout"].split("\n"), after["stdout"].split("\n")
+    if len(old) != len(new) or any(sum(line.startswith(row) for line in lines) != 1 for row in R13_SCHEMA_ROWS for lines in (old, new)):
+        return False
+    return all(any(a.startswith(row) and b.startswith(row) for row in R13_SCHEMA_ROWS) for a, b in zip(old, new) if a != b)
+
+
 def r13_named(observed):
     """(status, stdout, stderr) of a baseline run of an R13 case, its one line said as R13 says it; None where that line is not there once."""
     if observed["stderr"].count(R13_OLD) != 1:
@@ -349,6 +365,9 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             if label in R13_CASES:
                 assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, its one line named as R13 names `--since`",
                                r13_named(before) == said)
+            elif label == R13_SCHEMA_CASE:
+                assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, but for R13's two `[ratio]` rows of `--schema`",
+                               r13_schema_matches(before, after))
             else:
                 assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
                                (before["status"], before["stdout"], before["stderr"]) == said)
@@ -392,6 +411,17 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and r13_named(old13) != (new13["status"], new13["stdout"], new13["stderr"].replace("R13", "R14")))
         assert_control(r13 + "a baseline run that does not say the line once is not allowed at all",
                        r13_named(dict(old13, stderr="")) is None and r13_named(dict(old13, stderr=R13_OLD * 2)) is None)
+        olds, news = (next(row for row in rows if row["case"] == R13_SCHEMA_CASE and row["version"] == version) for version in ("baseline", "candidate"))
+        lines = news["stdout"].split("\n")
+        other = next(i for i, line in enumerate(lines) if line.strip() and not line.startswith(R13_SCHEMA_ROWS))
+        assert_control(r13 + "the schema case differs from the baseline in the two `[ratio]` rows, and in nothing else",
+                       olds["stdout"] != news["stdout"] and r13_schema_matches(olds, news) and r13_schema_matches(olds, olds))
+        assert_control(r13 + "a schema that also changes another line, drops or doubles a `[ratio]` row, or changes its exit or stderr does not match",
+                       not r13_schema_matches(olds, dict(news, stdout="\n".join(lines[:other] + [lines[other] + " changed"] + lines[other + 1:])))
+                       and not r13_schema_matches(olds, dict(news, stdout="\n".join(l for l in lines if not l.startswith(R13_SCHEMA_ROWS[1])) + "\n"))
+                       and not r13_schema_matches(olds, dict(news, stdout=news["stdout"].replace(R13_SCHEMA_ROWS[0], R13_SCHEMA_ROWS[1], 1)))
+                       and not r13_schema_matches(olds, dict(news, status=news["status"] + 1))
+                       and not r13_schema_matches(olds, dict(news, stderr=news["stderr"] + "x\n")))
 
         # R21's allowance is held to its one difference on the real default pair: equal snapshots match, and no variant below does.
         old, new = (next(row for row in rows if row["case"] == "clean-default-origin" and row["version"] == version) for version in ("baseline", "candidate"))
