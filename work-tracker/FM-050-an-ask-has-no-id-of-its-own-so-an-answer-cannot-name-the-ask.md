@@ -27,6 +27,10 @@ not ready (`cc9e80b`) and then READY (`ed2c82b`); put to the Owner; not ruled; n
 - **A case, 16 October:** the board hid FM-053's re-filed ask. The first answer's `answer/fm-053` was still on its way,
   and *on its way* is keyed on the tracker id, so the new ask did not show. The Owner read it from the tracker and
   answered by hand (`fee3874`). Ask ids fix it: an answer on its way is named by its ask's id, never by its tracker.
+- **The Owner's word, 16 October:** *on their way* (FM-030; `on_their_way` and `WAY_TITLE` in `shoalmark.py`) is in the
+  board's code, but in neither §1 nor §7 of `brand/design-guide.md` (found in A2's build check, recorded privately). It
+  goes into FM-050: FM-050's design round places it in the guide, beside the case above. The ask filed at `03ef687`
+  stands as filed.
 - **The design** is below: the id, asks before ids, R4's answer commit and how the gate finds it, what the gate refuses,
   what the three readers print, the class test, what each backend can claim, and the build's order. Its open questions
   close it.
@@ -544,3 +548,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-16 | RV-3285 fixed in the design, by the Builder seat: C5 compares the ids a branch proposes with the default branch's open ask and its records, answered or withdrawn, in `lint` and in `--queue`; duplicate archived ids are defined; a row and a mutant cover the records. |
 | 2026-10-16 | Round 2: READY (`ed2c82b`). The ask put to the Owner by the Planner (`next: owner`), filed at this commit so the answer binds the reviewed body. |
 | 2026-10-16 | A case recorded: the board hid FM-053's re-filed ask while the first answer's `answer/fm-053` was on its way; ask ids fix it. |
+| 2026-10-16 | The Owner's word: *on their way* (FM-030), in the board's code but in neither §1 nor §7 of the guide, goes into FM-050; its design round places it in the guide, beside the case of FM-053's hidden ask. |
