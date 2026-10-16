@@ -125,7 +125,7 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
     tracker's path, the home, `+n −m`, and every line the commit writes, in full. Below it, `INDEX.md` is named as the
     index the commit's hook regenerates from it. Then *how you sign* in three steps, and at the window's foot the
     *reply* copy button, filled, with its copy feedback.
-- **The commits, linked,** on the Owner's word of 16 October. Three commits are named: in the header, and again in
+- **The commits, linked,** as the Owner ruled on 16 October. Three commits are named: in the header, and again in
   the result, the tool's as its TOOL row. The Designer draws both views:
   - **the ask's:** the home and the head the ask was read from (`<home> @ <sha>`);
   - **the answer's:** in the result, the commit the run made, pushed or not;
@@ -136,18 +136,18 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
       run's start they do (item 1);
     - **the hooks' copy,** which runs the commit's hooks: the commit its record names (§9's prerequisite), and that its
       files equal the run's (item 1).
-- **Their links,** each made by R11's one link helper (FM-057), which the view reuses:
-  - **a commit of this repository** links only where the checkout's own configuration names its forge. `blob` (`:74`;
+- **Their links,** as ruled, each made by R11's one link helper (FM-057), which the view reuses:
+  - **a commit of this repository** links only through its own forge configuration, the checkout's. `blob` (`:74`;
     `board_blob`, `:4621`) gives the commit URL: `…/blob/<ref>/…` gives `…/commit/<full sha>`, and GitLab's
     `/-/blob/` gives `/-/commit/`. Where a forge's prefix gives none, the one key R11 adds gives it. No link is ever
     derived from a remote URL alone: the tool never guesses whether a remote is public;
-  - **the tool's commit** links to the public shoalmark repository (`TOOL_PAGE`, `:63`) where it is a release's: a
-    pinned copy's tagged commit. A tool run from the working tree is this repository's own commit, and links as this
-    repository's commits do;
+  - **the tool's commit** links to the public shoalmark repository (`TOOL_PAGE`, `:63`) where it is a release's
+    commit: a pinned, tagged copy. A working-tree tool's commit is the repository's own, so it links as the
+    repository's commits do, and only if pushed;
   - **no link, with a few words of why,** for: a commit not yet pushed, in no remote-tracking ref of `origin` (the
-    answer's commit before its push, or after a check that stopped the run); a repository that names no forge (`blob`
-    empty); an untagged pinned tool, which has no release to link; and Subversion without a viewer, which the run never
-    reaches (item 5).
+    answer's commit before its push, or after a check that stopped the run); no forge (`blob` empty); and Subversion
+    without a viewer, which the run never reaches (item 5). Nothing guesses whether a remote is public, so an untagged
+    pinned copy, which is no release, shows no link either, and says why.
 - **The lines are the run's:** it computes them once per choice, with the function `--answer` writes with (item 4), and
   writes them into the page. The script only shows the ones picked. For *in your own words* and *reject*, the page
   holds the lines with the text left out, and the script puts the typed text in, normalised as `answer_norm`
@@ -387,7 +387,8 @@ the Reviewer privately. This text does not state them.
   - **the commits and their links:** with `blob` in GitHub's form and in GitLab's, the head's, the answer's and the
     tool's links are the derived commit URLs. With `blob` empty, there is no link, and each says why. The answer's
     commit after a check that stopped the run has no link (not pushed). A pinned, tagged tool links to `TOOL_PAGE`; an
-    untagged one has no link, and says why. A tool run from the working tree is named by the full HEAD, its files equal;
+    untagged one has no link, and says why. A tool run from the working tree is named by the full HEAD, its files
+    equal, and links through `blob` only once that commit is on `origin`;
   - **the two requirements recorded privately:** one row each, listed with them.
 - **The mutants:** each is a patched copy of one function in the imported module, and each must turn at least one row
   red:
@@ -498,3 +499,4 @@ the Reviewer privately. This text does not state them.
 | 2026-10-16 | Quick win 11 in v0.20.1, on the Owner's word: the first proposal withdrawn, the ask filed again proposing v0.20.1. |
 | 2026-10-16 | Designed by the Builder seat (`27f31560/builder-16`): `## The design`, the guided run, its view, the pasted reply, the signing and the push, the ways out, the words as drafts, the class test and the build, with six open questions. The release ask stays as filed; the design's own ask is drafted for the Planner. Records only. |
 | 2026-10-16 | The commits, linked, added to the design on the Owner's word (relayed by the Auditor), by the Builder seat: the ask's head, the answer's commit and the tool's, in the header and a TOOL row, through R11's link helper (FM-057); the hooks' copy records the tool's commit first, built with FM-058; a seventh open question. Records only. |
+| 2026-10-16 | The Owner's rulings on the commits folded in (relayed by the Auditor), by the Builder seat: the view names the tool's commit and links the commits as ruled; a release's commit links to the public repository, and a working-tree tool's commit links as the repository's commits do, only if pushed. Records only. |
