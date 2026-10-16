@@ -5251,6 +5251,9 @@ check("FM-053, BF-3 · both templates: the tier's cell renders `next: owner` thr
       _own_src.count('${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}') == 1
       and _own_src.count('${l("viewer.next")}: ${t[21]?(t[21]=="owner"?"<code>owner</code>":esc(t[21])):') == 1
       and fm.LABELS.get("next.owner") == "you" and '" → "+esc(t[21])' not in _own_src)
+check("FM-053, BF-12 · a story's chapter line gives the move `owner` in code font, as the handover line does — the view shows the record's own field",
+      _own_src.count('`${k=="owner"?"<code>owner</code>":esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`') == 1
+      and '`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`' not in _own_src)
 if _browser("owner"):
     try:
         with tempfile.TemporaryDirectory() as d:
