@@ -5179,7 +5179,7 @@ answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zwei
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
-answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — ein Hardware-Schlüssel wartet auf Ihre Berührung"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
 answer.sign.step.push: pusht den Zweig
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
 answer.sign.success: Wenn es geklappt hat
@@ -6183,7 +6183,7 @@ with tempfile.TemporaryDirectory() as tmp:
                   and b2_.index('class="said"') < b2_.index('<pre class="cmd">')
                   and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
                   and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
-                  and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
+                  and "commits them, signed with your key — it may ask you to confirm" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
                   and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
                   and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
             check(f"FM-013 · …with ONE way out — done, the only button in its menu, closes the dialog; the only other control is the copy button, *command* (saw: {yes_})",

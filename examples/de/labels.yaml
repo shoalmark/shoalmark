@@ -151,7 +151,7 @@ answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zwei
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2} — und {3}"
-answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — ein Hardware-Schlüssel wartet auf Ihre Berührung"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
 answer.sign.step.push: pusht den Zweig
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
 answer.sign.success: Wenn es geklappt hat

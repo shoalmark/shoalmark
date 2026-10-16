@@ -4024,7 +4024,7 @@ LABELS = {
     "answer.sign.where": "where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
     "answer.sign.does": "what it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
-    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for you to tap it",
+    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm",
     "answer.sign.step.push": "pushes the branch",
     "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
     "answer.sign.success": "when it worked", "answer.sign.check": "to check",
