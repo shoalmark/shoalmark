@@ -46,8 +46,19 @@ as `default_trunk` reads it (`:3261`).
   highest number the tracker has used: in its front matter, in its records, and on git in the file's history.
 - **Minted when the ask is put to the Owner** (`next: owner`), by the seat that puts it. A draft (`next: review`) has
   none: the Owner never sees a draft.
-- **One question per id.** The question never changes under its id. A reworded ask is a replacement: `--clear-ask`
-  records the old id as withdrawn, and the new question takes the next number.
+- **One put ask per id.** An answer binds the whole put ask: its question, its proposal, its options and its kind
+  (`ask:`, `ask-proposal:`, `ask-options:`, `ask-kind:`). Each of them bears on the decision: a bare `accepted` takes
+  the proposal, and a choice is read against the options. None of them changes under its id (C2, item 4).
+- **To change a put ask, the seat withdraws it and puts the changed ask under the next number.** `--clear-ask` writes
+  the old id's record: `**withdrawn**`, or `**answered**` with the answer where one was given. The answer stays in the
+  record of the id it was given to. It never moves to the changed ask, which waits unanswered under its own id.
+- **The put ask is one reader,** `put_ask(t)`: those four lines, each through `answer_norm` (`:1723`), and the options
+  as their list. C2 and the binding (3b) both compare through it, so one comparison decides both.
+- **`ask-since:` is outside the put ask.** It says how long the ask has waited and decides nothing, so C2 and the
+  binding do not read it, and a change to it changes no put ask. A changed ask put under the next number keeps the
+  `ask-since:` of the ask it replaces: the age the Owner sees is how long they have been asked for this decision, and a
+  change the seat makes must not make that wait look shorter (FM-029's lesson: a measure must not flatter the seat). A
+  new question that replaces no ask writes the day it is put.
 - **Where it is written:**
   - the open ask's front matter, `ask-id:`, on the line above `ask:`;
   - the cleared exchange under `## Asks`, in place of the date's bold:
@@ -101,8 +112,8 @@ as `default_trunk` reads it (`:3261`).
   - `next:` (`ANSWER_MOVE`, `:942`): `build`, or `owner` kept for an action;
   - `due:`, only where an accepted action names its hour and none is set (the seed, `:2771`);
   - a revocation or a replacement replaces the three lines and adds the ship-log row, as today (`:2789–2805`).
-- **It leaves the ask as its parent has it:** `ask-id:`, `ask:` and the other `ask-` lines. The question it answers is
-  the one at its parent.
+- **It leaves the ask as its parent has it:** `ask-id:`, `ask:` and the other `ask-` lines. The put ask it answers, its
+  question, proposal, options and kind, is the one at its parent.
 - **Its message:** the subject `<ask-id>: <the answer, cut between two words>`, and one trailer per ask it answers,
   `Answers: <ask-id>`. A hand-made commit of the Owner's may answer several asks, with one trailer each. `--answer` makes
   one per ask.
@@ -143,12 +154,16 @@ that removed the line (FM-056). The design does not rely on it. It needs the id 
     the identity is `signed`. This is the reading `guard_verdicts` (`:7805`) gives the triage guard. A commit that
     carries the trailer and does not verify is not a candidate;
   - its own change writes that tracker's `answer:` line: the tracker at the commit and at its parent, one `cat_blobs`
-    for all candidates, carry different `answer:` lines.
+    for all candidates, carry different `answer:` lines;
+  - its own change leaves the put ask as its parent has it: `ask-id:` and `put_ask` are equal at the commit and at its
+    parent. The put ask the Owner answered is the one at the parent, and the commit carries that same one.
 - **The head:** the candidates no other candidate descends from (`git merge-base --independent`, asked only where an
   id has more than one candidate). There must be exactly one.
 - **What the head must hold:**
-  - the tracker at the head carries `ask-id:` equal to the id, `ask:` equal to the file's question (`answer_norm` on
-    both sides, `:1723`), and the `answer:` line the file carries now, byte for byte;
+  - the tracker at the head carries `ask-id:` equal to the id, and the `answer:` line the file carries now, byte for
+    byte;
+  - the put ask at the head, which equals its parent's, equals the file's (`put_ask` on both sides, item 1: the
+    question, the proposal, the options and the kind). The parent, the head and the file hold one put ask;
   - `answered-by:` equals the head's author name, as the gate asks today (`:8722`).
 - **What a merge can do:** nothing. It is never a candidate. Its resolution can only change the file, and the file must
   still match the one head. The reading holds across merges without FM-056's fix.
@@ -158,7 +173,11 @@ that removed the line (FM-056). The design does not rely on it. It needs the id 
   - `answer_cmd`'s `replaced` (`:2780–2782`), which names it in the ship-log row of a revocation or a replacement.
 - **On the branch, change by change** (the walk, beside `rights_problems`, `:6333`): an `answer` change (`transitions`,
   `:6179`) on a tracker with an `ask-id:` is refused unless its commit is ordinary, carries `Answers:` naming that id,
-  and changes no `ask` line of that tracker.
+  and changes no line of that tracker's put ask.
+- **After the answer, the put ask is fixed with it.** A later change to its proposal, its options or its kind, by any
+  author, is refused twice: by C2 on the change, and by the binding, because the head no longer holds the put ask the
+  file shows. The signed acceptance is never read as accepting a changed ask: a changed ask is withdrawn, the answer
+  stays in its record, and the changed ask is put again under the next number.
 - **In the pre-commit run** the commit does not exist yet. It is judged on the commit, by the next run, as today
   (`:8712`). `--answer` runs the reader on its own commit before it says it is done.
 - **Squash and rebase merges** rewrite the commit and lose the Owner's signature. The gate refuses that answer, as it
@@ -255,7 +274,9 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 - **C1, a put without an id:** a change that sets `next: owner` (the `ask` move, `transitions`, `:6179`), or that
   writes a new `ask:` text where `next: owner` stands, on a tracker whose `ask:` has no `ask-id:`. The refusal names the
   next number. An ask before ids that no change touches stays as it is.
-- **C2, a question changed under its id.**
+- **C2, a put ask changed under its id:** its question, its proposal, its options or its kind (`put_ask`, item 1),
+  answered or not. The change that passes is a withdrawal and a new put: the old id's record written by `--clear-ask`,
+  the changed ask under the next number. `ask-since:` is not read.
 - **C3, an id gone without its record.** `--clear-ask` writes the record.
 - **C4, a new id not above every number used:** the front matter, the records, and on git the file's history. The
   refusal names the next number.
@@ -288,9 +309,9 @@ for every author, the Owner included: a reused number is not a right. `changes_u
   - **The same id with the same question** on two branches (a cherry-pick) is one ask. It is not refused.
   - **Where both open asks reach one merge:**
     - git's conflict on the front matter stops it;
-    - a resolution that keeps one question with the other's answer is refused (3b: the question is not the one
+    - a resolution that keeps one put ask with the other's answer is refused (3b: the put ask is not the one
       answered);
-    - the question the resolution drops is the merger's to put again, under the next number.
+    - the put ask the resolution drops is the merger's to put again, under the next number.
   - **Where a stale check let an open ask in beside a record with its id:** F3 refuses on the default branch, and the
     open one is renumbered.
 
@@ -341,7 +362,8 @@ for every author, the Owner included: a reused number is not a right. `changes_u
     with no question.
   - **Minting and reuse, C1–C4 and F3:**
     - a put with no id, whose refusal names the next number; an ask before ids reworded in place, refused the same way;
-    - a question reworded under its id; the same, withdrawn and put as the next number, accepted;
+    - a question, a proposal, the options or the kind changed under its id, each refused; the same, withdrawn and put
+      as the next number, accepted;
     - an id dropped with no record; the same through `--clear-ask`, accepted;
     - a new id equal to a record's;
     - a new id below the highest number in the records;
@@ -365,6 +387,9 @@ for every author, the Owner included: a reused number is not a right. `changes_u
     - a seat's commit that restores an answer the Owner revoked;
     - two Owner answers to one id on two branches, refused; then one replaces the other, accepted;
     - an answer commit that also rewrites the question;
+    - the Owner's **signed** bare acceptance (`--answer <ask-id> accept`, no words), then a seat's **unsigned** edit of
+      its proposal, of its options, and of its kind: each refused twice, by C2 on the seat's change and by the binding
+      on the standing answer, and the row asserts both refusals; a seat's edit of its `ask-since:` alone, accepted;
     - `answered-by:` not the head's author;
     - a squash merge of the answer.
   - **The commands, 3c:**
@@ -383,13 +408,15 @@ for every author, the Owner included: a reused number is not a right. `changes_u
   - **the head found by `line_author`:** the reader goes back to the line;
   - **a trailer matched by its prefix:** `Q12` answers `Q1`;
   - **the question left out of the binding:** an answer can sit under another question;
+  - **the binding compares the question alone** (`put_ask` without the proposal, the options and the kind): in the
+    signed bare acceptance row, the binding's refusal goes missing, so the row turns red;
   - **no check for two heads:** two answers to one id both stand;
   - **C4 without the history read:** a number lost from the file is minted again;
   - **C5 against the branch's own base:** the default branch is not compared;
   - **signers read from the checkout:** a branch's key vouches for itself;
   - **the next number from the front matter alone:** the records are not counted;
   - **`--answer` by tracker id on an ask with an id:** the Owner can answer an ask they did not name;
-  - **C2 off:** a question changes under its id.
+  - **C2 off:** a put ask changes under its id.
 
 ### 7. What *never reused* can claim on each backend
 
@@ -455,9 +482,9 @@ for every author, the Owner included: a reused number is not a right. `changes_u
    - **The narrower reading:** the `owner` line alone.
 3. **`--queue`'s `merge: yours — signed`.** Is it R4's replacement for the `answer/*` reading, or does every pull
    request take a verdict, with the Owner merging their own by hand?
-4. **C2's strictness.** Under it, rewording a put ask costs a number. The looser rule allows rewording until it is
-   answered: the binding would still keep an answer to its question, but the record would no longer show the first
-   wording as withdrawn.
+4. **C2's strictness.** Under it, any change to a put ask, its question, proposal, options or kind, costs a number.
+   The looser rule allows changes until it is answered: the binding would still keep an answer to the put ask it was
+   given to, but the record would no longer show the first one as withdrawn.
 5. **The `ask` right.** Who may put an ask is still read through `line_author` (`seat_problems`, `:6117`, at `:6131`),
    and FM-056 holds that. The ids do not change it.
 6. **What C5 does not see.** C5 compares copies. A number the default branch used and lost without a record after the
@@ -468,8 +495,8 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 
 - The design is written here, reviewed by an independent Reviewer, and ruled by the Owner.
 - Built: every ask carries its id on the board and in `--standup` and `--owner`; an answer commit names it; the gate
-  refuses an unknown, answered or reused id. One test covers the class: every way an id could be reused or mismatched,
-  across two branches included.
+  refuses an unknown, answered or reused id, and a put ask changed under its id. One test covers the class: every way
+  an id could be reused or mismatched, across two branches included.
 
 ## Ship log
 
@@ -478,3 +505,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-15 | Designed by the Builder seat (`27f31560/builder-5`): `## The design`, the ask-id design with R4's answer commit, and its open questions; the ask drafted (`next: review`) for the Planner to put to the Owner. Records only. |
 | 2026-10-15 | Filed. |
 | 2026-10-16 | Reviewed, not ready (`cc9e80b`): two findings go back to the Builder; the base's list of waiting asks is corrected forward by the Planner. |
+| 2026-10-16 | RV-3284 (recorded privately) fixed in the design, by the Builder seat (`27f31560/builder-5`), from the Planner's draft. |
