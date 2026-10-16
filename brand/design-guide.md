@@ -54,7 +54,8 @@ Everything else supports that, folds, or goes.
    - Every unknown says why.
    - A shared session id is shown as ambiguous, never as one session.
    - The page never says *live*, *current*, *running*, *ended*, *all*, *every agent*, or *proves* of a report (§10).
-8. **Nothing moves.** There is no motion but a fold opening. Nothing pulses, and nothing refreshes itself.
+8. **Nothing moves.** There is no motion but a fold opening. Nothing pulses. The board reads its file again when you come
+   back to it; nothing polls.
 
 ---
 
@@ -324,7 +325,7 @@ Every row reads in one order:
 | **The page's limits** | One fold under the read-at line, closed: *what this page reads, and what it cannot see*. Opened, one help line: what was read and when, what was read beyond it (this machine's worktree settings), that a session that never committed is not seen, and that whether a session still runs is not known. The limits stay on the page, said once |
 | **No column heads in the day's folds** | A session row's type words and formats describe themselves (CLAUDE CODE, *22 min ago · NA-014*); heads repeated per fold are chrome. On narrow screens *last commit* names itself |
 | **A table** (the work table, receipts) | No outer box. Column heads as types (12 px capitals, `--mute`), on a band; `--line` rules between rows; numbers right-aligned in the same face |
-| **The read-at line** | `read from main @ <commit> at 10-15 09:41 · this page does not update itself`, and the *rebuild command* copy button at the line's right edge. The line is state, in `--dim` |
+| **The read-at line** | `read from main @ <commit> at 10-15 09:41 · it reads its file again when you come back to it; nothing polls`, and the *rebuild command* copy button at the line's right edge. The line is state, in `--dim` |
 | **Unknown** | *not known*, in italics, always with its reason: *resume not known — no worktree on this machine names this session now* |
 | **Ambiguous** | A 2px solid amber rule at the left of the block, on amber's tint (a dashed rule is help's), the word *ambiguous* in amber, one line per worktree, no action, and *counted as no session* in the heading |
 | **Empty** | It says why, and what the backend cannot give: *Subversion keeps no session in its revisions here … an empty list here is not a quiet day*. It offers the way that remains: the *claude --resume* and *codex resume* copy buttons |

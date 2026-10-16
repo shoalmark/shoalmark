@@ -3,10 +3,15 @@ id: FM-053
 status: In Progress
 considered: FM-002, FM-023, FM-024, FM-031, FM-006
 tags: process
-next: build
+next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
+ask: "Do you adopt the guide's wording of 16 October for the board's reload, as brand/design-guide.md states it at the commit that last filed this ask: it reads its file again when you come back to it, and nothing polls?"
+ask-kind: ruling
+ask-since: 2026-10-16
+ask-options: "yes | yes, with the change I name | no: §2.8 and the read-at line stay as answered at fee3874"
+ask-proposal: "yes"
 ---
 
 # FM-053 — the board's design for v0.20.1 is the Owner's word in a sitting, not yet a signed answer
@@ -49,6 +54,11 @@ commit that files this tracker's new ask:
 - **Not in this answer:** R6, held to 20 October; whether the board's run reads the harness folders' file names, which
   copy-to-resume needs (R6's look); the receipts' definitions (FM-055); whether a harness id may sit in a board's file;
   the README's picture. Each is its own ask.
+
+**2026-10-16 — the reload, said as it is.** The board reloads its file when its tab is visible again (FM-006, `3db8375`), and the
+Owner keeps that. §2.8's *nothing refreshes itself* and the read-at line's *this page does not update itself* said
+otherwise. Both now say *it reads its file again when you come back to it; nothing polls*, and this tracker's ask
+adopts that wording. The Designer checks it.
 
 ## The public homes
 
@@ -99,3 +109,4 @@ commit that files this tracker's new ask:
 | 2026-10-16 | The Designer's fidelity check fixed forward: a consequence stays amber in §8 *Help*; a verdict's word at weight 600; the dialog's teal rule in test 2; the palette's surfaces; `commit_url` before `blob`; one wrap. The ask filed again with them. |
 | 2026-10-16 | The docs pass's two ratio findings fixed forward: the dark `--box` ratio is 2.1, and §13's help ratios are 6.4:1 and 9.0:1. The ask filed again with them. |
 | 2026-10-16 | The amendment's answer recorded under `## Asks` (accepted, signed `fee3874`); next: build. |
+| 2026-10-16 | The reload's wording amended in §2.8 and the read-at line, with the ask that adopts it (`next: owner`). |
