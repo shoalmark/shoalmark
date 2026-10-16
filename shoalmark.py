@@ -4021,7 +4021,7 @@ LABELS = {
     # the week's verdicts and who gave them: by another session than the branch's, or by the same — reports, not proofs
     # the heading, led by what failed and what warns where there is any, then who gave the verdicts (the guide, §1)
     "reviews.title": "reviews · this week", "reviews.counts": "{0} by another session · {1} by the same session",
-    "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
+    "reviews.untraced": "{0} untraced", "reviews.trunk": "{0} on trunk",          # the number first, as the heading's other counts (BF-7)
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
     # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
     "reviews.sessions.more": "{0} and {1} more",

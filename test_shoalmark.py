@@ -1412,7 +1412,7 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-024 S7 + FM-024 build for 0.19.0 + FM-053 · the board's strip is one line per parent, in the day's one fold — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the week's verdicts, folded, a row each; the digest groups the same way under the same words (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
           "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
               "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
-              and "reviews · this week · 2 by another session · 1 by the same session · untraced 1 · reports, not proofs" in strip_
+              and "reviews · this week · 2 by another session · 1 by the same session · 1 untraced · reports, not proofs" in strip_
               and "by the same session · its session a9/reviewer-1, the branch's a9 and 1 more" in strip_ and "independent" not in strip_
               and strip_.count("· branch feat") == 4)))      # RV-3343: each row names its branch, the one its verdict was committed to
 # --- FM-053, RV-3343: a verdict's row names its branch — the one that holds the verdict commit on its own line, or the merge that brought that line
@@ -1580,6 +1580,13 @@ if _browser("sessions"):
     except _ChromeFailed as e_:
         _hung("sessions", e_)
         fm.configure(HERE)
+# --- FM-053, BF-7: the reviews heading's counts put the number first, as its other counts do — in English and in the German table the tool ships
+_de_shipped = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{0}} ohne Spur* and *{{0}} auf dem Stamm* in the German table "
+      f"(saw {fm.LABELS.get('reviews.untraced')!r}, {fm.LABELS.get('reviews.trunk')!r}, {_de_shipped.get('reviews.untraced')!r}, {_de_shipped.get('reviews.trunk')!r})",
+      (fm.LABELS.get("reviews.untraced"), fm.LABELS.get("reviews.trunk"), _de_shipped.get("reviews.untraced"), _de_shipped.get("reviews.trunk"))
+      == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Stamm"))
+
 # --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -5470,8 +5477,8 @@ act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, 
 sessions.recent: Sitzungen · {0} am letzten Tag
 reviews.title: reviews · this week
 reviews.counts: {0} by another session · {1} by the same session
-reviews.untraced: ohne Spur {0}
-reviews.trunk: auf dem Stamm {0}
+reviews.untraced: {0} ohne Spur
+reviews.trunk: {0} auf dem Stamm
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
