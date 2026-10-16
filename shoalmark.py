@@ -7040,7 +7040,8 @@ def harness_reading(hid):
 # worktree and for each other worktree — all four keys in one process (`worktree_identity`). A read that ends in 1 (none of the keys is set) or 128
 # (no such folder, no repository there) is NOT KNOWN, and so is a key the read does not name: it matches nothing, and a key not known is said so. One
 # scan reads at most `WORKTREE_READ_CAP` other worktrees, in the order `git worktree list` gives, and says how many it left unread: at most
-# WORKTREE_READ_CAP + 2 git processes, matching or not. A commit with no `seat.session` or no harness id reads none.
+# WORKTREE_READ_CAP + 2 git processes, matching or not (measured at the cap on 2026-10-16: 1.0 to 1.4 s either way, README, *Sessions*). A commit with
+# no `seat.session` or no harness id reads none.
 # THE NAMED LIMIT: a full, unchanged copy carries the whole identity of the worktree it came from and reads as that seat's second worktree. Only the
 # setup step tells it from the seat's own.
 WORKTREE_READ_CAP = 32

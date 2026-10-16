@@ -436,10 +436,21 @@ git -C "$w" config --worktree --list                   # every key is now this s
 is part of: another worktree that carries this one's `seat.harness` or `seat.session` while another of the four keys —
 `user.name`, `user.email`, `seat.session`, `seat.harness` — differs; another seat's worktree that carries this one's
 `user.name` under another seat; and this worktree itself, where its `seat.session` names a seat its `user.email` is not.
-Each line names the worktree, every key the two share and every key that differs. A line, never a refusal. One run reads
-at most 32 other worktrees, one git process each (28 to 70 ms each, measured on a quiet and on a busy machine), in the
-order `git worktree list` gives, and names how many it left unread; a commit with no `seat.session` or no harness id
-reads none. A worktree whose folder is gone, or that holds none of the keys, is *not known*, and so is a key set nowhere.
+Each line names the worktree, every key the two share and every key that differs. A line, never a refusal.
+
+*The bound:* one scan reads at most 32 other worktrees, in the order `git worktree list` gives, and names how many it left
+unread. At that cap it starts at most 34 git processes, whether harness ids match or not: the list, one read of this
+worktree's four keys, and one read of each other worktree's four keys. A commit with no `seat.session` or no harness id
+starts none of them. Measured at the cap on 2026-10-16, on a machine under a load of 11 to 13:
+
+| At the cap of 32 | every harness id matching | none matching | no harness id |
+|---|---|---|---|
+| the scan, Python 3.15 | 34 processes · 1.33 s | 34 processes · 1.37 s | none |
+| the scan, Python 3.9.6 | 34 processes · 1.07 s | 34 processes · 1.02 s | none |
+| the prepare-commit-msg hook, Python 3.15 | 38 processes · 2.03 s | 38 processes · 2.26 s | 4 processes · 0.64 s |
+| the prepare-commit-msg hook, Python 3.9.6 | 38 processes · 1.62 s | 38 processes · 1.48 s | 4 processes · 0.45 s |
+
+A worktree whose folder is gone, or that holds none of the keys, is *not known*, and so is a key set nowhere.
 What the line cannot see, and only the step closes: a full, unchanged copy, which reads as the seat's own second
 worktree.
 

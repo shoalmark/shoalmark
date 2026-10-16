@@ -349,6 +349,13 @@ def identity_checks(fm, base, docs, check, skip):
           code_hook == 0 and c.returncode == 0 and len(said) == 1 and "Session: aaaaaaaa/builder-1" in body,
           f"hook {code_hook}, commit {c.returncode} {c.stderr.strip()[-400:]!r}, {body!r}")
 
+    # the bound as README states it: the complete count at the cap, both cases measured, and no "one git process each"
+    readme = re.sub(r"\s+", " ", (docs / "README.md").read_text(encoding="utf-8"))
+    check(f"README states the scan's complete bound — at most {CAP_PROCESSES} git processes at the cap of {fm.WORKTREE_READ_CAP}, matching or not — and its "
+          "measurements with every harness id matching and with none",
+          f"At that cap it starts at most {CAP_PROCESSES} git processes, whether harness ids match or not" in readme and fm.WORKTREE_READ_CAP == 32
+          and "| At the cap of 32 | every harness id matching | none matching | no harness id |" in readme and "one git process each" not in readme)
+
     # only the setup step closes the limit: run as the documents print it
     step_checks(fm, base, parent, docs, check)
 
