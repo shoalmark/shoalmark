@@ -44,9 +44,10 @@ Everything else supports that, folds, or goes.
 5. **A box means an action; information is never boxed** (the Owner's rule). A button is a word in a 1px frame. Nothing
    else is framed like a chip: no pill, no badge, no boxed label (§8, *Why boxes, not brackets*). One action is not boxed:
    help's own mark, `[×]`, which hides a help line (§8, *Help*).
-6. **Two semantic accents inside the Owner's box, no more.** In `monochrome` they are coral, for *heed this*, and teal, for
-   *go*. Everything else is grey, except the tool's own voice: **help**, in violet behind a dashed rule, which is never a
-   state, a value, an action or a warning (§8, *Help*).
+6. **Three meanings, one colour each, inside the Owner's box:** teal for done or success, amber for a warning, coral for a
+   failure. Everything else is grey, except the tool's own voice: help, in violet behind a dashed rule. A meaning may also
+   stand on a tinted surface (§8, *A surface*), always beside its word. Colour marks a state the tool computed, or a
+   verdict's word as the reviewer gave it; never a confidence, a handover's prose, a total or a live state.
 7. **Never claim what the page cannot show.**
    - Every view says what it read and when.
    - Every unknown says why.
@@ -108,7 +109,7 @@ copied, `monochrome` is the board's own look and `shoalmark` a palette by name, 
   constants in the tool, as `PRICKE` is.
 - **In a row: 20 px, in grey** (`filter: grayscale(1)`). The family was drawn to read without colour, and its README judges
   each icon at 20 px *"grey included"*. Grey keeps colour for state: several icons' details, every blush among them, use
-  the same coral that means *heed this*.
+  the same coral that means a failure.
 - **In colour** only where the icons themselves are the subject: a gallery, the README, a forge avatar.
 - **Never alone:** the seat's word always stands beside its icon (`aria-hidden="true"`). A seat outside the seven gets an
   empty 20-pixel slot, never a borrowed icon.
@@ -167,17 +168,27 @@ formula, against the page.
 | `--mute` | markers, column heads, *not known*, and **every action's frame and the search field's**: the frame carries the meaning, so it needs 3:1 (WCAG 1.4.11) | `#6a6a6a` | `#8f8f8f` | 5.0 / 6.0 |
 | `--line` | row rules | `rgba(0,0,0,.14)` | `rgba(255,255,255,.15)` | — |
 | `--box` | the one titled frame, the Owner's box, which groups and needs no contrast floor | `rgba(0,0,0,.28)` | `rgba(240,241,244,.26)` | 2.0 / 2.2 |
-| `--coral` | **accent 1, *heed this*:** the waiting count while asks wait, an overdue act, a consequence line, an ambiguous id's rule, *not copied* | `#b3402f` | `#ff7b66` | 5.3 / 7.6 |
-| `--teal` | **accent 2, *go*:** *copied*, the command's left rule in a dialog | `#187953` | `#4fd1a1` | 5.0 / 10.1 |
+| `--coral` | **failure:** NOT READY, *not copied*, *not verified*, a missed act, a failed handover, a removed line | `#b3402f` | `#ff7b66` | 5.3 / 7.6 |
+| `--teal` | **done, success:** *copied*, READY, *verified*, an added line | `#187953` | `#4fd1a1` | 5.0 / 10.1 |
+| `--amber` | **a warning:** asks waiting for you and every count of them, READY WITH FINDINGS, *ambiguous*, *author only*, an act overdue within its window | `#8a5600` | `#f0b44c` | 5.7 / 10.4 |
+| `--owed` | the count of what waits on you, amber unless a palette names it | amber's value | amber's value | — |
 | `--help` | **the tool's voice:** help text and its dashed rule. Not an accent: it marks no row, value or action. A violet no state uses | `#7b3fbf` | `#c09cff` | 5.9 / 8.7 |
+| `--secbg` | a section heading's band, and a table's heads: structure, not state | `#efefeb` | `#18191c` | ink 15.7 / 15.3 · `--mute` 4.7 / 5.4 · amber 5.3 / 9.5 |
+| `--okbg` | teal's tint | `#e1f0e7` | `#10271d` | ink 15.4 / 13.7 · `--mute` 4.6 / 4.9 · teal 4.6 / 8.2 |
+| `--warnbg` | amber's tint | `#fbf0d6` | `#2a200d` | ink 16.0 / 13.9 · `--mute` 4.8 / 5.0 · amber 5.4 / 8.6 |
+| `--failbg` | coral's tint | `#faeae6` | `#2c1612` | ink 15.5 / 14.8 · `--mute` 4.6 / 5.3 · coral 4.9 / 6.7 |
 | `--blue`, `--yellow` | the work table's status squares only, a data colour outside the box | `#2f62d6`, `#946c0f` | `#6f9bff`, `#e8cf5a` | 5.1, 4.4 / 7.2, 12.4 |
+
+*The verdict's word sits at 12 px. On its tint it measures teal 4.6 / 8.2, amber 5.4 / 8.6 and coral 4.9 / 6.7, each at least
+4.5:1.*
 
 - **`--raise` departs from the theme's `#f9f9f9` and `#16181d`:** those sit within 1 % of the page and a hover could
   not be seen.
-- **The budget:** inside the Owner's box, only coral and teal as accents, plus help's violet as a voice. Blue and yellow
-  are the work table's 5-pixel status squares only, where the word stands beside them. Help's violet is a colour no state
-  uses, so help can never be read as a status. By day yellow reaches 4.4:1, enough for a square (3:1) but not for text,
-  so it is never text.
+- **The budget.** Inside the Owner's box: the three meanings and their tints, plus help's violet as a voice and the neutral
+  band.
+  - **Yellow** stays the work table's status square, outside the box, where its word stands beside it.
+  - **Amber is darker by day** than that yellow, so it can carry text (5.7:1).
+  - A palette that names its own accents names its own tints, under the same contrast check.
 - **Colour is never the only carrier.** Each accented thing also has its word: *overdue*, *ambiguous*, *not copied*,
   *copied*.
 - **Every colour is a token on `:root`,** so a palette is a token swap.
@@ -196,9 +207,10 @@ An Owner chooses the board's colours, directly or through an agent: a palette by
   name = "monochrome"                  # or "shoalmark"; the tokens below override it
   bg   = ["#f7f7f5", "#0e0e0e"]        # light, dark
   ink  = ["#161616", "#efefef"]
-  heed = ["#b3402f", "#ff7b66"]        # --coral: the waiting count, a consequence, ambiguous
-  go   = ["#187953", "#4fd1a1"]        # --teal: copied, the command's rule
-  owed = ["#a0156e", "#ee92d4"]        # what is owed to the Owner; heed's value where unset
+  fail = ["#b3402f", "#ff7b66"]        # --coral: a failure
+  ok   = ["#187953", "#4fd1a1"]        # --teal: done, success
+  warn = ["#8a5600", "#f0b44c"]        # --amber: a warning
+  owed = ["#a0156e", "#ee92d4"]        # the count of what waits on you; warn's value where unset
   help = ["#7b3fbf", "#c09cff"]        # the tool's voice
   ```
 
@@ -237,13 +249,15 @@ Every row reads in one order:
 | Part | Looks like | Examples |
 |---|---|---|
 | **What it is** | ink: the id at weight 400, underlined and linked; the question or the seat | `NA-012-Q2` Ship the export as CSV only, or as CSV and JSON? · **planner** `<session id>` |
-| **TYPE**: what kind of thing | 12 px capitals in `--dim`, never coloured or framed | DECISION · YOUR HANDS · ONE CLICK · ACT · CLAUDE CODE · CODEX |
+| **TYPE**: what kind of thing | 12 px capitals in `--dim`, never framed. Coloured once only: a verdict's word, in its meaning's colour at weight 600, on its row's tint | DECISION · YOUR HANDS · ONE CLICK · ACT · CLAUDE CODE · CODEX |
 | **State**: what is true of it now | the quiet line in `--dim`, facts separated by ` · `, the deciding word in ink, *not known* in italics | 1 day · holds up NA-014 · your answer here: **signed** · last commit 12 min ago · NA-014 |
 | **Action**: what you can do | a word in a 1px `--mute` frame, `--dim`, ink on `--raise` under the pointer; last on the row; a pair never splits across lines | verbs, with no icon: accept · reject · done · reschedule. Nouns, with the copy icon: stand-up prompt · resume command. Each boxed |
-| **Consequence**: a warning about this row | its own line beneath, indented 2ch, in coral. The only place the warning colour touches a row | an answer here proves the author only: any session that can commit here can write one in your name |
+| **Consequence**: a warning about this row | its own line beneath, indented 2ch, in amber; in coral where it names a failure | an answer here proves the author only: any session that can commit here can write one in your name |
 
 - **Ordering inside a section** keeps the board's rule for each section (oldest ask first; for sessions, those waiting
   for the Owner first, then the newest last commit, ambiguous ids last).
+- **Rows line up:** the id stands in a column of its own (10ch). The question or title, and the state line under it, start
+  on one column after it.
 - **The proof is a state:** *your answer here: signed*, *author only*, *server login*, *no author*. It is never *proves:
   signed*, because a signature proves the key, not the hand.
   - **On one repository's board** it is the same for every ask, so it is stated once, in *waiting for you*'s heading. Its
@@ -267,9 +281,8 @@ Every row reads in one order:
 - **One column, one frame:** `max-width: calc(104ch + 32px)`. There is no sidebar and no tabs. The header line is the page's
   identity card: the name, the search, what was read and when, and the *rebuild command* copy button.
 - **Vertical rhythm** comes in lines of 21 px:
-  - a section of the Owner's box opens below a divider one step stronger than a row's rule: `--box`, from frame to
-    frame, with 18 px above it and 10 px below. The parts of a section, such as the day's stand-up, sessions and
-    close-out, keep spacing only;
+  - a section of the Owner's box opens on its band (§8, *A surface*), 16 px below the section before it. The parts of a
+    section, such as the day's stand-up, folds and close-out, keep spacing only;
   - rows sit 3 px apart, separated by a `--line` rule.
 - **Widths** come in `ch`. The session row's columns are 20 px for the icon, then seat and session, harness, worktree, and
   last commit with its work item, then the action, right-aligned.
@@ -295,21 +308,23 @@ Every row reads in one order:
 
 | Component | Rule |
 |---|---|
-| **The Owner's box** | One titled frame (`--box`, 1px), *yours* set into its top border, as `monochrome` draws it. It is the only element that holds information inside a frame. Inside, sections are `## ` headings with counts |
+| **The Owner's box** | One titled frame (`--box`, 1px), *yours* set into its top border, as `monochrome` draws it. It is the only element that holds information inside a frame. Inside, sections are `## ` headings with counts, each on its band (*A surface*) |
 | **A section heading** | `## the day · the last 24 hours`, or a fold inside it, `> sessions · 4 with a commit in the last 24 hours (8 with their sub-sessions) · 2 waiting for you · 1 id ambiguous`. The counts are the state that makes a fold scannable. Its help line beneath names only what the section reads beyond the header's read-at line, and what cannot be seen: the header already says when |
 | **A heading's line** | Three parts, in this order: the title (never wraps), its state (the only part that wraps, hanging beside the title), and its action at the right edge, which never drops below. On a phone the whole heading may wrap. A heading's state stays short: the help line beneath carries the rest |
 | **A fold** | A `details` element: the heading is its `summary`, `> ` closed and `v ` open. Its default follows §1. On a phone, a script may close it at load |
 | **A row** | §6. A row that opens shows its details in quiet lines indented 4ch: commit counts, the last commit's subject, model, effort |
+| **A surface** | **A band:** `--secbg` behind a section heading of the box, from frame to frame, its text on the box's column. A folded section is its band alone, `--raise` under the pointer. A table's heads stand on a band too. **A tint:** `--okbg`, `--warnbg` or `--failbg` behind a whole row or a band, from frame to frame, beside the word that carries its meaning without it (§11, test 1). It is used for: *waiting for you*'s band while asks wait; *copied*; *ambiguous*; a verdict's row, READY on teal's, READY WITH FINDINGS on amber's, NOT READY on coral's, the verdict's word in its colour at 600 and nothing else on the row coloured, with the heading counting the amber and the coral; a signature's result. Never a frame, a chip or a single word. **A diff:** the path and `+n −m` on a band, old and new line numbers, `+` on teal's tint and `−` on coral's |
 | **A button** | A box, in `monochrome`: the word in the grid's face and `--dim`, lowercase, inside a 1px `--mute` frame (5.0:1 and 6.0:1: the frame carries the meaning) with 1px by 1ch of padding, 17px of line inside, so a button keeps the 21px line. Under the pointer: ink on `--raise`, the frame in ink. A visible focus ring (1px ink outline, offset 2px). At least 24px high on a phone (3px by 1ch of padding). In a dialog the one button that goes ahead is filled in ink. A pair stays on one line. **A copy button** carries the copy icon before its noun (*stand-up prompt*); its accessible name keeps the verb, *copy the stand-up prompt*, which contains the visible label (WCAG 2.5.3). A verb button has no icon |
 | **Copy feedback** | Under the row, in the state line: *copied:* in teal after the check icon, then the command, then the limit (*whether it still runs is not known here*). Or *not copied* in coral after the cross icon: *this page has no clipboard here … select the command*. *Copied* is said only when the clipboard confirms it |
-| **A dialog** | A window: a 1px ink frame, its title set into the top border. Sections are `## ` headings. The command or prompt stands behind a 1ch teal rule at its left edge, on the page ground, never in a tinted box. The status line comes first (*the prompt is on your clipboard*), then the text, then *what it asks the session to run* and *what it does not ask for*. A dialog promises the prompt's words, never a session's conduct |
-| **Help** | The tool's own voice: one short line that says how to read a section (*begins with your stand-up, ends with your close-out, at the times you choose*). **One help line per view, not per section:** a fold's caveat is a few words in its heading's state, and the page's fuller limits stand once, folded under the read-at line (*The page's limits*). Violet (`--help`) behind a 2px dashed rule at its left edge, 1ch in, on the page ground. **Never a value, a state, an action or a warning:** a row's reason stays its grey state line, a consequence stays coral, a button never sits inside help. At most one help line per section, under its heading or in an empty state; never one per row. In a dialog the dialog itself is the help, so its text stays ink and grey. The same words rules as everything else (§10). Recognised without colour by its dashed rule (§11, test 1). **Hiding:** help that only explains how to read carries its own mark, `[×]`: superscript, 11 px, in help's violet, underlined under the pointer, spoken *hide this help*. It stands after the last word of a one-line help, and top-right, at the end of the first line, of a help that wraps. It is the one action not in a box: it belongs to help's voice, not to the page's actions. The × sign, never the letter x: `[x]` is a done checkbox in Markdown. Pressed, the line is hidden in this browser, and a quiet line under the read-at line says *some help is hidden in this browser* with *show help again*. **The page's limits never hide:** the read-at line, *what this page reads, and what it cannot see*, an empty state's reason and a count's definition. Hiding is a viewer's convenience, kept in the browser, never in the repository |
+| **A dialog** | A window: a 1px ink frame, its title set into the top border. Sections are `## ` headings. The command or prompt stands behind a 1ch teal rule at its left edge, on the page ground, never in a tinted box; the change a command commits may stand as a diff (*A surface*). The status line comes first (*the prompt is on your clipboard*), then the text, then *what it asks the session to run* and *what it does not ask for*. A dialog promises the prompt's words, never a session's conduct |
+| **The guided answer view** | A view of the board that a prepared run opens for one ask, and nothing else. **The header:** the name and why it opened (*your answer is needed · 2 of 2 in the run you started*, the first words amber), the read-at line, the limits folded. **One window,** as wide as the frame, titled *your answer · <ask id>*. **The ask:** the question and its state. **`## your choice` on a band:** one row per choice: a radio, a letter, the words. The proposal comes first, with PROPOSED and the seat's confidence; *because* and *then* stand in the label column. *In your own words* and *reject the question* each have a typed box, three lines high, in the search field's frame. Nothing is picked; your pick stands on a neutral band, *not signed yet* in amber. **`## where you sign` on a band:** empty until a pick, then the change as a diff, *how you sign* in three steps, and at the window's foot the *reply* copy button, filled, with its copy feedback (the foot on teal's tint once copied). **One help line,** inside the window under *your choice* (§8 *Help*). **The view signs and runs nothing** (R5). **The result is a new view:** the change as signed, then COMMIT, SIGNER and SIGNATURE, the signature on its meaning's tint. The key *asks you to confirm*, never *touch*; *verified* is said of a signature only |
+| **Help** | The tool's own voice: one short line that says how to read a section (*begins with your stand-up, ends with your close-out, at the times you choose*). **One help line per view, not per section:** a fold's caveat is a few words in its heading's state, and the page's fuller limits stand once, folded under the read-at line (*The page's limits*). Violet (`--help`) behind a 2px dashed rule at its left edge, 1ch in, on the page ground. **Never a value, a state, an action or a warning:** a row's reason stays its grey state line, a consequence stays amber, or coral where it names a failure, a button never sits inside help. At most one help line per section, under its heading or in an empty state; never one per row. In a dialog the dialog itself is the help, so its text stays ink and grey, except the guided answer view's one help line (§8). The same words rules as everything else (§10). Recognised without colour by its dashed rule (§11, test 1). **Hiding:** help that only explains how to read carries its own mark, `[×]`: superscript, 11 px, in help's violet, underlined under the pointer, spoken *hide this help*. It stands after the last word of a one-line help, and top-right, at the end of the first line, of a help that wraps. It is the one action not in a box: it belongs to help's voice, not to the page's actions. The × sign, never the letter x: `[x]` is a done checkbox in Markdown. Pressed, the line is hidden in this browser, and a quiet line under the read-at line says *some help is hidden in this browser* with *show help again*. **The page's limits never hide:** the read-at line, *what this page reads, and what it cannot see*, an empty state's reason and a count's definition. Hiding is a viewer's convenience, kept in the browser, never in the repository |
 | **The page's limits** | One fold under the read-at line, closed: *what this page reads, and what it cannot see*. Opened, one help line: what was read and when, what was read beyond it (this machine's worktree settings), that a session that never committed is not seen, and that whether a session still runs is not known. The limits stay on the page, said once |
 | **No column heads in the day's folds** | A session row's type words and formats describe themselves (CLAUDE CODE, *22 min ago · NA-014*); heads repeated per fold are chrome. On narrow screens *last commit* names itself |
-| **A table** (the work table, receipts) | No outer box. Column heads as types (12 px capitals, `--mute`); `--line` rules between rows; numbers right-aligned in the same face |
-| **The read-at line** | `read from main @ <commit> at 10-15 09:41 · this page does not update itself`, then the *rebuild command* copy button. The line is state, in `--dim` |
+| **A table** (the work table, receipts) | No outer box. Column heads as types (12 px capitals, `--mute`), on a band; `--line` rules between rows; numbers right-aligned in the same face |
+| **The read-at line** | `read from main @ <commit> at 10-15 09:41 · this page does not update itself`, then the *rebuild command* copy button, at the line's right edge. The line is state, in `--dim` |
 | **Unknown** | *not known*, in italics, always with its reason: *resume not known — no worktree on this machine names this session now* |
-| **Ambiguous** | A 2px solid coral rule at the left of the block (a dashed rule is help's), the word *ambiguous*, one line per worktree, no action, and *counted as no session* in the heading |
+| **Ambiguous** | A 2px solid amber rule at the left of the block, on amber's tint (a dashed rule is help's), the word *ambiguous*, one line per worktree, no action, and *counted as no session* in the heading |
 | **Empty** | It says why, and what the backend cannot give: *Subversion keeps no session in its revisions here … an empty list here is not a quiet day*. It offers the way that remains: the *claude --resume* and *codex resume* copy buttons |
 | **Command-line output** | The same words as the board. Section titles in capitals as `--standup` prints them, with the board's words (*DECISIONS — answer; …*, *ONE CLICK — …*), two-space indents, ` · ` between facts, ages and *not known* as on the board. Its first line says what was read and when |
 
@@ -384,7 +399,9 @@ The theme's other drawn markers stay: they label structure, never an action.
 1. **The five-second test.** Remove the icons and every colour. Each row must still say what it is, its type, its state and
    its actions, in that order; a noun button must still read as something to copy, and help is still told apart by its
    dashed rule.
-2. **The accent count.** Inside the Owner's box, at most coral and teal as accents, and help's violet only on help.
+2. **The meanings.** Inside the Owner's box, teal only for done or success, amber only for a warning, coral only for a
+   failure, each beside its word, as text or as a tint; violet only on help. No tint on a confidence, a handover's prose, a
+   total or a live state.
 3. **Nothing framed but actions.** A box only on what is clickable, and on the search field. One titled frame, the Owner's
    box, and the dialog's window. No chip, pill or boxed label. Every action's frame at least 3:1 against the page. Every
    button at least 24px high on a phone.
@@ -422,10 +439,12 @@ chart's colours:
 - the **Watt's drying green** for headings and the mark;
 - **land's buff** for ids;
 - **chart magenta** for *what is owed to the Owner, and nothing else*;
-- coral for *heed this*, teal for *go*, and the chart's blue for help (`#1f5ca8`, `#8fb9f3`; 6.2:1 and 9.6:1): violet would
-  sit beside the chart's magenta, which means *owed*.
+- coral for a failure, teal for done, and its own amber and tints for a warning: `#7d5000` and `#f8eed6` by day, `#f1c26a`
+  and `#2b2414` by night (amber 6.7:1 and 10.9:1 against the page);
+- the chart's blue for help (`#1f5ca8`, `#8fb9f3`; 6.2:1 and 9.6:1): violet would sit beside the chart's magenta, which
+  means *owed*.
 
-Inside the box it carries magenta for the owed count, coral for a consequence, teal for *go* and its blue for help: one
-colour more than `monochrome`'s budget, which a landing palette can carry and a board named `shoalmark` takes with it. The
+Inside the box it carries magenta for the owed count, coral for a failure, amber for a warning, teal for done and its blue
+for help: one colour more than `monochrome`'s budget, which a landing palette can carry and a board named `shoalmark` takes with it. The
 nautical chart and the claim's band belong to the landing's first screen and the docs pages: a board named `shoalmark`
 takes its colours, never its chrome. No board rule depends on this palette.
