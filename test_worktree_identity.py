@@ -6,10 +6,11 @@ it. Every fixture is a throwaway repository with `extensions.worktreeConfig`; gi
 are looked for under a home of the fixture's own.
 
 The class (FM-024's *Test for the class*): a parent worktree carries every `user.*` and `seat.*` key and the signers path; a child is added from it
-and then overwrites every subset of the four `user.*` and `seat.*` keys in turn. Each of the sixteen identities is held to one named outcome: its
-own; named by the report (`--whoami` on both sides and the prepare-commit-msg hook); named by the session rule; or one of the named limits — a
-full, unchanged copy, one session under two harness ids, the author's name alone. The setup step, as README.md and AGENTS.md print it, is run and
-leaves no key inherited.
+and then overwrites every subset of the four `user.*` and `seat.*` keys in turn. EACH MIXED IDENTITY IS REPORTED BY NAME — all fourteen, by the
+child's `--whoami` and its prepare-commit-msg hook, each line naming the worktree and every key it shares and every key that differs. The one named
+limit is the full, unchanged copy, pinned silent; a child that wrote every key is silent. The scan stays within its bound: at the 32-worktree cap,
+at most 34 git processes, matching or not, each on the read-only list. The setup step, as README.md and AGENTS.md print it, is run and leaves no key
+inherited.
 """
 
 import contextlib
@@ -27,33 +28,28 @@ import tempfile
 
 
 HERE = pathlib.Path(__file__).resolve().parent
-KEYS = ("user.name", "user.email", "seat.session", "seat.harness")          # every user.* and seat.* key a seat's worktree carries
+KEYS = ("user.name", "user.email", "seat.session", "seat.harness")          # every user.* and seat.* key a seat's worktree carries, in the report's order
 SIGNERS = "gpg.ssh.allowedSignersFile"
 PARENT = {"user.name": "Planner seat", "user.email": "planner@seat", "seat.session": "aaaaaaaa", "seat.harness": "parent-harness-0001",
           SIGNERS: "parent/allowed_signers"}
 CHILD = {"user.name": "Builder seat", "user.email": "builder@seat", "seat.session": "aaaaaaaa/builder-1", "seat.harness": "child-harness-0001"}
 SEATS = '\n[seats]\nowner = "owner@example.org"\nplanner = "planner@seat"\nbuilder = "builder@seat"\n'
 REPORT = "one harness id is one session"
-ORDER = ("seat.session", "user.email", "user.name")                         # the order the report names the keys in (`SEAT_IDENTITY_KEYS`)
+PAIR = re.compile(r"one harness id is one session — (.+?) carries this worktree's (.+?) under another identity: (.+?) — `git worktree add` ")
+OWN = re.compile(r"one harness id is one session — this worktree's seat\.session (\S+) names the seat (\S+), and its user\.email (\S+) is the seat (\S+):")
+CAP_PROCESSES = 34                                                           # the bound at the 32-worktree cap: the list, this worktree, 32 others
 
 
-def outcome(written):
-    """The named outcome of a child that wrote the keys `written` and kept the parent's others: (named by the report, named by the session rule, label)."""
-    shared = "seat.harness" not in written
-    differ = [k for k in ORDER if k in written]
-    report = shared and bool(differ)
-    rule = "seat.session" in written and "user.email" not in written      # the parent's address under the child's `<parent>/builder-1`
-    if len(written) == len(KEYS):
-        label = "its own: every key written"
-    elif report or rule:
-        label = "named by " + " and ".join(w for w, on in (("the report", report), ("the session rule", rule)) if on)
-    elif not written:
-        label = "THE NAMED LIMIT: a full, unchanged copy, the same seat's second worktree to the tool"
-    elif "seat.session" not in written:
-        label = "a named limit: one session under two harness ids, which the report does not read"
-    else:
-        label = "a named limit: the author's name alone, which neither the report nor the session rule reads"
-    return report, rule, label
+def oracle(kept):
+    """FM-024's acceptance, restored: every mixed identity is named by the report, and the full, unchanged copy is the one named limit. For a child that
+    kept the parent's keys `kept`: (a line naming the parent is due, a line naming the child's own session against its address is due, the label)."""
+    kept = set(kept)
+    mixed = 0 < len(kept) < len(KEYS)
+    pair = mixed and (bool(kept & {"seat.session", "seat.harness"}) or ("user.name" in kept and "user.email" not in kept))
+    own = mixed and "user.email" in kept and "seat.session" not in kept   # the parent's address under the child's `<parent>/builder-1`
+    label = ("its own: every key written" if not kept else "THE NAMED LIMIT: a full, unchanged copy, the same seat's second worktree to the tool"
+             if not mixed else "a mixed identity, named by the report")
+    return pair, own, label
 
 
 @contextlib.contextmanager
@@ -90,11 +86,24 @@ def reported(stream):
     return [l for l in stream.splitlines() if REPORT in l and "past the first" not in l]
 
 
-def names(line, other, differ, mine, theirs):
-    """Whether one report line names the worktree `other` and exactly the keys `differ`, each with its value there and here."""
-    m = re.search(r" — (.+?) carries this worktree's seat\.harness ", line)
-    same = bool(m) and os.path.normcase(os.path.realpath(m.group(1))) == os.path.normcase(os.path.realpath(str(other)))
-    return same and all((f"{k} {theirs[k]} there, {mine[k]} here" in line) == (k in differ) for k in ORDER)
+def shown(path):
+    """A folder as the report shows it: resolved, a line break in its name written `\\n`."""
+    return os.path.realpath(str(path)).replace("\r", "\\r").replace("\n", "\\n")
+
+
+def pair_line(line, other, kept, mine, theirs):
+    """Whether one report line names the worktree `other`, every key it shares with this one (`kept`, with this one's values) and every key that differs
+    (its value there, this one's here) — exactly, in the report's order."""
+    m = PAIR.search(line)
+    return (bool(m) and os.path.normcase(m.group(1)) == os.path.normcase(shown(other))
+            and m.group(2) == ", ".join(f"{k} {mine[k]}" for k in KEYS if k in kept)
+            and m.group(3) == "; ".join(f"{k} {theirs[k]} there, {mine[k]} here" for k in KEYS if k not in kept))
+
+
+def own_line(line, mine):
+    """Whether one report line names this worktree's own session against its address: the seat each names."""
+    m = OWN.search(line)
+    return bool(m) and m.groups() == (mine["seat.session"], mine["seat.session"].split("/")[1].rsplit("-", 1)[0], mine["user.email"], mine["user.email"].split("@")[0])
 
 
 def step_blocks(text):
@@ -168,6 +177,29 @@ def run_checks(fm, docs=HERE):
     return results
 
 
+_WATCH = []                 # while a list is here, every process the run starts is appended to the newest one (`_audit`)
+_HOOKED = [False]
+
+
+def _audit(event, args):
+    if event == "subprocess.Popen" and _WATCH:
+        _WATCH[-1].append(args[1] if isinstance(args[1], str) else [str(a) for a in args[1]])
+
+
+@contextlib.contextmanager
+def watched():
+    """Every process started inside, as its argv — through an audit hook (`sys.addaudithook`), so no start escapes it however it is made."""
+    if not _HOOKED[0]:
+        sys.addaudithook(_audit)
+        _HOOKED[0] = True
+    seen = []
+    _WATCH.append(seen)
+    try:
+        yield seen
+    finally:
+        _WATCH.pop()
+
+
 def identity_checks(fm, base, docs, check, skip):
     parent, child = base / "parent", base / "child"
     git(base, "init", "-q", str(parent))
@@ -185,6 +217,15 @@ def identity_checks(fm, base, docs, check, skip):
     check("`--init`'s setup line names every identity key of a seat's worktree and says that `git worktree add` copies them",
           all(f"`{k}`" in line for k in (*KEYS, SIGNERS)) and "`git worktree add` copies every one" in line, line[-400:])
 
+    # the one read the scan adds to the read-only list: exactly as the tool sends it, and in no other form
+    pattern = fm.SEAT_IDENTITY_KEYS
+    bent = [["git", "config", "--get-regexp", pattern], ["git", "config", "-z", "--get-regexp", "."], ["git", "config", "-z", "--get-regexp", pattern, "x"],
+            ["git", "config", "-z", "--get-regexp", pattern.replace("harness", "harnes.")], ["git", "config", "-z", "--list"], ["git", "config", "--get-all", "seat.harness"],
+            ["git", "-c", "core.fsmonitor=x", "config", "-z", "--get-regexp", pattern], ["git", "config", "-z", "--get-regexp", pattern, "--replace-all"]]
+    check("the scan's one added read — `config -z --get-regexp` with the four identity keys — is on the read-only list as the tool sends it, and in no other form",
+          pattern == r"^(user\.(name|email)|seat\.(session|harness))$" and fm.read_only_git(["git", "-C", str(child), "config", "-z", "--get-regexp", pattern])
+          and not any(fm.read_only_git(b_) for b_ in bent), str([b_ for b_ in bent if fm.read_only_git(b_)]))
+
     # the defect's fact: git's own `worktree add` copies the parent's whole `config.worktree`
     git(parent, "worktree", "add", "-q", "--detach", str(child))
     copied = {k: git(child, "config", "--worktree", "--get", k).stdout.strip() for k in PARENT}
@@ -194,95 +235,102 @@ def identity_checks(fm, base, docs, check, skip):
         check("`git worktree add` copies the parent's whole identity into the child — user.name, user.email, seat.session, seat.harness, the signers path",
               copied == PARENT, str(copied))
 
-    # THE CLASS: the child overwrites every subset of the four keys in turn; the rest stay the parent's, as the copy left them
-    msg, tally = base / "MSG", {}
+    # THE CLASS: the child keeps every subset of the parent's four keys in turn and writes its own others
+    msg, named, silent = base / "MSG", [], []
     for n in range(len(KEYS) + 1):
-        for written in itertools.combinations(KEYS, n):
+        for kept in itertools.combinations(KEYS, n):
             for k in KEYS:
-                git(child, "config", "--worktree", k, CHILD[k] if k in written else PARENT[k])
-            mine = {k: CHILD[k] if k in written else PARENT[k] for k in KEYS}
-            want_report, want_rule, label = outcome(set(written))
+                git(child, "config", "--worktree", k, PARENT[k] if k in kept else CHILD[k])
+            mine = {k: PARENT[k] if k in kept else CHILD[k] for k in KEYS}
+            pair, own, label = oracle(kept)
             here, there = tool(fm, child, "--whoami"), tool(fm, parent, "--whoami")
             msg.write_text("a seat's subject\n", encoding="utf-8")
             hook = tool(fm, child, "--session-trailer", str(msg))
-            rule = tool(fm, child, "--session-check")
-            differ = [k for k in ORDER if k in written] if want_report else []
-            lines = (reported(here[2]), reported(there[2]), reported(hook[2]))
-            ok_report = (all(len(l) == 1 for l in lines) and names(lines[0][0], parent, differ, mine, PARENT) and names(lines[2][0], parent, differ, mine, PARENT)
-                         and names(lines[1][0], child, differ, PARENT, mine)) if want_report else lines == ([], [], [])
-            refused = rule[0] != 0 and f"names the seat builder" in rule[2]
-            ok = ok_report and refused == want_rule and here[0] == 0 and there[0] == 0 and hook[0] == 0 and f"Session: {mine['seat.session']}" in msg.read_text(encoding="utf-8")
-            kept = [k for k in KEYS if k not in written]
-            tally.setdefault(label.split(":")[0], []).append(kept)
-            check(f"the child that kept {', '.join(kept) or 'nothing'} of the parent's — {label}", ok,
-                  f"report lines {lines}, the session rule {rule[0]} {rule[2].strip()[-160:]!r}")
-    named = sum(len(v) for k, v in tally.items() if k.startswith("named by"))
-    limits = {k: len(v) for k, v in tally.items() if "limit" in k.lower()}
-    check("of the fourteen mixed identities nine are named — by the report or by the session rule — and five are named limits; the full copy is THE NAMED LIMIT",
-          named == 9 and limits == {"a named limit": 5, "THE NAMED LIMIT": 1} and len(tally.get("its own", [])) == 1, f"{named} named, limits {limits}")
+            lines = {"--whoami here": reported(here[2]), "--whoami in the parent": reported(there[2]), "the hook here": reported(hook[2])}
+            due = int(pair) + int(own)
+            right = lambda ls: (len(ls) == due and (not pair or any(pair_line(l, parent, kept, mine, PARENT) for l in ls))
+                                and (not own or any(own_line(l, mine) for l in ls)))
+            ok = (right(lines["--whoami here"]) and right(lines["the hook here"]) and len(lines["--whoami in the parent"]) == int(pair)
+                  and (not pair or pair_line(lines["--whoami in the parent"][0], child, kept, PARENT, mine))
+                  and here[0] == 0 and there[0] == 0 and hook[0] == 0 and f"Session: {mine['seat.session']}" in msg.read_text(encoding="utf-8"))
+            (named if lines["--whoami here"] and lines["the hook here"] else silent).append(kept)
+            check(f"the child that kept {', '.join(kept) or 'nothing'} of the parent's — {label}", ok, f"lines {lines}")
+    mixed = [k for k in named + silent if 0 < len(k) < len(KEYS)]
+    check("FM-024's acceptance: each of the fourteen mixed identities is named by the report, in the child's `--whoami` and in its hook; the full, unchanged "
+          "copy is THE NAMED LIMIT, silent, and so is the child that wrote every key",
+          len(mixed) == 14 and all(k in named for k in mixed) and silent == [(), KEYS], f"named {len(named)}, silent {silent}")
 
-    # the child that kept only its harness id: the state the night met (2026-10-15) — the next checks start from it
+    # the child that wrote its name, address and session and kept only the parent's harness id: the state the night met (2026-10-15)
     for k in KEYS:
-        git(child, "config", "--worktree", k, CHILD[k] if k != "seat.harness" else PARENT[k])
+        git(child, "config", "--worktree", k, PARENT[k] if k == "seat.harness" else CHILD[k])
+    mine, hid = dict(CHILD, **{"seat.harness": PARENT["seat.harness"]}), PARENT["seat.harness"]
+    kept = ("seat.harness",)
     fm.configure(child)
-    hid = PARENT["seat.harness"]
 
-    # not known: git's exit 128 (no such folder) and 1 (no such key) read None; a worktree whose folder is gone matches nothing; a key set nowhere is said so
-    gone = base / "gone"
-    git(parent, "worktree", "add", "-q", "--detach", str(gone))
+    # not known: git's exit 128 (no such folder) and 1 (none of the keys is set) read None; a worktree whose folder is gone, or that holds none of the
+    # keys, matches nothing; a key set nowhere is said so
+    gone, third, empty = base / "gone", base / "third", base / "empty"
+    for w in (gone, third, empty):
+        git(parent, "worktree", "add", "-q", "--detach", str(w))
     shutil.rmtree(gone)
-    third = base / "third"
-    git(parent, "worktree", "add", "-q", "--detach", str(third))
     git(third, "config", "--worktree", "--unset", "seat.session")
-    codes = (git(gone, "config", "--get", "seat.harness").returncode, git(child, "config", "--get", "no.such").returncode)
+    for k in KEYS:
+        git(empty, "config", "--worktree", "--unset", k)
+    codes = (git(gone, "config", "-z", "--get-regexp", pattern).returncode, git(empty, "config", "-z", "--get-regexp", pattern).returncode)
     says = reported(tool(fm, child, "--whoami")[2])
-    check("a read git ends in 128 (the worktree's folder is gone) or in 1 (the key is set nowhere) is not known: it matches nothing, and a key not known is said so",
-          codes == (128, 1) and fm.worktree_setting(str(gone), "seat.harness") is None and fm.worktree_setting(str(child), "no.such") is None
-          and len(says) == 2 and not any(str(gone.name) in l for l in says) and any(f"{third.name} carries" in l and "seat.session not known there" in l for l in says),
+    nothing = dict.fromkeys(KEYS)
+    check("a read git ends in 128 (the worktree's folder is gone) or in 1 (none of the four keys is set) is not known: it matches nothing, and a key not "
+          "known is said so",
+          codes == (128, 1) and fm.worktree_identity(str(gone)) == nothing and fm.worktree_identity(str(empty)) == nothing and len(says) == 2
+          and any(pair_line(l, parent, kept, mine, PARENT) for l in says) and any(pair_line(l, third, kept, mine, dict(PARENT, **{"seat.session": "not known"})) for l in says),
           f"exits {codes}, lines {says}")
-
-    # the reads: inside the read-only list, one `config --get seat.harness` a worktree, at most WORKTREE_READ_CAP of them, the rest said unread
-    seen, real = [], subprocess.run
-    def watch(*a, **k):
-        seen.append([str(w) for w in a[0]] if a else [])
-        return real(*a, **k)
-    cap = fm.WORKTREE_READ_CAP
-    subprocess.run, fm.WORKTREE_READ_CAP = watch, 2
-    try:
-        found, unread = fm.shared_harness(hid, str(child))
-    finally:
-        subprocess.run = real
-    try:
-        capped = fm.shared_harness_lines(hid, str(child))
-    finally:
-        fm.WORKTREE_READ_CAP = cap
-    others = len([l for l in git(child, "worktree", "list", "--porcelain").stdout.splitlines() if l.startswith("worktree ")]) - 1
-    harness_reads = [a for a in seen if a[-3:] == ["config", "--get", "seat.harness"]]
-    left = f"not known for {others - 2} worktree{'' if others - 2 == 1 else 's'} past the first 2 that `git worktree list` names (`WORKTREE_READ_CAP`)"
-    check(f"one run reads at most WORKTREE_READ_CAP other worktrees ({cap}), one `config --get seat.harness` each, every read on the read-only list, "
-          "and names how many it left unread",
-          cap == 32 and len(harness_reads) == 2 and unread == others - 2 and all(fm.read_only_git(a) for a in seen)
-          and others > 2 and capped[-1].endswith(left),
-          f"{len(harness_reads)} harness reads, unread {unread} of {others}, {[a for a in seen if not fm.read_only_git(a)]}, {capped[-1:]}")
 
     # the command line's `-c` scope names this commit's author, not another worktree's setting: it masks no difference
     os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="user.email", GIT_CONFIG_VALUE_0="builder@seat")
     try:
-        found, _ = fm.shared_harness(hid, str(child))
+        found = fm.shared_harness(hid, str(child))[0]
     finally:
         for k in ("GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"):
             os.environ.pop(k, None)
-    at_parent = next((d for o, d in found if os.path.realpath(o) == os.path.realpath(str(parent))), [])
+    at_parent = next((f["differ"] for f in found if f["folder"] and os.path.realpath(f["folder"]) == os.path.realpath(str(parent))), [])
     check("`git -c user.email=… commit` hands its `-c` to the hook; another worktree's setting is read without it, so it masks no difference",
           ("user.email", "planner@seat", "builder@seat") in at_parent, str(found))
+
+    # THE BOUND: at the 32-worktree cap one scan starts at most 34 git processes — the list, this worktree's identity and one read of each of 32 others
+    # — matching or not, each on the read-only list; counted through an audit hook, so no start escapes the count
+    bound, wts = base / "bound", base / "bound-worktrees"
+    git(base, "init", "-q", str(bound))
+    git(bound, "config", "extensions.worktreeConfig", "true")
+    for k, v in PARENT.items():
+        git(bound, "config", "--worktree", k, v)
+    git(bound, "-c", f"core.hooksPath={base / 'nohooks'}", "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "start")
+    peers = [wts / f"w{i:02}" for i in range(34)]                       # the scanner and 33 more: with the main worktree, 34 others, two past the cap
+    for w in peers:
+        git(bound, "worktree", "add", "-q", "--detach", str(w))
+    scanner = peers[0]
+    fm.configure(scanner)
+    seen_by = {}
+    for case, written in (("every harness id matching", ("user.name", "user.email", "seat.session")), ("none matching", KEYS)):
+        for k in written:
+            git(scanner, "config", "--worktree", k, CHILD[k])
+        hid_ = fm.harness_id()
+        with watched() as seen:
+            found, unread, listed = fm.shared_harness(hid_, str(scanner))
+        argvs = [fm.split_cmdline(a) if isinstance(a, str) else a for a in seen]
+        lists = [a for a in argvs if a[1:3] == ["worktree", "list"]]
+        reads = [a for a in argvs if a[1:2] == ["-C"] and a[3:] == ["config", "-z", "--get-regexp", pattern]]
+        seen_by[case] = (len(argvs), len(lists), len(reads), len(found), unread, all(fm.read_only_git(a) for a in argvs))
+    check(f"one scan at the cap starts at most {CAP_PROCESSES} git processes, matching or not — the list, this worktree's identity, one read of each of 32 "
+          "other worktrees — every one on the read-only list, and says the two past the cap unread",
+          seen_by == {"every harness id matching": (34, 1, 33, 32, 2, True), "none matching": (34, 1, 33, 0, 2, True)}, str(seen_by))
+    fm.configure(child)
 
     # the hook itself, installed in a scratch repository: a commit in the child is made, carries its own Session:, and the line is said
     code_hook = tool(fm, parent, "--install-hook")[0]
     c = git(child, "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "a seat's commit")
     body = git(child, "log", "-1", "--format=%B").stdout
-    kept_harness = dict(CHILD, **{"seat.harness": hid})
-    said = [l for l in reported(c.stderr) if l.startswith("--session-trailer: ") and names(l, parent, ORDER, kept_harness, PARENT)]
-    check("the installed prepare-commit-msg hook says the shared harness id on a commit in the child, and the commit is made with the child's own Session:",
+    said = [l for l in reported(c.stderr) if l.startswith("--session-trailer: ") and pair_line(l, parent, kept, mine, PARENT)]
+    check("the installed prepare-commit-msg hook names the mixed identity on a commit in the child, and the commit is made with the child's own Session:",
           code_hook == 0 and c.returncode == 0 and len(said) == 1 and "Session: aaaaaaaa/builder-1" in body,
           f"hook {code_hook}, commit {c.returncode} {c.stderr.strip()[-400:]!r}, {body!r}")
 

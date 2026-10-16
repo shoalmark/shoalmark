@@ -432,15 +432,16 @@ git -C "$w" config --worktree --unset-all seat.harness
 git -C "$w" config --worktree --list                   # every key is now this seat's own; anything else listed came with the copy
 ```
 
-**One harness id is one session.** `--whoami` and the commit hook say, one line each, when another worktree of the
-repository carries this one's `seat.harness` under another identity — its `seat.session`, `user.email` or `user.name`
-differs — and name the worktree and each key. A line, never a refusal. One run reads at most 32 other worktrees, one git
-process each (28 to 70 ms each, measured on a quiet and on a busy machine), in the order `git worktree list` gives, and
-names how many it left unread; a commit with no `seat.session` or no harness id reads none. A worktree whose folder is
-gone, or whose key is set nowhere, is *not known*. What the line cannot see, and only the step closes: a full, unchanged
-copy, which reads as the seat's own second worktree; a copy that wrote its own `seat.harness` and kept the session; and
-one that kept only the author's name. A copy that kept the address under a sub-agent's session of its own
-(`<parent>/<seat>-<n>`) is refused by the session rule, which names both seats.
+**One harness id is one session.** `--whoami` and the commit hook name, one line each, every mixed identity this worktree
+is part of: another worktree that carries this one's `seat.harness` or `seat.session` while another of the four keys —
+`user.name`, `user.email`, `seat.session`, `seat.harness` — differs; another seat's worktree that carries this one's
+`user.name` under another seat; and this worktree itself, where its `seat.session` names a seat its `user.email` is not.
+Each line names the worktree, every key the two share and every key that differs. A line, never a refusal. One run reads
+at most 32 other worktrees, one git process each (28 to 70 ms each, measured on a quiet and on a busy machine), in the
+order `git worktree list` gives, and names how many it left unread; a commit with no `seat.session` or no harness id
+reads none. A worktree whose folder is gone, or that holds none of the keys, is *not known*, and so is a key set nowhere.
+What the line cannot see, and only the step closes: a full, unchanged copy, which reads as the seat's own second
+worktree.
 
 **The trailers:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` and
 `Worktree: <the checkout's directory>` to every commit made in that worktree — never typed, and a trailer the message

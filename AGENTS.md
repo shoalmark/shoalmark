@@ -73,9 +73,10 @@ git -C "$w" config --worktree --unset-all seat.harness # the copy's id is anothe
 git -C "$w" config --worktree --list                   # every key is now the new seat's own
 ```
 
-`--whoami` and the commit hook report another worktree that carries this one's `seat.harness` under another identity:
+`--whoami` and the commit hook name every mixed identity a worktree is part of — a harness id or a session another
+worktree carries under another identity, a name another seat carries, a session that names a seat its address is not:
 one harness id is one session. A full, unchanged copy reads as the same seat's second worktree, and only the step
-closes it. README, *Sessions*, says what else the report cannot see.
+closes it (README, *Sessions*).
 
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 

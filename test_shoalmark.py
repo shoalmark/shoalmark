@@ -8880,7 +8880,7 @@ with tempfile.TemporaryDirectory() as d:
              ["git", "config", "--get-all", "remote.origin.promisor"], ["git", "config", "--list"], ["git", "config", "-z", "--list"],
              ["git", "version", "--build-options"], ["git", "-c", "core.fsmonitor=x", "version"], ["git", "-c", "core.fsmonitor=x", "config", "-z", "--get-regexp", keys_]]
     check(f"FM-045 · the board's reads of the clone's configuration and of git's version are read-only git as the tool sends them — `config -z --get-regexp` "
-          f"with the promisor keys, the one form of `--get-regexp` the list admits, and `version` with nothing after it —; another pattern, a word after it, "
+          f"with the promisor keys, one of the two forms of `--get-regexp` the list admits (the other, a seat worktree's four identity keys, is test_worktree_identity.py's), and `version` with nothing after it —; another pattern, a word after it, "
           f"`--get-all`, `--list`, `version` with an option, or a foreign `-c` do not pass (saw {sent_})",
           [s_[1:] for s_ in sent_] == [["config", "-z", "--get-regexp", keys_], ["version"]] and all(fm.read_only_git(s_) for s_ in sent_)
           and not any(fm.read_only_git(b_) for b_ in bent_))
