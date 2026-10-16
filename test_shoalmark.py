@@ -1972,7 +1972,8 @@ with tempfile.TemporaryDirectory() as d:
           b1_[0] == 0 and sorted(names_) == names_ and set(names_) == set(shipped_) | set(_REL_FIVE) | {"RELEASE"} and len(names_) == len(set(names_))
           and not any(n_.endswith("/") or n_.startswith(("src/", f"shoalmark-{ver}/")) for n_ in names_) and "scripts/not-shipped.py" not in names_ and "brand/themes/.hidden" not in names_)
     check(f"FM-004 · the zip carries the probe's five files at their repository paths — examples/de/shoalmark.toml, TEMPLATE.md, TRIAGE.md, labels.yaml and requirements/README.md — each as the tag holds it, and the tool names the same five (saw {[n_ for n_ in names_ if '/' in n_ and not n_.startswith(('brand/', 'vendor/'))]})",
-          all(f_ in names_ and z_.read(f_) == (HERE / f_).read_bytes() for f_ in _REL_FIVE) and tuple(getattr(fm, "ARCHIVE_FILES", ())) == _REL_FIVE)
+          all(f_ in names_ and z_.read(f_) == subprocess.run(["git", "-C", str(src), "show", f"v{ver}:{f_}"], capture_output=True, env=_ENV).stdout   # the tag's blob, never a
+              for f_ in _REL_FIVE) and tuple(getattr(fm, "ARCHIVE_FILES", ())) == _REL_FIVE)                                                         # working file: CRLF on Windows (CI on #184)
     check(f"FM-004 · its RELEASE names the version, the tag, the commit and every other entry of the zip with its SHA-256, each equal to the entry's (saw {wrong_ or 'read'}, {release_.splitlines()[:4]})",
           not wrong_ and rel_.get("version") == ver and rel_.get("tag") == f"v{ver}" and rel_.get("commit") == commit_
           and set(rel_.get("files", {})) == set(names_) - {"RELEASE"} == set(shipped_) | set(_REL_FIVE)
