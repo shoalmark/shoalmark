@@ -6783,7 +6783,7 @@ RATIO_REMOVED = "{flag}: R13, the Owner's ruling of 12 October, removed it{also}
 
 def ratio_removed(args):
     """R13: one line for each of `--ratio`, `--since` and `--until` given — what removed it, and that nothing counts in its place yet."""
-    given = [("--ratio", args.ratio), ("--since", args.since), ("--until", args.until)]
+    given = [("--ratio", args.ratio), ("--since", args.since is not None), ("--until", args.until is not None)]      # an empty value is given too
     return [RATIO_REMOVED.format(flag=flag, also="" if flag == "--ratio" else " with --ratio") for flag, value in given if value]
 
 
@@ -8766,7 +8766,7 @@ def cli_operation(args):
     ordered = (("html_only", args.html_only), ("vendor", args.vendor), ("brand", args.brand), ("init", args.init),
                ("install_hook", args.install_hook), ("session_trailer", args.session_trailer), ("whoami", args.whoami),
                ("session_check", args.session_check), ("commit_msg", args.commit_msg), ("session", args.session),
-               ("sessions", args.sessions), ("ratio", args.ratio), ("ratio_window", args.since or args.until),
+               ("sessions", args.sessions), ("ratio", args.ratio), ("ratio_window", args.since is not None or args.until is not None),
                ("queue", args.queue), ("schema", args.schema), ("new", args.new), ("invite", args.invite),
                ("notify", args.notify), ("owner", args.owner), ("answered", args.answered), ("answer", args.answer),
                ("done", args.done), ("due", args.due), ("revoke", args.revoke), ("clear_ask", args.clear_ask),
@@ -10359,7 +10359,7 @@ def main(argv=None, *, _notice=True):
         return session_cmd(args.session)
     if args.sessions:                                       # the registry: a report of the trailers, read from git alone
         return sessions_cmd()
-    if args.ratio or args.since or args.until:              # R13: each is named; no tracker and no history is read
+    if args.ratio or args.since is not None or args.until is not None:      # R13: each is named, an empty value too; no tracker and no history is read
         print("\n".join(ratio_removed(args)), file=sys.stderr)
         return 2
     if args.queue:                                          # FM-031 S2: the forge's queue — no tracker is read

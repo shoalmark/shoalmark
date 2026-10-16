@@ -97,23 +97,31 @@ def run_ratio_removed_controls(fm, check):
             r = subprocess.run([sys.executable, str(tool), "--root", str(root), *argv], capture_output=True, env=_ENV, cwd=str(root))
             return r.returncode, r.stdout.decode("utf-8", errors="replace"), r.stderr.decode("utf-8", errors="replace")
 
-        before = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if ".git" not in p.parts)
+        files = lambda: sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if ".git" not in p.parts)
+        before = files()
         for argv, flags in ((["--ratio"], ["--ratio"]), (["--since", "2026-10-01"], ["--since"]), (["--until", "2026-10-14"], ["--until"]),
                             (["--ratio", "--since", "2026-09-22", "--until", "2026-09-29"], ["--ratio", "--since", "--until"]),
-                            (["--until", "2026-10-14", "--queue"], ["--until"])):
+                            (["--until", "2026-10-14", "--queue"], ["--until"]),
+                            # an empty value is a value given: the retired option is named, never read as absent (truthiness)
+                            (["--since", ""], ["--since"]), (["--until", ""], ["--until"]),
+                            (["--ratio", "--since", ""], ["--ratio", "--since"]), (["--ratio", "--until", ""], ["--ratio", "--until"])):
+            was = files()
             code, out, err = run(*argv)
-            check(f"FM-032 · R13 · `{' '.join(argv)}`: exit 2, and one line for each of {flags} — R13 removed it, no counting view "
-                  f"replaces it until the receipts ship (saw {code}: {err.strip()!r})",
-                  code == 2 and out == "" and err.splitlines() == [SAID[f] for f in flags])
-        after = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if ".git" not in p.parts)
+            now = files()
+            check(f"FM-032 · R13 · `{' '.join(repr(a) if a == '' else a for a in argv)}`: exit 2, one line for each of {flags} — R13 removed it, "
+                  f"no counting view replaces it until the receipts ship — no stdout and no file written (saw {code}: {err.strip()!r}; "
+                  f"files {sorted(set(now) ^ set(was))})",
+                  code == 2 and out == "" and err.splitlines() == [SAID[f] for f in flags] and now == was)
+        after = files()
         check(f"FM-032 · R13 · the three flags read nothing and write nothing (saw {sorted(set(after) ^ set(before))})", after == before)
         code, out, _ = run("--help")
         check("FM-032 · R13 · `--help` names none of `--ratio`, `--since`, `--until`",
               code == 0 and "--check" in out and not any(f in out for f in ("--ratio", "--since", "--until")))
         for backend in ("svn", "git"):
             said = fm.cli_preflight(fm.parse_args(["--ratio", "--until", "2026-10-14"]), backend)
-            check(f"FM-032 · R13 · under {backend}, the flags are named before anything is read, exit 2 (saw {said!r})",
-                  said == (SAID["--ratio"] + "\n" + SAID["--until"], 2))
+            empty = fm.cli_preflight(fm.parse_args(["--since", "", "--queue"]), backend)
+            check(f"FM-032 · R13 · under {backend}, the flags are named before anything is read, exit 2 — an empty `--since` too (saw {said!r}, {empty!r})",
+                  said == (SAID["--ratio"] + "\n" + SAID["--until"], 2) and empty == (SAID["--since"], 2))
 
         # `--check` names a [ratio] key nothing reads, and `exclude`, which nothing counts with now — never a refusal (R26)
         run()
