@@ -3854,9 +3854,10 @@ function box(){
     S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE)+"</div>"))}
   // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict
-  // a verdict's branch (RV-3343): the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why
+  // a verdict's branch (RV-3343): the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why —
+  // in the row's own colour: nothing on a verdict's row is coloured but its word (G3, BF-10)
   const brn=b=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,`<code>${esc(b[2].slice(0,10))}</code>`)
-    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",`<span class="warn">${l("reviews.ambiguous")}</span>`,b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
+    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
     :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",`<code>${esc(b[1].slice(0,10))}</code>`):l("reviews.branch.none"))}</i>`;
   if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
@@ -4027,7 +4028,7 @@ LABELS = {
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
     # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
     "reviews.sessions.more": "{0} and {1} more",
-    # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous* in amber
+    # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous*
     "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
     "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
     "reviews.branch.unknown": "branch not known — {0}", "reviews.branch.none": "no branch here holds the verdict on its own line",

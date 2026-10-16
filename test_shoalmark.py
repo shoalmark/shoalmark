@@ -1484,6 +1484,9 @@ _BR_MUTANTS = {     # a ref at the reviewed commit counted as the verdict's bran
     "a ref at the reviewed commit counted": ("            if tip == verdict:\n", "            if tip == verdict or tip in history.parents.get(verdict, ()):\n"),
     "every branch that reaches the verdict": ("if any(holds(t) for t in shas))", "if any(verdict in history.ancestors(t) for t in shas))")}
 _br_mut = {k: (_tool_src_br.count(a) == 1 and not _branch_class(_tool_module(_tool_src_br.replace(a, b), "fm_branch_mutant"))[0]) for k, (a, b) in _BR_MUTANTS.items()}
+check("FM-053, BF-10 · a verdict row's *ambiguous* is in the row's own colour — `brn` passes the label, never a coloured span (G3: nothing on a verdict's "
+      "row is coloured but its word)",
+      'lh("reviews.branch.ambiguous",l("reviews.ambiguous"),' in _tool_src_br and '<span class="warn">${l("reviews.ambiguous")}</span>' not in _tool_src_br)
 check(f"FM-053, RV-3343 · the class test FAILS on each mutant — a ref at the reviewed commit counted; every branch that reaches the verdict, through a merge too (saw {_br_mut})",
       all(_br_mut.values()))
 sys.modules.pop("fm_branch_mutant", None); fm.configure(HERE)
@@ -1503,11 +1506,11 @@ if _browser("branch"):
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
             what_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
             said_ = {v: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", w_)) for v, w_ in what_.items()}
-            check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in amber with each branch "
-                  f"that holds it, and *not known* in italics with why (saw {said_})",
+            check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in the row's own colour (BF-10) with "
+                  f"each branch that holds it, and *not known* in italics with why (saw {said_})",
                   said_[v_known] == f"on {built[:10]} · branch fm/a"
                   and said_[v_amb] == f"on {built[:10]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
-                  and '<span class="warn">ambiguous</span>' in what_[v_amb]
+                  and 'class="warn"' not in what_[v_amb] and "<span" not in what_[v_amb]      # BF-10: no colour on a verdict's row but its word
                   and said_[v_none] == f"on {built[:10]} · branch not known — no branch here holds the verdict on its own line"
                   and "<i>branch not known — no branch here holds the verdict on its own line</i>" in what_[v_none])
     except _ChromeFailed as e_:
