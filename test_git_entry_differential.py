@@ -32,6 +32,40 @@ INDEX_PATH = "work-tracker/INDEX.md"
 R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
 
 
+# FM-053 (A2, the board's v2 look): the candidate's board page may differ from the baseline's, which predates it, where the candidate's page
+# carries the guide's section band `--secbg` and the baseline's does not; and `--schema` documents `[palette]` in one row of its table, its
+# brand line naming what the board no longer reads. Those, beside R21's, are the only differences a candidate may show here.
+PAGE_PATH = "work-tracker/index.html"
+V2_MARK = b"--secbg:"
+PALETTE_ROW = "| `[palette]` |"
+BRAND_LINES = ("No key chooses the board's look:", "A brand place gives the board a logo and its labels")
+
+
+def v2_page(baseline, candidate):
+    """Whether the two runs' board pages differ as FM-053's v2 look allows: each page's bytes are the ones its snapshot hashed, the
+    candidate's carries the v2 section band and the baseline's does not."""
+    old_bytes, new_bytes = (base64.b64decode(row["page_after"]["bytes_base64"]) if isinstance(row.get("page_after"), dict) else None
+                            for row in (baseline, candidate))
+    return (old_bytes is not None and new_bytes is not None
+            and hashlib.sha256(old_bytes).hexdigest() == baseline["after"].get(PAGE_PATH)
+            and hashlib.sha256(new_bytes).hexdigest() == candidate["after"].get(PAGE_PATH)
+            and V2_MARK in new_bytes and V2_MARK not in old_bytes)
+
+
+def schema_matches(old, new):
+    """Whether two runs' stdout are equal, or differ only as FM-053's `--schema` does: one `[palette]` row added to its table, and the
+    brand line replaced by the v2 one — nothing else."""
+    if old == new:
+        return True
+    o, n = old.split("\n"), new.split("\n")
+    rows = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]
+    if len(rows) != 1 or any(line.startswith(PALETTE_ROW) for line in o):
+        return False
+    n = n[:rows[0]] + n[rows[0] + 1:]
+    diffs = [(a, b) for a, b in zip(o, n) if a != b] if len(o) == len(n) else None
+    return diffs is not None and len(diffs) == 1 and diffs[0][0].startswith(BRAND_LINES[0]) and diffs[0][1].startswith(BRAND_LINES[1])
+
+
 def r21_dropped(data):
     """The baseline's INDEX.md bytes without the header's separator and dated, counted line, removed once and in the header
     (before the first `## ` section) only. None where the header holds no such line."""
@@ -43,12 +77,18 @@ def r21_dropped(data):
 def snapshots_match(baseline, candidate):
     """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
     entry and hook — but for R21's difference: INDEX.md after the run may differ where the baseline's, its header line
-    dropped (`r21_dropped`), is the candidate's bytes."""
+    dropped (`r21_dropped`), is the candidate's bytes; and for FM-053's: the board's page may differ as `v2_page` allows."""
     if baseline["before"] != candidate["before"]:
         return False
     if baseline["after"] == candidate["after"]:
         return True
     old, new = dict(baseline["after"]), dict(candidate["after"])
+    if old.get(PAGE_PATH) != new.get(PAGE_PATH):
+        if not v2_page(baseline, candidate):
+            return False
+        old.pop(PAGE_PATH), new.pop(PAGE_PATH)
+        if old == new:
+            return True
     if not (isinstance(old.pop(INDEX_PATH, None), str) and isinstance(new.pop(INDEX_PATH, None), str)) or old != new:
         return False
     old_bytes, new_bytes = (base64.b64decode(row["index_after"]["bytes_base64"]) if isinstance(row.get("index_after"), dict) else None
@@ -60,9 +100,9 @@ def snapshots_match(baseline, candidate):
 
 
 def with_index(observed, data, path=INDEX_PATH):
-    """A copy of an observed run whose file `path` held `data` after the run — for the allowance's controls."""
+    """A copy of an observed run whose file `path` held `data` after the run — for the allowances' controls."""
     after = dict(observed["after"], **{path: hashlib.sha256(data).hexdigest()})
-    return dict(observed, after=after, **({"index_after": serial(data)} if path == INDEX_PATH else {}))
+    return dict(observed, after=after, **({"index_after": serial(data)} if path == INDEX_PATH else {"page_after": serial(data)} if path == PAGE_PATH else {}))
 
 
 def remove_tree(path):
@@ -215,10 +255,11 @@ def invoke(tool, root, flags, cwd, env):
         for row in report["starts"]:
             if "raw" in row:
                 row["argv"] = read_back(row["raw"])
-    index = root / INDEX_PATH
+    index, page = root / INDEX_PATH, root / PAGE_PATH
     report.update(status=result.returncode, stdout=result.stdout,
                   stderr="".join(line for line in lines if not line.startswith(MARKER)), before=before, after=snapshot(root),
                   index_after=serial(index.read_bytes()) if index.is_file() and not index.is_symlink() else None,
+                  page_after=serial(page.read_bytes()) if page.is_file() and not page.is_symlink() else None,
                   source_sha256=hashlib.sha256(tool.read_bytes()).hexdigest(), flags=flags,
                   invocation_cwd=str(cwd), consumer=str(root), invocation_environment=serial(env))
     return report
@@ -331,8 +372,8 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 rows.append(observed); pair.append(observed)
             before, after = pair
             label_prefix = "Git entry " + label + ": "
-            assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
-                           (before["status"], before["stdout"], before["stderr"]) == (after["status"], after["stdout"], after["stderr"]))
+            assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",       # stdout as FM-053's `--schema` allows
+                           (before["status"], before["stderr"]) == (after["status"], after["stderr"]) and schema_matches(before["stdout"], after["stdout"]))
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             assert_control(label_prefix + "all actual process argv/effective cwd/env match", strip_stack(before["starts"]) == strip_stack(after["starts"]))
             assert_control(label_prefix + "run options and actual process results match", strip_stack(before["run_calls"]) == strip_stack(after["run_calls"]))
@@ -379,6 +420,22 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(allowance + "a `> Generated` line below the header, or a second one in it, is not removed and does not match",
                        bool(line) and not snapshots_match(with_index(old, new_index + line.group(0)[1:] + b"\n"), new)
                        and not snapshots_match(with_index(old, old_index.replace(line.group(0), line.group(0) * 2, 1)), new))
+        # FM-053's allowance, held to its differences the same way: the real default pair's pages differ as the v2 look, the schema pair's
+        # stdout as its documented row and brand line — and no variant below matches
+        v2 = "Git entry FM-053 allowance: "
+        old_page, new_page = (base64.b64decode(row["page_after"]["bytes_base64"]) for row in (old, new))
+        assert_control(v2 + "the default run's board page differs as the v2 look alone — its section band — and the pair still matches",
+                       old_page != new_page and V2_MARK in new_page and V2_MARK not in old_page and v2_page(old, new) and snapshots_match(old, new))
+        assert_control(v2 + "a candidate page without the v2 band, or a baseline page that has it, does not match",
+                       not snapshots_match(old, with_index(new, new_page.replace(V2_MARK, b"--band:"), PAGE_PATH))
+                       and not snapshots_match(with_index(old, old_page + V2_MARK, PAGE_PATH), new))
+        schema_old, schema_new = (next(row for row in rows if row["case"] == "schema-check-priority" and row["version"] == version)["stdout"]
+                                  for version in ("baseline", "candidate"))
+        changed = schema_new.replace("`--queue`", "`--queue`, changed", 1) if "`--queue`" in schema_new else schema_new + "one more line\n"
+        palette = next((line for line in schema_new.split("\n") if line.startswith(PALETTE_ROW)), "")
+        assert_control(v2 + "--schema differs by its `[palette]` row and its brand line alone; another changed line, or a second row, does not match",
+                       schema_old != schema_new and bool(palette) and schema_matches(schema_old, schema_new) and not schema_matches(schema_old, changed)
+                       and not schema_matches(schema_old, schema_new.replace(palette, palette + "\n" + palette, 1)))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),
