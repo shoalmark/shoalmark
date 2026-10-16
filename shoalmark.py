@@ -3849,10 +3849,14 @@ function box(){
     S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE)+"</div>"))}
   // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict
+  // a verdict's branch (RV-3343): the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why
+  const brn=b=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,`<code>${esc(b[2].slice(0,10))}</code>`)
+    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",`<span class="warn">${l("reviews.ambiguous")}</span>`,b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
+    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",`<code>${esc(b[1].slice(0,10))}</code>`):l("reviews.branch.none"))}</i>`;
   if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
         "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
-      (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`),v[5]?l("verdict."+v[5]):l("type.verdict"),
+      (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`)+" · "+brn(v[6]||["none"]),v[5]?l("verdict."+v[5]):l("type.verdict"),
         (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+l("reviews.sessions",v[2]||"—",v[3].join(", ")||"—")),"","",VERDICT[v[5]])).join(""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
@@ -4011,6 +4015,11 @@ LABELS = {
     "reviews.title": "reviews · this week", "reviews.counts": "{0} by another session · {1} by the same session",
     "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
+    # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous* in amber
+    "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
+    "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
+    "reviews.branch.unknown": "branch not known — {0}", "reviews.branch.none": "no branch here holds the verdict on its own line",
+    "reviews.branch.unnamed": "its merge {0} names no branch",
     "reviews.notready": "{0} not ready", "reviews.findings": "{0} with findings",
     # a verdict's word as the reviewer gave it, its row's TYPE (G3) — `--queue` reads it from the verdict commit's subject
     "verdict.READY": "ready", "verdict.READY WITH FINDINGS": "ready with findings", "verdict.READY TO TAG": "ready to tag", "verdict.NOT READY": "not ready",
@@ -8050,12 +8059,70 @@ def trunk_ref():
     return held or next((ref for ref in ("refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
 
+# FM-053, RV-3343: a verdict's branch, as the guide's row names it (§1, *reviews*) — the branch that holds the verdict commit on its OWN
+# first-parent line, the line the verdict was committed to. A ref that points at the reviewed commit, or reaches the verdict only through a merge,
+# is not its branch: a ref says where it points now, never where a review was. Once the trunk holds the verdict, the merge that brought its line
+# in names the branch in its own message — GitHub's and git's own merge subjects — or the branch is not known, and the row says why.
+MERGED_BRANCH_RE = re.compile(r"Merge (?:pull request #\d+ from [^/\s]+/(\S+)|branch '([^']+)'|remote-tracking branch '[^/']+/([^']+)')")
+
+
+def branch_name(ref):
+    """A branch ref's name without its place: `refs/heads/fm/x` and `refs/remotes/origin/fm/x` are both `fm/x`; "" for any other ref, and for
+    a remote's `HEAD`."""
+    if ref.startswith("refs/heads/"):
+        return ref[len("refs/heads/"):]
+    parts = ref.split("/", 3)
+    return parts[3] if parts[:2] == ["refs", "remotes"] and len(parts) == 4 and parts[3] != "HEAD" else ""
+
+
+def branch_tips():
+    """{a branch's name: its tips} — every local and remote-tracking branch, by `branch_name`, one `git for-each-ref`: a local `fm/x` and
+    `origin/fm/x` are one name, with up to two tips."""
+    out = {}
+    for line in (git_out("for-each-ref", "--format=%(objectname) %(refname)", "refs/heads", "refs/remotes") or "").splitlines():
+        sha, _, ref = line.partition(" ")
+        if branch_name(ref):
+            out.setdefault(branch_name(ref), set()).add(sha)
+    return out
+
+
+def verdict_branch(history, verdict, tips, trunk_sha, trunk_name):
+    """RV-3343 — the branch a verdict was given on: ["line", name] where one branch holds the verdict commit on its own first-parent line (the
+    trunk's name where it was committed on the trunk); ["merge", "", merge] where the trunk holds it and `merge` brought in the line that holds
+    it — its name is read from that merge's message afterwards; ["ambiguous", names] where several branches hold it on their own line; ["none"]
+    where no branch here does. Never a ref that merely points at the reviewed commit, nor one that reaches the verdict through a merge."""
+    first = lambda c: (history.parents.get(c) or (None,))[0]
+    if trunk_sha and history.is_ancestor(verdict, trunk_sha):
+        after, at, brought = history.ancestry_path(verdict, trunk_sha), trunk_sha, None     # the verdict's descendants the trunk reaches
+        while True:
+            c, merge = at, None
+            while c in after:                   # down the line while it stands above the verdict: the last such commit brought it in
+                merge, c = c, first(c)
+            if c == verdict:
+                return ["line", trunk_name] if at == trunk_sha else ["merge", "", brought]
+            into = next((p for p in history.parents.get(merge, ())[1:] if p == verdict or p in after), None) if merge else None
+            if into is None:
+                return ["none"]
+            at, brought = into, merge
+    stop = history.ancestors(trunk_sha) if trunk_sha else set()
+
+    def holds(tip):
+        while tip and tip not in stop:
+            if tip == verdict:
+                return True
+            tip = first(tip)
+        return False
+    names = sorted(name for name, shas in tips.items() if any(holds(t) for t in shas))
+    return ["line", names[0]] if len(names) == 1 else ["ambiguous", names] if names else ["none"]
+
+
 def verdict_reports(days=None):
     """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
     its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
     range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
     is on the trunk's first-parent line (not a branch verdict) — and the verdict's own word, read from its subject as `--queue` reads it
-    (`VERDICT_WORD_RE`; "" where it names none). The range is the branch's own commits, less other
+    (`VERDICT_WORD_RE`; "" where it names none), and its branch (`verdict_branch`, RV-3343: ["merge", name, merge] where the merge's message
+    names it, ["unnamed", merge] where it names none). The range is the branch's own commits, less other
     verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", f"--format=%H%x01%s%x01{TRAILERS}%x02", "HEAD") or ""      # the subject, as `--queue` reads it
@@ -8069,10 +8136,18 @@ def verdict_reports(days=None):
             said[sha] = (lambda m: m.group(1) if m else "")(VERDICT_WORD_RE.search(subject))
     if not found:
         return []
-    trunk = trunk_ref()
+    trunk, tips = trunk_ref(), branch_tips()
     shas = resolve_commits([reviewed for _v, reviewed, _s in found] + ([trunk] if trunk else []))       # FM-040: the window's history,
-    history = read_history(*sorted({s for s in shas.values() if s}))       # read once — every question below is answered from it
-    trunk_sha = shas[trunk] if trunk else ""
+    history = read_history(*sorted({s for s in shas.values() if s} | {t for held in tips.values() for t in held}))      # read once — every
+    trunk_sha = shas[trunk] if trunk else ""                                                      # question below is answered from it
+    branches = {verdict: verdict_branch(history, verdict, tips, trunk_sha, branch_name(trunk or "")) for verdict, _r, _s in found}
+    merges = sorted({b[2] for b in branches.values() if b[0] == "merge"})
+    subjects = dict(line.split("\x01", 1) for line in (git_out("log", "--no-walk=unsorted", "--format=%H%x01%s", *merges) or "").splitlines()
+                    if "\x01" in line) if merges else {}
+    for verdict, b in branches.items():
+        if b[0] == "merge":
+            hit = MERGED_BRANCH_RE.match(subjects.get(b[2], ""))
+            branches[verdict] = ["merge", next(g for g in hit.groups() if g), b[2]] if hit else ["unnamed", b[2]]
     out = []
     for verdict, reviewed, sid in found:
         tip = shas[reviewed]
@@ -8084,7 +8159,7 @@ def verdict_reports(days=None):
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")
-        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict]))
+        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict], branches[verdict]))
     return out
 
 
@@ -8100,7 +8175,7 @@ def sessions_report():
         lines.append(f"reviews this week · {len(reps)} verdict(s) · independent {count['independent']} · same session {count['same session']}"
                      + (f" · untraced {count['untraced']}" if count["untraced"] else "") + (f" · on trunk {count['on trunk']}" if count["on trunk"] else ""))
         lines += [f"  verdict {v[:10]} on {r[:10]}: " + ("on trunk — not a branch verdict" if w == "on trunk" else
-                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word in reps]
+                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word, _branch in reps]
     return lines
 
 
@@ -8164,7 +8239,7 @@ def board_sessions():
     """The report as the board shows it — the parents with a commit in the last 24 hours (each: id, seat, worktree, its
     sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, this
     week's verdicts as [independent, same session, untraced, on trunk, not ready, ready with findings], and each verdict as [verdict, reviewed,
-    its session, the range's sessions, the word, the verdict's own word] — or None where there is neither, or no git."""
+    its session, the range's sessions, the word, the verdict's own word, its branch (`verdict_branch`)] — or None where there is neither, or no git."""
     if vcs() != "git":
         return None
     groups = session_groups()
@@ -8176,7 +8251,7 @@ def board_sessions():
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
-            "verdicts": [[v, r, sid, list(ranged), w, word] for v, r, sid, ranged, w, word in reps]}
+            "verdicts": [[v, r, sid, list(ranged), w, word, branch] for v, r, sid, ranged, w, word, branch in reps]}
 
 
 def sessions_digest():

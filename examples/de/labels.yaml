@@ -188,6 +188,13 @@ reviews.counts: "{0} by another session · {1} by the same session"
 reviews.on: "on {0}"
 reviews.notready: "{0} not ready"
 reviews.findings: "{0} with findings"
+reviews.branch: "branch {0}"
+reviews.branch.merged: "branch {0}, as its merge {1} names it"
+reviews.branch.ambiguous: "branch {0}: {1} each hold the verdict on their own line"
+reviews.ambiguous: ambiguous
+reviews.branch.unknown: "branch not known — {0}"
+reviews.branch.none: no branch here holds the verdict on its own line
+reviews.branch.unnamed: "its merge {0} names no branch"
 verdict.READY: ready
 verdict.READY WITH FINDINGS: ready with findings
 verdict.READY TO TAG: ready to tag

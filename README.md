@@ -529,6 +529,10 @@ builder 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line 
 effort (`—` where its commits carried none). A parent that made no commit of its own still has its line, its seat and
 worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript. Under it,
 *reviews · this week · n by another session · m by the same session · reports, not proofs*, folded, a row per verdict.
+A row names the verdict's commit, the commit it reviewed, and its branch: the branch that holds the verdict commit on
+its own first-parent line. A ref that only points at the reviewed commit, or reaches the verdict through a merge, is
+not its branch. Once the trunk holds the verdict, the merge that brought its line in names the branch, in its own
+message. Otherwise the row says *ambiguous*, with each branch that holds it, or *branch not known*, with why.
 `--owner`, the digest, carries the same grouping in the same words — a header with
 the two counts, then one line per parent — and ends with the queue where `gh` reads the forge (*what to merge*, above).
 Labels: `sessions.recent` (now with `{1}`, the count with sub-sessions) and `reviews.*` (§9).

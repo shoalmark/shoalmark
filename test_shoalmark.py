@@ -630,6 +630,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "way": "FM-030 · 0.18.6 · on their way, rendered — the box's counts, his act and his answers before his merge",
     "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
     "hooks": "FM-002 · the Owner's box's title, rendered in every view",
+    "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
 }
 
 
@@ -1408,7 +1409,106 @@ with tempfile.TemporaryDirectory() as d:
           "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
               "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
               and "reviews · this week · 2 by another session · 1 by the same session · untraced 1 · reports, not proofs" in strip_
-              and "by the same session · its session a9/reviewer-1, the branch's a9, a9/implementer-1" in strip_ and "independent" not in strip_)))
+              and "by the same session · its session a9/reviewer-1, the branch's a9, a9/implementer-1" in strip_ and "independent" not in strip_
+              and strip_.count("· branch feat") == 4)))      # RV-3343: each row names its branch, the one its verdict was committed to
+# --- FM-053, RV-3343: a verdict's row names its branch — the one that holds the verdict commit on its own line, or the merge that brought that line
+#     in, by its message; ambiguous or not known, with why; never a ref that merely points at the reviewed commit. The class test, run on the tool
+#     and on two mutants, each of which it must fail
+def _branch_class(tool):
+    """The class test on `tool`, the tool as a module: one repository grown through each shape of a verdict's branch, each read by `verdict_reports`
+    with HEAD where the verdict is, as the board reads it. (ok, {shape: (want, saw)} where they differ)."""
+    with tempfile.TemporaryDirectory() as d_:
+        root_ = Path(d_).resolve()
+        out_ = lambda *a: subprocess.run(["git", "-C", str(root_), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+        commit_ = lambda subject: (git(root_, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+        verdict_ = lambda tip, sid: commit_(f"review: READY\n\nReviewed: {tip}\nSession: {sid}")
+        seen_ = {}
+
+        def read_(shape, verdict, want):
+            tool.configure(root_)
+            seen_[shape] = (want, next((v[6] for v in tool.verdict_reports() if v[0] == verdict), "no such verdict"))
+        git(root_, "init", "-q", "-b", "main"); run(root_, "--init", "--key", "msr"); tracker(root_, "MSR-001"); run(root_)
+        git(root_, "add", "-A"); git(root_, "commit", "-qm", "the trunk\n\nSession: t0")
+        git(root_, "checkout", "-q", "-b", "fm/a"); built_a = commit_("a, built\n\nSession: b1"); v_a = verdict_(built_a, "r1")
+        git(root_, "branch", "coincides", built_a)                  # a ref that points at the reviewed commit — now, and only that
+        read_("known: fm/a holds the verdict on its own line; a ref at the reviewed commit is not counted", v_a, ["line", "fm/a"])
+        git(root_, "checkout", "-q", "--detach", built_a); v_det = verdict_(built_a, "r2")
+        read_("not known: a verdict on a detached HEAD — never named from the ref at its reviewed commit", v_det, ["none"])
+        git(root_, "checkout", "-q", "-b", "fm/b", v_a); commit_("b, grown from a's verdict\n\nSession: b2")
+        read_("ambiguous: fm/a and fm/b each hold it on their own line", v_a, ["ambiguous", ["fm/a", "fm/b"]])
+        git(root_, "checkout", "-q", "-b", "fm/c", "main"); built_c = commit_("c, built\n\nSession: b3"); v_c = verdict_(built_c, "r3")
+        git(root_, "checkout", "-q", "-b", "release/x", "main"); git(root_, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/c' into release/x", "fm/c")
+        m_c = out_("rev-parse", "HEAD")
+        read_("known: a release branch that merged fm/c reaches its verdict through a merge — not its branch", v_c, ["line", "fm/c"])
+        git(root_, "checkout", "-q", "main"); git(root_, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/a'", "fm/a"); m_a = out_("rev-parse", "HEAD")
+        git(root_, "merge", "-q", "--no-ff", "-m", "Merge pull request #9 from org/release/x", "release/x")
+        git(root_, "branch", "-q", "-D", "fm/a", "fm/c", "release/x")
+        git(root_, "checkout", "-q", "-b", "fm/d"); built_d = commit_("d, built\n\nSession: b4"); v_d = verdict_(built_d, "r4")
+        git(root_, "checkout", "-q", "main"); git(root_, "merge", "-q", "--no-ff", "-m", "the Owner merges d", "fm/d"); m_d = out_("rev-parse", "HEAD")
+        git(root_, "branch", "-q", "-D", "fm/d"); git(root_, "checkout", "-q", "-b", "fm/later"); commit_("later work, from the trunk\n\nSession: b5")
+        git(root_, "checkout", "-q", "main"); v_t = verdict_(commit_("work on the trunk itself\n\nSession: b6"), "r6")
+        read_("known after the merge, its ref gone: the merge's message names fm/a; fm/b and a later branch are not asked", v_a, ["merge", "fm/a", m_a])
+        read_("known through a release: the inner merge names fm/c, not the release the trunk merged", v_c, ["merge", "fm/c", m_c])
+        read_("not known: the merge that brought it names no branch", v_d, ["unnamed", m_d])
+        read_("known: a verdict committed on the trunk's own line is the trunk's", v_t, ["line", "main"])
+        git(root_, "checkout", "-q", "-b", "fm/e"); v_e = verdict_(commit_("e, built\n\nSession: b7"), "r7")
+        git(root_, "update-ref", "refs/remotes/origin/fm/e", v_e); git(root_, "update-ref", "refs/remotes/origin/main", "main")
+        git(root_, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+        read_("known: fm/e and origin/fm/e are one branch; main, origin/main and origin's HEAD do not hold it", v_e, ["line", "fm/e"])
+        git(root_, "checkout", "-q", "--detach"); git(root_, "branch", "-q", "-D", "fm/e")
+        read_("known from the remote-tracking ref alone", v_e, ["line", "fm/e"])
+        rm_git(root_)
+    wrong_ = {k: v for k, v in seen_.items() if v[0] != v[1]}
+    return len(seen_) == 10 and not wrong_, wrong_
+
+
+def _tool_module(src, name):
+    """The tool's source `src` as a module of its own, beside this one — a mutant is loaded so, never written over the tool."""
+    import types as _types
+    m_ = _types.ModuleType(name); m_.__file__ = str(HERE / "shoalmark.py"); sys.modules[name] = m_
+    exec(compile(src, str(HERE / "shoalmark.py"), "exec"), m_.__dict__)
+    return m_
+
+
+_br_ok, _br_saw = _branch_class(fm)
+check(f"FM-053, RV-3343 · a review row's branch: the branch that holds the verdict on its own line — a ref at the reviewed commit not counted, one that reaches "
+      f"the verdict through a merge not its branch, a local branch and its remote-tracking copy one name; after the merge, the name its merge's message gives, "
+      f"through a release too; ambiguous where two hold it; not known where none does or the merge names none (saw {_br_saw})", _br_ok)
+_tool_src_br = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_BR_MUTANTS = {     # a ref at the reviewed commit counted as the verdict's branch · `git branch --contains`: any branch that reaches the verdict
+    "a ref at the reviewed commit counted": ("            if tip == verdict:\n", "            if tip == verdict or tip in history.parents.get(verdict, ()):\n"),
+    "every branch that reaches the verdict": ("if any(holds(t) for t in shas))", "if any(verdict in history.ancestors(t) for t in shas))")}
+_br_mut = {k: (_tool_src_br.count(a) == 1 and not _branch_class(_tool_module(_tool_src_br.replace(a, b), "fm_branch_mutant"))[0]) for k, (a, b) in _BR_MUTANTS.items()}
+check(f"FM-053, RV-3343 · the class test FAILS on each mutant — a ref at the reviewed commit counted; every branch that reaches the verdict, through a merge too (saw {_br_mut})",
+      all(_br_mut.values()))
+sys.modules.pop("fm_branch_mutant", None); fm.configure(HERE)
+if _browser("branch"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+            git(root, "checkout", "-q", "-b", "fm/a"); built = commit_("a, built\n\nSession: b1"); v_amb = commit_(f"review: READY\n\nReviewed: {built}\nSession: r1")
+            git(root, "checkout", "-q", "-b", "fm/b"); commit_("b, grown from a's verdict\n\nSession: b2")
+            git(root, "checkout", "-q", "fm/a"); v_known = commit_(f"review: NOT READY\n\nReviewed: {built}\nSession: r2")
+            git(root, "checkout", "-q", "--detach"); v_none = commit_(f"review: READY WITH FINDINGS\n\nReviewed: {built}\nSession: r3")
+            run_safe(root, "--html-only")
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            what_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
+            said_ = {v: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", w_)) for v, w_ in what_.items()}
+            check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in amber with each branch "
+                  f"that holds it, and *not known* in italics with why (saw {said_})",
+                  said_[v_known] == f"on {built[:10]} · branch fm/a"
+                  and said_[v_amb] == f"on {built[:10]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
+                  and '<span class="warn">ambiguous</span>' in what_[v_amb]
+                  and said_[v_none] == f"on {built[:10]} · branch not known — no branch here holds the verdict on its own line"
+                  and "<i>branch not known — no branch here holds the verdict on its own line</i>" in what_[v_none])
+    except _ChromeFailed as e_:
+        _hung("branch", e_)
+        fm.configure(HERE)
+
 # --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -5279,6 +5379,13 @@ reviews.reports: reports, not proofs
 reviews.on: on {0}
 reviews.notready: {0} not ready
 reviews.findings: {0} with findings
+reviews.branch: branch {0}
+reviews.branch.merged: branch {0}, as its merge {1} names it
+reviews.branch.ambiguous: branch {0}: {1} each hold the verdict on their own line
+reviews.ambiguous: ambiguous
+reviews.branch.unknown: branch not known — {0}
+reviews.branch.none: no branch here holds the verdict on its own line
+reviews.branch.unnamed: its merge {0} names no branch
 verdict.READY: ready
 verdict.READY WITH FINDINGS: ready with findings
 verdict.READY TO TAG: ready to tag
