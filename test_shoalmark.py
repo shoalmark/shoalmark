@@ -4740,7 +4740,7 @@ _FOOT_EN = ("{tag}, released {date} — a security release: upgrade, run <code>-
             "then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come from the repository and were read when the site was "
             "built: {read_date}, at {read_sha}.")
 _FOOT_DE = ("{tag}, veröffentlicht am {date} – ein Sicherheits-Release: aktualisieren, <code>--install-hook</code> "
-            "auf dem Standard-Branch erneut ausführen, danach einmal <code>--check</code>. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus der Tafel stammen aus "
+            "auf dem Standard-Branch erneut ausführen, danach einmal <code>--check</code>. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem Board stammen aus "
             "dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
 _CHART_NOTE = ("Every wreck is a defect in shoalmark itself: a bug or a security finding, filed in its own tracker.",
                "Jedes Wrack ist ein Fehler in shoalmark selbst: ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Tracker.")
@@ -5195,7 +5195,7 @@ check("FM-006 · B1 · the header's check is not blind: each of no separator, on
 
 check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
       "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
-      and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
+      and "es ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
       and not re.search(r"svn update|svn up\b", _readme_.replace(_NO_BOARD_LINE, "") + _help_ + _rd("docs/setup.md")))
 check("FM-006 · a private security report · the README's hooks section says in one line what writes no board — a cherry-pick, a revert, `git am`, `reset --hard`, `stash pop`, and `svn update` on "
       "Subversion — naming `--html-only` as the rebuild; it is the one place the README names `svn update`", _NO_BOARD_LINE in _readme_ and "svn update" not in _readme_.replace(_NO_BOARD_LINE, ""))
@@ -5562,7 +5562,7 @@ tagline: Lagerverwaltung
 search: Suche — Id, Stufe, Status, Wörter
 search.help: Eine ganze Id zeigt diesen Eintrag.
 view.by: nach {0}
-view.board: Tafel
+view.board: Board
 view.epic: Vorhaben
 view.open: offen
 view.all: alle
@@ -5629,10 +5629,10 @@ answer.sign.title: Ihre Antwort signieren
 answer.sign.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht signieren — Ihr Terminal tut es, mit Ihrem Schlüssel. Diesen Befehl ausführen:"
 answer.sign.copy: nochmals kopieren
 answer.sign.copied: Kopiert.
-answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (eine aus einer Datei geöffnete Tafel hat oft keine). Den Befehl markieren und kopieren."
+answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Befehl markieren und kopieren."
 answer.sign.where: Wo
 answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
-answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem diese Tafel gebaut wurde."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
@@ -5695,7 +5695,7 @@ word.reads: Umfang
 word.story: Vorhaben
 word.missing: fehlt
 word.stated: benannt
-viewer.board: ← Tafel
+viewer.board: ← Board
 viewer.neighbours: Nachbarn
 viewer.file: Datei
 viewer.forge: Ablage

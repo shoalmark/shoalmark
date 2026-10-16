@@ -36,7 +36,7 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 ```
 
 - **git:** einfache Hooks — der Index wird bei jedem Commit erzeugt und geprüft; ein Arbeitspaket, das sich widerspricht, wird abgelehnt.
-- **Subversion:** die TortoiseSVN-Hook-Eigenschaften und `svn:ignore` für die Tafel. Die Subversion-Kommandozeile
+- **Subversion:** die TortoiseSVN-Hook-Eigenschaften und `svn:ignore` für das Board. Die Subversion-Kommandozeile
   kennt keinen Client-Hook — der Vertrag sagt den Agenten, das Werkzeug vor jedem `svn commit` laufen zu lassen.
   `--check` nach dem Commit beurteilt ihn.
 
@@ -65,7 +65,7 @@ Lesen der Konfiguration ab.
 **Sessions.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
 und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`, daneben den Worktree. Das Gate lehnt
 den Commit eines Sitzes ohne eine Session seines eigenen Sitzes ab; `--sessions` liest allein aus diesen Zeilen ab, wer
-was wann und wo gemacht hat, und die Tafel zeigt, wer am letzten Tag gearbeitet hat. Das erledigen Ihre Agenten.
+was wann und wo gemacht hat, und das Board zeigt, wer am letzten Tag gearbeitet hat. Das erledigen Ihre Agenten.
 Ihre eigenen Commits tragen keine Session: Ihre Signatur ist Ihr Ausweis.
 
 ## 5. Zwei Dinge schreiben, die nur Sie können
@@ -73,10 +73,10 @@ Ihre eigenen Commits tragen keine Session: Ihre Signatur ist Ihr Ausweis.
 `docs/work-tracker/TRIAGE.md` öffnen. **Die Absicht** — *für · damit · niemals*, in Ihren Worten — und **der aktuelle
 Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere überlassen Sie ihnen.
 
-## 6. Die Tafel öffnen
+## 6. Das Board öffnen
 
-`docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und
-Merge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
+`docs/work-tracker/index.html` — es ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und
+Merge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft. Seine erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

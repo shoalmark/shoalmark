@@ -2,7 +2,7 @@
 
 *Für den Eigner. Eine Minute, um Ihre Stufe zu finden; zehn, um die gewählte einzurichten, einmal.*
 
-Wenn Sie auf der Tafel eine Frage beantworten, landen drei Zeilen im Arbeitspaket — `answer:`, `answered:`,
+Wenn Sie auf dem Board eine Frage beantworten, landen drei Zeilen im Arbeitspaket — `answer:`, `answered:`,
 `answered-by:` — und **der Commit, der sie trägt, ist der Beleg**. Das Werkzeug liest aus der Versionsverwaltung, wer
 committet hat, nie aus der Datei. Unter git reicht das allein nicht: ein git-Autor ist eine Zeichenkette, die jeder
 eintippen kann. Deshalb verlangt das Werkzeug **signierte** Commits und lehnt eine Antwort ab, deren Commit sich nicht als
@@ -60,7 +60,7 @@ Signierer-Datei angegeben (siehe Stufe 3).
 
 Steht `commit.gpgsign` auf `true`, signiert git jeden Commit im Repository, auch die Ihrer Agenten. Auf Stufe 0 gilt
 jeder davon als von Ihnen signiert; auf Stufe 2 und 3 bleibt jeder an Ihrer Passphrase oder Ihrer Berührung hängen.
-Lassen Sie es also ungesetzt, und signieren Sie Ihre Antworten, wenn Sie sie geben: Der Befehl `--answer` von der Tafel
+Lassen Sie es also ungesetzt, und signieren Sie Ihre Antworten, wenn Sie sie geben: Der Befehl `--answer` vom Board
 tut das für Sie, von Hand ist es `git commit -S`. Haben Sie es schon gesetzt, macht `git config --unset commit.gpgsign`
 es rückgängig.
 
@@ -221,7 +221,7 @@ Die erste Zeile fragt auf Stufe 2 nach Ihrer Passphrase, auf Stufe 3 nach PIN un
 auf Stufe 0 nach nichts. Die zweite gibt `G` aus, dann die E-Mail, für die der Schlüssel spricht — sie muss genau
 Ihre `owner`-E-Mail sein —, dann Ihre Autor-E-Mail. Die dritte nimmt den Test-Commit wieder weg.
 
-**Dann eine Frage beantworten.** Auf der Tafel öffnet *annehmen* oder *ablehnen* einen Dialog mit der Frage, ihren
+**Dann eine Frage beantworten.** Auf dem Board öffnet *annehmen* oder *ablehnen* einen Dialog mit der Frage, ihren
 Möglichkeiten und dem, was sie aufhält; OK gibt Ihnen einen Befehl. Führen Sie ihn in einem Terminal im Repository aus:
 
 ```

@@ -3,7 +3,7 @@ tagline: Arbeitsstand
 search: Suche · ~Id
 search.help: Eine ganze Id zeigt diesen Eintrag. Was darauf verweist: ~Id (nur Markdown-Verweise). Die Kapitel eines Vorhabens: die Ansicht nach Vorhaben. Alles andere sucht nach Teilwörtern — Stufe, Status, Wörter, blockiert, ungesichtet.
 view.by: nach {0}
-view.board: Tafel
+view.board: Board
 view.epic: Vorhaben
 view.open: offen
 view.all: alle
@@ -58,7 +58,7 @@ word.reads: Umfang
 word.story: Vorhaben
 word.missing: fehlt
 word.stated: benannt
-viewer.board: ← Tafel
+viewer.board: ← Board
 viewer.neighbours: Nachbarn
 viewer.file: Datei
 viewer.forge: Ablage
@@ -144,10 +144,10 @@ answer.sign.title: Ihre Antwort signieren
 answer.sign.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht signieren — Ihr Terminal tut es, mit Ihrem Schlüssel. Diesen Befehl ausführen:"
 answer.sign.copy: nochmals kopieren
 answer.sign.copied: Kopiert.
-answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (eine aus einer Datei geöffnete Tafel hat oft keine). Den Befehl markieren und kopieren."
+answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Befehl markieren und kopieren."
 answer.sign.where: Wo
 answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
-answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem diese Tafel gebaut wurde."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2} — und {3}"

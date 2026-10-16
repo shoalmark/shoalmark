@@ -46,7 +46,7 @@ sie nicht mehr. Die Regel ist die signierte Antwort des Eigners vom 24. Septembe
 Was shoalmark dazu ausgibt, jeden Tag:
 
 - **Ein Befehl, ein signierter Commit** pro Frage an den Eigner.
-- **Die Tafel meldet zu jedem Review**, ob es aus einer anderen Session kam als der Code, den es prüfte. Das ist eine
+- **Das Board meldet zu jedem Review**, ob es aus einer anderen Session kam als der Code, den es prüfte. Das ist eine
   Meldung, kein Beweis: git kann es noch nicht belegen.
 
 ## Ihre Agenten richten es ein

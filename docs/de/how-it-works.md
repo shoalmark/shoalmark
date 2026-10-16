@@ -13,7 +13,7 @@ shoalmark legt die Arbeit Ihres Projekts als Textdateien im Projekt selbst ab, s
 1. **Die Agenten arbeiten und halten fest, wo die Arbeit steht.** Jedes Arbeitspaket ist eine Markdown-Datei mit dem, was jetzt gilt, und dem nächsten Schritt. Ein „fertig“ ohne Commit dahinter lehnt das Gate ab.
 2. **Was nur Sie entscheiden können, wird zu einer Frage.** Braucht ein Agent Ihre Entscheidung, schreibt er sie als einen Satz auf, mit den Optionen und seinem Vorschlag, und macht mit anderer Arbeit weiter. Zwischen den Standups unterbricht Sie niemand, außer für etwas, das sich nicht rückgängig machen lässt.
 3. **Sie sitzen, zu der Uhrzeit, die Sie gewählt haben.** Zu der Uhrzeit, die Sie gewählt haben, gibt das Standup die Tagesordnung aus: zuerst Ihre Entscheidungen, jede mit ihrer Wartezeit und dem, was sie aufhält. Sie antworten mit einem Befehl pro Frage; er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.
-4. **Die Agenten handeln auf Ihre Antwort, und ein Reviewer urteilt vor dem Merge.** Ein Sitz mit dem Recht dazu hält Ihre Antwort im Arbeitspaket fest und macht weiter. Bevor Arbeit zu einem Merge kommt, prüft sie ein Reviewer; die Tafel sagt, ob dessen Durchgang unabhängig war, also aus einer anderen Session kam als der Code. Das ist eine Meldung, kein Beweis. `--queue` zeigt die offenen Pull Requests in der Reihenfolge, in der sie zu mergen sind.
+4. **Die Agenten handeln auf Ihre Antwort, und ein Reviewer urteilt vor dem Merge.** Ein Sitz mit dem Recht dazu hält Ihre Antwort im Arbeitspaket fest und macht weiter. Bevor Arbeit zu einem Merge kommt, prüft sie ein Reviewer; das Board sagt, ob dessen Durchgang unabhängig war, also aus einer anderen Session kam als der Code. Das ist eine Meldung, kein Beweis. `--queue` zeigt die offenen Pull Requests in der Reihenfolge, in der sie zu mergen sind.
 
 <figure class="week" markdown="0">
 <div class="week-card"><h3 class="t">FM-024</h3><p class="src">work-tracker/FM-024-….md · 2026-09-28</p>
@@ -24,7 +24,7 @@ ask-since: 2026-09-28
 ask-options: "all three: --statusline, … | the status line only: … | the rule only: …"
 ask-proposal: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"</pre></div>
 <p class="week-arrow" aria-hidden="true">↓</p>
-<div class="week-card board"><h3 class="t">Tafel</h3>
+<div class="week-card board"><h3 class="t">Board</h3>
 <div class="wk-board" lang="en"><p><i>##</i> <b class="hot">waiting for you: 3</b></p>
 <p><span class="id">FM-024</span> Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them? · a ruling <span class="chip">accept</span><span class="chip">reject</span></p></div></div>
 <p class="week-arrow" aria-hidden="true">↓</p>
@@ -34,7 +34,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 <span class="add">+answer: "accepted - all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"</span>
 <span class="add">+answered: 2026-09-28</span>
 <span class="add">+answered-by: …</span></pre></div>
-<figcaption>Aus shoalmarks eigenem Repository: eine Frage, vom Arbeitspaket über die Tafel bis zur Antwort des Eigners – ein signierter Commit, der im Arbeitspaket drei Zeilen hinzufügt und <code>next</code> von <code>owner</code> auf <code>build</code> setzt. Die Auszüge sind wörtlich und bleiben deshalb englisch; jedes … markiert einen Schnitt.</figcaption>
+<figcaption>Aus shoalmarks eigenem Repository: eine Frage, vom Arbeitspaket über das Board bis zur Antwort des Eigners – ein signierter Commit, der im Arbeitspaket drei Zeilen hinzufügt und <code>next</code> von <code>owner</code> auf <code>build</code> setzt. Die Auszüge sind wörtlich und bleiben deshalb englisch; jedes … markiert einen Schnitt.</figcaption>
 </figure>
 
 **Nicht alles braucht Sie.** Ein Sitz, der das Recht zum Schließen hat, schließt Arbeit ab, ohne dass Sie gefragt werden. Mit dem Werkzeug ausgeliefert sind drei Sitze mit festen Rechten: planner darf fragen, schließen und sichten, reviewer sichten, builder nichts. Für jeden weiteren Sitz legen Sie die Rechte selbst fest. Antworten darf nur, wem Sie das Recht dazu geben, und standardmäßig sind das nur Sie.

@@ -11,7 +11,7 @@ am Ende steht ein Bericht an euren Owner, und **euer Owner entscheidet**.
 shoalmark ist ein Arbeits-Tracker als eine einzige Python-Datei (nur Standardbibliothek, keine Abhängigkeit, braucht
 kein Netz: Online erreicht es den Host eures Repositorys über git und für die Pull-Request-Warteschlange über gh):
 eine Markdown-Datei je Arbeitspaket mit einem kleinen Kopf, ein Gate, das Widersprüche ablehnt, eine generierte
-`INDEX.md` und eine statische Tafel (`index.html`) für den Menschen. Läuft mit git auf Windows, macOS und Linux (CI
+`INDEX.md` und ein statisches Board (`index.html`) für den Menschen. Läuft mit git auf Windows, macOS und Linux (CI
 beweist alle drei). Lizenz: Apache-2.0 oder MIT.
 
 ## Wann ihr es NICHT braucht
@@ -43,7 +43,7 @@ cd probe
 
 Vor `--init` die vier deutschen Dateien aus `<klon>/examples/de/` kopieren. Die Zielordner vorher anlegen. `shoalmark.toml`
 nach `shoalmark.toml` (die deutschen Abschnittsnamen, der Schlüssel `AP`; den Namen anpassen), `TEMPLATE.md` und `TRIAGE.md` nach
-`docs/work-tracker/` und `labels.yaml` nach `docs/work-tracker/brand/labels.yaml` — damit sind Einträge und Tafel deutsch.
+`docs/work-tracker/` und `labels.yaml` nach `docs/work-tracker/brand/labels.yaml` — damit sind Einträge und Board deutsch.
 Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nichts.
 
 **4. Fünf echte Pakete eintragen.** Ein Eintrag für den Plan als Ganzes, fünf für Pakete aus eurem Plan
@@ -54,7 +54,7 @@ Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nic
 **5. Nachher.** Dieselben fünf Fragen, diesmal mit `python tools/shoalmark/shoalmark.py --next` und
 `docs/work-tracker/INDEX.md`. Wieder Dateien und Schritte zählen.
 
-**6. Die Tafel.** `probe/docs/work-tracker/index.html` im Browser öffnen lassen — das ist die Sicht eures Owners.
+**6. Das Board.** `probe/docs/work-tracker/index.html` im Browser öffnen lassen — das ist die Sicht eures Owners.
 
 ## Der Bericht an den Owner
 
@@ -84,8 +84,8 @@ Dann `python tools/shoalmark/shoalmark.py --init --key AP`; es überschreibt nic
 Legt in `probe/` einen Ordner `requirements/` an (`requirements/README.md` auf `main` des Repositorys beschreibt ihn). Eine Anforderung ist
 eine Tabellenzeile: `id` (stabil, nie neu vergeben), `shall` (ein Satz, das System als Subjekt, eine Pflicht), `source`
 (wer oder was sie verlangt), `accept` (das Abnahmekriterium: was ein Test beobachtet). Ein Arbeitspaket nennt sie in einer Zeile unter dem
-Kopf, `Satisfies: REQ-001` (im Kopf lehnt das Gate den Schlüssel ab), ein Test in seinem Namen. Eine Zeile ändert nur der Owner, mit einer signierten Antwort über die
-Tafel, nie ein Agent. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und leitet daraus einen
+Kopf, `Satisfies: REQ-001` (im Kopf lehnt das Gate den Schlüssel ab), ein Test in seinem Namen. Eine Zeile ändert nur der Owner, mit einer signierten Antwort über das
+Board, nie ein Agent. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und leitet daraus einen
 eigenen Satz ab; *Nicht anwendbar* ist eine signierte Antwort des Owners, mit Begründung. Der Normtext wird nicht kopiert,
 und keiner schreibt, das Projekt erfülle die Norm: Ein Nachweis ist ein bestandener Test. Der Bericht nennt die Zahl der Zeilen, den Nachweis je Zeile und die Stelle, an der es hakte. Prüfungen gibt es noch nicht.
 
