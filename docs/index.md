@@ -14,7 +14,7 @@ template: landing.html
 Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your
 repository, no done gets through without a commit behind it, and what waits for your word comes first.
 
-**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**
+--8<-- "start.en.md"
 
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
 sentence per question, once a day, and make their answer one command.
@@ -69,7 +69,7 @@ What shoalmark prints for it, every day:
 
 ## What it is not
 
-shoalmark needs no server and no account, and its ids are ones you can say out loud, like FM-012. One Markdown file per
+shoalmark needs no server or account of its own, and its ids are ones you can say out loud, like FM-012. One Markdown file per
 work item, one Python file, and a gate on every commit that refuses what contradicts itself. Runs with git on Windows,
 macOS and Linux. Licence: Apache-2.0 or MIT.
 
@@ -78,7 +78,7 @@ macOS and Linux. Licence: Apache-2.0 or MIT.
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
 - Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Today the tool needs `git` installed, on Subversion too. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
 
 ## Start here
 

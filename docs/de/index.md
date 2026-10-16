@@ -1,4 +1,5 @@
 ---
+template: landing.html
 title: Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort
 description: "Ein Arbeits-Tracker in Ihrem Repository, für Ihre Agenten: Nichts geht ohne Commit dahinter als „fertig“ durch, und was auf Ihr Wort wartet, steht ganz oben."
 ---
@@ -7,13 +8,11 @@ description: "Ein Arbeits-Tracker in Ihrem Repository, für Ihre Agenten: Nichts
 
 *Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.*
 
-**Die Startseite, auf Englisch:** [eine Seekarte des Wattenmeers](../index.md), auf der jeder Fehler aus shoalmarks eigenem Tracker als Wrack liegt.
-
 ## Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.
 
 Ticketsysteme wurden gebaut, damit Menschen einander Arbeit zuweisen. shoalmark ist für Ihre Agenten gebaut: Die Arbeit liegt in Ihrem Repository, nichts geht ohne Commit dahinter als fertig durch, und was auf Ihr Wort wartet, steht ganz oben.
 
-**[Geben Sie Ihren Agenten die Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)**
+--8<-- "start.de.md"
 
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden
 kann – ein Satz pro Frage, einmal am Tag –, und macht aus ihrer Antwort einen einzigen Befehl.
@@ -74,7 +73,7 @@ geschrieben hat.
 
 ## Was es nicht ist
 
-shoalmark braucht keinen Server und kein Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je
+shoalmark braucht keinen eigenen Server und kein eigenes Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je
 Arbeitspaket, eine Python-Datei und ein Gate bei jedem Commit, das ablehnt, was sich widerspricht. Läuft mit git auf
 Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
 
@@ -83,7 +82,7 @@ Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
 - Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
 - Für eine Person mit dem letzten Wort und ihre Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
 - Kein Beweis, dass die Arbeit stimmt. Das Gate lässt nichts ohne Commit dahinter als fertig durch; ob der Commit tut, was er soll, klärt ein Review.
-- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Signierte Antworten brauchen `git`, die Pull-Request-Warteschlange `git` und GitHub.
+- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Heute braucht das Werkzeug ein installiertes `git`, auch unter Subversion. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
 
 ## Hier anfangen
 

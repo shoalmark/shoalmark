@@ -1,6 +1,6 @@
 # In zehn Minuten eingerichtet
 
-*Für die Person, der das Repository gehört. Python 3.9 oder neuer ist die einzige Voraussetzung.*
+*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter Subversion.*
 
 ## 1. Das Werkzeug ins Repository legen
 
