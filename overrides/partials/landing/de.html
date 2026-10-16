@@ -191,6 +191,7 @@
   "dlg_again_done": "Kopiert",
   "dlg_s2": "Fügen Sie ihn auf dem Rechner, auf dem Ihr Agent läuft, in die Session ein, die Sie ohnehin in Claude Code oder Codex nutzen. Können Sie nicht zwischen Rechnern kopieren, öffnen Sie dort <a href=\"{probe_abs}\">{probe_short}</a>.",
   "dlg_s3": "Der Prompt bittet Ihren Agenten, zuerst zu prüfen und nach Ihrem Ja zu fragen, bevor er etwas schreibt. Das kann bis zu 45 Minuten dauern, und die Antwort darf „passt nicht“ lauten. Sie entscheiden.",
+  "dlg_tell": "Ausprobiert? Sagen Sie uns, was Ihr Agent gefunden hat, auch „passt nicht“: <a href=\"{discuss}\">eine Zeile hier</a>. Der Prompt bittet Ihren Agenten nie, etwas zu posten.",
   "dlg_fold_appr": "Wofür Ihr Agent Sie um Freigabe bitten wird",
   "dlg_prompt_label": "Der Prompt",
   "dlg_more": "Alles anzeigen",
@@ -237,7 +238,8 @@
   "adopt_other": "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md",
   "how": "how-it-works.html",
   "probe_txt": "probe.txt",
-  "probe_abs": "https://shoalmark.github.io/shoalmark/de/probe.txt"
+  "probe_abs": "https://shoalmark.github.io/shoalmark/de/probe.txt",
+  "discuss": "https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml"
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}

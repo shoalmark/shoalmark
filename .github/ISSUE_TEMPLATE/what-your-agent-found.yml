@@ -1,0 +1,17 @@
+name: What your agent found · Was Ihr Agent gefunden hat
+description: 'Tried it? Tell us in one line what your agent found, even "no fit". · Ausprobiert? Sagen Sie uns in einer Zeile, was Ihr Agent gefunden hat, auch „passt nicht“.'
+title: 'What my agent found · Was mein Agent gefunden hat'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This issue is public. Leave out anything private:** names, paths, code and credentials. You write it yourself: the prompt never asks your agent to post.
+
+        **Dieses Issue ist öffentlich. Lassen Sie Privates weg:** Namen, Pfade, Code und Zugangsdaten. Sie schreiben es selbst: Der Prompt bittet Ihren Agenten nie, etwas zu posten.
+  - type: textarea
+    id: found
+    attributes:
+      label: What your agent found · Was Ihr Agent gefunden hat
+      description: 'One line is enough, and "no fit" is an answer too. · Eine Zeile genügt, und „passt nicht“ ist auch eine Antwort.'
+    validations:
+      required: true

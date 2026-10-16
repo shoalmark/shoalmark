@@ -1,6 +1,6 @@
 {#- The landing's English words: the template's `{{ w.key }}`, one dict. A value is HTML where it carries <em>, <code>, <b> or <a>; the engine
     does not escape on its own, so no value holds a straight double quote that an attribute would meet. A value may hold a slot the template fills:
-    {tag}, {date}, {cohort_last}, {cohort_end}, {waiting}, {acts}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt}, {adopt_other} and {probe_abs}
+    {tag}, {date}, {cohort_last}, {cohort_end}, {waiting}, {acts}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt}, {adopt_other}, {probe_abs} and {discuss}
     are the addresses in `urls` below, and {probe_short} is the last of them as the visitor types it, without its scheme. `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
 {% set w = {
   "lang": "en",
@@ -192,6 +192,7 @@
   "dlg_again_done": "Copied",
   "dlg_s2": "Paste it into the Claude Code or Codex session you already use, on the machine where your agent runs. If you can't copy between machines, open <a href=\"{probe_abs}\">{probe_short}</a> there.",
   "dlg_s3": "The prompt asks your agent to check first and to ask your yes before it writes anything. It can take up to 45 minutes, and the answer may be \"no fit\". You decide.",
+  "dlg_tell": "Tried it? Tell us what your agent found, even \"no fit\": <a href=\"{discuss}\">one line here</a>. The prompt never asks your agent to post.",
   "dlg_fold_appr": "What your agent will ask you to approve",
   "dlg_prompt_label": "The prompt",
   "dlg_more": "Show all",
@@ -238,7 +239,8 @@
   "adopt_other": "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md",
   "how": "how-it-works.html",
   "probe_txt": "probe.txt",
-  "probe_abs": "https://shoalmark.github.io/shoalmark/probe.txt"
+  "probe_abs": "https://shoalmark.github.io/shoalmark/probe.txt",
+  "discuss": "https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml"
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}

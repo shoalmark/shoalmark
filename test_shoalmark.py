@@ -15050,6 +15050,79 @@ for _what, _ok in _docs_wf_properties(_docs_text) + _docs_wf_regressions(_docs_t
     check(f"FM-006 · B1 · docs.yml: {_what}", _ok)
 
 
+# --- FM-049: the probe dialog's one opt-in line, after its third step and under the start section's coin lines, leads to an issue form in this repository
+#     (the Owner's answer of 2026-10-15). The form asks, in English and German, what the visitor's agent found, even "no fit", and says the issue is public;
+#     the line states the prompt's words, never an agent's conduct. Read with _docs_yaml, after it: the form keeps to the shapes that reader knows.
+_TELL = ('Tried it? Tell us what your agent found, even "no fit": <a href="{discuss}">one line here</a>. The prompt never asks your agent to post.',
+         'Ausprobiert? Sagen Sie uns, was Ihr Agent gefunden hat, auch „passt nicht“: <a href="{discuss}">eine Zeile hier</a>. Der Prompt bittet Ihren Agenten nie, '
+         'etwas zu posten.')
+_TELL_FORM = ".github/ISSUE_TEMPLATE/what-your-agent-found.yml"
+_TELL_URL = "https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml"
+_TELL_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", _TELL_FORM)
+
+
+def _tell_problems(src):
+    """What is wrong with FM-049's line and the issue form it leads to, one line each; none where it is as built."""
+    words, bad = _landing_words(src)
+    code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
+    for lang, want in zip(("en", "de"), _TELL):
+        if words[lang].get("dlg_tell") != want:
+            bad.append(f"the tell line ({lang}) is not FM-049's")
+    for lang in ("en", "de"):
+        found = re.search(r'"discuss": "([^"]*)"', src[f"overrides/partials/landing/{lang}.html"])
+        if not found or found.group(1) != _TELL_URL:
+            bad.append(f"{{discuss}} ({lang}) does not lead to the issue form in this repository")
+    if 'replace("{discuss}", urls.discuss)' not in code:
+        bad.append("the template does not fill {discuss}")
+    step3, approvals, coin3, ticker = (code.find(s) for s in ("<p>{{ w.dlg_s3 }}</p>", '<details class="probe-fold probe-approvals">', "{{ T(w.coin_3) }}", '<div class="ticker"'))
+    at = [m.start() for m in re.finditer(re.escape("{{ T(w.dlg_tell) }}"), code)]
+    if len(at) != 2 or not any(step3 < a < approvals for a in at) or not any(coin3 < a < ticker for a in at):
+        bad.append("the tell line is not printed twice: after the dialog's third step, before its approvals, and under the coin lines")
+    try:
+        form = _docs_yaml(src[_TELL_FORM]) if src[_TELL_FORM].strip() else None
+    except ValueError as e:
+        form = None
+        bad.append(f"the issue form does not read: {e}")
+    if not isinstance(form, dict):
+        return bad + ["there is no issue form at " + _TELL_FORM]
+    body = form.get("body") if isinstance(form.get("body"), list) else []
+    kinds = lambda kind: [b for b in body if isinstance(b, dict) and b.get("type") == kind]
+    if not form.get("name") or not form.get("description") or not body:
+        bad.append("the issue form lacks a name, a description or a body, which GitHub requires of a form")
+    asks = kinds("textarea")
+    if len(asks) != 1 or (asks[0].get("validations") or {}).get("required") is not True or not (asks[0].get("attributes") or {}).get("label"):
+        bad.append("the issue form does not ask, as one required answer, what the agent found")
+    if not all(s in str(form.get("description")) for s in ('"no fit"', "„passt nicht“")):
+        bad.append("the issue form's description does not invite \"no fit\" in English and German")
+    intro = str(((kinds("markdown") or [{}])[0].get("attributes") or {}).get("value", ""))
+    if not all(s in intro for s in ("This issue is public. Leave out anything private", "Dieses Issue ist öffentlich. Lassen Sie Privates weg",
+                                    "the prompt never asks your agent to post", "Der Prompt bittet Ihren Agenten nie, etwas zu posten")):
+        bad.append("the issue form does not say, in English and German, that the issue is public, to leave out anything private, and that the prompt never asks the agent to post")
+    for path in ("overrides/partials/landing/en.html", "overrides/partials/landing/de.html", _TELL_FORM):
+        if "never posts for you" in src[path] or "postet nie für Sie" in src[path]:
+            bad.append(f"{path} promises an agent's conduct: that it never posts")
+    return bad
+
+
+_ts = _sources(_TELL_FILES)
+_tp = _tell_problems(_ts)
+check(f"FM-049 · the probe dialog's line after its third step, and under the coin lines, asks in English and German what the agent found, even \"no fit\", and "
+      f"leads to the issue form in this repository, which asks it as one required answer and says the issue is public; the line states the prompt, not the "
+      f"agent's conduct (problems found: {_tp})", _tp == [])
+_tctl = {"the English line as go-to-market first wrote it": _with(_ts, "overrides/partials/landing/en.html", "The prompt never asks your agent to post.", "Your agent never posts for you."),
+         "the German line without its link": _with(_ts, "overrides/partials/landing/de.html", '<a href=\\"{discuss}\\">eine Zeile hier</a>', "eine Zeile hier"),
+         "the line to a Discussions category": _with(_ts, "overrides/partials/landing/en.html", '"discuss": "' + _TELL_URL, '"discuss": "https://github.com/shoalmark/shoalmark/discussions'),
+         "the template not filling the address": _with(_ts, "overrides/landing.html", ' | replace("{discuss}", urls.discuss)', ""),
+         "the line only in the dialog": _with(_ts, "overrides/landing.html", '<p class="small" style="margin-top:16px">{{ T(w.dlg_tell) }}</p>', ""),
+         "no form": {**_ts, _TELL_FORM: ""},
+         "the form's answer not required": _with(_ts, _TELL_FORM, "required: true", "required: false"),
+         "the form without its German note on privacy": _with(_ts, _TELL_FORM, "Lassen Sie Privates weg:", "")}
+_tctl_saw = {name: len(_tell_problems(src)) for name, src in _tctl.items()}
+check("FM-049 · the tell line's check is not blind: each of the English line as go-to-market first wrote it, the German one without its link, the line to a "
+      "Discussions category, the template not filling the address, the line only in the dialog, no form, the form's answer not required, and the form without "
+      f"its German note on privacy leaves a problem (problems found: {_tctl_saw})", all(_tctl_saw.values()) and len(_tctl_saw) == 8)
+
+
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
 #     R12 (2026-10-12): records run --check only on Ubuntu/3.9, with four truthful pass-through results; anything else, and any doubt,
 #     five gates and the full suites; the two Ubuntu entries run both suites again under UTC+14 and UTC−11, reported and not yet required
