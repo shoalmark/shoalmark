@@ -9461,6 +9461,16 @@ def load_trackers():
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
+# The themes the tool ships (FM-002), every file of them: with TOOL_FILES, the whole of what an unpacked release archive must hold and its RELEASE name
+# (FM-004, `archive_check`). The suite holds it equal to `brand/themes/` as it stands.
+THEME_FILES = ("brand/themes/README.md",
+               "brand/themes/monochrome/fonts/IBMPlexMono-Italic-Latin1.woff2", "brand/themes/monochrome/fonts/IBMPlexMono-Regular-Latin1.woff2",
+               "brand/themes/monochrome/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/monochrome/fonts/LICENSE.txt", "brand/themes/monochrome/theme.css",
+               "brand/themes/shoalmark/fonts/IBMPlexMono-Italic-Latin1.woff2", "brand/themes/shoalmark/fonts/IBMPlexMono-Regular-Latin1.woff2",
+               "brand/themes/shoalmark/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/shoalmark/fonts/LICENSE.txt", "brand/themes/shoalmark/theme.css")
+# What the release archive carries beside the tool's set, at their repository paths — the files the probe's draft 2 reads (the Owner's word of
+# 2026-10-11). `--vendor` checks them against the archive's RELEASE, and copies none of them (FM-004, `archive_check`).
+ARCHIVE_FILES = ("examples/de/shoalmark.toml", "examples/de/TEMPLATE.md", "examples/de/TRIAGE.md", "examples/de/labels.yaml", "requirements/README.md")
 
 
 def pin_problems():
@@ -9517,9 +9527,227 @@ def source_provenance():
     return (want if want in tags else ""), sha, dirty, why
 
 
-# The manifest `--vendor` writes as a PIN's first line — the only form `--check` accepts (FM-011, R1)
-MANIFEST_RE = re.compile(r"# shoalmark (\d+\.\d+\.\d+) · (?:tag v(\d+\.\d+\.\d+) · commit ([0-9a-f]{7,40})|untagged ([0-9a-f]{7,40}|\(no git\))( \(dirty\))?)"
-                         r" · vendored (\d{4}-\d\d-\d\d) · (complete|partial)")
+# THE RELEASE ARCHIVE (FM-004, item 8; the Owner's D7 and their words of 2026-10-11): `shoalmark-<version>.zip`, built from a tag by
+# `scripts/build_release_archive.py`, holds the files `--vendor` copies at its root, and `RELEASE`: the version, the tag, the commit and each file's
+# SHA-256. The manifest proves the set complete, not its origin — whoever changes the zip can rewrite it; the origin is the zip's own SHA-256 against a
+# pin published outside it, which `--vendor` neither has nor claims.
+RELEASE_NAME = "RELEASE"
+RELEASE_HEAD = "# shoalmark release manifest"
+
+
+def release_manifest(text):
+    """A `RELEASE` manifest, read exactly as the build writes it — its head line, `version <x.y.z>`, `tag v<x.y.z>` (or `tag none`, a dry run's), `commit
+    <40 hex>`, then one `<sha256>  <path>` line per file: ({"version", "tag" ("" for none), "commit", "files": {path: sha256}}, "") — or ({}, what is
+    wrong)."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    keys = [re.fullmatch(rx, line) for rx, line in zip((r"version (\d+\.\d+\.\d+)", r"tag (v\d+\.\d+\.\d+|none)", r"commit ([0-9a-f]{40})"), lines[1:4])]
+    if len(lines) < 4 or lines[0] != RELEASE_HEAD or not all(keys):
+        return {}, "is not a release manifest"
+    version, tag, commit = (k.group(1) for k in keys)
+    if tag != "none" and tag != f"v{version}":
+        return {}, f"names the tag {tag} for the version {version}"
+    files = {}
+    for line in lines[4:]:
+        m = re.fullmatch(r"([0-9a-f]{64})  (\S.*)", line)
+        if not m or m.group(2) in files:
+            return {}, f"holds a line that names no file once: {line[:80]!r}"
+        files[m.group(2)] = m.group(1)
+    return {"version": version, "tag": "" if tag == "none" else tag, "commit": commit, "files": files}, ""
+
+
+def archive_source():
+    """Classify the source, preserving the existing constrained process read.
+
+    No supported diagnostic or success relationship means refusal, never an
+    archive fallback. This is only a development proposal, pending Owner
+    disposition of the exhausted independent-review finding.
+    """
+    if not os.path.lexists(HERE / RELEASE_NAME):
+        return False
+
+    def unreadable(why):
+        print(f"--vendor: source Git classification cannot be verified: {' '.join(str(why).split())[:240]} — nothing was written", file=sys.stderr)
+        raise SystemExit(EXIT_LINT)
+
+    def discovery_scope():
+        # Mirrors only local discovery bounds; it supplies no repository proof.
+        home = HERE.resolve(strict=True)
+        ceilings, literal = set(), False
+        for entry in nested_git_env().get("GIT_CEILING_DIRECTORIES", "").split(os.pathsep):
+            if not entry:
+                literal = True
+                continue
+            if not pathlib.Path(entry).is_absolute():
+                continue
+            if literal:
+                named = entry.rstrip(os.sep) or os.sep
+            else:
+                try:
+                    named = str(pathlib.Path(entry).resolve(strict=True))
+                except FileNotFoundError:
+                    continue
+            ceilings.add(os.path.normcase(named))
+        across = nested_git_env().get("GIT_DISCOVERY_ACROSS_FILESYSTEM", "").lower()
+        if across in ("", "false", "no", "off", "0"):
+            across = False
+        elif across in ("true", "yes", "on", "1"):
+            across = True
+        else:
+            unreadable("unsupported discovery boolean; its boundary cannot be verified")
+        folders = [home]
+        device = home.stat().st_dev
+        for parent in home.parents:
+            if os.path.normcase(str(parent)) in ceilings:
+                return folders, "ceiling", parent
+            if not across and parent.stat().st_dev != device:
+                return folders, "filesystem", parent
+            folders.append(parent)
+        return folders, "root", home.anchor
+
+    def marker_exists(folder):
+        try:
+            os.lstat(folder / ".git")
+        except FileNotFoundError:
+            return False
+        return True
+
+    def metadata(top):
+        # Structural consistency supplement to Git's successful result. These
+        # reads do not reproduce Git's format/config/object/history validation.
+        marker = top / ".git"
+        target = marker.resolve(strict=True)
+        if target.is_file():
+            with open(target, "rb") as stream:
+                raw = stream.read(1024 * 1024 + 1)
+            if len(raw) > 1024 * 1024:
+                unreadable("source gitfile is too large")
+            text = raw.decode("utf-8").rstrip("\r\n")
+            if not text.startswith("gitdir: ") or not text[8:] or "\n" in text or "\r" in text or "\0" in text:
+                unreadable("source gitfile does not identify one metadata directory")
+            target = (top / text[8:]).resolve(strict=True)
+        if not target.is_dir():
+            unreadable("source Git metadata is not a directory")
+        with os.scandir(target) as entries:
+            next(entries, None)
+        head = target / "HEAD"
+        if not head.is_file():
+            unreadable("source Git metadata has no readable HEAD")
+        with open(head, "rb") as stream:
+            value = stream.read(4097)
+        if len(value) > 4096:
+            unreadable("source HEAD is too large to verify")
+        value = value.rstrip(b"\r\n")
+        symbolic = value.startswith(b"ref: refs/") and len(value) > len(b"ref: refs/") and not any(c in b" \t\r\n\v\f\0" for c in value[len(b"ref: "):])
+        detached = len(value) in (40, 64) and all(c in b"0123456789abcdefABCDEF" for c in value)
+        if not (symbolic or detached):
+            unreadable("source Git metadata has an invalid HEAD")
+        common = target
+        link = target / "commondir"
+        if os.path.lexists(link):
+            if not link.is_file():
+                unreadable("source common-directory link is not readable metadata")
+            with open(link, "rb") as stream:
+                raw = stream.read(4097)
+            text = raw.decode("utf-8").rstrip("\r\n")
+            if len(raw) > 4096 or not text or any(c in text for c in ("\n", "\r", "\0")):
+                unreadable("source common-directory link does not identify one directory")
+            common = (target / text).resolve(strict=True)
+        for folder in (common, common / "objects", common / "refs"):
+            if not folder.is_dir():
+                unreadable("source Git metadata lacks its common objects/ref directories")
+            with os.scandir(folder) as entries:
+                next(entries, None)
+
+    try:
+        done = vcs_process("git", "rev-parse", "--show-toplevel", cwd=HERE, source=True,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    except FileNotFoundError as error:
+        try:
+            folders, _, _ = discovery_scope()
+            marked = any(marker_exists(folder) for folder in folders)
+        except (OSError, RuntimeError, ValueError) as failure:
+            unreadable(failure)
+        if shutil.which("git") is None and not marked:
+            return True
+        unreadable(error)
+    except OSError as error:
+        unreadable(error)
+    try:
+        folders, bound, boundary = discovery_scope()
+        marked = [folder for folder in folders if marker_exists(folder)]
+        if done.returncode:
+            # Full diagnostic equality: no loose suffix, token or stripped warning.
+            diagnostic = done.stderr.replace("\r\n", "\n")
+            if diagnostic.endswith("\n"):
+                diagnostic = diagnostic[:-1]
+            ordinary = diagnostic == "fatal: not a git repository (or any of the parent directories): .git"
+            mount = (bound == "filesystem" and diagnostic ==
+                     f"fatal: not a git repository (or any parent up to mount point {boundary})\n"
+                     "Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).")
+            if done.returncode == 128 and done.stdout == "" and not marked and ((ordinary and bound != "filesystem") or mount):
+                return True
+            unreadable(done.stderr or f"Git exited {done.returncode}")
+        tops = done.stdout.splitlines()
+        if done.stderr or len(tops) != 1 or not tops[0] or not pathlib.Path(tops[0]).is_absolute():
+            unreadable("Git did not identify one clean absolute source top level")
+        top = pathlib.Path(tops[0]).resolve(strict=True)
+        if not top.is_dir() or top not in folders or not marked or marked[0] != top:
+            unreadable("Git's source top level disagrees with source ancestry or discovery metadata")
+        metadata(top)
+    except (OSError, RuntimeError, ValueError, UnicodeError) as error:
+        unreadable(error)
+    return os.path.normcase(str(top)) != os.path.normcase(str(HERE))
+
+
+def archive_check():
+    """FM-004 — this copy as an unpacked release archive, judged against its `RELEASE`: ({file: its bytes}, the manifest, "") where the manifest is one, its
+    version is `VERSION`'s, it names every file the archive holds — the vendored set (`TOOL_FILES`, `THEME_FILES`, every file `vendor_files` finds) and
+    `ARCHIVE_FILES` — and no other, and every one is here, byte for byte; else ({}, {}, what is wrong, naming each file). Only the vendored set is copied:
+    the bytes judged are the bytes copied."""
+    manifest = HERE / RELEASE_NAME
+    if _norm(manifest) != os.path.normcase(os.path.realpath(manifest)) or not manifest.is_file():
+        return {}, {}, f"its {RELEASE_NAME} is no regular file reached without a symlink"
+    try:
+        text = manifest.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        return {}, {}, f"its {RELEASE_NAME} cannot be read: {e.strerror}"
+    m, wrong = release_manifest(text)
+    if wrong:
+        return {}, {}, f"its {RELEASE_NAME} {wrong}"
+    if m["version"] != __version__:
+        return {}, {}, f"its {RELEASE_NAME} names {m['version']}, and its VERSION says {__version__}"
+    have, listed = vendor_files(), set(m["files"])
+    need = set(have) | set(TOOL_FILES) | set(THEME_FILES) | set(ARCHIVE_FILES)       # the archive whole, whatever the manifest names
+    unsafe = sorted(rel for rel in need if os.path.lexists(HERE / rel)
+                    and (_norm(HERE / rel) != os.path.normcase(os.path.realpath(HERE / rel)) or not (HERE / rel).is_file()))
+    if unsafe:
+        return {}, {}, "unsafe archive file: " + ", ".join(unsafe) + " — each file must be regular and reached without a symlink"
+    held = {}
+    for rel in sorted(need):
+        if (HERE / rel).is_file():
+            try:
+                held[rel] = (HERE / rel).read_bytes()
+            except OSError as e:
+                return {}, {}, f"its {rel} cannot be read: {e.strerror}"
+    named = lambda rels: ", ".join(rels[:4]) + (f" and {len(rels) - 4} more" if len(rels) > 4 else "")
+    gone = sorted(need - set(held))
+    extra = sorted(set(held) - listed)
+    stray = sorted(listed - need)                           # a name no release archive holds: not read
+    changed = sorted(rel for rel in set(held) & listed if hashlib.sha256(held[rel]).hexdigest() != m["files"][rel])
+    said = ([f"missing {named(gone)}"] if gone else []) + ([f"not in its {RELEASE_NAME}: {named(extra)}"] if extra else []) \
+        + ([f"its {RELEASE_NAME} names {named(stray)}, no file of a release archive"] if stray else []) + ([f"changed: {named(changed)}"] if changed else [])
+    data = {rel: held[rel] for rel in have}
+    return ({}, {}, f"it is not what its {RELEASE_NAME} names — " + "; ".join(said)) if said else (data, m, "")
+
+
+# The manifest `--vendor` writes as a PIN's first line — the only form `--check` accepts (FM-011, R1): from a git checkout, its tag and commit or
+# `untagged`; from an unpacked release archive (FM-004), only what `--vendor` checked — the tag and commit its manifest names, every file matched
+MANIFEST_RE = re.compile(r"# shoalmark (?P<version>\d+\.\d+\.\d+) · (?:(?:tag v(?P<tag>\d+\.\d+\.\d+) · commit (?P<commit>[0-9a-f]{7,40})"
+                         r"|untagged (?P<untagged>[0-9a-f]{7,40}|\(no git\))(?P<dirty> \(dirty\))?) · vendored (?P<date>\d{4}-\d\d-\d\d) · (?P<state>complete|partial)"
+                         r"|vendored from an archive whose manifest names (?:v(?P<atag>\d+\.\d+\.\d+)|no tag), commit (?P<acommit>[0-9a-f]{40}), every file matched"
+                         r" · (?P<adate>\d{4}-\d\d-\d\d))")
 
 
 def pin_manifest(pin_text, pinned_version):
@@ -9534,7 +9762,10 @@ def pin_manifest(pin_text, pinned_version):
     if not m:
         later = any(MANIFEST_RE.fullmatch(l) for l in lines[1:])
         return {}, "is not the PIN's first line" if later else "is not the line --vendor writes"
-    version, tag, commit, untagged, dirty, date, state = m.groups()
+    g = m.groupdict()
+    archive = g["acommit"] is not None                      # FM-004: vendored from an unpacked release archive
+    version, tag, commit = g["version"], g["atag"] if archive else g["tag"], g["acommit"] if archive else g["commit"]
+    untagged, dirty, date, state = g["untagged"], g["dirty"], g["adate"] if archive else g["date"], "complete" if archive else g["state"]
     try:
         datetime.date.fromisoformat(date)
     except ValueError:
@@ -9547,7 +9778,7 @@ def pin_manifest(pin_text, pinned_version):
     if state == "partial" and not missing:
         return {}, "says partial and names nothing missing"
     return {"version": version, "tag": tag, "commit": commit, "untagged": (untagged or "") + (dirty or ""), "vendored": date,
-            "partial": state == "partial", "missing": missing or []}, ""
+            "partial": state == "partial", "missing": missing or [], "archive": archive}, ""
 
 
 def pin_report():
@@ -9562,23 +9793,38 @@ def pin_report():
         return [f"warning: the PIN's manifest {wrong} — this copy is unverified; vendor again from a release"]
     if not m:
         return ["no manifest — pinned before 0.17.8; where the copy came from is not recorded"]
-    source = f"tag v{m['tag']} (commit {m['commit'][:10]})" if m["tag"] else f"untagged {m['untagged']}"
+    if m["archive"]:                                        # FM-004: what `--vendor` checked, and no more
+        source = f"an archive whose manifest names {'v' + m['tag'] if m['tag'] else 'no tag'} (commit {m['commit'][:10]}), every file matched"
+    else:
+        source = f"tag v{m['tag']} (commit {m['commit'][:10]})" if m["tag"] else f"untagged {m['untagged']}"
     lines = [f"pinned {m['version']} from {source}, vendored {m['vendored']}, {'partial' if m['partial'] else 'complete'}"]
     if not m["tag"]:
-        lines.append("warning: this copy was vendored from a working copy, not a release — vendor again from a clone at a tag")
+        lines.append("warning: this copy was vendored from an archive whose manifest names no release tag — vendor again from a release's archive" if m["archive"]
+                     else "warning: this copy was vendored from a working copy, not a release — vendor again from a clone at a tag")
     if m["partial"]:
         lines.append(f"warning: this copy is partial — missing {', '.join(m['missing'])}")
     return lines
+
+
+def vendor_files():
+    """What `--vendor` copies, relative to the tool: the whole tool (`TOOL_FILES`), the brand's own files beside it, and the themes it ships (FM-002) — each
+    one that is a file here."""
+    return [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]
 
 
 def vendor(dest, partial=False, allow_untagged=False):
     """Copy this tool into `dest` and pin every file (FM-011). Refused — exit 4, nothing written — when the source is
     not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
     (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
-    in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial."""
-    copied = [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]   # the themes it ships travel, pinned (FM-002)
+    in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial. From an unpacked release archive
+    (FM-004, `archive_source`): refused unless every file it copies is the archive's `RELEASE` names, byte for byte, and its version is VERSION's; the PIN
+    then claims only that, beside the tag and commit the manifest names."""
+    copied = vendor_files()                                 # the themes it ships travel, pinned (FM-002)
     named = pathlib.Path(dest).absolute()
     dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
+    if any(in_git_dir(p) or in_git_dir_on_disk(p) for p in (named, dest)):
+        print("--vendor: the named or resolved destination is inside a version-control administrative directory — nothing was written", file=sys.stderr)
+        return EXIT_LINT
     for rel in copied + ["PIN"]:                            # the write rule for every file it writes — as the path is named, and under the folder it resolves to —
         write_rule(named / rel)                             # before anything is read or written
         write_rule(dest / rel)
@@ -9590,27 +9836,56 @@ def vendor(dest, partial=False, allow_untagged=False):
     if edited:
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
         return EXIT_LINT
-    missing = [rel for rel in TOOL_FILES if not (HERE / rel).is_file()]
-    if missing and not partial:
-        print(f"--vendor: {HERE} is not the whole tool — missing {', '.join(missing)}. Vendor from a clone at a release tag; "
-              f"nothing was written. (`--partial` copies what there is and names the rest in the PIN.)", file=sys.stderr)
-        return EXIT_LINT
-    tag, sha, dirty, why = source_provenance()
-    if why and not allow_untagged:
-        print(f"--vendor: {why}. A consumer runs a release, never a working copy: check out v{__version__} in a clean clone "
-              f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
-        return EXIT_LINT
+    data, release = {}, None
+    if archive_source():                                    # FM-004: an unpacked release archive is judged whole, and never copied in part — `--partial` or not
+        data, release, wrong = archive_check()
+        if wrong:
+            print(f"--vendor: {HERE} is an unpacked release archive, and {wrong}; nothing was written. Download the release's archive again and check its "
+                  "SHA-256 against the pin published beside it.", file=sys.stderr)
+            return EXIT_LINT
+        if not release["tag"] and not allow_untagged:
+            print(f"--vendor: {HERE} is an unpacked release archive whose {RELEASE_NAME} names no release tag — a dry run's, not a release; nothing was "
+                  "written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
+            return EXIT_LINT
+        missing = []
+    else:
+        missing = [rel for rel in TOOL_FILES if not (HERE / rel).is_file()]
+        if missing and not partial:
+            print(f"--vendor: {HERE} is not the whole tool — missing {', '.join(missing)}. Vendor from a clone at a release tag; "
+                  f"nothing was written. (`--partial` copies what there is and names the rest in the PIN.)", file=sys.stderr)
+            return EXIT_LINT
+        try:
+            tag, sha, dirty, why = source_provenance()
+        except OSError:
+            print(f"--vendor: {HERE} holds no {RELEASE_NAME} manifest, and its Git provenance cannot be read; nothing was written. "
+                  "Download the release's archive again and check its SHA-256 against the pin published beside it.", file=sys.stderr)
+            return EXIT_LINT
+        if why and not allow_untagged:
+            print(f"--vendor: {why}. A consumer runs a release, never a working copy: check out v{__version__} in a clean clone "
+                  f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
+            return EXIT_LINT
     lines = []
     for rel in copied:
         src = HERE / rel
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dest / rel)
-        lines.append(f"{digest(src)}  {rel}")
-    source = (f"tag {tag} · commit {sha}" if tag else f"untagged {sha[:10] or '(no git)'}" + (" (dirty)" if dirty else ""))
-    head = [f"# shoalmark {__version__} · {source} · vendored {datetime.date.today().isoformat()} · {'partial' if missing else 'complete'}"]
-    head += [f"# missing: {', '.join(missing)}"] if missing else []
+        if release is not None:
+            (dest / rel).write_bytes(data[rel])             # the bytes judged are the bytes copied
+        else:
+            shutil.copyfile(src, dest / rel)
+        pin_hash = hashlib.sha256(data[rel].replace(b"\r\n", b"\n")).hexdigest() if release is not None else digest(src)   # legacy PIN line-end normalization
+        lines.append(f"{pin_hash}  {rel}")
+    today = datetime.date.today().isoformat()
+    if release is not None:                                 # FM-004: the PIN claims only what `--vendor` checked
+        said = release["tag"] or "no tag"
+        head = [f"# shoalmark {__version__} · vendored from an archive whose manifest names {said}, commit {release['commit']}, every file matched · {today}"]
+        source = f"an archive whose manifest names {said}"
+    else:
+        head = [f"# shoalmark {__version__} · " + (f"tag {tag} · commit {sha}" if tag else f"untagged {sha[:10] or '(no git)'}" + (" (dirty)" if dirty else ""))
+                + f" · vendored {today} · {'partial' if missing else 'complete'}"]
+        head += [f"# missing: {', '.join(missing)}"] if missing else []
+        source = "tag " + tag if tag else "an untagged source, " + (sha[:10] or "no git")
     put((dest / "PIN"), "\n".join(head + lines) + "\n")
-    print(f"vendored shoalmark {__version__} from {'tag ' + tag if tag else 'an untagged source, ' + (sha[:10] or 'no git')} into {dest} — {len(lines)} files, pinned in PIN"
+    print(f"vendored shoalmark {__version__} from {source} into {dest} — {len(lines)} files, pinned in PIN"
           + (f" (was {had})" if had and had != __version__ else "") + (f" — PARTIAL: missing {', '.join(missing)}" if missing else ""))
     if had and had != __version__ and changes_since(had):
         print("\nWhat changes for this repository:\n\n" + changes_since(had))
@@ -10787,7 +11062,7 @@ def main(argv=None, *, _notice=True):
     if diagnostic is not None:
         print(diagnostic + (" — " + limitation if limitation else ""), file=sys.stderr)
         return code
-    if limitation:
+    if limitation and not args.vendor:                      # a --vendor run says it with its own result, below
         print(limitation, file=sys.stderr)
     owner_refused = owner_signature_problems() if args.check else []
     for problem in owner_refused:
@@ -10802,7 +11077,27 @@ def main(argv=None, *, _notice=True):
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
-        return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+        if not limitation:
+            return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+        # FM-004: a --vendor refusal keeps its one line, the Subversion notice folded in (" — " + notice) as --tsvn-hook's and the
+        # preflight's are, whichever function refuses, returning or raising; any other run of it says the notice once, on its own line
+        import io
+        said, code = io.StringIO(), None
+        stderr, sys.stderr = sys.stderr, said
+        try:
+            code = vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+        except SystemExit as stop:
+            code = stop.code
+            raise
+        finally:
+            sys.stderr = stderr
+            text = said.getvalue()
+            if code == EXIT_LINT and text.endswith("\n") and text.count("\n") == 1:
+                print(text[:-1] + " — " + limitation, file=sys.stderr)
+            else:
+                print(limitation, file=sys.stderr)
+                sys.stderr.write(text)
+        return code
     if args.brand is not None:
         return brand_report(args.brand or None, args.theme)
     if args.init:
