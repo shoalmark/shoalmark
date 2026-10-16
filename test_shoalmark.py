@@ -5281,7 +5281,7 @@ read.git.clean: nichts geändert und nicht committet
 read.git.changed: "{0} Pfade geändert und nicht committet"
 read.git.changed.one: 1 Pfad geändert und nicht committet
 read.git.unread: was geändert und nicht committet ist, wird hier nicht gelesen
-read.svn: "gelesen von der Arbeitskopie bei r{0}"
+read.svn: "gelesen von der Arbeitskopie bei {0}"
 read.svn.unread: "gelesen von der Arbeitskopie: ihre Revision wird hier nicht gelesen"
 read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
 read.none: "gelesen aus dem Ordner {0}"
@@ -5291,6 +5291,12 @@ read.self: neu gebaut nur, wenn das Werkzeug läuft
 read.rebuild: "neu bauen:"
 read.copy: kopieren
 read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
+read.unlinked: "{0} ({1})"
+link.unpushed: noch nicht auf origin, darum nicht verlinkt
+link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
+link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
+link.noviewer: "kein Subversion-Betrachter konfiguriert (`commit_url`), darum nicht verlinkt"
+link.nocommit: kein Commit zu verlinken
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}
@@ -11421,8 +11427,8 @@ _Q4_BAD = re.compile(r"\b(current|currently|live|up[ -]to[ -]date)\b", re.I)
 _Q4_MUTANTS = (
     ("the changes flag ignored", 'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")',
      'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), 0'),
-    ("the time missing", 'facts += [say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else "")), say("read.self")]',
-     'facts += [say("read.self")]'),
+    ("the time missing", 'facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]',
+     'facts += [esc(say("read.self"))]'),
     ("the word current", '"read.self": "rebuilt only when the tool runs"', '"read.self": "rebuilt only when the tool runs, and current until then"'),
 )
 def _q4_fixtures(base):
@@ -11518,6 +11524,105 @@ with tempfile.TemporaryDirectory() as d:
             check(f"FM-057 · Q4 · …the mutant, {what_}: this tool with that one change FAILS the same check (saw {_q4_saw([g_ for g_ in gs_ if not _q4_ok(g_)][:2]) if tool_ else 'the change is not there to make'})",
                   tool_ is not None and not all(_q4_ok(g_) for g_ in gs_))
     for r_ in fix_.values():
+        if (r_ / ".git").exists():
+            rm_git(r_)
+fm.configure(HERE)
+
+# --- FM-057 · the read-at line's head, linked (beside R11): the commit in *read from main at <commit>* links to its page only where
+#     the repository's own configuration names its forge — `commit_url`, else derived from `blob` (`/blob/` → `/commit/`, GitLab's `/-/blob/` →
+#     `/-/commit/`) — and only for a commit on origin. No link, and the line says why, for a commit not on origin, for no forge configured, for a `blob`
+#     that gives no commit page, and for Subversion without a viewer; no link is ever derived from a remote's URL. One helper, `commit_link`, which the
+#     guided answer view reuses; the tool's own commit links to `TOOL_PAGE`'s repository. The mutants — one that links an unpushed commit, one that
+#     derives a link from the remote URL with `blob` empty — are this tool with that one change, run the same way: each must fail the rows.
+_LN_ORIGIN = "https://github.com/me/repo.git"          # every git fixture's origin: a public-looking URL the tool must never turn into a link
+_LN_MUTANTS = (
+    ("it links an unpushed commit", "    if not commit_on_origin(commit):\n", "    if False and not commit_on_origin(commit):\n"),
+    ("it derives a link from the remote URL with `blob` empty",
+     '    if not prefix:\n        return None, "link.unknown" if REPO_BLOB or CONFIG.get("commit_url") else "link.noforge"\n',
+     '    if not prefix:\n        prefix = re.sub(r"\\.git$", "", (git_out("config", "--get", "remote.origin.url") or "").strip()) + "/commit/"\n'),
+)
+def _ln_git(base, name, blob="", commit_url="", pushed=True):
+    """A git repository with one tracker, its configuration naming `blob` and `commit_url`, origin's URL `_LN_ORIGIN`, and HEAD on origin's `main`
+    where `pushed` — else one commit past it. (its root, HEAD's full sha)"""
+    root = base / name; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    cfg_ = root / "shoalmark.toml"
+    cfg_.write_text(cfg_.read_text(encoding="utf-8").replace('blob = ""', f'blob = "{blob}"' + (f'\ncommit_url = "{commit_url}"' if commit_url else ""), 1), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); git(root, "remote", "add", "origin", _LN_ORIGIN)
+    git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+    if not pushed:
+        git(root, "commit", "-q", "--allow-empty", "-m", "not pushed")
+    fm.configure(HERE)
+    return root, subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+def _ln_svn(base, name, commit_url=""):
+    """A Subversion working copy, updated to its newest revision, `commit_url` set where given. (its root, its revision)"""
+    subprocess.run(["svnadmin", "create", str(base / (name + "-repo"))], check=True, capture_output=True)
+    root = base / name; subprocess.run(["svn", "checkout", "-q", (base / (name + "-repo")).as_uri(), str(root)], check=True, capture_output=True)
+    run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    if commit_url:
+        cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text(encoding="utf-8").replace('blob = ""', f'blob = ""\ncommit_url = "{commit_url}"', 1), encoding="utf-8")
+    run(root)
+    for a_ in (["add", "-q", "--force", "."], ["commit", "-q", "-m", "base"], ["update", "-q"]):
+        subprocess.run(["svn", *a_], cwd=str(root), check=True, capture_output=True)
+    fm.configure(HERE)
+    return root, subprocess.run(["svn", "info", "--show-item", "revision", str(root)], capture_output=True, text=True).stdout.strip()
+def _ln_rows(base):
+    """Each row: (what it is, its root, the link it must make — None for none —, the label of why not)."""
+    full_ = lambda r_: r_[1]
+    rows_ = []
+    gh_ = _ln_git(base, "github", blob="https://github.com/me/repo/blob/main/docs/work-tracker/")
+    rows_.append(("GitHub's `blob`, the commit on origin", gh_[0], f"https://github.com/me/repo/commit/{full_(gh_)}", ""))
+    gl_ = _ln_git(base, "gitlab", blob="https://gitlab.com/me/repo/-/blob/main/docs/work-tracker/")
+    rows_.append(("GitLab's `/-/blob/`, the commit on origin", gl_[0], f"https://gitlab.com/me/repo/-/commit/{full_(gl_)}", ""))
+    key_ = _ln_git(base, "keyed", blob="https://git.example.org/me/repo/src/branch/main/docs/work-tracker/", commit_url="https://git.example.org/me/repo/commit/")
+    rows_.append(("a `blob` that gives no commit page, with `commit_url`", key_[0], f"https://git.example.org/me/repo/commit/{full_(key_)}", ""))
+    unk_ = _ln_git(base, "unknown", blob="https://git.example.org/me/repo/src/branch/main/docs/work-tracker/")
+    rows_.append(("a `blob` that gives no commit page, and no `commit_url`", unk_[0], None, "link.unknown"))
+    bad_ = _ln_git(base, "badkey", blob="https://github.com/me/repo/blob/main/docs/work-tracker/", commit_url="javascript:alert(1)//")
+    rows_.append(("a `commit_url` that is no http(s) URL", bad_[0], None, "link.unknown"))
+    up_ = _ln_git(base, "unpushed", blob="https://github.com/me/repo/blob/main/docs/work-tracker/", pushed=False)
+    rows_.append(("GitHub's `blob`, the commit not on origin yet", up_[0], None, "link.unpushed"))
+    none_ = _ln_git(base, "noforge")
+    rows_.append(("no `blob`, no `commit_url`, origin's URL a forge's", none_[0], None, "link.noforge"))
+    if _SVN:
+        sv_ = _ln_svn(base, "svn")
+        rows_.append(("Subversion without a viewer", sv_[0], None, "link.noviewer"))
+        sk_ = _ln_svn(base, "svnkeyed", commit_url="https://svn.example.org/viewvc?view=revision&revision=")
+        rows_.append(("Subversion with a viewer in `commit_url`", sk_[0], f"https://svn.example.org/viewvc?view=revision&revision={sk_[1]}", ""))
+    return rows_
+def _ln_saw(root, tool):
+    """The board's run by `tool`, as a program, and its read-at line's head: (exit, the link's address or None, the line as a reader sees it)."""
+    code_, _o, _e = _tool_run(tool, root, "--html-only")
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
+    line_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S)
+    href_ = re.search(r'<a id="rh" href="([^"]*)"', line_.group(1)) if line_ else None
+    return code_, _q4_html.unescape(href_.group(1)) if href_ else None, _q4_html.unescape(re.sub(r"<[^>]+>", "", line_.group(1))) if line_ else ""
+def _ln_ok(rows, tool):
+    """Every row as asserted: exit 0; its link, exactly, where it must make one — and then no reason; else no link at all, and the line's head carries the
+    reason's own words. (all held, what was seen)"""
+    seen_ = []
+    for what_, root_, want_, why_ in rows:
+        code_, href_, line_ = _ln_saw(root_, tool)
+        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or fm.LABELS[why_] in line_) and not any(fm.LABELS[k_] in line_ for k_ in fm.LINK_WHY if k_ != why_)
+        seen_.append((what_, ok_, href_, line_[:120]))
+    return all(o_ for _w, o_, _h, _l in seen_), seen_
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); rows_ = _ln_rows(base_)
+    if not _SVN:
+        _skipped("FM-057 · the read-at head's link on Subversion", 2, "svn or svnadmin is not installed here")
+    ok_, seen_ = _ln_ok(rows_, HERE / "shoalmark.py")
+    for what_, o_, h_, l_ in seen_:
+        check(f"FM-057 · the read-at line's head · {what_}: " + (f"it links to {h_}" if h_ else f"no link, and the line says why ({l_[:110]!r})"), o_)
+    fm.configure(HERE); sha_ = "0" * 40
+    check(f"FM-057 · the read-at line's head · the one helper, for the guided answer view too: the tool's own commit links to TOOL_PAGE's repository "
+          f"(saw {fm.commit_link(sha_, tool=True)})", fm.commit_link(sha_, tool=True) == (f"{fm.TOOL_PAGE}/commit/{sha_}", "")
+          and fm.commit_link("not a commit", tool=True) == (None, "link.nocommit"))
+    for what_, *change_ in _LN_MUTANTS:
+        with tempfile.TemporaryDirectory() as m_:
+            tool_ = _r11_tool(Path(m_).resolve(), change_)
+            mok_, mseen_ = _ln_ok(rows_, tool_) if tool_ else (True, [])
+            check(f"FM-057 · the read-at line's head · …the mutant, {what_}: this tool with that one change FAILS the rows "
+                  f"(saw {[(w_, h_) for w_, o_, h_, _l in mseen_ if not o_][:2] if tool_ else 'the change is not there to make'})", tool_ is not None and not mok_)
+    for _w, r_, _h, _y in rows_:
         if (r_ / ".git").exists():
             rm_git(r_)
 fm.configure(HERE)

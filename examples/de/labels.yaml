@@ -131,7 +131,7 @@ read.git.clean: nichts geändert und nicht committet
 read.git.changed: "{0} Pfade geändert und nicht committet"
 read.git.changed.one: 1 Pfad geändert und nicht committet
 read.git.unread: was geändert und nicht committet ist, wird hier nicht gelesen
-read.svn: "gelesen von der Arbeitskopie bei r{0}"
+read.svn: "gelesen von der Arbeitskopie bei {0}"
 read.svn.unread: "gelesen von der Arbeitskopie: ihre Revision wird hier nicht gelesen"
 read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
 read.none: "gelesen aus dem Ordner {0}"
@@ -141,6 +141,12 @@ read.self: neu gebaut nur, wenn das Werkzeug läuft
 read.rebuild: "neu bauen:"
 read.copy: kopieren
 read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
+read.unlinked: "{0} ({1})"
+link.unpushed: noch nicht auf origin, darum nicht verlinkt
+link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
+link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
+link.noviewer: "kein Subversion-Betrachter konfiguriert (`commit_url`), darum nicht verlinkt"
+link.nocommit: kein Commit zu verlinken
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}

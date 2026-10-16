@@ -72,6 +72,9 @@ DEFAULTS = {
     "kinds": {"FEAT": "Features", "BUG": "Bugs"},
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
+    # FM-057: the URL a commit's id is appended to, for a forge whose `blob` gives no commit page (`/blob/` and `/-/blob/` do), and for a
+    # Subversion viewer — the revision's number is appended; empty = derived from `blob` on git, none on Subversion
+    "commit_url": "",
     "triage_days": 7,
     # THE FILING FREEZE (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a
     # filing that carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits.
@@ -3923,10 +3926,14 @@ LABELS = {
     "read.git.branch": "read from {0} at {1}", "read.git.detached": "read from a detached HEAD at {0}", "read.git.unborn": "read from {0}, which has no commit yet",
     "read.git.clean": "nothing changed and not committed", "read.git.changed": "{0} paths changed and not committed",
     "read.git.changed.one": "1 path changed and not committed", "read.git.unread": "what is changed and not committed is not read here",
-    "read.svn": "read from the working copy at r{0}", "read.svn.unread": "read from the working copy: its revision is not read here",
+    "read.svn": "read from the working copy at {0}", "read.svn.unread": "read from the working copy: its revision is not read here",
     "read.svn.new": "read from the working copy, which has no revision yet",
     "read.none": "read from the folder {0}", "read.none.why": "no version control: no commit or revision to name",
     "read.at": "built {0}", "read.self": "rebuilt only when the tool runs", "read.rebuild": "rebuild it:", "read.copy": "copy",
+    "read.unlinked": "{0} ({1})",                # the commit, and why it is not a link
+    "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
+    "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
+    "link.noviewer": "no Subversion viewer configured (`commit_url`), so not linked", "link.nocommit": "no commit to link",
     "read.copied": "Copied — run it in the repository's folder, then reload this page.",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
@@ -4615,20 +4622,28 @@ def read_at_html(read, labels):
     part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
     def say(key, *args):
         return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
+    esc = lambda text: html_escape(text).replace("_", "&#95;")
+    def head(shown, commit):
+        """The commit as the line shows it: a link to its page on the forge (`commit_link`), or the commit and why it is not one."""
+        url, why = commit_link(commit)
+        return (f'<a id="rh" href="{esc(url)}" target="_blank" rel="noopener">{esc(shown)}</a>' if url
+                else esc(say("read.unlinked", shown, say(why))))
+    held = "\0"                                            # where a commit's own markup goes, once the label around it is escaped
     if read.get("vcs") == "git":
         sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")
-        facts = [say("read.git.unborn", branch or "HEAD") if not sha else say("read.git.detached", sha) if branch is None else say("read.git.branch", branch, sha),
-                 say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n)]
+        where = say("read.git.unborn", branch or "HEAD") if not sha else say("read.git.detached", held) if branch is None else say("read.git.branch", branch, held)
+        facts = [esc(where).replace(held, head(sha, read.get("commit"))) if sha else esc(where),
+                 esc(say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n))]
     elif read.get("vcs") == "svn":
         revision = read.get("revision")
-        facts = [say("read.svn.unread") if revision is None else say("read.svn.new") if not revision else say("read.svn", revision)]
+        facts = [esc(say("read.svn.unread")) if revision is None else esc(say("read.svn.new")) if not revision
+                 else esc(say("read.svn", held)).replace(held, head("r" + revision, revision))]
     else:
-        facts = [say("read.none", read.get("folder", "")), say("read.none.why")]
+        facts = [esc(say("read.none", read.get("folder", ""))), esc(say("read.none.why"))]
     at = datetime.datetime.fromisoformat(read["built_at"])
     zone = at.strftime("%z")
-    facts += [say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else "")), say("read.self")]
-    esc = lambda text: html_escape(text).replace("_", "&#95;")
-    return (" · ".join(esc(f) for f in facts) + f' · {esc(say("read.rebuild"))} <code id="rc">{esc(CMD + " --html-only")}</code>'
+    facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]
+    return (" · ".join(facts) + f' · {esc(say("read.rebuild"))} <code id="rc">{esc(CMD + " --html-only")}</code>'
             f'<button type="button" id="rb" class="act">{esc(say("read.copy"))}</button><span id="rs" class="said" aria-live="polite"></span>')
 
 
@@ -4715,6 +4730,54 @@ def board_blob():
         print(f"  blob: `blob = {REPO_BLOB[:60]!r}` in {CONFIG_NAME} is not an http(s) URL — the board makes no link to the forge", file=sys.stderr)
         return ""
     return REPO_BLOB
+
+
+# A COMMIT'S PAGE (FM-057, the read-at line's head; the guided answer view reuses it): only where the repository's own configuration names its
+# forge — `commit_url`, else derived from `blob` (`…/blob/…` → `…/commit/<sha>`, GitLab's `…/-/blob/…` → `…/-/commit/<sha>`) — and only for a
+# commit already on origin (one of its remote-tracking refs holds it). The tool never guesses whether a remote is public: no link is derived
+# from a remote's URL. On Subversion a revision links only where `commit_url` names a viewer. Each refusal is a reason, in a label.
+LINK_WHY = ("link.unpushed", "link.noforge", "link.unknown", "link.noviewer", "link.nocommit")
+
+
+def commit_prefix():
+    """The URL a commit's id is appended to, from this repository's configuration — `commit_url` where it is an http(s) URL, else on git what `blob`
+    says of its forge — or "" where it names none it can be told from."""
+    said = str(CONFIG.get("commit_url") or "")
+    if said and re.match(r"https?://[^\s\"'<>]+$", said, re.I):
+        return said
+    if said:
+        print(f"  commit_url: `commit_url = {said[:60]!r}` in {CONFIG_NAME} is not an http(s) URL — the board makes no link to a commit", file=sys.stderr)
+        return ""
+    blob = REPO_BLOB if vcs() == "git" and re.match(r"https?://[^\s\"'<>]+$", REPO_BLOB or "", re.I) else ""     # `board_blob` says once what it refuses
+    m = re.match(r"(https?://[^\s\"'<>]+?/-)/blob/", blob, re.I) or re.match(r"(https?://[^\s\"'<>]+?)/blob/", blob, re.I)
+    return m.group(1) + "/commit/" if m else ""
+
+
+def commit_on_origin(sha):
+    """Whether the git commit `sha` is on origin as this clone knows it: one of `refs/remotes/origin/` holds it. A read that fails is no."""
+    out = vcs_process("git", "for-each-ref", f"--contains={sha}", "--format=%(refname)", "refs/remotes/origin/", cwd=ROOT, capture_output=True, text=True,
+                      encoding="utf-8", errors="replace", env=nested_git_env())
+    return out.returncode == 0 and any(line.strip() for line in out.stdout.splitlines())
+
+
+def commit_link(commit, tool=False):
+    """(the page of `commit` on its forge, "") — or (None, the label that says why there is none): `link.unpushed` (on no remote-tracking ref of
+    origin), `link.noforge` (no `blob` and no `commit_url`), `link.unknown` (a `blob` that gives no commit page, and no `commit_url`),
+    `link.noviewer` (Subversion with no `commit_url`), `link.nocommit` (no commit to name). `tool`: the tool's own commit, on `TOOL_PAGE`'s repository."""
+    commit = str(commit or "")
+    if tool:
+        return (f"{TOOL_PAGE}/commit/{commit}", "") if re.fullmatch(r"[0-9a-f]{7,64}", commit) else (None, "link.nocommit")
+    if vcs() == "svn":
+        prefix = commit_prefix()
+        return (None, "link.nocommit") if not re.fullmatch(r"[0-9]+", commit) else (prefix + commit, "") if prefix else (None, "link.noviewer")
+    if vcs() != "git" or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+        return None, "link.nocommit"
+    prefix = commit_prefix()
+    if not prefix:
+        return None, "link.unknown" if REPO_BLOB or CONFIG.get("commit_url") else "link.noforge"
+    if not commit_on_origin(commit):
+        return None, "link.unpushed"
+    return prefix + commit, ""
 
 
 def html_escape(text):
