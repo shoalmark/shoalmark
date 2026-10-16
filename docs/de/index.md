@@ -60,8 +60,8 @@ Was shoalmark dazu ausgibt, jeden Tag:
    funktioniert, und was niemand tun darf, um dorthin zu kommen. Dann richten Sie einmal Ihre Signatur ein
    ([zehn Minuten](signing.md)).
 
-**Sie verlieren nichts.** Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark ändert nur, was es selbst
-geschrieben hat.
+**Nichts Bestehendes wird überschrieben.** Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark schreibt nur seine
+eigenen Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht selbst geschrieben hat.
 
 ## Was ein Tag Sie kostet
 

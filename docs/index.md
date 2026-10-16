@@ -59,7 +59,8 @@ What shoalmark prints for it, every day:
 4. **You** write three lines in your own words: what the repository is for, what is true when it works, and what
    nobody may do to get there. Then you set up your signature, once ([ten minutes](signing.md)).
 
-**You lose nothing.** What you keep today stays where it is: shoalmark changes only what it wrote itself.
+**Nothing of yours is overwritten.** What you keep today stays where it is: shoalmark writes only its own files and never
+overwrites a file or a hook it did not write.
 
 ## What a day costs you
 
