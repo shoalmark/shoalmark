@@ -29,7 +29,7 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 - Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
 
 Git worktree identity and commit-trailer reports (`--whoami`, `--session-trailer`, `--sessions`), the merge ratio
-(`--ratio`), the forge queue (`--queue`) and signed answer-branch acts (`--answer`, `--done`, `--due`, `--revoke`)
+(`--ratio`), the forge queue (`--queue`) and answer-branch acts (`--answer`, `--done`, `--due`, `--revoke`)
 require Git. Under Subversion, `--session new` generates an id without checking a Git commit registry. A server login
 can attribute an SVN revision; it provides no cryptographic commit signature, and a local working-copy label proves
 no author. Checks that need server history refuse when that history cannot be read.
