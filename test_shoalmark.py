@@ -4848,7 +4848,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "a release typed in the footer's link": _with(_ls, "overrides/landing.html", 'releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}', 'releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2'),
         "the Owner's line reworded": _with(_ls, "overrides/partials/landing/en.html", "a bug or a security finding", "a bug"),
         "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
-        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "a fix for the board's refresh", "a security release"),
+        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "a security release", "a fix for the board's refresh"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
         "the prompt back in a fold": _with(_ls, "overrides/landing.html", '<div class="probe-prompt" id="probe-prompt" data-open="false">', '<details class="probe-fold probe-prompt" id="probe-prompt" data-open="false">'),
@@ -14427,10 +14427,14 @@ def _lf_stops(run_, facts, says):
 
 
 def _lf_clone(base):
-    """A clone of this repository sharing its objects, at v0.19.2 — commits made in it reach nothing here."""
+    """A clone of this repository sharing its objects, at v0.19.2 — commits made in it reach nothing here — and without the release tags made
+    after v0.19.2, as the repository stood then: these blocks tag their own commits v0.19.3 and v0.19.4, which this repository has since released."""
     clone = base / "clone"
     subprocess.run(["git", "clone", "--quiet", "--shared", "--no-checkout", str(HERE), str(clone)], check=True, capture_output=True, env=_ENV)
     git(clone, "checkout", "-q", "--detach", _LF_TAG)
+    later = subprocess.run(["git", "-C", str(clone), "tag", "--list", "v*", "--no-merged", _LF_TAG], capture_output=True, text=True, check=True, env=_ENV).stdout.split()
+    if later:
+        git(clone, "tag", "-d", *later)
     return clone
 
 
