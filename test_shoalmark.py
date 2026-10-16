@@ -632,6 +632,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "hooks": "FM-002 · the Owner's box's title, rendered in every view",
     "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
     "header": "FM-053, RV-3342 · the header row at 375, 640 and 880 px, rendered — the field, its counter and the scheme's action in view",
+    "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
 }
 
 
@@ -5026,13 +5027,14 @@ _HDR_BEFORE = (("#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;alig
                ("#n{color:var(--dim);padding:3px 0}", "#n{color:var(--dim);white-space:nowrap}"), ("\n#sb{flex-basis:100%}#s{margin-left:auto}}", "}"))
 
 
-def _header_at(where, page, width):
-    """The header of the board `page` (its HTML), drawn in a frame `width` px wide inside a page of its own: what the frame's probe reports."""
+def _header_at(where, page, width, probe=_HDR_PROBE):
+    """The board `page` (its HTML), drawn in a frame `width` px wide inside a page of its own: what the frame's probe reports — the header's,
+    or `probe`'s."""
     import html as _html
-    (where / "hdr.html").write_text(page.replace("</script></html>", "</script>" + _HDR_PROBE + "</html>"), encoding="utf-8")
+    (where / "hdr.html").write_text(page.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
     (where / "hdr-frame.html").write_text('<!doctype html><meta charset="utf-8"><body style="margin:0"><script>onmessage=e=>{document.body.dataset.probe=e.data}</script>'
                                           f'<iframe src="hdr.html" style="display:block;border:0;width:{width}px;height:560px"></iframe>', encoding="utf-8")
-    dom_ = _chrome_run(["--window-size=1000,700", "--virtual-time-budget=4000", "--dump-dom", (where / "hdr-frame.html").as_uri()]).stdout
+    dom_ = _chrome_run(["--window-size=1100,700", "--virtual-time-budget=4000", "--dump-dom", (where / "hdr-frame.html").as_uri()]).stdout
     return json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', dom_) or [None, ""])[1]) or "null")
 
 
@@ -5079,6 +5081,44 @@ if _browser("header"):
                   all(before_.get(k_) and "no report" not in before_[k_][0] for k_ in ("empty", "populated")))
     except _ChromeFailed as e_:
         _hung("header", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-1: the work table's group line wraps inside the frame — `td.m`'s nowrap is the cells' alone. At 1024, 880 and 640 px the page
+#     runs no wider than its frame and the table fits it. Measured in Chrome, each width the board in a frame of that width; the rule taken
+#     back out must fail it ------------------------------------------------------------------------------------------------------------------
+_TBL_WIDTHS, _TBL_RULE = (1024, 880, 640), ("cursor:pointer;white-space:normal}", "cursor:pointer}")
+_TBL_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,b=document.body,c=getComputedStyle(b),f=b.getBoundingClientRect(),'
+              't=document.querySelector("#B table").getBoundingClientRect();parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,'
+              'tl:t.left,tr:t.right,fl:f.left+parseFloat(c.paddingLeft),fr:f.right-parseFloat(c.paddingRight),groups:document.querySelectorAll("#b tr.g").length}),"*")})</script>')
+
+
+def _table_faults(rep, width):
+    """What is wrong with one frame's work table — [] where the page is no wider than its frame and the table stands inside the body's frame."""
+    if not rep or rep.get("w") != width or not rep.get("groups"):
+        return [f"no report, or no group row, from the {width} px frame (saw {rep})"]
+    return ([f"the page {rep['sw']} px wide in {rep['cw']}"] if rep["sw"] > rep["cw"] + 1 else []) + \
+        ([f"the table {rep['tl']:.0f}–{rep['tr']:.0f} px in the frame {rep['fl']:.0f}–{rep['fr']:.0f}"] if rep["tl"] < rep["fl"] - 0.5 or rep["tr"] > rep["fr"] + 0.5 else [])
+
+
+_tbl_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-1 · a group row's line wraps: `.g td` sets `white-space:normal` after `td.m`'s nowrap, which stays the cells' alone",
+      _tbl_src.count(".g td{border:0;padding:14px 0 2px;color:var(--dim);cursor:pointer;white-space:normal}") == 1
+      and _tbl_src.index("td.m{white-space:nowrap;") < _tbl_src.index(".g td{border:0;"))
+if _browser("table"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock is booked per warehouse"); tracker(root, "MSR-002", status="Proposed", title="An untriaged one")
+            tracker(root, "MSR-003", status="Shipped", title="A shipped one"); run(root)
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _table_faults(_header_at(wt_, page_, w_, _TBL_PROBE), w_) for w_ in _TBL_WIDTHS}
+            before_ = _table_faults(_header_at(wt_, page_.replace(*_TBL_RULE), 1024, _TBL_PROBE), 1024)
+            check(f"FM-053, BF-1 · at 1024, 880 and 640 px the page is no wider than its frame and the work table fits it, its group lines wrapped (saw {seen_})",
+                  page_.count(_TBL_RULE[0]) == 1 and not any(seen_.values()))
+            check(f"FM-053, BF-1 · the check's control: the group line held to one line again runs the page past its frame at 1024 px (saw {before_})",
+                  bool(before_) and "no report" not in before_[0])
+    except _ChromeFailed as e_:
+        _hung("table", e_)
         fm.configure(HERE)
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------

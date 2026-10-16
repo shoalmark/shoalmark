@@ -3598,7 +3598,8 @@ details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{pa
 code{font:inherit}
 /* the tool's own voice: help, behind a dashed rule — never a value, a state, an action or a warning */
 .help{color:var(--help);border-left:2px dashed var(--help);padding:0 0 0 1ch;margin:2px 0 6px}
-/* the work table, by rank: no outer box, its column heads types, its groups `// `, each group a fold */
+/* the work table, by rank: no outer box, its column heads types, its groups `// `, each group a fold — a group's line wraps inside the frame
+   (BF-1: `td.m`'s nowrap is the cells' alone) */
 #vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}#vt button{margin:0}
 #l{color:var(--mute);font-size:12px;margin-left:auto}#l span{text-transform:lowercase;margin-right:1ch}
 table{width:100%;border-collapse:collapse}
@@ -3607,7 +3608,7 @@ th{text-align:left;color:var(--mute);font-size:12px;font-weight:400;letter-spaci
 td{padding:3px 2ch 3px 0;border-top:1px solid var(--line);vertical-align:top}
 td.m{white-space:nowrap;color:var(--dim)}
 tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
-.g td{border:0;padding:14px 0 2px;color:var(--dim);cursor:pointer}.g td:before{content:"v ";content:"v " / "";color:var(--mute)}.g.f td:before{content:"> ";content:"> " / ""}
+.g td{border:0;padding:14px 0 2px;color:var(--dim);cursor:pointer;white-space:normal}.g td:before{content:"v ";content:"v " / "";color:var(--mute)}.g.f td:before{content:"> ";content:"> " / ""}
 .g b{color:var(--head);font-weight:600}.g b:before{content:"// ";content:"// " / "";color:var(--mute);font-weight:400}
 .s td{border:0;padding:0 0 6px 2ch;color:var(--dim);max-width:80ch}
 .h td{border:0;padding:0 2ch 8px 2ch;color:var(--dim)}.h a{margin-right:1ch}.off{color:var(--mute)}
