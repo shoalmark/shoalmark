@@ -11417,7 +11417,8 @@ fm.configure(HERE)
 
 # --- FM-057 · the quick win beside R11: the board says what it read, and when. On git — a clean tree, a tree with changes, a detached HEAD —, on Subversion
 #     and with no version control, the page's line names its own moment: the time it was built and, as each backend can give it, the commit and the branch and
-#     how many paths are changed and not committed, the working copy's revision, or the folder; and the command that rebuilds it, with its copy button. It
+#     how many paths are changed and not committed — counted by a plain run; on the board's own run, `--html-only`, the line says they are not read —, the
+#     working copy's revision, or the folder; and the command that rebuilds it, with its copy button. It
 #     never says *current*, *live* or *up to date*. `view/built.json` records the same, and the reader of b84b8af — the tool before it — reads that record and
 #     says no line of it. The mutants — the changes ignored, the time missing, the word *current* — are this tool with that one change, run the same way: each
 #     must fail the check.
@@ -11450,6 +11451,7 @@ def _q4_fixtures(base):
         subprocess.run(["svn", "commit", "-q", "-m", "base"], cwd=str(wc_), check=True, capture_output=True)
         subprocess.run(["svn", "update", "-q"], cwd=str(wc_), check=True, capture_output=True); out_["svn"] = wc_
     plain_ = base / "plain"; plain_.mkdir(); run(plain_, "--init", "--key", "msr"); tracker(plain_, "MSR-001"); out_["none"] = plain_
+    out_["git changes, plain run"] = out_["git changes"]   # the same tree, built by the plain run, which counts what `--html-only` does not read
     fm.configure(HERE)
     return out_
 def _q4_read(root):
@@ -11466,15 +11468,15 @@ def _q4_read(root):
 def _q4_case(shape, root, tool):
     """One shape's board's run, by `tool` as a program, and what the page and `view/built.json` say against what the shape holds."""
     t0_ = datetime.datetime.now().astimezone().replace(microsecond=0)
-    code_, o_, e_ = _tool_run(tool, root, "--html-only")
+    code_, o_, e_ = _tool_run(tool, root, *(() if shape.endswith("plain run") else ("--html-only",)))
     t1_ = datetime.datetime.now().astimezone()
     line_, cmd_, wired_, built_ = _q4_read(root)
     rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
     if shape.startswith("git"):
         sha_, branch_ = rp_("rev-parse", "HEAD"), rp_("branch", "--show-current")
         want_ = (["read from a detached HEAD at " + sha_[:7]] if shape == "git detached" else [f"read from {branch_} at {sha_[:7]}"]) \
-            + (["3 paths changed and not committed"] if shape == "git changes" else ["nothing changed and not committed"])
-        record_ = dict(vcs="git", commit=sha_, branch=branch_ or None, changes=3 if shape == "git changes" else 0)
+            + (["3 paths changed and not committed"] if shape.endswith("plain run") else ["what is changed and not committed is not read here"])
+        record_ = dict(vcs="git", commit=sha_, branch=branch_ or None, changes=3 if shape.endswith("plain run") else None)
         keys_ = {"commit", "trackers", "configuration", "answers", "built_at", "vcs", "branch", "changes"}
     elif shape == "svn":
         rev_ = subprocess.run(["svn", "info", "--show-item", "revision", str(root)], capture_output=True, text=True).stdout.strip()
@@ -11625,6 +11627,51 @@ with tempfile.TemporaryDirectory() as d:
     for _w, r_, _h, _y in rows_:
         if (r_ / ".git").exists():
             rm_git(r_)
+fm.configure(HERE)
+
+# --- FM-057 · the board's own run: on `--html-only` the read-at line says that what is changed and not committed is not read, and keeps the time, the branch
+#     and the commit; `view/built.json` records no count. RV-3302: recorded privately. The mutant puts the changed-path read back on `--html-only`: it must fail
+#     the row.
+_CN_MUTANT = ("the changed-path read back on the board's own run", "        read = read_at(count=False)", "        read = read_at()")
+def _cn_repo(base):
+    """The row's repository: (its root, the folder the row reads)."""
+    root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    (root / "canary.txt").write_text("the same bytes\n", encoding="utf-8"); (root / ".gitattributes").write_text("canary.txt filter=probe\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    clean_ = base / "clean.py"
+    clean_.write_text(f"import sys\nopen({str(marks / 'clean')!r}, 'a').write('ran\\n')\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n", encoding="utf-8")
+    git(root, "config", "filter.probe.clean", f'"{Path(sys.executable).as_posix()}" "{clean_.as_posix()}"')
+    t_ = root / "canary.txt"; st_ = t_.stat(); os.utime(t_, ns=(st_.st_atime_ns, st_.st_mtime_ns + 5_000_000_000))
+    fm.configure(HERE)
+    return root, marks
+def _cn_case(base, tool):
+    """`--html-only` by `tool`, as a program, in a fresh `_cn_repo`: what the line and the record show, and whether the folder the row reads stayed empty."""
+    root, marks = _cn_repo(base)
+    code_, _o, e_ = _tool_run(tool, root, "--html-only")
+    line_, _c, _w, built_ = _q4_read(root)
+    rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    g_ = dict(code=code_, line=line_, built=built_ or {}, marker=any(marks.iterdir()), sha=rp_("rev-parse", "HEAD"), branch=rp_("branch", "--show-current"),
+              said=e_.strip()[-160:])
+    rm_git(root)
+    return g_
+def _cn_ok(g):
+    """The row: exit 0; the folder the row reads stays empty; the line names the branch and the commit, says what is changed and not committed is not read,
+    and when it was built; `view/built.json` records no count."""
+    return (g["code"] == 0 and not g["marker"] and f"read from {g['branch']} at {g['sha'][:7]}" in g["line"] and fm.LABELS["read.git.unread"] in g["line"]
+            and re.search(r"built \d{4}-\d\d-\d\d \d\d:\d\d [+-]\d\d:\d\d", g["line"]) is not None and g["built"].get("changes", 0) is None
+            and g["built"].get("commit") == g["sha"])
+def _cn_saw(g):
+    return f"exit {g['code']}, empty {not g['marker']}, {g['line'][:150]!r}, changes {g['built'].get('changes', '-')!r}"
+with tempfile.TemporaryDirectory() as d:
+    real_, m_ = Path(d).resolve() / "real", Path(d).resolve() / "mutant"; real_.mkdir(); m_.mkdir(); (m_ / "case").mkdir()
+    g_ = _cn_case(real_, HERE / "shoalmark.py")
+    check(f"FM-057 · the board's own run · `--html-only` reads no changed path: the read-at line says what is changed and not committed is not read, beside "
+          f"the time, the branch and the commit; `view/built.json` records no count (saw {_cn_saw(g_)})", _cn_ok(g_))
+    tool_ = _r11_tool(m_, _CN_MUTANT[1:])
+    c_ = _cn_case(m_ / "case", tool_) if tool_ else None
+    check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row, its folder not empty "
+          f"(saw {_cn_saw(c_) if c_ else 'the change is not there to make'})", c_ is not None and not _cn_ok(c_) and c_["marker"])
 fm.configure(HERE)
 
 # --- FM-030, 0.18.6 — revoke: on what is on its way the board has ONE button, *revoke*, and it copies `--revoke <id> "<why>"` — a

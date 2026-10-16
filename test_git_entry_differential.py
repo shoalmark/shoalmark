@@ -60,10 +60,12 @@ def git_words(row):
     return tuple(str(word) for word in argv[1:]) if isinstance(argv, list) else ()
 
 
-def fm057_rows(old, new):
+def fm057_rows(old, new, counted=True):
     """Whether the candidate's starts or calls `new` are the baseline's `old` but for FM-057: the two moved reads taken out where the baseline made them (the
-    last of each), the four reads of what the board read found together where the candidate makes them, and every other row equal, in order; the moved reads
-    as the baseline made them but where, and the two new ones from the same folder and environment."""
+    last of each), the reads of what the board read found together where the candidate makes them — the four of a run that counts the changed paths
+    (`counted`), the two moved ones alone of the board's own run, `--html-only`, which reads no changed path — and every other row equal, in order; the moved
+    reads as the baseline made them but where, and the two new ones from the same folder and environment."""
+    reads = FM057_READS if counted else FM057_MOVED
     strip = lambda row: {key: value for key, value in row.items() if key != "product_stack"}
     o, n = list(old), list(new)
     moved = []
@@ -72,27 +74,28 @@ def fm057_rows(old, new):
         if not at:
             return False
         moved.append(o.pop(at[-1]))
-    block = [i for i in range(len(n) - len(FM057_READS) + 1) if tuple(git_words(row) for row in n[i:i + len(FM057_READS)]) == FM057_READS]
+    block = [i for i in range(len(n) - len(reads) + 1) if tuple(git_words(row) for row in n[i:i + len(reads)]) == reads]
     if len(block) != 1:
         return False
-    found = n[block[0]:block[0] + len(FM057_READS)]
-    del n[block[0]:block[0] + len(FM057_READS)]
+    found = n[block[0]:block[0] + len(reads)]
+    del n[block[0]:block[0] + len(reads)]
     how = lambda row: {key: value for key, value in strip(row).items() if key not in ("argv", "args", "raw", "executable", "result")}     # where and how it ran
     same = lambda a, b: how(a) == how(b)
     return ([strip(row) for row in o] == [strip(row) for row in n] and all(strip(a) == strip(b) for a, b in zip(moved, found[:2]))
             and all(same(found[0], row) for row in found[2:]))
 
 
-def rows_match(old, new):
-    """The starts or calls of two runs: equal, or equal but for FM-057's reads (`fm057_rows`)."""
+def rows_match(old, new, counted=True):
+    """The starts or calls of two runs: equal, or equal but for FM-057's reads (`fm057_rows`) — counted ones but on the board's own run."""
     strip = lambda rows: [{key: value for key, value in row.items() if key != "product_stack"} for row in rows]
-    return strip(old) == strip(new) or fm057_rows(old, new)
+    return strip(old) == strip(new) or fm057_rows(old, new, counted)
 
 
 def fm057_board(baseline, candidate):
     """Whether the candidate's page and `view/built.json` are the baseline's but for FM-057, each read back from the bytes its run left — the hash in the
     snapshot checked: the page's rows (`T=[…]`) are the baseline's, and the record is the baseline's with exactly the four fields of what it read added — `vcs`
-    git, `changes` a count, `branch` a name or none, `built_at` a time with its offset."""
+    git, `changes` a count (none on the board's own run, `--html-only`, which reads no changed path), `branch` a name or none, `built_at` a time with its
+    offset."""
     def read(observed, path):
         held = (observed.get("board_after") or {}).get(path)
         data = base64.b64decode(held["bytes_base64"]) if isinstance(held, dict) else None
@@ -108,7 +111,8 @@ def fm057_board(baseline, candidate):
         return False
     return (all(rows) and rows[0].group(1) == rows[1].group(1) and isinstance(old, dict) and isinstance(new, dict)
             and set(new) == set(old) | FM057_KEYS and not set(old) & FM057_KEYS and all(new[key] == old[key] for key in old)
-            and new["vcs"] == "git" and isinstance(new["changes"], int) and not isinstance(new["changes"], bool) and new["changes"] >= 0
+            and new["vcs"] == "git" and (new["changes"] is None if "--html-only" in (candidate.get("flags") or []) else
+                                         isinstance(new["changes"], int) and not isinstance(new["changes"], bool) and new["changes"] >= 0)
             and (new["branch"] is None or isinstance(new["branch"], str)) and when.tzinfo is not None)
 
 
@@ -421,8 +425,9 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
                            (before["status"], before["stdout"], before["stderr"]) == (after["status"], after["stdout"], after["stderr"]))
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
-            assert_control(label_prefix + "all actual process argv/effective cwd/env match, but for FM-057's reads", rows_match(before["starts"], after["starts"]))
-            assert_control(label_prefix + "run options and actual process results match, but for FM-057's reads", rows_match(before["run_calls"], after["run_calls"]))
+            counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
+            assert_control(label_prefix + "all actual process argv/effective cwd/env match, but for FM-057's reads", rows_match(before["starts"], after["starts"], counted))
+            assert_control(label_prefix + "run options and actual process results match, but for FM-057's reads", rows_match(before["run_calls"], after["run_calls"], counted))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
             assert_control(label_prefix + "actual main state/result and selected origin policy match", before["main_returns"] == after["main_returns"]
                            and bool(after["main_returns"]) and after["main_returns"][-1]["ASK_ORIGIN"] is ask)
@@ -479,6 +484,11 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        not rows_match(old["starts"], new["starts"] + [extra])
                        and not rows_match(old["starts"], new["starts"][:at] + [extra] + new["starts"][at:])
                        and not rows_match(old["starts"], new["starts"][:at] + new["starts"][at + 1:]))
+        bare = [row for row in new["starts"] if git_words(row) not in FM057_READS[2:]]      # the same run, as the board's own run reads: no changed path
+        assert_control(allowance + "a run that reads no changed path, as the board's own run (`--html-only`) does, differs by the two moved reads alone; the "
+                       "changed-path reads where none are read, or none where a run counts them, do not match",
+                       len(bare) == len(new["starts"]) - 2 and fm057_rows(old["starts"], bare, counted=False)
+                       and not fm057_rows(old["starts"], new["starts"], counted=False) and not fm057_rows(old["starts"], bare, counted=True))
         row = PAGE_ROWS.search(page).group(1).split(b"\n")[0]
         built = json.loads(record)
         assert_control(allowance + "a page whose rows differ, or a record with a basis value changed, a field missing or a fifth field added, does not match",

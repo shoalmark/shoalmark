@@ -4566,16 +4566,17 @@ def head_commit():
 
 
 # WHAT THE BOARD READ, AND WHEN (FM-057, the quick win beside R11): no hook rebuilds the board, so a page can be hours old and look as it did. The page names its
-# own moment — the time it was built; on git HEAD, the branch or a detached HEAD, and how many paths are changed and not committed; on Subversion the working
+# own moment — the time it was built; on git HEAD, the branch or a detached HEAD, and how many paths are changed and not committed (a plain run counts them;
+# the board's own run, `--html-only`, says it does not read them); on Subversion the working
 # copy's revision, from the one local status the board reads; with no version control, the folder — and the command that rebuilds it. `view/built.json`
 # records the same. It never says *current*, *live* or *up to date*.
-def read_at():
+def read_at(count=True):
     """What the board reads, and when: {"built_at": the time, to the second, with its offset; "vcs": "git", "svn" or "none"; on git "commit" (HEAD's full sha,
-    "" before a first commit), "branch" (None on a detached HEAD) and "changes" (`tree_changes`); on Subversion "revision" (`svn_revision`); with none,
-    "folder", the repository's root}."""
+    "" before a first commit), "branch" (None on a detached HEAD) and "changes" (`tree_changes` — None where `count` is false: the board's own run,
+    `--html-only`, reads no changed paths, and its line says so); on Subversion "revision" (`svn_revision`); with none, "folder", the repository's root}."""
     out = {"built_at": datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), "vcs": vcs() or "none"}
     if vcs() == "git":
-        out.update(commit=head_commit(), branch=built_on() or None, changes=tree_changes())
+        out.update(commit=head_commit(), branch=built_on() or None, changes=tree_changes() if count else None)
     elif vcs() == "svn":
         out["revision"] = svn_revision()
     else:
@@ -10373,7 +10374,7 @@ def board_run(root):
         tracked = tracked_board_rels() if TRACKER_DIR.is_dir() else []
         _TRACKED = {_norm(ROOT / rel) for rel in tracked}        # the single validated snapshot precedes every board write
         basis = board_basis()                                       # FM-045: what the board is built from, read before the trackers are
-        read = read_at()                                            # FM-057: what it reads, and when
+        read = read_at(count=False)                                 # FM-057: what it reads, and when — no changed paths on this run
         trackers = load_trackers()
         no_derived(trackers)                                        # no deriver: no derived column, file, note or key
         if TRACKER_DIR.is_dir():
