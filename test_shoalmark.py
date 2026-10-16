@@ -7537,7 +7537,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "switch", "-q", "-c", "pr/three", t0N_)
     clean_, holder_, bad_ = nestedN_(None, "i <implementer@seat>"), nestedN_(closeN_(703), "p <principal@seat>"), nestedN_(closeN_(704), "i <implementer@seat>")
     code, _, err = outerN_("pr/three")
-    said_ = [l_ for l_ in err.splitlines() if "which the merge brings" in l_]
+    said_ = [l_ for l_ in err.splitlines() if "which the merge brings" in l_ and not l_.startswith(("  +", "  -"))]     # R22: not INDEX.md's quoted difference
     check(f"FM-006 · v0.19.1 · a clean nested merge adds no refusal — of three nested merges one outer merge brings, only the one whose own `close` is a seat's without `close` is refused (saw {code}, {len(said_)})",
           code == fm.EXIT_LINT and len(said_) == 1 and f"AP-704: in `{bad_[:10]}`" in said_[0] and clean_[:10] not in err)
     check(f"FM-006 · v0.19.1 · a nested merge whose own `close` is a seat's that holds `close` passes — of three nested merges one outer merge brings, only the one whose own `close` is a seat's without `close` is refused (saw {code}, {len(said_)})",
@@ -8519,7 +8519,7 @@ else:
         (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
         run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
         wt6_ = root / "docs/work-tracker"
-        said6_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_]          # every line that names the tracker
+        said6_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_ and not l_.startswith(("  +", "  -"))]          # every line that names the tracker
         def new6_(id_, extra_="", status_="In Progress", add_=True):
             """A tracker filed in the working copy and not committed — `svn add`ed where `add_`, else left unversioned."""
             p_ = wt6_ / f"{id_}-x.md"
@@ -8654,7 +8654,7 @@ else:
         p72_.write_text(p72_.read_text(encoding="utf-8").replace("hook: ", "next: owner\nhook: ", 1), encoding="utf-8"); run(root); code_n, _, err_n = run(root, "--check")
         p72_.write_text(p72_.read_text(encoding="utf-8").replace("next: owner\n", "", 1), encoding="utf-8"); run(root)
         check(f"FM-006 · v0.19.1 · on Subversion the line for a `next: owner` not committed yet names the tracker once, word for word (saw {said6_(err_n, 'C6-072')!r})",
-              code_n == fm.EXIT_LINT and [l_.strip() for l_ in err_n.splitlines() if "C6-072" in l_] == [
+              code_n == fm.EXIT_LINT and [l_.strip() for l_ in err_n.splitlines() if "C6-072" in l_ and not l_.startswith(("  +", "  -"))] == [
                   "lint: C6-072: `next: owner` is not committed yet — who set a line is read from the commit that made it, and only the hook that makes that commit judges it "
                   "before: commit it (on Subversion who makes a commit is known only once it is made), then run again"])
         # every triage key that carries a value is judged on its own line, and `considered:` once it is changed after the filing
@@ -8727,7 +8727,7 @@ else:
         (root / "shoalmark.toml").write_text('owner = "holgo"\n' + (root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[seats]\nplanner = "planner"\nbuilder = "builder"\n', encoding="utf-8")
         run(root); svn("add", "--force", ".", cwd=root); svn("commit", "-m", "the scaffold", "--username", "planner", cwd=root); svn("update", cwd=root)
         wt9_ = root / "docs/work-tracker"
-        said9_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_]          # every line that names the tracker
+        said9_ = lambda err_, id_: [l_.strip().removeprefix("lint: ") for l_ in err_.splitlines() if f"{id_}:" in l_ and not l_.startswith(("  +", "  -"))]          # every line that names the tracker
         def new9_(id_, status_="In Progress"):
             """A tracker filed in the working copy and `svn add`ed."""
             p_ = wt9_ / f"{id_}-x.md"
@@ -8878,7 +8878,7 @@ else:
             """The working copy committed as `who_`, and updated to; the revision it made."""
             run(wc_); svn("add", "-q", "--force", ".", cwd=wc_); svn("commit", "-q", "-m", msg_, "--username", who_, cwd=wc_); svn("update", "-q", cwd=wc_)
             return svn("info", "--show-item", "last-changed-revision", str(wc_)).stdout.strip()
-        namedC_ = lambda err_, id_: [l_.strip() for l_ in err_.splitlines() if f"{id_}:" in l_]
+        namedC_ = lambda err_, id_: [l_.strip() for l_ in err_.splitlines() if f"{id_}:" in l_ and not l_.startswith(("  +", "  -"))]
         builderC_ = lambda r_, id_: r_[0] == fm.EXIT_LINT and any("`status:` is a `close` change" in l_ and "`builder` is the seat `builder`" in l_ for l_ in namedC_(r_[2], id_))
         fileC_(wtC_, "C9-200", "In Progress"); commitC_(root, "planner", "C9-200 filed")
         # the builder files a Closed tracker on its branch; the planner merges the branch into trunk with --ignore-ancestry
@@ -13890,7 +13890,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git(fresh_, "config", "gpg.ssh.allowedSignersFile", "")      # empty here, whatever the machine's own config says
     index_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
     code_, out_, err_ = run(fresh_, "--check")
-    said_ = [l_ for l_ in err_.splitlines() if "cannot verify" in l_]
+    said_ = [l_ for l_ in err_.splitlines() if "cannot verify" in l_ and not l_.startswith(("  +", "  -"))]
     wcode_, _o, _e = run(fresh_)
     status_ = subprocess.run(["git", "-C", str(fresh_), "status", "--porcelain"], capture_output=True, text=True, env=_ENV).stdout
     generated_ = (fresh_ / "docs/work-tracker/INDEX.md").read_text(encoding="utf-8")
