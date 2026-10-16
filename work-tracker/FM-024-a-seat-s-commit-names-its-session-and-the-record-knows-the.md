@@ -1,21 +1,13 @@
 ---
 id: FM-024
-status: Parked
+status: In Progress
 considered: FM-005, FM-007, FM-008
 tags: research
 kind-of-problem: complicated
-triaged: 2026-10-13
+triaged: 2026-10-15
 tier: P2
 done: "2026-09-27T13:44:37+02:00 · work-tracker/evidence/reviews/review-fm-029-0-18-3-fourth-pass.md"
-next: wait
-ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
-ask-kind: ruling
-ask-since: 2026-09-28
-ask-options: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami | the status line only: --statusline and its install, no rule and no --whoami | the rule only: To: <session> <seat> (<worktree>) in AGENTS.md and --whoami, no status line"
-ask-proposal: "all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"
-answer: "accepted - all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami"
-answered: 2026-09-28
-answered-by: holgo99
+next: build
 hook: "Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what that session was convened for"
 ---
 
@@ -26,6 +18,48 @@ and trace back to the record; what if I run a session in parallel with another P
 it was? Let us reason about how to solve this right from the start."* Written to be attacked.
 
 ## What is true now
+
+**2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
+`--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
+brings it back.
+
+**2026-10-15 — what is left of the answer of 28 September:** `--statusline` and its install, not built; they wait for R6, held to 20 October.
+
+**2026-10-15 — a worktree a seat adds carries the seat's whole identity; nothing is built.** It is fixed first on the session list's branch in v0.20.1 (FM-023's table of 2026-10-15).
+
+**Facts,** read at main `272e374` and probed with Git 2.50.1.
+- **What Git does:** with `extensions.worktreeConfig` set, `git worktree add` copies the current worktree's whole
+  `config.worktree` into the new one.
+- **A fixture probe:** the child carried the parent's `user.name`, `user.email`, `seat.session`, `seat.harness` and
+  signers path. The child's first commit was authored as the parent.
+- **What the tool reads from those keys:**
+  - the gate gives rights by author: `seat_of(name, email)` (`shoalmark.py:6018`, called at `:6106`, `:6143`);
+  - the trailer hook writes `Session:` and, from `seat.harness`'s log, `Model:` and `Effort:` (`:7066–7077`);
+  - `--whoami` reads the same keys (`:7038–7044`).
+- **The tool's own setup line names two keys** (`:10030`), and says nothing of the copy.
+- **Seen today:** a Builder worktree added from the Planner's carried the Planner's `seat.harness` until the Planner
+  unset it. Left unchanged, the Builder's `--whoami` would have reported the Planner's model as its own.
+
+**What it breaks:**
+- a child seat commits under its parent's address, with the parent seat's rights;
+- the child's commits carry the parent's `Session:`, `Model:` and `Effort:`;
+- the session list would map the child's worktree to the parent's session.
+
+**Fix:**
+- one documented step writes every identity key of a new seat's worktree, and prints `git config --worktree --list`;
+- `--whoami` and the commit hook report a worktree whose `seat.harness` equals another linked worktree's while its
+  `seat.session` differs: one harness id is one session.
+- **Named limit:** a full, unchanged copy looks exactly like the same seat's second worktree. Only the setup step
+  closes it.
+
+**Test for the class.** A fixture repository with `extensions.worktreeConfig`, and a parent worktree carrying every
+`user.*` and `seat.*` key.
+- Add a child, then overwrite every subset of those keys in turn. Each mixed identity is reported by name; the setup
+  step leaves none inherited.
+- A mutant that skips one key in the setup step fails the test.
+- The full-copy limit is pinned as a named case.
+
+**Tier:** critical: the gate's rights and the hooks.
 
 **2026-10-02 — the Builder's model, by tier.** The Owner's ruling is filed below, in *The Builder's model, by tier — after v0.19.0*; `builder.md` says it on `fm/024-the-builder-s-model-by-tier`. **What is left:** the Owner's merge.
 
@@ -408,10 +442,17 @@ The paste's own stamp, *≈06:55 CEST*, is its writer's estimate, kept as writte
 
 The Principal's counsel, disclosed as such: the first option — all three, as a slice on this tracker (its problem is the one that bit on 2026-09-28: two sessions of one seat are one author); to settle in the build, as the Auditor names them: PortDive ignores `.claude/` except output styles, and the cwd a project statusLine command runs in. Code tier, the full loop; the Auditor seals its verification plan before the build. Nothing is built before his answer and the pass that judges the slice.
 
+**2026-09-28** · Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?
+**answered** — accepted - all three: --statusline, --install-statusline for Claude and Codex, and the AGENTS.md rule with --whoami · holgo99
+**relation** — accepted the proposal
+**signed** — 4127dba · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | Judged In Progress for v0.20.1: defect 7 first, on `fm/024-sessions`. |
+| 2026-10-15 | Defect filed: `git worktree add` copies a seat's whole identity into the worktree it adds. Nothing is built. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |
 | 2026-09-23 | R5: the worked examples carry no client's or consumer's state — a client repository's name, the consumer's tracker and review ids and two of its commit hashes are generic now; the numbers stay. |
 | 2026-09-23 | R4: `--session-check` — the session rule alone, no tracker read — runs from the pre-commit hook on every commit; a seat's code-only commit without a session is refused. One check. |

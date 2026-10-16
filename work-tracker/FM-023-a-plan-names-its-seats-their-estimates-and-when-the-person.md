@@ -4,10 +4,15 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: wait
+next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
+ask: "Do you allocate v0.20.1 and the releases after it as this tracker's table of 2026-10-15 sets out: v0.20.1 complete, with B1, the board's design, the probe's final prompt and the ten quick wins beside their deletions?"
+ask-kind: ruling
+ask-since: 2026-10-15
+ask-options: "yes | no: the allocation of 12 October stands"
+ask-proposal: "yes"
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -16,6 +21,38 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-15 — v0.20.1 ships complete, for the Owner's ruling: B1, the board's design, the probe's final prompt, the
+ten quick wins beside the deletions that can ship with them, and R13, R15, R17 and R22.** This is the Owner's direction
+of 15 October (recorded privately), set out here for their signed answer. It replaces the allocation of 12 October for
+the releases after v0.20.0. The current path's line 5 (`fd44d86`) pairs each deletion with the quick win that takes its
+place, and within a release deleting comes first. This table builds nothing, and the planning feature this tracker
+proposes stays parked.
+
+| Release | Work | Deletion beside it | Depends on |
+|---|---|---|---|
+| v0.20.0 | As allocated on 12 October: Subversion without git and the release archive, with the answers of 15 October on FM-004 and FM-044. R21 (#179) lands before the cut. | — | R24's minimum, confirmed and verified before the tag |
+| v0.20.1 | B1, the landing, integrated as FM-006's answer of 15 October; FM-049's opt-in line, to an issue form here; FM-026's placement in every word. | — | v0.20.0's tag, for its pins |
+| v0.20.1 | The probe's final prompt, and what its first outside run needs. | — | v0.20.0's archive |
+| v0.20.1 | The board's design, its look and its words, as FM-053's answer adopts `brand/design-guide.md`. | R10's look half: theme layering, the font files, theme copying and the inline wordmark go. A palette by name or by a few tokens in `shoalmark.toml` takes their place, refused below a set contrast. Every board build names each brand file it no longer reads, with the setting that replaces it: never a silent loss. | FM-053 |
+| v0.20.1 | The stand-up prompt and the close-out prompt (S each). Each copies a fixed prompt and runs nothing; each is a run sheet for the Owner, so critical. | R9: invitation and notification channels and their scheduler state; owed acts, due, done and their history stay. | — |
+| v0.20.1 | Ask ids (M); how this repository proves an answer, said before *accept* (S–M), with defect 8. | R4: an ordinary Owner-signed commit is the canonical answer, and the answer-branch code goes; exact answer and act history are kept. Critical. | FM-050, designed, reviewed and ruled first |
+| v0.20.1 | The session list with copy-to-resume (M), the same list in `--sessions` (S), and who asked (S–M), after the fixes of defects 6 and 7 (FM-056, FM-024). | R10's places half: the logo and the labels become settings, the organisation's brand place goes, and `--vendor` stops copying `brand/`. | R6's look, 20 October, for the harness and resume columns; without it they read *not known* and the rest stands |
+| v0.20.1 | What the board read, and when, with its rebuild command (S). | R11: the global refresh hooks; explicit refresh stays. | — |
+| v0.20.1 | One stand-up across the repositories you name (M). It runs no repository's deriver, queue or hook. | None in v0.20.1: R5 needs a format for validated data-only views first, a design round, and keeps its own row. | — |
+| v0.20.1 | Receipts, read from git (M): counts the record holds, each with its definition, never a total in a heading. | R13: the ratio command goes; Shipped's records classification stays. | R4; FM-055's definitions |
+| v0.20.1 | R15: the filing freeze's code goes, look-before-filing and ranking stay. R17: partial and untagged vendoring go. R22: STALE shows the differing published lines. Defect 5's class fix. | — | — |
+| After v0.20.1 | R5; defects 1, 3 and 4; the harness plugin; broader R24 boundary work. | — | As on 12 October |
+| v0.21.x | Research and complex work, each from a round the Owner allocates, as line 6 says. | — | The Owner's allocation |
+| Unchanged | The held rows R6, R7, R8, R16, R20, D3 and D4, looked at on 20 October; R25–R27 kept; #154's prerequisite wording as replaced by the Owner's signed answer of 12 October in adaec88 (#168). | — | As on 12 October |
+
+- **Sizes** are S or M, never L, from the quick-wins design of 15 October, recorded privately, checked in the code at
+  `272e374`.
+- **Tiers:** every v0.20.1 row is critical but the board's look and words and the receipts, which are code.
+- **Order:** B1, the board's design and the probe's prompt are never held up by a quick win. Each quick win builds on
+  its own branch and joins the release's integration branch when its review is READY.
+- **Confidence:** 70 % that every row is READY in time for one release; the risk is R4, critical and on the longest
+  path.
 
 **2026-10-13 — R12 merged; bounded components accepted; P first review NOT READY; correction goes to final verification.**
 Owner main `80b60c8` includes #167/#168/#170/#171 and R12 READY `246ccdf`; native/full CI is not inferred
@@ -240,6 +277,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | The allocation ask filed: v0.20.1 complete, on the Owner's direction of 15 October (recorded privately). |
 | 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
 | 2026-10-13 19:48 CEST | Current-main fetch confirms R12 READY merged at `3cac843`; A1/A2 independently READY `6fe35f5`. B/C corrections and archive final verification continue; local P/Tortoise entry work proceeds through those waits. No adopted SVN consumer exists; protected acceptance/trial holds return20Oct. |

@@ -4,14 +4,6 @@ status: In Progress
 considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
 next: wait
-ask: "How does the board show an act or answer you just gave, before your merge lands it on main?"
-ask-kind: ruling
-ask-since: 2026-09-27
-ask-options: "the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way | a local pending file written by the command, cleared when main carries the change | the browser marks it on OK"
-ask-proposal: "the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way"
-answer: "accepted - the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way"
-answered: 2026-09-27
-answered-by: holgo99
 triaged: 2026-10-13
 tier: P2
 hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner` printed NOTHING NEEDS THE OWNER, yet two acts only his hands can do were owed that day. For an action ask the answer is a promise, not the act, and the tool drops the ask the moment the promise is signed. The rules it ships even steer the second kind away from him."
@@ -167,6 +159,13 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
   `--clear-ask`. A rejected one never appears. A ruling's answer still removes it at once. The triage prompt text
   carries the split.
 - **The done dialog takes several results.** Its hint asks for *the path* where `--done` takes any text: the dialog offers the current branch @ sha (or its pull request) and lists the files and trackers it touched, read from git, as the results — several paths stay possible, free text stays possible. The case: three evidence files for one act (PD-403, BUG-328, BUG-327), 2026-09-28. Raised 12:43:02 by the Auditor through the Owner; built after the acts board (`fm/030-the-board-reads-his-unmerged-acts`) lands.
+
+## Asks
+
+**2026-09-27** · How does the board show an act or answer you just gave, before your merge lands it on main?
+**answered** — accepted - the board reads git: an unmerged `origin/answer/*` tip with a `done:` or `answer:` main lacks shows as done, on its way · holgo99
+**relation** — accepted the proposal
+**signed** — 920970b · G
 
 ## Ship log
 

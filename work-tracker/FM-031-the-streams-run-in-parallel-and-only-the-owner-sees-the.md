@@ -13,6 +13,30 @@ hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests
 
 ## What is true now
 
+**2026-10-15 — the queue says merge over failed required checks; nothing is built.**
+
+**Facts,** read at main `70fe288`.
+- `--queue` and `--standup` give an open pull request the action `merge` when two things hold
+  (`shoalmark.py:2443–2466`): a READY verdict names its head, or an ancestor with only addenda after it, and there is
+  no conflict.
+- The open pull-request list requests QUEUE_FIELDS (shoalmark.py:2005, used at :2036): number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt,isCrossRepository. No required-check result is read, so a red required check cannot stop a merge.
+- **The case:** #173 at `3932e7f` carries the Reviewer's READY verdict. Its CI run `38614474342` failed both required
+  Windows suites, and the `CodeQL` check reads FAILURE. The board listed #173 as `merge`.
+
+**Fix:** the queue reads each pull request's required checks, and says `merge` only when the verdict is READY and every
+required check has passed. A failed, pending or missing required check gives `wait:` and names the check. The board's
+queue and `--standup` read the same rows.
+
+**Test for the class.** A table over every check state (success, failure, pending, missing, neutral or skipped) and
+every verdict state (READY, READY WITH FINDINGS, NOT READY, none), with `gh` stubbed:
+- `merge` appears only for READY with every required check passed;
+- each other cell gives a `wait:` that names its cause;
+- a mutant that drops the check read fails the table;
+- the board's rendering and `--standup` show the same action for each cell.
+
+**Tier:** code, with the full review loop. It changes what the board tells the Owner to merge; if that reads as the
+gate, critical.
+
 **2026-10-13 — the signed staffing exchange is acted on.** The Owner's 12 October answer in `adaec88` authorizes
 Codex to build R14 and R12 to completion with separate independent critical review. R14 shipped in v0.19.4;
 R12 is dispatched on `fm/032-r12-records-gate`. The exchange is preserved below under Asks, including its exact
@@ -237,6 +261,7 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | Defect filed: the queue and `--standup` say `merge` over failed required checks. Nothing is built. |
 | 2026-09-28 21:47 CEST | The Owner's cold re-check of `2185250`: READY at `0842ce8` (21:44:11; no findings; RV-717…719 not minted; his adversarial replay: the genuine bounded Acts insertion merges, a forged insertion in a later section waits). His word after it: the coverage his cold session listed is added as one tests-only commit on top — the RV-715 line under `## What is true now` itself under his signed `due:` (row 30), and `refusal_record` asserted directly on all seven shapes (True for the tool's three placements, False for the four forged) — the reader untouched. |
 | 2026-09-28 21:09 CEST | RV-716 (the Owner's cold re-check of `729ddae`, `dce3165`, P1: the Acts section read unbounded — a line appended inside a later `## Asks` passed, the tool's own record before it failed) fixed by the Principal seat (`8e509911`): the section bounded at the next heading as `append_record` bounds it, the suffix compared; two checks pin both shapes. Next: the Owner's cold re-check. |
 | 2026-09-28 20:15 CEST | RV-715 (the Owner's cold re-check of `af5a9e2`, `b73d8f0`, P1: a refusal-shaped line typed above `## Acts` rode his signed act as merge) fixed for 0.18.6 by the Principal seat (`8e509911`) on the same branch: `refusal_record` proves the record's place from the tracker's text (`refusal_record_in_place`), one check pins the forged shape to *an unverified commit in your name*; README's wait row and the CHANGELOG bullet say so. Next: the Owner's cold re-check. |

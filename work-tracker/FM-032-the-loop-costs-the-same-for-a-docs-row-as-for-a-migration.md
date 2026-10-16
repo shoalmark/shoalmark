@@ -5,15 +5,7 @@ considered: FM-031, FM-024, FM-027, FM-005
 tags: process
 triaged: 2026-10-13
 tier: P1
-next: owner
-ask: "After a READY WITH FINDINGS verdict, how does a fix of its findings reach main without a second Reviewer pass?"
-ask-kind: ruling
-ask-since: 2026-09-28
-ask-options: "the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts | a docs verdict with only sub-P1 findings and exact fixes reads READY WITH FINDINGS; no fix commit before the merge | as today: every commit after a verdict is a new head; the same seat re-checks the lines the finding names"
-ask-proposal: "the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts"
-answer: "accepted - the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts"
-answered: 2026-09-28
-answered-by: holgo99
+next: build
 rank: 1
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
@@ -22,7 +14,53 @@ hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merg
 
 ## What is true now
 
+**2026-10-15 — next: build: defect 3.** The S5 answer is carried by R2 and the current path's line 2: findings are fixed forward and named in the commit, with no decision file.
+
+**2026-10-15 — every change to FM-007's tracker runs the full suites, though the one test that reads it cannot break from one; nothing is built.**
+
+**Facts,** read at main `70fe288`. They are unchanged at #173's head `3932e7f`, where `test_shoalmark.py`'s lines shift
+by about 200.
+- **`.github/workflows/ci.yml:79`** reads `"$dir"/FM-007-*.md) records=false ;;`. A pull request that touches only
+  FM-007's tracker is therefore not records-only, and it runs the five full jobs.
+- **Why the line is there:** under FM-032's rule, every tracker path the suites read gets the full suites.
+  `test_shoalmark.py:13040` reads FM-007's live file for FM-029's double-answer case:
+  - it globs `work-tracker/FM-007-*.md`;
+  - it walks that path's history with `git log --full-history -G '^answer: "accepted - a hardware key that needs a
+    touch'`;
+  - it checks that `63e72b4` and `7521116`, the two answers of 2026-09-22, are among the commits found.
+- **What the test depends on:** those two commits in that path's history, and a file the glob finds. An act record, a
+  body note or a new answer adds history and removes neither commit. Only renaming or deleting FM-007's file could break
+  the test.
+- **No other live read:** the suite's other FM-007 mentions are synthetic fixtures (`:5925`, `:6331`), and
+  `test_core.py` does not name FM-007.
+- **The cost:** each FM-007 answer or act branch pays five full jobs, where one records run would do.
+- **Coupled checks:**
+  - FM-032's mutant at `test_shoalmark.py:14149`, "FM-007's entry is not among what the suites read", fails the suite
+    when the line is removed.
+  - FM-032's scan of the paths the suites read (`ci.yml: …every path under the tracker folder that test_shoalmark.py or
+    test_core.py reads…`) would flag any live read left behind.
+
+**Proposed fix, in one code round:**
+- The test reads its pinned commits directly: FM-007's content at `63e72b4` and `7521116`, by commit and that commit's
+  path. It no longer reads the live file or the path's history.
+- FM-007 then leaves `ci.yml`'s list, and the `:14149` mutant goes with it.
+- **Controls:**
+  - a mutant that changes either commit's answer line fails the test;
+  - the test passes in a probe where FM-007's live file is renamed or absent;
+  - FM-032's scan finds no live FM-007 read;
+  - a pull request that changes only FM-007 classifies as records-only.
+
+**Test for the class.** Beyond the controls: every tracker path in `ci.yml`'s list must still be read by a suite, by
+the same scan FM-032 uses. A list entry no suite needs fails, so an exception cannot outlive its reason.
+
+**Tier and order.**
+- **Critical.** `ci.yml`'s records rule decides what CI judges, so it is part of the gate; in doubt, critical, as with
+  FM-048. It takes a critical Builder, an independent Reviewer and one CI run.
+- It comes after #173, which freezes `.github`, and is ordered with FM-048, which also changes `ci.yml`; FM-048 is filed on `fm/023-day-close-current` and not on main.
+
 **2026-10-15 — R21 built: INDEX.md holds no date and no tracker count, so two tracker pull requests no longer conflict on its header.** R21, the Owner's signed ruling (`evidence/rulings-2026-10-12.md:34`), keeps INDEX.md committed with no generated date and deterministic content checking; the Owner added the tracker count on the same line, which conflicted too (46 against 47). Built from `272e374` on `fm/032-index-merges-clean` by `27f31560/builder-2`, `f311ee0`: the generator writes no date, no total count and no per-kind counts, and every row, section and note stays; `--check` ignores the previous versions' dated, counted line in the header alone, so upgrading never fails the gate, and any other difference is still STALE. The class test, `test_index_merges.py`, run by `test_core.py`, merges six pairs of tracker branches made on different days with no conflict in either order, and `--check` on each merge is clean. It pins three limits where git itself conflicts, on the two trackers' rows only: adjacent rows (L1), two filings of one kind and status (L2), and a triage move that lands next to a row the other branch changed (L3). This repository has one kind, so two pull requests that each file a `Proposed` tracker still conflict, on their two rows (L2). The hooks' copy of the tool (0.19.4, `70fe288`) still writes the dated line on every commit that stages a tracker, so this branch's INDEX.md keeps it; it goes with the first commit after `--install-hook` from a main that holds R21. Critical review and CI remain.
+
+This was defect 2 of 15 October: INDEX.md's dated, counted line made #176 conflict with #177 and with `76b0bf9`. R21 and the count fix it, in #179.
 
 **2026-10-13 — R12 CI control correction passed its separate scoped critical re-check.** The unchanged workflow retains its prior critical acceptance. The control-only product `4139137` has the independent ROOT verdict `bec95f2`: all eight existing cases and the added interception control pass on native macOS and under the local launcher simulation. `.github/workflows/ci.yml` is byte-identical to `8b7f7f1`, retaining `SHOALMARK_CMD: python3 shoalmark.py` from `068c9e6`, the three 15-minute SVN installation timeouts, truthful Windows failure propagation and all existing gate/suite names. RV-3040: recorded privately. The Owner's #170 planning records at `cab89ed` are integrated locally; all production/test/configuration blobs remain identical to the critically reviewed control product. The Owner fetches and pushes this branch to rerun Windows CI; native Windows and the complete matrix remain pending. The local launcher check is a simulation, not Windows qualification. R12 supersedes the five-records-gates wording below; signed R2/current path 2 supersedes older local-suite and compulsory decision-file proposals retained below as history. R15's verified `freeze_at = 0` remains; freeze-code deletion stays outside this slice.
 
@@ -188,10 +226,16 @@ scorer; the Owner took it out of this branch (19:16:21), so it stays on main as 
 **relation** — accepted the proposal
 **signed** — 97fa87a · G
 
+**2026-09-28** · After a READY WITH FINDINGS verdict, how does a fix of its findings reach main without a second Reviewer pass?
+**answered** — accepted - the Auditor's S5: exact fix texts, a decision file per finding; the gate covers a commit whose diff is just those texts · holgo99
+**relation** — accepted the proposal
+**signed** — 1061472 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-15 | Two defects recorded: INDEX.md's dated line (defect 2, fixed by R21 in #179), and FM-007's tracker running the full suites (defect 3). |
 | 2026-10-15 16:22 CEST | **The fix round after CI** by `27f31560/builder-2` on `fm/032-index-merges-clean`, base `70e3b64`: `acc35ec`. CI run 38744072206 on `70e3b64` failed both Ubuntu jobs. **A, R21's:** the Git entry differential compared INDEX.md's bytes with 615fb1d's tool, which still writes the dated line, so its two default cases failed; it now allows exactly R21's dropped header line, held by four controls. **B, not R21's:** `rm_git` lost a race with git's housekeeping on 3.9, and the traceback ended the suite; a path already gone is now skipped, held by three controls. The differential block passes 126 checks on 3.15 and on 3.9.6; `test_core.py` is green on both. Critical round 2 and CI remain. |
 | 2026-10-15 14:40 CEST | **R21 built** by `27f31560/builder-2` on `fm/032-index-merges-clean`, base `272e374`: `f311ee0` — INDEX.md holds no date and no tracker count; `--check` ignores the previous versions' line in the header alone. The class test: six pairs clean in both orders with `--check` clean, three limits pinned (L1–L3); the date line, a total count and the old check put back each fail it. `py_compile` on 3.15 and 3.9.6; `test_core.py` 321 ok on both; the STALE blocks of `test_shoalmark.py` 38 ok; `--check` exit 0. The hooks' copy (0.19.4) keeps the dated line in INDEX.md until `--install-hook`. Critical review and CI remain. |
 | 2026-10-13 17:18 CEST | **Current-main records integrated locally:** Owner #170 at `cab89ed`, retaining the independent critical control verdict `bec95f2` and its exact product blobs. RV-3040: recorded privately. INDEX is regenerated; scoped records verification and Owner-pushed Windows CI remain. |
