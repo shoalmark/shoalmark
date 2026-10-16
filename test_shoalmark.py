@@ -631,6 +631,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
     "hooks": "FM-002 · the Owner's box's title, rendered in every view",
     "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
+    "header": "FM-053, RV-3342 · the header row at 375, 640 and 880 px, rendered — the field, its counter and the scheme's action in view",
 }
 
 
@@ -5009,6 +5010,75 @@ if _browser("search"):
                   len(fits) == 2 and all(v.get("min") == 200 and v.get("need") and v["need"] <= v["min"] and want[k] and v.get("title") == want[k] for k, v in fits.items()))
     except _ChromeFailed as e_:
         _hung("search", e_)
+        fm.configure(HERE)
+
+# --- FM-053, RV-3342: the header row reflows on a phone — at 375, 640 and 880 px, on an empty board and a populated one, the search field, its
+#     counter and the scheme's action stay in view, inside the page's width, the field at its 200 px at least, and neither the header nor the
+#     search box runs wider than it stands. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be
+#     narrower than Chrome may allow it); the rules before the fix, put back, must fail it ----------------------------------------------------
+_HDR_WIDTHS = (375, 640, 880)
+_HDR_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getElementById(i),de=document.documentElement,'
+              'box=i=>{const e=g(i),r=e.getBoundingClientRect(),c=getComputedStyle(e),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);'
+              'return{l:r.left,r:r.right,w:r.width,h:r.height,shown:c.display!="none"&&c.visibility=="visible"&&!!h&&(h==e||e.contains(h))}};'
+              'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,H:[g("H").scrollWidth,g("H").clientWidth],sb:[g("sb").scrollWidth,g("sb").clientWidth],'
+              'q:box("q"),n:box("n"),s:box("s"),box:box("sb"),text:g("n").textContent}),"*")})</script>')
+_HDR_BEFORE = (("#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;", "#sb{flex:1;display:flex;align-items:center;gap:1ch;"),
+               ("#n{color:var(--dim);padding:3px 0}", "#n{color:var(--dim);white-space:nowrap}"), ("\n#sb{flex-basis:100%}#s{margin-left:auto}}", "}"))
+
+
+def _header_at(where, page, width):
+    """The header of the board `page` (its HTML), drawn in a frame `width` px wide inside a page of its own: what the frame's probe reports."""
+    import html as _html
+    (where / "hdr.html").write_text(page.replace("</script></html>", "</script>" + _HDR_PROBE + "</html>"), encoding="utf-8")
+    (where / "hdr-frame.html").write_text('<!doctype html><meta charset="utf-8"><body style="margin:0"><script>onmessage=e=>{document.body.dataset.probe=e.data}</script>'
+                                          f'<iframe src="hdr.html" style="display:block;border:0;width:{width}px;height:560px"></iframe>', encoding="utf-8")
+    dom_ = _chrome_run(["--window-size=1000,700", "--virtual-time-budget=4000", "--dump-dom", (where / "hdr-frame.html").as_uri()]).stdout
+    return json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', dom_) or [None, ""])[1]) or "null")
+
+
+def _header_faults(rep, width):
+    """What is wrong with one frame's header — [] where the field, the counter and the scheme's action are shown, not covered, inside the page's
+    width, the counter inside the search box, the field at least 200 px wide, and neither the header nor the box wider than it stands."""
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    out_ = [f"{k} {rep[k]}" for k in ("q", "n", "s") if not (rep[k]["shown"] and rep[k]["w"] > 0 and rep[k]["h"] > 0 and rep[k]["l"] >= -0.5 and rep[k]["r"] <= rep["cw"] + 0.5)]
+    out_ += [f"the field {rep['q']['w']:.0f} px"] if rep["q"]["w"] < 199.5 else []
+    out_ += [f"{k} {rep[k][0]} px wide in {rep[k][1]}" for k in ("H", "sb") if rep[k][0] > rep[k][1] + 1]
+    out_ += [] if rep["box"]["l"] - 0.5 <= rep["n"]["l"] and rep["n"]["r"] <= rep["box"]["r"] + 0.5 else ["the counter outside its box"]
+    return out_ + ([] if rep["text"].strip() else ["no counter"])
+
+
+_hdr_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, RV-3342 · the header's rules reflow: the search box wraps, its counter is no longer held to one line, the field keeps its 200 px, "
+      "and on a phone the search takes a header row of its own — the rules before the fix are each gone",
+      all(_hdr_src.count(new_) == 1 for new_, _old in _HDR_BEFORE) and _hdr_src.count("#q{flex:1;min-width:200px;") == 1
+      and not any(old_ in _hdr_src for _new, old_ in _HDR_BEFORE[:2]))
+if _browser("header"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d).resolve(); seen_, before_ = {}, {}
+            for kind in ("empty", "populated"):
+                root = base / kind; root.mkdir(); run(root, "--init", "--key", "msr")
+                if kind == "populated":
+                    tracker(root, "MSR-001", extra="tier: P0\ntriaged: 2026-09-20\n", title="Stock is booked per warehouse, with a title long enough to wrap twice on a phone")
+                    tracker(root, "MSR-002", extra="tier: P1\nblocked-by: MSR-001\n", title="Stock is counted per shelf")
+                    tracker(root, "MSR-003", status="Proposed", title="An untriaged one"); tracker(root, "MSR-004", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n")
+                    tracker(root, "MSR-005", extra="tier: P2\ntriaged: 2026-09-20\n"); tracker(root, "MSR-006", status="Blocked", extra="tier: P1\n")
+                run(root)
+                page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+                old_page_ = page_
+                for new_, old_ in _HDR_BEFORE:
+                    old_page_ = old_page_.replace(new_, old_)
+                for w_ in _HDR_WIDTHS:
+                    rep_ = _header_at(root / "docs/work-tracker", page_, w_); seen_[(kind, w_)] = (_header_faults(rep_, w_), (rep_ or {}).get("text"))
+                before_[kind] = _header_faults(_header_at(root / "docs/work-tracker", old_page_, 375), 375)
+            check(f"FM-053, RV-3342 · at 375, 640 and 880 px, on an empty and a populated board, the search field, its counter and the scheme's action stay in view "
+                  f"inside the page's width — the field at 200 px at least, the counter inside its box, nothing wider than it stands (saw {seen_})",
+                  len(seen_) == 6 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
+            check(f"FM-053, RV-3342 · the check's control: the header's rules before the fix, put back, fail it at 375 px on both boards (saw {before_})",
+                  all(before_.get(k_) and "no report" not in before_[k_][0] for k_ in ("empty", "populated")))
+    except _ChromeFailed as e_:
+        _hung("header", e_)
         fm.configure(HERE)
 
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------

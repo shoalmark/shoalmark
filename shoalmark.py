@@ -3544,13 +3544,14 @@ i{font-style:italic}
 /* three meanings, one colour each (the guide's amendment, G1): teal done or success, amber a warning, coral a failure — each beside its word */
 .hot{color:var(--coral)}.go{color:var(--teal)}.warn{color:var(--amber)}.owed{color:var(--owed)}
 svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:.7ch;flex:none}a svg.ico{margin:0 0 0 .7ch}
-/* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it */
+/* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it. Where the line is short the
+   count wraps under the field, inside the box, and the field keeps its 200 px; on a phone the search takes a row of its own (RV-3342) */
 #H{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2ch;margin:6px 0 6px}#H img{height:22px;width:auto}
 #H>b{font-weight:600;color:var(--head);white-space:nowrap}#H>span{color:var(--mute)}#H>span:empty{display:none}
-#sb{flex:1;display:flex;align-items:center;gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
+#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
 #sb:before{content:">";content:">" / "";color:var(--mute)}#sb:focus-within{border-color:var(--ink)}
 #q{flex:1;min-width:200px;border:0;background:none;color:var(--ink);padding:3px 0;outline:0}#q::placeholder{color:var(--mute);opacity:1}
-#n{color:var(--dim);white-space:nowrap}
+#n{color:var(--dim);padding:3px 0}
 /* never a silent loss: each brand file the board no longer reads, and what replaces it — one line, there while a file is */
 #w{color:var(--amber);margin:0 0 4px}
 /* a box means an action; information is never boxed (the Owner's rule). A button is a word in a 1px frame — the frame in --mute, which carries
@@ -3654,8 +3655,10 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 /* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
    the tool and leaving the board; the version to its release */
 #r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
-/* a phone: at least 24 px for every button, a heading's state flows under its title */
-@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.how .acts{display:block;margin:4px 0 0}}
+/* a phone: at least 24 px for every button, a heading's state flows under its title; the search a header row of its own, the scheme's button
+   under it at the right edge (RV-3342) */
+@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.how .acts{display:block;margin:4px 0 0}
+#sb{flex-basis:100%}#s{margin-left:auto}}
 /* on paper the board is always the light one */
 @media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
 </style>
