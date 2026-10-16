@@ -4,7 +4,9 @@ Every mode — `signed` or not on the default branch, and `signed` or not in thi
 an answer, a `done:` or a `due:` is proved: the board's second screen line by line (its title, its intro, the commit step,
 the end it previews, its check, where to go when it fails), the terminal's line after `--answer`, `--done`, `--due` and
 `--revoke`, and whether `--answer` passes `-S`. *Signed* appears only where the default branch's configuration asks for it,
-and `-S` is passed only there; where this checkout's configuration differs, `--answer` says so in one line. Two mutants —
+and `-S` is passed only there. Where the default branch asks for a signature this checkout does not, `--answer` says so in
+one line; where this checkout asks for one its default branch does not, it is refused before anything changes, and every
+answer it reports given passes `--check` on its branch. Two mutants —
 a surface that reads this checkout's configuration, and `-S` decided from it — each fail the table.
 
 Standalone, or staged from `test_shoalmark.py` (`run_proof_controls`). Every fixture is a throwaway repository.
@@ -127,10 +129,24 @@ def said_lines(fm, word):
     return {flag: how["said"]("answer/ap-001", ", pushed", word) for flag, how in got.items()}
 
 
+def state(root):
+    """What a refused `--answer` leaves as it found it: HEAD and the branch it is on, the tree (untracked files too), every
+    tracker's bytes, every branch here, and origin's refs."""
+    return {"HEAD": git(root, "rev-parse", "HEAD").strip(), "branch": git(root, "branch", "--show-current").strip(),
+            "tree": git(root, "status", "--porcelain", "--untracked-files=all"),
+            "trackers": {p.name: p.read_bytes() for p in sorted((root / "docs/work-tracker").glob("*.md"))},
+            "branches": git(root, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/remotes"),
+            "remote": subprocess.run(["git", "--git-dir", str(root.parent / "origin.git"), "for-each-ref", "--format=%(refname) %(objectname)"],
+                                     check=True, capture_output=True, text=True, encoding="utf-8", env=ENV).stdout}
+
+
 def table(fm, rows=((True, True), (True, False), (False, True), (False, False))):
     """FM-054's table: for each (default branch signed, checkout signed), every surface — the page's state and its second
     screen's lines, `--answer`'s step and last line, its commit's signature, its one line where the two differ — against
-    the default branch's reading alone. Returns every mismatch, as a line; [] where the table holds."""
+    the default branch's reading alone. Where the checkout asks for a signature its default branch does not (RV-3309),
+    `--answer` is refused before anything changes: HEAD, the trackers, the branches and the remote are as they were. Where it
+    reports an answer given, `--check` on that answer's branch finds no signing or rights refusal. Returns every mismatch,
+    as a line; [] where the table holds."""
     german = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
     bad = []
     for trunk_signed, here_signed in rows:
@@ -156,18 +172,33 @@ def table(fm, rows=((True, True), (True, False), (False, True), (False, False)))
                 bad.append(f"{name}: the board does not say signed where origin/main asks for it ({lines['en heading']!r}, {lines['end']!r}, {lines['check']!r})")
             if not trunk_signed and not (lines["en heading"] == "your answers here: author only" and lines["en consequence"].startswith("an answer here proves the author only")):
                 bad.append(f"{name}: the board's proof line reads {lines['en heading']!r} — {lines['en consequence']!r}")
+            before = state(root)
             code, out, err = run(fm, root, "--answer", "AP-001", "accept")
             word = fm.PROOF_SAID[want]
-            if code != 0 or not out.startswith(f"AP-001 answered: accepted\n  {word}, on `answer/ap-001`, pushed\n"):
-                bad.append(f"{name}: --answer ended {code} and said {out[:120]!r} ({err.strip()[-200:]!r})")
-            if ("3/4 committing, signed" in err) != trunk_signed:
-                bad.append(f"{name}: --answer's commit step reads {[l for l in err.splitlines() if '3/4' in l]}")
-            head = git(root, "cat-file", "commit", "refs/heads/answer/ap-001") if code == 0 else ""
-            if ("\ngpgsig" in head) != trunk_signed:
-                bad.append(f"{name}: the answer's commit is {'signed' if 'gpgsig' in head else 'not signed'}")
-            differs = [l for l in err.splitlines() if "this checkout's `shoalmark.toml`" in l or "and this checkout's does not" in l]
-            if len(differs) != (trunk_signed != here_signed) or (differs and not differs[0].rstrip().endswith(f"{word}, as the gate reads origin/main")):
-                bad.append(f"{name}: the line where the checkout differs reads {differs}")
+            if here_signed and not trunk_signed:            # RV-3309: refused in the shared preflight, before any branch, switch or write
+                after = state(root)
+                if code != fm.EXIT_LINT or out or "the signing configuration must reach origin/main first" not in err or after != before:
+                    bad.append(f"{name}: --answer was not refused before any change (exit {code}, said {out[:80]!r}, {err.strip()[-200:]!r}; "
+                               f"changed: {[k for k in before if before[k] != after[k]]})")
+            else:
+                if code != 0 or not out.startswith(f"AP-001 answered: accepted\n  {word}, on `answer/ap-001`, pushed\n"):
+                    bad.append(f"{name}: --answer ended {code} and said {out[:120]!r} ({err.strip()[-200:]!r})")
+                if ("3/4 committing, signed" in err) != trunk_signed:
+                    bad.append(f"{name}: --answer's commit step reads {[l for l in err.splitlines() if '3/4' in l]}")
+                head = git(root, "cat-file", "commit", "refs/heads/answer/ap-001") if code == 0 else ""
+                if ("\ngpgsig" in head) != trunk_signed:
+                    bad.append(f"{name}: the answer's commit is {'signed' if 'gpgsig' in head else 'not signed'}")
+                differs = [l for l in err.splitlines() if "and this checkout's does not" in l]
+                if len(differs) != (trunk_signed and not here_signed) or (differs and not differs[0].rstrip().endswith("signed, as the gate reads origin/main")):
+                    bad.append(f"{name}: the line where the checkout differs reads {differs}")
+                if code == 0:                               # the answer it reports given passes the signing and rights checks on its branch
+                    git(root, "switch", "-q", "answer/ap-001")
+                    c2, _o2, e2 = run(fm, root, "--check")
+                    git(root, "switch", "-q", "pd/001")
+                    lint = [l.strip()[:160] for l in e2.splitlines() if "lint:" in l]
+                    if c2 not in (0, fm.EXIT_DRIFT) or lint:     # drift: INDEX.md, which no hook here regenerates; any lint or refusal ends 4
+                        said = lint or [l.strip()[:160] for l in e2.splitlines() if "refused" in l]
+                        bad.append(f"{name}: the answer --answer reported pushed fails --check on its branch (exit {c2}: {said[:2]})")
             for flag, text in said_lines(fm, word).items():
                 if f"\n  {word}, on `answer/ap-001`, pushed" not in text or (bool(SIGNED_WORDS.search(text)) != trunk_signed):
                     bad.append(f"{name}: {flag} would say {text[:120]!r}")
@@ -278,7 +309,7 @@ def run_proof_controls(fm, check):
         check("FM-054 · the second screen reads every line that says how the commit is proved from PROOF — none from a literal, no touch",
               template_reads_proof(fm) == [])
         held = table(fm)
-        check(f"FM-054 · the class table: every mode, default branch and checkout, by every surface — *signed* only where origin/main asks for it, `-S` only there, one line where the checkout differs (saw {held})",
+        check(f"FM-054 · the class table: every mode, default branch and checkout, by every surface — *signed* only where origin/main asks for it, `-S` only there; a checkout that asks for more than origin/main refused before any change, every answer reported given clean under `--check` (saw {held})",
               held == [])
         with mutant_surface(fm):
             m1 = table(fm)

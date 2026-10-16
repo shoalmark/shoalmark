@@ -3136,10 +3136,18 @@ def owner_change(tid, t, how):
         print(f"{flag}: `{me}` is not in `answerers` ({', '.join(allowed) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
         return EXIT_LINT
     # FM-054: `-S` is passed as the gate reads the default branch's configuration (`answer_signing`) — never as this checkout's says, which
-    # a branch can change; where the two differ, one line says so before anything is touched
+    # a branch can change. Where the default branch asks for a signature this checkout does not, one line says so; where this checkout
+    # asks for one the default branch does not, the change is refused — both before anything is touched
     here_signed = (seat_mode(seat, pend_name or me, pend_email) if SEATS else allowed.get(me)) == "signed"
     signed, claimed, trunk, unread = answer_signing(pend_name or me, pend_email)
     proof = PROOF_SAID["signed" if signed else "author"]
+    if trunk and not unread and here_signed and not signed:
+        # FM-054, RV-3309: this checkout asks for a signature its default branch does not. Unsigned, as the default branch reads it,
+        # the change fails this branch's own gate (`lint` reads this checkout); signed, it is said where the default branch asks
+        # for nothing. Refused here, in the preflight every flow shares — before any branch is cut or switched and before any write
+        print(f"{flag}: this checkout's `{CONFIG_NAME}` asks for a signed {noun}, and {ref_name(trunk)}'s does not — the signing configuration "
+              f"must reach {ref_name(trunk)} first: merge the change that asks for it there, then run this again. Nothing was changed", file=sys.stderr)
+        return EXIT_LINT
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     dirty = changed_paths(git)
     if dirty:
@@ -3151,9 +3159,8 @@ def owner_change(tid, t, how):
         return EXIT_LINT
     if unread:
         print(f"  {ref_name(trunk)}'s `{CONFIG_NAME}` cannot be read here — {unread}; the commit is made as this checkout's reads it: {proof}", file=sys.stderr)
-    elif trunk and signed != here_signed:
-        print((f"  {ref_name(trunk)}'s `{CONFIG_NAME}` asks for a signed {noun}, and this checkout's does not" if signed
-               else f"  this checkout's `{CONFIG_NAME}` asks for a signed {noun}, and {ref_name(trunk)}'s does not") + f" — {proof}, as the gate reads {ref_name(trunk)}", file=sys.stderr)
+    elif trunk and signed and not here_signed:
+        print(f"  {ref_name(trunk)}'s `{CONFIG_NAME}` asks for a signed {noun}, and this checkout's does not — {proof}, as the gate reads {ref_name(trunk)}", file=sys.stderr)
     # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
     # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
     # from an account that did not give it. Asked before anything is touched.
