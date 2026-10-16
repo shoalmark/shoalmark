@@ -27,9 +27,10 @@ says otherwise.
   exit 4, whatever it waits on.
 - **What a person's command waits on.** `--answer` signs its commit, which can ask for the key's PIN and a touch, and
   pushes the answer branch. Neither is a hook's work, and together they can take longer than 35 s.
-- **The case.** On 16 October the Owner's first `--answer` on FM-004, run through the hooks' copy, did not finish inside
-  the bound (the Auditor's reading). `0f61c45` on `answer/fm-004` is the tool's unsigned record of that refused attempt;
-  the signed answer `92ecdce` followed.
+- **The case.** On 16 October, `0f61c45` on `answer/fm-004` recorded the Owner's refused `--answer`; its reason begins
+  `the commit was refused: error: Signing file`. The signed answer `92ecdce` followed. The Auditor attributed the attempt
+  to the bound; these commits do not verify the invocation path, elapsed time or a watchdog exit. The 35 s line was seen
+  in the Owner's terminal, as the Auditor relays it; no commit shows the run's time.
 - **Until it is built:** `SHOALMARK_BOARD_SECONDS=60`, or more, in the environment gives a run longer, as the hook's
   refusal line says.
 
