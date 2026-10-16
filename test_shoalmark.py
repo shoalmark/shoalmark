@@ -5627,17 +5627,22 @@ _PAL_CASES = (   # (what, the table, refused?, what the page or the one line mus
     ("monochrome by name", '[palette]\nname = "monochrome"\n', False, ("--bg:#f7f7f5;", "--owed:#8a5600;", "--help:#7b3fbf;")),
     ("shoalmark by name", '[palette]\nname = "shoalmark"\n', False, ("--bg:#fbfbf7;", "--owed:#a0156e;", "--amber:#7d5000;", "--warnbg:#f8eed6;", "--help:#1f5ca8;",
                                                                       "--head:#526214;", "--bg:#0d1720;", "--box:#8eb1cc;", "--amber:#f1c26a;", "--warnbg:#2b2414;")),
-    ("tokens above the contrast, the band and a tint derived — every text on every surface", '[palette]\nink = ["#000000", "#ffffff"]   # light, dark\nfail = ["#c03a2a", "#ff8a70"]\nwarn = ["#8a5600", "#f0b44c"]\n', False,
-     ("--ink:#000000;", "--ink:#ffffff;", "--coral:#c03a2a;", "--amber:#8a5600;", "--owed:#8a5600;", "--dim:#", "--line:rgba(0,0,0,0.14)", "--secbg:#ededeb;", "--failbg:#f3eae7;", "--warnbg:#fbf0d6;")),
-    ("a tint a named colour makes too light for another text, on every surface", '[palette]\nfail = ["#a00000", "#ff8080"]\n', True,
-     ("shoalmark.toml: `[palette]` is refused — mute #6a6a6a on fail's tint (derived) #f1e6e4 is 4.42:1 in light, below 4.5:1",)),
+    ("tokens above the contrast, every text on every surface, the surfaces monochrome's", '[palette]\nink = ["#000000", "#ffffff"]   # light, dark\nfail = ["#c03a2a", "#ff8a70"]\nwarn = ["#8a5600", "#f0b44c"]\n', False,
+     ("--ink:#000000;", "--ink:#ffffff;", "--coral:#c03a2a;", "--amber:#8a5600;", "--owed:#8a5600;", "--dim:#", "--line:rgba(0,0,0,0.14)", "--secbg:#efefeb;", "--failbg:#faeae6;", "--warnbg:#fbf0d6;")),
+    # DF-4: a palette may name its surfaces; where it names none, it takes the palette's own and they are checked against its page and accents
+    ("a named tint", '[palette]\nokbg = ["#e6f2ea", "#10271d"]\n', False, ("--okbg:#e6f2ea;", "--okbg:#10271d;")),
+    ("a taken tint, checked against the palette's accent", '[palette]\nfail = ["#b3402f", "#f45050"]\n', False, ("--coral:#f45050;", "--failbg:#2c1612;", "--okbg:#10271d;")),
+    ("a named tint too dark for its text", '[palette]\nokbg = ["#d9ece0", "#123020"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — mute #6a6a6a on okbg #d9ece0 is 4.38:1 in light, below 4.5:1",)),
+    ("a taken tint the palette's accent cannot stand on", '[palette]\nfail = ["#b3402f", "#ec5050"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — fail #ec5050 on okbg (taken) #10271d is 4.38:1 in dark, below 4.5:1",)),
     ("a token at the contrast, 4.51:1 on raise", '[palette]\nfail = ["#6b6b6b", "#ff7b66"]\n', False, ("--coral:#6b6b6b;",)),
     ("a token below the contrast, 4.44:1 on raise", '[palette]\nfail = ["#6c6c6c", "#ff7b66"]\n', True,
      ("shoalmark.toml: `[palette]` is refused — fail #6c6c6c on raise #ececea is 4.44:1 in light, below 4.5:1",)),
     ("a page too close to the ink, in dark: the derived dim", '[palette]\nbg = ["#f7f7f5", "#555555"]\n', True,
      ("shoalmark.toml: `[palette]` is refused — dim (derived) #", "on bg #555555 is", "in dark, below 4.5:1")),
     ("an unknown name", '[palette]\nname = "neon"\n', True, ('shoalmark.toml: `[palette]` is refused — `name = "neon"` is no palette: monochrome or shoalmark',)),
-    ("a key it does not take", '[palette]\nblue = ["#000000", "#ffffff"]\n', True, ("it takes `name` and `bg`, `ink`, `fail`, `ok`, `warn`, `owed`, `help` — not `blue`",)),
+    ("a key it does not take", '[palette]\nblue = ["#000000", "#ffffff"]\n', True, ("it takes `name` and `bg`, `ink`, `fail`, `ok`, `warn`, `owed`, `help`, `secbg`, `okbg`, `warnbg`, `failbg` — not `blue`",)),
     ("heed, a key the guide's first draft named, never shipped", '[palette]\nheed = ["#b3402f", "#ff7b66"]\n', True, ("— not `heed`",)),
     ("a token that is not two colours", '[palette]\nfail = ["#b3402f"]\n', True, ("`fail` is two colours, light then dark, each #rrggbb",)))
 
@@ -5674,8 +5679,9 @@ def _palette_class(source):
 
 
 _pal_ok, _pal_saw = _palette_class(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"))
-check(f"FM-053, G1–G2 · `[palette]`: monochrome with no table and by name, byte for byte, its three meanings, its section band `--secbg` (never `--band`) and its tints the amendment's; shoalmark "
-      f"by name, its own amber and tint; tokens above and at 4.5:1 worn, in light and in dark, the band and the tints derived; one below, a page and an "
+check(f"FM-053, G1–G2, DF-4 · `[palette]`: monochrome with no table and by name, byte for byte, its three meanings, its section band `--secbg` (never `--band`) and its tints the amendment's; shoalmark "
+      f"by name, its own amber and tint; tokens above and at 4.5:1 worn, in light and in dark, every text on every surface; a named tint worn, a taken one checked against the "
+      f"palette's accents, and each refused where a text cannot stand on it; one below, a page and an "
       f"ink too close, an unknown name, a key it does not take — `heed` among them — and a token that is not two colours each refused in one line naming "
       f"it, by the board's run and by `--check`, exit 1, the page left as it was (saw {_pal_saw})", _pal_ok)
 _PAL_MUTANT = ('''                    refuse(f"{named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1")''',
@@ -5761,7 +5767,9 @@ def _accept(source):
               and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#w", ".vwarn .ty", ".warn"],
                               "coral": [".dfl.del .s", ".hot", ".q.r", ".vfail .ty"], "owed": [".owed"], "help": [".help"]}
               and verdict_ == {"READY": "vok", "READY TO TAG": "vok", "READY WITH FINDINGS": "vwarn", "NOT READY": "vfail"}
-              and box_src.count("VERDICT[v[5]]") == 1 and 'class="q' not in box_src and tokens["owed"] == tokens["amber"],
+              and box_src.count("VERDICT[v[5]]") == 1 and 'class="q' not in box_src and tokens["owed"] == tokens["amber"]
+              and all(d_.get("font-weight") == "600" for s, d_ in plain if s in (".vok .ty", ".vwarn .ty", ".vfail .ty"))
+              and any(s == "#dlg pre.cmd" and d_.get("border-left") == "1ch solid var(--teal)" for s, d_ in plain),
               f"tints {tinted}, colours {colours}, verdicts {verdict_}")
     # 3 · nothing framed but actions: a box only on what is clickable and on the search field, one titled frame, the dialog's window
     framed = sorted({s for s, d_ in plain if any(k == "border" and not v.startswith(("0", "none")) for k, v in d_.items())})
@@ -5801,9 +5809,9 @@ def _accept(source):
 _S11 = {1: "the five-second test: every row of the box reads what it is, then its type, its state, its actions — in the markup's order, not by colour; each "
            "type is a word — an ask's kind, an act, an answer, a verdict's own word (the asks sent back, not for you, carry none); no button is an icon "
            "alone, the copy button's noun and its spoken verb stand beside its icon; help is told apart by its dashed rule, not its colour",
-        2: "the meanings: teal only for done or success, amber only for a warning, coral only for a failure, each beside its word as text or as a tint — "
+        2: "the meanings: teal only for done or success and the 1ch rule beside a command (DF-3), amber only for a warning, coral only for a failure, each beside its word as text or as a tint — "
            "the tints only on *waiting for you*'s band while asks wait, a verdict's row, *copied* and a diff's lines; READY and READY WITH FINDINGS never "
-           "coral; violet only on help; no status colour in the box",
+           "coral, each verdict's word at weight 600 (DF-2); violet only on help; no status colour in the box",
         3: "nothing framed but actions: a whole frame stands only on the buttons, the search field, the dialog's fields, the Owner's box and the dialog's "
            "window — and the work table's 5 px status square, a mark of data outside the box; a band and a tint have no frame; every action's frame is "
            "--mute, at least 3:1 against the page by day and by night; every button at least 24 px high on a phone",
@@ -5829,7 +5837,8 @@ for what_, (a_, b_) in _DIVIDER_MUTANTS.items():
     check(f"FM-053 · G8 · the divider · its mutant, {what_}: the class row FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))["divider"][0])
 _S11_MUTANTS = {
     "a READY coloured coral": ('VERDICT={"READY":"vok",', 'VERDICT={"READY":"vfail",'),
-    "a confidence on a tint — the seat's proposal on teal's": ('#dlg .dp{margin:0 0 8px;color:var(--dim)}', '#dlg .dp{margin:0 0 8px;color:var(--dim);background:var(--okbg)}')}
+    "a confidence on a tint — the seat's proposal on teal's": ('#dlg .dp{margin:0 0 8px;color:var(--dim)}', '#dlg .dp{margin:0 0 8px;color:var(--dim);background:var(--okbg)}'),
+    "teal on a row's state, beside no command (DF-3)": ('.st{color:var(--dim)}', '.st{color:var(--teal)}')}
 for what_, (a_, b_) in _S11_MUTANTS.items():
     check(f"FM-053 · §11 · 2 · the meanings · its mutant, {what_}: test 2 FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))[2][0])
 fm.configure(HERE)

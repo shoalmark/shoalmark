@@ -597,7 +597,7 @@ every repository. Only the git-ignored board reads them: `INDEX.md` and the gate
 
 - **The look is the board's own:** `monochrome`, in the system's monospace; no theme is read and no font ships. The
   colours are `[palette]` in `shoalmark.toml`: `name = "shoalmark"` for the public pages' palette, or a few of
-  `bg` `ink` `fail` `ok` `warn` `owed` `help` as `["#light", "#dark"]` — three meanings: done, a warning, a failure.
+  `bg` `ink` `fail` `ok` `warn` `owed` `help`, and the surfaces `secbg` `okbg` `warnbg` `failbg`, as `["#light", "#dark"]`.
   Below 4.5:1 for any text, on the page, a band or a tint, it is refused in one line.
 - **No longer read, never a silent loss:** a place's `theme.css`, `fonts/` and `wordmark.svg` — and the `themes/` an
   older copy shipped — are named, file by file, by every board build, by `--brand` and in one line of the board, with

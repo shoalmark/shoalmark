@@ -4072,7 +4072,7 @@ PALETTES = {
                    "blue": ("#2f62d6", "#6f9bff"), "yellow": ("#946c0f", "#e8cf5a")},
     # the sea chart's colours, as the theme the tool shipped until R10 drew them: deep water, shallow tints for the box, the Watt's drying green for the
     # headings, land's buff for ids, chart magenta for what is owed to you and nothing else, the chart's blue for help, and its own amber and amber's
-    # tint (the guide's §13); its section band and its other two tints stand from its page toward its ink and its accents, as a palette's own (PALETTE_DERIVED)
+    # tint (the guide's §13); its section band and its other two tints its own, drawn once from its page toward its ink and its accents
     "shoalmark": {"bg": ("#fbfbf7", "#0d1720"), "raise": ("#e3eff7", "#1a2d3e"), "ink": ("#10202e", "#d9e4ec"), "dim": ("#3e4e5b", "#a9bbc8"),
                   "mute": ("#51606c", "#90a3b1"), "line": ("rgba(16,32,46,.14)", "rgba(217,228,236,.15)"), "box": ("#8eb1cc", "#34546c"),
                   "coral": ("#b3301f", "#f38a80"), "teal": ("#0d6f56", "#7fd9bf"), "amber": ("#7d5000", "#f1c26a"), "owed": ("#a0156e", "#ee92d4"),
@@ -4081,19 +4081,21 @@ PALETTES = {
                   "blue": ("#1f5ca8", "#8fb9f3"), "yellow": ("#785b00", "#f1d47a")},
 }
 # `[palette]` in the configuration: a palette by name, and a few of its role tokens in the Owner's words, each [light, dark] — `fail` is `coral`,
-# `ok` is `teal`, `warn` is `amber`. `dim`, `mute`, `line`, `box`, `raise` and `secbg` are derived from `bg` and `ink` where either is given; a
-# tint from the page and its meaning's colour where either is given; `owed` is amber's value where unset, unless the palette names its own.
-# `[palette]` has never shipped before these keys, so no older key is read. An older copy of the tool reads the table and ignores it.
-PALETTE_WORDS = {"bg": "bg", "ink": "ink", "fail": "coral", "ok": "teal", "warn": "amber", "owed": "owed", "help": "help"}
-PALETTE_TINTS = {"okbg": "teal", "warnbg": "amber", "failbg": "coral"}      # each tint, and the meaning whose tint it is
+# `ok` is `teal`, `warn` is `amber` — and its surfaces, `secbg`, `okbg`, `warnbg` and `failbg`, named the same way (the guide, §5, DF-4). `dim`,
+# `mute`, `line`, `box` and `raise` are derived from `bg` and `ink` where either is given. A surface the table names none of is the palette's own —
+# monochrome's by default — and is checked, like every surface, against the palette's page and accents. `owed` is amber's value where unset,
+# unless the palette names its own. `[palette]` has never shipped before these keys, so no older key is read. An older copy of the tool reads the
+# table and ignores it.
+PALETTE_WORDS = {"bg": "bg", "ink": "ink", "fail": "coral", "ok": "teal", "warn": "amber", "owed": "owed", "help": "help",
+                 "secbg": "secbg", "okbg": "okbg", "warnbg": "warnbg", "failbg": "failbg"}
 # the set contrast (WCAG), in light and in dark: every text token at least PALETTE_FLOOR against the page, against `raise`, and on every surface —
 # the section band `secbg` and the three tints (the guide, §5). `mute` is also the action's frame, at least PALETTE_FRAME against the page
 PALETTE_TEXT = ("ink", "dim", "mute", "coral", "teal", "amber", "owed", "help", "head", "idink")
+PALETTE_TINTS = ("secbg", "okbg", "warnbg", "failbg")         # the surfaces: a table may name each, and takes the palette's own where it does not
 PALETTE_ON = {ground: PALETTE_TEXT for ground in ("bg", "raise", "secbg", "okbg", "warnbg", "failbg")}
 PALETTE_FLOOR, PALETTE_FRAME = 4.5, 3.0
-# how far from the page toward the ink (or a tint's meaning) each derived token stands, and the rules' and the box's alpha — light, then dark
-PALETTE_DERIVED = ({"dim": .716, "mute": .627, "raise": .049, "secbg": .04, "tint": .07, "line": .14, "box": .28},
-                   {"dim": .698, "mute": .573, "raise": .07, "secbg": .05, "tint": .12, "line": .15, "box": .26})
+# how far from the page toward the ink each derived token stands, and the rules' and the box's alpha — monochrome's own, light then dark
+PALETTE_DERIVED = ({"dim": .716, "mute": .627, "raise": .049, "line": .14, "box": .28}, {"dim": .698, "mute": .573, "raise": .07, "line": .15, "box": .26})
 
 
 def palette_of(table):
@@ -4123,22 +4125,18 @@ def palette_of(table):
     mix = lambda a, b, t: "#" + "".join(f"{round(int(a[i:i + 2], 16) + (int(b[i:i + 2], 16) - int(a[i:i + 2], 16)) * t):02x}" for i in (1, 3, 5))
     rgba = lambda c, a: f"rgba({int(c[1:3], 16)},{int(c[3:5], 16)},{int(c[5:7], 16)},{a:g})"
     derived = set()
-    for i, (s, f) in enumerate(zip(("light", "dark"), PALETTE_DERIVED)):
-        t, own = out[s], {k: v[i] for k, v in PALETTES[name].items()}
+    for s, f in zip(("light", "dark"), PALETTE_DERIVED):
+        t = out[s]
         if given & {"bg", "ink"}:
-            t.update({k: mix(t["bg"], t["ink"], f[k]) for k in ("dim", "mute", "raise", "secbg")})
+            t.update({k: mix(t["bg"], t["ink"], f[k]) for k in ("dim", "mute", "raise")})
             t.update(line=rgba(t["ink"], f["line"]), box=rgba(t["ink"], f["box"]))
-            derived |= {"dim", "mute", "raise", "secbg"}
+            derived |= {"dim", "mute", "raise"}
             if PALETTES[name]["head"] == PALETTES[name]["ink"]:     # a palette whose headings and ids are in its ink keeps them in the ink given
                 t["head"] = t["idink"] = t["ink"]
-        for tint, meaning in PALETTE_TINTS.items():                 # a palette that names its own accents names its own tints
-            if (t["bg"], t[meaning]) != (own["bg"], own[meaning]):  # a colour named as the palette's own keeps the palette's tint
-                t[tint] = mix(t["bg"], t[meaning], f["tint"]); derived.add(tint)
         if "owed" not in given and PALETTES[name]["owed"] == PALETTES[name]["amber"]:
             t["owed"] = t["amber"]
     said = {v: k for k, v in PALETTE_WORDS.items()}
-    grounds = {"okbg": "ok's tint", "warnbg": "warn's tint", "failbg": "fail's tint"}
-    named = lambda token: said.get(token, grounds.get(token, token)) + (" (derived)" if token in derived else "")
+    named = lambda token: said.get(token, token) + (" (derived)" if token in derived else " (taken)" if token in PALETTE_TINTS and token not in given else "")
     for s in ("light", "dark"):
         t = out[s]
         for ground, texts in PALETTE_ON.items():
@@ -5150,12 +5148,12 @@ def shape_words(shape):
 
 
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
-    "[palette]": ("`name` = `\"monochrome\"` (the default) or `\"shoalmark\"`; and any of `bg` `ink` `fail` `ok` `warn` `owed` `help` = `[\"#rrggbb\", \"#rrggbb\"]`, light then dark",
+    "[palette]": ("`name` = `\"monochrome\"` (the default) or `\"shoalmark\"`; and any of `bg` `ink` `fail` `ok` `warn` `owed` `help` `secbg` `okbg` `warnbg` `failbg` = `[\"#rrggbb\", \"#rrggbb\"]`, light then dark",
                   "the board's colours (FM-053): a palette by name, a few of its tokens in your words over it — three meanings, `ok` (teal: done), `warn` "
-                  "(amber: a warning) and `fail` (coral: a failure); `dim`, `mute`, `line`, `box`, `raise` and the band are derived from `bg` and `ink`, each "
-                  "meaning's tint from the page and its colour. Every text colour reaches 4.5:1 on every ground it stands on — the page, `raise`, the band, "
-                  "each tint — in light and in dark, or the palette is refused at configuration in one line naming the pair (exit 1). An older copy of the "
-                  "tool ignores the table"),
+                  "(amber: a warning) and `fail` (coral: a failure); `dim`, `mute`, `line`, `box` and `raise` are derived from `bg` and `ink`. The surfaces, "
+                  "`secbg` `okbg` `warnbg` `failbg`, may be named the same way; where none is, the palette's own are taken. Every text colour reaches 4.5:1 on "
+                  "the page, `raise` and every surface, in light and in dark, or the palette is refused at configuration in one line naming the pair "
+                  "(exit 1). An older copy of the tool ignores the table"),
     "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email> signed\"` — a signed identity is an email; at the top of the file, before any table",
               "who the Owner is (FM-024): the one who answers, and holds all four rights — the Owner is not a seat. `signed` is read per identity, as for a seat. "
               "`[seats] owner` is still read, as its old spelling: both present and the same are read once; both present and different are refused at configuration (exit 1), "
