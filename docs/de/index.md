@@ -83,7 +83,7 @@ Hook installiert ist. Läuft mit git auf Windows, macOS und Linux. Lizenz: Apach
 - Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
 - Für eine Person mit dem letzten Wort und ihre Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
 - Kein Beweis, dass die Arbeit stimmt. Das Gate lässt nichts ohne Commit dahinter als fertig durch; ob der Commit tut, was er soll, klärt ein Review.
-- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Heute braucht das Werkzeug ein installiertes `git`, auch unter Subversion. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
+- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: keine Signatur und ohne Anmeldung am Server keinen Autor. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
 
 ## Hier anfangen
 

@@ -1,6 +1,6 @@
 # In zehn Minuten eingerichtet
 
-*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer und ein installiertes `git` — heute auch unter Subversion.*
+*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: keine Signatur und ohne Anmeldung am Server keinen Autor.*
 
 ## 1. Das Werkzeug ins Repository legen
 
