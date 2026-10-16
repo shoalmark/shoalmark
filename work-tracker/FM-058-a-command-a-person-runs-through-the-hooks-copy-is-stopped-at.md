@@ -16,8 +16,9 @@ ask-proposal: "60 s for a hook's run and the board's run; no bound on a command 
 
 ## What is true now
 
-**Filed 2026-10-16, defect 10, with its ask; nothing is built.** It is built after v0.20.1, unless the Owner's answer
-says otherwise.
+**Filed 2026-10-16, defect 10, with its ask; nothing is built.** On the Owner's word of the same day it moves into
+v0.20.1: the guided answer view (FM-059, quick win 11) needs a command a person runs to have no bound, so it is built
+first.
 
 **Facts,** read at main `5f792d6`.
 - **A run of the hooks' copy is a hook's run.** `HOOK_RUN` (`shoalmark.py:59`) is true for every run of the copy of the
@@ -52,10 +53,11 @@ copy and through the tree's tool.
 ## Done when
 
 - The Owner's signed answer stands here, and the build's brief cites it.
-- Built after v0.20.1, or when the answer says, with its class test.
+- Built in v0.20.1, before the guided answer view, with its class test.
 
 ## Ship log
 
 | Date | Event |
 |---|---|
 | 2026-10-16 | Filed, defect 10, with its ask (the Auditor's finding, relayed by the Owner). Nothing is built. |
+| 2026-10-16 | Moved into v0.20.1 on the Owner's word: the guided answer view (FM-059) needs it first. |
