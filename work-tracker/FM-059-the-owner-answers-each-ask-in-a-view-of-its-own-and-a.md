@@ -3,13 +3,16 @@ id: FM-059
 status: Proposed
 considered: FM-050, FM-007, FM-054, FM-058
 tags: process
-next: owner
+next: build
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
 ask: "Which release builds the guided answer view: the Board view that holds only one ask's dialog, opened by a prepared run that signs what you chose?"
 ask-kind: ruling
 ask-since: 2026-10-16
 ask-options: "v0.20.1 | the first release after v0.20.1 | a later release, which I name in my answer"
 ask-proposal: "v0.20.1"
+answer: "accepted - v0.20.1"
+answered: 2026-10-16
+answered-by: holgo99
 ---
 
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
