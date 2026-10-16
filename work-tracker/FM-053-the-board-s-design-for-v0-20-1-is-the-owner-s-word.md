@@ -25,7 +25,7 @@ answered-by: holgo99
 tracker in `ef33598`. The ask was filed at `2876287`, filed again at `fbf6ef0` with the label `viewer.handover`
 ("handover") in the guide's §10, and is filed again at the commit that sets the light `--mute` and `--teal` to reach
 4.5:1 against `--raise`, so that the answer adopts the guide with them, and with its §4 the icons, as they stand
-there. Nothing in them is built into the board.
+there.
 
 **2026-10-16 — answered, then amended.** The Owner's signed answer adopts the guide as it stood at `82b8c15` (accepted,
 `1281a75`; its record is under `## Asks`). The same day, in a design sitting, the Owner approved the board with surfaces
@@ -62,6 +62,17 @@ commit that files this tracker's new ask:
 Owner keeps that. §2.8's *nothing refreshes itself* and the read-at line's *this page does not update itself* said
 otherwise. Both now say *it reads its file again when you come back to it; nothing polls*, and this tracker's ask
 adopts that wording. The Designer checks it.
+
+**2026-10-16 — A2, the board's v2 look and words, is built** on `fm/053-board-v2`: R10's look half (theme layering, the
+font files, theme copying and the inline wordmark go; `[palette]` takes their place, refused below the set contrast, and
+each brand file the board no longer reads is named), the board to the guide as answered and to G1 to G5 and G8 of the
+amendment, and B1's signing words. Its first review was NOT READY at `2c8d041` (`76c1ccd`): the header row on a phone, a
+palette name that is a list, this tracker's line that nothing was built, and a review row's branch. Round 1 fixes the
+four on the branch; the Designer's build findings follow in the same round. What remains:
+- the second review round and the Designer's build check, on round 1's head;
+- CI: its browser checks (among them the header row at 375, 640 and 880 px), the documentation build and
+  `scripts/check_site.py`, which run there and not on the build's machine;
+- integration into `release/v0.20.1` with the board's other builds, where its CHANGELOG and ADOPT lines are written.
 
 ## The public homes
 
@@ -113,3 +124,4 @@ adopts that wording. The Designer checks it.
 | 2026-10-16 | The docs pass's two ratio findings fixed forward: the dark `--box` ratio is 2.1, and §13's help ratios are 6.4:1 and 9.0:1. The ask filed again with them. |
 | 2026-10-16 | The amendment's answer recorded under `## Asks` (accepted, signed `fee3874`); next: build. |
 | 2026-10-16 | The reload's wording amended in §2.8 and the read-at line, with the ask that adopts it (`next: owner`). |
+| 2026-10-16 | A2 built on `fm/053-board-v2`: the v2 look and words, R10's look half and B1. Its first review NOT READY at `2c8d041` (`76c1ccd`), four findings. Round 1 on the branch: a palette name that is a list refused in one line (`8597bd7`), a review row's branch (`319ac53`), the header row on a phone (`db21666`), and this record. |
