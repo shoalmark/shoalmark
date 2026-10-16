@@ -78,7 +78,9 @@ as `default_trunk` reads it (`:3261`).
   `recover_relations` (`:1833`) and `record_relation` (`:1906`).
 - **An ask open without an id when the build lands** is read the same way. At `b84b8af` these are:
   - answered, not yet cleared: FM-004, FM-006, FM-026, FM-044 and FM-049;
-  - waiting: FM-023, FM-037, FM-055 and this tracker's own.
+  - waiting: FM-023, FM-037 and FM-055.
+- **This tracker's own ask** is a draft (`next: review`), not yet put: at `b84b8af`, FM-050 had `next: wait` and no
+  ask. Put to the Owner before the build, it is an ask before ids, read as those above are.
 - **How such an ask is answered and checked:**
   - `--answer <ITEM>` answers it by tracker id;
   - the gate verifies the answer as today (`lint`, `:8693–8738`, through `line_author`);
@@ -475,3 +477,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 |---|---|
 | 2026-10-15 | Designed by the Builder seat (`27f31560/builder-5`): `## The design`, the ask-id design with R4's answer commit, and its open questions; the ask drafted (`next: review`) for the Planner to put to the Owner. Records only. |
 | 2026-10-15 | Filed. |
+| 2026-10-16 | Reviewed, not ready (`cc9e80b`): two findings go back to the Builder; the base's list of waiting asks is corrected forward by the Planner. |
