@@ -5287,7 +5287,7 @@ read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
 read.none: "gelesen aus dem Ordner {0}"
 read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
 read.at: "gebaut {0}"
-read.self: neu gebaut nur, wenn das Werkzeug läuft
+read.self: sie liest ihre Datei wieder, wenn Sie zu ihr zurückkehren; nichts fragt ständig nach
 read.rebuild: "neu bauen:"
 read.copy: kopieren
 read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
@@ -11429,7 +11429,7 @@ _Q4_MUTANTS = (
      'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), 0'),
     ("the time missing", 'facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]',
      'facts += [esc(say("read.self"))]'),
-    ("the word current", '"read.self": "rebuilt only when the tool runs"', '"read.self": "rebuilt only when the tool runs, and current until then"'),
+    ("the word current", '"read.self": "it reads its file again when you come back to it; nothing polls"', '"read.self": "it reads its file again when you come back to it; nothing polls — it is current"'),
 )
 def _q4_fixtures(base):
     """The five shapes, each with one tracker: git with nothing changed, git with three paths changed and not committed (a tracker edited, a file staged, a
@@ -11491,12 +11491,12 @@ def _q4_case(shape, root, tool):
     return dict(shape=shape, code=code_, line=line_, cmd=cmd_, wired=wired_, built=built_, want=want_, record=record_, keys=keys_, shown=shown_,
                 timely=bool(at_ and at_.tzinfo and t0_ <= at_ <= t1_), said=(o_ + e_).strip()[-200:])
 def _q4_ok(g):
-    """The page's line holds each fact the shape holds, the time it was built as `view/built.json` records it — read within the run —, the words that it is
-    rebuilt only when the tool runs, and the rebuild command, `--html-only`, with its copy button on the clipboard's path; none of *current*, *live*, *up to
+    """The page's line holds each fact the shape holds, the time it was built as `view/built.json` records it — read within the run —, the words that the
+    page reads its file again when one comes back to it and that nothing polls (the Owner's ruling, in its own words), and the rebuild command, `--html-only`, with its copy button on the clipboard's path; none of *current*, *live*, *up to
     date*; and `view/built.json` holds exactly the shape's fields, with the same values."""
     b_ = g["built"] or {}
     return (g["code"] == 0 and all(w_ in g["line"] for w_ in g["want"]) and g["shown"] is not None and g["timely"] and f"built {g['shown']}" in g["line"]
-            and "rebuilt only when the tool runs" in g["line"] and g["cmd"].endswith(" --html-only") and g["cmd"] in g["line"] and g["wired"]
+            and "it reads its file again when you come back to it; nothing polls" in g["line"] and g["cmd"].endswith(" --html-only") and g["cmd"] in g["line"] and g["wired"]
             and not _Q4_BAD.search(g["line"]) and set(b_) == g["keys"] and all(b_.get(k_) == v_ for k_, v_ in g["record"].items()))
 def _q4_saw(gs):
     return "; ".join(f"{g_['shape']}: exit {g_['code']}, {g_['line'][:150]!r}, built.json {sorted(g_['built'] or {})}" for g_ in gs)
@@ -11506,7 +11506,7 @@ with tempfile.TemporaryDirectory() as d:
         _skipped("FM-057 · Q4 · the Subversion shape", 1, "svn or svnadmin is not installed here — the working copy's revision is not read here")
     real_ = [_q4_case(k_, r_, HERE / "shoalmark.py") for k_, r_ in fix_.items()]
     for g_ in real_:
-        check(f"FM-057 · Q4 · {g_['shape']}: the page names what it read, and when — {', '.join(g_['want'])}, built at its time, rebuilt only when the tool runs, "
+        check(f"FM-057 · Q4 · {g_['shape']}: the page names what it read, and when — {', '.join(g_['want'])}, built at its time, that it reads its file again when one comes back and nothing polls, "
               f"the rebuild command with its copy button, and no *current*, *live* or *up to date*; `view/built.json` records the same (saw {_q4_saw([g_])})", _q4_ok(g_))
     if _has_rev(_Q4_REV):
         _old_tree(base_ / "b84", _Q4_REV)

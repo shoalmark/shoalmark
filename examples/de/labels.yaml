@@ -137,7 +137,8 @@ read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
 read.none: "gelesen aus dem Ordner {0}"
 read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
 read.at: "gebaut {0}"
-read.self: neu gebaut nur, wenn das Werkzeug läuft
+# read.self: a draft — the native read is the go-to-market seat's
+read.self: sie liest ihre Datei wieder, wenn Sie zu ihr zurückkehren; nichts fragt ständig nach
 read.rebuild: "neu bauen:"
 read.copy: kopieren
 read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.

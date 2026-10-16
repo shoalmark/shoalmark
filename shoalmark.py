@@ -3929,7 +3929,7 @@ LABELS = {
     "read.svn": "read from the working copy at {0}", "read.svn.unread": "read from the working copy: its revision is not read here",
     "read.svn.new": "read from the working copy, which has no revision yet",
     "read.none": "read from the folder {0}", "read.none.why": "no version control: no commit or revision to name",
-    "read.at": "built {0}", "read.self": "rebuilt only when the tool runs", "read.rebuild": "rebuild it:", "read.copy": "copy",
+    "read.at": "built {0}", "read.self": "it reads its file again when you come back to it; nothing polls", "read.rebuild": "rebuild it:", "read.copy": "copy",
     "read.unlinked": "{0} ({1})",                # the commit, and why it is not a link
     "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
     "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
