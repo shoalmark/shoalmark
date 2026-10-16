@@ -75,8 +75,8 @@ eigenen Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht s
 ## Was es nicht ist
 
 shoalmark braucht keinen eigenen Server und kein eigenes Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je
-Arbeitspaket, eine Python-Datei und ein Gate bei jedem Commit, das ablehnt, was sich widerspricht. Läuft mit git auf
-Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
+Arbeitspaket, eine Python-Datei und ein Gate, das ablehnt, was sich widerspricht: in der CI und bei jedem Commit, wo sein
+Hook installiert ist. Läuft mit git auf Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
 
 **In dieser Beta:**
 

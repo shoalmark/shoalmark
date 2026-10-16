@@ -52,7 +52,7 @@ convention only: checks and traceability are later.
 ---
 
 A work tracker that lives in the repository it tracks: one Markdown file per work item, one Python file that reads
-them all, a gate on every commit. It needs no server or database of its own; besides Python 3.9 or newer, it needs `git` installed, today.
+them all, a gate in CI and on commit. It needs no server or database of its own; besides Python 3.9 or newer, it needs `git` installed, today.
 **This page is written for the agent that has to use it.** Find your situation, do what it says.
 
 | You are… | Go to |

@@ -72,8 +72,8 @@ overwrites a file or a hook it did not write.
 ## What it is not
 
 shoalmark needs no server or account of its own, and its ids are ones you can say out loud, like FM-012. One Markdown file per
-work item, one Python file, and a gate on every commit that refuses what contradicts itself. Runs with git on Windows,
-macOS and Linux. Licence: Apache-2.0 or MIT.
+work item, one Python file, and a gate that refuses what contradicts itself: in CI, and on each commit where its hook is
+installed. Runs with git on Windows, macOS and Linux. Licence: Apache-2.0 or MIT.
 
 **In this beta:**
 
