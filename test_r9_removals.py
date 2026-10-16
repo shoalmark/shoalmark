@@ -6,8 +6,8 @@
   them), the state `--notify` kept, the log of the README's cron line, the README's launchd agent and its log — is named by
   `--standup` and `--owner`, each piece, and stays byte for byte as it was: nothing is removed, nothing is added. A calendar
   file of a person's own, at the top or nested, and one reached through a symlinked file or folder, are not named.
-- `--standup`, `--owner`, `--due` and `--done` print, on a fixture with nothing left over, what they printed at b84b8af, the
-  commit R9 was built on, and `--due` and `--done` write the same record.
+- `--standup`, `--owner`, `--due` and `--done` print, on a fixture with nothing left over, what they printed at 36d4961, the
+  tool R9 joins in PR B (the d-batch's head), and `--due` and `--done` write the same record.
 
 Run: `python3 test_r9_removals.py` — exit 1 on a failure. `SHOALMARK_R9_TOOL=<path>` runs it against another copy of the tool:
 that is how its mutants are run (a leftover deleted; a leftover not named), and each must fail it. test_shoalmark.py runs it at
@@ -25,7 +25,7 @@ import tempfile
 
 
 HERE = Path(__file__).resolve().parent
-BASE = "b84b8af"                    # the commit R9 was built on
+BASE = "36d4961"                    # the tool R9 joins in PR B: the d-batch's head, before R9 as b84b8af was, which R9 was built on
 OWNER = "owner@example.invalid"
 REMOVED = (("--invite", ["--invite", "AP-001"]), ("--notify", ["--notify"]), ("--standup FILE.ics", ["--standup", "cal.ics"]))
 ACT_ICS = (b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//shoalmark//act//EN\r\nBEGIN:VEVENT\r\nUID:act-ap-001-0000000000000000@shoalmark\r\n"
