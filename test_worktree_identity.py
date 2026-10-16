@@ -285,6 +285,21 @@ def identity_checks(fm, base, docs, check, skip):
           and any(pair_line(l, parent, kept, mine, PARENT) for l in says) and any(pair_line(l, third, kept, mine, dict(PARENT, **{"seat.session": "not known"})) for l in says),
           f"exits {codes}, lines {says}")
 
+    # a folder whose name holds a line break is one worktree (`git worktree list --porcelain -z`), and its line stays one line, the break written `\n`:
+    # in `--whoami` and in the hook
+    if os.name == "nt":
+        skip("a worktree folder whose name holds a line break is named, on one line", "Windows allows no line break in a folder's name")
+    else:
+        broken = base / "line\nbreak"
+        git(parent, "worktree", "add", "-q", "--detach", str(broken))
+        said_by = {}
+        for how, run_ in (("--whoami", lambda: tool(fm, child, "--whoami")), ("the hook", lambda: tool(fm, child, "--session-trailer", str(msg)))):
+            msg.write_text("a seat's subject\n", encoding="utf-8")
+            out_ = run_()
+            said_by[how] = [l for l in reported(out_[2]) if pair_line(l, broken, kept, mine, PARENT)]
+        check("a worktree folder whose name holds a line break is one worktree, named in one line with the break written `\\n` — by `--whoami` and by the hook",
+              broken.is_dir() and all(len(v) == 1 and "line\\nbreak carries" in v[0] for v in said_by.values()), str(said_by))
+
     # the command line's `-c` scope names this commit's author, not another worktree's setting: it masks no difference
     os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="user.email", GIT_CONFIG_VALUE_0="builder@seat")
     try:

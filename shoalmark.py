@@ -7036,7 +7036,7 @@ def harness_reading(hid):
 # each (`shared_harness`): another worktree that carries this one's harness id or session while another of the four keys differs; another seat worktree
 # that carries this one's name under another seat; and this worktree itself where its session names a seat its address is not. A report, never a
 # refusal: the commit is made, and its trailers are what they were.
-# THE READS are the read-only list's: `git worktree list --porcelain`, then ONE `git -C <worktree> config -z --get-regexp SEAT_IDENTITY_KEYS` for this
+# THE READS are the read-only list's: `git worktree list --porcelain -z`, then ONE `git -C <worktree> config -z --get-regexp SEAT_IDENTITY_KEYS` for this
 # worktree and for each other worktree — all four keys in one process (`worktree_identity`). A read that ends in 1 (none of the keys is set) or 128
 # (no such folder, no repository there) is NOT KNOWN, and so is a key the read does not name: it matches nothing, and a key not known is said so. One
 # scan reads at most `WORKTREE_READ_CAP` other worktrees, in the order `git worktree list` gives, and says how many it left unread: at most
@@ -7077,11 +7077,11 @@ def shared_harness(hid, top):
     or a full, unchanged copy (the named limit). Nothing is read without `hid`."""
     if not hid:
         return [], 0, True
-    listed = (git_out("worktree", "list", "--porcelain") or None)
-    if listed is None:
+    listed = git_out("worktree", "list", "--porcelain", "-z")             # NUL-delimited: a folder whose name holds a line break is one folder
+    if not listed:
         return [], 0, False
     here = os.path.normcase(os.path.realpath(top))
-    others = [t for t in (l[len("worktree "):] for l in listed.splitlines() if l.startswith("worktree ")) if os.path.normcase(os.path.realpath(t)) != here]
+    others = [t for t in (f[len("worktree "):] for f in listed.split("\0") if f.startswith("worktree ")) if os.path.normcase(os.path.realpath(t)) != here]
     mine = worktree_identity(top)
     mine["seat.harness"] = mine["seat.harness"] or hid                      # Codex's thread id, where no `seat.harness` is set
     seat = lambda ident: seat_of(ident["user.name"] or "", ident["user.email"] or "") or ident["user.email"]
@@ -7100,18 +7100,23 @@ def shared_harness(hid, top):
     return findings, max(0, len(others) - WORKTREE_READ_CAP), True
 
 
+def one_line(text):
+    """`text` on one line: a line break in a folder's name or in a value is written `\\n` (`\\r`), so each finding stays one line."""
+    return text.replace("\r", "\\r").replace("\n", "\\n")
+
+
 def shared_harness_lines(hid, top):
     """What `--whoami` and the hook say of `shared_harness`: one line for each mixed identity it found, one where git listed no worktrees, and one for
-    the worktrees it left unread."""
+    the worktrees it left unread. A line break in a folder or a value is written `\\n` (`one_line`)."""
     findings, unread, listed = shared_harness(hid, top)
-    said = lambda v: "not known" if v is None else v or "''"
+    said = lambda v: "not known" if v is None else one_line(v) or "''"
     lines = []
     for f in findings:
         if f["folder"] is None:
-            lines.append(f"one harness id is one session — this worktree's seat.session {f['session']} names the seat {f['seats'][0]}, and its user.email "
-                         f"{f['email']} is the seat {f['seats'][1]}: write this worktree's own keys (README, *Sessions*)")
+            lines.append(f"one harness id is one session — this worktree's seat.session {said(f['session'])} names the seat {f['seats'][0]}, and its user.email "
+                         f"{said(f['email'])} is the seat {f['seats'][1]}: write this worktree's own keys (README, *Sessions*)")
         else:
-            lines.append(f"one harness id is one session — {f['folder']} carries this worktree's " + ", ".join(f"{k} {said(v)}" for k, v in f["shared"])
+            lines.append(f"one harness id is one session — {one_line(f['folder'])} carries this worktree's " + ", ".join(f"{k} {said(v)}" for k, v in f["shared"])
                          + " under another identity: " + "; ".join(f"{k} {said(t)} there, {said(m)} here" for k, t, m in f["differ"])
                          + " — `git worktree add` copied one worktree's keys into the other: write each worktree's own (README, *Sessions*)")
     if not listed:
