@@ -3862,7 +3862,7 @@ function box(){
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
         "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
       (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`)+" · "+brn(v[6]||["none"]),v[5]?l("verdict."+v[5]):l("type.verdict"),
-        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+l("reviews.sessions",v[2]||"—",v[3].join(", ")||"—")),"","",VERDICT[v[5]])).join(""),false))}
+        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",VERDICT[v[5]])).join(""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
     S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
@@ -4023,6 +4023,8 @@ LABELS = {
     "reviews.title": "reviews · this week", "reviews.counts": "{0} by another session · {1} by the same session",
     "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
+    # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
+    "reviews.sessions.more": "{0} and {1} more",
     # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous* in amber
     "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
     "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
@@ -8124,13 +8126,27 @@ def verdict_branch(history, verdict, tips, trunk_sha, trunk_name):
     return ["line", names[0]] if len(names) == 1 else ["ambiguous", names] if names else ["none"]
 
 
+def oldest_session(history, tip, own):
+    """BF-6 — the session of the reviewed range's oldest commit that carries one, another verdict's commit aside as for the range's sessions:
+    down the tip's first-parent line first, the branch's own line, oldest first; then the rest of the range, each after its parents in it
+    (ties by sha). "" where no commit of the range carries one."""
+    if not own:
+        return ""
+    line = [c for c in history.first_parents(tip) if c in own]
+    rest, done, order = sorted(own - set(line)), set(), list(reversed(line))
+    while rest:
+        ready = [c for c in rest if all(p not in own or p in done or p in line for p in history.parents.get(c, ()))] or rest[:1]
+        order += ready; done |= set(ready); rest = [c for c in rest if c not in done]
+    return next((history.trailers(c, "Session")[0] for c in order if not history.trailers(c, "Reviewed") and history.trailers(c, "Session")), "")
+
+
 def verdict_reports(days=None):
     """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
     its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
     range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
     is on the trunk's first-parent line (not a branch verdict) — and the verdict's own word, read from its subject as `--queue` reads it
-    (`VERDICT_WORD_RE`; "" where it names none), and its branch (`verdict_branch`, RV-3343: ["merge", name, merge] where the merge's message
-    names it, ["unnamed", merge] where it names none). The range is the branch's own commits, less other
+    (`VERDICT_WORD_RE`; "" where it names none), its branch (`verdict_branch`, RV-3343: ["merge", name, merge] where the merge's message
+    names it, ["unnamed", merge] where it names none), and the session of the range's oldest commit that carries one (`oldest_session`, BF-6). The range is the branch's own commits, less other
     verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", f"--format=%H%x01%s%x01{TRAILERS}%x02", "HEAD") or ""      # the subject, as `--queue` reads it
@@ -8167,7 +8183,7 @@ def verdict_reports(days=None):
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")
-        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict], branches[verdict]))
+        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict], branches[verdict], oldest_session(history, tip, own) if tip else ""))
     return out
 
 
@@ -8183,7 +8199,7 @@ def sessions_report():
         lines.append(f"reviews this week · {len(reps)} verdict(s) · independent {count['independent']} · same session {count['same session']}"
                      + (f" · untraced {count['untraced']}" if count["untraced"] else "") + (f" · on trunk {count['on trunk']}" if count["on trunk"] else ""))
         lines += [f"  verdict {v[:10]} on {r[:10]}: " + ("on trunk — not a branch verdict" if w == "on trunk" else
-                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word, _branch in reps]
+                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word, _branch, _first in reps]
     return lines
 
 
@@ -8247,7 +8263,8 @@ def board_sessions():
     """The report as the board shows it — the parents with a commit in the last 24 hours (each: id, seat, worktree, its
     sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, this
     week's verdicts as [independent, same session, untraced, on trunk, not ready, ready with findings], and each verdict as [verdict, reviewed,
-    its session, the range's sessions, the word, the verdict's own word, its branch (`verdict_branch`)] — or None where there is neither, or no git."""
+    its session, the range's sessions, the word, the verdict's own word, its branch (`verdict_branch`), the range's oldest session
+    (`oldest_session`)] — or None where there is neither, or no git."""
     if vcs() != "git":
         return None
     groups = session_groups()
@@ -8259,7 +8276,7 @@ def board_sessions():
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
-            "verdicts": [[v, r, sid, list(ranged), w, word, branch] for v, r, sid, ranged, w, word, branch in reps]}
+            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first] for v, r, sid, ranged, w, word, branch, first in reps]}
 
 
 def sessions_digest():

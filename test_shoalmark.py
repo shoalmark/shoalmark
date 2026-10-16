@@ -634,6 +634,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "header": "FM-053, RV-3342, BF-2 · the header row at 375, 640, 880 and 1024 px, rendered — the field, its counter and the scheme's action in view",
     "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
     "owner": "FM-053, BF-3 · `next: owner`, rendered — *you* in the tier's cell, `owner` in code font on the handover line",
+    "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
 }
 
 
@@ -1412,7 +1413,7 @@ with tempfile.TemporaryDirectory() as d:
           "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
               "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
               and "reviews · this week · 2 by another session · 1 by the same session · untraced 1 · reports, not proofs" in strip_
-              and "by the same session · its session a9/reviewer-1, the branch's a9, a9/implementer-1" in strip_ and "independent" not in strip_
+              and "by the same session · its session a9/reviewer-1, the branch's a9 and 1 more" in strip_ and "independent" not in strip_
               and strip_.count("· branch feat") == 4)))      # RV-3343: each row names its branch, the one its verdict was committed to
 # --- FM-053, RV-3343: a verdict's row names its branch — the one that holds the verdict commit on its own line, or the merge that brought that line
 #     in, by its message; ambiguous or not known, with why; never a ref that merely points at the reviewed commit. The class test, run on the tool
@@ -1512,6 +1513,73 @@ if _browser("branch"):
         _hung("branch", e_)
         fm.configure(HERE)
 
+# --- FM-053, BF-6: a review row names the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id,
+#     none stays —. The range's sessions are sorted by name, so the oldest is carried in the data of its own; the class test fails on a mutant
+#     that takes the first by name
+def _oldest_class(tool):
+    """The class test on `tool`, a module: three branches, each reviewed — none, one and many sessions, the oldest of the many last by name —
+    merged into a fourth that HEAD stands on, read by `verdict_reports` and drawn by the board's data. (ok, {verdict: what differed})."""
+    with tempfile.TemporaryDirectory() as d_:
+        root_ = Path(d_).resolve()
+        out_ = lambda *a: subprocess.run(["git", "-C", str(root_), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+        commit_ = lambda subject: (git(root_, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+        git(root_, "init", "-q", "-b", "main"); run(root_, "--init", "--key", "msr"); tracker(root_, "MSR-001"); run(root_)
+        git(root_, "add", "-A"); git(root_, "commit", "-qm", "the trunk")
+        want_ = {}
+        for name_, sessions_, first_ in (("fm/none", (None, None), ""), ("fm/one", ("k1", "k1"), "k1"), ("fm/many", ("zz9", "aa1", "mm5"), "zz9")):
+            git(root_, "checkout", "-q", "-b", name_, "main")
+            for n_, s_ in enumerate(sessions_):
+                built_ = commit_(f"{name_}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
+            want_[commit_(f"review: READY\n\nReviewed: {built_}\nSession: r-{name_[3:]}")] = (sorted({s_ for s_ in sessions_ if s_}), first_)
+        git(root_, "checkout", "-q", "-b", "together", "main")
+        for name_ in ("fm/none", "fm/one", "fm/many"):
+            git(root_, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+        tool.configure(root_)
+        got_ = {v[0]: (v[3], v[7]) for v in tool.verdict_reports() if v[0] in want_}
+        data_ = {v[0]: (v[3], v[7]) for v in (tool.board_sessions() or {}).get("verdicts", []) if v[0] in want_}
+        rm_git(root_)
+    wrong_ = {k[:10]: (w_, got_.get(k), data_.get(k)) for k, w_ in want_.items() if got_.get(k) != w_ or data_.get(k) != (w_[0], w_[1])}
+    return len(want_) == 3 and not wrong_, wrong_
+
+
+_old_ok, _old_saw = _oldest_class(fm)
+check(f"FM-053, BF-6 · a review row's branch sessions: none, one and many — the oldest commit's session carried beside the sorted list, in the "
+      f"report and in the board's data, never the first by name (saw {_old_saw})", _old_ok)
+_tool_src_old = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_OLD_MUTANT = ('oldest_session(history, tip, own) if tip else ""))', 'sorted(ranged)[0] if ranged else ""))')
+check("FM-053, BF-6 · the class test FAILS on its mutant, the branch's first session taken by name",
+      _tool_src_old.count(_OLD_MUTANT[0]) == 1 and not _oldest_class(_tool_module(_tool_src_old.replace(*_OLD_MUTANT), "fm_oldest_mutant"))[0])
+sys.modules.pop("fm_oldest_mutant", None); fm.configure(HERE)
+_rv_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-6 · the row renders the branch's sessions as the oldest's id and *and n more*, one alone as its id, none as —, the verdict's own session as it was",
+      _rv_src.count('lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))') == 1
+      and fm.LABELS.get("reviews.sessions.more") == "{0} and {1} more" and 'v[3].join(", ")' not in _rv_src)
+if _browser("sessions"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
+            rows_ = {}
+            for name_, sessions_, want_ in (("fm/none", (None,), "its session r-none, the branch's —"), ("fm/one", ("k1", "k1"), "its session r-one, the branch's k1"),
+                                            ("fm/many", ("zz9", "aa1", "mm5"), "its session r-many, the branch's zz9 and 2 more")):
+                git(root, "checkout", "-q", "-b", name_, "main")
+                for n_, s_ in enumerate(sessions_):
+                    built_ = commit_(f"{name_}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
+                rows_[commit_(f"review: READY\n\nReviewed: {built_}\nSession: r-{name_[3:]}")] = want_
+            git(root, "checkout", "-q", "-b", "together", "main")
+            for name_ in ("fm/none", "fm/one", "fm/many"):
+                git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+            run_safe(root, "--html-only")
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            said_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
+            check(f"FM-053, BF-6 · rendered: none reads —, one its id, many the oldest's id and *and 2 more* (saw {list(said_.values())})",
+                  all(re.sub(r"<[^>]+>", "", said_[v]).endswith(w_) for v, w_ in rows_.items()))
+    except _ChromeFailed as e_:
+        _hung("sessions", e_)
+        fm.configure(HERE)
 # --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -5540,6 +5608,7 @@ verdict.READY TO TAG: ready to tag
 verdict.NOT READY: not ready
 next.owner: you
 reviews.sessions: its session {0}, the branch's {1}
+reviews.sessions.more: {0} and {1} more
 reviews.word.another: by another session
 reviews.word.same: by the same session
 reviews.word.untraced: untraced
