@@ -16,7 +16,8 @@ ask-proposal: "yes"
 
 ## What is true now
 
-**Filed 2026-10-15 as a design tracker. Designed 2026-10-15 (`## The design`, below); not reviewed, not ruled; nothing built.**
+**Filed 2026-10-15 as a design tracker. Designed 2026-10-15 (`## The design`, below); reviewed 2026-10-16, not ready (`cc9e80b`),
+its findings fixed in this round; not ruled; nothing built.**
 
 - **Today:** a tracker holds at most one open ask, in its front matter. `--clear-ask` moves an answered exchange under
   `## Asks`, dated, with no id. An answer is tied to its ask only by its tracker and the ask's date.
@@ -265,8 +266,16 @@ that removed the line (FM-056). The design does not rely on it. It needs the id 
 - **F1:** the value is `<this tracker's id>-Q<n>`, `n` from 1 with no leading zero; the key stands on one line, spelled
   in lower case. Refused: `FM-002-Q1` in FM-001, `FM-001-Q0`, `FM-001-Q01`, `Ask-Id:`, and two `ask-id:` lines.
 - **F2:** an `ask-id:` without an `ask:`.
-- **F3, a reused number:** the front matter's id is also a record's id. Two records with one id and two questions are
-  history: a note, never a refusal, because the binding keeps their answers apart.
+- **F3, a reused number in one copy:** the front matter's id is also a record's id; or two records carry one id.
+- **Duplicate archived ids** are two records under `## Asks` that carry one id. Defined apart from the answer, which
+  plays no part here: a record carries no standing answer.
+  - **Refused wherever they can still be stopped:** on a branch, where the default branch's copy does not hold both
+    records, by F3 and, before the merge, by C5.
+  - **Kept where both have landed on the default branch:** only a merge made against C5 and `--queue`'s wait, or a
+    commit made past the hook, can bring them there. Each record names its answer's commit by its sha (`**signed** —`),
+    so neither is rewritten once it has landed. `--check` notes them, naming both records with their dates and the merge
+    that brought the second; every reader names such a record by its id and its date (`FM-050-Q2 of <date>`); and the
+    next number is above both.
 
 **On git, the walk reads these rules from each change; on Subversion, from the uncommitted change.** They are judged
 for every author, the Owner included: a reused number is not a right. `changes_under_review` (`:6208`) feeds them, beside
@@ -289,7 +298,7 @@ for every author, the Owner included: a reused number is not a right. `changes_u
   - `--answer` refuses as today (`:2751`), and names revoke and `--supersede`;
   - an id answered and cleared is in the record, and `--answer` says so;
   - the gate refuses two heads for one id (3b) until one answer replaces the other, on a branch that holds both.
-- **A reused number:** F3, C2 and C4.
+- **A reused number:** F3, C2, C4 and C5.
 - **An answer that names an ask its tracker no longer holds open:** `--answer FM-050-Q2` while the tracker holds
   `FM-050-Q3` refuses before writing: `FM-050 holds another ask now: FM-050-Q3, since <date>: "<question>".
   FM-050-Q2 was withdrawn and is in FM-050's record. Nothing was written. Read FM-050-Q3, then answer it by its id.` The
@@ -297,23 +306,36 @@ for every author, the Owner included: a reused number is not a right. `changes_u
   - an answer beside an id no head names (3b): a merge that left the answer under `FM-050-Q3`;
   - an answer under an id that the record shows withdrawn (F3).
 - **The Owner names the ask they read.** `--answer FM-050` on an ask that carries an id refuses, and names the id.
-- **Two branches that each mint the same number for one tracker** (FM-027's lesson):
-  - **which is refused:** the branch whose number the default branch holds with another question. The default branch
-    keeps its number, as the first to merge does for tracker ids;
-  - **where:**
-    - C5, in `lint`: one `cat_blobs` of the default branch's copy of every tracker that holds an id. An id the branch's
-      copy and the default branch's copy both hold with different questions is refused on the branch;
-    - by the pre-commit hook, where the clone holds the default branch, and by CI on the branch's pull request;
-    - `--queue` reads it `wait: FM-050-Q2 is taken on origin/main — renumber`, beside `triage_reading` (`:2640`): the
-      Owner's merge view says it even where the branch's last check ran before the other branch merged.
-  - **The same id with the same question** on two branches (a cherry-pick) is one ask. It is not refused.
+- **Two branches that each mint the same number for one tracker** (FM-027's lesson): **C5**, on git.
+  - **The ids a branch proposes:** those its copy of a tracker holds, open or in a record, that the copy at its merge
+    base with the default branch does not hold (one `git merge-base`; the copies read by one `cat_blobs`). An id the
+    merge base already held is the default branch's own, carried by the branch, and the merge brings its later state
+    (an answer, a clearing) in step.
+  - **The default branch's numbers:** its copy's open ask, and every record under its `## Asks`, answered or withdrawn.
+  - **A proposed id passes** where it is above every number of the default branch's copy, or where the default branch's
+    open ask holds it with an equal put ask (`put_ask`): one ask put on both branches, as by a cherry-pick.
+  - **Every other proposed id is refused on the branch,** and the refusal names what holds it:
+    - the default branch's open ask with another put ask;
+    - or a record of the default branch, whatever its question. An id the default branch has archived, held open or
+      archived again on the branch, comes back beside that record after the merge. A record keeps only the question,
+      so the refusal quotes it for the seat to see whether it is the same ask; the id decides.
+  - **The refusal names the next number** above both copies. The default branch keeps its number, as the first to merge
+    does for tracker ids.
+  - **Where:**
+    - in `lint`, by the pre-commit hook where the clone holds the default branch, and by CI on the branch's pull request;
+    - in `--queue`, the same reading of each pull request's head against its base, beside `triage_reading` (`:2640`):
+      `wait: FM-050-Q2 is taken on origin/main — renumber`. The Owner's merge view says it even where the branch's last
+      check ran before the other branch merged.
   - **Where both open asks reach one merge:**
     - git's conflict on the front matter stops it;
     - a resolution that keeps one put ask with the other's answer is refused (3b: the put ask is not the one
       answered);
     - the put ask the resolution drops is the merger's to put again, under the next number.
-  - **Where a stale check let an open ask in beside a record with its id:** F3 refuses on the default branch, and the
-    open one is renumbered.
+  - **Where a stale check let an open ask in beside a record with its id:** F3 refuses on the default branch. The open
+    ask is renumbered to the next number, its put ask unchanged. This is the one change that moves an id without a
+    record of its own: the record that holds the id is the other ask's, and a second record would make duplicate
+    archived ids. An answer the open ask carried does not follow, since its commit names the old id: the Owner answers
+    again under the new number.
 
 ### 5. What the board, `--standup` and `--owner` print
 
@@ -369,11 +391,18 @@ for every author, the Owner included: a reused number is not a right. `changes_u
     - a new id below the highest number in the records;
     - a number written and removed in the file's history: refused on git, and accepted in the plain-folder fixture,
       with its limit line;
-    - two records with one id: a note.
+    - two records with one id: refused where they are new on the branch; a note where both have landed on the default
+      branch, with the next number above both.
   - **Two branches, C5:**
     - both mint `Q2` and A merges: B refused by `--check` and in `--queue`; B renumbered `Q3`, accepted;
-    - A answers and clears `Q2`, and B's open `Q2` merges clean beside A's record: refused on B before the merge, and
-      by F3 after a merge made without the check;
+    - A answers and clears `Q2`, and B's open `Q2` merges clean beside A's record: refused on B before the merge,
+      because C5 reads the default branch's records, by `--check` and in `--queue`; and by F3 after a merge made without
+      the check;
+    - A and B each clear a `Q2` of their own: duplicate archived ids, refused on B by C5 and F3; after a merge made
+      against the gate, a note on the default branch naming both, and the next number above both;
+    - B carries `Q2` from its merge base while A answers and clears it: not proposed, accepted, and the merge brings A's
+      record in step;
+    - B proposes `Q2` while the default branch's highest is `Q3`, and holds no `Q2`: refused, naming `Q4`;
     - both open: the conflict, and a resolution that keeps A's question with B's answer, refused;
     - one ask cherry-picked to both branches: accepted.
   - **The answer's binding, 3b:**
@@ -413,6 +442,8 @@ for every author, the Owner included: a reused number is not a right. `changes_u
   - **no check for two heads:** two answers to one id both stand;
   - **C4 without the history read:** a number lost from the file is minted again;
   - **C5 against the branch's own base:** the default branch is not compared;
+  - **C5 without the default branch's records** (its open ask alone): the row where A answers and clears `Q2` and B's
+    open `Q2` would merge beside it passes on B, so the row turns red;
   - **signers read from the checkout:** a branch's key vouches for itself;
   - **the next number from the front matter alone:** the records are not counted;
   - **`--answer` by tracker id on an ask with an id:** the Owner can answer an ask they did not name;
@@ -420,8 +451,8 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 
 ### 7. What *never reused* can claim on each backend
 
-- **Git:** never reused as far as these show: the file, its history reachable from `HEAD`, and the default branch's copy
-  (C5). A number minted on a branch this clone has not fetched is not seen until it is fetched; C5 refuses it on the
+- **Git:** never reused as far as these show: the file, its history reachable from `HEAD`, and the default branch's copy,
+  its open ask and its records (C5). A number minted on a branch this clone has not fetched is not seen until it is fetched; C5 refuses it on the
   branch, and `--queue` waits on it, once it is.
 - **Subversion:**
   - **what it reads:** the file, and the log of its path (`svn log --xml <file>`). The log's messages are read for
@@ -464,7 +495,7 @@ for every author, the Owner included: a reused number is not a right. `changes_u
   - **The ids:**
     6. `ask-id:`: the schema, `ASK_LINES`, `GUARDED_KEYS`, `extract`, and F1–F3.
     7. C1–C4 in the walk, and `ask_numbers`, on all three backends.
-    8. C5 in `lint`, and its wait in `--queue`.
+    8. C5: one reading of proposed ids against the default branch's open ask and records, in `lint` and in `--queue`.
     9. The answer commit: `--answer <ask-id>`, the trailer, the refusals, `answer_commit`. `line_author` leaves the answer
        gate for asks with ids, `signed_line` and `answer_cmd`'s `replaced`.
     10. `--clear-ask` writes the id. The board's row, dialog and search; `--owner`, `--standup` and `--answered`.
@@ -487,9 +518,9 @@ for every author, the Owner included: a reused number is not a right. `changes_u
    given to, but the record would no longer show the first one as withdrawn.
 5. **The `ask` right.** Who may put an ask is still read through `line_author` (`seat_problems`, `:6117`, at `:6131`),
    and FM-056 holds that. The ids do not change it.
-6. **What C5 does not see.** C5 compares copies. A number the default branch used and lost without a record after the
-   branch was cut is not seen by C5. C3 refuses that loss on the default branch itself, and C4's history read covers
-   what the branch's own history holds.
+6. **What C5 does not see.** C5 compares copies: the default branch's open ask and its records. A number the default
+   branch used and lost without any record after the branch was cut is not seen by C5. C3 refuses that loss on the
+   default branch itself, and C4's history read covers what the branch's own history holds.
 
 ## Done when
 
@@ -506,3 +537,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-15 | Filed. |
 | 2026-10-16 | Reviewed, not ready (`cc9e80b`): two findings go back to the Builder; the base's list of waiting asks is corrected forward by the Planner. |
 | 2026-10-16 | RV-3284 (recorded privately) fixed in the design, by the Builder seat (`27f31560/builder-5`), from the Planner's draft. |
+| 2026-10-16 | RV-3285 fixed in the design, by the Builder seat: C5 compares the ids a branch proposes with the default branch's open ask and its records, answered or withdrawn, in `lint` and in `--queue`; duplicate archived ids are defined; a row and a mutant cover the records. |
