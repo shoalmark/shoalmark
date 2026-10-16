@@ -38,8 +38,8 @@ Session endet mit `--owner`: dieselbe Liste, damit sie zu Ihnen kommt, ohne dass
 Auf der Tafel trägt jede Frage **annehmen** und **ablehnen**. Beides öffnet einen Dialog mit der Frage, ihren
 Möglichkeiten (die vom Agenten empfohlene zuerst) und dem, was sie aufhält; beim Annehmen können Sie eine Änderung
 mitgeben, beim Ablehnen sagen Sie, warum. OK gibt Ihnen einen Befehl — `python3 tools/shoalmark/shoalmark.py --answer
-AP-007 accept` —, der die Antwort schreibt, mit Ihrem Schlüssel signiert und pusht. Die Antwort ist Ihr eigener
-Commit: [Ihre Antwort ist Ihr Commit](signing.md).
+AP-007 accept` —, der Ihre Antwort als Commit schreibt, mit Ihrem Schlüssel signiert, sobald Sie das Signieren
+einschalten. Die Antwort ist Ihr eigener Commit: [Ihre Antwort ist Ihr Commit](signing.md).
 
 ## Ihre Handlungen, mit ihrer Zeit
 

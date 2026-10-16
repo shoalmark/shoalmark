@@ -12,7 +12,7 @@ shoalmark keeps your project's work as plain files inside the project, so every 
 
 1. **The agents work and record where the work stands.** Each work item is a Markdown file with what is true now and what comes next. A *done* with no commit behind it is refused by the gate.
 2. **What only you can decide becomes a question.** When an agent needs your decision it writes it down as one sentence, with the options and its own proposal, and carries on with other work. Between standups nobody interrupts you, except for what cannot be undone.
-3. **Once a day, you sit.** At the time you chose, the standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes the answer, signs it with your key and pushes it.
+3. **Once a day, you sit.** At the time you chose, the standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes your answer as a commit, signed with your key once you turn signing on.
 4. **The agents act on your answer, and a reviewer judges before the merge.** A seat that holds the right to do so records your answer in the work item and moves on. Before work reaches a merge, a reviewer checks it; the board says whether that pass was independent, meaning it came from another session than the code. That is a report, not a proof. `--queue` lists the open pull requests in the order to merge them.
 
 <figure class="week" markdown="0">
