@@ -15,10 +15,10 @@ Ticketsysteme wurden gebaut, damit Menschen einander Arbeit zuweisen. shoalmark 
 --8<-- "start.de.md"
 
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden
-kann – ein Satz pro Frage, einmal am Tag –, und macht aus ihrer Antwort einen einzigen Befehl.
+kann – ein Satz pro Frage, für ein Standup zu der Uhrzeit, die sie wählt –, und macht aus ihrer Antwort einen einzigen Befehl.
 
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
-shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.
+shoalmark sammelt diese Fragen auf einem Board, für ein Standup zu der Uhrzeit, die Sie wählen.
 
 **Ihre Antwort ist ein Commit, nie ein Klick oder eine Zeile im Chat.** Im Beleg zählt eine Antwort nur als
 Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihre

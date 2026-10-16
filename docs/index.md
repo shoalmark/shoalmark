@@ -17,10 +17,10 @@ repository, no done gets through without a commit behind it, and what waits for 
 --8<-- "start.en.md"
 
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
-sentence per question, once a day, and make their answer one command.
+sentence per question, for one sitting at the time they choose, and make their answer one command.
 
-**To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
-questions and puts them to you once a day.
+**To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark gathers those
+questions on one board, for one sitting at the time you choose.
 
 **Your answer is a commit, never a click or a line in chat.** In the record, an answer counts only as a commit
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as
