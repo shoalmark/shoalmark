@@ -68,7 +68,10 @@ font files, theme copying and the inline wordmark go; `[palette]` takes their pl
 each brand file the board no longer reads is named), the board to the guide as answered and to G1 to G5 and G8 of the
 amendment, and B1's signing words. Its first review was NOT READY at `2c8d041` (`76c1ccd`): the header row on a phone, a
 palette name that is a list, this tracker's line that nothing was built, and a review row's branch. Round 1 fixes the
-four on the branch; the Designer's build findings follow in the same round. What remains:
+four on the branch, and with them the Designer's build findings on `2c8d041`: the work table's group line and the
+header's count inside the frame, *you* for `next: owner`, a heading's marker on a phone, a review row's sessions and its
+heading's counts, *shipped or closed* for *ended*, and a count past 14 asks. The reload stays, as the Owner ruled. What
+remains:
 - the second review round and the Designer's build check, on round 1's head;
 - CI: its browser checks (among them the header row at 375, 640 and 880 px), the documentation build and
   `scripts/check_site.py`, which run there and not on the build's machine;
@@ -125,3 +128,4 @@ four on the branch; the Designer's build findings follow in the same round. What
 | 2026-10-16 | The amendment's answer recorded under `## Asks` (accepted, signed `fee3874`); next: build. |
 | 2026-10-16 | The reload's wording amended in §2.8 and the read-at line, with the ask that adopts it (`next: owner`). |
 | 2026-10-16 | A2 built on `fm/053-board-v2`: the v2 look and words, R10's look half and B1. Its first review NOT READY at `2c8d041` (`76c1ccd`), four findings. Round 1 on the branch: a palette name that is a list refused in one line (`8597bd7`), a review row's branch (`319ac53`), the header row on a phone (`db21666`), and this record. |
+| 2026-10-16 | The Designer's build findings fixed in round 1: the work table's group line wraps (`4b425b0`); the header's count stands clear of the scheme's button (`5e38e08`); `next: owner` reads *you* (`f37b5b5`); a heading's marker keeps its space on a phone (`cbb49c3`); a review row names the branch's oldest session (`5bb4fb7`); its heading's counts put the number first (`eeacb1c`); *shipped or closed* for *ended* (`e6031e5`); a count past 14 asks (`8ee3602`). The reload stays, as ruled. |
