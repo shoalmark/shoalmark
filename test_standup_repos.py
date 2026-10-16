@@ -14,6 +14,11 @@ tool, its deriver, every git hook, and the programs a configuration can name, an
   commit, and no svn but the one local status (POSIX: git and svn are watched through a shim on PATH).
 - It writes nothing: every file and folder of the fixture, the home among them, is byte for byte and time for time as it
   was (the snapshot before and after).
+- It starts git and svn by their absolute paths, from PATH's first absolute entry outside the repositories named — never a
+  relative entry, the current folder or an entry inside a listed repository (RV-3303: recorded privately) — with
+  `NoDefaultCurrentDirectoryInExePath` set while it runs and put back after; where neither PATH entry holds the program, the
+  folders that need it are named as not read, and counted in nothing. On Windows (CI), a `git.exe` and an `svn.exe` in a listed
+  repository and in the run's own folder never run, through the CLI or `standup_across`, and the output is as without them.
 - `--standup` alone prints what it printed at ac8899d, the commit Q7 was built on.
 
 Run: `python3 test_standup_repos.py` — exit 1 on a failure. `SHOALMARK_Q7_TOOL=<path>` runs it against another copy of
@@ -34,6 +39,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import zipfile
 
 
 HERE = Path(__file__).resolve().parent
@@ -58,8 +64,9 @@ def tool_path():
 
 
 def environment(home, path=None):
-    """A run's environment: this process's, without git's own variables, with `home` as every system's home and no global or system git configuration."""
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "SHOALMARK_")) and k not in ("XDG_STATE_HOME",)}
+    """A run's environment: this process's, without git's own variables and `NoDefaultCurrentDirectoryInExePath`, with `home` as every system's home
+    and no global or system git configuration."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "SHOALMARK_")) and k not in ("XDG_STATE_HOME", "NoDefaultCurrentDirectoryInExePath")}
     env.update(HOME=str(home), USERPROFILE=str(home), GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0",
                SHOALMARK_CMD="shoalmark", PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1")
     if path:
@@ -227,14 +234,44 @@ def shims(area, log):
     for program in ("git", "svn"):
         real = shutil.which(program)
         if real:
-            write(folder / program, f'#!/bin/sh\nprintf "%s|%s\\n" "$(pwd -P)" "$*" >> "{log}.{program}"\nexec "{real}" "$@"\n')
+            write(folder / program, f'#!/bin/sh\nprintf "%s|%s|%s\\n" "$(pwd -P)" "${{NoDefaultCurrentDirectoryInExePath-unset}}" "$*" >> "{log}.{program}"\n'
+                                    f'exec "{real}" "$@"\n')
             (folder / program).chmod(0o755)
     return str(folder) + os.pathsep + os.environ.get("PATH", "")
 
 
 def starts(log, program):
+    """Each start the shim recorded: (where, `NoDefaultCurrentDirectoryInExePath` as it was set or `unset`, the arguments)."""
     path = Path(f"{log}.{program}")
-    return [l.partition("|") for l in path.read_text(encoding="utf-8").splitlines()] if path.is_file() else []
+    return [tuple(l.split("|", 2)) for l in path.read_text(encoding="utf-8").splitlines()] if path.is_file() else []
+
+
+def plant(folder, names, log):
+    """A program of each name in `folder` that records any run of it in `log`."""
+    for name in names:
+        canary(folder / name, log)
+
+
+def launcher(path, marker):
+    """A Windows console program at `path` that appends a line to `marker` when it runs — pip's vendored distlib launcher, then this Python
+    as its interpreter, then a zipped `__main__.py`, as distlib builds a script's `.exe` — or "" where it was made, else why not."""
+    try:
+        from pip._vendor.distlib.scripts import ScriptMaker
+        head = ScriptMaker(None, None)._get_launcher("t")
+    except Exception as e:                                  # no pip, or a distlib without its launchers
+        return f"pip's distlib launcher is not here ({type(e).__name__}: {e})"
+    body = io.BytesIO()
+    with zipfile.ZipFile(body, "w") as z:
+        z.writestr("__main__.py", f"open({str(marker)!r}, 'a').write('ran\\n')\n")
+    exe = sys.executable.encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(head + b"#!" + (b'"' + exe + b'"' if b" " in exe else exe) + b"\r\n" + body.getvalue())
+    return ""
+
+
+def stamped(text):
+    """The stand-up's output without the minute it was read."""
+    return re.sub(r" · read \d{4}-\d{2}-\d{2} \d{2}:\d{2}", " · read <TIME>", text)
 
 
 def section(out, title):
@@ -284,7 +321,10 @@ def run_checks():
             write(log, "")
             locked_ok = os.name != "nt" and not os.access(str(named["locked"]), os.R_OK)
             watch = os.name != "nt"
-            run_env = environment(home, shims(area, logs / "starts") if watch else None)
+            if watch:                                       # programs named git and svn in the run's own folder and in a listed root, both on PATH first
+                plant(cwd, ("git", "svn"), log)
+                plant(named["alpha"] / "tools", ("git", "svn"), log)
+            run_env = environment(home, os.pathsep.join([".", str(named["alpha"] / "tools"), shims(area, logs / "starts")]) if watch else None)
             folders = [area / n for n in ("alpha", "beta", "gamma-wc", "delta-plain", "notes", "cwd", "home", "svnrepo") if (area / n).exists()]
             before = snapshot(*folders)
             argv = ["--standup", *[str(named[n]) for n in order]]
@@ -348,6 +388,10 @@ def run_checks():
                 if with_svn:
                     add(f"Q7 · the only svn it starts is the one local status, in the working copy (saw {[a for _w, _s, a in svns]})",
                         len(svns) == 1 and svns[0][2] == SVN_STATUS and svns[0][0] == str(named["gamma"]))
+                add(f"Q7 · RV-3303: recorded privately · with `.` and a listed repository's folder first on PATH, each holding a git and an svn, it starts "
+                    f"the ones on PATH's first absolute entry outside the repositories named, each with `NoDefaultCurrentDirectoryInExePath` set "
+                    f"(saw {sorted({s_ for _w, s_, _a in gits + svns})}; the planted ones ran: {bool(ran)})",
+                    bool(gits) and (bool(svns) or not with_svn) and {s_ for _w, s_, _a in gits + svns} == {"1"} and ran == "")
             else:
                 add("Q7 · the only git and svn it starts are its own reads", None, "the shims that watch them are POSIX shell scripts")
 
@@ -366,6 +410,113 @@ def run_checks():
             moved = [n for n, (obj, held) in kept.items() if now[n][0] is not obj or held != now[n][1]]
             add(f"Q7 · the run puts back every binding `configure` makes, as it found them: the module still reads alpha (moved: {moved[:6]})",
                 not moved and module.ROOT == named["alpha"] and "beta" in buffer.getvalue())
+
+            # 5b. RV-3303: recorded privately · where git and svn start from
+            names = ("git.exe", "svn.exe") if os.name == "nt" else ("git", "svn")
+            plants, first = area / "plants", area / "plants" / "first-outside"
+            for folder in (cwd, cwd / "bin", named["alpha"] / "tools", first, plants / "later"):
+                plant(folder, names, log)
+            entries = ["", ".", "bin", str(named["alpha"] / "tools"), str(named["beta"]), str(cwd)]
+            if os.name == "nt":                                 # a `.cmd` and a `.bat` of each, before the first `.exe`
+                plant(plants / "scripts", ("git.cmd", "git.bat", "svn.cmd", "svn.bat"), log)
+                entries.append(str(plants / "scripts"))
+            try:                                                # an entry that resolves into a listed repository, and a program that does
+                os.symlink(str(named["alpha"] / "tools"), str(plants / "link-in"), target_is_directory=True)
+                (plants / "link-file").mkdir()
+                for n in names:
+                    os.symlink(str(named["alpha"] / "tools" / n), str(plants / "link-file" / n))
+                entries += [str(plants / "link-in"), str(plants / "link-file")]
+            except (OSError, NotImplementedError):
+                pass
+            entries += [str(first), str(plants / "later")]
+            here = os.getcwd()
+            try:
+                os.chdir(str(cwd))                              # the run's own folder: the planted git and svn, and `bin` below it
+                got = module.standup_programs([str(named["alpha"]), str(named["beta"])], path=os.pathsep.join(entries))
+            finally:
+                os.chdir(here)
+            add(f"Q7 · RV-3303: recorded privately · the program it starts is the first on PATH's absolute entries outside the repositories named: never "
+                f"an empty, `.` or relative entry, the current folder, an entry inside a listed repository or one that resolves there"
+                + (", nor a `.cmd` or a `.bat`" if os.name == "nt" else "") + f" (saw {got})",
+                got == {"git": str(first / names[0]), "svn": str(first / names[1])})
+            bare = area / "bare-path"
+            bare.mkdir()
+            code_n, out_n, err_n = run(tool, cwd, environment(home, str(bare)), *argv)
+            missing = [row_n for row_n in out_n.splitlines()[1:] if "is not found on PATH's absolute entries outside the repositories named" in row_n]
+            add(f"Q7 · RV-3303: recorded privately · where PATH's absolute entries outside the repositories named hold no git and no svn, each folder that "
+                f"needs one is named as not read, and counted in nothing; the plain folder is read (saw {out_n.splitlines()[:1]}, {len(missing)} such line(s))",
+                code_n == 0 and out_n.startswith(f"STANDUP · in the {n_named} repositories you named, 1 read · 1 item(s) · ")
+                and len(missing) == 2 + with_svn and all(m_.endswith("— counted in nothing") for m_ in missing))
+            guard_seen, guard_on = [], [False]
+            def guard_watch(event, a):
+                if guard_on[0] and event == "subprocess.Popen" and isinstance(a[3], dict):
+                    guard_seen.append(a[3].get("NoDefaultCurrentDirectoryInExePath", "unset"))
+            sys.addaudithook(guard_watch)
+            was = os.environ.get("NoDefaultCurrentDirectoryInExePath")
+            after_ = []
+            try:
+                for before_ in (None, "0"):
+                    if before_ is None:
+                        os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+                    else:
+                        os.environ["NoDefaultCurrentDirectoryInExePath"] = before_
+                    guard_on[0] = True
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        module.standup_across([str(named["alpha"])])
+                    guard_on[0] = False
+                    after_.append(os.environ.get("NoDefaultCurrentDirectoryInExePath"))
+            finally:
+                guard_on[0] = False
+                if was is None:
+                    os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+                else:
+                    os.environ["NoDefaultCurrentDirectoryInExePath"] = was
+            add(f"Q7 · RV-3303: recorded privately · `standup_across` sets `NoDefaultCurrentDirectoryInExePath` for every git it starts, and puts it back "
+                f"as it found it — unset, and `0` (saw {sorted(set(guard_seen))} while it ran, {after_} after)",
+                bool(guard_seen) and set(guard_seen) == {"1"} and after_ == [None, "0"])
+
+            # 5c. RV-3303: recorded privately · Windows: a git.exe and an svn.exe in a listed repository and in the run's own folder never run
+            if os.name != "nt":
+                add("Q7 · RV-3303: recorded privately · on Windows, a git.exe and an svn.exe in a listed repository and in the run's own folder never run, "
+                    "through the CLI and through `standup_across`, and the output is as without them", None, "it runs on Windows only: CI runs it")
+            else:
+                own, marker = area / "run-here", logs / "planted-ran.log"
+                own.mkdir()
+                listed = [str(named[n]) for n in order if n not in ("locked", "notes", "gone", "alpha-again")]
+                clean = stamped(run(tool, own, env, "--standup", *listed)[1])
+                made = launcher(own / "git.exe", marker) or launcher(own / "svn.exe", marker) or launcher(named["alpha"] / "git.exe", marker) \
+                    or launcher(named["alpha"] / "svn.exe", marker)
+                if made:
+                    add("Q7 · RV-3303: recorded privately · on Windows, a git.exe and an svn.exe in a listed repository and in the run's own folder never run",
+                        None, made)
+                else:
+                    here = os.getcwd()
+                    was = os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+                    try:                                        # the control: started by its bare name from that folder, the planted git.exe runs
+                        os.chdir(str(own))
+                        subprocess.run(["git", "--version"], capture_output=True, timeout=60)
+                    except (OSError, subprocess.SubprocessError):
+                        pass
+                    finally:
+                        os.chdir(here)
+                        if was is not None:
+                            os.environ["NoDefaultCurrentDirectoryInExePath"] = was
+                    live = marker.is_file()
+                    if live:
+                        marker.unlink()
+                    outs = [stamped(run(tool, own, env, "--standup", *listed)[1]), stamped(run(tool, named["alpha"], env, "--standup", *listed)[1])]
+                    buffer = io.StringIO()
+                    try:
+                        os.chdir(str(own))
+                        with contextlib.redirect_stdout(buffer):
+                            module.standup_across(listed)
+                    finally:
+                        os.chdir(here)
+                    outs.append(stamped(buffer.getvalue()))
+                    add(f"Q7 · RV-3303: recorded privately · on Windows, a git.exe and an svn.exe in a listed repository and in the run's own folder never "
+                        f"run, through the CLI and through `standup_across`, and the output is as without them; the control — the planted git.exe, started "
+                        f"by its bare name from its folder, runs — holds (control {live}, ran after {marker.is_file()}, outputs as without them "
+                        f"{[o_ == clean for o_ in outs]})", live and not marker.is_file() and all(o_ == clean for o_ in outs))
 
             # 6. the refusals beside it
             code_r, out_r, err_r = run(tool, cwd, run_env, "--root", str(named["alpha"]), "--standup", str(named["beta"]))

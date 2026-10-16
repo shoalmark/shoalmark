@@ -294,7 +294,7 @@ def git_dirs():
         if vcs() == "git":
             try:
                 out = vcs_process("git", "rev-parse", "--absolute-git-dir", "--git-common-dir", cwd=ROOT, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", env=nested_git_env())
+                                  encoding="utf-8", errors="replace", env=nested_git_env(), **standup_program("git"))
             except OSError as e:
                 metadata_unreadable(f"Git could not be run: {e}")
             dirs = out.stdout.splitlines()
@@ -2164,7 +2164,8 @@ def digest_read(read, trackers, who):
 # named — each found as `--root` finds a repository (`configure`), its trackers read as they stand, by this tool's own readers. A data-only view,
 # built on request: it runs nothing of a repository's own — no tool, deriver, forge queue, hook or program its configuration names —, starts no
 # git but the three reads of `STANDUP_GIT` and on Subversion the board's one local status (`read_only_svn`), and writes nothing, in a listed
-# repository or anywhere else. `standup_tripwire` holds each folder's read to that. It speaks of *the repositories you named*, never of all of
+# repository or anywhere else. It starts git and svn by their absolute paths, found on PATH's absolute entries outside the repositories named
+# (`standup_programs`), with `NoDefaultCurrentDirectoryInExePath` set while it runs. `standup_tripwire` holds each folder's read to that. It speaks of *the repositories you named*, never of all of
 # anyone's projects; a folder it cannot read is named with why, and counted in nothing. Every count is a repository's own, then added: an id
 # belongs to its repository, and FM-001 in two of them is two items. `configure` rebinds the module for each folder; the run puts back what it
 # found (`bound_state`), so no folder's row is read under another's configuration. `--standup` alone is the one repository's agenda, as before.
@@ -2178,6 +2179,59 @@ STANDUP_NOT_RUN = ("not run here: a repository's own tool, its deriver — `--st
                    "its configuration names; nothing was written")
 STANDUP_SEATS = "who asked is not checked here (`[seats]`) — `--standup` there checks it"
 _STANDUP_WIRE = [False, False, False]   # on while `--standup DIR …` reads one folder · inside the judge · the audit hook is added
+STANDUP_PROGRAMS = {}                   # the absolute path `--standup DIR …` starts git and svn from, while it runs (`standup_programs`); empty otherwise
+
+
+def standup_roots(dirs):
+    """The folders `--standup DIR …` names, and the repository each finds (`find_root`), as far as each is there: the places no program it starts
+    comes from (`standup_programs`)."""
+    roots = []
+    for arg in dirs:
+        try:
+            if arg and os.path.isdir(arg):
+                roots.append(os.path.abspath(arg))
+                roots.append(str(find_root(pathlib.Path(arg))))
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return roots
+
+
+def standup_programs(roots, path=None, cwd=None):
+    """Where `--standup DIR …` starts git and svn from (RV-3303: recorded privately): {"git": an absolute path or "", "svn": …}. For each, the first
+    of PATH's entries, in PATH's order, that is absolute — on Windows with its drive or share —, is not the current folder, lies inside none of
+    `roots`, and holds the program as a regular file that lies inside none of them either: on Windows `git.exe` or `svn.exe`, never another kind;
+    elsewhere one this user may execute. A relative entry (`.`, `bin`, an empty one) is passed over. `path` and `cwd`: PATH and the current folder,
+    the run's own where not given."""
+    entries = (os.environ.get("PATH", "") if path is None else path).split(os.pathsep)
+    real = lambda p: os.path.normcase(os.path.realpath(p))
+    try:
+        here = real(cwd or os.getcwd())
+    except OSError:                                         # a current folder that is gone is no entry's folder
+        here = None
+    named = [real(r) for r in roots]
+    inside = lambda p: any(p == r or p.startswith(r.rstrip(os.sep) + os.sep) for r in named)
+    found = {}
+    for program in ("git", "svn"):
+        found[program] = ""
+        for entry in entries:
+            if not (os.path.isabs(entry) and (os.name != "nt" or os.path.splitdrive(entry)[0])):
+                continue
+            folder = real(entry)
+            candidate = os.path.join(entry, program + ".exe" if os.name == "nt" else program)
+            if folder == here or inside(folder) or not os.path.isfile(candidate):
+                continue
+            target = real(candidate)
+            if inside(target) or os.path.dirname(target) == here or not (os.name == "nt" or os.access(candidate, os.X_OK)):
+                continue
+            found[program] = candidate
+            break
+    return found
+
+
+def standup_program(program):
+    """`{"executable": <its absolute path>}` for a start of git or svn while `--standup DIR …` runs and `standup_programs` found it — {} on every
+    other run, which starts it as it always has."""
+    return {"executable": STANDUP_PROGRAMS[program]} if STANDUP_PROGRAMS.get(program) else {}
 
 
 def standup_judge(event, args):
@@ -2189,11 +2243,14 @@ def standup_judge(event, args):
     if event == "subprocess.Popen":
         argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]
         here = isinstance(args[2], (str, bytes, os.PathLike)) and os.fsdecode(args[2]) == os.fsdecode(ROOT)
-        if vcs() == "svn":                                  # CPython audits the program as given: POSIX `svn` and the list, Windows None and the line
-            allowed = read_only_svn(argv) and (args[0] == "svn" or (args[0] is None and isinstance(args[1], str)))
+        # the program started is the one `standup_programs` found, by its absolute path: CPython audits it as the executable given
+        started = lambda program: (bool(STANDUP_PROGRAMS.get(program)) and isinstance(args[0], (str, bytes, os.PathLike))
+                                   and os.path.normcase(os.fsdecode(args[0])) == os.path.normcase(STANDUP_PROGRAMS[program]))
+        if vcs() == "svn":
+            allowed = read_only_svn(argv) and started("svn")
         else:
             allowed = (vcs() == "git" and len(argv) > 1 and _PATH_SEP.split(str(argv[0]))[-1].lower() in ("git", "git.exe")
-                       and tuple(str(a) for a in argv[1:]) in STANDUP_GIT)
+                       and tuple(str(a) for a in argv[1:]) in STANDUP_GIT and started("git"))
         if not (allowed and here):
             why = f"it would start {' '.join(str(a) for a in argv[:4])}"
     elif event in ("os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty", "webbrowser.open", "socket.connect"):
@@ -2252,7 +2309,8 @@ def standup_where():
     """How `--standup DIR …` names the folder's version control: git's branch and commit; Subversion's revision, from the board's one local
     status; or none. Whether a git working tree has changes is not read (`STANDUP_NOT_READ`)."""
     if vcs() == "git":
-        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(),
+                                     **standup_program("git"))
         head, branch = git(*STANDUP_GIT[0]), git(*STANDUP_GIT[1])
         sha, name = head.stdout.strip(), branch.stdout.strip() if branch.returncode == 0 else ""
         if head.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha):
@@ -2303,6 +2361,9 @@ def standup_read(arg, seen, now):
         sys.stderr = said                                   # a refusal's own line becomes the folder's reason
         configure(path)
         out.update(root=ROOT, name=str(CONFIG.get("name") or "").strip() or ROOT.name, seats=bool(SEATS))
+        if vcs() and not STANDUP_PROGRAMS.get(vcs()):
+            out["why"] = f"{vcs()} is not found on PATH's absolute entries outside the repositories named"
+            return out
         if not TRACKER_DIR.is_dir():
             out["why"] = f"no tracker folder — {tracker_folder(CONFIG).as_posix()} is not there"
             return out
@@ -2346,6 +2407,8 @@ def standup_across(dirs):
     """`--standup DIR [DIR …]` (Q7): one agenda across the repositories named — a line for each folder, its version control and its counts, or why
     it was not read; then the asks by kind as `standup` orders them — inside a kind, what frees the most first, then the oldest — each with its
     repository; the acts owed, missed and overdue first; the asks sent back; and what this view does not read or run. Exit 0: a view fails nothing."""
+    guard = os.environ.get("NoDefaultCurrentDirectoryInExePath")
+    os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"  # set before anything is read, and put back after, as `board_run` does
     import xml.etree.ElementTree                            # Subversion's reader takes it; imported here, never under the tripwire
     kept, bytecode, now, seen, reads = bound_state(), sys.dont_write_bytecode, datetime.datetime.now(datetime.timezone.utc), {}, []
     if not _STANDUP_WIRE[2]:
@@ -2353,12 +2416,18 @@ def standup_across(dirs):
         _STANDUP_WIRE[2] = True
     sys.dont_write_bytecode = True                          # no cache file for a module a reader imports
     try:
+        STANDUP_PROGRAMS.update(standup_programs(standup_roots(dirs)))     # git and svn, each by its absolute path, found once for the run
         for arg in dirs:
             reads.append(standup_read(arg, seen, now))
     finally:
         _STANDUP_WIRE[0] = False
+        STANDUP_PROGRAMS.clear()
         sys.dont_write_bytecode = bytecode
         restore_state(kept)
+        if guard is None:
+            os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+        else:
+            os.environ["NoDefaultCurrentDirectoryInExePath"] = guard
     read = [r for r in reads if not r["why"]]
     asks, acts = sum(len(r["queue"]) for r in read), sum(len(r["acts"]) for r in read)
     held = sum(len({h for _t, _a, hs in r["queue"] for h in hs}) for r in read)        # each repository's own, then added: never joined by id
@@ -6686,7 +6755,7 @@ def svn_run(*args, xml=False, answers=()):
     All text reads, including `svn cat`, return LF line endings at this boundary."""
     import xml.etree.ElementTree as ET
     try:
-        done = vcs_process("svn", *args, *(["--xml"] if xml else []), cwd=ROOT, capture_output=True)
+        done = vcs_process("svn", *args, *(["--xml"] if xml else []), cwd=ROOT, capture_output=True, **standup_program("svn"))
     except OSError as e:
         raise SvnUnreadable(f"svn could not be run: {e}")
     stdout, stderr = (s.decode("utf-8", "replace") for s in (done.stdout, done.stderr))
