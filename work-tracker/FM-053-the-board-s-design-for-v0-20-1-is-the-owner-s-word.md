@@ -7,7 +7,7 @@ next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt brand/design-guide.md, as it stands at the commit that filed this ask, as the design and the words the v0.20.1 board is built to?"
+ask: "Do you adopt brand/design-guide.md, as it stands at the commit that last filed this ask, as the design and the words the v0.20.1 board is built to?"
 ask-kind: ruling
 ask-since: 2026-10-15
 ask-options: "yes | no: the guide stays a draft"
@@ -19,8 +19,9 @@ ask-proposal: "yes"
 ## What is true now
 
 **Filed and judged 2026-10-15: In Progress, P2.** `brand/design-guide.md` and `brand/icons/` were added under this
-tracker in `ef33598`. The ask was filed at `2876287` and is filed again at the commit that adds the label `viewer.handover`
-("handover") to the guide's §10, so that the answer adopts the guide with it, and with its §4 the icons, as they stand
+tracker in `ef33598`. The ask was filed at `2876287`, filed again at `fbf6ef0` with the label `viewer.handover`
+("handover") in the guide's §10, and is filed again at the commit that sets the light `--mute` and `--teal` to reach
+4.5:1 against `--raise`, so that the answer adopts the guide with them, and with its §4 the icons, as they stand
 there. Nothing in them is built into the board.
 - On 15 October the Owner decided how the board looks and reads: one look, `monochrome`, on the board's own tokens, in
   the system's monospace, with no chart behind it; a box only for an action; type, state and action told apart; what
@@ -66,3 +67,4 @@ there. Nothing in them is built into the board.
 | 2026-10-15 | `brand/design-guide.md` and `brand/icons/` (four SVGs and the README of their rule) added under this tracker, `ef33598`. |
 | 2026-10-15 | The ask filed: it adopts the guide as it stands at this commit. Nothing is built into the board. |
 | 2026-10-15 | The ask filed again, at the commit that adds the label `viewer.handover` ("handover") to the guide's §10. |
+| 2026-10-16 | The light `--mute` becomes `#6a6a6a` and the light `--teal` `#187953`, so that every text colour reaches 4.5:1 against `--raise`, as the guide's own contrast rule requires. The ask filed again at that commit. |
