@@ -500,6 +500,7 @@ with tempfile.TemporaryDirectory() as d:
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     dest = root / "tools" / "shoalmark"
+    fm.configure(root)                                       # its own root, a real one — never the root the block before left behind, removed with it (CI on #184)
     out = io.StringIO()
     with redirect_stdout(out):
         fm.vendor(dest, allow_untagged=True)                 # the suite's own tree is a working copy, not a release (0.17.8)
