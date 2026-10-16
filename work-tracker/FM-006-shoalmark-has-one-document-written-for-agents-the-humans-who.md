@@ -22,6 +22,8 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-16 — B1 is integrated with the corrections, on `fm/006-b1-integrated` from `c5ef25a`; nothing is pushed.** B1 (`4907071`) is merged with `--no-ff`, its records left at main's side; then M1, M2 and M5, each its own commit; then M3, M6, M7, M8, M10, S3, S4, M4 (built to v0.20.0's plan: Subversion without git, from the release archive) and *Board* for *Tafel* (37 lines, `ADOPT.de.md` and the German labels among them); and FM-049's line, after the probe dialog's third step and under the coin lines, leading to `.github/ISSUE_TEMPLATE/what-your-agent-found.yml`. The hi-score is the cohort of pull requests 47–159, the last merged under the review-file rule. Waiting: the signing page's key state (`docs/signing.md`, `docs/de/signing.md`), for the Owner after FM-007's act of 15 October; M4's sentence and M9's footer, which carries v0.19.4's sentence until the release seat writes v0.20.1's, re-read after v0.20.0's tag; `examples/de/tafel.png` as `board.png`, with A2's render; A3's rewrite of `ADOPT.de.md`; a native German read; the landing's browser check, on the Owner's run; and the review.
+
 **2026-10-14 — the truth pass on B1's words, and the signing page.**
 
 Every line below is in B1's landing partials (EN `overrides/partials/landing/en.html`, DE `…/de.html`). Each change
@@ -1127,6 +1129,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-16 | **B1 integrated** by the Builder seat (`27f31560/builder-15`) on `fm/006-b1-integrated` from `c5ef25a`: the merge of `4907071`, a fix of two of B1's controls on the integrated tree, M1, M2, M5, M3, M6, M7, M8, M10, S3, S4, M4 and *Board* for *Tafel*, and FM-049's line and issue form. The signing page's key state, the re-read of M4 and M9 after v0.20.0's tag, `board.png` and A3's `ADOPT.de.md` wait. Nothing is pushed. |
 | 2026-10-13 | **v0.19.4 release prepared** on `fm/046-text-boundary`, on the READY `51f333f`: VERSION, CHANGELOG (GHSA-xh54-c5jg-j4fp), both ADOPT pins, both setup pages and the landing. The tool keeps the reviewed bytes. Browser-free release checks, core and compilation pass; the full suite is left to CI. Independent critical release review and the Owner's merge and tag are next. |
 | 2026-10-11 | **The pin check, as it holds since `c29cfee`:** on every run, ADOPT.md and ADOPT.de.md name the one release VERSION names and the SHA-256 of that tag's `shoalmark.py`, git's blob, where the tag is in the clone; the head's before the tag. Six controls: `3432566` fails with its tag and without it; v0.19.0, v0.19.1 and v0.19.2 pass; a head that changes `shoalmark.py` alone passes. This row holds over the next one's "the head's tool". |
 | 2026-10-11 | **P2 filed, public:** v0.19.3's ADOPT pins named the release commit's tool (`4a617ee4…b467`, `0bb1b3b`), not the one the tag ships (`42ec6aa1…0b31`); the cause, a code change after the release commit and no check of the pins after it. Fixed by `f7de965` on `fm/032-ci-tiers-and-time-zones`: both pins, and a suite check of the pins against VERSION and the head's tool on every run. |
