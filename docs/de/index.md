@@ -20,7 +20,7 @@ kann – ein Satz pro Frage, einmal am Tag –, und macht aus ihrer Antwort eine
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
 shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.
 
-**Ihre Agenten handeln auf Ihr Wort hin — und es gilt nur Ihr signiertes Wort.** Im Beleg zählt eine Antwort nur als
+**Ihre Antwort ist ein Commit, nie ein Klick oder eine Zeile im Chat.** Im Beleg zählt eine Antwort nur als
 Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihre
 `owner`-Zeile als `signed` markiert ist, wie es die [Einrichtungsseite](setup.md) tut. Unter Subversion zählt sie nur als
 Commit, den der Server als Ihren authentifiziert hat. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort.

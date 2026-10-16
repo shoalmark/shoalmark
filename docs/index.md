@@ -22,7 +22,7 @@ sentence per question, once a day, and make their answer one command.
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
 questions and puts them to you once a day.
 
-**Your agents move on your word — and only your signed word counts.** In the record, an answer counts only as a commit
+**Your answer is a commit, never a click or a line in chat.** In the record, an answer counts only as a commit
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as
 [the set-up page](setup.md) writes it. Under Subversion, it counts only as a commit the server authenticated as you. A
 click, a merge or a line in chat is not an answer. How strong that signature is, you choose — [four tiers](signing.md),
