@@ -1590,10 +1590,10 @@ check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{
 
 # --- FM-053, BF-8: the guide's §10 puts *ended* among the words never on a board — the last group's heading reads *shipped or closed*; its key
 #     and its description stay; the German table the tool ships says it in English until the native read, since *beendet* says *ended* too
+_ended_ = [k for k, v in fm.LABELS.items() if re.search(r"(?<![\w-])ended(?![\w-])", v)]      # a list made apart: 3.9 takes no backslash in an f-string's braces
 check(f"FM-053, BF-8 · no label says *ended*: the last group is *shipped or closed*, its key `section.ended` and `desc.ended` kept, and the shipped German "
-      f"table's value English until the native read (saw {[k for k, v in fm.LABELS.items() if re.search(r'(?<![\w-])ended(?![\w-])', v)]})",
-      fm.LABELS.get("section.ended") == "shipped or closed" and fm.LABELS.get("desc.ended") == "shipped, or closed without shipping"
-      and not [k for k, v in fm.LABELS.items() if re.search(r"(?<![\w-])ended(?![\w-])", v)]
+      f"table's value English until the native read (saw {_ended_})",
+      fm.LABELS.get("section.ended") == "shipped or closed" and fm.LABELS.get("desc.ended") == "shipped, or closed without shipping" and not _ended_
       and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("section.ended") == "shipped or closed")
 
 # --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
