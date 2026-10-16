@@ -633,6 +633,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
     "header": "FM-053, RV-3342, BF-2 · the header row at 375, 640, 880 and 1024 px, rendered — the field, its counter and the scheme's action in view",
     "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
+    "owner": "FM-053, BF-3 · `next: owner`, rendered — *you* in the tier's cell, `owner` in code font on the handover line",
 }
 
 
@@ -5125,6 +5126,32 @@ if _browser("table"):
         _hung("table", e_)
         fm.configure(HERE)
 
+# --- FM-053, BF-3: on the board the Owner is *you* (the guide, §10) — `next: owner` reads *→ you* in the tier's cell, and the viewer's handover
+#     line, which shows the record's own field, gives `owner` in code font, as a setting; neither shows a bare *owner* -----------------------
+_own_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-3 · both templates: the tier's cell renders `next: owner` through `next.owner` (*you*), every other value as it is; the handover "
+      "line gives `owner` in code font",
+      _own_src.count('${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}') == 1
+      and _own_src.count('${l("viewer.next")}: ${t[21]?(t[21]=="owner"?"<code>owner</code>":esc(t[21])):') == 1
+      and fm.LABELS.get("next.owner") == "you" and '" → "+esc(t[21])' not in _own_src)
+if _browser("owner"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="rank: 1\ntier: P1\nnext: owner\n", title="Stock is booked per warehouse")
+            tracker(root, "MSR-002", extra="rank: 2\ntier: P2\nnext: build\n", title="Stock is counted per shelf"); run_safe(root)
+            dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
+            board_, view_ = dom(""), dom("#=MSR-001")
+            cell_ = {i_: (re.search(rf'<a href="#={i_}">{i_}</a></td><td class="m[^"]*">([^<]*)</td>', board_) or [None, None])[1] for i_ in ("MSR-001", "MSR-002")}
+            line_ = (re.search(r"<b>handover</b>([\s\S]*?)</(?:p|div)>", view_) or [None, ""])[1]
+            check(f"FM-053, BF-3 · rendered: the tier's cell reads *#1 P1 → you* for `next: owner` and *→ build* for another value; the handover line gives "
+                  f"`owner` in code font; neither shows a bare *owner* (saw {cell_}, {line_[:120]!r})",
+                  cell_["MSR-001"] == "#1 P1 → you" and cell_["MSR-002"] == "#2 P2 → build"
+                  and line_.startswith(" — next: <code>owner</code>") and "owner" not in line_.replace("<code>owner</code>", ""))
+    except _ChromeFailed as e_:
+        _hung("owner", e_)
+        fm.configure(HERE)
+
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _browser("progress"):
     try:
@@ -5504,6 +5531,7 @@ verdict.READY: ready
 verdict.READY WITH FINDINGS: ready with findings
 verdict.READY TO TAG: ready to tag
 verdict.NOT READY: not ready
+next.owner: you
 reviews.sessions: its session {0}, the branch's {1}
 reviews.word.another: by another session
 reviews.word.same: by the same session
