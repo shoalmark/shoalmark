@@ -201,3 +201,4 @@ verdict.READY WITH FINDINGS: ready with findings
 verdict.READY TO TAG: ready to tag
 verdict.NOT READY: not ready
 next.owner: you
+waiting.more: "and {0} more: the oldest are above"

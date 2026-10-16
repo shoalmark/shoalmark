@@ -635,6 +635,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
     "owner": "FM-053, BF-3 · `next: owner`, rendered — *you* in the tier's cell, `owner` in code font on the handover line",
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
+    "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
 }
 
 
@@ -5242,6 +5243,30 @@ _ph_media = _ph_src[_ph_at:_ph_src.index("}}", _ph_at) + 2]            # the pho
 check(f"FM-053, BF-5 · at 640 px and narrower a heading's marker keeps its space: `.sh:before{{margin-right:1ch}}` in the phone's rules, beside `.sh{{display:block}}` "
       f"(saw {_ph_media!r})", ".sh{display:block}.sh:before{margin-right:1ch}" in _ph_media)
 
+# --- FM-053, BF-9: past 14 asks the box counts what it does not show — the asks are sorted oldest first, so the 14 shown are the oldest — in
+#     words, never a row holding a bare … -------------------------------------------------------------------------------------------------
+_more_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-9 · past 14 asks the box says *and n more: the oldest are above* through `waiting.more`; the row holding only … is gone",
+      '<div class="row">…</div>' not in _more_src and _more_src.count('+(w.length>14?`<p class="sub">${l("waiting.more",w.length-14)}</p>`:"")') == 1
+      and _more_src.count("w.slice(0,14)") == 1 and fm.LABELS.get("waiting.more") == "and {0} more: the oldest are above")
+if _browser("more"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            for n_ in range(1, 17):
+                tracker(root, f"MSR-{n_:03d}", extra=f'tier: P2\nnext: owner\nask: "Shall we do the {n_} thing?"\nask-kind: ruling\nask-since: 2026-09-{n_:02d}\n'
+                        f'ask-proposal: "yes"\n', title=f"the {n_} thing")
+            run_safe(root)
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            box_ = (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1]
+            shown_ = re.findall(r'MSR-0(\d\d)', box_)
+            check(f"FM-053, BF-9 · rendered with 16 asks: the 14 oldest shown, then *and 2 more: the oldest are above*, no bare … (saw {sorted(set(shown_))}, "
+                  f"{'and 2 more: the oldest are above' in box_})",
+                  "and 2 more: the oldest are above" in box_ and ">…<" not in box_ and sorted(set(shown_)) == [f"{n_:02d}" for n_ in range(1, 15)])
+    except _ChromeFailed as e_:
+        _hung("more", e_)
+        fm.configure(HERE)
+
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _browser("progress"):
     try:
@@ -5622,6 +5647,7 @@ verdict.READY WITH FINDINGS: ready with findings
 verdict.READY TO TAG: ready to tag
 verdict.NOT READY: not ready
 next.owner: you
+waiting.more: and {0} more: the oldest are above
 reviews.sessions: its session {0}, the branch's {1}
 reviews.sessions.more: {0} and {1} more
 reviews.word.another: by another session
