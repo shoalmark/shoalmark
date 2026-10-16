@@ -456,8 +456,12 @@ def run_checks(fm, group="all"):
                 results.append(("SKIP FM-046 · Subversion committed text", None, "svn and svnadmin are required; unavailable on this host"))
             else:
                 (base / "svn-lf").mkdir(); (base / "svn-crlf").mkdir()
-                slf = svn_readings(fm, base / "svn-lf", "\n")
-                scrlf = svn_readings(fm, base / "svn-crlf", "\r\n")
+                try:
+                    slf = svn_readings(fm, base / "svn-lf", "\n")
+                    scrlf = svn_readings(fm, base / "svn-crlf", "\r\n")
+                except fm.SvnUnreadable as error:      # an unreadable answer is this block's FAIL line, never a traceback that ends the suite (#182)
+                    check("Subversion committed text is read, LF and CRLF", False, f"svn said: {error}")
+                    slf = scrlf = {}
                 for rule in slf:
                     ok = slf[rule] == scrlf[rule] and (rule not in expected or slf[rule] == expected[rule])
                     if rule == "guard":
