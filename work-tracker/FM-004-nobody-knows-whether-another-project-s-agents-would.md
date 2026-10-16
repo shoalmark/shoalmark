@@ -3,7 +3,7 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: owner
+next: build
 triaged: 2026-10-13
 tier: P1
 rank: 2
@@ -13,6 +13,9 @@ ask-kind: ruling
 ask-since: 2026-10-15
 ask-options: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do | a: the 11 checks accept the notice line before the refusal line, a test change only | c: --vendor prints no Subversion notice | hold: the carry waits, and FM-004 leaves v0.20.0"
 ask-proposal: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do"
+answer: "accepted - b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do"
+answered: 2026-10-16
+answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
