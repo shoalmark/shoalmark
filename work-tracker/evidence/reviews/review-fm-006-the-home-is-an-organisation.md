@@ -23,7 +23,7 @@ Implementer seat (`Session: 8e509911/implementer-34`, `Worktree: shoalmark-impl-
 | 1 | The paste, word for word | FM-006 l.129–136: after the opening bold line (l.127) and a blank line, before a blank line and the gloss (l.138). 8 lines, 735 bytes, the last newline included. sha256 over exactly those lines; `cmp` against the paste file. The method of the TRIAGE paste of 22:38:24 (`review-fm-006-the-page-on-his-word-in-triage-md.md`) | `19ca39d1…ad4ec5`, equal to the brief's and the header's; byte-identical ✓ |
 | 2 | The header names the time and the full hash | l.127 | *as pasted at 11:05:27 (sha256 `19ca39d1…ad4ec5`)*, all 64 hex digits ✓ |
 | 3 | The gloss is in brackets and marked as not his word | l.138 | *[The seat's gloss, not his word: …]* ✓ |
-| 4 | The gloss says nothing beyond its three points | l.138, clause by clause | (a) *the transfer is the mechanism of the ask's first option (this repository … public) and changes no option's text*: the quote is a faithful elision of option 1, and no option changed (check 6) ✓. (b) *the consumers' pins (PortDive PD-400, msr-lager, fb-sondermasch) are the parent projects' own slices at the flip* ✓: PD-400 is the PortDive tracker that holds the shoalmark pin (its ship log, 2026-09-25: *the pin of shoalmark 0.18.3 is this tracker's next build*, read-only). The term, R2. (c) *nothing moves before his answer to the ask* ✓. One clause beyond the three: *named here so none is forgotten*. It gives the seat's reason for naming them. It states no fact of the plan and rules nothing. Not a finding. |
+| 4 | The gloss says nothing beyond its three points | l.138, clause by clause | (a) *the transfer is the mechanism of the ask's first option (this repository … public) and changes no option's text*: the quote is a faithful elision of option 1, and no option changed (check 6) ✓. (b) *the consumers' pins (PortDive PD-400, [client 2], [client 1]) are the parent projects' own slices at the flip* ✓: PD-400 is the PortDive tracker that holds the shoalmark pin (its ship log, 2026-09-25: *the pin of shoalmark 0.18.3 is this tracker's next build*, read-only). The term, R2. (c) *nothing moves before his answer to the ask* ✓. One clause beyond the three: *named here so none is forgotten*. It gives the seat's reason for naming them. It states no fact of the plan and rules nothing. Not a finding. |
 | 5 | The What-is-true-now line and the ship-log row state the same facts, with the time and the hash | l.24; l.171 | The row: the paste's facts in its order, *as pasted at 11:05:27*, the full hash. It leaves out only *(free for a public repository)*. *The ask and its options are unchanged* holds (check 6) ✓. The What-is-true-now line: the organisation, *nothing moves before the flip*, filed in *Going public* ✓. It dates the word, not the paste, to 11:05:27, and it gives no hash: R1. |
 | 6 | The front matter is byte-identical to `origin/main`'s | `cmp` of l.1–16; sha256 of both `69f8d577…` | ✓ `ask:`, `ask-kind: action`, `ask-since:`, `ask-options:`, `ask-proposal:` and `next: owner` untouched |
 | 7 | No other section or row changed | `git diff --numstat origin/main...HEAD`: 16 added, 0 removed. Three hunks: the What-is-true-now line (+2), the end of *Going public* before the TRIAGE page's heading (+13), the top of the ship log (+1) | ✓ |
@@ -53,7 +53,7 @@ paste, to 11:05:27, and it carries no hash.**
 one project.**
 - **Why it matters.** In FM-006, *the parent project* and *the parent's traces* name one project, the origin (the
   correction of 17:37:17: *the redaction wrote "the origin" and "the parent project"*). The ask's options keep *client
-  names* and *the parent's traces* apart. The gloss (l.138) puts msr-lager and fb-sondermasch with PortDive under *the
+  names* and *the parent's traces* apart. The gloss (l.138) puts [client 2] and [client 1] with PortDive under *the
   parent projects*. Read against the options, a client's name could be taken for one of *the parent's traces*. The
   plural stands nowhere else on `origin/main` (`git grep -i "parent projects"`: none).
 - **Against it.** The brief's own words are *the parents' own slices*, and the seat followed them.
@@ -72,13 +72,13 @@ one project.**
 
 ## For the Owner — ungraded
 
-- **The client names.** The paste names msr-lager and fb-sondermasch, which the going-public options treat as a term
-  (*client names … public* / *removed*). On `origin/main`'s tree, msr-lager already stands in two R&D evidence files:
+- **The client names.** The paste names [client 2] and [client 1], which the going-public options treat as a term
+  (*client names … public* / *removed*). On `origin/main`'s tree, [client 2] already stands in two R&D evidence files:
   `work-tracker/evidence/FM-001/seam-bprime-rd.md` (l.34, 57) and `work-tracker/evidence/FM-002/brand-layers-rd.md`
-  (l.51, 59, 62, 97, 110, 151). fb-sondermasch stands nowhere in the tree. In main's history it stood once, in
+  (l.51, 59, 62, 97, 110, 151). [client 1] stands nowhere in the tree. In main's history it stood once, in
   `review-fix-0.17.5-one-id-one-row-and-an-empty-bucket-says-why.md` (a quoted grep pattern): added at `5a9779d` and taken
-  out at `3bf6591`. Merged, this branch makes FM-006 the only file on main's tree that names fb-sondermasch, and the third
-  that names msr-lager. No rule on main forbids a client name in a tracker, so this is not a finding; his pick decides.
+  out at `3bf6591`. Merged, this branch makes FM-006 the only file on main's tree that names [client 1], and the third
+  that names [client 2]. No rule on main forbids a client name in a tracker, so this is not a finding; his pick decides.
   Under option 1 both names go public; under option 2 the snapshot removes them.
 - **The parent's names.** The paste names PortDive, which already stands in 9 files on main's tree, FM-006 among them.
   The gloss adds PD-400, the parent's tracker id, which already stands on main in `CHANGELOG.md` (l.112) and
