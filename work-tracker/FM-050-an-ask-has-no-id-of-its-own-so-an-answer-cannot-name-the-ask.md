@@ -24,6 +24,9 @@ not ready (`cc9e80b`) and then READY (`ed2c82b`); put to the Owner; not ruled; n
 - **Why now:** R4 makes an ordinary Owner-signed commit the canonical answer (FM-023's table of 2026-10-15: v0.20.1). That commit
   must name the ask it answers, so the id comes first. The receipts view counts asks too: the oldest waiting ask, the
   answers per sitting.
+- **A case, 16 October:** the board hid FM-053's re-filed ask. The first answer's `answer/fm-053` was still on its way,
+  and *on its way* is keyed on the tracker id, so the new ask did not show. The Owner read it from the tracker and
+  answered by hand (`fee3874`). Ask ids fix it: an answer on its way is named by its ask's id, never by its tracker.
 - **The design** is below: the id, asks before ids, R4's answer commit and how the gate finds it, what the gate refuses,
   what the three readers print, the class test, what each backend can claim, and the build's order. Its open questions
   close it.
@@ -540,3 +543,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-16 | RV-3284 (recorded privately) fixed in the design, by the Builder seat (`27f31560/builder-5`), from the Planner's draft. |
 | 2026-10-16 | RV-3285 fixed in the design, by the Builder seat: C5 compares the ids a branch proposes with the default branch's open ask and its records, answered or withdrawn, in `lint` and in `--queue`; duplicate archived ids are defined; a row and a mutant cover the records. |
 | 2026-10-16 | Round 2: READY (`ed2c82b`). The ask put to the Owner by the Planner (`next: owner`), filed at this commit so the answer binds the reviewed body. |
+| 2026-10-16 | A case recorded: the board hid FM-053's re-filed ask while the first answer's `answer/fm-053` was on its way; ask ids fix it. |
