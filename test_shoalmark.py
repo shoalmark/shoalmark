@@ -636,6 +636,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "owner": "FM-053, BF-3 · `next: owner`, rendered — *you* in the tier's cell, `owner` in code font on the handover line",
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
     "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
+    "names": "FM-053, BF-11 · a review row's branch names at 375 px, rendered — each one inline box",
 }
 
 
@@ -5211,6 +5212,35 @@ if _browser("table"):
                   bool(before_) and "no report" not in before_[0])
     except _ChromeFailed as e_:
         _hung("table", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-11: a branch name in a review row moves to the next line whole — `.row code` is an inline block — and breaks only where it is
+#     longer than a line. Measured in Chrome at 375 px, the review rows opened: each name one box --------------------------------------------
+_NAME_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("details").forEach(d=>d.open=true);'
+               'const c=[...document.querySelectorAll("#p .row .what code")];parent.postMessage(JSON.stringify({w:innerWidth,names:c.map(e=>({t:e.textContent,'
+               'd:getComputedStyle(e).display,n:e.getClientRects().length,w:e.getBoundingClientRect().width,row:e.closest(".what").getBoundingClientRect().width}))}),"*")})</script>')
+_nm_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-11 · `.row code{display:inline-block}` follows `code{font:inherit}`: a name in a row moves to the next line whole",
+      _nm_src.count("code{font:inherit}\n/* a name in a row moves to the next line whole, and breaks only where it is longer than a line (BF-11) */\n.row code{display:inline-block}\n") == 1)
+if _browser("names"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+            git(root, "checkout", "-q", "-b", "fm/053-board-v2-the-review-branch"); built = commit_("built\n\nSession: b1")
+            commit_(f"review: READY\n\nReviewed: {built}\nSession: r1")
+            git(root, "checkout", "-q", "-b", "fm/053-board-v2-its-follow-up"); commit_("grown from the verdict\n\nSession: b2")
+            run_safe(root, "--html-only")
+            rep_ = _header_at(root / "docs/work-tracker", (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"), 375, _NAME_PROBE) or {}
+            names_ = rep_.get("names", [])
+            check(f"FM-053, BF-11 · rendered at 375 px, each name in a review row is one inline box — none broken at its hyphens where it fits a line (saw {names_})",
+                  rep_.get("w") == 375 and len(names_) >= 3 and all(n_["d"] == "inline-block" and (n_["n"] == 1 or n_["w"] > n_["row"]) for n_ in names_)
+                  and any(n_["t"].startswith("fm/053-board-v2-") for n_ in names_))
+    except _ChromeFailed as e_:
+        _hung("names", e_)
         fm.configure(HERE)
 
 # --- FM-053, BF-3: on the board the Owner is *you* (the guide, §10) — `next: owner` reads *→ you* in the tier's cell, and the viewer's handover

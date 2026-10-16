@@ -3597,6 +3597,8 @@ details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>
 details.grp>summary{padding:3px 0}details.grp .subs{display:block;padding-left:2ch;color:var(--dim)}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
 details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
 code{font:inherit}
+/* a name in a row moves to the next line whole, and breaks only where it is longer than a line (BF-11) */
+.row code{display:inline-block}
 /* the tool's own voice: help, behind a dashed rule — never a value, a state, an action or a warning */
 .help{color:var(--help);border-left:2px dashed var(--help);padding:0 0 0 1ch;margin:2px 0 6px}
 /* the work table, by rank: no outer box, its column heads types, its groups `// `, each group a fold — a group's line wraps inside the frame
