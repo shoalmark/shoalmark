@@ -65,6 +65,9 @@ sessions started within about a minute of each other can share them: the eight c
 seconds.
 - **Seen today:** the records Reviewer's verdict `6622f80` and the release-docs Reviewer's `1f09339`, two sessions, both
   carry `Session: 01a14312`. Their `Worktree:` trailers still tell them apart.
+- **A second case, the same day:** the FM-050 Reviewer's verdict `cc9e80b` and the bounded Reviewer's `1eeb7e0` and
+  `ed48119`, two sessions, all carry `Session: 01a14313`. Their `Worktree:` trailers, `fm050-reviewer` and
+  `bounded-reviewer`, tell them apart.
 
 **Tier:** critical: the gate's rights and the hooks.
 
@@ -491,3 +494,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-10-01 | **The `[seats]` switch — filed** by the Planner on the Owner's ruling of that day: D2 first (the Owner configured by a top-level `owner =`, `[seats] owner` read as the old spelling), then after the Apps the key rename, the seven bot addresses and dropping `gtm`; this branch owns every line about how the Owner is configured. |
 | 2026-10-01 | **The `[seats]` switch built — phase 2**, after D2 (`ca8f7f4`, `321fddc`, `87e2e1b`) and its fix round (`4105114`, `9f2aac5`, `e570b5d`, `b58fe45`): `6debda1` the session rule reads a session begun under a seat's former name (`principal`, `implementer`, the name of an old `<name>@seat` address) as the seat's — the rename would have refused the seats' own commits and the history a merge brings; `1923f5c` this repository's `[seats]`: `planner` and `builder`, the seven bot addresses (each checked with `gh api` before it was written, and equal to the ids filed in the switch section) beside the old ones, `gtm` an address of `go-to-market`; `df5a80b` the texts that called the rename to come, and the CHANGELOG. The 1102 commits of the history map to the seats they had (`principal@seat` to `planner`, `implementer@seat` to `builder`, `gtm@seat` to `go-to-market`) with the rights they held, and each of the 813 that carries a session passes the rule; `--check` exits 0. The full local run, the cold session and the Reviewer follow. |
 | 2026-10-16 | **Defect 9 filed, nothing built** (the Auditor's finding, relayed by the Owner): `seat.session` keeps eight hex characters, and Codex's time-ordered session ids share them within about a minute. Two Reviewer sessions both carry `01a14312`; their `Worktree:` trailers tell them apart. |
+| 2026-10-16 | Defect 9's second case (the Auditor's finding, relayed by the Owner): the FM-050 Reviewer and the bounded Reviewer, two sessions, both carry `01a14313`. |
