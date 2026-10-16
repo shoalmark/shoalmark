@@ -1406,7 +1406,7 @@ with tempfile.TemporaryDirectory() as d:
             _hung("strip", e_)
     check(f"FM-024 S7 + FM-024 build for 0.19.0 + FM-053 · the board's strip is one line per parent, in the day's one fold — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the week's verdicts, folded, a row each; the digest groups the same way under the same words (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
           "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
-              "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—) · implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
+              "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
               and "reviews · this week · 2 by another session · 1 by the same session · untraced 1 · reports, not proofs" in strip_
               and "by the same session · its session a9/reviewer-1, the branch's a9, a9/implementer-1" in strip_ and "independent" not in strip_)))
 # --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
@@ -5152,7 +5152,8 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
-reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
+reviews.title: reviews · this week
+reviews.counts: {0} by another session · {1} by the same session
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}
 ask.ruling: eine Entscheidung
@@ -5626,8 +5627,10 @@ _PAL_CASES = (   # (what, the table, refused?, what the page or the one line mus
     ("monochrome by name", '[palette]\nname = "monochrome"\n', False, ("--bg:#f7f7f5;", "--owed:#8a5600;", "--help:#7b3fbf;")),
     ("shoalmark by name", '[palette]\nname = "shoalmark"\n', False, ("--bg:#fbfbf7;", "--owed:#a0156e;", "--amber:#7d5000;", "--warnbg:#f8eed6;", "--help:#1f5ca8;",
                                                                       "--head:#526214;", "--bg:#0d1720;", "--box:#8eb1cc;", "--amber:#f1c26a;", "--warnbg:#2b2414;")),
-    ("tokens above the contrast, the band and the tints derived", '[palette]\nink = ["#000000", "#ffffff"]   # light, dark\nfail = ["#a00000", "#ff8080"]\nwarn = ["#7a4c00", "#f0b44c"]\n', False,
-     ("--ink:#000000;", "--ink:#ffffff;", "--coral:#a00000;", "--amber:#7a4c00;", "--owed:#7a4c00;", "--dim:#", "--line:rgba(0,0,0,0.14)", "--secbg:#ededeb;", "--failbg:#f1e6e4;")),
+    ("tokens above the contrast, the band and a tint derived — every text on every surface", '[palette]\nink = ["#000000", "#ffffff"]   # light, dark\nfail = ["#c03a2a", "#ff8a70"]\nwarn = ["#8a5600", "#f0b44c"]\n', False,
+     ("--ink:#000000;", "--ink:#ffffff;", "--coral:#c03a2a;", "--amber:#8a5600;", "--owed:#8a5600;", "--dim:#", "--line:rgba(0,0,0,0.14)", "--secbg:#ededeb;", "--failbg:#f3eae7;", "--warnbg:#fbf0d6;")),
+    ("a tint a named colour makes too light for another text, on every surface", '[palette]\nfail = ["#a00000", "#ff8080"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — mute #6a6a6a on fail's tint (derived) #f1e6e4 is 4.42:1 in light, below 4.5:1",)),
     ("a token at the contrast, 4.51:1 on raise", '[palette]\nfail = ["#6b6b6b", "#ff7b66"]\n', False, ("--coral:#6b6b6b;",)),
     ("a token below the contrast, 4.44:1 on raise", '[palette]\nfail = ["#6c6c6c", "#ff7b66"]\n', True,
      ("shoalmark.toml: `[palette]` is refused — fail #6c6c6c on raise #ececea is 4.44:1 in light, below 4.5:1",)),
@@ -5766,7 +5769,7 @@ def _accept(source):
     out[3] = (framed == sorted({"button.act", "#s", "#vt button", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
               and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", "#s", "#vt button", "#dlg button"))
               and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", "#s", "#vt button", "#dlg button"} <= phone
-              and not any("border" in k for s, d_ in plain if s.startswith(("#p>.sec", ".row.v")) for k in d_), f"{framed}")
+              and not any(k == "border" for s, d_ in plain if s.startswith(("#p>.sec", ".row.v")) for k in d_), f"{framed}")    # a band's top rule (G8) is no frame
     # 4 · said, not implied: no word from the guide's *never* list, no line that promises what a session will do; what is not known is in italics with its reason
     never = re.compile(r"\b(live|running|active|up to date|all your projects|every agent|all sessions|proves|independent|less work|faster|touch)\b", re.I)
     board_words = {k: v for k, v in labels.items() if not k.startswith(("section.", "desc.", "view.", "count.", "status.", "col.", "search", "group."))}
@@ -5780,13 +5783,18 @@ def _accept(source):
               and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
     # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
     out[6] = (all(box_src.count(f'l("{k}"') == 1 for k in ("waiting.title", "waiting.oldest", "waiting.holds", "acts.title", "way.title", "day.title", "sessions.recent",
-                                                           "reviews.week", "reviews.notready", "reviews.findings", "path.title"))
+                                                           "reviews.title", "reviews.counts", "reviews.notready", "reviews.findings", "path.title"))
               and box_src.count('l("waiting.holds.ids"') == 1 and box_src.count('l("ask."+t[29][1])') == 1, "")
     # 7 · the first screen: the box holds one fold open on a desktop — the day's sessions — and every other part that can wait folded
     out[7] = (box_src.count("fold(") == 3 and ",!PHONE)" in box_src and box_src.count(",false))") == 2, "")
     # 8 · you, never the owner: no screen says *owner* outside code font or a record's excerpt
     owned = sorted(k for k, v in labels.items() if re.search(r"\bowner\b", re.sub(r"`[^`]*`", "", v), re.I))
     out[8] = (not owned and labels["owner.title"] == "yours" and labels["viewer.answer"] == "your answer", f"{owned}")
+    # the divider (G8): each band's top edge a 1px --box rule — every band of the box but the first, which the box's frame stands right above
+    ruled = sorted(s for s, d_ in plain if d_.get("border-top") == "1px solid var(--box)")
+    first = [s for s, d_ in plain if s in ("#p>.sec>.sh", "#p>.sec>summary>.sh")]
+    out["divider"] = (ruled == ["#p>.sec+.sec>.sh", "#p>.sec+.sec>summary>.sh"] and first == ["#p>.sec>.sh", "#p>.sec>summary>.sh"]
+                      and not any("border" in k for s, d_ in plain if s in first for k in d_), f"ruled {ruled}")
     return out
 
 
@@ -5809,9 +5817,16 @@ _S11 = {1: "the five-second test: every row of the box reads what it is, then it
            "part that can wait folded: the reviews and your current path",
         8: "you, never the owner: no label of the board says *owner* outside code font — the box is *yours*, the path *your current path*, the answer "
            "*your answer*"}
+_S11["divider"] = ("the band is the divider (G8): each section's band but the first opens on a 1px --box rule from frame to frame, and the first, under the "
+                    "box's own frame, has none")
 _acc = _accept(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"))
 for n_, what_ in _S11.items():
     check(f"FM-053 · §11 · {n_} · {what_} (saw {_acc[n_][1]})", _acc[n_][0])
+_DIVIDER_MUTANTS = {
+    "a rule above the first band too": ("#p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}", "#p>.sec>.sh,#p>.sec>summary>.sh{border-top:1px solid var(--box)}"),
+    "no rule at all": ("#p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}", "")}
+for what_, (a_, b_) in _DIVIDER_MUTANTS.items():
+    check(f"FM-053 · G8 · the divider · its mutant, {what_}: the class row FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))["divider"][0])
 _S11_MUTANTS = {
     "a READY coloured coral": ('VERDICT={"READY":"vok",', 'VERDICT={"READY":"vfail",'),
     "a confidence on a tint — the seat's proposal on teal's": ('#dlg .dp{margin:0 0 8px;color:var(--dim)}', '#dlg .dp{margin:0 0 8px;color:var(--dim);background:var(--okbg)}')}

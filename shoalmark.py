@@ -3561,12 +3561,15 @@ button.act:hover,#s:hover,#vt button:hover,#dlg button:hover{background:var(--ra
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
 button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabled{opacity:.4}
 /* the Owner's box: the one titled frame, its title set into its top border; inside, sections are `## ` headings with their counts, each
-   opening on its band (G2): from frame to frame, no divider — structure, not state. A folded section is its band alone, --raise under the
-   pointer; *waiting for you*'s band is amber's tint while asks wait. A tint stands only for a state the tool computed, beside its word */
+   opening on its band (G2): from frame to frame — structure, not state. The band's top edge is a 1px --box rule, so the band is the divider
+   (G8): it holds where a band's faint fill does not, on a dim screen, in print, in forced colours; the first band has none, the box's frame
+   is right above it. A folded section is its band alone, --raise under the pointer; *waiting for you*'s band is amber's tint while asks
+   wait. A tint stands only for a state the tool computed, beside its word */
 #p{position:relative;border:1px solid var(--box);padding:14px 2ch 12px;margin:22px 0}
 #p>.pt{position:absolute;top:-11px;left:1ch;padding:0 1ch;background:var(--bg);font-weight:600;color:var(--head)}
 #p>.sec+.sec{margin-top:16px}.day>.sec+.sec{margin-top:12px}
 #p>.sec>.sh,#p>.sec>summary>.sh{background:var(--secbg);margin:0 -2ch 6px;padding:4px 2ch}#p>details.sec:not([open])>summary>.sh{margin-bottom:0}
+#p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}
 #p>details.sec>summary:hover>.sh{background:var(--raise)}#p>.sec.wait>.sh{background:var(--warnbg)}
 .sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}
 .sh .c{flex:1 1 auto;min-width:0;font-weight:400;color:var(--dim)}
@@ -3589,7 +3592,7 @@ details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>
 .st{color:var(--dim)}.st b:not(.go):not(.hot):not(.warn){color:var(--ink)}.st b{font-weight:600}
 .aq{display:block;padding-left:11ch;color:var(--mute)}.sub{color:var(--dim);margin:8px 0 0}
 .lim{white-space:pre-line;color:var(--dim);padding:2px 0 0 2ch}
-details.grp>summary{padding:3px 0}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
+details.grp>summary{padding:3px 0}details.grp .subs{display:block;padding-left:2ch;color:var(--dim)}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
 details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
 code{font:inherit}
 /* the tool's own voice: help, behind a dashed rule — never a value, a state, an action or a warning */
@@ -3843,12 +3846,12 @@ function box(){
       w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));
   // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop
   if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));
-    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].map(x=>" · "+esc(x)).join("")}</summary>`
+    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE)+"</div>"))}
   // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict
-  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.week",r[0],r[1])),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};
+  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
-        r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
+        "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
       (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`),v[5]?l("verdict."+v[5]):l("type.verdict"),
         (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+l("reviews.sessions",v[2]||"—",v[3].join(", ")||"—")),"","",VERDICT[v[5]])).join(""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
@@ -4004,7 +4007,9 @@ LABELS = {
     "day.title": "the day", "day.span": "the last 24 hours",
     "sessions.recent": "sessions · {0} with a commit in the last 24 hours ({1} with their sub-sessions)",
     # the week's verdicts and who gave them: by another session than the branch's, or by the same — reports, not proofs
-    "reviews.week": "reviews · this week · {0} by another session · {1} by the same session", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
+    # the heading, led by what failed and what warns where there is any, then who gave the verdicts (the guide, §1)
+    "reviews.title": "reviews · this week", "reviews.counts": "{0} by another session · {1} by the same session",
+    "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
     "reviews.notready": "{0} not ready", "reviews.findings": "{0} with findings",
     # a verdict's word as the reviewer gave it, its row's TYPE (G3) — `--queue` reads it from the verdict commit's subject
@@ -4081,13 +4086,10 @@ PALETTES = {
 # `[palette]` has never shipped before these keys, so no older key is read. An older copy of the tool reads the table and ignores it.
 PALETTE_WORDS = {"bg": "bg", "ink": "ink", "fail": "coral", "ok": "teal", "warn": "amber", "owed": "owed", "help": "help"}
 PALETTE_TINTS = {"okbg": "teal", "warnbg": "amber", "failbg": "coral"}      # each tint, and the meaning whose tint it is
-# the set contrast (WCAG), in light and in dark, at least PALETTE_FLOOR for every text on every ground it stands on: every text colour on the
-# page and on `raise`; a heading's on its band, `secbg`; on each tint, the row's ink, grey and mute and the tint's own meaning. `mute` is also the
-# action's frame, at least PALETTE_FRAME against the page
+# the set contrast (WCAG), in light and in dark: every text token at least PALETTE_FLOOR against the page, against `raise`, and on every surface —
+# the section band `secbg` and the three tints (the guide, §5). `mute` is also the action's frame, at least PALETTE_FRAME against the page
 PALETTE_TEXT = ("ink", "dim", "mute", "coral", "teal", "amber", "owed", "help", "head", "idink")
-PALETTE_ON = {"bg": PALETTE_TEXT, "raise": PALETTE_TEXT, "secbg": ("ink", "dim", "mute", "head", "amber", "owed", "coral"),
-              "okbg": ("ink", "dim", "mute", "head", "idink", "teal"), "warnbg": ("ink", "dim", "mute", "head", "idink", "amber", "owed"),
-              "failbg": ("ink", "dim", "mute", "head", "idink", "coral")}
+PALETTE_ON = {ground: PALETTE_TEXT for ground in ("bg", "raise", "secbg", "okbg", "warnbg", "failbg")}
 PALETTE_FLOOR, PALETTE_FRAME = 4.5, 3.0
 # how far from the page toward the ink (or a tint's meaning) each derived token stands, and the rules' and the box's alpha — light, then dark
 PALETTE_DERIVED = ({"dim": .716, "mute": .627, "raise": .049, "secbg": .04, "tint": .07, "line": .14, "box": .28},

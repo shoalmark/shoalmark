@@ -124,7 +124,6 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: "Sitzungen · {0} am letzten Tag ({1} mit ihren Untersitzungen)"
-reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}
 ask.ruling: eine Entscheidung
@@ -184,6 +183,8 @@ type.act: act
 type.answer: answer
 type.verdict: verdict
 answer.sign.copy.name: copy the command
+reviews.title: reviews · this week
+reviews.counts: "{0} by another session · {1} by the same session"
 reviews.on: "on {0}"
 reviews.notready: "{0} not ready"
 reviews.findings: "{0} with findings"
