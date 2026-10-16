@@ -7,7 +7,7 @@ next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt the guide's amendment of 16 October, G1 to G8 (three colour meanings, section and state surfaces with their dividers, the guided answer view with its links and signing words), as brand/design-guide.md states it at the commit that last filed this ask?"
+ask: "Do you adopt the guide's amendment of 16 October, G1 to G8 (three colour meanings, section and state surfaces with their dividers, the guided answer view with its links and signing words; every stated ratio measured), as brand/design-guide.md states it at the commit that last filed this ask?"
 ask-kind: ruling
 ask-since: 2026-10-16
 ask-options: "yes | yes, with the change I name | no: the guide stays as its first answer adopted it"
@@ -97,3 +97,4 @@ commit that files this tracker's new ask:
 | 2026-10-16 | G6 takes the go-to-market seat's words for what a key's confirmation is and is not; the ask filed again with them. |
 | 2026-10-16 | The Designer's full pass folded in: G8, each band's top edge a 1px `--box` rule, none above the first band, and its wording of G1 to G7. G6 keeps the go-to-market seat's signing words. The ask filed again with it. |
 | 2026-10-16 | The Designer's fidelity check fixed forward: a consequence stays amber in §8 *Help*; a verdict's word at weight 600; the dialog's teal rule in test 2; the palette's surfaces; `commit_url` before `blob`; one wrap. The ask filed again with them. |
+| 2026-10-16 | The docs pass's two ratio findings fixed forward: the dark `--box` ratio is 2.1, and §13's help ratios are 6.4:1 and 9.0:1. The ask filed again with them. |
