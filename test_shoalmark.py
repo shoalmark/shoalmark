@@ -14443,7 +14443,7 @@ _lf_why = ("this clone is shallow" if _shallow32 != "false" else f"this clone do
            else "this clone does not hold ffa63b8, the Owner's answer the high scores are split at" if not _held("ffa63b8")
            else "no tz database for Europe/Berlin here (the filing days and the build's day are Berlin days)" if not _zone_ok else "")
 if _lf_why:
-    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 9, _lf_why)
+    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 10, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -14465,8 +14465,31 @@ else:
               run_[0] == 0 and f_.get("release") == {"tag": "v0.19.2", "version": "0.19.2", "date_en": "9 October 2026", "date_de": "9. Oktober 2026"})
         score_ = lf_.score(lf_.Git(HERE), json.loads(_LF_PULLS.read_text(encoding="utf-8"))["pulls"])
         check(f"FM-006 · B1 · the high scores, offline from the recorded response: 71/82 for the pull requests opened after the Owner's signed answer "
-              f"(ffa63b8), to #144, and 10/37 before it — the Auditor's numbers (saw {score_}; facts.html {f_.get('hiscore')!r} to #{f_.get('hiscore_last')})",
-              score_ == ((71, 82, 144), (10, 37)) and f_.get("hiscore") == "71/82" and f_.get("hiscore_last") == 144)
+              f"(ffa63b8), to #144, and 10/37 before it — the Auditor's numbers; facts.html dates the cohort by its last pull request's merge, 1 October "
+              f"2026 (saw {score_}; facts.html {f_.get('hiscore')!r} to #{f_.get('cohort_last')}, {f_.get('cohort_end')})",
+              score_ == ((71, 82, 144), (10, 37)) and f_.get("hiscore") == "71/82" and f_.get("cohort_last") == 144
+              and f_.get("cohort_end") == {"en": "1 October 2026", "de": "1. Oktober 2026"})
+        # FM-006, M5: the hi-score is a dated cohort that ends at COHORT_LAST, the last pull request merged under the review-file rule. The control: the
+        # recorded response with #144 copied to COHORT_LAST joins the cohort, and copied one past it does not
+        _p144 = next(p for p in json.loads(_LF_PULLS.read_text(encoding="utf-8"))["pulls"] if p["number"] == 144)
+        _cohort_ = {n: lf_.score(lf_.Git(HERE), json.loads(_LF_PULLS.read_text(encoding="utf-8"))["pulls"] + [{**_p144, "number": n}])[0]
+                    for n in (lf_.COHORT_LAST, lf_.COHORT_LAST + 1)}
+        # …and the cohort's end is the Berlin day its last pull request was merged: one opened on 11 October and merged at 23:30 UTC that day ends it on 12 October
+        _end_ = lf_.cohort_end([{**_p144, "number": lf_.COHORT_LAST, "created_at": "2026-10-11T19:00:00Z", "merged_at": "2026-10-11T23:30:00Z"}], lf_.COHORT_LAST)
+        _tpl_, _en_, _de_ = ((HERE / f).read_text(encoding="utf-8") for f in ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html"))
+        _m5_words_ = ('"pd_1": "pull requests 47–{cohort_last}, from the Owner\'s signed answer of 24 September 2026, 11:07 CEST, to {cohort_end}, when review commits '
+                      'replaced review files"' in _en_
+                      and '"pd_1": "Pull Requests 47–{cohort_last}, von der signierten Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ, bis {cohort_end}, als '
+                      'Review-Commits die Review-Dateien ablösten"' in _de_
+                      and "from pull requests 1–{cohort_last} of shoalmark/shoalmark" in _en_ and " Pull requests after {cohort_end} are reviewed by commit and are not counted here.\"," in _en_
+                      and "aus den Pull Requests 1–{cohort_last} von shoalmark/shoalmark" in _de_ and " Pull Requests nach {cohort_end} werden per Commit geprüft und hier nicht gezählt.\"," in _de_
+                      and 'replace("{cohort_last}", F.cohort_last | string)' in _tpl_ and 'replace("{cohort_end}", F.cohort_end.de if de else F.cohort_end.en)' in _tpl_
+                      and "{hiscore_last}" not in _tpl_ + _en_ + _de_)
+        check(f"FM-006 · M5 · the hi-score's cohort ends at #{lf_.COHORT_LAST}, the last pull request merged under the review-file rule: one merged as "
+              f"#{lf_.COHORT_LAST} is counted in it, one merged as #{lf_.COHORT_LAST + 1} is not; its end is the Berlin day of that merge, not of its opening; "
+              f"pd_1 and board_small say the cohort in FM-006's words and the template fills both slots (saw {_cohort_}, {_end_}, words {_m5_words_})",
+              lf_.COHORT_LAST == 159 and _cohort_ == {159: (71, 83, 159), 160: (71, 82, 144)} and _end_ == {"en": "12 October 2026", "de": "12. Oktober 2026"}
+              and _m5_words_)
         check(f"FM-006 · B1 · the wrecks: every tracker tagged `bug` or `security` at {_LF_TAG} — the 27 the landing's WRECKS drew there, field for field and "
               f"in their order, and FM-045, filed since, first, placed by the drawing's rule (saw {len(f_.get('wrecks', []))} wrecks; the first "
               f"{(f_.get('wrecks') or [None])[0]})", f_.get("wrecks") == [new_] + drawn_)
@@ -14508,6 +14531,7 @@ def _lf_esc_block(js_string):
     real_, _lf_esc_mod.js_string = _lf_esc_mod.js_string, js_string
     try:
         text_ = _lf_esc_mod.facts_html("0" * 40, {"tag": "v0.0.1", "version": "0.0.1", "date_en": "1 October 2026", "date_de": "1. Oktober 2026"}, "1/2", 2,
+                                       {"en": "1 October 2026", "de": "1. Oktober 2026"},
                                        {"date": "2026-10-01", "date_en": "1 October 2026", "date_de": "1. Oktober 2026", "sha": "0000000"},
                                        {"ADOPT_COMMIT": "0" * 40, "TAG": "v0.0.1", "ARCHIVE_URL": "x", "ARCHIVE_SHA256": "x"},
                                        [{"id": "FM-099", "inc": "0000000", "filed": "2026-10-01", "status": "Proposed", "lon": 8.0, "lat": 54.0,

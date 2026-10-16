@@ -1,6 +1,6 @@
 {#- The landing's English words: the template's `{{ w.key }}`, one dict. A value is HTML where it carries <em>, <code>, <b> or <a>; the engine
     does not escape on its own, so no value holds a straight double quote that an attribute would meet. A value may hold a slot the template fills:
-    {tag}, {date}, {hiscore_last}, {waiting}, {acts}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt}, {adopt_other} and {probe_abs}
+    {tag}, {date}, {cohort_last}, {cohort_end}, {waiting}, {acts}, {read_date} and {read_sha} are facts.html's, and {contract}, {llms}, {setup}, {signing}, {standup}, {adopt}, {adopt_other} and {probe_abs}
     are the addresses in `urls` below, and {probe_short} is the last of them as the visitor types it, without its scheme. `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
 {% set w = {
   "lang": "en",
@@ -126,11 +126,11 @@
   "th_period": "period",
   "rk_1": "1st",
   "pd_1_b": "after the rule",
-  "pd_1": "pull requests 47–{hiscore_last}, from the Owner's signed answer of 24 September 2026, 11:07 CEST, to {read_date}",
+  "pd_1": "pull requests 47–{cohort_last}, from the Owner's signed answer of 24 September 2026, 11:07 CEST, to {cohort_end}, when review commits replaced review files",
   "rk_2": "2nd",
   "pd_2_b": "before it",
   "pd_2": "pull requests 1–43, before the Owner's signed answer of 24 September 2026, 11:07 CEST",
-  "board_small": "Read when the site was built, on {read_date}, from pull requests 1–{hiscore_last} of shoalmark/shoalmark: merged ones only, without the Owner's own answer branches. One counts when a commit adding or changing a file under <code>work-tracker/evidence/reviews/</code>, merge commits excluded, is dated before the pull request was opened.",
+  "board_small": "Read when the site was built, on {read_date}, from pull requests 1–{cohort_last} of shoalmark/shoalmark: merged ones only, without the Owner's own answer branches. One counts when a commit adding or changing a file under <code>work-tracker/evidence/reviews/</code>, merge commits excluded, is dated before the pull request was opened. Pull requests after {cohort_end} are reviewed by commit and are not counted here.",
   "over_t": "game over — the repository it came from",
   "over_big": "<em>200</em> pull requests merged in <em>22</em> days. <em>85 %</em> less than a minute after opening. <em>None</em> with a review.",
   "over_1": "Asked what slows them most, three independent agents gave the same answer, by a wide margin: the Owner's unanswered questions — one question, open three days, held three packages.",

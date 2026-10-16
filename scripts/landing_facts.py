@@ -5,7 +5,7 @@ Run it before every site build — in docs.yml, in a local build and in the suit
     python3 scripts/landing_facts.py && zensical build --clean
 
 It writes `overrides/partials/landing/facts.html`, which is generated and never committed (`.gitignore`); the landing reads every
-figure from it: `release`, `hiscore`, `hiscore_last`, `read`, `excerpt`, `pins`, `counts` and `wrecks_json`. It removes the file it wrote last before
+figure from it: `release`, `hiscore`, `cohort_last`, `cohort_end`, `read`, `excerpt`, `pins`, `counts` and `wrecks_json`. It removes the file it wrote last before
 it reads anything, and writes the new one only when every reading holds: whatever it cannot read stops the build with one line
 and exit 1, and a build without the file stops at the template's import, so no page is built with an empty or a stale figure.
 
@@ -14,10 +14,12 @@ and exit 1, and a build without the file stops at the template's import, so no p
   workflow_dispatch`) — and a local one are built from a tagged release: the newest `v*` tag the commit holds is the one VERSION
   names. A pull request's build (`--event pull_request`), which never deploys, may run ahead of the newest tag: a release's
   own pull request carries the next VERSION; it may not fall behind it.
-- **hiscore**, **hiscore_last**: FM-006's rule over the merged pull requests — the Owner's own answer branches left out — opened
-  after the Owner's signed answer of 24 September 2026, 11:07 CEST (`ffa63b8`): one counts when a commit of its own, merge
-  commits excluded, that adds or changes a file under `work-tracker/evidence/reviews/` is dated before the pull request was
-  opened. The pull requests come from GitHub's API — with docs.yml's own token where `LANDING_FACTS_TOKEN` holds it, without one
+- **hiscore**, **cohort_last**, **cohort_end**: FM-006's rule over the merged pull requests — the Owner's own answer branches left
+  out — opened after the Owner's signed answer of 24 September 2026, 11:07 CEST (`ffa63b8`), up to `COHORT_LAST`, the last pull
+  request merged under that review-file rule (FM-006, M5): one counts when a commit of its own, merge commits excluded, that adds or
+  changes a file under `work-tracker/evidence/reviews/` is dated before the pull request was opened. The cohort is dated, not a
+  series: later pull requests are reviewed by commit and are not counted. `cohort_last` is the cohort's last merged pull request,
+  and `cohort_end` the Berlin day it was merged, in English and German. The pull requests come from GitHub's API — with docs.yml's own token where `LANDING_FACTS_TOKEN` holds it, without one
   in a local build — or from a recorded response (`--pulls`); their commits come from git, so the history must be whole.
 - **read**: the build's day (Europe/Berlin; `SOURCE_DATE_EPOCH` where it is set) and the commit.
 - **excerpt**: what `shoalmark.py --owner` prints at the commit — the commit's own tool, run in a throwaway clone checked out
@@ -65,6 +67,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]                # the tree this build renders: its config, its template, its output
 OUT = Path("overrides/partials/landing/facts.html")
 RULE_COMMIT = "ffa63b8c2235e8501e6176599db11043b4cbad89"  # the Owner's signed answer of 24 September 2026, 11:07 CEST: the review rule
+COHORT_LAST = 159   # FM-006, M5: the last pull request merged under the review-file rule. #159 merged on 12 October 2026, 06:39 CEST; #160 brought
+                    # the Owner's signed rulings of that day (2d62fa1, 08:45 CEST), whose R2 replaced review files with review commits, to main
 REVIEWS = "work-tracker/evidence/reviews/"
 MOCK = "work-tracker/evidence/FM-006/landing/index.html"  # the mock the Owner saw: how many sentences each report carries
 TEMPLATE = "overrides/landing.html"                      # the chart's geography and its names, as the page draws them
@@ -260,11 +264,20 @@ def score(git, pulls):
         if line.strip() and line[0] in "AMT":                # a file under the reviews folder added or changed (a deletion is neither)
             touched[sha] = int(at)
     counts = lambda p: any(touched.get(c, float("inf")) < utc(p["created_at"]) for c in own[p["number"]])
-    after = [p for p in merged if utc(p["created_at"]) >= rule_at]
+    after = [p for p in merged if utc(p["created_at"]) >= rule_at and p["number"] <= COHORT_LAST]
     before = [p for p in merged if utc(p["created_at"]) < rule_at]
     if not after:
         stop("no merged pull request was opened after the review rule: there is no high score to read")
     return (sum(map(counts, after)), len(after), after[-1]["number"]), (sum(map(counts, before)), len(before))
+
+
+def cohort_end(pulls, last):
+    """The Berlin day the cohort's last pull request was merged, as {"en": ..., "de": ...} (FM-006, M5)."""
+    merged = [p["merged_at"] for p in map(trim, pulls) if p["number"] == last and p["merged_at"]]
+    if len(merged) != 1:
+        stop(f"pull request #{last}, the high score's last, reads as merged {len(merged)} times")
+    day = datetime.datetime.fromtimestamp(utc(merged[0]), berlin()).date()
+    return {"en": day_en(day), "de": day_de(day)}
 
 
 def read_pulls(recorded, slug, token):
@@ -655,14 +668,15 @@ def jinja_value(v):
     return '"' + "".join(f"\\u{ord(ch):04x}" if bad(ch) else ch for ch in v) + '"'
 
 
-def facts_html(commit, release, hiscore, last, read, pins, wrecks, excerpt, counts):
+def facts_html(commit, release, hiscore, last, end, read, pins, wrecks, excerpt, counts):
     obj = lambda d: "{" + ", ".join(f"{json.dumps(k)}: {lit(v)}" for k, v in d.items()) + "}"
     wrecks_json = "[" + ", ".join("{" + ", ".join(f"{json.dumps(k)}: {js_value(v)}" for k, v in w.items()) + "}" for w in wrecks) + "]"
     return (f"{{#- Generated by scripts/landing_facts.py from {commit} on {read['date']}; never committed, never edited by hand. The landing reads\n"
             f"    every figure from here (FM-006, B1). -#}}\n"
             f"{{% set release = {obj(release)} %}}\n"
             f"{{% set hiscore = {lit(hiscore)} %}}\n"
-            f"{{% set hiscore_last = {lit(last)} %}}\n"
+            f"{{% set cohort_last = {lit(last)} %}}\n"
+            f"{{% set cohort_end = {obj(end)} %}}\n"
             f"{{% set pins = {obj(pins)} %}}\n"
             f"{{% set read = {obj(read)} %}}\n"
             f"{{% set excerpt = {jinja_value(excerpt)} %}}\n"
@@ -670,15 +684,16 @@ def facts_html(commit, release, hiscore, last, read, pins, wrecks, excerpt, coun
             f"{{% set wrecks_json %}}{wrecks_json}{{% endset %}}\n")
 
 
-def check_shapes(release, hiscore, last, read, pins, commit, excerpt):
+def check_shapes(release, hiscore, last, end, read, pins, commit, excerpt):
     shapes = ((release["tag"], r"v\d+\.\d+\.\d+"), (release["date_en"], r"\d{1,2} [A-Z][a-z]+ \d{4}"), (release["date_de"], r"\d{1,2}\. [A-ZÄÖÜ][a-zä]+ \d{4}"),
+              (end["en"], r"\d{1,2} [A-Z][a-z]+ \d{4}"), (end["de"], r"\d{1,2}\. [A-ZÄÖÜ][a-zä]+ \d{4}"),
               (hiscore, r"\d+/\d+"), (read["date"], r"\d{4}-\d{2}-\d{2}"), (read["sha"], r"[0-9a-f]{7,40}"), (pins["ADOPT_COMMIT"], r"[0-9a-f]{40}"),
               (pins["TAG"], r"v\d+\.\d+\.\d+"), (pins["ARCHIVE_URL"], r"https://github\.com/[\w./-]+|\[ARCHIVE URL — filled at build\]"),
               (pins["ARCHIVE_SHA256"], r"[0-9a-f]{64}|\[SHA-256 — filled at build\]"))
     for value, shape in shapes:
         if not re.fullmatch(shape, value):
             stop(f"a figure reads {value!r}, not the shape facts.html carries")
-    if not isinstance(last, int) or pins["ADOPT_COMMIT"] != commit:
+    if not isinstance(last, int) or last > COHORT_LAST or pins["ADOPT_COMMIT"] != commit:
         stop("the high score's last pull request or the prompt's commit is not what was read")
     act = excerpt["act"]
     if not all(isinstance(excerpt[k], int) and excerpt[k] >= 0 for k in ("waiting", "acts")) or (act is None) != (excerpt["acts"] == 0) \
@@ -701,20 +716,22 @@ def build(args):
     pins = read_pins(git, commit, release, slug, switch, deploy, args.main, args.archive)
     wrecks = read_wrecks(git, commit, url)
     excerpt = read_excerpt(git, commit)
-    (counted, of, last), _before = score(git, read_pulls(args.pulls, slug, os.environ.get("LANDING_FACTS_TOKEN") or None))
+    pulls = read_pulls(args.pulls, slug, os.environ.get("LANDING_FACTS_TOKEN") or None)
+    (counted, of, last), _before = score(git, pulls)
+    end = cohort_end(pulls, last)
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     now = datetime.datetime.fromtimestamp(int(epoch), berlin()) if epoch and epoch.isdigit() else datetime.datetime.now(berlin())
     read = {"date": now.strftime("%Y-%m-%d"), "date_en": day_en(now.date()), "date_de": day_de(now.date()), "sha": commit[:7]}
     hiscore = f"{counted}/{of}"
-    check_shapes(release, hiscore, last, read, pins, commit, excerpt)
+    check_shapes(release, hiscore, last, end, read, pins, commit, excerpt)
     counts = wreck_counts(wrecks)
-    text = facts_html(commit, release, hiscore, last, read, pins, wrecks, excerpt, counts)
+    text = facts_html(commit, release, hiscore, last, end, read, pins, wrecks, excerpt, counts)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + ".tmp")
     with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
     tmp.replace(out)
-    print(f"landing facts: {release['tag']} · hi-score {hiscore} to #{last} · {len(wrecks)} wrecks, "
+    print(f"landing facts: {release['tag']} · hi-score {hiscore}, pull requests to #{last}, merged by {end['en']} · {len(wrecks)} wrecks, "
           f"{counts['open']} open · the board {excerpt['waiting']} waiting, {excerpt['acts']} act(s) · pins {'checked' if switch else 'stand-ins, the probe switch off'} · "
           f"{commit[:7]} on {read['date']} → {out}")
 
