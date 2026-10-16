@@ -4110,8 +4110,8 @@ def palette_of(table):
     unknown = sorted(k for k in table if k != "name" and k not in PALETTE_WORDS)
     if unknown:
         refuse(f"it takes `name` and {', '.join(f'`{w}`' for w in PALETTE_WORDS)} — not `{unknown[0]}`")
-    if name not in PALETTES:
-        refuse(f"`name = {json.dumps(name)}` is no palette: {' or '.join(PALETTES)}")
+    if not isinstance(name, str) or name not in PALETTES:      # a list, a number or a date is no palette's name: refused in the same one line
+        refuse(f"`name = {json.dumps(name, default=str)}` is no palette: {' or '.join(PALETTES)}")
     out = {s: {k: v[i] for k, v in PALETTES[name].items()} for i, s in enumerate(("light", "dark"))}
     for word, token in PALETTE_WORDS.items():
         if word not in table:

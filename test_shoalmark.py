@@ -5642,6 +5642,10 @@ _PAL_CASES = (   # (what, the table, refused?, what the page or the one line mus
     ("a page too close to the ink, in dark: the derived dim", '[palette]\nbg = ["#f7f7f5", "#555555"]\n', True,
      ("shoalmark.toml: `[palette]` is refused — dim (derived) #", "on bg #555555 is", "in dark, below 4.5:1")),
     ("an unknown name", '[palette]\nname = "neon"\n', True, ('shoalmark.toml: `[palette]` is refused — `name = "neon"` is no palette: monochrome or shoalmark',)),
+    # RV-3340: a name that is not a string — an empty list, a list naming a palette — is refused in the same one line, never a traceback
+    ("a name that is an empty list", '[palette]\nname = []\n', True, ('shoalmark.toml: `[palette]` is refused — `name = []` is no palette: monochrome or shoalmark',)),
+    ("a name that is a list naming a palette", '[palette]\nname = ["monochrome"]\n', True,
+     ('shoalmark.toml: `[palette]` is refused — `name = ["monochrome"]` is no palette: monochrome or shoalmark',)),
     ("a key it does not take", '[palette]\nblue = ["#000000", "#ffffff"]\n', True, ("it takes `name` and `bg`, `ink`, `fail`, `ok`, `warn`, `owed`, `help`, `secbg`, `okbg`, `warnbg`, `failbg` — not `blue`",)),
     ("heed, a key the guide's first draft named, never shipped", '[palette]\nheed = ["#b3402f", "#ff7b66"]\n', True, ("— not `heed`",)),
     ("a token that is not two colours", '[palette]\nfail = ["#b3402f"]\n', True, ("`fail` is two colours, light then dark, each #rrggbb",)))
@@ -5682,7 +5686,7 @@ _pal_ok, _pal_saw = _palette_class(_tool_src := (HERE / "shoalmark.py").read_tex
 check(f"FM-053, G1–G2, DF-4 · `[palette]`: monochrome with no table and by name, byte for byte, its three meanings, its section band `--secbg` (never `--band`) and its tints the amendment's; shoalmark "
       f"by name, its own amber and tint; tokens above and at 4.5:1 worn, in light and in dark, every text on every surface; a named tint worn, a taken one checked against the "
       f"palette's accents, and each refused where a text cannot stand on it; one below, a page and an "
-      f"ink too close, an unknown name, a key it does not take — `heed` among them — and a token that is not two colours each refused in one line naming "
+      f"ink too close, an unknown name, a name that is a list (empty, or naming a palette), a key it does not take — `heed` among them — and a token that is not two colours each refused in one line naming "
       f"it, by the board's run and by `--check`, exit 1, the page left as it was (saw {_pal_saw})", _pal_ok)
 _PAL_MUTANT = ('''                    refuse(f"{named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1")''',
                '''                    print(f"warning: {named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1", file=sys.stderr)''')
