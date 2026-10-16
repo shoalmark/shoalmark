@@ -6425,7 +6425,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out, _ = run(root, "--owner"); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
     check("7 · past five asks the first line says whose problem the queue is — `you are the bottleneck`, with the asks and the trackers held up, in --owner and on the board",
           code == 0 and out.startswith("6 NEED THE OWNER") and "you are the bottleneck — 6 asks, 1 trackers held up" in out
-          and 'w.length>5?" · "+l("waiting.bottleneck",w.length,held.length)' in page and '"waiting.bottleneck": "you are the bottleneck' in page)
+          and 'w.length>5?l("waiting.bottleneck",w.length,held.length):""' in page and '"waiting.bottleneck": "you are the bottleneck' in page)
 fm.configure(HERE)
 
 # --- FM-008: seats — who may make which change, read from the version control system --------------------------------
