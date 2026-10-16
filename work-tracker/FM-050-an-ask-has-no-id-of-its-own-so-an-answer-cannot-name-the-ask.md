@@ -3,11 +3,11 @@ id: FM-050
 status: Proposed
 considered: FM-027, FM-008, FM-014, FM-016, FM-029, FM-030, FM-023
 tags: process
-next: review
+next: owner
 hook: "An ask has no id of its own, so an answer, the stand-up and the receipts cannot name the ask they mean"
-ask: "Do you adopt the ask-id design and R4's answer commit as FM-050's body states them in the commit that filed this ask?"
+ask: "Do you adopt the ask-id design and R4's answer commit as FM-050's body states them in the commit that last filed this ask?"
 ask-kind: ruling
-ask-since: 2026-10-15
+ask-since: 2026-10-16
 ask-options: "yes | yes, with the change I name | no: R4 and ask ids wait for v0.20.2"
 ask-proposal: "yes"
 ---
@@ -16,8 +16,8 @@ ask-proposal: "yes"
 
 ## What is true now
 
-**Filed 2026-10-15 as a design tracker. Designed 2026-10-15 (`## The design`, below); reviewed 2026-10-16, not ready (`cc9e80b`),
-its findings fixed in this round; not ruled; nothing built.**
+**Filed 2026-10-15 as a design tracker. Designed 2026-10-15 (`## The design`, below); reviewed 2026-10-16 in two rounds,
+not ready (`cc9e80b`) and then READY (`ed2c82b`); put to the Owner; not ruled; nothing built.**
 
 - **Today:** a tracker holds at most one open ask, in its front matter. `--clear-ask` moves an answered exchange under
   `## Asks`, dated, with no id. An answer is tied to its ask only by its tracker and the ask's date.
@@ -27,7 +27,8 @@ its findings fixed in this round; not ruled; nothing built.**
 - **The design** is below: the id, asks before ids, R4's answer commit and how the gate finds it, what the gate refuses,
   what the three readers print, the class test, what each backend can claim, and the build's order. Its open questions
   close it.
-- **The ask** is drafted (`next: review`): the Builder seat holds no `ask` right, so the Planner puts it to the Owner.
+- **The ask** is put to the Owner (`next: owner`) by the Planner after round 2's READY, and filed at the commit that puts
+  it, so the answer binds the reviewed body.
 - **Tier: critical.** It decides which ask the Owner's verified word answers, so it is signing and rights. A critical
   Builder, a Reviewer in a session of its own, one CI run.
 - **Order:** designed and reviewed, and ruled by the Owner, before R4 is built; R4 and the ids are built together.
@@ -538,3 +539,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-16 | Reviewed, not ready (`cc9e80b`): two findings go back to the Builder; the base's list of waiting asks is corrected forward by the Planner. |
 | 2026-10-16 | RV-3284 (recorded privately) fixed in the design, by the Builder seat (`27f31560/builder-5`), from the Planner's draft. |
 | 2026-10-16 | RV-3285 fixed in the design, by the Builder seat: C5 compares the ids a branch proposes with the default branch's open ask and its records, answered or withdrawn, in `lint` and in `--queue`; duplicate archived ids are defined; a row and a mutant cover the records. |
+| 2026-10-16 | Round 2: READY (`ed2c82b`). The ask put to the Owner by the Planner (`next: owner`), filed at this commit so the answer binds the reviewed body. |
