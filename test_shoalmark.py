@@ -861,7 +861,7 @@ with tempfile.TemporaryDirectory() as d:
     now_ = commit_as(root, "implementer@seat", "at work now\n\nSession: 5555eeee/implementer-2\nWorktree: wt-now")
     busy = run_safe(root, "--owner")[1]
     check(f"FM-032 S2 · the digest names the parents with a commit in the last day — a parent derived from its sub-session's id — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
-          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · 1 (2 with their sub-sessions)\n  5555eeee — (—) · implementer 2" in busy and "1111aaaa" not in busy)
+          "SESSIONS" not in quiet and "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 1 (2 with their sub-sessions)\n  5555eeee — (—) · implementer 2" in busy and "1111aaaa" not in busy)
     opened, closed = run_safe(root, "--session", "open", "6666ffff", "principal", "the Owner", "x"), run_safe(root, "--session", "close", "1111aaaa")
     gone = "--session open/close are gone since 0.18.0: the registry is a report — run --sessions"
     check(f"FM-032 S2 · `--session open` and `--session close` are gone: one line, exit 2, nothing written (saw {opened[0]}, {closed[0]}, {opened[2].strip()!r})",
@@ -1400,14 +1400,15 @@ with tempfile.TemporaryDirectory() as d:
         try:
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<p id="p"[^>]*>([\s\S]*?)</p>', pdom) or [None, ""])[1]))
+            strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1]))
         except _ChromeFailed as e_:
             strip_ = None
             _hung("strip", e_)
-    check(f"FM-024 S7 + FM-024 build for 0.19.0 · the board's strip is one line per parent — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the digest groups the same way under the same header (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
-          "SESSIONS IN THE LAST DAY · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
-              "sessions · 2 in the last day (4 with their sub-sessions) a9 t@t (—) · implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
-              and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_)))
+    check(f"FM-024 S7 + FM-024 build for 0.19.0 + FM-053 · the board's strip is one line per parent, in the day's one fold — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the week's verdicts, folded, a row each; the digest groups the same way under the same words (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
+          "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
+              "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—) · implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
+              and "reviews · this week · 2 by another session · 1 by the same session · untraced 1 · reports, not proofs" in strip_
+              and "by the same session · its session a9/reviewer-1, the branch's a9, a9/implementer-1" in strip_ and "independent" not in strip_)))
 # --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -1431,7 +1432,7 @@ with tempfile.TemporaryDirectory() as d:
     said = run_safe(root, "--owner")[1]
     lines = [l for l in said.splitlines() if l.startswith("  ") and re.match(r"  [0-9a-f]{8} ", l)]
     check(f"FM-024 (0.19.0) · 3 parents with 25 sub-sessions render 3 lines and the header's counts — the runs collapsed (`1–6`, `1–5, 7`, `41, 42, 45`), a parent with no commit of its own derived from its sub-sessions' ids, a session from a week ago not counted (saw {lines} · {said.strip()[-420:]!r})",
-          "SESSIONS IN THE LAST DAY · 3 (28 with their sub-sessions)" in said
+          "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 3 (28 with their sub-sessions)" in said
           and lines == [f"  {P1} principal (wt-p) · implementer 1–6 · reviewer 1–5, 7", f"  {P3} principal (wt-q) · reviewer 1–10", f"  {P2} — (—) · implementer 41, 42, 45"]
           and "4444dddd" not in said)
     fm.configure(root)
@@ -1691,8 +1692,8 @@ if _browser("board"):
             check("the board renders in a browser: five sections in order, the open tracker under `triage`, the shipped one folded away",
                   re.search(r"progress.*?triage.*?triaged.*?backlog.*?ended", shown, re.S) is not None
                   and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
-            check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
-                  "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
+            check("a tracker opens rendered in the page: its facts, its handover, its markdown as HTML",
+                  "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "handover" in view_dom)
     except _ChromeFailed as e_:
         _hung("board", e_)
         fm.configure(HERE)
@@ -4923,8 +4924,8 @@ if _browser("progress"):
                 d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
                                      (root / "docs/work-tracker/index.html").as_uri()]).stdout
                 shown = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", d_[d_.find("<tbody"):d_.find("</tbody>")]))
-                progress_line.triaged = (re.search(r"[▾▸] triaged · \d+ · (.*?) [▾▸] backlog", shown) or [None, ""])[1].strip()
-                return (re.search(r"▾ progress · 0 · ([^▾▸]*?) ▾ triage", shown) or [None, ""])[1].strip()
+                progress_line.triaged = (re.search(r" triaged · \d+ · (.*?) backlog · \d+ · ", shown) or [None, ""])[1].strip()
+                return (re.search(r" progress · 0 · (.*?) triage · \d+ · ", shown) or [None, ""])[1].strip()
             before = progress_line()
             tracker(root, "MSR-003", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n", title="A parked one")
             after = progress_line()
@@ -5268,6 +5269,28 @@ brand.gone.theme: [palette] in shoalmark.toml
 brand.gone.fonts: the system's monospace
 brand.gone.wordmark: the name
 brand.gone.themes: [palette], by name
+scheme.button: light or dark: {0}
+path.lines: {0} lines
+path.line: 1 line
+day.title: the day
+day.span: the last 24 hours
+reviews.reports: reports, not proofs
+reviews.on: on {0}
+reviews.notready: {0} not ready
+reviews.findings: {0} with findings
+verdict.READY: ready
+verdict.READY WITH FINDINGS: ready with findings
+verdict.READY TO TAG: ready to tag
+verdict.NOT READY: not ready
+reviews.sessions: its session {0}, the branch's {1}
+reviews.word.another: by another session
+reviews.word.same: by the same session
+reviews.word.untraced: untraced
+reviews.word.trunk: on trunk — not a branch verdict
+type.act: act
+type.answer: answer
+type.verdict: verdict
+answer.sign.copy.name: copy the command
 """
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
 _GONE_NAMES = ("theme.css", "wordmark.svg")       # the two files R10's look half stopped reading, which a check below writes and removes again
@@ -5335,7 +5358,7 @@ with tempfile.TemporaryDirectory() as d:
                 chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
                 shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
                 english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
-                                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
+                                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "handover", "untriaged", "waiting", "kept")
                                   if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
                 check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english})", not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
                 _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
@@ -5354,7 +5377,7 @@ with tempfile.TemporaryDirectory() as d:
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
         code, _, err = run(root)
         check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
-        head = lambda page: page[page.index('<div id="H">'):page.index('<button id="s">')]
+        head = lambda page: page[page.index('<div id="H">'):page.index('<label id="sb">')]
         _, n_page, n_report, _, _ = board_with(repo_logo_svg=_SVG, repo_wordmark_svg=_SVG.replace("<script>document.title=\"PWNED\"</script>", ""))
         check("R10 · the header is the logo, then the name: a wordmark.svg is never inlined — it is named as no longer read, and the header shows the name",
               head(n_page).startswith('<div id="H"><img alt="" src="data:image/svg+xml;base64,') and head(n_page).endswith('"><b>repo</b><span data-l="tagline"></span>')
@@ -5365,10 +5388,10 @@ with tempfile.TemporaryDirectory() as d:
         _links = lambda line: re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener" aria-label="([^"]+)">', line)
         check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
               all(_links(_run(pg)) == [("https://github.com/shoalmark/shoalmark", "shoalmark on GitHub"), (f"https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
-                  and _run(pg).endswith(f'shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
+                  and _run(pg).endswith(f'shoalmark{fm.icon("out")}</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
                   for pg in (plain_page, h_page, de_page, n_page)))
-        check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark",
-              f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
+        check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark; the link leaves the board, so the out icon follows its text (FM-053)",
+              f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark{fm.icon("out")}</a>' in _run(plain_page)
               and fm.PRICKE == re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1))
         if _browser("running"):
             try:
@@ -5436,11 +5459,11 @@ with tempfile.TemporaryDirectory() as d:
     _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
     try:
         run(root); page = (wt / "index.html").read_text(encoding="utf-8")
-        check("FM-002 · the board carries the Owner's box's title, the label `owner.title`, and the claim and the running line in one footer element, after the viewer — "
-              "the default CSS hides the title, and the claim in the viewer; no row carries the stripe a theme once drew",
+        check("FM-002, FM-053 · the board carries the Owner's box's title, the label `owner.title` — *yours*, set into the box's one titled frame — and the claim "
+              "and the running line in one footer element, after the viewer, the claim hidden in the viewer; no row carries the stripe a theme once drew",
               '</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n<p id="r" class="m">' in page
-              and page.count("<footer") == 1 and ".pt{display:none}#B[hidden]~#F #f{display:none}" in page
-              and '`<span class="pt">${l("owner.title")}</span>`+' in page and "zebra" not in page and '"owner.title": "owed to the owner"' in page)
+              and page.count("<footer") == 1 and "#p>.pt{position:absolute;top:-11px;" in page and "#B[hidden]~#F #f{display:none}" in page and ".pt{display:none}" not in page
+              and '`<span class="pt">${l("owner.title")}</span>`+' in page and "zebra" not in page and '"owner.title": "yours"' in page)
         if _browser("hooks"):
             try:
                 import html as _html
@@ -5449,7 +5472,7 @@ with tempfile.TemporaryDirectory() as d:
                 (wt / "probe.html").write_text(page.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
                 views_ = _html.unescape((re.search(r'data-probe="([^"]*)"', _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout) or [None, ""])[1])
                 check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view (saw {views_!r})",
-                      views_ == "owed to the owner|owed to the owner|owed to the owner")
+                      views_ == "yours|yours|yours")
                 (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
                 _hung("hooks", e_)
@@ -5594,6 +5617,208 @@ check(f"R10 · this repository holds no brand file the board no longer reads —
       f"ships no themes/ — so its board names none, and warns of nothing (saw {_gone}, {_warn})",
       sorted(p_.name for p_ in _rb.iterdir()) == ["labels.yaml", "logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
 
+# --- FM-053's answer, and the guide's amendment G1–G2: the board's colours are `[palette]` — a palette by name or a few tokens in three meanings, `ok`,
+# `warn` and `fail`, refused below the set contrast on every ground its text stands on, ignored by an older copy. The class test, run on the tool and on
+# its mutant, the refusal turned back into a warning, which it must fail
+_PAL_CASES = (   # (what, the table, refused?, what the page or the one line must hold)
+    ("no table", "", False, ("--bg:#f7f7f5;", "--coral:#b3402f;", "--bg:#0e0e0e;", "--mute:#6a6a6a;", "--teal:#187953;", "--amber:#8a5600;", "--owed:#8a5600;",
+                             "--secbg:#efefeb;", "--okbg:#e1f0e7;", "--warnbg:#fbf0d6;", "--failbg:#faeae6;", "--secbg:#18191c;", "--amber:#f0b44c;")),
+    ("monochrome by name", '[palette]\nname = "monochrome"\n', False, ("--bg:#f7f7f5;", "--owed:#8a5600;", "--help:#7b3fbf;")),
+    ("shoalmark by name", '[palette]\nname = "shoalmark"\n', False, ("--bg:#fbfbf7;", "--owed:#a0156e;", "--amber:#7d5000;", "--warnbg:#f8eed6;", "--help:#1f5ca8;",
+                                                                      "--head:#526214;", "--bg:#0d1720;", "--box:#8eb1cc;", "--amber:#f1c26a;", "--warnbg:#2b2414;")),
+    ("tokens above the contrast, the band and the tints derived", '[palette]\nink = ["#000000", "#ffffff"]   # light, dark\nfail = ["#a00000", "#ff8080"]\nwarn = ["#7a4c00", "#f0b44c"]\n', False,
+     ("--ink:#000000;", "--ink:#ffffff;", "--coral:#a00000;", "--amber:#7a4c00;", "--owed:#7a4c00;", "--dim:#", "--line:rgba(0,0,0,0.14)", "--secbg:#ededeb;", "--failbg:#f1e6e4;")),
+    ("a token at the contrast, 4.51:1 on raise", '[palette]\nfail = ["#6b6b6b", "#ff7b66"]\n', False, ("--coral:#6b6b6b;",)),
+    ("a token below the contrast, 4.44:1 on raise", '[palette]\nfail = ["#6c6c6c", "#ff7b66"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — fail #6c6c6c on raise #ececea is 4.44:1 in light, below 4.5:1",)),
+    ("a page too close to the ink, in dark: the derived dim", '[palette]\nbg = ["#f7f7f5", "#555555"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — dim (derived) #", "on bg #555555 is", "in dark, below 4.5:1")),
+    ("an unknown name", '[palette]\nname = "neon"\n', True, ('shoalmark.toml: `[palette]` is refused — `name = "neon"` is no palette: monochrome or shoalmark',)),
+    ("a key it does not take", '[palette]\nblue = ["#000000", "#ffffff"]\n', True, ("it takes `name` and `bg`, `ink`, `fail`, `ok`, `warn`, `owed`, `help` — not `blue`",)),
+    ("heed, a key the guide's first draft named, never shipped", '[palette]\nheed = ["#b3402f", "#ff7b66"]\n', True, ("— not `heed`",)),
+    ("a token that is not two colours", '[palette]\nfail = ["#b3402f"]\n', True, ("`fail` is two colours, light then dark, each #rrggbb",)))
+
+
+def _palette_class(source):
+    """The class test on a tool whose source is `source`, a copy of it run as a program: each case's table in shoalmark.toml, the board built, `--check`
+    run. Worn: exit 0 and the page's tokens. Refused: the board's run and `--check` exit 1 with the one line naming the pair, and the page left as it was.
+    (ok, what differed)."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr"); tracker(root_, "MSR-001")
+        conf_ = (root_ / "shoalmark.toml").read_text(encoding="utf-8"); page_path = root_ / "docs/work-tracker/index.html"
+        tr_(); pages_, wrong_ = {}, []
+        for what, table, refused, want in _PAL_CASES:
+            (root_ / "shoalmark.toml").write_text(conf_ + "\n" + table, encoding="utf-8")
+            before_ = page_path.read_text(encoding="utf-8")
+            c_, _o, e_ = tr_(); chk_, _o2, e2_ = tr_("--check"); page_ = page_path.read_text(encoding="utf-8")
+            pages_[what] = page_
+            if refused:
+                ok_ = (c_ == 1 and chk_ == 1 and page_ == before_ and len(e_.strip().splitlines()) == 1 and all(w in e_ for w in want) and all(w in e2_ for w in want))
+            else:
+                ok_ = c_ == 0 and chk_ == 0 and all(w in page_ for w in want) and "is refused" not in e_ + e2_ and "--band" not in page_    # the section band is --secbg
+            if not ok_:
+                wrong_.append(f"{what}: exit {c_}/{chk_} · {e_.strip()[:160]!r}")
+        if pages_["no table"] != pages_["monochrome by name"]:
+            wrong_.append("monochrome by name is not the board with no table, byte for byte")
+        rm_git(root_)
+        return not wrong_, wrong_
+
+
+_pal_ok, _pal_saw = _palette_class(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"))
+check(f"FM-053, G1–G2 · `[palette]`: monochrome with no table and by name, byte for byte, its three meanings, its section band `--secbg` (never `--band`) and its tints the amendment's; shoalmark "
+      f"by name, its own amber and tint; tokens above and at 4.5:1 worn, in light and in dark, the band and the tints derived; one below, a page and an "
+      f"ink too close, an unknown name, a key it does not take — `heed` among them — and a token that is not two colours each refused in one line naming "
+      f"it, by the board's run and by `--check`, exit 1, the page left as it was (saw {_pal_saw})", _pal_ok)
+_PAL_MUTANT = ('''                    refuse(f"{named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1")''',
+               '''                    print(f"warning: {named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1", file=sys.stderr)''')
+check("FM-053 · the `[palette]` class test's mutant, the refusal below the contrast turned back into a warning: the class test FAILS on it",
+      _tool_src.count(_PAL_MUTANT[0]) == 1 and not _palette_class(_tool_src.replace(*_PAL_MUTANT))[0])
+_PAL_OLD = "1281a75"            # FM-053's signed answer, the release branch's tool before this one
+if _has_rev(_PAL_OLD):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[palette]\nname = "shoalmark"\nfail = ["#6c6c6c", "#ff7b66"]\n', encoding="utf-8")
+        c_old, _o, e_old = _tool_run(_old_tool(base / "old", _PAL_OLD), root, "--html-only")
+        old_page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
+        c_new, _o, e_new = _tool_run(HERE / "shoalmark.py", root, "--html-only")
+        check(f"FM-053 · an older copy of the tool ({_PAL_OLD}) reads a `[palette]` table and ignores it — its board is built, in its own colours, no line said; "
+              f"this copy refuses the same table (saw exit {c_old} {e_old.strip()[:80]!r}, then {c_new})",
+              c_old == 0 and "</html>" in old_page and "#6c6c6c" not in old_page and "palette" not in e_old and c_new == 1 and "is refused" in e_new)
+        rm_git(root)
+else:
+    _skipped(f"FM-053 · an older copy ignores `[palette]`", 1, f"this clone does not hold {_PAL_OLD}")
+fm.configure(HERE)
+
+# --- FM-053: the design guide's §11 acceptance tests, as the guide's amendment G1–G5 reads them — test 2 is *the meanings* — each a class test over the
+# rendered HTML: the page a copy of the tool writes, its stylesheet, its script and its words, read without a browser. A board with asks of each kind
+# and an act. Test 2 runs on two mutants too, each of which it must fail: a READY coloured coral, and a confidence on a tint
+
+
+def _css_rules(css):
+    """A stylesheet's rules as (the media it sits under, or "", its selector, {property: value}) — comments dropped, one level of @media."""
+    css, out, media = re.sub(r"/\*[\s\S]*?\*/", "", css), [], ""
+    for m in re.finditer(r"(@media[^{]+)\{|([^{}]+)\{([^{}]*)\}|\}", css):
+        if m.group(1):
+            media = m.group(1).strip()
+        elif m.group(2) is not None:
+            decls = dict((k.strip(), v.strip()) for k, _, v in (d.partition(":") for d in m.group(3).split(";")) if k.strip())
+            out += [(media, s.strip(), decls) for s in m.group(2).split(",")]
+        else:
+            media = ""
+    return out
+
+
+def _accept(source):
+    """The page a copy of the tool whose source is `source` renders for the fixture board, judged by the guide's §11, as amended: {test: (ok, what it saw)}."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+        since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+        for n_, kind_ in ((1, "ruling"), (2, "action"), (3, "determination"), (4, "ceremony")):
+            tracker(root_, f"MSR-00{n_}", extra=f'next: owner\nask: "Question {n_}?"\nask-kind: {kind_}\nask-since: {since_}\nask-proposal: "yes"\n', title=f"asks {n_}")
+        tracker(root_, "MSR-005", extra=f"due: {(datetime.datetime.now().astimezone() + datetime.timedelta(hours=3)).replace(microsecond=0).isoformat()}\n", title="an act")
+        tr_("--html-only"); page = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        rm_git(root_)
+    css = page.split("<style>")[1].split("</style>")[0]; rules = _css_rules(css); script = page.split("<script>")[2]
+    box_src = script[script.index("function box(){"):script.index("let all=false")]
+    labels = json.loads(re.search(r",L=(\{.*?\}),ICO=", script, re.S).group(1))
+    plain = [(s, d_) for m, s, d_ in rules if not m]
+    uses = lambda token: sorted({s for s, d_ in plain if f"var(--{token})" in " ".join(d_.values())})
+    tokens = fm.PALETTES["monochrome"]
+    out = {}
+    # 1 · the five-second test: with the icons and every colour gone, each row still says what it is, its type, its state and its actions, in that order
+    row_tpl = ('<div class="row${cls?" "+cls:""}"><div class="what">${id}<span>${what}</span></div><div class="how">${ty?`<span class="ty">${ty}</span> `:""}'
+               '${st?`<span class="st">${st}</span> `:""}${acts?`<span class="acts">${acts}</span>`:""}</div>')
+    types_ = [e_ for e_ in ('t[29][1]?l("ask."+t[29][1]):""', 'l("type.act")', 'l(w[0]=="answer"||w[0]=="revoked"?"type.answer":"type.act")', 'v[5]?l("verdict."+v[5]):l("type.verdict")')
+              if box_src.count(e_) == 1]
+    buttons_ = re.findall(r"<button[^>]*>([^<]*?)</button>", script)
+    out[1] = (row_tpl in script and box_src.count("row(") == 5 and len(types_) == 4
+              and all(labels[k] for k in ("ask.ruling", "ask.action", "ask.determination", "ask.ceremony", "type.act", "type.answer", "type.verdict", "verdict.READY", "verdict.NOT READY"))
+              and all(b_.strip() for b_ in buttons_) and '${ICO.copy}${l("answer.sign.copy")}</button>' in script and labels["answer.sign.copy.name"].startswith("copy ")
+              and labels["answer.sign.copy.name"].endswith(labels["answer.sign.copy"])
+              and ("", ".help", {"color": "var(--help)", "border-left": "2px dashed var(--help)", "padding": "0 0 0 1ch", "margin": "2px 0 6px"}) in rules,
+              f"{len(types_)} rows' types, {len(buttons_)} buttons")
+    # 2 · the meanings: teal only for done or success, amber only for a warning, coral only for a failure, each beside its word, as text or as a tint;
+    #     violet only on help; no tint on a confidence, a handover's prose, a total or a live state. READY and READY WITH FINDINGS never read as coral
+    verdict_ = json.loads(re.search(r"VERDICT=(\{[^}]*\})", script).group(1))
+    tinted = {k: uses(k) for k in ("okbg", "warnbg", "failbg")}
+    colours = {k: uses(k) for k in ("teal", "amber", "coral", "owed", "help")}
+    out[2] = (tinted == {"okbg": ["#dlg .said.ok", ".dfl.add", ".row.vok"], "warnbg": ["#p>.sec.wait>.sh", ".row.vwarn"], "failbg": [".dfl.del", ".row.vfail"]}
+              and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#w", ".vwarn .ty", ".warn"],
+                              "coral": [".dfl.del .s", ".hot", ".q.r", ".vfail .ty"], "owed": [".owed"], "help": [".help"]}
+              and verdict_ == {"READY": "vok", "READY TO TAG": "vok", "READY WITH FINDINGS": "vwarn", "NOT READY": "vfail"}
+              and box_src.count("VERDICT[v[5]]") == 1 and 'class="q' not in box_src and tokens["owed"] == tokens["amber"],
+              f"tints {tinted}, colours {colours}, verdicts {verdict_}")
+    # 3 · nothing framed but actions: a box only on what is clickable and on the search field, one titled frame, the dialog's window
+    framed = sorted({s for s, d_ in plain if any(k == "border" and not v.startswith(("0", "none")) for k, v in d_.items())})
+    phone = {s for m, s, d_ in rules if "max-width:640px" in m and d_.get("min-height") == "24px"}
+    out[3] = (framed == sorted({"button.act", "#s", "#vt button", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
+              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", "#s", "#vt button", "#dlg button"))
+              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", "#s", "#vt button", "#dlg button"} <= phone
+              and not any("border" in k for s, d_ in plain if s.startswith(("#p>.sec", ".row.v")) for k in d_), f"{framed}")
+    # 4 · said, not implied: no word from the guide's *never* list, no line that promises what a session will do; what is not known is in italics with its reason
+    never = re.compile(r"\b(live|running|active|up to date|all your projects|every agent|all sessions|proves|independent|less work|faster|touch)\b", re.I)
+    board_words = {k: v for k, v in labels.items() if not k.startswith(("section.", "desc.", "view.", "count.", "status.", "col.", "search", "group."))}
+    out[4] = (not [k for k, v in board_words.items() if never.search(v)] and not re.search(r"\bcurrent\b", " ".join(v for k, v in board_words.items() if k != "path.title"))
+              and not re.search(r"\bthe session (reads|runs|will)\b", " ".join(board_words.values())) and '`<i>${l("waiting.unasked")}</i>' in box_src,
+              f"{[k for k, v in board_words.items() if never.search(v)]}")
+    # 5 · answer first: the first thing under the header is what waits for you — the box, its first section; on a phone nothing comes before it
+    body_ = page.split("</style>")[1]
+    out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
+              and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css)
+              and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
+    # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
+    out[6] = (all(box_src.count(f'l("{k}"') == 1 for k in ("waiting.title", "waiting.oldest", "waiting.holds", "acts.title", "way.title", "day.title", "sessions.recent",
+                                                           "reviews.week", "reviews.notready", "reviews.findings", "path.title"))
+              and box_src.count('l("waiting.holds.ids"') == 1 and box_src.count('l("ask."+t[29][1])') == 1, "")
+    # 7 · the first screen: the box holds one fold open on a desktop — the day's sessions — and every other part that can wait folded
+    out[7] = (box_src.count("fold(") == 3 and ",!PHONE)" in box_src and box_src.count(",false))") == 2, "")
+    # 8 · you, never the owner: no screen says *owner* outside code font or a record's excerpt
+    owned = sorted(k for k, v in labels.items() if re.search(r"\bowner\b", re.sub(r"`[^`]*`", "", v), re.I))
+    out[8] = (not owned and labels["owner.title"] == "yours" and labels["viewer.answer"] == "your answer", f"{owned}")
+    return out
+
+
+_S11 = {1: "the five-second test: every row of the box reads what it is, then its type, its state, its actions — in the markup's order, not by colour; each "
+           "type is a word — an ask's kind, an act, an answer, a verdict's own word (the asks sent back, not for you, carry none); no button is an icon "
+           "alone, the copy button's noun and its spoken verb stand beside its icon; help is told apart by its dashed rule, not its colour",
+        2: "the meanings: teal only for done or success, amber only for a warning, coral only for a failure, each beside its word as text or as a tint — "
+           "the tints only on *waiting for you*'s band while asks wait, a verdict's row, *copied* and a diff's lines; READY and READY WITH FINDINGS never "
+           "coral; violet only on help; no status colour in the box",
+        3: "nothing framed but actions: a whole frame stands only on the buttons, the search field, the dialog's fields, the Owner's box and the dialog's "
+           "window — and the work table's 5 px status square, a mark of data outside the box; a band and a tint have no frame; every action's frame is "
+           "--mute, at least 3:1 against the page by day and by night; every button at least 24 px high on a phone",
+        4: "said, not implied (the read-at line is Q4's, and joins this check where it lands): no word of the guide's never list in the box's, the dialogs' "
+           "or the viewer's labels — *your current path* is the guide's own title — and none promises what a session will do",
+        5: "answer first: under the header line (and its line of brand files no longer read) the box comes first, and *waiting for you* is its first "
+           "section; no rule reorders it or hides it on a phone",
+        6: "no duplicates: each section's heading and its counts are said once — the oldest ask's age and what all hold up only in the heading, each "
+           "ask's own on its row; the ask's kind is its type, not said again in its state",
+        7: "the first screen (counted from the markup, no layout here): the box holds one fold open on a desktop — the day's sessions — and every other "
+           "part that can wait folded: the reviews and your current path",
+        8: "you, never the owner: no label of the board says *owner* outside code font — the box is *yours*, the path *your current path*, the answer "
+           "*your answer*"}
+_acc = _accept(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"))
+for n_, what_ in _S11.items():
+    check(f"FM-053 · §11 · {n_} · {what_} (saw {_acc[n_][1]})", _acc[n_][0])
+_S11_MUTANTS = {
+    "a READY coloured coral": ('VERDICT={"READY":"vok",', 'VERDICT={"READY":"vfail",'),
+    "a confidence on a tint — the seat's proposal on teal's": ('#dlg .dp{margin:0 0 8px;color:var(--dim)}', '#dlg .dp{margin:0 0 8px;color:var(--dim);background:var(--okbg)}')}
+for what_, (a_, b_) in _S11_MUTANTS.items():
+    check(f"FM-053 · §11 · 2 · the meanings · its mutant, {what_}: test 2 FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))[2][0])
+fm.configure(HERE)
+
 # --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
@@ -5686,9 +5911,9 @@ with tempfile.TemporaryDirectory() as tmp:
     check("--next ends with the same digest — a cold session is told what its Owner owes before it starts", code == 0 and "2 NEED THE OWNER" in out2)
     tracker(root, "AP-030", extra=f'next: owner\nask: "Shall I open the pull request?"\nask-kind: ceremony\nask-since: {new_}\nask-proposal: "open it"\n', title="button")
     code, out3, _ = run(root, "--standup")
-    check("--standup is the agenda of one sitting: rulings first, then the Owner's hands, then buttons — inside a kind what frees the most comes first — and what was sent back is named after, never as an item",
-          code == 0 and out3.startswith("STANDUP") and out3.index("RULINGS") < out3.index("YOUR HANDS") < out3.index("BUTTONS") and "[frees AP-037, AP-041]" in out3
-          and out3.index("BUTTONS") < out3.index("SENT BACK") and "AP-020" in out3.split("SENT BACK")[1])
+    check("--standup is the agenda of one sitting: decisions first, then the Owner's hands, then one click — the board's words (FM-053) — inside a kind what frees the most comes first — and what was sent back is named after, never as an item",
+          code == 0 and out3.startswith("STANDUP") and out3.index("DECISIONS") < out3.index("YOUR HANDS") < out3.index("ONE CLICK") and "[frees AP-037, AP-041]" in out3
+          and out3.index("ONE CLICK") < out3.index("SENT BACK") and "AP-020" in out3.split("SENT BACK")[1] and "RULINGS" not in out3 and "BUTTONS" not in out3)
     code, _, err = run(root, "--standup", str(root / "s.ics"))
     (root / "shoalmark.toml").write_text('name = "q"\nstandup = "09:00"\nstandup_minutes = 20\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     code2, _, _ = run(root, "--standup", str(root / "s.ics")); ics = (root / "s.ics").read_bytes() if (root / "s.ics").exists() else b""
@@ -5745,7 +5970,7 @@ with tempfile.TemporaryDirectory() as tmp:
             shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
             check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
                   "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
-                  and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
+                  and "decision" in shown and "a ruling" not in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
             check("what is not a question he can answer is shown apart — `N asks sent back — not for you`, with the reason, after the queue and never as a question",
                   "1 asks sent back — not for you" in shown and shown.index("AP-022 ") < shown.index("asks sent back") < shown.index("AP-020")
                   and "write `ask:` in AP-020-x.md" in shown)
@@ -5899,13 +6124,13 @@ with tempfile.TemporaryDirectory() as tmp:
                 return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m)).strip() for m in re.findall(r'<label class="dl">(.*?)</label>', body, re.S)], body
             r80, _b80 = _rows("AP-080")
             check("the choices are radios in the order given, except the recommended one — it is offered FIRST and marked — and Other comes last",
-                  r80 == ["b — recommended", "a", "c", "Other:"])
+                  r80 == ["b — recommended", "a", "c", "other:"])
             r81, _b81 = _rows("AP-081")
-            check("a proposal with no options named is a list of one: the recommendation, then Other", r81 == ["count one week first — recommended", "Other:"])
+            check("a proposal with no options named is a list of one: the recommendation, then Other", r81 == ["count one week first — recommended", "other:"])
             r82, b82 = _rows("AP-082")
             other_, box_ = re.search(r'<input [^>]*value="other"[^>]*>', b82).group(0), re.search(r"<textarea[^>]*>", b82).group(0)
             check("an ask that offers nothing shows only Other, checked, and its box is the answer — required, not disabled",
-                  r82 == ["Other:"] and "checked" in other_ and "required" in box_ and "disabled" not in box_)
+                  r82 == ["other:"] and "checked" in other_ and "required" in box_ and "disabled" not in box_)
             # OK yields ONE command, and what the Owner picked is what the tracker will record — the option's own words
             _pick = 'const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[2];R.checked=true;R.dispatchEvent(new Event("change"));D.querySelector("button.go").click();'
             _, b83 = _rows("AP-080", _pick)
@@ -5931,7 +6156,7 @@ with tempfile.TemporaryDirectory() as tmp:
     two_ = page.split("const sign=")[1].split('d.querySelector(".copy")')[0]
     menus_ = re.findall(r"<menu>(.*?)</menu>", two_)
     check("FM-013 · the built board carries the second screen: its words in the labels, the branch the board was built from, and exactly one button in its menu — Done",
-          '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
+          '"answer.sign.title": "sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
           and 'value="done"' in menus_[0] and 'l("answer.done")' in menus_[0] and all(f'"{k}"' in page for k in fm.LABELS if k.startswith("answer.sign.")))
     check("FM-013 · what the second screen replaced is gone — no disabled OK, no `answer.run` line that said Copied before anything was",
           '"answer.run"' not in page and ".disabled=true" not in page and "answer.run" not in fm.LABELS)
@@ -5953,17 +6178,19 @@ with tempfile.TemporaryDirectory() as tmp:
                 return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body)), body, said
             s2_, b2_, yes_ = _sign("yes")
             check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
-                  "Sign your answer" in s2_ and re.search(r"<pre class=\"cmd\">[^<]*--answer AP-090 accept 'b'</pre>", b2_) is not None and "Copy again" in s2_
+                  "sign your answer" in s2_ and re.search(r"<pre class=\"cmd\">[^<]*--answer AP-090 accept 'b'</pre>", b2_) is not None
+                  and re.search(r'<button type="button" class="copy" aria-label="copy the command"><svg class="ico"[^>]*><path d="[^"]+"></path></svg>command</button>', b2_) is not None
+                  and b2_.index('class="said"') < b2_.index('<pre class="cmd">')
                   and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
                   and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
                   and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
                   and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
                   and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
-            check(f"FM-013 · …with ONE way out — Done, the only button in its menu, closes the dialog; the only other control is Copy again (saw: {yes_})",
-                  yes_["menu"] == "Done" and yes_["buttons"] == "2" and yes_["open"] == "false")
+            check(f"FM-013 · …with ONE way out — done, the only button in its menu, closes the dialog; the only other control is the copy button, *command* (saw: {yes_})",
+                  yes_["menu"] == "done" and yes_["buttons"] == "2" and yes_["open"] == "false")
             _n0, _n1, none_ = _sign("none")
-            check("FM-013 · it says Copied only when the clipboard said so — with no clipboard (a board opened from a file), it says to select and copy instead",
-                  yes_["said"] == "Copied." and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "Copied" not in none_["said"])
+            check("FM-013 · it says the command is on the clipboard only when the clipboard said so — with no clipboard (a board opened from a file), that copying did not work, and to select and copy instead",
+                  yes_["said"] == "the command is on your clipboard" and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "clipboard" in none_["said"] and "is on your clipboard" not in none_["said"])
         except _ChromeFailed as e_:
             _hung("second", e_)
     rm_git(root)
@@ -9886,9 +10113,9 @@ with tempfile.TemporaryDirectory() as tmp:
             shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
             acts_shown_ = shown_[shown_.find("your acts"):shown_.find(" id tier status ")]
             check(f"FM-030 · B · rendered, his board lists his acts after the questions: no date yet, due, overdue, missed — each by the clock, each with its time (saw {shown_[shown_.find('your acts'):][:420]!r})",
-                  "your acts, with their time: 4" in shown_ and "AP-410 after the scoring · promised " + since_ + " · no date yet done reschedule asked: Will you set up the key this week?" in shown_
-                  and f"AP-411 a read tomorrow · due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago · overdue — due {at_(-10).replace('T', ' ')}" in shown_
-                  and f"AP-413 a read two hours ago · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
+                  "your acts, with their time: 4" in shown_ and "AP-410 after the scoring act promised " + since_ + " · no date yet done reschedule asked: Will you set up the key this week?" in shown_
+                  and f"AP-411 a read tomorrow act due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago act overdue — due {at_(-10).replace('T', ' ')}" in shown_
+                  and f"AP-413 a read two hours ago act missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
                   and "AP-414" not in acts_shown_ and "AP-415" not in acts_shown_ and "AP-416" not in acts_shown_ and "AP-417" not in acts_shown_)
         except _ChromeFailed as e_:
             _hung("acts", e_)
@@ -10037,17 +10264,17 @@ with tempfile.TemporaryDirectory() as tmp:
             when_ = datetime.datetime(2026, 10, 2, 8, 15).astimezone().isoformat()        # the browser's zone is this machine's
             _d, due_ = _owe("AP-421", "due", 'F.when.value="2026-10-02T08:15";')
             _d, odd_ = _owe("AP-421", "done", 'F.text.value="it\'s the report in `docs/x.md`, cost $HOME";')
-            odd_cmd_ = re.search(r"--done AP-421 ('.*')\s+Copy", odd_)
+            odd_cmd_ = re.search(r"--done AP-421 ('.*')\s+command", odd_)
             said_ = (subprocess.run(["bash", "-c", "printf %s " + odd_cmd_.group(1)], capture_output=True, text=True).stdout
                      if odd_cmd_ and shutil.which("bash") and os.name != "nt" else "it's the report in `docs/x.md`, cost $HOME")
             check(f"FM-030 · C · R4 · the copied line single-quotes what he typed — a `'` as `'\\''` — so a backtick or a `$` reaches the tool as typed, never run by the shell (saw {odd_cmd_.group(1) if odd_cmd_ else odd_[:200]!r} → {said_!r})",
                   odd_cmd_ is not None and odd_cmd_.group(1) == "'it'\\''s the report in `docs/x.md`, cost $HOME'" and said_ == "it's the report in `docs/x.md`, cost $HOME")
             check(f"FM-030 · C · rendered, each act has two buttons — done · reschedule — and OK gives ONE command on the second screen: `--done <id> \"<where>\"`, and `--due <id> <time>` carrying the browser's zone (saw {done_[:240]!r} · {due_[:240]!r})",
-                  "your acts, with their time: 2 AP-420 at seven" in rows_ and f"AP-421 this week · promised {since_} · no date yet done reschedule asked: Will you set up the key?" in rows_
+                  "your acts, with their time: 2 AP-420 at seven" in rows_ and f"AP-421 this week act promised {since_} · no date yet done reschedule asked: Will you set up the key?" in rows_
                   and "--done AP-421 'evidence/AP-421/key.md'" in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
                   and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
                   and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
-                  and "Sign your act · AP-421" in done_ and "Sign your act · AP-421" in due_ and "Sign your answer" not in done_ + due_)
+                  and "sign your act · AP-421" in done_ and "sign your act · AP-421" in due_ and "sign your answer" not in done_ + due_)
         except _ChromeFailed as e_:
             _hung("owe", e_)
     rm_git(root)
@@ -10392,7 +10619,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code_o, out_o, _e = run(root, "--owner")
     block_ = lambda out: next((b_.strip("\n").split("\n") for b_ in out.split("\n\n") if b_.startswith("ACTS —")), [])
     check(f"FM-030 · E · `--standup` lists the acts after the asks: missed and overdue first, then what falls due, then what has no date yet — FM-007's key, promised after the scoring — each with its `due:` and what it is; a done act is not there (saw {out_s!r})",
-          code_s == 0 and "· 1 item(s) · 4 act(s)" in out_s.split("\n")[0] and out_s.index("RULINGS") < out_s.index("ACTS — yours") and block_(out_s) == want_ and "AP-445" not in out_s)
+          code_s == 0 and "· 1 item(s) · 4 act(s)" in out_s.split("\n")[0] and out_s.index("DECISIONS") < out_s.index("ACTS — yours") and block_(out_s) == want_ and "AP-445" not in out_s)
     check(f"FM-030 · E · `--owner` says the same after its asks (saw {out_o!r})",
           code_o == 0 and out_o.startswith("1 NEED THE OWNER") and out_o.index("Shall the launcher ship first?") < out_o.index("ACTS — yours") and block_(out_o) == want_)
     ruling_.unlink()
@@ -10438,7 +10665,7 @@ with tempfile.TemporaryDirectory() as tmp:
     act450_ = json.dumps([promise_, f"accepted - {promise_}", since_, "", 60, q_], ensure_ascii=False)
     check("FM-030 · 0.18.6 · the board's HTML for FM-024's shape carries the promise first and the question second, and its dialogs show the question below the promise with a hint that names it — in the labels, English built in, German in the table the tool ships",
           act450_ + "]" in page_ and '`<p class="ddim">${l("acts.asked",a[5])}</p>`' in page_ and 'l(a[5]?"act.done.hint.promise":"act.done.hint")' in page_
-          and '`\\n<span class="aq">${l("acts.asked",a[5])}</span>`' in page_ and '"act.done.hint.promise": "the path to the result of this promise, or where it is"' in page_
+          and 'a[5]?`<span class="aq">${l("acts.asked",a[5])}</span>`:""' in page_ and '"act.done.hint.promise": "the path to the result of this promise, or where it is"' in page_
           and all(k in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")) for k in ("acts.asked", "act.done.hint.promise")))
     code_s, out_s, _e = run(root, "--standup")
     code_o, out_o, _e = run(root, "--owner")
@@ -10486,10 +10713,10 @@ with tempfile.TemporaryDirectory() as tmp:
             _d, done_html_, done_ = _dlg("AP-450", "done")
             _d, due_html_, due_ = _dlg("AP-452", "due")
             check(f"FM-030 · 0.18.6 · rendered, his board lists the act as his promise and the question below it; its *done* dialog shows the promise, the question under it, smaller, and asks for the result of this promise; a `due:` beside an open question shows its own line and no question (saw {done_[:260]!r} · {due_[:160]!r})",
-                  f"AP-450 {promise_} · promised {since_} · no date yet done reschedule asked: {q_}" in rows_
-                  and done_.strip().startswith(f"Done — where is the result? · AP-450 {promise_} asked: {q_} no date yet")
+                  f"AP-450 {promise_} act promised {since_} · no date yet done reschedule asked: {q_}" in rows_
+                  and done_.strip().startswith(f"done — where is the result? · AP-450 {promise_} asked: {q_} no date yet")
                   and 'placeholder="the path to the result of this promise, or where it is"' in done_html_ and 'class="ddim">asked: ' in done_html_
-                  and due_.strip().startswith(f"Reschedule — to when? · AP-452 a read beside an open ruling due {at_(24 * 60).replace('T', ' ')}")
+                  and due_.strip().startswith(f"reschedule — to when? · AP-452 a read beside an open ruling due {at_(24 * 60).replace('T', ' ')}")
                   and "asked:" not in due_)
         except _ChromeFailed as e_:
             _hung("promise", e_)
@@ -10909,9 +11136,9 @@ with tempfile.TemporaryDirectory() as tmp:
             box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
             check(f"FM-030 · 0.18.6 · rendered, the box counts *waiting for you* without the asks answered on their way and lists them, with the act done on its way, under *on their way* — no *done* and no *reschedule* there (saw {box_[:700]!r})",
                   "waiting for you: 1 · oldest 1 days AP-505 Does the report ship first?" in box_ and "your acts, with their time" not in box_
-                  and f"on their way: 3 AP-501 at seven tomorrow · answered, on its way · {at_('AP-501')} · signed · your merge is next revoke asked: Will you read production at seven?" in box_
-                  and f"AP-502 rejected - not before the audit · answered, on its way · {at_('AP-502')} · signed · your merge is next" in box_
-                  and f"AP-503 this week · done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next revoke asked: Will you set up the key?" in box_
+                  and f"on their way: 3 AP-501 at seven tomorrow answer answered, on its way · {at_('AP-501')} · signed · your merge is next revoke asked: Will you read production at seven?" in box_
+                  and f"AP-502 rejected - not before the audit answer answered, on its way · {at_('AP-502')} · signed · your merge is next" in box_
+                  and f"AP-503 this week act done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next revoke asked: Will you set up the key?" in box_
                   and "reschedule" not in box_ and "accept reject" not in box_.split("on their way")[1])
         except _ChromeFailed as e_:
             _hung("way", e_)
@@ -11123,7 +11350,7 @@ with tempfile.TemporaryDirectory() as tmp:
             _r, ans_ = _rev("AP-502", 'F.text.value="asked the wrong question";')
             check(f"FM-030 · 0.18.6 · rendered, each row on its way has one button, *revoke*, where *done* and *reschedule* or *accept* and *reject* were; OK gives ONE command, `--revoke <id> \"<why>\"`, on the second screen, which says it commits on that branch (saw {done_[:400]!r} · {ans_[:300]!r})",
                   "your merge is next revoke" in rows_ and "reschedule" not in rows_[rows_.find("on their way"):rows_.find(" id tier status ")]
-                  and "--revoke AP-503 'the wrong file'" in done_ and "Sign your act · AP-503" in done_ and "commits on answer/ap-503, where it is on its way — one branch per exchange" in done_
+                  and "--revoke AP-503 'the wrong file'" in done_ and "sign your act · AP-503" in done_ and "commits on answer/ap-503, where it is on its way — one branch per exchange" in done_
                   and "removes done: and records the revocation under ## Acts — the act is owed again" in done_ and "AP-503 done revoked: the wrong file signed, on `answer/ap-503`, pushed" in done_
                   and "--revoke AP-502 'asked the wrong question'" in ans_ and "writes answer: as revoked — the answer it takes back goes into the ship log" in ans_
                   and "AP-502 answered: revoked - asked the wrong question signed, on `answer/ap-502`, pushed" in ans_)
@@ -11212,8 +11439,8 @@ with tempfile.TemporaryDirectory() as tmp:
             box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
             ways_ = box_[box_.find("on their way: 3"):]
             check(f"FM-030 · 0.18.6 · RV-730 · rendered, *on their way* reads the two reschedules with their time and no button, and the revocation once; *your acts* is empty until the merge (saw {box_[:900]!r})",
-                  f"AP-501 at seven tomorrow · rescheduled, on its way — due {sp_(two_)} · answer/ap-501 @ " in ways_
-                  and f"AP-503 this week · rescheduled, on its way — due {sp_(three_)} · answer/ap-503 @ " in ways_ and ways_.count("done revoked, on its way") == 1
+                  f"AP-501 at seven tomorrow act rescheduled, on its way — due {sp_(two_)} · answer/ap-501 @ " in ways_
+                  and f"AP-503 this week act rescheduled, on its way — due {sp_(three_)} · answer/ap-503 @ " in ways_ and ways_.count("done revoked, on its way") == 1
                   and "your acts, with their time" not in box_ and "revoke" not in ways_.split("AP-503")[1].split("AP-504")[0])
         except _ChromeFailed as e_:
             _hung("rescheduled", e_)

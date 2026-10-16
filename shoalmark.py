@@ -804,7 +804,7 @@ def configure(root=None):
     global HEAD, STATE_HEAD_RE, DONE_RE
     global _VCS, _GIT_DIRS, _TRACKED, _SVN_LOG, _GIT_USER
     global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED
-    global FREEZE_AT, FREEZE_TAG, CMD_OWN, WANTED_NUM
+    global FREEZE_AT, FREEZE_TAG, CMD_OWN, WANTED_NUM, PALETTE
     global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT
     # No path discovery, metadata/configuration read or validation may see the previous repository's state.
     ROOT = TRACKER_DIR = OUT = HTML_OUT = VIEW_DIR = None
@@ -845,6 +845,7 @@ def configure(root=None):
     path = ROOT / CONFIG_NAME
     text = board_text(path)                             # in the board's run: a regular file inside the repository, or no configuration
     CONFIG = {**DEFAULTS, **(read_config(text) if text is not None else {})}
+    PALETTE = palette_of(CONFIG.get("palette"))           # the board's colours (FM-053): refused here, in one line, below the set contrast
     TRACKER_DIR = ROOT / tracker_folder(CONFIG)
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
@@ -2110,12 +2111,12 @@ def owner_digest(trackers):
     return EXIT_OK
 
 
-STANDUP_ORDER = (("ruling", "RULINGS — answer; a provisional answer is an answer"),
+STANDUP_ORDER = (("ruling", "DECISIONS — answer; a provisional answer is an answer"),
                  # there was a group here for an ask that did not say which kind it was. `ask-kind:` is now one of the
                  # four lines `next: owner` requires (FM-008), so such an ask is sent back and never reaches a sitting.
                  ("action", "YOUR HANDS — one sitting, in this order: what frees the most comes first"),
                  ("determination", "EVIDENCE COULD SETTLE THESE — agree to the experiment, rule on its result later"),
-                 ("ceremony", "BUTTONS — reviewed and accepted, waiting for a click"))
+                 ("ceremony", "ONE CLICK — reviewed and accepted, waiting for a click"))
 
 
 def standup(trackers, invite=None):
@@ -3526,84 +3527,139 @@ HTML_PAGE = r"""<!doctype html>
 <meta name="color-scheme" content="light dark">__FAVICON__
 <title>__NAME__ — work tracker</title>
 <style>
-:root{--bg:#f7f7f5;--ink:#161616;--dim:#565656;--mute:#6e6e6e;--line:rgba(0,0,0,.14);--teal:#1a7f5a;--coral:#b3402f;--blue:#2f62d6;--yellow:#946c0f}
-@media(prefers-color-scheme:dark){:root{--bg:#0e0e0e;--ink:#efefef;--dim:#ababab;--mute:#8f8f8f;--line:rgba(255,255,255,.15);--teal:#4fd1a1;--coral:#ff7b66;--blue:#6f9bff;--yellow:#e8cf5a}}
+/* the board's own look, `monochrome` on its base tokens (the design guide, §2, §5): every colour a token, written here from the palette the
+   board wears — `[palette]` in shoalmark.toml, monochrome by default */
+__PALETTE__
 *{box-sizing:border-box}
 /* the page paints its WHOLE ground itself and says it is dark-aware: a clean browser showed one colour, the
    Owner's showed two — something (a dark-mode extension) painted the short `html` box under the content */
 html{min-height:100%;background:var(--bg);color-scheme:light dark}
-body{margin:0 auto;max-width:1100px;padding:24px 16px;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
-.m,input,th,button{font-family:"Berkeley Mono",ui-monospace,monospace}
-header{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px}
-input{flex:1;min-width:200px;padding:8px 0;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);font-size:15px;outline:0}
-input:focus{border-color:var(--ink)}
-button{border:0;background:none;color:var(--mute);font-size:12px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;padding:0}
-button[aria-pressed=true]{color:var(--ink)}
-#n{color:var(--dim);font-size:13px}
-table{width:100%;border-collapse:collapse}
-th{text-align:left;color:var(--mute);font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px 6px 0}
-td{padding:7px 8px 7px 0;border-top:1px solid var(--line);vertical-align:top}
-td.m{font-size:13px;white-space:nowrap;color:var(--dim)}
+/* one face — the system's monospace, no font file ships — one grid, 14 px on a 21 px line, and a 104-character frame */
+body{margin:0 auto;max-width:calc(104ch + 32px);padding:16px 16px 40px;background:var(--bg);color:var(--ink);font:14px/21px "Berkeley Mono",ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}
+p{margin:0}
+input,button,textarea{font:inherit}
 a{color:inherit;text-decoration:none}a:hover{text-decoration:underline}
-tr.t{cursor:pointer}
-.hot{color:var(--coral)}.go{color:var(--teal)}
+a[href^="#="]{color:var(--idink);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
+i{font-style:italic}
+/* three meanings, one colour each (the guide's amendment, G1): teal done or success, amber a warning, coral a failure — each beside its word */
+.hot{color:var(--coral)}.go{color:var(--teal)}.warn{color:var(--amber)}.owed{color:var(--owed)}
+svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:.7ch;flex:none}a svg.ico{margin:0 0 0 .7ch}
+/* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it */
+#H{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2ch;margin:6px 0 6px}#H img{height:22px;width:auto}
+#H>b{font-weight:600;color:var(--head);white-space:nowrap}#H>span{color:var(--mute)}#H>span:empty{display:none}
+#sb{flex:1;display:flex;align-items:center;gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
+#sb:before{content:">";content:">" / "";color:var(--mute)}#sb:focus-within{border-color:var(--ink)}
+#q{flex:1;min-width:200px;border:0;background:none;color:var(--ink);padding:3px 0;outline:0}#q::placeholder{color:var(--mute);opacity:1}
+#n{color:var(--dim);white-space:nowrap}
+/* never a silent loss: each brand file the board no longer reads, and what replaces it — one line, there while a file is */
+#w{color:var(--amber);margin:0 0 4px}
+/* a box means an action; information is never boxed (the Owner's rule). A button is a word in a 1px frame — the frame in --mute, which carries
+   the meaning — with 1px by 1ch of padding, so it keeps the 21 px line; ink on --raise under the pointer; a visible focus ring */
+button{cursor:pointer}
+button.act,#s,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
+button.act:hover,#s:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
+button:focus-visible,summary:focus-visible,a:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
+button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabled{opacity:.4}
+/* the Owner's box: the one titled frame, its title set into its top border; inside, sections are `## ` headings with their counts, each
+   opening on its band (G2): from frame to frame, no divider — structure, not state. A folded section is its band alone, --raise under the
+   pointer; *waiting for you*'s band is amber's tint while asks wait. A tint stands only for a state the tool computed, beside its word */
+#p{position:relative;border:1px solid var(--box);padding:14px 2ch 12px;margin:22px 0}
+#p>.pt{position:absolute;top:-11px;left:1ch;padding:0 1ch;background:var(--bg);font-weight:600;color:var(--head)}
+#p>.sec+.sec{margin-top:16px}.day>.sec+.sec{margin-top:12px}
+#p>.sec>.sh,#p>.sec>summary>.sh{background:var(--secbg);margin:0 -2ch 6px;padding:4px 2ch}#p>details.sec:not([open])>summary>.sh{margin-bottom:0}
+#p>details.sec>summary:hover>.sh{background:var(--raise)}#p>.sec.wait>.sh{background:var(--warnbg)}
+.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}
+.sh .c{flex:1 1 auto;min-width:0;font-weight:400;color:var(--dim)}
+/* the drawn markers: drawn, never read */
+h2.sh:before{content:"##";content:"##" / "";display:inline-block;min-width:2ch;color:var(--mute);font-weight:400}
+h3.sh:before{content:"###";content:"###" / "";display:inline-block;min-width:3ch;color:var(--mute);font-weight:400}
+details>summary{list-style:none;cursor:pointer}details>summary::-webkit-details-marker{display:none}
+details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>summary .sh:before{content:"v";content:"v" / ""}
+.day{margin:6px 0 0}
+/* the row: what it is · TYPE · state … its actions, boxed, last; rows 3px apart, a rule between them. Rows line up (G4): the id in a column
+   of its own, 10ch; the question or title, and the state line under it, start on one column after it */
+.row{padding:3px 0;border-top:1px solid var(--line)}.sh+.row,.sub+.row,summary+.row{border-top:0}
+.what{display:grid;grid-template-columns:10ch 1fr;gap:0 1ch}.what>:first-child{justify-self:start}
+.how{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 1ch;padding-left:11ch}.how .acts{margin-left:auto;white-space:nowrap}.acts button:first-child{margin-left:0}
+/* a verdict's row on its meaning's tint (G3), READY teal, READY WITH FINDINGS amber, NOT READY coral: its word in that colour at 600, and nothing else
+   on the row coloured */
+.row.vok,.row.vwarn,.row.vfail{margin:0 -2ch;padding:3px 2ch}.row.vok{background:var(--okbg)}.row.vwarn{background:var(--warnbg)}.row.vfail{background:var(--failbg)}
+.vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}
+.ty{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.st{color:var(--dim)}.st b:not(.go):not(.hot):not(.warn){color:var(--ink)}.st b{font-weight:600}
+.aq{display:block;padding-left:11ch;color:var(--mute)}.sub{color:var(--dim);margin:8px 0 0}
+.lim{white-space:pre-line;color:var(--dim);padding:2px 0 0 2ch}
+details.grp>summary{padding:3px 0}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
+details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
+code{font:inherit}
+/* the tool's own voice: help, behind a dashed rule — never a value, a state, an action or a warning */
+.help{color:var(--help);border-left:2px dashed var(--help);padding:0 0 0 1ch;margin:2px 0 6px}
+/* the work table, by rank: no outer box, its column heads types, its groups `// `, each group a fold */
+#vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}#vt button{margin:0}
+#l{color:var(--mute);font-size:12px;margin-left:auto}#l span{text-transform:lowercase;margin-right:1ch}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--mute);font-size:12px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;padding:3px 2ch 3px 0}
+#B thead th{background:var(--secbg);padding:4px 2ch 4px 0}#B thead th:first-child,#b td:first-child{padding-left:1ch}
+td{padding:3px 2ch 3px 0;border-top:1px solid var(--line);vertical-align:top}
+td.m{white-space:nowrap;color:var(--dim)}
+tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
+.g td{border:0;padding:14px 0 2px;color:var(--dim);cursor:pointer}.g td:before{content:"v ";content:"v " / "";color:var(--mute)}.g.f td:before{content:"> ";content:"> " / ""}
+.g b{color:var(--head);font-weight:600}.g b:before{content:"// ";content:"// " / "";color:var(--mute);font-weight:400}
+.s td{border:0;padding:0 0 6px 2ch;color:var(--dim);max-width:80ch}
+.h td{border:0;padding:0 2ch 8px 2ch;color:var(--dim)}.h a{margin-right:1ch}.off{color:var(--mute)}
+/* tags are chrome, not data: muted text — no pill, no border, no colour. Coral also marks P0/P1 */
+.k{font-size:12px;color:var(--mute);margin-left:1ch;white-space:nowrap}
 /* status is data: one tiny 5px square leads each row and is the only coloured pixel
    status gets. Unfilled = nothing started; filled = started or ended; the colour says which:
    blue in progress · teal shipped · yellow parked · coral blocked · muted closed. The word stays
    in its column — the square is never the only carrier. */
-.q{display:inline-block;width:5px;height:5px;margin-right:8px;border:1px solid var(--mute);vertical-align:middle}
+.q{display:inline-block;width:5px;height:5px;margin-right:1ch;border:1px solid var(--mute);vertical-align:middle}
 .q.y{background:var(--yellow);border-color:var(--yellow)}.q.t{background:var(--teal);border-color:var(--teal)}
 .q.b{background:var(--blue);border-color:var(--blue)}.q.r{background:var(--coral);border-color:var(--coral)}
 .q.z{background:var(--mute)}
-#p{color:var(--dim);font-size:14px;white-space:pre-line;max-width:90ch;margin:4px 0 10px;padding-left:12px;border-left:2px solid var(--line)}
-#p a{color:var(--ink);text-decoration:underline}
-#l{color:var(--mute);font-size:11px;margin:0 0 10px}#l .q{margin:0 5px 0 12px}#l .q:first-child{margin-left:0}
-tr.c td:first-child{padding-left:20px}
-/* tags are chrome, not data: muted mono text — no pill, no border, no colour. Coral also marks
-   P0/P1 and teal marks live: both say what the square says — needs you now, and done. */
-.k{font-size:12px;color:var(--mute);margin-left:8px;white-space:nowrap}
-.h td{border:0;padding:0 8px 12px 0;color:var(--dim);font-size:14px}
-.h div{font-size:12px;margin-top:4px}.h a{margin-right:4px}.off{color:var(--mute)}
-.g td{border:0;padding:22px 0 4px;font-size:13px;color:var(--dim);cursor:pointer}
-.s td{border:0;padding:0 0 8px 14px;color:var(--dim);font-size:14px;max-width:80ch}.g b{color:var(--ink);font-weight:600;font-size:15px}
-/* the viewer — one tracker, rendered, READ-ONLY: no editing, no state, no server */
-#v{max-width:900px}#v .f{margin:6px 0 2px;white-space:normal}#v .md a{text-decoration:underline}
-#v h1{font-size:22px;margin:18px 0 10px}#v h2{font-size:17px;margin:28px 0 8px}#v h3,#v h4{font-size:15px;margin:20px 0 6px}
-#v table{display:block;overflow-x:auto;margin:12px 0;font-size:13px}#v th,#v td{padding-right:12px}#v li{margin:2px 0}
-#v code{font:13px "Berkeley Mono",ui-monospace,monospace;color:var(--dim)}#v pre{padding:12px;overflow:auto;border:1px solid var(--line)}
-#v [data-s]{cursor:pointer;text-decoration:underline}#v .toc{white-space:normal;line-height:1.9;margin:10px 0}
-#v blockquote{margin:12px 0;padding-left:12px;border-left:2px solid var(--line);color:var(--dim)}
 @media(max-width:640px){.x{display:none}}
-/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise */
-#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
-button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
-/* an act that is a promise: what they promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
-#p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
-#p summary{cursor:pointer}
-#dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
-#dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
-#dlg .dl{display:flex;gap:8px;align-items:center;justify-content:flex-start;margin:8px 0 4px;font-size:14px}#dlg .dl input{margin:0;flex:0 0 auto;min-width:0;width:auto}#dlg textarea{width:100%;font:13px/1.4 system-ui,sans-serif;background:none;color:var(--ink);border:1px solid var(--line);padding:6px;margin-top:4px}#dlg textarea:disabled{opacity:.4}
-#dlg menu{display:flex;gap:8px;margin:14px 0 0;padding:0}#dlg button{border:1px solid var(--line);padding:6px 12px;font-size:12px}#dlg button.go{border-color:var(--ink);color:var(--ink)}#dlg button:disabled{opacity:.4}
-/* the second screen: the decision is made, the terminal signs it — the command, then where, what, the end, the check, the way out */
-#dlg h4{margin:14px 0 4px;font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}#dlg ol{margin:4px 0;padding-left:20px}#dlg li{margin:2px 0}#dlg p{margin:4px 0}
-#dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
-#dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
-#l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
-/* the Owner's box's title `.pt`, the label `owner.title`, not shown; the last line's one element `#F` — the claim `#f`,
-   shown with the board only, as when it stood in it, and the running line `#r` */
-.pt{display:none}#B[hidden]~#F #f{display:none}
-/* the running line: the tool's, on every screen, below the footer — its mark at 16 px, the smallest size its 16-unit grid
-   stays sharp at, and the name linking to the tool; the version to its release. Muted like any link here: underlined on hover */
-#r{display:flex;gap:.6em;align-items:center;margin:20px 0 0;color:var(--mute);font-size:11px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}
+/* the viewer — one tracker, rendered, READ-ONLY: no editing, no state, no server. Hierarchy from weight and markers, not size */
+#v{max-width:104ch}#v .f{margin:6px 0 2px}#v .md a{text-decoration:underline}#v .hd b{font-weight:600}
+#v h1,#v h2,#v h3,#v h4{font-size:inherit;font-weight:600;margin:21px 0 0;color:var(--head)}#v p,#v ul,#v ol{margin:0 0 10px}
+#v .md h1:before{content:"# ";content:"# " / "";color:var(--mute);font-weight:400}#v .md h2:before{content:"## ";content:"## " / "";color:var(--mute);font-weight:400}
+#v .md h3:before{content:"### ";content:"### " / "";color:var(--mute);font-weight:400}
+#v table{display:block;overflow-x:auto;margin:10px 0}#v th,#v td{padding-right:2ch}#v li{margin:0}
+#v code{color:var(--dim)}#v pre{padding:0 0 0 2ch;overflow:auto;border-left:2px solid var(--line)}
+#v [data-s]{cursor:pointer;text-decoration:underline}#v .toc{white-space:normal;margin:10px 0}
+#v blockquote{margin:10px 0;padding-left:2ch;border-left:2px solid var(--line);color:var(--dim)}
+/* a dialog is a window: a 1px ink frame, its title set into the top border; its sections `## `; the command behind a 1ch teal rule on the page's
+   ground; the one button that goes ahead filled in ink */
+#dlg{border:0;padding:12px 0 0;background:none;color:var(--ink);max-width:76ch;width:calc(100% - 32px);overflow:auto}#dlg::backdrop{background:rgba(0,0,0,.45)}
+#dlg>form{position:relative;border:1px solid var(--ink);background:var(--bg);padding:18px 2ch 14px}
+#dlg h3{display:table;margin:-30px 0 10px -1ch;padding:0 1ch;background:var(--bg);font:inherit;font-weight:600}
+#dlg .dq{font-weight:600;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute)}
+#dlg .dl{display:flex;gap:1ch;align-items:baseline;justify-content:flex-start;margin:2px 0}#dlg .dl input{margin:0;flex:0 0 auto;accent-color:var(--ink)}
+#dlg textarea,#dlg input[type=datetime-local]{width:100%;background:none;color:var(--ink);border:1px solid var(--mute);padding:1px 1ch;margin-top:4px}#dlg textarea:disabled{opacity:.4}
+#dlg menu{display:flex;justify-content:flex-end;gap:1ch;margin:14px 0 0;padding:0}#dlg menu button{margin:0}#dlg button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+#dlg h4{font:inherit;color:var(--dim);margin:14px 0 2px}#dlg h4:before{content:"## ";content:"## " / "";color:var(--mute)}
+#dlg ol{margin:2px 0;padding-left:4ch}#dlg li{margin:0}#dlg p{margin:0 0 4px}
+#dlg pre{font:inherit;margin:6px 0;padding:0 0 0 2ch;border-left:2px solid var(--line);white-space:pre-wrap;word-break:break-all}
+#dlg pre.cmd{border-left:1ch solid var(--teal);padding-left:1ch;user-select:all}
+#dlg .said{margin:0 0 8px}#dlg .said:empty{display:none}#dlg .said.ok{background:var(--okbg);margin:0 -2ch 8px;padding:2px 2ch}
+/* a diff (G5): the change a command commits — its path and +n −m on a band, the old and new line numbers, an added line on teal's tint behind a
+   teal +, a removed one on coral's behind a coral − */
+.diff{margin:6px 0 8px;border-bottom:1px solid var(--line)}.diff .dfh{display:flex;gap:1ch;padding:2px 1ch;background:var(--secbg)}.diff .dfh .dfn{margin-left:auto}
+.dfl{display:grid;grid-template-columns:3ch 3ch 1ch 1fr;gap:0 1ch;padding:0 1ch;white-space:pre-wrap;word-break:break-word}
+.dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
+/* the claim and the running line: the last line's one element `#F`; the claim shown with the board only, as when it stood in it */
+#f{color:var(--mute);margin:28px 0 0}#f:empty{display:none}#B[hidden]~#F #f{display:none}
+/* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
+   the tool and leaving the board; the version to its release */
+#r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
+/* a phone: at least 24 px for every button, a heading's state flows under its title */
+@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.how .acts{display:block;margin:4px 0 0}}
 /* on paper the board is always the light one */
-@media print{#s{display:none}}
-@media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
+@media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
 </style>
-<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><button id="s"></button></div>__GONE__
-<header><input id="q" autofocus>
-<button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
-<p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
-<p id="p"></p>
+<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><label id="sb"><input id="q" autofocus><span id="n"></span></label><button id="s"></button></div>__GONE__
+<div id="p" class="box"></div>
+<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button>
+<p id="l"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p></div>
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table></div>
 <article id="v" hidden></article>
 <footer id="F"><p id="f" class="m" data-l="footer"></p>
@@ -3615,7 +3671,7 @@ __RUNNING__</footer>
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
 //        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
 //        and ONLY where their act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone · due, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, their promise or their answer, the question, the done:, answer: or due: as written, 1 where the tip carries an answer main lacks, 1 where the act stays on their list, the due: on its way, what follows the label]]
-const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,BRANCH=__BRANCH__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,ICO=__ICONS__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -3661,6 +3717,145 @@ board=t=>[...(recent(t)?["triaged"]:[]),untriaged(t)?"triage":t[19]],   // t[19]
 MARK={"In Progress":"b","Shipped":"t","Parked":"y","Closed":"z"},mark=t=>blocked(t)?"r":t[2].startsWith("Shipped")?"t":MARK[t[2]]||"",
 ids=s=>esc(s).replace(/\b(?:__KINDS__)-\d+\b/g,i=>byId.has(i)?`<a href="#=${i}">${i}</a>`:i),   // TRIAGE.md — an id opens its tracker rendered, as in a row
 chips=(ids,arrow,to="~")=>ids.length?`<div class="m">${arrow} `+ids.map(i=>`<a href="#${to}${i}" class="${byId.has(i)&&OPEN.has(byId.get(i)[2])?"":"off"}">${i}</a>`).join(" ")+"</div>":"";
+// THE OWNER'S BOX (the design guide, §1, §6, §8): its sections in the guide's order — waiting for you, your acts, what is on its way, the day, the
+// reviews, your current path — each a `## ` heading carrying its counts; each row reads what it is · TYPE · state … its actions, each in its box,
+// last. A heading said in one label is `title · its state`: the title is what comes before the first ` · `, the rest its state, the part that wraps
+const hd=(lv,title,state)=>`<${lv} class="sh"><span>${title}</span>${state?` <span class="c">${state}</span>`:""}</${lv}>`,
+sec=(h,body,cls)=>`<div class="sec${cls?" "+cls:""}">${h}${body}</div>`,
+fold=(h,body,open)=>`<details class="fold sec"${open?" open":""}><summary>${h}</summary>${body}</details>`,
+// rows line up (G4): the id in a column of its own, then what it is
+row=(id,what,ty,st,acts,more,cls)=>`<div class="row${cls?" "+cls:""}"><div class="what">${id}<span>${what}</span></div><div class="how">${ty?`<span class="ty">${ty}</span> `:""}${st?`<span class="st">${st}</span> `:""}${acts?`<span class="acts">${acts}</span>`:""}</div>${more||""}</div>`,
+// a verdict's word, as the reviewer gave it, and its meaning (G3): READY and READY WITH FINDINGS never read as a failure
+VERDICT={"READY":"vok","READY TO TAG":"vok","READY WITH FINDINGS":"vwarn","NOT READY":"vfail"},
+// a verb button names its act; its spoken name adds what it acts on, so a list of them never reads as one button said many times
+btn=(key,id,on)=>`<button class="act" aria-label="${l(key)} ${id}" onclick="${on}">${l(key)}</button>`,
+split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},
+idl=id=>`<a href="#=${id}">${id}</a>`,
+days=t=>(d=>d==d?d:null)(ago(t[29][2])),
+PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
+// an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —
+// no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
+// Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
+// abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
+// three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.
+// what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
+const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
+const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
+  const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
+  // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
+  // which is offered first. A proposal alone is a list of one. Last always comes Other, with the box — and when
+  // there is nothing to choose from, Other is the only row and the box is the answer.
+  const all=opts&&opts.length?opts:(prop?[prop]:[]),ordered=prop&&all.includes(prop)?[prop,...all.filter(o=>o!=prop)]:all;
+  const rows=ordered.map((o,i)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`
+      +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+`</span></label>`).join("")
+    +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
+  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
+    <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
+    ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
+    :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
+    <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+  const f=d.querySelector("form"),ta=f.text;
+  f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{ta.disabled=r.value!="other";ta.required=r.value=="other";if(!ta.disabled)ta.focus()});
+  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
+    // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
+    const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
+    const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;
+    sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
+  d.showModal()};
+// THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
+// decision back. The decision is made; the terminal signs it. This screen says first whether the command is on the clipboard, then what to run,
+// where, what it does step by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, done
+// (Esc too: it is the dialog's own). It says the command is on the clipboard only when the clipboard said so: from a file there may be none.
+const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
+  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>
+    <p class="said" aria-live="polite"></p>
+    <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
+    <p><button type="button" class="copy" aria-label="${l("answer.sign.copy.name")}">${ICO.copy}${l("answer.sign.copy")}</button></p>
+    <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
+    <h4>${l("answer.sign.does")}</h4><ol><li>${kind.startsWith("revoke")?lh("way.sign.step.on",c(br)):lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind.replace("revoke.","")+":"),c("## __ACTS_HEAD__"))}</li>
+    <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
+    <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  signed, on \`${br}\`, pushed`)}</pre>
+    <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
+    <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}${ICO.out}</a>`)}</p>
+    <menu><button value="done" class="go">${l("answer.done")}</button></menu></form>`;
+  const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())
+    .then(()=>{out.className="said ok";out.innerHTML=`<span class="go">${ICO.check}${l("answer.sign.copied")}</span>`},()=>{out.className="said";out.innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`});
+  d.querySelector(".copy").onclick=copy;copy();d.querySelector("button.go").focus()};
+// FM-030: an act owed to the Owner has two buttons — done · reschedule. Each asks one thing — where the result is, or the
+// new time — and OK gives ONE command, `--done <id> "<where>"` or `--due <id> <time with its zone>`, on the same second
+// screen as an answer: a browser cannot sign; the terminal does.
+const owe=(t,kind)=>{const d=$("dlg"),id=t[0],a=t[30],cmd="__CMD__";
+  d.innerHTML=`<form method="dialog"><h3>${l(kind=="done"?"act.done.title":"act.due.title")} · <a href="#=${id}">${id}</a></h3>
+    <p class="dq">${esc(a[0])}</p>${a[5]?`<p class="ddim">${l("acts.asked",a[5])}</p>`:""}<p class="m ddim">${a[3]?l("acts.due",a[3].replace("T"," ")):l("acts.nodate")}</p>
+    ${kind=="done"?`<textarea name="text" rows="2" placeholder="${l(a[5]?"act.done.hint.promise":"act.done.hint")}" required></textarea>`:`<input name="when" type="datetime-local" required>`}
+    <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+  const f=d.querySelector("form");
+  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();
+    if(kind=="done"){const w=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");return sign(d,id,`${cmd} --done ${id} ${sq(w)}`,`done: ${w}`,"done")}
+    // the time the Owner picks is their machine's; the command carries its zone, so it means the same hour everywhere
+    const v=f.when.value,dt=new Date(v),o=-dt.getTimezoneOffset(),z=(o<0?"-":"+")+String(Math.floor(Math.abs(o)/60)).padStart(2,"0")+":"+String(Math.abs(o)%60).padStart(2,"0");
+    const iso=(v.length==16?v+":00":v)+z;sign(d,id,`${cmd} --due ${id} ${iso}`,`due: ${iso}`,"due")};
+  d.showModal()};
+// FM-030, their signed answer 920970b7: on what is on its way, *revoke* in the place of the buttons — one field, why; OK gives
+// ONE command, `--revoke <id> "<why>"`, on the same second screen: it commits on top of their act, on its branch
+const rev=t=>{const d=$("dlg"),id=t[0],w=t[31],cmd="__CMD__";
+  d.innerHTML=`<form method="dialog"><h3>${l("way.revoke.title")} · <a href="#=${id}">${id}</a></h3>
+    <p class="dq">${esc(w[7])}</p>${w[8]?`<p class="ddim">${l("acts.asked",w[8])}</p>`:""}<p class="m ddim">${l("way."+w[0])} · ${esc(w[1])} @ ${esc(w[3].slice(0,7))}</p>
+    <textarea name="text" rows="2" placeholder="${l("way.revoke.hint")}" required></textarea>
+    <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
+  const f=d.querySelector("form");
+  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const why=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");
+    sign(d,id,`${cmd} --revoke ${id} ${sq(why)}`,w[0]=="done"?`done revoked: ${why}`:`answered: revoked - ${why}`,w[0]=="done"?"revoke.done":"revoke.answer")};
+  d.showModal()};
+window.ACT=act;window.OWE=owe;window.REV=rev;
+function box(){
+  const S=[];
+  // ONLY what passes the ask rules is a question here — t[29][7] is why it is not. The Owner never reads a malformed
+  // ask as one; what was sent back is listed after the queue, with its reason, for the seat that wrote it.
+  const all_=T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])),w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);
+  // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is, its kind its type
+  const old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
+  w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
+  S.push(sec(hd("h2",`${l("waiting.title")}: <span class="${w.length?"owed":""}">${w.length}</span>`,
+      w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",w.length>__BOTTLE__?l("waiting.bottleneck",w.length,held.length):""].filter(Boolean).map(s=>"· "+s).join(" "):""),
+    w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",
+      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):""].filter(Boolean).join(" · "),
+      t[29][0]?btn("answer.accept",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'accept')`)+btn("answer.reject",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'reject')`):"")).join("")
+    +(w.length>14?`<div class="row">…</div>`:"")
+    +(sent.length?`<p class="sub">${l("waiting.malformed",sent.length)}</p>`+sent.map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`,"",esc(t[29][7][0]),"")).join(""):""),w.length?"wait":""));
+  // FM-030: what they owe, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
+  const acts=T.filter(t=>t[30].length&&!(t[31]&&!t[31][11]));
+  if(acts.length)S.push(sec(hd("h2",`${l("acts.title")}: <span class="owed">${acts.length}</span>`,""),acts.map(t=>{
+    const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
+    return row(idl(t[0]),esc(a[0]),l("type.act"),(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
+        +`<b class="act-${s}${s=="overdue"?" warn":s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b>`,
+      btn("acts.done",t[0],`OWE(T.find(x=>x[0]=='${t[0]}'),'done')`)+btn("acts.reschedule",t[0],`OWE(T.find(x=>x[0]=='${t[0]}'),'due')`),
+      a[5]?`<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("")));
+  // FM-030, their signed answer 920970b7: the board reads git. What they did and pushed on `answer/<id>` is here, not in the two
+  // lists above, until their merge — their promise or their answer first, what it is, the branch, the commit, its time, whether it
+  // verifies, and that their merge is next
+  const way=T.filter(t=>t[31]);
+  if(way.length)S.push(sec(hd("h2",`${l("way.title")}: ${way.length}`,""),way.map(t=>{const w=t[31];
+    return row(idl(t[0]),esc(w[7]),l(w[0]=="answer"||w[0]=="revoked"?"type.answer":"type.act"),
+      `<b class="go">${l("way."+w[0])}</b>`+(w[13]?" — "+esc(w[13]):w[12]?" — "+l("acts.due",w[12].replace("T"," ")):"")
+        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?`<b class="go">${l("way.signed")}</b>`:`<span class="hot">${l("way.unverified",w[6].replace(/^wait: /,""))}</span>`} · ${w[14]?l("way.held",w[14].replace(/^wait: /,"")):l("way.merge")}`,
+      w[0]=="done"||w[0]=="answer"?btn("way.revoke",t[0],`REV(T.find(x=>x[0]=='${t[0]}'))`):"",
+      w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));
+  // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop
+  if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));
+    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].map(x=>" · "+esc(x)).join("")}</summary>`
+      +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE)+"</div>"))}
+  // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict
+  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.week",r[0],r[1])),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};
+    S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
+        r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
+      (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`),v[5]?l("verdict."+v[5]):l("type.verdict"),
+        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+l("reviews.sessions",v[2]||"—",v[3].join(", ")||"—")),"","",VERDICT[v[5]])).join(""),false))}
+  // your current path: your own words, known by heart — folded, its heading carrying its line count
+  if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
+    S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
+  return S.join("");
+}
 let all=false,gi=0,shut=new Set(),touched=new Set();
 function draw(){
   // a whole id alone is that tracker — not every row whose body links to it (FM-020). What links to it is `~ID` (Markdown
@@ -3682,119 +3877,12 @@ function draw(){
     const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
-    const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
+    const head=`<tr class="g${folded?" f":""}" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m"><b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
     return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
-  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(gname=="board"&&!q?(all_=>{
-    // ONLY what passes the ask rules is a question here — t[29][7] is why it is not. The Owner never reads a malformed
-    // ask as one; what was sent back is listed after the queue, with its reason, for the seat that wrote it.
-    const w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);
-    // the answer first: what needs the Owner — how many, how old, what it holds up — then each ask as the question it is
-    const days=t=>(d=>d==d?d:null)(ago(t[29][2])),old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
-    w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
-    // an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —
-    // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
-    // Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
-    // abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
-    // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.
-    // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
-    const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
-    const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
-      const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
-      // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
-      // which is offered first. A proposal alone is a list of one. Last always comes Other, with the box — and when
-      // there is nothing to choose from, Other is the only row and the box is the answer.
-      const all=opts&&opts.length?opts:(prop?[prop]:[]),ordered=prop&&all.includes(prop)?[prop,...all.filter(o=>o!=prop)]:all;
-      const rows=ordered.map((o,i)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`
-          +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+`</span></label>`).join("")
-        +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
-      d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
-        <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
-        ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
-        :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
-        <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
-      const f=d.querySelector("form"),ta=f.text;
-      f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{ta.disabled=r.value!="other";ta.required=r.value=="other";if(!ta.disabled)ta.focus()});
-      f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
-        // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
-        const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
-        const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;
-        sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
-      d.showModal()};
-    // THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
-    // decision back. The decision is made; the terminal signs it. This screen says what to run, where, what it does step
-    // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done
-    // (Esc too: it is the dialog's own). It says *Copied* only when the clipboard said so: from a file there may be none.
-    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
-      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>
-        <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
-        <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
-        <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
-        <h4>${l("answer.sign.does")}</h4><ol><li>${kind.startsWith("revoke")?lh("way.sign.step.on",c(br)):lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind.replace("revoke.","")+":"),c("## __ACTS_HEAD__"))}</li>
-        <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
-        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  signed, on \`${br}\`, pushed`)}</pre>
-        <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
-        <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}</a>`)}</p>
-        <menu><button value="done" class="go">${l("answer.done")}</button></menu></form>`;
-      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())
-        .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);
-      d.querySelector(".copy").onclick=copy;copy();d.querySelector(".go").focus()};
-    window.ACT=act;
-    // FM-030: an act owed to the Owner has two buttons — done · reschedule. Each asks one thing — where the result is, or the
-    // new time — and OK gives ONE command, `--done <id> "<where>"` or `--due <id> <time with its zone>`, on the same second
-    // screen as an answer: a browser cannot sign; the terminal does.
-    const owe=(t,kind)=>{const d=$("dlg"),id=t[0],a=t[30],cmd="__CMD__";
-      d.innerHTML=`<form method="dialog"><h3>${l(kind=="done"?"act.done.title":"act.due.title")} · <a href="#=${id}">${id}</a></h3>
-        <p class="dq">${esc(a[0])}</p>${a[5]?`<p class="ddim">${l("acts.asked",a[5])}</p>`:""}<p class="m ddim">${a[3]?l("acts.due",a[3].replace("T"," ")):l("acts.nodate")}</p>
-        ${kind=="done"?`<textarea name="text" rows="2" placeholder="${l(a[5]?"act.done.hint.promise":"act.done.hint")}" required></textarea>`:`<input name="when" type="datetime-local" required>`}
-        <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
-      const f=d.querySelector("form");
-      f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();
-        if(kind=="done"){const w=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");return sign(d,id,`${cmd} --done ${id} ${sq(w)}`,`done: ${w}`,"done")}
-        // the time the Owner picks is their machine's; the command carries its zone, so it means the same hour everywhere
-        const v=f.when.value,dt=new Date(v),o=-dt.getTimezoneOffset(),z=(o<0?"-":"+")+String(Math.floor(Math.abs(o)/60)).padStart(2,"0")+":"+String(Math.abs(o)%60).padStart(2,"0");
-        const iso=(v.length==16?v+":00":v)+z;sign(d,id,`${cmd} --due ${id} ${iso}`,`due: ${iso}`,"due")};
-      d.showModal()};
-    window.OWE=owe;
-    // FM-030, their signed answer 920970b7: on what is on its way, *revoke* in the place of the buttons — one field, why; OK gives
-    // ONE command, `--revoke <id> "<why>"`, on the same second screen: it commits on top of their act, on its branch
-    const rev=t=>{const d=$("dlg"),id=t[0],w=t[31],cmd="__CMD__";
-      d.innerHTML=`<form method="dialog"><h3>${l("way.revoke.title")} · <a href="#=${id}">${id}</a></h3>
-        <p class="dq">${esc(w[7])}</p>${w[8]?`<p class="ddim">${l("acts.asked",w[8])}</p>`:""}<p class="m ddim">${l("way."+w[0])} · ${esc(w[1])} @ ${esc(w[3].slice(0,7))}</p>
-        <textarea name="text" rows="2" placeholder="${l("way.revoke.hint")}" required></textarea>
-        <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
-      const f=d.querySelector("form");
-      f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const why=String(f.text.value).trim().replace(/\s+/g," ").replace(/"/g,"'");
-        sign(d,id,`${cmd} --revoke ${id} ${sq(why)}`,w[0]=="done"?`done revoked: ${why}`:`answered: revoked - ${why}`,w[0]=="done"?"revoke.done":"revoke.answer")};
-      d.showModal()};
-    window.REV=rev;
-    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
-      `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
-      +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
-        `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])))
-    // FM-030: what they owe, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
-    +(acts=>acts.length?"\n\n<b class=\""+(acts.some(t=>actstate(t[30])!="due"&&actstate(t[30])!="nodate")?"hot":"")+"\">"+l("acts.title")+": "+acts.length+"</b>\n"+acts.map(t=>{
-      const a=t[30],s=actstate(a),when=a[3].replace("T"," ");
-      return `<a href="#=${t[0]}">${t[0]}</a> ${esc(a[0])}<span class="m"> · `+(a[1]?l("acts.promised",a[2],a[1])+" · ":"")
-        +`<b class="act-${s}${s=="overdue"||s=="missed"?" hot":""}">${s=="nodate"?l("acts.nodate"):s=="missed"?l("acts.missed",when,a[4]):l("acts."+s,when)}</b></span>`
-        +` <button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'done')">${l("acts.done")}</button><button class="act" onclick="OWE(T.find(x=>x[0]=='${t[0]}'),'due')">${l("acts.reschedule")}</button>`
-        +(a[5]?`\n<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[30].length&&!(t[31]&&!t[31][11])))
-    // FM-030, their signed answer 920970b7: the board reads git. What they did and pushed on `answer/<id>` is here, not in the two
-    // lists above, until their merge — their promise or their answer first, what it is, the branch, the commit, its time, whether it
-    // verifies, and that their merge is next
-    +(way=>way.length?"\n\n<b>"+l("way.title")+": "+way.length+"</b>\n"+way.map(t=>{const w=t[31];
-      return `<a href="#=${t[0]}">${t[0]}</a> ${esc(w[7])}<span class="m"> · <b class="go">${l("way."+w[0])}</b>`+(w[13]?" — "+esc(w[13]):w[12]?" — "+l("acts.due",w[12].replace("T"," ")):"")
-        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?l("way.signed"):l("way.unverified",w[6].replace(/^wait: /,""))} · ${w[14]?l("way.held",w[14].replace(/^wait: /,"")):l("way.merge")}</span>`
-        +(w[0]=="done"||w[0]=="answer"?` <button class="act" onclick="REV(T.find(x=>x[0]=='${t[0]}'))">${l("way.revoke")}</button>`:"")
-        +(w[8]?`\n<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("\n"):"")(T.filter(t=>t[31]))
-    +(HOME.path?"\n\n<b>"+l("path.title")+"</b> — __HOME_PATH__\n"+ids(HOME.path):"")
-    // the registry, a report of the trailers (FM-024, FM-032): who committed in the last day, where — and how independent this week's verdicts were
-    +(REG?(REG.groups.length?"\n\n<b>"+l("sessions.recent",REG.parents,REG.all)+"</b>\n"
-        +REG.groups.map(g=>`<details><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].map(x=>" · "+esc(x)).join("")}</summary>`
-          +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""):"")
-      +(REG.reviews?(REG.groups.length?"\n":"\n\n")+l("reviews.week",REG.reviews[0],REG.reviews[1])+(REG.reviews[2]?" · "+l("reviews.untraced",REG.reviews[2]):"")+(REG.reviews[3]?" · "+l("reviews.trunk",REG.reviews[3]):""):""):""):"");   // the box keeps its title in every view (FM-002 R2)
+  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").hidden=gname!="board"||!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(gname=="board"&&!q?box():"");   // the box keeps its title in every view (FM-002 R2)
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -3820,7 +3908,7 @@ function view(id){
     s.onerror=()=>v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · ${l("viewer.no_copy",id,"__CMD__ --html-only")}</p>`;
     v.innerHTML=`<p class="m">${id} …</p>`;return document.head.append(s)}
   const facts=[sl(blocked(t)?"Blocked":t[2]),t[1]!="—"&&t[1],t[18]&&"#"+t[18],L["section."+board(t).at(-1)]||board(t).at(-1),t[25]&&L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k",t[17]&&L["word.triaged"]+" "+t[17],...COLS.map(c=>xv(t,c)!="—"&&c.toLowerCase()+" "+((t[28]||{})[c]||xv(t,c))),...t[15]];
-  v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${esc(BLOB)+esc(t[5])}">${l("viewer.forge")}</a>`:""}</p>
+  v.innerHTML=`<p class="m"><a href="#">${l("viewer.board")}</a> · <a href="#~${id}">${l("viewer.neighbours")}</a> · <a href="${esc(t[5])}">${l("viewer.file")}</a>${BLOB?` · <a href="${esc(BLOB)+esc(t[5])}">${l("viewer.forge")}${ICO.out}</a>`:""}</p>
 <p class="m f"><i class="q ${mark(t)}"></i>${facts.filter(Boolean).map(esc).join(" · ")}${t[13]!="—"?` · ${l("word.story")} <a href="#=${esc(t[13])}">${esc(t[13])}</a>`:""}</p>
 ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(r=>r.length?` · <i>${l("relation."+r[0],r[1])}${r[2]?": "+esc(r[2]):""}</i>`:"")(t[29][11])}${[t[29][8],t[29][9]].filter(Boolean).map(x=>" · "+esc(x)).join("")}${t[29][10]?" · "+l("viewer.supersedes",esc(t[29][10])):""}</p>`:""}
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
@@ -3849,7 +3937,7 @@ const rules=(s,f)=>{try{for(const r of s.cssRules){if(r.styleSheet)rules(r.style
 paint=m=>{for(const s of document.styleSheets)rules(s,r=>{if(!ORIG.has(r)){if(!r.media.mediaText.includes("prefers-color-scheme"))return;ORIG.set(r,r.media.mediaText)}
     r.media.mediaText=m=="auto"?ORIG.get(r):ORIG.get(r).replace(PCS,(x,w)=>w==m?"(min-width:0px)":"(max-width:0px)")});
   document.documentElement.style.colorScheme=m=="auto"?"":m},
-setScheme=m=>{scheme=m;paint(m);$("s").textContent="◐ "+L["scheme."+m];$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
+setScheme=m=>{scheme=m;paint(m);$("s").textContent=(L["scheme.button"]??"{0}").replace("{0}",L["scheme."+m]??m);$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
 $("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));
 onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 // reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull
@@ -3877,7 +3965,7 @@ LABELS = {
     "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
     "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
-    "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark",
+    "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark", "scheme.button": "light or dark: {0}",
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
     "status.Proposed": "Proposed", "status.In Progress": "In Progress", "status.Parked": "Parked", "status.Reserved": "Reserved",
     "status.Shipped": "Shipped", "status.Closed": "Closed", "status.Blocked": "Blocked",
@@ -3890,8 +3978,9 @@ LABELS = {
     "group.none": "no {0}",
     "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.id": "tracker · {0}", "count.in_progress": "in progress",
     "count.blocked": "blocked", "count.untriaged": "untriaged",
-    "owner.title": "owed to the owner",   # the title of the Owner's box, `.pt`
-    "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
+    "owner.title": "yours",   # the title of the Owner's box, `.pt`, set into its frame
+    "path.title": "your current path", "path.lines": "{0} lines", "path.line": "1 line",
+    "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is yours",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
@@ -3900,57 +3989,186 @@ LABELS = {
     # the day they did — {1}, their answer as signed, is there for a table that quotes it — and `acts.asked` the question below
     "acts.title": "your acts, with their time", "acts.promised": "promised {0}", "acts.asked": "asked: {0}", "acts.due": "due {0}", "acts.overdue": "overdue — due {0}",
     "acts.missed": "missed — due {0}, and {1} minutes passed with no result", "acts.nodate": "no date yet",
-    "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "Done — where is the result?", "act.done.hint": "the path to the result, or where it is",
+    "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "done — where is the result?", "act.done.hint": "the path to the result, or where it is",
     "act.done.hint.promise": "the path to the result of this promise, or where it is",
-    "act.due.title": "Reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
+    "act.due.title": "reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
     "act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge",
     # FM-030, their signed answer 920970b7: what they did and pushed, before their merge — the board, `--owner` and `--standup`
     "way.title": "on their way", "way.merge": "your merge is next", "way.held": "your merge waits: {0}", "way.done": "done, on its way", "way.answer": "answered, on its way",
     "way.revoked": "revoked, on its way", "way.undone": "done revoked, on its way", "way.due": "rescheduled, on its way", "way.signed": "signed", "way.unverified": "not verified here: {0}",
-    "way.revoke": "revoke", "way.revoke.title": "Revoke — why?", "way.revoke.hint": "why you take it back — the record keeps it beside what it revokes",
+    "way.revoke": "revoke", "way.revoke.title": "revoke — why?", "way.revoke.hint": "why you take it back — the record keeps it beside what it revokes",
     "way.sign.step.on": "commits on {0}, where it is on its way — one branch per exchange",
     "act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again",
     "act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log",
-    "sessions.recent": "sessions · {0} in the last day ({1} with their sub-sessions)",
-    "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
-    "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
+    # the day (the design guide, §1): what it frames, and its one fold — what a row is and what its age measures, so no resume reads as a live view
+    "day.title": "the day", "day.span": "the last 24 hours",
+    "sessions.recent": "sessions · {0} with a commit in the last 24 hours ({1} with their sub-sessions)",
+    # the week's verdicts and who gave them: by another session than the branch's, or by the same — reports, not proofs
+    "reviews.week": "reviews · this week · {0} by another session · {1} by the same session", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
+    "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
+    "reviews.notready": "{0} not ready", "reviews.findings": "{0} with findings",
+    # a verdict's word as the reviewer gave it, its row's TYPE (G3) — `--queue` reads it from the verdict commit's subject
+    "verdict.READY": "ready", "verdict.READY WITH FINDINGS": "ready with findings", "verdict.READY TO TAG": "ready to tag", "verdict.NOT READY": "not ready",
+    "reviews.word.another": "by another session", "reviews.word.same": "by the same session", "reviews.word.untraced": "untraced",
+    "reviews.word.trunk": "on trunk — not a branch verdict",
+    # a row's TYPE, what kind of thing it is (the design guide, §6) — an ask's is its kind
+    "type.act": "act", "type.answer": "answer", "type.verdict": "verdict",
+    "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
-    "answer.ok": "OK — give me the command", "answer.abort": "abort",
+    "answer.ok": "ok — give me the command", "answer.abort": "abort",
     # the second screen (FM-013) — `{0}` in these is markup the page builds: a branch or a key as code, the signing link
-    "answer.sign.title": "Sign your answer", "act.sign.title": "Sign your act",
+    "answer.sign.title": "sign your answer", "act.sign.title": "sign your act",
     "answer.sign.intro": "Your decision is made. A browser cannot sign it — your terminal does, with your key. Run this command:",
-    "answer.sign.copy": "Copy again", "answer.sign.copied": "Copied.",
-    "answer.sign.nocopy": "Not copied — this page has no clipboard here (a board opened from a file often has none). Select the command and copy it.",
-    "answer.sign.where": "Where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
+    "answer.sign.copy": "command", "answer.sign.copy.name": "copy the command", "answer.sign.copied": "the command is on your clipboard",
+    "answer.sign.nocopy": "copying did not work — this page has no clipboard here (a board opened from a file often has none): select the command and copy it",
+    "answer.sign.where": "where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
-    "answer.sign.does": "What it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
-    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
+    "answer.sign.does": "what it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
+    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for you to tap it",
     "answer.sign.step.push": "pushes the branch",
     "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
-    "answer.sign.success": "When it worked", "answer.sign.check": "To check",
+    "answer.sign.success": "when it worked", "answer.sign.check": "to check",
     "answer.sign.check.text": "{0} prints {1} — a good signature, under a key this repository trusts.",
-    "answer.sign.fail": "If it fails", "answer.sign.fail.text": "No signing key is set, or the signature does not verify: set up your key once — {0}.",
+    "answer.sign.fail": "if it fails", "answer.sign.fail.text": "No signing key is set, or the signature does not verify: set up your key once — {0}.",
     "answer.sign.page": "the signing page", "answer.sign.url": SIGNING_PAGE,
-    "answer.done": "Done",
-    "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
+    "answer.done": "done",
+    "ask.ruling": "decision", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "one click",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.shipped": "shipped", "story.closed": "closed", "story.open": "open", "story.parked": "parked",
     "word.triaged": "triaged", "word.needs": "needs", "word.blocked_by": "blocked by", "word.reads": "reads", "word.story": "story",
     "word.missing": "missing", "word.stated": "stated",
     "viewer.board": "← board", "viewer.neighbours": "neighbours", "viewer.file": "file", "viewer.forge": "forge",
     "viewer.no_copy": "no rendered copy of {0} — run {1}",
-    "viewer.intent": "intent", "viewer.from": "from {0}", "viewer.intent.missing": "missing — the Owner states it on the tracker or its story",
+    "viewer.intent": "intent", "viewer.from": "from {0}", "viewer.intent.missing": "missing — you state it on the tracker or its story",
     "viewer.verdict": "verdict", "viewer.verdict.none": "none yet — no triage pass has judged it",
-    "viewer.answer": "the Owner's answer", "viewer.supersedes": "supersedes {0}",
+    "viewer.answer": "your answer", "viewer.supersedes": "supersedes {0}",
     # the answer's relation to the proposal (FM-029), beside the answer — the word the Owner signed stays as it is
     **{"relation." + k: v for k, v in RELATION_TEXT.items()},
     "viewer.stale": "stale — older than {0} days, it counts as untriaged again",
-    "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
+    "viewer.handover": "handover", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
     # never a silent loss (R10's look half): the page's one line for each brand file the board no longer reads, and what replaces it
     "brand.gone": "no longer read: {0}", "brand.gone.theme": "[palette] in shoalmark.toml", "brand.gone.fonts": "the system's monospace",
     "brand.gone.wordmark": "the name", "brand.gone.themes": "[palette], by name",
 }
 BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
+# THE BOARD'S COLOURS (the design guide, §5 and §13; FM-053's answer, and the guide's amendment G1–G2): every colour is a token on `:root`, so a
+# palette is a token swap, and the page writes the one it wears from here. Three meanings, one colour each: `teal` done or success, `amber` a
+# warning, `coral` a failure; each may stand on its tint — `okbg`, `warnbg`, `failbg` — always beside its word. `secbg` is a section heading's band
+# surface: structure, not state (never `--band`, the shoalmark theme's and the docs' navy claim band). `owed` is the count of what waits on you, amber unless a palette names it; `help` the tool's voice; `head` the
+# headings' ink and `idink` an id's; `blue` and `yellow` are the work table's status squares, never text. `monochrome` is every board's default;
+# `shoalmark` is the public pages' palette — the landing's and the docs' — which a board wears only where `[palette]` names it. Each: (light, dark).
+PALETTES = {
+    "monochrome": {"bg": ("#f7f7f5", "#0e0e0e"), "raise": ("#ececea", "#1d1f24"), "ink": ("#161616", "#efefef"), "dim": ("#565656", "#ababab"),
+                   "mute": ("#6a6a6a", "#8f8f8f"), "line": ("rgba(0,0,0,.14)", "rgba(255,255,255,.15)"),
+                   "box": ("rgba(0,0,0,.28)", "rgba(240,241,244,.26)"), "coral": ("#b3402f", "#ff7b66"), "teal": ("#187953", "#4fd1a1"),
+                   "amber": ("#8a5600", "#f0b44c"), "owed": ("#8a5600", "#f0b44c"), "help": ("#7b3fbf", "#c09cff"),
+                   "head": ("#161616", "#efefef"), "idink": ("#161616", "#efefef"), "secbg": ("#efefeb", "#18191c"),
+                   "okbg": ("#e1f0e7", "#10271d"), "warnbg": ("#fbf0d6", "#2a200d"), "failbg": ("#faeae6", "#2c1612"),
+                   "blue": ("#2f62d6", "#6f9bff"), "yellow": ("#946c0f", "#e8cf5a")},
+    # the sea chart's colours, as the theme the tool shipped until R10 drew them: deep water, shallow tints for the box, the Watt's drying green for the
+    # headings, land's buff for ids, chart magenta for what is owed to you and nothing else, the chart's blue for help, and its own amber and amber's
+    # tint (the guide's §13); its section band and its other two tints stand from its page toward its ink and its accents, as a palette's own (PALETTE_DERIVED)
+    "shoalmark": {"bg": ("#fbfbf7", "#0d1720"), "raise": ("#e3eff7", "#1a2d3e"), "ink": ("#10202e", "#d9e4ec"), "dim": ("#3e4e5b", "#a9bbc8"),
+                  "mute": ("#51606c", "#90a3b1"), "line": ("rgba(16,32,46,.14)", "rgba(217,228,236,.15)"), "box": ("#8eb1cc", "#34546c"),
+                  "coral": ("#b3301f", "#f38a80"), "teal": ("#0d6f56", "#7fd9bf"), "amber": ("#7d5000", "#f1c26a"), "owed": ("#a0156e", "#ee92d4"),
+                  "help": ("#1f5ca8", "#8fb9f3"), "head": ("#526214", "#bccd8f"), "idink": ("#77511a", "#e8d4a0"), "secbg": ("#f2f2ef", "#17212a"),
+                  "okbg": ("#eaf1ec", "#1b2e33"), "warnbg": ("#f8eed6", "#2b2414"), "failbg": ("#f6ede8", "#29252c"),
+                  "blue": ("#1f5ca8", "#8fb9f3"), "yellow": ("#785b00", "#f1d47a")},
+}
+# `[palette]` in the configuration: a palette by name, and a few of its role tokens in the Owner's words, each [light, dark] — `fail` is `coral`,
+# `ok` is `teal`, `warn` is `amber`. `dim`, `mute`, `line`, `box`, `raise` and `secbg` are derived from `bg` and `ink` where either is given; a
+# tint from the page and its meaning's colour where either is given; `owed` is amber's value where unset, unless the palette names its own.
+# `[palette]` has never shipped before these keys, so no older key is read. An older copy of the tool reads the table and ignores it.
+PALETTE_WORDS = {"bg": "bg", "ink": "ink", "fail": "coral", "ok": "teal", "warn": "amber", "owed": "owed", "help": "help"}
+PALETTE_TINTS = {"okbg": "teal", "warnbg": "amber", "failbg": "coral"}      # each tint, and the meaning whose tint it is
+# the set contrast (WCAG), in light and in dark, at least PALETTE_FLOOR for every text on every ground it stands on: every text colour on the
+# page and on `raise`; a heading's on its band, `secbg`; on each tint, the row's ink, grey and mute and the tint's own meaning. `mute` is also the
+# action's frame, at least PALETTE_FRAME against the page
+PALETTE_TEXT = ("ink", "dim", "mute", "coral", "teal", "amber", "owed", "help", "head", "idink")
+PALETTE_ON = {"bg": PALETTE_TEXT, "raise": PALETTE_TEXT, "secbg": ("ink", "dim", "mute", "head", "amber", "owed", "coral"),
+              "okbg": ("ink", "dim", "mute", "head", "idink", "teal"), "warnbg": ("ink", "dim", "mute", "head", "idink", "amber", "owed"),
+              "failbg": ("ink", "dim", "mute", "head", "idink", "coral")}
+PALETTE_FLOOR, PALETTE_FRAME = 4.5, 3.0
+# how far from the page toward the ink (or a tint's meaning) each derived token stands, and the rules' and the box's alpha — light, then dark
+PALETTE_DERIVED = ({"dim": .716, "mute": .627, "raise": .049, "secbg": .04, "tint": .07, "line": .14, "box": .28},
+                   {"dim": .698, "mute": .573, "raise": .07, "secbg": .05, "tint": .12, "line": .15, "box": .26})
+
+
+def palette_of(table):
+    """`[palette]` read: {"light": {token: value}, "dark": {…}} — monochrome where there is no table. Anything it cannot wear is refused at
+    configuration in one line (exit 1, as every configuration refusal): a name that is no palette, a key it does not take, a token that is not two
+    colours, and a palette below the set contrast — naming the pair, the ratio and the scheme."""
+    refuse = lambda why: (_ for _ in ()).throw(SystemExit(f"{CONFIG_NAME}: `[palette]` is refused — {why}"))
+    table = {} if table is None else table
+    if not isinstance(table, dict):
+        refuse("it is a table: `[palette]` on a line of its own, then `name = \"monochrome\"` or a few colours")
+    name = table.get("name", "monochrome")
+    unknown = sorted(k for k in table if k != "name" and k not in PALETTE_WORDS)
+    if unknown:
+        refuse(f"it takes `name` and {', '.join(f'`{w}`' for w in PALETTE_WORDS)} — not `{unknown[0]}`")
+    if name not in PALETTES:
+        refuse(f"`name = {json.dumps(name)}` is no palette: {' or '.join(PALETTES)}")
+    out = {s: {k: v[i] for k, v in PALETTES[name].items()} for i, s in enumerate(("light", "dark"))}
+    for word, token in PALETTE_WORDS.items():
+        if word not in table:
+            continue
+        v = table[word]
+        if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", x) for x in v)):
+            refuse(f"`{word}` is two colours, light then dark, each #rrggbb — `{word} = [\"#161616\", \"#efefef\"]`")
+        for i, s in enumerate(("light", "dark")):
+            out[s][token] = v[i].lower()
+    given = {PALETTE_WORDS[w] for w in table if w in PALETTE_WORDS}
+    mix = lambda a, b, t: "#" + "".join(f"{round(int(a[i:i + 2], 16) + (int(b[i:i + 2], 16) - int(a[i:i + 2], 16)) * t):02x}" for i in (1, 3, 5))
+    rgba = lambda c, a: f"rgba({int(c[1:3], 16)},{int(c[3:5], 16)},{int(c[5:7], 16)},{a:g})"
+    derived = set()
+    for i, (s, f) in enumerate(zip(("light", "dark"), PALETTE_DERIVED)):
+        t, own = out[s], {k: v[i] for k, v in PALETTES[name].items()}
+        if given & {"bg", "ink"}:
+            t.update({k: mix(t["bg"], t["ink"], f[k]) for k in ("dim", "mute", "raise", "secbg")})
+            t.update(line=rgba(t["ink"], f["line"]), box=rgba(t["ink"], f["box"]))
+            derived |= {"dim", "mute", "raise", "secbg"}
+            if PALETTES[name]["head"] == PALETTES[name]["ink"]:     # a palette whose headings and ids are in its ink keeps them in the ink given
+                t["head"] = t["idink"] = t["ink"]
+        for tint, meaning in PALETTE_TINTS.items():                 # a palette that names its own accents names its own tints
+            if (t["bg"], t[meaning]) != (own["bg"], own[meaning]):  # a colour named as the palette's own keeps the palette's tint
+                t[tint] = mix(t["bg"], t[meaning], f["tint"]); derived.add(tint)
+        if "owed" not in given and PALETTES[name]["owed"] == PALETTES[name]["amber"]:
+            t["owed"] = t["amber"]
+    said = {v: k for k, v in PALETTE_WORDS.items()}
+    grounds = {"okbg": "ok's tint", "warnbg": "warn's tint", "failbg": "fail's tint"}
+    named = lambda token: said.get(token, grounds.get(token, token)) + (" (derived)" if token in derived else "")
+    for s in ("light", "dark"):
+        t = out[s]
+        for ground, texts in PALETTE_ON.items():
+            for token in texts:
+                r = contrast(t[token], t[ground])
+                if r < PALETTE_FLOOR:
+                    refuse(f"{named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1")
+        if contrast(t["mute"], t["bg"]) < PALETTE_FRAME:
+            refuse(f"{named('mute')} {t['mute']}, the action's frame, on bg {t['bg']} is below {PALETTE_FRAME}:1 in {s}")
+    return out
+
+
+def palette_css(p):
+    """The page's `:root` tokens: the palette in light, then in dark under `prefers-color-scheme` — what the scheme switch turns by hand."""
+    tokens = lambda t: ";".join(f"--{k}:{v}" for k, v in t.items())
+    return f":root{{{tokens(p['light'])}}}\n@media(prefers-color-scheme:dark){{:root{{{tokens(p['dark'])}}}}}"
+
+
+# The four UI icons (the design guide, §4): their sources are brand/icons/*.svg, whole-unit rectangles on a 12-unit grid, here as one path each, the
+# Pricke's way. Each stands beside its word, aria-hidden, and takes the colour of the text it stands in.
+ICONS = {
+    "copy": "M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z",
+    "check": "M10 2h2v1h-2ZM9 3h2v1h-2ZM8 4h2v1h-2ZM7 5h2v1h-2ZM6 6h2v1h-2ZM1 5h2v1h-2ZM2 6h2v1h-2ZM3 7h4v1h-4ZM4 8h2v1h-2Z",
+    "cross": "M2 2h2v1h-2ZM8 2h2v1h-2ZM3 3h2v1h-2ZM7 3h2v1h-2ZM4 4h4v1h-4ZM5 5h2v1h-2ZM4 6h4v1h-4ZM3 7h2v1h-2ZM7 7h2v1h-2ZM2 8h2v1h-2ZM8 8h2v1h-2Z",
+    "out": "M0 2h4v1h-4ZM0 3h1v8h-1ZM9 8h1v3h-1ZM0 11h10v1h-10ZM6 0h6v1h-6ZM11 1h1v5h-1ZM10 1h1v1h-1ZM9 2h1v1h-1ZM8 3h1v1h-1ZM7 4h1v1h-1ZM6 5h1v1h-1ZM5 6h1v1h-1Z",
+}
+
+
+def icon(name):
+    """One UI icon as the page draws it: 12 px, in currentColor, crisp, never read."""
+    return (f'<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
+            f'<path d="{ICONS[name]}"></path></svg>')
 # What the board no longer reads (R10's look half, FM-053's answer): each a file or a folder a brand place may still hold, what replaces it, and
 # the label the page names it with. A board build, `--brand` and the page name each one, file by file, while it is there — seen, never read or
 # followed, and never removed; `--check` never fails on one. Beside the trackers, where no brand file was ever read, the two files are named too.
@@ -4345,9 +4563,9 @@ def render_html(trackers):
     v = html_escape(__version__)
     page = page.replace("__RUNNING__", f'<p id="r" class="m"><a href="{TOOL_PAGE}" target="_blank" rel="noopener" aria-label="shoalmark on GitHub">'
                         '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
-                        f'<path d="{PRICKE}"></path></svg>shoalmark</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
+                        f'<path d="{PRICKE}"></path></svg>shoalmark{icon("out")}</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
                         f'aria-label="release v{v}">v{v}</a></p>')
-    page = page.replace("__LABELS__", script_json(labels))
+    page = page.replace("__LABELS__", script_json(labels)).replace("__ICONS__", script_json({k: icon(k) for k in ICONS})).replace("__PALETTE__", palette_css(PALETTE))
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(built_on())).replace(
         "__ROWS__", ",\n".join(rows)
     )
@@ -4930,6 +5148,12 @@ def shape_words(shape):
 
 
 CONFIG_KEYS = {           # the configuration's keys that change what a command refuses — `--schema` prints them under the front matter
+    "[palette]": ("`name` = `\"monochrome\"` (the default) or `\"shoalmark\"`; and any of `bg` `ink` `fail` `ok` `warn` `owed` `help` = `[\"#rrggbb\", \"#rrggbb\"]`, light then dark",
+                  "the board's colours (FM-053): a palette by name, a few of its tokens in your words over it — three meanings, `ok` (teal: done), `warn` "
+                  "(amber: a warning) and `fail` (coral: a failure); `dim`, `mute`, `line`, `box`, `raise` and the band are derived from `bg` and `ink`, each "
+                  "meaning's tint from the page and its colour. Every text colour reaches 4.5:1 on every ground it stands on — the page, `raise`, the band, "
+                  "each tint — in light and in dark, or the palette is refused at configuration in one line naming the pair (exit 1). An older copy of the "
+                  "tool ignores the table"),
     "owner": ("one identity, or a list of them, as a `[seats]` value: `\"<email or name>\"` or `\"<email> signed\"` — a signed identity is an email; at the top of the file, before any table",
               "who the Owner is (FM-024): the one who answers, and holds all four rights — the Owner is not a seat. `signed` is read per identity, as for a seat. "
               "`[seats] owner` is still read, as its old spelling: both present and the same are read once; both present and different are refused at configuration (exit 1), "
@@ -7830,16 +8054,19 @@ def verdict_reports(days=None):
     """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
     its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
     range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
-    is on the trunk's first-parent line (not a branch verdict). The range is the branch's own commits, less other
+    is on the trunk's first-parent line (not a branch verdict) — and the verdict's own word, read from its subject as `--queue` reads it
+    (`VERDICT_WORD_RE`; "" where it names none). The range is the branch's own commits, less other
     verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
-    log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
-    found = []
+    log = git_out("log", f"--since={days}.days", f"--format=%H%x01%s%x01{TRAILERS}%x02", "HEAD") or ""      # the subject, as `--queue` reads it
+    found, said = [], {}
     for rec in log.split("\x02"):
-        sha, _, block = rec.strip("\n").partition("\x01")
+        sha, _, rest = rec.strip("\n").partition("\x01")
+        subject, _, block = rest.partition("\x01")
         reviewed = trailer_values(block, "Reviewed")
         if sha and reviewed:
             found.append((sha, reviewed[0], (trailer_values(block, "Session") or [""])[0]))
+            said[sha] = (lambda m: m.group(1) if m else "")(VERDICT_WORD_RE.search(subject))
     if not found:
         return []
     trunk = trunk_ref()
@@ -7857,7 +8084,7 @@ def verdict_reports(days=None):
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")
-        out.append((verdict, reviewed, sid, sorted(ranged), word))
+        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict]))
     return out
 
 
@@ -7869,11 +8096,11 @@ def sessions_report():
         return lines
     reps = verdict_reports()
     if reps:
-        count = collections.Counter(w for *_x, w in reps)
+        count = collections.Counter(r[4] for r in reps)
         lines.append(f"reviews this week · {len(reps)} verdict(s) · independent {count['independent']} · same session {count['same session']}"
                      + (f" · untraced {count['untraced']}" if count["untraced"] else "") + (f" · on trunk {count['on trunk']}" if count["on trunk"] else ""))
         lines += [f"  verdict {v[:10]} on {r[:10]}: " + ("on trunk — not a branch verdict" if w == "on trunk" else
-                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w in reps]
+                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word in reps]
     return lines
 
 
@@ -7929,35 +8156,38 @@ def group_line(g):
 
 
 def group_counts(groups):
-    """(parents, all) — the header's two numbers: the parents with a commit in the last day, and them with their sub-sessions."""
+    """(parents, all) — the header's two numbers: the parents with a commit in the last 24 hours, and them with their sub-sessions."""
     return len(groups), len(groups) + sum(g["subs"] for g in groups)
 
 
 def board_sessions():
-    """The report as the board shows it — the parents with a commit in the last day (each: id, seat, worktree, its
-    sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, and this
-    week's verdicts as [independent, same session, untraced, on trunk] — or None where there is neither, or no git."""
+    """The report as the board shows it — the parents with a commit in the last 24 hours (each: id, seat, worktree, its
+    sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, this
+    week's verdicts as [independent, same session, untraced, on trunk, not ready, ready with findings], and each verdict as [verdict, reviewed,
+    its session, the range's sessions, the word, the verdict's own word] — or None where there is neither, or no git."""
     if vcs() != "git":
         return None
     groups = session_groups()
     reps = verdict_reports()
     if not groups and not reps:
         return None
-    count = collections.Counter(w for *_x, w in reps)
+    count, words = collections.Counter(r[4] for r in reps), collections.Counter(r[5] for r in reps)
     parents, everyone = group_counts(groups)
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
-            "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"]] if reps else None}
+            "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
+            "verdicts": [[v, r, sid, list(ranged), w, word] for v, r, sid, ranged, w, word in reps]}
 
 
 def sessions_digest():
     """The digest's lines, grouped as the board's strip is: a header with the two counts, then one line per parent with a
-    commit in the last day — or nothing where there is none. It reads git for the sessions alone, never the verdicts."""
+    commit in the last 24 hours — or nothing where there is none: the board's words (the design guide, §8). It reads git for the sessions alone,
+    never the verdicts."""
     groups = session_groups() if vcs() == "git" else []
     if not groups:
         return ""
     parents, everyone = group_counts(groups)
-    return "\n".join([f"SESSIONS IN THE LAST DAY · {parents} ({everyone} with their sub-sessions)"] + [f"  {group_line(g)}" for g in groups])
+    return "\n".join([f"SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · {parents} ({everyone} with their sub-sessions)"] + [f"  {group_line(g)}" for g in groups])
 
 
 ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")

@@ -522,12 +522,14 @@ trunk — not a branch verdict** when the tip is on the trunk's own first-parent
 verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
 commit says one of them.
 
-**Seen:** the board's strip is one line per **parent** session with a commit in the last day, its sub-sessions folded
-into it — *sessions · 2 in the last day (9 with their sub-sessions)*, then *a9f3c2d1 planner (planner-a9) ·
+**Seen:** the board's strip, the one fold of *the day*, is one line per **parent** session with a commit in the last 24
+hours, its sub-sessions folded into it — *sessions · 2 with a commit in the last 24 hours (9 with their sub-sessions)*,
+then *a9f3c2d1 planner (planner-a9) ·
 builder 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line opens on each member's worktree, model and
 effort (`—` where its commits carried none). A parent that made no commit of its own still has its line, its seat and
 worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript. Under it,
-*reviews this week · independent n · same session m*. `--owner`, the digest, carries the same grouping — a header with
+*reviews · this week · n by another session · m by the same session · reports, not proofs*, folded, a row per verdict.
+`--owner`, the digest, carries the same grouping in the same words — a header with
 the two counts, then one line per parent — and ends with the queue where `gh` reads the forge (*what to merge*, above).
 Labels: `sessions.recent` (now with `{1}`, the count with sub-sessions) and `reviews.*` (§9).
 
@@ -593,15 +595,17 @@ every repository. Only the git-ignored board reads them: `INDEX.md` and the gate
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
 | `labels.yaml` | every word of the board — flat `key: value` lines, `tagline` and `footer` among them. A German board is this file |
 
-- **The look is the board's own:** no theme is read and no font ships. The board's colours are `[palette]` in
-  `shoalmark.toml`.
+- **The look is the board's own:** `monochrome`, in the system's monospace; no theme is read and no font ships. The
+  colours are `[palette]` in `shoalmark.toml`: `name = "shoalmark"` for the public pages' palette, or a few of
+  `bg` `ink` `fail` `ok` `warn` `owed` `help` as `["#light", "#dark"]` — three meanings: done, a warning, a failure.
+  Below 4.5:1 for any text, on the page, a band or a tint, it is refused in one line.
 - **No longer read, never a silent loss:** a place's `theme.css`, `fonts/` and `wordmark.svg` — and the `themes/` an
   older copy shipped — are named, file by file, by every board build, by `--brand` and in one line of the board, with
   what replaces each: `[palette]`, the system's monospace, the name. `--check` never fails on them; delete them.
 - **`--brand`** says which place gave the board its logo and labels; `--brand DIR` writes a commented `labels.yaml`.
   The name is `name` in `shoalmark.toml`.
-- **Light and dark:** the board follows the system; `◐` (auto → light → dark) switches it by hand and remembers the
-  choice in the browser; paper stays light. Every page ends in the tool's line: its mark, name and version.
+- **Light and dark:** the board follows the system; its button *light or dark: auto* (→ light → dark) switches it by
+  hand and remembers the choice in the browser; paper stays light. Every page ends in the tool's line: its mark, name and version.
 - **Another language:** `labels.yaml` for the board's words; `[headings]` in `shoalmark.toml` for the gate's sections.
 
 ## Licence
