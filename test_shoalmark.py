@@ -569,9 +569,9 @@ with tempfile.TemporaryDirectory() as d:
           code == 0 and out.index("#1 MSR-001") < out.index("#2 MSR-002") and "One thing is left." in out and "START WITH: MSR-002" in out and "MSR-002 first" in out and "](" not in out)
     code, out, _ = run(root, "--install-hook")
     hook = root / ".git/hooks/pre-commit"
-    check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote — and the checkout and merge hooks that refresh the board from the copy of the tool it keeps in the git directory",
+    check("--install-hook writes plain, executable git hooks that stage exactly what the command wrote — the three that judge a commit, from the copy of the tool it keeps in the git directory, and no hook that refreshes the board (R11)",
           code == 0 and hook.exists() and os.access(hook, os.X_OK) and "--print-written" in hook.read_text()
-          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "post-checkout", "post-merge", "post-rewrite", "pre-commit", "prepare-commit-msg"]
+          and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == ["commit-msg", "pre-commit", "prepare-commit-msg"]
           and (root / ".git/shoalmark-trusted/shoalmark.py").read_bytes() == (HERE / "shoalmark.py").read_bytes() and (root / ".git/shoalmark-trusted/COPY").is_file())
     git(root, "add", "-A"); git2 = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", "commit", "-qm", "x"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     said = "" if git2.returncode == 0 else " — git said: " + repr((git2.stderr + git2.stdout)[-400:])
@@ -582,27 +582,6 @@ with tempfile.TemporaryDirectory() as d:
     check("a hook that is not shoalmark's is never overwritten — it is named, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "somebody else" in hook.read_text())
 fm.configure(HERE)
 
-
-# --- a private security report: the checkout and merge hooks run the copy of the tool kept in the git directory, and no more than `--html-only` — their cases are further on, beside the board's run -------
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve()
-    git(root, "init", "-q"); run(root, "--init", "--key", "msr")
-    hooks_ = root / ".git/hooks"; hooks_.mkdir(parents=True, exist_ok=True)
-    old_ = "#!/bin/sh\n# shoalmark — refresh the git-ignored board\npython3 tools/shoalmark/shoalmark.py --html-only || true\n"
-    for name_ in ("post-merge", "post-checkout"):
-        (hooks_ / name_).write_text(old_, encoding="utf-8"); (hooks_ / name_).chmod(0o755)
-    code_1, out_1, err_1 = run(root, "--install-hook")
-    mine_ = b"#!/bin/sh\n# somebody else's hook\necho mine\n"
-    new_co_, new_mg_ = (hooks_ / "post-checkout").read_text(encoding="utf-8"), (hooks_ / "post-merge").read_text(encoding="utf-8")
-    (hooks_ / "post-checkout").write_bytes(mine_); (hooks_ / "post-merge").write_text(old_, encoding="utf-8")
-    code_2, out_2, err_2 = run(root, "--install-hook")
-    check("FM-006 · a private security report · `--install-hook` replaces the `post-checkout` and `post-merge` an older copy wrote — they ran the working tree's tool — with the copy's own, which name the git directory's copy and never the tree's tool; "
-          "and a `post-checkout` that is not shoalmark's is left byte for byte, named with the line to add, exit 4",
-          code_1 == 0 and "tools/shoalmark" not in new_co_ + new_mg_ and "shoalmark-trusted/shoalmark.py" in new_co_ and "shoalmark-trusted/shoalmark.py" in new_mg_ and "--html-only" in new_co_ and "removed" not in out_1 + err_1
-          and code_2 == fm.EXIT_LINT and (hooks_ / "post-checkout").read_bytes() == mine_ and "shoalmark-trusted" in err_2 and "left alone" in err_2
-          and (hooks_ / "post-merge").read_text(encoding="utf-8") == new_mg_)
-    rm_git(root)
-fm.configure(HERE)
 
 # the browser that renders the board, where one is installed — read here, before the first check that renders one
 _CHROME_FLAGS = ["--no-sandbox"] if sys.platform.startswith("linux") else []     # a CI container has no user namespace for the sandbox
@@ -2296,6 +2275,11 @@ if _browser("escape"):
 # --- FM-006: a private security report — the board's run reads only regular files inside the repository, starts only read-only git, writes only the board --------------
 # Inert markers only: a file that would appear, a sentinel text in a file outside the repository. Each control runs the tool as it was before (ae3c9e9) and must fail there.
 _has_rev = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e", rev + "^{commit}"], capture_output=True, env=_ENV).returncode == 0
+
+
+def _sans_moment(page):
+    """A board's page but its line of what it read, and when (FM-057) — the one part two runs of the same trackers write differently: the time it was built."""
+    return re.sub(r'<p id="ra" class="m">.*?</p>', '<p id="ra" class="m"></p>', page, count=1, flags=re.S)
 def _old_tool(into, rev="ae3c9e9"):
     """The tool as it was before the board's run was read-only, beside its vendored `marked` — a control that must fail on it."""
     into = Path(into); (into / "vendor").mkdir(parents=True, exist_ok=True)
@@ -3547,11 +3531,12 @@ if _has_rev("ae3c9e9"):
 else:
     _skipped("FM-006 · what the board's run writes", 3, "this clone does not hold ae3c9e9")
 
-# --- FM-006: a private security report — the checkout and merge hooks run the copy: one case each, a branch checked out and merged, beside the tool it would have run instead ---------------
+# --- FM-006: a private security report — the board's refresh from the copy: one case each, a branch checked out and merged, beside the tool it would have run instead ---------------
 # Every case is a scratch repository with the tool vendored in it and `--install-hook` run from that tool, a branch that brings the case, and `git switch` to it, back, and a fast-forward merge of it —
-# the hooks running. What must hold: nothing the branch brings runs (a marker file would appear), nothing is written outside the tracker folder (`git status --ignored` outside it is empty, and
-# the folder outside the repository is as it was), and the board inside the tracker folder is refreshed. The control is the tool as it was before this report's first fix, vendored the same
-# way, with the hooks it wrote — which run the working tree's tool after a checkout and a merge: each case's check must fail there, and the check says what it saw.
+# the hooks running, none of which refreshes the board (R11, FM-057), each move followed by the explicit refresh from the copy, `--html-only`, by hand (`_moved`). What must hold: nothing the
+# branch brings runs (a marker file would appear), nothing is written outside the tracker folder (`git status --ignored` outside it is empty, and the folder outside the repository is as it
+# was), and the board inside the tracker folder is refreshed. The control is the tool as it was before this report's first fix, vendored the same way, with the hooks it wrote — which run the
+# working tree's tool after a checkout and a merge: each case's check must fail there, and the check says what it saw.
 _OLD_REV = "fec3413~1"
 def _old_tree(into, rev):
     """The tool as `rev` had it — its file, its VERSION, its vendored `marked` and its brand — laid out as a consumer vendors it."""
@@ -3564,6 +3549,20 @@ def _hooked(root, *a, env=None):
     """git with the hooks running, as a person's own command runs them."""
     r_ = subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
     return r_.returncode, (r_.stdout + r_.stderr).strip()
+def _hand(root, env=None):
+    """The explicit refresh, by hand, from the hooks' copy in the git directory — `--html-only`, as a person's own hook may run it: (its exit, what it said), or
+    None where there is no copy."""
+    common_ = subprocess.run(["git", "-C", str(root), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    copy_ = (Path(common_) if os.path.isabs(common_) else root / common_) / fm.COPY_DIR / "shoalmark.py"
+    if not common_ or not copy_.is_file():
+        return None
+    r_ = subprocess.run([sys.executable, "-I", str(copy_), "--root", str(root), "--html-only"], cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env or _ENV)
+    return r_.returncode, (r_.stdout + r_.stderr).strip()
+def _moved(root, *a, env=None):
+    """git with the hooks running, as a person's own command runs them — none refreshes the board (R11) — then the explicit refresh by hand from the copy
+    (`_hand`): (the move's exit, what both said, the refresh's exit — None where there is no copy to run)."""
+    op_ = _hooked(root, *a, env=env); hand_ = _hand(root, env=env)
+    return op_[0], "\n".join(s_ for s_ in (op_[1], (hand_ or (0, ""))[1]) if s_), hand_ and hand_[0]
 def _outside_dirty(root):
     """What the working tree holds beyond its commit, outside the tracker folder: modified, untracked and ignored paths."""
     out_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--ignored", "-uall"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV).stdout
@@ -3590,20 +3589,24 @@ def _hook_scenario(base, payload, control=None, steps=None):
     if control == "repoint":
         for n_ in ("post-checkout", "post-merge"):
             (root / f".git/hooks/{n_}").write_text(f'#!/bin/sh\n# shoalmark — the working tree\'s tool, not the copy\n{fm.PY} tools/shoalmark/shoalmark.py --root "$(git rev-parse --show-toplevel)" --html-only || true\n', encoding="utf-8")
+            (root / f".git/hooks/{n_}").chmod(0o755)                # no `--install-hook` writes these since R11: the control makes them runnable itself
     git(root, "switch", "-q", "-c", "payload")
     payload(root, tool, base, out_, mark_)
     git(root, "add", "-A"); git(root, "commit", "-qm", "the case")
     git(root, "switch", "-q", trunk)
     outside_before = _tree(out_); got = {}
-    got["sw"] = _hooked(root, "switch", "-q", "payload"); got["snap1"], got["dirty1"] = _snap(root), _outside_dirty(root)
-    got["back"] = _hooked(root, "switch", "-q", trunk); got["snap2"], got["dirty2"] = _snap(root), _outside_dirty(root)
-    got["merge"] = _hooked(root, "merge", "--ff-only", "-q", "payload"); got["snap3"], got["dirty3"] = _snap(root), _outside_dirty(root)
+    got["sw"] = _moved(root, "switch", "-q", "payload"); got["snap1"], got["dirty1"] = _snap(root), _outside_dirty(root)
+    got["back"] = _moved(root, "switch", "-q", trunk); got["snap2"], got["dirty2"] = _snap(root), _outside_dirty(root)
+    got["merge"] = _moved(root, "merge", "--ff-only", "-q", "payload"); got["snap3"], got["dirty3"] = _snap(root), _outside_dirty(root)
     got.update(root=root, tool=tool, out=out_, inst=inst, marker=mark_.exists(), outside_same=_tree(out_) == outside_before, trunk=trunk, base=base)
     if steps:
         steps(got)
     return got
-def _hook_ops_ok(g):
-    return g["sw"][0] == 0 and g["back"][0] == 0 and g["merge"][0] == 0
+def _hook_ops_ok(g, refused=False):
+    """The three moves succeed, and each refresh by hand after them exits 0 — or, `refused`, the two on the branch exit 4 and the one back on the trunk 0. Where
+    there is no copy to run (a control's tool that wrote none), there is no refresh by hand to judge."""
+    return (all(g[k_][0] == 0 for k_ in ("sw", "back", "merge")) and (g["back"][2] or 0) == 0
+            and all((g[k_][2] or 0) == (fm.EXIT_LINT if refused else 0) for k_ in ("sw", "merge")))
 def _refreshed(g, word):
     return word in (g["snap1"]["page"] or "") and "MSR-009.js" in g["snap1"]["views"] and word not in (g["snap2"]["page"] or "") and word in (g["snap3"]["page"] or "") and "MSR-009.js" in g["snap3"]["views"]
 def _add_tracker(root, title):
@@ -3649,7 +3652,7 @@ def _pl_tracker_link(root, tool, base, out_, mark_):
 def _pl_plain(root, tool, base, out_, mark_):
     _add_tracker(root, "REFRESHED-P")
 def _ok1(g): return _case_clean(g) and _refreshed(g, "REFRESHED-1")
-def _ok2(g):     # the tool the branch brings differs from the copy: the hook says so once, after the checkout and the merge, and not back on the trunk (RV-2300)
+def _ok2(g):     # the tool the branch brings differs from the copy: the copy's run says so once, after the checkout and the merge, and not back on the trunk (RV-2300)
     line_ = f"the hooks' copy is {_VERSION}, and the repository's tool differs from it: run --install-hook"
     return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"] and _refreshed(g, "REFRESHED-2")
             and g["sw"][1].splitlines().count(line_) == 1 and g["merge"][1].splitlines().count(line_) == 1 and "run --install-hook" not in g["back"][1])
@@ -3657,7 +3660,7 @@ def _ok3(g): return (_case_clean(g) and _refreshed(g, "REFRESHED-3") and "<!--<s
                      and "\\u003c!--\\u003cscript\\u003e" in g["snap1"]["page"] and "<img" not in g["snap1"]["viewtext"] and "\\u003cimg" in g["snap1"]["viewtext"])
 def _ok4(g): return (_case_clean(g) and _refreshed(g, "REFRESHED-4") and 'BLOB=""' in g["snap1"]["page"] and "javascript:alert(1)//" not in g["snap1"]["page"] and "safeUrl" in g["snap1"]["page"]
                      and "[a](javascript:alert(1))" in g["snap1"]["viewtext"])
-def _ok5(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"] and "not inside the repository" in g["sw"][1] and "not inside the repository" in g["merge"][1]
+def _ok5(g): return (_hook_ops_ok(g, refused=True) and not g["marker"] and g["dirty1"] == g["dirty2"] == g["dirty3"] == [] and g["outside_same"] and "not inside the repository" in g["sw"][1] and "not inside the repository" in g["merge"][1]
                      and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
 def _ok6(g): return (_hook_ops_ok(g) and not g["marker"] and g["dirty1"] == g["dirty3"] == [] and g["outside_same"] and (g["out"] / "target.html").read_text(encoding="utf-8") == "SENTINEL"
                      and "MSR-009.js" in g["snap1"]["views"] and "index.html (a symlink" in g["sw"][1] and len(g["sw"][1].splitlines()) == 1 and "board: file" not in g["sw"][1] + g["merge"][1])
@@ -3675,8 +3678,8 @@ for key_, what_, pl_, ok_, needs_link_ in _CASE_TABLE:
         _skipped(f"FM-006 · a private security report · case {key_}, {what_}", 2, "this system makes no symlink here"); continue
     with tempfile.TemporaryDirectory() as d:
         g_ = _hook_scenario(d, pl_); _SEEN[key_] = dict(ok=ok_(g_), saw=_saw(g_), out=g_["sw"][1][:160])
-        check(f"FM-006 · a private security report · case {key_}: {what_} — checked out, left, and merged with the copy's hooks in place, it runs nothing, writes nothing outside the tracker folder, "
-              f"and the board inside it is refreshed where it can be (saw {_saw(g_)}; hook said {g_['sw'][1][:120]!r})", _SEEN[key_]["ok"])
+        check(f"FM-006 · a private security report · case {key_}: {what_} — checked out, left, and merged with the copy's hooks in place, none of which refreshes the board, and refreshed by "
+              f"hand from the copy after each, it runs nothing, writes nothing outside the tracker folder, and the board inside it is refreshed where it can be (saw {_saw(g_)}; the refresh said {g_['sw'][1][:120]!r})", _SEEN[key_]["ok"])
         rm_git(g_["root"])
     if not _HAVE_OLD:
         continue
@@ -3696,7 +3699,7 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(c_["root"])
 
 
-# a copy that hangs — here its main thread waits, as it did on a lock — is stopped by its own bound, and the hook prints one line and returns: the checkout never waits on it
+# a copy that hangs — here its main thread waits, as it did on a lock — is stopped by its own bound, with one line; the checkout before it ran no refresh and waited on nothing
 with tempfile.TemporaryDirectory() as d:
     def _steps_hang(g):
         copy_ = g["root"] / ".git/shoalmark-trusted/shoalmark.py"; txt_ = copy_.read_text(encoding="utf-8")
@@ -3704,12 +3707,14 @@ with tempfile.TemporaryDirectory() as d:
         assert hang_ in txt_
         copy_.write_text(txt_.replace(hang_, "        __import__('time').sleep(25)\n" + hang_, 1), encoding="utf-8")        # the copy's main thread waits, as it did on a lock
         env_ = dict(_ENV, SHOALMARK_BOARD_SECONDS="2")
-        t0_ = time.monotonic(); g["hung"] = _hooked(g["root"], "switch", "-q", "payload", env=env_); g["hung_s"] = time.monotonic() - t0_
+        t0_ = time.monotonic(); g["moved"] = _hooked(g["root"], "switch", "-q", "payload", env=env_); g["moved_s"] = time.monotonic() - t0_
         g["hung_at"] = subprocess.run(["git", "-C", str(g["root"]), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        t0_ = time.monotonic(); g["hung"] = _hand(g["root"], env=env_); g["hung_s"] = time.monotonic() - t0_
     g_ = _hook_scenario(d, _pl_plain, steps=_steps_hang)
-    check(f"FM-006 · a private security report · a copy that hangs is bounded: a copy whose main thread waits 25 s is stopped by its own bound (2 s here, 35 s by default), the hook prints one line, and the checkout succeeds "
-          f"in {g_['hung_s']:.0f} s on the branch asked for (saw {g_['hung'][1]!r})",
-          g_["hung"][0] == 0 and g_["hung_at"] == "payload" and g_["hung_s"] < 15 and g_["hung"][1] == "shoalmark: the board is not refreshed (exit 4): the board's run took longer than 2 s and was stopped")
+    check(f"FM-006 · a private security report · a copy that hangs is bounded: the checkout runs no refresh and succeeds on the branch asked for in {g_['moved_s']:.0f} s; the copy's refresh by hand, "
+          f"whose main thread waits 25 s, is stopped by its own bound (2 s here, 35 s by default) in {g_['hung_s']:.0f} s, exit 4, with one line (saw {g_['moved'][1]!r} · {g_['hung']!r})",
+          g_["moved"] == (0, "") and g_["hung_at"] == "payload" and g_["moved_s"] < 15 and g_["hung_s"] < 15
+          and g_["hung"] == (fm.EXIT_LINT, "the board's run took longer than 2 s and was stopped"))
     rm_git(g_["root"])
 # …and what the copy and its hooks do beside the cases: a version drift, a re-run, two worktrees, a copy that fails, a missing copy, the default branch, a pin that fails, `core.hooksPath`
 def _pl_drift(root, tool, base, out_, mark_):
@@ -3731,31 +3736,26 @@ def _steps_copy(g):
     gone_theme_ = next((p_ for p_ in (copy_ / "brand").rglob("*") if p_.is_file()), None); gone_theme_.unlink() if gone_theme_ else None
     x["rerun"] = _tool_run(tool / "shoalmark.py", root, "--install-hook")
     x["replaced"] = ((copy_ / "shoalmark.py").read_bytes() == (tool / "shoalmark.py").read_bytes() and (copy_ / "COPY").is_file() and (not gone_theme_ or gone_theme_.is_file()) and "tampered" not in (copy_ / "shoalmark.py").read_text(encoding="utf-8"))
-    # two worktrees share the one copy: a second one, made with the hooks running, gets its board from it — and a stub put in its place answers in both
+    # two worktrees share the one copy: a second one, made with the hooks running, gets no board from a hook (R11) and its board from the copy by hand — and a stub
+    # put in its place answers in both
     x["wt"] = _hooked(root, "worktree", "add", "-q", str(base / "wt2"), "-b", "other")
     wt2 = base / "wt2"
+    x["wt_hooked"] = (wt2 / "docs/work-tracker/index.html").is_file()
+    x["wt_hand"] = _hand(wt2)
     x["wt_board"] = (wt2 / "docs/work-tracker/index.html").is_file() and "BASE" in (wt2 / "docs/work-tracker/index.html").read_text(encoding="utf-8")
     x["wt_common"] = subprocess.run(["git", "-C", str(wt2), "rev-parse", "--git-common-dir"], capture_output=True, text=True, env=_ENV).stdout.strip()
     x["copies"] = sorted(p_.relative_to(base).as_posix() for p_ in base.rglob(fm.COPY_DIR) if p_.is_dir())
     (copy_ / "shoalmark.py").write_text("import sys\nprint('STUB-COPY-RAN')\n", encoding="utf-8")
-    x["stub_main"] = _hooked(root, "switch", "-q", g["trunk"]); x["stub_wt"] = _hooked(wt2, "switch", "-q", "-c", "other2")
-    # a copy that fails: one line, and the checkout still succeeds
-    (copy_ / "shoalmark.py").write_text("import sys\nprint('boom')\nprint('and more')\nsys.exit(7)\n", encoding="utf-8")
-    x["fail"] = _hooked(root, "switch", "-q", "payload"); x["fail_at"] = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    # and a copy that is not there
-    shutil.rmtree(copy_); x["missing"] = _hooked(root, "switch", "-q", g["trunk"]); x["missing_at"] = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    x["stub_main"] = _moved(root, "switch", "-q", g["trunk"]); x["stub_wt"] = _moved(wt2, "switch", "-q", "-c", "other2")
     g["x"] = x
 with tempfile.TemporaryDirectory() as d:
     g_ = _hook_scenario(d, _pl_plain, steps=_steps_copy); x_ = g_["x"]
     check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file, a missing marker and a missing theme file are as the pinned tool has them again", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
-    check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had its board from it, its git directory is the first one's, there is one `shoalmark-trusted` in all, "
-          f"and a stub put in its place answered in both (saw {x_['copies']}, {x_['wt_common']!r})",
-          x_["wt"][0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve() and x_["copies"] == ["repo/.git/shoalmark-trusted"]
+    check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had no board from a hook (R11), and its board from the copy by hand; "
+          f"its git directory is the first one's, there is one `shoalmark-trusted` in all, and a stub put in its place answered in both (saw {x_['copies']}, {x_['wt_common']!r})",
+          x_["wt"][0] == 0 and not x_["wt_hooked"] and (x_["wt_hand"] or (1,))[0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve()
+          and x_["copies"] == ["repo/.git/shoalmark-trusted"]
           and "STUB-COPY-RAN" in x_["stub_main"][1] and "STUB-COPY-RAN" in x_["stub_wt"][1] and x_["stub_main"][0] == 0 and x_["stub_wt"][0] == 0)
-    check(f"FM-006 · a private security report · a copy that fails prints one line and the checkout still succeeds — exit 0, on the branch asked for (saw {x_['fail'][1]!r}); a copy that is not there is one line too, "
-          f"naming `--install-hook` (saw {x_['missing'][1]!r})",
-          x_["fail"][0] == 0 and x_["fail_at"] == "payload" and len(x_["fail"][1].splitlines()) == 1 and x_["fail"][1].startswith("shoalmark: the board is not refreshed (exit 7)") and x_["fail"][1].endswith("and more")
-          and x_["missing"][0] == 0 and x_["missing_at"] == g_["trunk"] and len(x_["missing"][1].splitlines()) == 1 and "run --install-hook" in x_["missing"][1])
     rm_git(g_["root"]); subprocess.run(["git", "-C", str(g_["base"] / "wt2"), "--version"], capture_output=True) if False else None
 # the default branch: `--install-hook` names the commit and the branch it took the copy from, and warns — still installing — where that is not the default branch, or where that cannot be told
 with tempfile.TemporaryDirectory() as d:
@@ -3784,23 +3784,138 @@ with tempfile.TemporaryDirectory() as d:
           c_ == fm.EXIT_LINT and "differs from its PIN" in e_ and "not written" in e_ and "no hook is written" in e_ and not (root / ".git/shoalmark-trusted").exists()
           and sorted(p_.name for p_ in (root / ".git/hooks").iterdir() if not p_.name.endswith(".sample")) == [])
     rm_git(root)
-# `core.hooksPath` is respected: the hooks are where git looks for them — here a folder outside the repository (one inside the working tree is refused) — and run the copy in the git directory
+# `core.hooksPath` is respected: the hooks are where git looks for them — here a folder outside the repository (one inside the working tree is refused) — and run the copy in the git directory;
+# none of them refreshes the board (R11)
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); hp_ = base_ / "hooks"
     git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
     git(root, "config", "core.hooksPath", str(hp_)); git(root, "switch", "-q", "-c", "other")
     c_, o_, e_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook"); sw_ = _hooked(root, "switch", "-q", "-")
-    check(f"FM-006 · a private security report · `core.hooksPath` is respected: the checkout and merge hooks are written where it points, outside the repository, not in `.git/hooks`, and a checkout runs the copy from there (saw {sw_[1][:100]!r})",
-          c_ == 0 and (hp_ / "post-checkout").is_file() and (hp_ / "post-merge").is_file() and (hp_ / "post-rewrite").is_file() and not (root / ".git/hooks/post-checkout").exists() and sw_[0] == 0
-          and sw_[1].startswith("board: file:") and "BASE" in (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"))
+    cm_ = _hooked(root, "commit", "-q", "--allow-empty", "-m", "through the hooks")
+    check(f"FM-006 · a private security report · `core.hooksPath` is respected: the commit's hooks are written where it points, outside the repository, not in `.git/hooks`, and a commit with them "
+          f"there succeeds; no hook refreshes the board, there or in `.git/hooks`, and a checkout writes no board (saw {sw_[1][:100]!r} · {cm_[1][:100]!r})",
+          c_ == 0 and all((hp_ / n_).is_file() for n_ in ("pre-commit", "prepare-commit-msg", "commit-msg")) and not (root / ".git/hooks/pre-commit").exists()
+          and not any((f_ / n_).exists() for f_ in (hp_, root / ".git/hooks") for n_ in ("post-checkout", "post-merge", "post-rewrite"))
+          and sw_ == (0, "") and not (root / "docs/work-tracker/index.html").exists() and cm_[0] == 0)
     rm_git(root)
+
+# --- R11, the Owner's ruling of 12 October (FM-057): no hook refreshes the board. On its next run `--install-hook` removes each refresh hook an earlier version
+#     wrote, with a line each, keeps a person's own byte for byte and names it, and writes none; after it a checkout and a merge rebuild no board. The former hooks
+#     are as each version wrote them: the two-liner of 0.3.0 to 0.19.0 under each of its marks, written out here as those versions wrote it, and the three the
+#     hooks' copy ran, written by the `--install-hook` of v0.19.4 (39e5763), the last release that wrote them. Three repositories: A as v0.19.4 left it; B with an
+#     older `post-checkout`, v0.19.4's `post-rewrite` and a person's own `post-merge`; C with both two-liners and a `post-rewrite` changed since v0.19.4 wrote it.
+#     The mutants — a person's hook removed, a former hook left unnamed, a refresh hook still written — are this tool with that one change, laid out and run the
+#     same way: each must fail the check.
+_R11_REV = "39e5763"
+_HAVE_R11 = _has_rev(_R11_REV)
+_R11_PLAIN = "#!/bin/sh\n{mark} — refresh the git-ignored board\npython3 tools/shoalmark/shoalmark.py --html-only || true\n"
+_R11_MINE = b"#!/bin/sh\n# my own hook: it runs after every merge\necho merged by me\n"
+_R11_WHEN = {"post-checkout": "checkout", "post-merge": "merge", "post-rewrite": "rebase or an amend"}
+_R11_MUTANTS = (
+    ("a person's hook removed", '    return "changed" if text.split("\\n")[1:2]', '    return "former"\n    return "changed" if text.split("\\n")[1:2]'),
+    ("a former hook left unnamed", '            print(f"removed {path} — an earlier shoalmark wrote it', '            str(f"removed {path} — an earlier shoalmark wrote it'),
+    ("a refresh hook still written", "    for line in copy_lines:\n",
+     "    for name, text in FORMER_COPY.items():\n        put(hooks / name, text.format(py=PY, mark=HOOK_MARK)); (hooks / name).chmod(0o755)\n    for line in copy_lines:\n"),
+)
+def _r11_tool(base, change=None):
+    """This tool, or this tool with one change (old, new) made exactly once, laid out with what `--install-hook` copies beside it: its path, or None where the
+    change is not there to make."""
+    if change is None:
+        return HERE / "shoalmark.py"
+    at_ = base / "mutant"
+    for rel_ in fm.copy_files():
+        (at_ / rel_).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(HERE / rel_, at_ / rel_)
+    src_ = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    if src_.count(change[0]) != 1:
+        return None
+    (at_ / "shoalmark.py").write_text(src_.replace(change[0], change[1]), encoding="utf-8")
+    return at_ / "shoalmark.py"
+def _r11_repo(root):
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", title="BASE"); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
+    (root / ".git/hooks").mkdir(parents=True, exist_ok=True)
+    return root / ".git/hooks"
+def _r11_put(hooks, name, data):
+    (hooks / name).write_bytes(data); (hooks / name).chmod(0o755)
+def _r11_case(base, tool):
+    """The three repositories, their former hooks and a person's own laid in, `--install-hook` run from `tool` in each; then, in A, the board built by hand,
+    and a checkout, a checkout back and a merge with the hooks running. What each saw."""
+    base = Path(base).resolve(); g = {}
+    old_ = base / "old"; _old_tree(old_, _R11_REV)
+    for k_ in "ABC":
+        (base / k_).mkdir(); g[k_] = dict(hooks=_r11_repo(base / k_))
+    pre_ = _tool_run(old_ / "shoalmark.py", base / "A", "--install-hook")
+    v194_ = {n_: (g["A"]["hooks"] / n_).read_bytes() if (g["A"]["hooks"] / n_).is_file() else None for n_ in _R11_WHEN}
+    g["fixture"] = pre_[0] == 0 and all(v194_.values())
+    if not g["fixture"]:
+        return g
+    _r11_put(g["B"]["hooks"], "post-checkout", _R11_PLAIN.format(mark="# fathom-mark").encode()); _r11_put(g["B"]["hooks"], "post-merge", _R11_MINE)
+    _r11_put(g["B"]["hooks"], "post-rewrite", v194_["post-rewrite"])
+    for n_ in ("post-checkout", "post-merge"):
+        _r11_put(g["C"]["hooks"], n_, _R11_PLAIN.format(mark="# shoalmark").encode())
+    changed_ = v194_["post-rewrite"] + b"echo and mine\n"; _r11_put(g["C"]["hooks"], "post-rewrite", changed_)
+    g["kept"] = {("B", "post-merge"): ("not one shoalmark wrote", _R11_MINE), ("C", "post-rewrite"): ("an earlier shoalmark wrote it, and it was changed since", changed_)}
+    for k_ in "ABC":
+        c_, o_, e_ = _tool_run(tool, base / k_, "--install-hook")
+        g[k_].update(code=c_, lines=(o_ + e_).splitlines(), after={p_.name: p_.read_bytes() for p_ in g[k_]["hooks"].iterdir() if p_.is_file() and not p_.name.endswith(".sample")})
+    a_, t_ = base / "A", base / "A/docs/work-tracker"
+    run(a_, "--html-only"); fm.configure(HERE)
+    trunk_ = subprocess.run(["git", "-C", str(a_), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    git(a_, "switch", "-q", "-c", "side"); tracker(a_, "MSR-002", title="ON-THE-SIDE"); git(a_, "add", "-A"); git(a_, "commit", "-qm", "side"); git(a_, "switch", "-q", trunk_)
+    page_ = lambda: ((t_ / "index.html").read_bytes(), (t_ / "index.html").stat().st_mtime_ns) if (t_ / "index.html").is_file() else None
+    before_ = page_(); g["moves"] = [_hooked(a_, "switch", "-q", "side"), _hooked(a_, "switch", "-q", trunk_), _hooked(a_, "merge", "-q", "--no-ff", "--no-edit", "side")]
+    g["board_same"] = before_ is not None and page_() == before_
+    g["merged"] = (a_ / "docs/work-tracker/MSR-002-x.md").is_file()
+    for k_ in "ABC":
+        rm_git(base / k_)
+    return g
+def _r11_ok(g):
+    """R11's judgement: every `--install-hook` exits 0; each former hook is gone, with exactly one line naming it as removed; each person's own and each changed
+    one is there byte for byte, with exactly one line naming it as kept; no other file of the three names is there; the commit's three hooks are written; and
+    in A a checkout, a checkout back and a merge succeed and leave the board's page as it was, byte for byte and untouched."""
+    if not g.get("fixture"):
+        return False
+    for k_ in "ABC":
+        r_, hooks_ = g[k_], g[k_]["hooks"]
+        if r_["code"] != 0 or not {"pre-commit", "prepare-commit-msg", "commit-msg"} <= set(r_["after"]):
+            return False
+        for n_ in _R11_WHEN:
+            kept_ = g["kept"].get((k_, n_))
+            removed_ = [l_ for l_ in r_["lines"] if l_.startswith(f"removed {hooks_ / n_} — ")]
+            named_ = [l_ for l_ in r_["lines"] if l_.startswith(f"kept {hooks_ / n_} — ")]
+            if kept_:
+                if r_["after"].get(n_) != kept_[1] or removed_ or len(named_) != 1 or kept_[0] not in named_[0]:
+                    return False
+            elif n_ in r_["after"] or named_ or len(removed_) != 1 or f"after every {_R11_WHEN[n_]}" not in removed_[0] or "--html-only` rebuilds it" not in removed_[0]:
+                return False
+    return all(c_ == 0 for c_, _s in g["moves"]) and g["merged"] and g["board_same"] and not any("board:" in s_ for _c, s_ in g["moves"])
+def _r11_saw(g):
+    if not g.get("fixture"):
+        return "the fixture: v0.19.4's `--install-hook` did not write its three refresh hooks"
+    said_ = lambda l_: l_.split(" ", 1)[0] + " " + Path(l_.split(" — ", 1)[0].split(" ", 1)[1]).name
+    return "; ".join(f"{k_}: exit {g[k_]['code']}, hooks {sorted(g[k_]['after'])}, said {[said_(l_) for l_ in g[k_]['lines'] if l_.startswith(('removed ', 'kept '))]}" for k_ in "ABC") \
+        + f"; the moves {[c_ for c_, _s in g['moves']]}, the board untouched {g['board_same']}"
+if _HAVE_R11:
+    with tempfile.TemporaryDirectory() as d:
+        g_ = _r11_case(d, _r11_tool(Path(d)))
+        check(f"R11 · FM-057 · `--install-hook` removes each refresh hook an earlier version wrote — the two-liner of 0.3.0 to 0.19.0 under both its marks, and the three "
+              f"v0.19.4's own `--install-hook` wrote — with one line each; keeps a person's own `post-merge` and a `post-rewrite` changed since, byte for byte, with one line "
+              f"each; writes no hook that refreshes the board; and after it a checkout and a merge rebuild no board (saw {_r11_saw(g_)})", _r11_ok(g_))
+    for what_, *change_ in _R11_MUTANTS:
+        with tempfile.TemporaryDirectory() as d:
+            tool_ = _r11_tool(Path(d), change_)
+            c_ = _r11_case(d, tool_) if tool_ else {}
+            check(f"R11 · FM-057 · …the mutant, {what_}: this tool with that one change FAILS the same check (saw {_r11_saw(c_) if tool_ else 'the change is not there to make'})",
+                  tool_ is not None and not _r11_ok(c_))
+else:
+    _skipped("R11 · FM-057 · the former refresh hooks removed, a person's own kept, and its three mutants", 1 + len(_R11_MUTANTS), f"this clone does not hold {_R11_REV}")
+fm.configure(HERE)
 
 # --- RV-2300 (a private security report): every hook `--install-hook` writes runs the copy — the commit's hooks too — and none runs the tree's tool ----------------
 # A scratch repository with the tool at its root, as this repository has it. Inert markers only: "the tree's tool ran" is a file that would appear beside the repository,
 # "a hook wrote the copy" is the copy's hash, changed. Each control is the same check beside 79be49d's tool, whose commit hooks ran the working tree's tool: it must fail there.
 _RV_REV = "79be49d"
 _HAVE_RV = _has_rev(_RV_REV)
-_HOOK_NAMES = ("pre-commit", "prepare-commit-msg", "commit-msg", "post-checkout", "post-merge", "post-rewrite")
+_HOOK_NAMES = ("pre-commit", "prepare-commit-msg", "commit-msg")
 def _copy_hash(root):
     """The hooks' copy, every file of it with its name, as one hash — None where it is not there."""
     c_ = root / ".git" / fm.COPY_DIR
@@ -3849,7 +3964,7 @@ def _rv_hooks(rev=None):
     return (inst[0] == 0 and all('/shoalmark-trusted/shoalmark.py"' in t_ and ' -I "$copy" --root "$root" ' in t_ for t_ in texts_.values())
             and not any(re.search(r"\b(python3?|py)\s+(\S*/)?shoalmark\.py\b", t_) for t_ in texts_.values()) and f"cmd: {fm.PY} shoalmark.py\n" in record_), texts_["pre-commit"]
 ok_, _pc = _rv_hooks()
-check("FM-006 · a private security report · RV-2300 · every hook `--install-hook` writes — `pre-commit`, `prepare-commit-msg`, `commit-msg`, `post-checkout`, `post-merge` and `post-rewrite` — runs the copy in the git "
+check("FM-006 · a private security report · RV-2300 · every hook `--install-hook` writes — `pre-commit`, `prepare-commit-msg` and `commit-msg`; none refreshes the board (R11) — runs the copy in the git "
       "directory, with `-I`, against the worktree they run in; none names the tree's tool, and the copy records the command a person runs, for its messages", ok_)
 if _HAVE_RV:
     ok_, _pc = _rv_hooks(_RV_REV)
@@ -4021,7 +4136,7 @@ def _hooks_folder(kind, rev=None):
 def _hooks_refused(g):
     return g["code"] == fm.EXIT_LINT and len(g["err"].splitlines()) == 1 and "where a branch can change the hooks themselves" in g["err"] and "§Sessions" in g["err"] and g["hooks"] == [] and not g["copy"]
 def _hooks_written(g):
-    return g["code"] == 0 and "pre-commit" in g["hooks"] and "post-rewrite" in g["hooks"] and g["copy"]
+    return g["code"] == 0 and {"pre-commit", "prepare-commit-msg", "commit-msg"} <= set(g["hooks"]) and g["copy"]
 g_ = _hooks_folder("in-tree")
 check(f"FM-006 · a private security report · no deriver in hooks · `--install-hook` refuses a `core.hooksPath` inside the working tree, with one line naming the README's hook-runner paragraph, "
       f"and writes no hook and no copy (saw {g_['err'][:150]!r})", _hooks_refused(g_))
@@ -4107,10 +4222,10 @@ def _rv_op(op, rev=None):
 def _rv_op_ok(g, op):
     return (g["code"] == 0 and g["moved"] and g["brought"] and not g["tool"] and not g["deriver"] and g["copy_same"]
             and _LINE2 in g["said"].splitlines() and (op not in ("conflicted", "am") or _ND_LINE in g["said"].splitlines()))
-_RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg`, `commit-msg` and `post-merge` run"),
+_RV_OPS = (("merge", "a merge, clean — `prepare-commit-msg` and `commit-msg` run"),
            ("conflicted", "a merge, conflicted and finished with `git commit` — at its resolving commit `pre-commit`, `prepare-commit-msg` and `commit-msg` run"),
            ("cherry-pick", "a cherry-pick — it runs only `prepare-commit-msg`"), ("revert", "a revert — it runs only `prepare-commit-msg`"),
-           ("rebase", "a rebase — `post-checkout` before its replay, which runs only `prepare-commit-msg`, and `post-rewrite` after"),
+           ("rebase", "a rebase — its replay runs only `prepare-commit-msg`"),
            ("am", "`git am`, which runs none of the hooks, and the next commit, which runs `pre-commit`, `prepare-commit-msg` and `commit-msg` on what it brought"))
 for op_, what_ in _RV_OPS:
     g_ = _rv_op(op_)
@@ -4126,8 +4241,9 @@ if not _HAVE_RV:
     _skipped("FM-006 · a private security report · RV-2300 · the operations' controls", len(_RV_OPS), f"this clone does not hold {_RV_REV}")
 fm.configure(HERE)
 
-# --- FM-006: the refresh after a pull — after each way a clone's tree moves, the board equals a fresh `--html-only` of it, byte for byte, nothing normalised --------------
-# A bare origin, an upstream clone that pushes, and a clone with the hooks installed. "Fresh" is the same copy run by hand afterwards: what differs is what no hook refreshed.
+# --- FM-006, R11 (FM-057): after a pull — after each way a clone's tree moves, no hook rebuilds the board: it is the board from before, byte for byte, but where the move ends in a
+# commit that stages a tracker, whose own hook rebuilds it; and the explicit refresh, `--html-only` by hand, shows what the move brought. A bare origin, an upstream clone that pushes,
+# and a clone with the hooks installed and its board built by hand. The control is v0.19.4's tool and hooks, whose hooks rebuilt the board after a checkout, a merge and a rebase.
 def _board_files(root):
     t_ = root / "docs/work-tracker"
     return {"index.html": (t_ / "index.html").read_bytes() if (t_ / "index.html").is_file() else None, **{f"view/{p_.name}": p_.read_bytes() for p_ in sorted((t_ / "view").glob("*.js"))}}
@@ -4143,51 +4259,56 @@ def _pull_scenario(op, rev=None):
             _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
         else:
             tool_ = HERE / "shoalmark.py"
-        inst_ = _tool_run(tool_, me_, "--install-hook"); _hooked(me_, "switch", "-q", trunk_)
+        inst_ = _tool_run(tool_, me_, "--install-hook"); _hooked(me_, "switch", "-q", trunk_); _hand(me_)
+        first_ = {}
+        hooked_ = lambda *a: (first_.setdefault("before", _board_files(me_)), _hooked(me_, *a))[1]     # the board as the move found it, read before its first git
         upstream_ = lambda tid, title: (tracker(up_, tid, title=title), git(up_, "add", "-A"), git(up_, "commit", "-qm", title), git(up_, "push", "-q", "origin", trunk_))
         local_ = lambda tid, title: (tracker(me_, tid, title=title), git(me_, "add", "-A"), git(me_, "commit", "-qm", title))
         want_ = []
         if op == "switch":
-            git(me_, "switch", "-q", "-c", "other"); local_("MSR-002", "ON-THE-OTHER-BRANCH"); git(me_, "switch", "-q", trunk_); c_ = _hooked(me_, "switch", "-q", "other"); want_ = ["ON-THE-OTHER-BRANCH"]
+            git(me_, "switch", "-q", "-c", "other"); local_("MSR-002", "ON-THE-OTHER-BRANCH"); git(me_, "switch", "-q", trunk_); c_ = hooked_("switch", "-q", "other"); want_ = ["ON-THE-OTHER-BRANCH"]
         elif op == "pull-ff":
-            upstream_("MSR-003", "FROM-UPSTREAM"); c_ = _hooked(me_, "pull", "-q", "--ff-only"); want_ = ["FROM-UPSTREAM"]
+            upstream_("MSR-003", "FROM-UPSTREAM"); c_ = hooked_("pull", "-q", "--ff-only"); want_ = ["FROM-UPSTREAM"]
         elif op in ("pull-merge", "pull-rebase"):
             upstream_("MSR-003", "FROM-UPSTREAM"); local_("MSR-004", "MADE-HERE")
-            c_ = _hooked(me_, "pull", "-q", "--no-edit", "--no-rebase" if op == "pull-merge" else "--rebase"); want_ = ["FROM-UPSTREAM", "MADE-HERE"]
+            c_ = hooked_("pull", "-q", "--no-edit", "--no-rebase" if op == "pull-merge" else "--rebase"); want_ = ["FROM-UPSTREAM", "MADE-HERE"]
         else:
             git(me_, "switch", "-q", "-c", "feature")
             if op == "conflicted":
                 t_ = me_ / "docs/work-tracker/MSR-001-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("One thing is left.", "ON-THE-FEATURE"), encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "feature")
                 git(me_, "switch", "-q", trunk_); t_.write_text(t_.read_text(encoding="utf-8").replace("One thing is left.", "ON-THE-TRUNK"), encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "trunk")
-                stop_ = _hooked(me_, "merge", "--no-edit", "feature")
+                stop_ = hooked_("merge", "--no-edit", "feature")
                 t_.write_text(re.sub(r"<<<<<<<[^\n]*\n.*?>>>>>>>[^\n]*\n", "RESOLVED-BY-HAND\n", t_.read_text(encoding="utf-8"), flags=re.S), encoding="utf-8"); git(me_, "add", "-A")
-                c_ = _hooked(me_, "commit", "-q", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, c_[1]); want_ = ["RESOLVED-BY-HAND"]
+                c_ = hooked_("commit", "-q", "--no-edit"); c_ = (c_[0] if stop_[0] != 0 else 99, c_[1]); want_ = ["RESOLVED-BY-HAND"]
             else:
                 local_("MSR-005", "ON-THE-FEATURE"); git(me_, "switch", "-q", trunk_); (me_ / "trunk.txt").write_text("trunk\n", encoding="utf-8"); git(me_, "add", "-A"); git(me_, "commit", "-qm", "trunk")
                 if op == "merge":
-                    c_ = _hooked(me_, "merge", "--no-ff", "--no-edit", "feature")
+                    c_ = hooked_("merge", "--no-ff", "--no-edit", "feature")
                 else:
-                    sq_ = _hooked(me_, "merge", "--squash", "feature"); c_ = _hooked(me_, "commit", "-qm", "squashed"); c_ = (sq_[0] or c_[0], c_[1])
+                    sq_ = hooked_("merge", "--squash", "feature"); c_ = hooked_("commit", "-qm", "squashed"); c_ = (sq_[0] or c_[0], c_[1])
                 want_ = ["ON-THE-FEATURE"]
         after_ = _board_files(me_)
-        subprocess.run([sys.executable, "-I", str(me_ / ".git" / fm.COPY_DIR / "shoalmark.py"), "--root", str(me_), "--html-only"], cwd=str(me_), capture_output=True, env=_ENV)
-        fresh_ = _board_files(me_)
-        g_ = dict(code=c_[0], inst=inst_[0], same=after_ == fresh_, differs=sorted(k_ for k_ in set(after_) | set(fresh_) if after_.get(k_) != fresh_.get(k_)),
+        before_ = first_.get("before", {}); hand_ = _hand(me_) or (1, "no copy"); fresh_ = _board_files(me_)
+        g_ = dict(code=c_[0], inst=inst_[0], built=bool(before_.get("index.html")), same=after_ == before_, hand=hand_[0],
+                  differs=sorted(k_ for k_ in set(after_) | set(before_) if after_.get(k_) != before_.get(k_)),
                   shown=all(w_.encode() in (fresh_.get("index.html") or b"") + b"".join(v_ for k_, v_ in fresh_.items() if k_.startswith("view/")) for w_ in want_))
         rm_git(me_); rm_git(up_)
     return g_
-def _pull_ok(g):
-    return g["code"] == 0 and g["same"] and g["shown"]
-_PULL_OPS = (("switch", "a switch"), ("pull-ff", "a pull, fast-forward"), ("pull-merge", "a pull with a merge"), ("pull-rebase", "`git pull --rebase` with local commits — `post-checkout` before the replay, `post-rewrite` after"),
+_PULL_COMMITS = ("conflicted", "squash")       # the moves that end in a commit staging a tracker: its own hook rebuilds the board for the commit being made
+def _pull_ok(g, op):
+    return g["code"] == 0 and g["built"] and g["same"] == (op not in _PULL_COMMITS) and g["hand"] == 0 and g["shown"]
+_PULL_OPS = (("switch", "a switch"), ("pull-ff", "a pull, fast-forward"), ("pull-merge", "a pull with a merge"), ("pull-rebase", "`git pull --rebase` with local commits"),
              ("merge", "a clean merge"), ("conflicted", "a conflicted merge, at its resolving commit"), ("squash", "a squash merge, at its commit"))
 for op_, what_ in _PULL_OPS:
     g_ = _pull_scenario(op_)
-    check(f"FM-006 · the refresh after a pull · {what_}: the board after it equals a fresh `--html-only` of the tree, byte for byte, nothing normalised (saw exit {g_['code']}, differing {g_['differs']})", _pull_ok(g_))
-if _HAVE_RV:
-    c_ = _pull_scenario("pull-rebase", _RV_REV)
-    check(f"FM-006 · the refresh after a pull · …the control: `git pull --rebase` with local commits beside {_RV_REV}'s hooks FAILS — no hook refreshes the board after the replay (saw differing {c_['differs']})", not _pull_ok(c_))
+    check(f"FM-006 · R11 · after a pull · {what_}: no hook rebuilds the board — " + ("its resolving commit's own hook rebuilds it for the commit being made" if op_ in _PULL_COMMITS
+          else "it is the board from before the move, byte for byte") + f" — and `--html-only` by hand shows what it brought (saw exit {g_['code']}, differing {g_['differs']})", _pull_ok(g_, op_))
+if _HAVE_R11:
+    c_ = _pull_scenario("pull-rebase", _R11_REV)
+    check(f"FM-006 · R11 · after a pull · …the control: `git pull --rebase` with local commits beside v0.19.4's tool and hooks FAILS — its hooks rebuild the board after the replay (saw differing {c_['differs']})",
+          not _pull_ok(c_, "pull-rebase"))
 else:
-    _skipped("FM-006 · the refresh after a pull · the control", 1, f"this clone does not hold {_RV_REV}")
+    _skipped("FM-006 · R11 · after a pull · the control", 1, f"this clone does not hold {_R11_REV}")
 fm.configure(HERE)
 
 # --- the reading rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): in every run a file of the tree is
@@ -5224,8 +5345,7 @@ _rd = lambda rel: (HERE / rel).read_text(encoding="utf-8")
 _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
 _help_ = re.sub(r"\s+", " ", _help_)
 _readme_ = re.sub(r"\s+", " ", _rd("README.md"))
-_NO_BOARD_LINE = ("A cherry-pick, a revert, `git am`, `reset --hard` and `stash pop` run no hook that writes the board, and on Subversion nothing refreshes it after "
-                  "`svn update`: run `--html-only` to rebuild it.")
+_NO_BOARD_LINE = "On git and on Subversion alike, after a checkout, a pull or `svn update`, run `--html-only` to rebuild the board."
 check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
       "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (13 October 2026, 0.19.4's), and the player stats keep theirs; the top bar and the footer's link name the release VERSION names",
       "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
@@ -5234,18 +5354,22 @@ check("FM-006 · a private security report · the CHANGELOG's line — every hoo
       and 'v0.19.4, released 13 October 2026 — a security release: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
       and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html")
       and f'release<b>v{fm.__version__}</b>' in _rd("overrides/landing.html") and f'releases/tag/v{fm.__version__}" style="color:#b4c3d1">v{fm.__version__}</a>' in _rd("overrides/landing.html"))
-check("FM-006 · a private security report · the setup pages say the board is rebuilt on every commit, and with git on every checkout and merge — and that on Subversion it is rebuilt on a commit through TortoiseSVN or when the tool runs, no word of an update",
-      "git-ignored and rebuilt on every commit, and on every checkout and merge with git;\non Subversion, on a commit through TortoiseSVN or when the tool runs." in _rd("docs/setup.md")
-      and "sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und\nMerge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft." in _rd("docs/de/setup.md")
+check("FM-006 · R11 · the setup pages say what rebuilds the board — the tool, a commit that changes a work item, each answer and act, and on Subversion a commit through TortoiseSVN — and that "
+      "nothing rebuilds it after a checkout, a merge or an update, `--html-only` naming the rebuild; no word of `svn update`",
+      "git-ignored and rebuilt when the tool runs, on a commit that changes a work item, and\nright after each of your answers and acts; on Subversion, on a commit through TortoiseSVN or when the tool runs. Nothing\n"
+      "rebuilds it after a checkout, a merge or an update: `--html-only` does." in _rd("docs/setup.md")
+      and "Nach einem Checkout, einem Merge oder einem Update baut sie nichts neu: das tut `--html-only`." in _rd("docs/de/setup.md")
+      and "mit git auch bei jedem Checkout" not in _rd("docs/de/setup.md") and "on every checkout and merge" not in _rd("docs/setup.md")
       and not re.search(r"svn update|svn up\b", _readme_.replace(_NO_BOARD_LINE, "") + _help_ + _rd("docs/setup.md")))
-check("FM-006 · a private security report · the README's hooks section says in one line what writes no board — a cherry-pick, a revert, `git am`, `reset --hard`, `stash pop`, and `svn update` on "
-      "Subversion — naming `--html-only` as the rebuild; it is the one place the README names `svn update`", _NO_BOARD_LINE in _readme_ and "svn update" not in _readme_.replace(_NO_BOARD_LINE, ""))
+check("FM-006 · R11 · the README's hooks section says in one line that on git and on Subversion alike a checkout, a pull and `svn update` rebuild no board, naming `--html-only` as the rebuild; "
+      "it is the one place the README names `svn update`", _NO_BOARD_LINE in _readme_ and "svn update" not in _readme_.replace(_NO_BOARD_LINE, ""))
 check("FM-006 · a private security report · the README and `--help` name the copy: where it is kept, who writes it, what it runs, and that `--install-hook` is run on the default branch and again after an upgrade",
       "`shoalmark-trusted/`" in _rd("README.md") and "run `--install-hook` on your default branch, and again after upgrading" in _readme_ and "a copy of the tool kept in the git directory" in _rd("README.md")
-      and "COPY of the tool this keeps in the git directory (shoalmark-" in _help_ and "run it on your default branch, and again after upgrading" in _help_ and "from the copy of the tool kept in the git directory" in _help_)
+      and "COPY of the tool this keeps in the git directory (shoalmark-" in _help_ and "run it on your default branch, and again after upgrading" in _help_)
 check("FM-006 · a private security report · RV-2300 · the README's hooks section and `--help` say every hook runs the copy — the commit's hooks too, failing closed — that no hook runs the deriver and a hooks "
       "folder inside the working tree is refused (No deriver in hooks), and that developing the tool means installing the branch's copy deliberately; neither says a commit's hook runs the working tree's tool",
-      "`--install-hook` writes six hooks, and every one runs **a copy of the tool kept in the git directory**" in _readme_ and "it fails closed" in _readme_
+      "`--install-hook` writes three hooks, the three that judge a commit — `pre-commit`, `prepare-commit-msg` and `commit-msg` — and every one runs **a copy of the tool kept in the git "
+      "directory**" in _readme_ and "it fails closed" in _readme_
       and "No hook runs the repository's deriver" in _readme_ and "`--install-hook` refuses a hooks folder inside the working tree" in _readme_ and "(`SHOALMARK_BOARD_SECONDS` gives it longer)" in _readme_
       and "last accepted it" not in _readme_ and "Developing the tool itself means installing the branch's copy deliberately" in _readme_
       and "which run the tool in the working tree" not in _readme_
@@ -5650,6 +5774,29 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
+read.git.branch: "gelesen von {0} bei {1}"
+read.git.detached: "gelesen von einem losgelösten HEAD bei {0}"
+read.git.unborn: "gelesen von {0}, noch ohne Commit"
+read.git.clean: nichts geändert und nicht committet
+read.git.changed: "{0} Pfade geändert und nicht committet"
+read.git.changed.one: 1 Pfad geändert und nicht committet
+read.git.unread: was geändert und nicht committet ist, wird hier nicht gelesen
+read.svn: "gelesen von der Arbeitskopie bei {0}"
+read.svn.unread: "gelesen von der Arbeitskopie: ihre Revision wird hier nicht gelesen"
+read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
+read.none: "gelesen aus dem Ordner {0}"
+read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
+read.at: "gebaut {0}"
+read.self: sie liest ihre Datei wieder, wenn Sie zu ihr zurückkehren; nichts fragt ständig nach
+read.rebuild: "neu bauen:"
+read.copy: kopieren
+read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
+read.unlinked: "{0} ({1})"
+link.unpushed: noch nicht auf origin, darum nicht verlinkt
+link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
+link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
+link.noviewer: "kein Subversion-Betrachter konfiguriert (`commit_url`), darum nicht verlinkt"
+link.nocommit: kein Commit zu verlinken
 reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
 reviews.untraced: ohne Spur {0}
 reviews.trunk: auf dem Stamm {0}
@@ -6199,8 +6346,9 @@ with tempfile.TemporaryDirectory() as d:
             fm.HERE = Path(d) / "a-copy-with-no-brand"; run(root, "--html-only"); bare = (wt / "index.html").read_text(encoding="utf-8")
         finally:
             fm.HERE = _here
-        check("FM-002 · a repository that chooses no theme sees no change: with the themes in the tool's brand/ its board is byte for byte the board of a copy that has no brand/ at all — no theme, no warning",
-              _th.is_dir() and code0 == 0 and page0 == bare and "<style data-from" not in page0 and "brand:" not in err0)
+        check("FM-002 · a repository that chooses no theme sees no change: with the themes in the tool's brand/ its board is byte for byte the board of a copy that has no brand/ at all, "
+              "but the time each was built (FM-057) — no theme, no warning",
+              _th.is_dir() and code0 == 0 and _sans_moment(page0) == _sans_moment(bare) and "<style data-from" not in page0 and "brand:" not in err0)
         _, rep_, _ = run(root, "--brand")
         check(f"FM-002 R3 · `--brand` marks the tool's brand/ as a place with no brand file, its themes starters no board wears — and every source still reads built in (saw {rep_.splitlines()[1:2]})",
               f"organisation  {HERE / 'brand'}  — no brand file here: its themes/ are starters, worn only once --from copies one" in rep_
@@ -6678,7 +6826,7 @@ with tempfile.TemporaryDirectory() as tmp:
     start_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     code, out, err = run(root, "--answer", "AP-070", "accept", "count one week first")
     # FM-012: silent until its last line, the command was stopped by an Owner who took it for hung. Each step is said as
-    # it STARTS — the waits are the checkout hook and the pre-commit gate, and both come after the line that names them
+    # it STARTS — the waits are the pre-commit gate and the board's rebuild, and both come after the line that names them
     steps_ = [err.find(s) for s in ("answering AP-070 — 1/4 reading the trackers …", f"answering AP-070 — 2/4 cutting `answer/ap-070` from `{start_}`",
                                     "answering AP-070 — 3/4 committing, signed", "answering AP-070 — 4/4 pushing to `origin` …")]
     check("FM-012 · --answer names each step as it starts, in order — reading the trackers · cutting answer/<id> from the branch it is on · committing, signed · pushing — and its last lines are unchanged",
@@ -8835,11 +8983,12 @@ else:
 
 
 # --- FM-045 · the board matrix — the Owner's rule of 2026-10-08: a failed board refresh is a product failure, so the checks cover the class, not this case alone ------------
-# Real merges, checkouts and rebases fire the real hooks `--install-hook` writes (`post-merge`, `post-checkout`, `post-rewrite`), and an `--answer` its rebuild right after
-# the act (`board_after_act`), in each shape the Owner named; on Subversion, which has no checkout or merge hook, `svn update` and `svn switch` are followed by the board's
-# run itself, `--html-only`, as the README says. Each event asserts: the board's file changed and shows what the event brought — what the board before it could not show —;
-# git (or the run) and every hook it started exit 0 — each hook's own exit, read from the trace2 events git writes —; every git its board's runs start is a read
-# `read_only_git` admits; no line says "stopped" or "not refreshed"; no traceback. Synthetic data only: every repository, its origin and its signing key are made here.
+# Real merges, checkouts and rebases, with the hooks `--install-hook` writes in place — none of which refreshes the board (R11, FM-057) — each followed by the explicit
+# refresh, `--html-only` by hand, and an `--answer` with its rebuild right after the act (`board_after_act`), in each shape the Owner named; on Subversion `svn update`
+# and `svn switch` are followed by the board's run itself, `--html-only`, as the README says. Each event asserts: the board's file changed and shows what the event
+# brought — what the board before it could not show —; git (or the run) and every hook it started exit 0 — each hook's own exit, read from the trace2 events git writes
+# —, and none of them is one that refreshed the board; every git its board's runs start is a read `read_only_git` admits; no line says "stopped" or "not refreshed";
+# no traceback. Synthetic data only: every repository, its origin and its signing key are made here.
 # Nothing here is POSIX-only: Git for Windows runs every hook, the runner's too, through its own `sh`. The signers shape fails beside v0.19.1 (211ce0b), whose board's
 # run stops on `git ls-tree`. Each shape prints its seconds, and the matrix its total after the last, with the git starts it watched.
 # THE WATCH — every board's run of the matrix, through git's own trace: `GIT_TRACE2_EVENT`, set in the environment the event's git or command starts with, is
@@ -8849,14 +8998,14 @@ else:
 # hook bound its run in time (`_bm_watch`). What it reads is recorded where the classification's runtime half reads it (`_BOARD_GIT`, `_bm_record`).
 _BM_SECONDS, _BM_PLAIN, _BM_STARTS = {}, {}, {}
 _BM_ENV = {k_: v_ for k_, v_ in _ENV.items() if not k_.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_"))}      # the clone's own `user.name` — the Owner's, as `--answer` asks
-_BM_SAID = {"answer": "`--answer`, the board rebuilt right after the act by the checkout hook (`board_after_act`)", "switch": "`git switch`, which fires `post-checkout`",
-            "merge": "`git merge --no-ff`, which fires `post-merge`", "rebase": "`git rebase`, which fires `post-checkout` before its replay and `post-rewrite` after",
+_BM_SAID = {"answer": "`--answer`, the board rebuilt right after the act by the command itself (`board_after_act`)", "switch": "`git switch`, then `--html-only` by hand",
+            "merge": "`git merge --no-ff`, then `--html-only` by hand", "rebase": "`git rebase`, then `--html-only` by hand",
             "svn update": "`svn update`, then `--html-only`", "svn switch": "`svn switch`, then `--html-only`",
             "by hand": "the board's run by hand before the events, `--html-only`"}
-_BM_ASSERT = ('the board changed and shows what it brought, git and every hook exit 0, every git its board\'s runs start is a read `read_only_git` admits, '
-              'no "stopped" or "not refreshed" line, no traceback')
+_BM_ASSERT = ('the board changed and shows what it brought, git and every hook exit 0 and none refreshed the board, every git its board\'s runs start is a read '
+              '`read_only_git` admits, no "stopped" or "not refreshed" line, no traceback')
 _BM_HAND = 'exit 0, the board written, every git it starts is a read `read_only_git` admits, no "stopped" line, no traceback'
-_BM_HOOKS = ("post-checkout", "post-merge", "post-rewrite")           # the hooks whose run is the board's
+_BM_HOOKS = ("post-checkout", "post-merge", "post-rewrite")           # the hooks whose run was the board's until R11: none runs now
 _BM_OWN = (["rev-parse", "--show-toplevel"], ["rev-parse", "--git-common-dir"])      # a hook's own two reads, which find the copy before it starts it
 _BM_LINE = re.compile(r"^(.+) exists and is not shoalmark's — left alone\. Add to it: `(.+)`$")      # what `--install-hook` names for a hook that is not its own
 _BM_RUNNER = ("#!/bin/sh\n# a hook runner in lefthook's style: this hook runs each command its configuration names for it, and fails where one fails\n"
@@ -9051,36 +9200,38 @@ def _bm_events(base, at, home, also=(), drop=False, only=("answer", "switch", "m
     """The events, fired at the checkout `at`, which stands on `home`: an `--answer` on AP-501, `git switch side`, `git merge --no-ff feature` back on `home`,
     and `git rebase <home>` from `work` — those of `only`. Between them the checkout moves with no hook (`git`), so the board before each is the one the event
     before it left, and each brings what that board cannot show; after the answer, every board still shows it on its way, and the answers of `also` throughout.
-    Every board's run is watched (`_bm_watch`); the run by hand before them (`_bm_refresh`) is judged first, as `by hand`. `drop`: the control — no answer and
-    no run by hand, and each event's own board hook taken out of the hooks folder while it fires, then put back. {event: what it saw}"""
+    No hook refreshes the board (R11): each move is followed by the board's run by hand (`_bm_refresh`), watched through its own trace; the answer's rebuild is
+    the command's own (`_bm_watch`, "act"); the run by hand before them is judged first, as `by hand`. `drop`: the control — no answer and no run by hand at
+    all: each move alone, as a checkout, a merge and a rebase leave the board now. {event: what it saw}"""
     hand_ = _BM_PLAIN.pop(str(at), None)
     seen_, way_ = ({"by hand": hand_} if hand_ and not drop else {}), []
-    def one_(name_, hook_, fire_, shows_, says_=("board: file:",)):
-        trace_, held_ = base / f"trace-{name_}.json", at / ".git/hooks" / hook_
-        trace_.unlink(missing_ok=True); kept_ = held_.read_bytes() if drop else None
-        if drop:
-            held_.unlink()
-        before_ = _bm_board(at); code_, said_ = fire_(trace_); after_ = _bm_board(at)
-        if drop:
-            held_.write_bytes(kept_); held_.chmod(0o755)
+    def one_(name_, fire_, shows_, says_=("board: file:",)):
+        trace_ = base / f"trace-{name_}.json"
+        trace_.unlink(missing_ok=True)
+        before_ = _bm_board(at); code_, said_ = fire_(trace_); ran_ = None
+        if name_ != "answer" and not drop:                  # the explicit refresh after the move, watched as the run by hand is (`_BM_PLAIN`)
+            _bm_refresh(at); ran_ = _BM_PLAIN.pop(str(at)); code_, said_ = code_ or ran_["code"], said_ + ran_["said"]
+        after_ = _bm_board(at)
         page_ = (after_ or b"").decode("utf-8", "replace")
-        seen_[name_] = dict(code=code_, said=said_, hooks=_bm_trace(trace_), hook=hook_, changed=after_ is not None and after_ != before_,
+        watched_ = (_bm_watched(_bm_record(_bm_watch(trace_, "act")), None) if name_ == "answer"
+                    else {k_: ran_[k_] for k_ in ("runs", "starts", "seen", "refused", "listings")} if ran_ else _bm_watched([], None))
+        seen_[name_] = dict(code=code_, said=said_, hooks=_bm_trace(trace_), hook=None, changed=after_ is not None and after_ != before_,
                             missing=[w_ for w_, rx_ in shows_() + way_ + [_bm_way(at, t_) for t_ in also] if not re.search(rx_, page_)]
-                            + [f"said {s_!r}" for s_ in says_ if s_ not in said_], **_bm_watched(_bm_record(_bm_watch(trace_, "act" if name_ == "answer" else "hooks")), hook_))
+                            + [f"said {s_!r}" for s_ in says_ if s_ not in said_], **watched_)
     if "answer" in only and not drop:
         def answer_(trace_):
             c_, o_, e_ = _tool_run(HERE / "shoalmark.py", at, "--answer", "AP-501", "accept", env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace_)))
             return c_, o_ + e_
-        one_("answer", "post-checkout", answer_, lambda: [_bm_way(at, "AP-501")], ("the board was rebuilt by the checkout hook",))
+        one_("answer", answer_, lambda: [_bm_way(at, "AP-501")], ("the board is rebuilt — it reads the branch just pushed",))
         way_ = [_bm_way(at, "AP-501")]
     if "switch" in only:
-        one_("switch", "post-checkout", lambda t_: _bm_fire(at, t_, "switch", "-q", "side"), lambda: [_bm_row("AP-502", "Proposed")])
+        one_("switch", lambda t_: _bm_fire(at, t_, "switch", "-q", "side"), lambda: [_bm_row("AP-502", "Proposed")])
     if "merge" in only:
         git(at, "switch", "-q", home)
-        one_("merge", "post-merge", lambda t_: _bm_fire(at, t_, "merge", "-q", "--no-ff", "--no-edit", "feature"), lambda: [_bm_row("AP-503", "Proposed"), _bm_row("AP-502", "In Progress")])
+        one_("merge", lambda t_: _bm_fire(at, t_, "merge", "-q", "--no-ff", "--no-edit", "feature"), lambda: [_bm_row("AP-503", "Proposed"), _bm_row("AP-502", "In Progress")])
     if "rebase" in only:
         git(at, "switch", "-q", "work")
-        one_("rebase", "post-rewrite", lambda t_: _bm_fire(at, t_, "rebase", "-q", home), lambda: [_bm_row("AP-504", "Proposed"), _bm_row("AP-503", "Proposed")])
+        one_("rebase", lambda t_: _bm_fire(at, t_, "rebase", "-q", home), lambda: [_bm_row("AP-504", "Proposed"), _bm_row("AP-503", "Proposed")])
     return seen_
 
 
@@ -9090,10 +9241,10 @@ def _bm_bad(said):
 
 
 def _bm_ok(g):
-    """The matrix's one judgement of an event: git (or the run) exits 0, every hook it started exits 0 and the event's own is among them, the board's file changed
-    and shows what the event brought, the watch saw the event's own board's run start git and every git it started is a read `read_only_git` admits, and no line
-    says the refresh failed (`_bm_bad`)."""
-    return (g["code"] == 0 and (g["hook"] is None or g["hook"] in g["hooks"]) and all(c_ == 0 for cs_ in g["hooks"].values() for c_ in cs_)
+    """The matrix's one judgement of an event: git (or the run) exits 0, every hook it started exits 0 and none is one that refreshed the board until R11
+    (`_BM_HOOKS`), the board's file changed and shows what the event brought, the watch saw the event's own board's run start git and every git it started is a
+    read `read_only_git` admits, and no line says the refresh failed (`_bm_bad`)."""
+    return (g["code"] == 0 and not set(g["hooks"]) & set(_BM_HOOKS) and all(c_ == 0 for cs_ in g["hooks"].values() for c_ in cs_)
             and g["changed"] and not g["missing"] and g["seen"] and not g["refused"] and not _bm_bad(g["said"]))
 
 
@@ -9458,15 +9609,15 @@ else:
         base_ = Path(d).resolve(); root_, _i = _bm_repo(base_, answers=True); part_ = _bw_partial(base_, root_, "blob:none"); _BW_HAND.pop(base_, None)
         stub_ = base_ / "stub"; stub_.mkdir(); (stub_ / "git").write_bytes(_BW_STUB.replace("{git}", shutil.which("git")).encode("utf-8")); (stub_ / "git").chmod(0o755)
         path_ = f"{stub_}{os.pathsep}{os.environ.get('PATH', '')}"
-        log_ = _bw_wrap(base_, part_, stub=stub_); _h, common_ = _bw_paths(part_); board_ = _bm_board(part_)
-        code_, said_ = _bm_fire(part_, base_ / "trace-old.json", "switch", "-q", "side")
-        w_, hooks_ = _bw_watch(base_ / "trace-old.json", log_), _bm_trace(base_ / "trace-old.json")
+        _h, common_ = _bw_paths(part_); board_ = _bm_board(part_)
+        moved_ = _bm_fire(part_, base_ / "trace-old.json", "switch", "-q", "side"); hooks_ = _bm_trace(base_ / "trace-old.json")
+        code_, o_, e_, w_ = _bw_program(base_, part_, "old-board", "--html-only", path=path_); said_ = o_ + e_
         line_ = [l_ for l_ in said_.splitlines() if l_.startswith("board: not refreshed — this is a partial clone")]
         check(f"FM-045 · where git is older than 2.44 — a stub that says 2.43 and, as such a git, does not know the switch — in a blobless clone that lacks what "
-              f"the board reads: `git switch` succeeds and its checkout hook exits 0; the board says in one line that it is not refreshed here, and why — a partial "
-              f"clone, and a git that cannot keep a read from fetching —, leaves the board as it was, and reads nothing that could fetch: {_BW_ASSERT} (saw exit "
-              f"{code_}, hooks {hooks_}, {line_[:1]}, board unchanged {_bm_board(part_) == board_}, {_bw_saw(w_)}, commands {w_['commands']})",
-              code_ == 0 and hooks_.get("post-checkout") == [0] and len(line_) == 1 and "git 2.43 " in line_[0] and _bm_board(part_) == board_ and _bw_ok(w_)
+              f"the board reads: `git switch` succeeds and no hook of it refreshes the board (R11); the board's run by hand says in one line that it is not refreshed "
+              f"here, and why — a partial clone, and a git that cannot keep a read from fetching —, leaves the board as it was, and reads nothing that could fetch: "
+              f"{_BW_ASSERT} (saw exits {moved_[0]} and {code_}, hooks {hooks_}, {line_[:1]}, board unchanged {_bm_board(part_) == board_}, {_bw_saw(w_)}, commands {w_['commands']})",
+              moved_[0] == 0 and not set(hooks_) & set(_BM_HOOKS) and code_ == 0 and len(line_) == 1 and "git 2.43 " in line_[0] and _bm_board(part_) == board_ and _bw_ok(w_)
               and set(w_["commands"]) <= {"rev-parse", "config"} and "Traceback" not in said_)
         said2_ = {}
         for a_ in ("--owner", "--standup"):
@@ -9544,7 +9695,7 @@ with tempfile.TemporaryDirectory() as d:
     pgp_ = _bw_signed_by_hand(root_, "AP-502", "-----BEGIN PGP SIGNATURE-----\n \n iQ==\n -----END PGP SIGNATURE-----")
     x509_ = _bw_signed_by_hand(root_, "AP-503", "-----BEGIN SIGNED MESSAGE-----\n MA==\n -----END SIGNED MESSAGE-----")
     git(root_, "fetch", "-q", "origin"); _tool_run(HERE / "shoalmark.py", root_, "--install-hook")
-    log_, wrap_ = base_ / "markers.log", _bw_wrap(base_, root_)
+    log_ = base_ / "markers.log"
     def marker_(name_, does_, tail_):
         p_ = base_ / f"marker-{name_}"
         p_.write_bytes(_BW_MARKER.format(does=does_, name=name_, log=log_.as_posix(), tail=tail_).encode("utf-8")); p_.chmod(0o755)
@@ -9576,14 +9727,10 @@ with tempfile.TemporaryDirectory() as d:
         c1_, o1_, e1_, w1_ = _bw_program(base_, root_, f"{tag_}-board", "--html-only")
         c2_, o2_, e2_, w2_ = _bw_program(base_, root_, f"{tag_}-owner", "--owner")
         marks_ = [l_ for l_ in log_.read_text(encoding="utf-8").splitlines() if l_.strip()]      # the two runs as programs: all their processes are theirs
-        c3_, said3_ = _bm_fire(root_, base_ / f"trace-{tag_}-switch.json", "switch", "-q", "side")     # the checkout's own git is the person's: its hook's run
-        w3_ = _bw_watch(base_ / f"trace-{tag_}-switch.json", wrap_)                                     # is judged by git's trace alone
-        git(root_, "switch", "-q", "main")
         check(f"FM-045 · the board's reads run with {what_} fixed: set to a marker program as a repository sets it, it is started by none of the board's "
-              f"run and `--owner`, nor by the board's run a checkout's hook starts — {_BW_ASSERT}; a read with git's own default in the same clone starts it, so the shape is live (saw the "
-              f"plain read start {plain_marks_[:1] or plain_kids_[:3]}; exits {c1_}, {c2_}, {c3_}; the marker's log {marks_[:2]}; {_bw_saw(w1_)}; {_bw_saw(w2_)}; "
-              f"{_bw_saw(w3_)})",
-              live_ and c1_ == 0 and c2_ == 0 and c3_ == 0 and not marks_ and _bw_ok(w1_) and _bw_ok(w2_) and _bw_ok(w3_))
+              f"run and `--owner` — {_BW_ASSERT}; a read with git's own default in the same clone starts it, so the shape is live (saw the "
+              f"plain read start {plain_marks_[:1] or plain_kids_[:3]}; exits {c1_}, {c2_}; the marker's log {marks_[:2]}; {_bw_saw(w1_)}; {_bw_saw(w2_)})",
+              live_ and c1_ == 0 and c2_ == 0 and not marks_ and _bw_ok(w1_) and _bw_ok(w2_))
         for k_, _v in sets_:
             git(root_, "config", "--unset", k_)
     page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
@@ -10111,31 +10258,31 @@ if _BM_SECONDS:                                             # the matrix's total
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
     for ev_, g_ in _bm_events(base_, root_, "main", drop=True).items():
-        check(f"FM-045 · the board matrix · the control · {_BM_SAID[ev_]}, with `{g_['hook']}` taken out of the hooks folder: it does not fire, and the matrix's judgement FAILS — "
-              f"what the event brought is not shown, and where no other hook writes the board, the board did not change (saw {_bm_saw(g_)})",
-              not _bm_ok(g_) and g_["hook"] not in g_["hooks"] and bool(g_["missing"]) and (ev_ == "rebase" or not g_["changed"]))
+        check(f"FM-045 · the board matrix · the control · {_BM_SAID[ev_].split(', then')[0]} alone, with no run by hand after it: no hook refreshes the board (R11), "
+              f"and the matrix's judgement FAILS — what the event brought is not shown, and the board did not change (saw {_bm_saw(g_)})",
+              not _bm_ok(g_) and not set(g_["hooks"]) & set(_BM_HOOKS) and bool(g_["missing"]) and not g_["changed"])
     rm_git(root_)
 fm.configure(HERE)
 
-# …the watch's own control: a hook-started board's run is seen — `git switch`'s `post-checkout` and `--answer`'s, each a named list of git starts — and a watch
-# that recorded nothing fails the same judgement: the switch judged as if nothing were recorded, and the switch back with `GIT_TRACE2_EVENT` unset, which records none
+# …the watch's own control: a board's run is seen — the run by hand after `git switch` and `--answer`'s rebuild, each a named list of git starts — and a watch that
+# recorded nothing fails the same judgement: the switch judged as if nothing were recorded, and a run by hand with `GIT_TRACE2_EVENT` unset, which records none
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
     seen_ = _bm_events(base_, root_, "main", only=("answer", "switch"))
     named_ = {ev_: sorted({_git_command(a_) for a_ in seen_[ev_]["starts"]}) for ev_ in ("answer", "switch")}
     runs_ = {ev_: [(k_, len(a_)) for k_, a_ in seen_[ev_]["runs"]] for ev_ in ("answer", "switch")}
-    check(f"FM-045 · the board matrix · the watch's control · a hook-started board's run is seen: `git switch`'s `post-checkout` run and `--answer`'s each start a non-zero, "
+    check(f"FM-045 · the board matrix · the watch's control · a board's run is seen: the run by hand after `git switch` and `--answer`'s rebuild each start a non-zero, "
           f"named list of git — `for-each-ref` on origin's answer branches among them — every one a read `read_only_git` admits (saw runs {runs_}; named {named_})",
           all(_bm_ok(seen_[ev_]) and seen_[ev_]["starts"] and "for-each-ref" in named_[ev_] for ev_ in ("answer", "switch"))
-          and any(k_ == "--answer · post-checkout" and n_ for k_, n_ in runs_["answer"]) and any(k_ == "post-checkout" and n_ for k_, n_ in runs_["switch"]))
-    nothing_ = {**seen_["switch"], **_bm_watched([], "post-checkout")}
-    before_ = _bm_board(root_)
+          and any(k_ == "--answer · board_after_act" and n_ for k_, n_ in runs_["answer"]) and any(k_ == "--html-only" and n_ for k_, n_ in runs_["switch"]))
+    nothing_ = {**seen_["switch"], **_bm_watched([], None)}
     back_ = subprocess.run(["git", "-C", str(root_), "switch", "-q", "main"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_BM_ENV)
+    before_ = _bm_board(root_); hand_ = _hand(root_, env=_BM_ENV)
     blind_ = _bm_watch(base_ / "trace-blind.json")
-    check(f"FM-045 · the board matrix · the watch's control · a watch that recorded nothing fails: the same switch judged with no git start recorded FAILS, and the switch "
-          f"back with `GIT_TRACE2_EVENT` unset — its hook still run, the board rewritten — records none (saw {_bm_saw(nothing_)}; the switch back exit {back_.returncode}, "
-          f"board rewritten {_bm_board(root_) != before_}, recorded {blind_})",
-          _bm_ok(seen_["switch"]) and not _bm_ok(nothing_) and back_.returncode == 0 and _bm_board(root_) != before_ and blind_ == [])
+    check(f"FM-045 · the board matrix · the watch's control · a watch that recorded nothing fails: the same switch judged with no git start recorded FAILS, and a run "
+          f"by hand after the switch back, with `GIT_TRACE2_EVENT` unset — the board rewritten — records none (saw {_bm_saw(nothing_)}; the switch back exit {back_.returncode}, "
+          f"the run {hand_ and hand_[0]}, board rewritten {_bm_board(root_) != before_}, recorded {blind_})",
+          _bm_ok(seen_["switch"]) and not _bm_ok(nothing_) and back_.returncode == 0 and (hand_ or (1,))[0] == 0 and _bm_board(root_) != before_ and blind_ == [])
     rm_git(root_)
 fm.configure(HERE)
 
@@ -10567,7 +10714,7 @@ with tempfile.TemporaryDirectory() as tmp:
         git(root, "config", k_, v_)
     git(root, "remote", "add", "origin", str(base / "origin.git"))
     (root / "shoalmark.toml").write_text('name = "c"\n[kinds]\nAP = "Work"\n[seats]\nowner = "holgoijo@x signed"\nimplementer = "implementer@seat"\n', encoding="utf-8")
-    # the board is git-ignored, as `--init` writes it (FM-030, 0.18.6: the board reads git — rebuilt by the checkout hook after an act,
+    # the board is git-ignored, as `--init` writes it (FM-030, 0.18.6: the board reads git — rebuilt by the act itself right after it,
     # a committed board would differ from its commit and leave the tree changed for his next command)
     (root / ".gitignore").write_text("docs/work-tracker/index.html\ndocs/work-tracker/view/\n", encoding="utf-8")
     now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
@@ -11534,15 +11681,15 @@ with tempfile.TemporaryDirectory() as tmp:
         saved_ = subprocess.run(["git", "-C", str(root), "rev-parse", ref_], capture_output=True, text=True, env=_ENV).stdout.strip()
         git(root, "update-ref", "-d", ref_); run(root, "--html-only"); git(root, "update-ref", ref_, saved_)
     none_ = page_()
-    check("FM-030 · 0.18.6 · a board with nothing on its way is the board it was, byte for byte: a merged `answer/*` and a tip that carries no answer change no byte, and no row gains a cell",
-          read_ == none_ and '"answer/ap-50' not in read_)
+    check("FM-030 · 0.18.6 · a board with nothing on its way is the board it was, byte for byte but the time it was built (FM-057): a merged `answer/*` and a tip that carries no answer change no byte, and no row gains a cell",
+          _sans_moment(read_) == _sans_moment(none_) and '"answer/ap-50' not in read_)
     codes_ = [run(root, *a)[0] for a in (("--answer", "AP-501", "accept"), ("--answer", "AP-502", "reject", "not before the audit"), ("--done", "AP-503", "evidence/AP-503/key.md"))]
     fm.configure(root); way_ = fm.on_their_way(fm.load_trackers())
     run(root, "--html-only"); page2_ = page_()
     at_ = lambda tid: f"answer/{tid.lower()} @ {way_[tid]['commit'][:7]} · {way_[tid]['time'][:16].replace('T', ' ')}"
     check(f"FM-030 · 0.18.6 · the board's rows carry what is on its way — on those rows alone, and the same bytes built twice (saw {codes_})",
           codes_ == [0, 0, 0] and f'["answer", "answer/ap-501", "{way_["AP-501"]["tip"]}", ' in page2_ and f'["done", "answer/ap-503", "{way_["AP-503"]["tip"]}", ' in page2_
-          and '"answer/ap-505' not in page2_ and fm.render_html(fm.load_trackers()) == fm.render_html(list(reversed(fm.load_trackers())))
+          and '"answer/ap-505' not in page2_ and (lambda r_: fm.render_html(fm.load_trackers(), r_) == fm.render_html(list(reversed(fm.load_trackers())), r_))(fm.read_at())
           and all(f'"{k}"' in page2_ for k in ("way.title", "way.merge", "way.done", "way.answer", "way.signed")))
     code_o, out_o, _e = run(root, "--owner"); code_s, out_s, _e = run(root, "--standup")
     ways_ = (f"ON THEIR WAY — yours, signed and pushed, before your merge\n"
@@ -11577,9 +11724,9 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 
 # --- FM-030, 0.18.6 — *right after the act*: `--answer`, `--done` and `--due` end where they started, and the board they leave
-#     already shows the act on its way — rebuilt by the checkout hook where one is installed (its file changed between the push
-#     and the switch back), else by the command itself, `--html-only` in its own process. Another machine shows the same after
-#     a fetch: two clones of one bare `origin`.
+#     already shows the act on its way — rebuilt by the command itself, `--html-only` in its own process, with the hooks installed
+#     or without them: no hook rebuilds it (R11, FM-057). Another machine shows the same after a fetch: two clones of one bare
+#     `origin`.
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = _way_repo(base, hooks=True)
     page_ = lambda r: (r / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (r / "docs/work-tracker/index.html").exists() else ""
@@ -11592,9 +11739,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code_a, out_a, err_a = run(root, "--answer", "AP-501", "accept")
     code_d, out_d, err_d = run(root, "--done", "AP-503", "evidence/AP-503/key.md")
     board_ = page_(root)
-    check(f"FM-030 · 0.18.6 · with the hooks installed — whose checkout hook runs the copy of the tool kept in the git directory — `--answer` and `--done` end on the branch they started on, the checkout hook rebuilds the board and the command says so, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
-          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board was rebuilt by the checkout hook — it reads the branch just pushed" in out_a
-          and "the board was rebuilt by the checkout hook — it reads the branch just pushed" in out_d
+    check(f"FM-030 · 0.18.6 · R11 · with the hooks installed — none of which rebuilds the board — `--answer` and `--done` end on the branch they started on, the command rebuilds the board itself and says so, and it shows each on its way (saw {out_a.strip()[-200:]!r} · {err_d.strip()[-160:]!r})",
+          code_a == code_d == 0 and here_(root) == "main" and "\n  back on `main`\n  the board is rebuilt — it reads the branch just pushed" in out_a
+          and "the board is rebuilt — it reads the branch just pushed" in out_d
           and f'["answer", "answer/ap-501", "{tip_(root, "answer/ap-501")}", ' in board_ and f'["done", "answer/ap-503", "{tip_(root, "answer/ap-503")}", ' in board_)
     run(other, "--html-only"); before_ = page_(other)
     git(other, "fetch", "-q", "origin"); run(other, "--html-only"); after_ = page_(other)
@@ -11613,10 +11760,10 @@ with tempfile.TemporaryDirectory() as tmp:
     code_u, out_u, _e = run(root, "--due", "AP-503", when_)
     git(root, "switch", "-q", "answer/ap-503"); stamp_ = (root / "docs/work-tracker/index.html").stat().st_mtime_ns
     code_w, out_w, _e = run(root, "--due", "AP-503", (datetime.datetime.fromisoformat(when_) + datetime.timedelta(days=1)).isoformat())
-    check(f"FM-030 · 0.18.6 · with no checkout hook, the command rebuilds the board itself after the push — the board's file had not changed — and it shows the answer on its way; `--due` ends where it started too, and run on `answer/<id>` itself, where no checkout happens, it rebuilds as well (saw {out_a.strip()[-160:]!r} · {out_w.strip()[-160:]!r})",
-          code_a == code_u == code_w == 0 and "\n  back on `main`\n  the board is rebuilt — no checkout hook rebuilt it" in out_a
+    check(f"FM-030 · 0.18.6 · with no hook installed, the command rebuilds the board itself after the push and it shows the answer on its way; `--due` ends where it started too, and run on `answer/<id>` itself, where no checkout happens, it rebuilds as well (saw {out_a.strip()[-160:]!r} · {out_w.strip()[-160:]!r})",
+          code_a == code_u == code_w == 0 and "\n  back on `main`\n  the board is rebuilt — it reads the branch just pushed" in out_a
           and f'["answer", "answer/ap-502", "{tip_(root, "answer/ap-502")}", ' in board_ and "\n  back on `main`\n  the board is rebuilt" in out_u
-          and here_(root) == "answer/ap-503" and "back on" not in out_w and "the board is rebuilt — no checkout hook rebuilt it" in out_w
+          and here_(root) == "answer/ap-503" and "back on" not in out_w and "the board is rebuilt — it reads the branch just pushed" in out_w
           and (root / "docs/work-tracker/index.html").stat().st_mtime_ns != stamp_)
     rm_git(root)
 fm.configure(HERE)
@@ -11650,7 +11797,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code_, _o, _e = run(root, "--html-only"); bj_ = _bj(root)
     stamps_ = [p_.stat().st_mtime_ns for p_ in [t_ / "index.html", *(t_ / "view").glob("*.js")]]
     check(f"FM-045 · C · the board built by `--html-only` at commit A records what it was built from in `view/built.json` — a SHA-256 each for the tracker folder, the configuration and the answer branches, and A for the line's wording — written after the page and every view (saw {bj_})",
-          code_ == 0 and bj_ is not None and sorted(bj_) == ["answers", "commit", "configuration", "trackers"] and bj_["commit"] == a_
+          code_ == 0 and bj_ is not None and sorted(bj_) == ["answers", "branch", "built_at", "changes", "commit", "configuration", "trackers", "vcs"] and bj_["commit"] == a_
           and all(re.fullmatch(r"[0-9a-f]{64}", str(bj_[k_])) for k_ in ("trackers", "configuration", "answers"))
           and all((t_ / "view/built.json").stat().st_mtime_ns >= m_ for m_ in stamps_))
     (root / "notes.txt").write_text("not a tracker\n", encoding="utf-8"); git(root, "add", "-A"); git(root, "commit", "-qm", "B"); git(root, "commit", "-q", "--allow-empty", "-m", "C")
@@ -11735,9 +11882,272 @@ for kind_ in ("Subversion", "a plain folder"):
         calls_ = argv_of(lambda: run(root, "--html-only")); code_ = run(root, "--html-only")[0]; run(root)
         started_ = [c_ for c_ in calls_ if c_ and c_ != _SVN_STATUS and (Path(str(c_[0])).name.lower() in ("svn", "svn.exe") or "for-each-ref" in c_ or "HEAD" in c_)]
         codes_, o_, s_ = _bj_says(root)
-        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records nothing — no `view/built.json`, from it or from the default run — starting no `svn`{' but the one local status FM-044 reads' if kind_ == 'Subversion' else ''} and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it (saw exit {code_}, {started_} · {o_} · {s_})",
-              code_ == 0 and (root / "docs/work-tracker/index.html").is_file() and not (root / "docs/work-tracker/view/built.json").exists() and started_ == []
+        bj_ = _bj(root)
+        check(f"FM-045 · C · {kind_}: the board's run exits 0 and records no basis — `view/built.json`, from it or from the default run, holds only what the board read, and when "
+              f"(FM-057) — starting no `svn`{' but the one local status FM-044 reads' if kind_ == 'Subversion' else ''} and reading no HEAD or answer branch; `--owner` and `--standup` say nothing of it "
+              f"(saw exit {code_}, {started_}, {sorted(bj_ or {})} · {o_} · {s_})",
+              code_ == 0 and (root / "docs/work-tracker/index.html").is_file() and bj_ is not None
+              and sorted(bj_) == (["built_at", "revision", "vcs"] if kind_ == "Subversion" else ["built_at", "folder", "vcs"]) and started_ == []
               and codes_ == (0, 0) and o_ == s_ == [])
+fm.configure(HERE)
+
+# --- FM-057 · the quick win beside R11: the board says what it read, and when. On git — a clean tree, a tree with changes, a detached HEAD —, on Subversion
+#     and with no version control, the page's line names its own moment: the time it was built and, as each backend can give it, the commit and the branch and
+#     how many paths are changed and not committed — counted by a plain run; on the board's own run, `--html-only`, the line says they are not read —, the
+#     working copy's revision, or the folder; and the command that rebuilds it, with its copy button. It
+#     never says *current*, *live* or *up to date*. `view/built.json` records the same, and the reader of b84b8af — the tool before it — reads that record and
+#     says no line of it. The mutants — the changes ignored, the time missing, the word *current* — are this tool with that one change, run the same way: each
+#     must fail the check.
+import html as _q4_html
+_Q4_REV = "b84b8af"
+_Q4_BAD = re.compile(r"\b(current|currently|live|up[ -]to[ -]date)\b", re.I)
+_Q4_MUTANTS = (
+    ("the changes flag ignored", 'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")',
+     'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), 0'),
+    ("the time missing", 'facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]',
+     'facts += [esc(say("read.self"))]'),
+    ("the word current", '"read.self": "it reads its file again when you come back to it; nothing polls"', '"read.self": "it reads its file again when you come back to it; nothing polls — it is current"'),
+)
+def _q4_fixtures(base):
+    """The five shapes, each with one tracker: git with nothing changed, git with three paths changed and not committed (a tracker edited, a file staged, a
+    file new), git on a detached HEAD, a Subversion working copy updated to its newest revision, and a folder with no version control. {shape: its root}"""
+    out_ = {}
+    for k_ in ("git clean", "git changes", "git detached"):
+        r_ = base / k_.replace(" ", "-"); r_.mkdir(); git(r_, "init", "-q"); run(r_, "--init", "--key", "msr"); tracker(r_, "MSR-001"); run(r_)
+        git(r_, "add", "-A"); git(r_, "commit", "-qm", "base"); out_[k_] = r_
+    t_ = out_["git changes"] / "docs/work-tracker/MSR-001-x.md"; t_.write_text(t_.read_text(encoding="utf-8").replace("One thing", "Two things"), encoding="utf-8")
+    (out_["git changes"] / "staged.txt").write_text("staged\n", encoding="utf-8"); git(out_["git changes"], "add", "staged.txt")
+    (out_["git changes"] / "new.txt").write_text("new\n", encoding="utf-8")
+    git(out_["git detached"], "switch", "-q", "--detach")
+    if _SVN:
+        subprocess.run(["svnadmin", "create", str(base / "svnrepo")], check=True, capture_output=True)
+        wc_ = base / "svn"; subprocess.run(["svn", "checkout", "-q", (base / "svnrepo").as_uri(), str(wc_)], check=True, capture_output=True)
+        run(wc_, "--init", "--key", "msr"); tracker(wc_, "MSR-001"); run(wc_)
+        subprocess.run(["svn", "add", "-q", "--force", "."], cwd=str(wc_), check=True, capture_output=True)
+        subprocess.run(["svn", "commit", "-q", "-m", "base"], cwd=str(wc_), check=True, capture_output=True)
+        subprocess.run(["svn", "update", "-q"], cwd=str(wc_), check=True, capture_output=True); out_["svn"] = wc_
+    plain_ = base / "plain"; plain_.mkdir(); run(plain_, "--init", "--key", "msr"); tracker(plain_, "MSR-001"); out_["none"] = plain_
+    out_["git changes, plain run"] = out_["git changes"]   # the same tree, built by the plain run, which counts what `--html-only` does not read
+    fm.configure(HERE)
+    return out_
+def _q4_read(root):
+    """What a board's run left: (the line's text, as a reader sees it; the rebuild command; whether its copy button is there and wired; `view/built.json`)."""
+    t_ = root / "docs/work-tracker"; page_ = (t_ / "index.html").read_text(encoding="utf-8") if (t_ / "index.html").is_file() else ""
+    m_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S); c_ = re.search(r'<code id="rc">(.*?)</code>', page_)
+    line_ = _q4_html.unescape(re.sub(r"<[^>]+>", "", m_.group(1))).strip() if m_ else ""
+    wired_ = '<button type="button" id="rb" class="act">' in page_ and '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent)' in page_
+    try:
+        built_ = json.loads((t_ / "view/built.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        built_ = None
+    return line_, _q4_html.unescape(c_.group(1)) if c_ else "", wired_, built_
+def _q4_case(shape, root, tool):
+    """One shape's board's run, by `tool` as a program, and what the page and `view/built.json` say against what the shape holds."""
+    t0_ = datetime.datetime.now().astimezone().replace(microsecond=0)
+    code_, o_, e_ = _tool_run(tool, root, *(() if shape.endswith("plain run") else ("--html-only",)))
+    t1_ = datetime.datetime.now().astimezone()
+    line_, cmd_, wired_, built_ = _q4_read(root)
+    rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    if shape.startswith("git"):
+        sha_, branch_ = rp_("rev-parse", "HEAD"), rp_("branch", "--show-current")
+        want_ = (["read from a detached HEAD at " + sha_[:7]] if shape == "git detached" else [f"read from {branch_} at {sha_[:7]}"]) \
+            + (["3 paths changed and not committed"] if shape.endswith("plain run") else ["what is changed and not committed is not read here"])
+        record_ = dict(vcs="git", commit=sha_, branch=branch_ or None, changes=3 if shape.endswith("plain run") else None)
+        keys_ = {"commit", "trackers", "configuration", "answers", "built_at", "vcs", "branch", "changes"}
+    elif shape == "svn":
+        rev_ = subprocess.run(["svn", "info", "--show-item", "revision", str(root)], capture_output=True, text=True).stdout.strip()
+        want_, record_, keys_ = [f"read from the working copy at r{rev_}"], dict(vcs="svn", revision=rev_), {"built_at", "vcs", "revision"}
+    else:
+        want_ = [f"read from the folder {root}", "no version control: no commit or revision to name"]
+        record_, keys_ = dict(vcs="none", folder=str(root)), {"built_at", "vcs", "folder"}
+    at_ = None
+    try:
+        at_ = datetime.datetime.fromisoformat((built_ or {}).get("built_at", ""))
+    except (TypeError, ValueError):
+        pass
+    shown_ = at_.strftime("%Y-%m-%d %H:%M ") + at_.strftime("%z")[:3] + ":" + at_.strftime("%z")[3:] if at_ and at_.tzinfo else None
+    return dict(shape=shape, code=code_, line=line_, cmd=cmd_, wired=wired_, built=built_, want=want_, record=record_, keys=keys_, shown=shown_,
+                timely=bool(at_ and at_.tzinfo and t0_ <= at_ <= t1_), said=(o_ + e_).strip()[-200:])
+def _q4_ok(g):
+    """The page's line holds each fact the shape holds, the time it was built as `view/built.json` records it — read within the run —, the words that the
+    page reads its file again when one comes back to it and that nothing polls (the Owner's ruling, in its own words), and the rebuild command, `--html-only`, with its copy button on the clipboard's path; none of *current*, *live*, *up to
+    date*; and `view/built.json` holds exactly the shape's fields, with the same values."""
+    b_ = g["built"] or {}
+    return (g["code"] == 0 and all(w_ in g["line"] for w_ in g["want"]) and g["shown"] is not None and g["timely"] and f"built {g['shown']}" in g["line"]
+            and "it reads its file again when you come back to it; nothing polls" in g["line"] and g["cmd"].endswith(" --html-only") and g["cmd"] in g["line"] and g["wired"]
+            and not _Q4_BAD.search(g["line"]) and set(b_) == g["keys"] and all(b_.get(k_) == v_ for k_, v_ in g["record"].items()))
+def _q4_saw(gs):
+    return "; ".join(f"{g_['shape']}: exit {g_['code']}, {g_['line'][:150]!r}, built.json {sorted(g_['built'] or {})}" for g_ in gs)
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); fix_ = _q4_fixtures(base_)
+    if "svn" not in fix_:
+        _skipped("FM-057 · Q4 · the Subversion shape", 1, "svn or svnadmin is not installed here — the working copy's revision is not read here")
+    real_ = [_q4_case(k_, r_, HERE / "shoalmark.py") for k_, r_ in fix_.items()]
+    for g_ in real_:
+        check(f"FM-057 · Q4 · {g_['shape']}: the page names what it read, and when — {', '.join(g_['want'])}, built at its time, that it reads its file again when one comes back and nothing polls, "
+              f"the rebuild command with its copy button, and no *current*, *live* or *up to date*; `view/built.json` records the same (saw {_q4_saw([g_])})", _q4_ok(g_))
+    if _has_rev(_Q4_REV):
+        _old_tree(base_ / "b84", _Q4_REV)
+        olds_ = {k_: _tool_run(base_ / "b84" / "shoalmark.py", r_, "--owner") for k_, r_ in fix_.items()}
+        said_ = {k_: [l_ for l_ in (o_ + e_).splitlines() if l_.startswith(("the board records nothing", "the board is older than what it shows")) or "Traceback" in l_]
+                 for k_, (c_, o_, e_) in olds_.items()}
+        check(f"FM-057 · Q4 · `view/built.json` with the new fields is read by b84b8af's reader, the tool before it: its `--owner` in each shape says no line of what the "
+              f"board was built from — nothing is missing, nothing changed — and no traceback (saw {said_})", all(v_ == [] for v_ in said_.values()))
+    else:
+        _skipped("FM-057 · Q4 · the record read by the tool before it", 1, f"this clone does not hold {_Q4_REV}")
+    for what_, *change_ in _Q4_MUTANTS:
+        with tempfile.TemporaryDirectory() as m_:
+            tool_ = _r11_tool(Path(m_).resolve(), change_)
+            gs_ = [_q4_case(k_, r_, tool_) for k_, r_ in fix_.items()] if tool_ else []
+            check(f"FM-057 · Q4 · …the mutant, {what_}: this tool with that one change FAILS the same check (saw {_q4_saw([g_ for g_ in gs_ if not _q4_ok(g_)][:2]) if tool_ else 'the change is not there to make'})",
+                  tool_ is not None and not all(_q4_ok(g_) for g_ in gs_))
+    for r_ in fix_.values():
+        if (r_ / ".git").exists():
+            rm_git(r_)
+fm.configure(HERE)
+
+# --- FM-057 · the read-at line's head, linked (beside R11): the commit in *read from main at <commit>* links to its page only where
+#     the repository's own configuration names its forge — `commit_url`, else derived from `blob` (`/blob/` → `/commit/`, GitLab's `/-/blob/` →
+#     `/-/commit/`) — and only for a commit on origin. No link, and the line says why, for a commit not on origin, for no forge configured, for a `blob`
+#     that gives no commit page, and for Subversion without a viewer; no link is ever derived from a remote's URL. One helper, `commit_link`, which the
+#     guided answer view reuses; the tool's own commit links to `TOOL_PAGE`'s repository. The mutants — one that links an unpushed commit, one that
+#     derives a link from the remote URL with `blob` empty — are this tool with that one change, run the same way: each must fail the rows.
+_LN_ORIGIN = "https://github.com/me/repo.git"          # every git fixture's origin: a public-looking URL the tool must never turn into a link
+_LN_MUTANTS = (
+    ("it links an unpushed commit", "    if not commit_on_origin(commit):\n", "    if False and not commit_on_origin(commit):\n"),
+    ("it derives a link from the remote URL with `blob` empty",
+     '    if not prefix:\n        return None, "link.unknown" if REPO_BLOB or CONFIG.get("commit_url") else "link.noforge"\n',
+     '    if not prefix:\n        prefix = re.sub(r"\\.git$", "", (git_out("config", "--get", "remote.origin.url") or "").strip()) + "/commit/"\n'),
+)
+def _ln_git(base, name, blob="", commit_url="", pushed=True):
+    """A git repository with one tracker, its configuration naming `blob` and `commit_url`, origin's URL `_LN_ORIGIN`, and HEAD on origin's `main`
+    where `pushed` — else one commit past it. (its root, HEAD's full sha)"""
+    root = base / name; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    cfg_ = root / "shoalmark.toml"
+    cfg_.write_text(cfg_.read_text(encoding="utf-8").replace('blob = ""', f'blob = "{blob}"' + (f'\ncommit_url = "{commit_url}"' if commit_url else ""), 1), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); git(root, "remote", "add", "origin", _LN_ORIGIN)
+    git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+    if not pushed:
+        git(root, "commit", "-q", "--allow-empty", "-m", "not pushed")
+    fm.configure(HERE)
+    return root, subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+def _ln_svn(base, name, commit_url=""):
+    """A Subversion working copy, updated to its newest revision, `commit_url` set where given. (its root, its revision)"""
+    subprocess.run(["svnadmin", "create", str(base / (name + "-repo"))], check=True, capture_output=True)
+    root = base / name; subprocess.run(["svn", "checkout", "-q", (base / (name + "-repo")).as_uri(), str(root)], check=True, capture_output=True)
+    run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    if commit_url:
+        cfg_ = root / "shoalmark.toml"; cfg_.write_text(cfg_.read_text(encoding="utf-8").replace('blob = ""', f'blob = ""\ncommit_url = "{commit_url}"', 1), encoding="utf-8")
+    run(root)
+    for a_ in (["add", "-q", "--force", "."], ["commit", "-q", "-m", "base"], ["update", "-q"]):
+        subprocess.run(["svn", *a_], cwd=str(root), check=True, capture_output=True)
+    fm.configure(HERE)
+    return root, subprocess.run(["svn", "info", "--show-item", "revision", str(root)], capture_output=True, text=True).stdout.strip()
+def _ln_rows(base):
+    """Each row: (what it is, its root, the link it must make — None for none —, the label of why not)."""
+    full_ = lambda r_: r_[1]
+    rows_ = []
+    gh_ = _ln_git(base, "github", blob="https://github.com/me/repo/blob/main/docs/work-tracker/")
+    rows_.append(("GitHub's `blob`, the commit on origin", gh_[0], f"https://github.com/me/repo/commit/{full_(gh_)}", ""))
+    gl_ = _ln_git(base, "gitlab", blob="https://gitlab.com/me/repo/-/blob/main/docs/work-tracker/")
+    rows_.append(("GitLab's `/-/blob/`, the commit on origin", gl_[0], f"https://gitlab.com/me/repo/-/commit/{full_(gl_)}", ""))
+    key_ = _ln_git(base, "keyed", blob="https://git.example.org/me/repo/src/branch/main/docs/work-tracker/", commit_url="https://git.example.org/me/repo/commit/")
+    rows_.append(("a `blob` that gives no commit page, with `commit_url`", key_[0], f"https://git.example.org/me/repo/commit/{full_(key_)}", ""))
+    unk_ = _ln_git(base, "unknown", blob="https://git.example.org/me/repo/src/branch/main/docs/work-tracker/")
+    rows_.append(("a `blob` that gives no commit page, and no `commit_url`", unk_[0], None, "link.unknown"))
+    bad_ = _ln_git(base, "badkey", blob="https://github.com/me/repo/blob/main/docs/work-tracker/", commit_url="javascript:alert(1)//")
+    rows_.append(("a `commit_url` that is no http(s) URL", bad_[0], None, "link.unknown"))
+    up_ = _ln_git(base, "unpushed", blob="https://github.com/me/repo/blob/main/docs/work-tracker/", pushed=False)
+    rows_.append(("GitHub's `blob`, the commit not on origin yet", up_[0], None, "link.unpushed"))
+    none_ = _ln_git(base, "noforge")
+    rows_.append(("no `blob`, no `commit_url`, origin's URL a forge's", none_[0], None, "link.noforge"))
+    if _SVN:
+        sv_ = _ln_svn(base, "svn")
+        rows_.append(("Subversion without a viewer", sv_[0], None, "link.noviewer"))
+        sk_ = _ln_svn(base, "svnkeyed", commit_url="https://svn.example.org/viewvc?view=revision&revision=")
+        rows_.append(("Subversion with a viewer in `commit_url`", sk_[0], f"https://svn.example.org/viewvc?view=revision&revision={sk_[1]}", ""))
+    return rows_
+def _ln_saw(root, tool):
+    """The board's run by `tool`, as a program, and its read-at line's head: (exit, the link's address or None, the line as a reader sees it)."""
+    code_, _o, _e = _tool_run(tool, root, "--html-only")
+    page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
+    line_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S)
+    href_ = re.search(r'<a id="rh" href="([^"]*)"', line_.group(1)) if line_ else None
+    return code_, _q4_html.unescape(href_.group(1)) if href_ else None, _q4_html.unescape(re.sub(r"<[^>]+>", "", line_.group(1))) if line_ else ""
+def _ln_ok(rows, tool):
+    """Every row as asserted: exit 0; its link, exactly, where it must make one — and then no reason; else no link at all, and the line's head carries the
+    reason's own words. (all held, what was seen)"""
+    seen_ = []
+    for what_, root_, want_, why_ in rows:
+        code_, href_, line_ = _ln_saw(root_, tool)
+        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or fm.LABELS[why_] in line_) and not any(fm.LABELS[k_] in line_ for k_ in fm.LINK_WHY if k_ != why_)
+        seen_.append((what_, ok_, href_, line_[:120]))
+    return all(o_ for _w, o_, _h, _l in seen_), seen_
+with tempfile.TemporaryDirectory() as d:
+    base_ = Path(d).resolve(); rows_ = _ln_rows(base_)
+    if not _SVN:
+        _skipped("FM-057 · the read-at head's link on Subversion", 2, "svn or svnadmin is not installed here")
+    ok_, seen_ = _ln_ok(rows_, HERE / "shoalmark.py")
+    for what_, o_, h_, l_ in seen_:
+        check(f"FM-057 · the read-at line's head · {what_}: " + (f"it links to {h_}" if h_ else f"no link, and the line says why ({l_[:110]!r})"), o_)
+    fm.configure(HERE); sha_ = "0" * 40
+    check(f"FM-057 · the read-at line's head · the one helper, for the guided answer view too: the tool's own commit links to TOOL_PAGE's repository "
+          f"(saw {fm.commit_link(sha_, tool=True)})", fm.commit_link(sha_, tool=True) == (f"{fm.TOOL_PAGE}/commit/{sha_}", "")
+          and fm.commit_link("not a commit", tool=True) == (None, "link.nocommit"))
+    for what_, *change_ in _LN_MUTANTS:
+        with tempfile.TemporaryDirectory() as m_:
+            tool_ = _r11_tool(Path(m_).resolve(), change_)
+            mok_, mseen_ = _ln_ok(rows_, tool_) if tool_ else (True, [])
+            check(f"FM-057 · the read-at line's head · …the mutant, {what_}: this tool with that one change FAILS the rows "
+                  f"(saw {[(w_, h_) for w_, o_, h_, _l in mseen_ if not o_][:2] if tool_ else 'the change is not there to make'})", tool_ is not None and not mok_)
+    for _w, r_, _h, _y in rows_:
+        if (r_ / ".git").exists():
+            rm_git(r_)
+fm.configure(HERE)
+
+# --- FM-057 · the board's own run: on `--html-only` the read-at line says that what is changed and not committed is not read, and keeps the time, the branch
+#     and the commit; `view/built.json` records no count. RV-3302: recorded privately. The mutant puts the changed-path read back on `--html-only`: it must fail
+#     the row.
+_CN_MUTANT = ("the changed-path read back on the board's own run", "        read = read_at(count=False)", "        read = read_at()")
+def _cn_repo(base):
+    """The row's repository: (its root, the folder the row reads)."""
+    root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
+    git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    (root / "canary.txt").write_text("the same bytes\n", encoding="utf-8"); (root / ".gitattributes").write_text("canary.txt filter=probe\n", encoding="utf-8")
+    git(root, "add", "-A"); git(root, "commit", "-qm", "base")
+    clean_ = base / "clean.py"
+    clean_.write_text(f"import sys\nopen({str(marks / 'clean')!r}, 'a').write('ran\\n')\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n", encoding="utf-8")
+    git(root, "config", "filter.probe.clean", f'"{Path(sys.executable).as_posix()}" "{clean_.as_posix()}"')
+    t_ = root / "canary.txt"; st_ = t_.stat(); os.utime(t_, ns=(st_.st_atime_ns, st_.st_mtime_ns + 5_000_000_000))
+    fm.configure(HERE)
+    return root, marks
+def _cn_case(base, tool):
+    """`--html-only` by `tool`, as a program, in a fresh `_cn_repo`: what the line and the record show, and whether the folder the row reads stayed empty."""
+    root, marks = _cn_repo(base)
+    code_, _o, e_ = _tool_run(tool, root, "--html-only")
+    line_, _c, _w, built_ = _q4_read(root)
+    rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    g_ = dict(code=code_, line=line_, built=built_ or {}, marker=any(marks.iterdir()), sha=rp_("rev-parse", "HEAD"), branch=rp_("branch", "--show-current"),
+              said=e_.strip()[-160:])
+    rm_git(root)
+    return g_
+def _cn_ok(g):
+    """The row: exit 0; the folder the row reads stays empty; the line names the branch and the commit, says what is changed and not committed is not read,
+    and when it was built; `view/built.json` records no count."""
+    return (g["code"] == 0 and not g["marker"] and f"read from {g['branch']} at {g['sha'][:7]}" in g["line"] and fm.LABELS["read.git.unread"] in g["line"]
+            and re.search(r"built \d{4}-\d\d-\d\d \d\d:\d\d [+-]\d\d:\d\d", g["line"]) is not None and g["built"].get("changes", 0) is None
+            and g["built"].get("commit") == g["sha"])
+def _cn_saw(g):
+    return f"exit {g['code']}, empty {not g['marker']}, {g['line'][:150]!r}, changes {g['built'].get('changes', '-')!r}"
+with tempfile.TemporaryDirectory() as d:
+    real_, m_ = Path(d).resolve() / "real", Path(d).resolve() / "mutant"; real_.mkdir(); m_.mkdir(); (m_ / "case").mkdir()
+    g_ = _cn_case(real_, HERE / "shoalmark.py")
+    check(f"FM-057 · the board's own run · `--html-only` reads no changed path: the read-at line says what is changed and not committed is not read, beside "
+          f"the time, the branch and the commit; `view/built.json` records no count (saw {_cn_saw(g_)})", _cn_ok(g_))
+    tool_ = _r11_tool(m_, _CN_MUTANT[1:])
+    c_ = _cn_case(m_ / "case", tool_) if tool_ else None
+    check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row, its folder not empty "
+          f"(saw {_cn_saw(c_) if c_ else 'the change is not there to make'})", c_ is not None and not _cn_ok(c_) and c_["marker"])
 fm.configure(HERE)
 
 # --- FM-030, 0.18.6 — revoke: on what is on its way the board has ONE button, *revoke*, and it copies `--revoke <id> "<why>"` — a
@@ -13057,7 +13467,7 @@ with tempfile.TemporaryDirectory() as tmp:
         git(root, "config", k_, v_)
     code_r1_, out_r1_, err_r1_ = run(root, "--answer", "AP-051", "accept")
     left37_ = subprocess.run(["pgrep", "-f", f"shoalmark.py --root {root} --html-only"], capture_output=True, text=True).returncode if shutil.which("pgrep") else 1
-    check("FM-006 · a private security report · an act with the copy's hooks installed finishes, and the hook's run ends: `--answer` switches branches with the copy's checkout hook running — here in a clone whose signers file sits "
+    check("FM-006 · a private security report · an act with the copy's hooks installed finishes, and each hook's run ends: `--answer` switches branches and commits with the copy's hooks in place — here in a clone whose signers file sits "
           "in the checkout, where the copy makes the temporary file it verifies against — and returns, no process of the copy is left, and the board is there (saw exit "
           f"{code_r1_}, {'no process left' if left37_ == 1 else 'A PROCESS IS LEFT'})", isinstance(code_r1_, int) and left37_ == 1 and (root / "docs/work-tracker/index.html").is_file())
     pushed_r1_ = "answer/ap-051" in subprocess.run(["git", "-C", str(base / "origin.git"), "branch"], capture_output=True, text=True, env=_ENV).stdout
@@ -14997,7 +15407,7 @@ else:
 # --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
 #     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
 #     program in its own environment (`_tool_run` with no env of its own); and every board's run of the board matrix, through git's trace (`_bm_record`) — the
-#     hooks' copy that `post-checkout`, `post-merge` and `post-rewrite` start, the lefthook-style runner's, `--answer`'s, and its runs by hand. This block adds
+#     hooks' copy run by hand after each move (no hook starts one since R11), `--answer`'s rebuild, and the run by hand before them. This block adds
 #     its own: FM-045's shape, with origin/HEAD set and unset, and a fresh repository's board, each both ways. Its control names `ls-tree`, which FM-045's shape
 #     starts, as never started — and the same reading finds it
 with tempfile.TemporaryDirectory() as tmp:

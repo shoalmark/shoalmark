@@ -24,7 +24,9 @@ table of 2026-10-15).
 - **The quick win beside it:** the page names its own moment (when it was built; on git, the commit, the branch and
   whether the tree had changes; on Subversion, the working copy's revision; with none, the folder) and the command that
   rebuilds it. It never says *current*, *live* or *up to date*.
-- Nothing is built.
+- **Built, not yet reviewed** (`27f31560/builder-10`, `fm/045-r11-read-at`): `b417b3c` — R11: `--install-hook` writes no refresh hook, removes
+  each one an earlier version wrote with a line, and keeps a person's own; `4344147` — the page and `view/built.json` say what the board
+  read, and when, on git, on Subversion and with none. Critical tier: the review is next.
 
 ## Done when
 
@@ -38,3 +40,5 @@ table of 2026-10-15).
 | Date | Event |
 |---|---|
 | 2026-10-15 | Filed and judged: In Progress, P2, for v0.20.1, on `fm/045-r11-read-at`. |
+| 2026-10-15 | Built by `27f31560/builder-10` on `fm/045-r11-read-at`: `b417b3c` — R11, the board-refresh hooks go and the explicit refresh stays; `4344147` — the board says what it read, and when. Next: the critical-tier review. |
+| 2026-10-16 | Built by `27f31560/builder-10` on `fm/045-r11-read-at`: `db98190` — on the board's own run, `--html-only`, the read-at line says what is changed and not committed is not read, beside the time, the branch and the commit; `view/built.json` records no count there; a plain run counts it. RV-3302: recorded privately. |

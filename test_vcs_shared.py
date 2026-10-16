@@ -84,14 +84,14 @@ def probe(root, scenario):
     if scenario.startswith("start:"):
         cmd = json.loads(scenario[6:])
         original = fm.render_html
-        def render(trackers):
+        def render(trackers, *read):                         # FM-057: the board's run hands the page what it read, and when
             subprocess.run(cmd, capture_output=True)
-            return original(trackers)
+            return original(trackers, *read)
         fm.render_html = render
     elif scenario == "network":
-        fm.render_html = lambda trackers: socket.create_connection(("127.0.0.1", 9), timeout=0.1)
+        fm.render_html = lambda trackers, *read: socket.create_connection(("127.0.0.1", 9), timeout=0.1)
     elif scenario == "write":
-        fm.render_html = lambda trackers: (Path(root) / "forbidden.txt").write_text("bad", encoding="utf-8")
+        fm.render_html = lambda trackers, *read: (Path(root) / "forbidden.txt").write_text("bad", encoding="utf-8")
     elif scenario in ("malformed_xml", "failed_status"):
         original = fm.vcs_process
         def query(program, *args, **options):
@@ -248,12 +248,12 @@ def run_board_local_controls(fm, check):
             writes = [e[1] for e in got["events"] if e[0] == "open" and not e[1].isdigit()]
             check(f"A1: actual successful writes are confined to page and views ({saw(got)}; writes {str(writes)[:300]})",
                   bool(writes) and all(Path(p) == folder / "index.html" or Path(p).parent == folder / "view" for p in writes))
-            before = board_snapshot(folder)
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
             env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
             cli = subprocess.run([sys.executable, "-B", str(HERE / "shoalmark.py"), "--root", str(root), "--html-only"], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
             check(f"A1: direct production CLI succeeds with no Git and unavailable server ({saw(cli)})",
                   cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held.\n")
+            before = board_snapshot(folder)                 # FM-057: after the last run that writes the board — each run names its own moment
             for scenario in ("malformed_xml", "failed_status"):
                 got = measured(root, search, scenario)
                 check(f"A1: injected unreadable query refuses before writes ({scenario}; {saw(got)})", got["code"] == 4 and "metadata could not be read" in got["err"] and board_snapshot(folder) == before and not any(e[0] == "open" and not e[1].isdigit() for e in got["events"]))
@@ -274,6 +274,7 @@ def run_board_local_controls(fm, check):
             command(root, "svn", "propset", "svn:ignore", "index.html\nview\n", "work-tracker")
             got = measured(root, search)
             check(f"A1: actual ignored board paths are writable through the same local snapshot ({saw(got)})", got["code"] == 0 and "file://" in got["out"])
+            before = board_snapshot(folder)                 # FM-057: again after the last run that writes the board — each names its own moment
             for scenario in ("start:" + json.dumps(["svn", "log", "."]), "start:" + json.dumps(["git", "version"]), "start:" + json.dumps([sys.executable, "-c", "pass"]), "network", "write"):
                 got = measured(root, search, scenario)
                 check(f"A1: actual audit refusal precedes side effect ({scenario[:45]}; {saw(got)})", got["code"] == 4 and "was stopped" in got["err"] and board_snapshot(folder) == before and not (root / "forbidden.txt").exists())
