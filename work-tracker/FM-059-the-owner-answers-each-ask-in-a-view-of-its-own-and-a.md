@@ -38,8 +38,9 @@ first release after v0.20.1, is withdrawn (its record is under `## Asks`), and t
 
 Every line number is `shoalmark.py` at `f65b1bb` (main). The design builds on FM-050's design at `03ef687`: R4's answer
 commit (3a), how the gate binds it to its ask (3b), `--answer <ask-id>` (3c), the put ask (§1) and C5's reading of the
-ids a branch proposes (§4). It needs FM-058's fix: a command a person runs has no time bound. The view follows the guide
-on `release/v0.20.1` at `f2359b3`: G5 (a diff for the change a command commits), G6 (the guided answer view) and G7 (its
+ids a branch proposes (§4). It needs FM-058's fix: a command a person runs has no time bound. Its links reuse R11's one
+link helper (FM-057), built now, and the hooks' copy first records the tool's commit (§9). The view follows the guide on
+`release/v0.20.1` at `f2359b3`: G5 (a diff for the change a command commits), G6 (the guided answer view) and G7 (its
 one help line), pending the Owner's signed answer on FM-053. The approved screen is the quick-wins design of 16 October,
 recorded privately. Two requirements, recorded privately, bind it (item 7).
 
@@ -64,8 +65,9 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
      (`default_trunk`, `:3261`), at `origin`'s tip, with no tracked change (`changed_paths`, `:3369`; `dirty_refusal`,
      `:3382`). The tool it runs from is that checkout's: the files `copy_files()` names (`:9587`) equal that tip's,
      byte for byte, at their path. Where hooks are installed, the hooks' copy (`COPY_DIR`, `:9394`) holds the same
-     files: an older copy would judge an answer commit by older rules. Otherwise it refuses, naming `--install-hook`
-     on the default branch.
+     files, as `hooks_copy_drift` compares them (`:9700`): an older copy would judge an answer commit by older rules.
+     Its record names the commit it was taken from (§9's prerequisite). Otherwise it refuses, naming
+     `--install-hook` on the default branch.
 - **Configured once, from the checkout.** `configure` (`:799`) reads its `shoalmark.toml`; the labels and themes come
   from `brand()` (`:4673`); the signers file is the default branch's (`trusted_signers`, `:5751`). Every view in a run
   reads by one configuration, and who may answer and which keys verify are the default branch's, as FM-050 3a has it.
@@ -104,8 +106,9 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
   Where no browser opens, the terminal prints the path.
 - **What it holds,** as G6 draws it:
   - **the header:** the name, and why it opened (*your answer is needed · 2 of 3 in the run you started*, the first
-    words amber); the read-at line, with the home, its commit and the time; the limits, folded: the ask as filed at
-    that commit, and nothing else of the board; whether the run still waits is not known here;
+    words amber); the read-at line, with the home, its commit and the time, and the tool's commit (both linked, below);
+    the limits, folded: the ask as filed at that commit, and nothing else of the board; whether the run still waits is
+    not known here;
   - **one window,** titled *your answer · <ask-id>*: the question, then its state: its kind, who put it, how long it
     has waited, what it holds up (`held_up_by`), and its tracker;
   - **`## your choice`,** on a `--secbg` band: one row per choice, with a radio, a letter and the words. **A** is the
@@ -122,14 +125,38 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
     tracker's path, the home, `+n −m`, and every line the commit writes, in full. Below it, `INDEX.md` is named as the
     index the commit's hook regenerates from it. Then *how you sign* in three steps, and at the window's foot the
     *reply* copy button, filled, with its copy feedback.
+- **The commits, linked,** on the Owner's word of 16 October. Three commits are named: in the header, and again in
+  the result, the tool's as its TOOL row. The Designer draws both views:
+  - **the ask's:** the home and the head the ask was read from (`<home> @ <sha>`);
+  - **the answer's:** in the result, the commit the run made, pushed or not;
+  - **the tool's:** the commit of the tool the run runs (item 1), read as data:
+    - **a pinned tool:** the PIN's manifest line (`MANIFEST_RE`, `:9159`; `pin_manifest`, `:9163`): its tag and its
+      commit, or `untagged` with its ten characters and `(dirty)`;
+    - **a tool run from the working tree:** the checkout's full HEAD, and whether the tool's files equal it. At the
+      run's start they do (item 1);
+    - **the hooks' copy,** which runs the commit's hooks: the commit its record names (§9's prerequisite), and that its
+      files equal the run's (item 1).
+- **Their links,** each made by R11's one link helper (FM-057), which the view reuses:
+  - **a commit of this repository** links only where the checkout's own configuration names its forge. `blob` (`:74`;
+    `board_blob`, `:4621`) gives the commit URL: `…/blob/<ref>/…` gives `…/commit/<full sha>`, and GitLab's
+    `/-/blob/` gives `/-/commit/`. Where a forge's prefix gives none, the one key R11 adds gives it. No link is ever
+    derived from a remote URL alone: the tool never guesses whether a remote is public;
+  - **the tool's commit** links to the public shoalmark repository (`TOOL_PAGE`, `:63`) where it is a release's: a
+    pinned copy's tagged commit. A tool run from the working tree is this repository's own commit, and links as this
+    repository's commits do;
+  - **no link, with a few words of why,** for: a commit not yet pushed, in no remote-tracking ref of `origin` (the
+    answer's commit before its push, or after a check that stopped the run); a repository that names no forge (`blob`
+    empty); an untagged pinned tool, which has no release to link; and Subversion without a viewer, which the run never
+    reaches (item 5).
 - **The lines are the run's:** it computes them once per choice, with the function `--answer` writes with (item 4), and
   writes them into the page. The script only shows the ones picked. For *in your own words* and *reject*, the page
   holds the lines with the text left out, and the script puts the typed text in, normalised as `answer_norm`
   normalises it (`:1723`). The run computes them again from the reply (item 3).
 - **The result view** is a new file, written after the push, or after a check that stops the run. It shows the change
   as signed, then COMMIT (its sha, the home, pushed or not), SIGNER (the key's fingerprint, as the signers file lists
-  it) and SIGNATURE: *verified*, with its meaning, on `--okbg`, or *not verified*, with git's letter, on `--failbg`.
-  Where nothing was pushed, the result says the ask still waits, and what happened.
+  it), SIGNATURE (*verified*, with its meaning, on `--okbg`, or *not verified*, with git's letter, on `--failbg`) and
+  TOOL (the tool's commit, and the hooks' copy's where it ran the commit's hooks), each commit linked as above. Where
+  nothing was pushed, the result says the ask still waits, and what happened.
 
 ### 3. The hand-back: a pasted reply
 
@@ -304,6 +331,11 @@ it, handed to it with this design. The German comes after the native read, throu
   | the lines again | *you chose {choice}: this commit goes on {home}:*, the lines, and the subject |
   | the lines changed | *these lines are not the view's: {why} · type yes to sign them; anything else signs nothing* |
   | the end | *{k} of {n} answered · left: {each id, with why}*, and the run's own branch, with *open its pull request* |
+  | the header, the tool's commit | *run by shoalmark {version} @ {sha}* |
+  | the result, TOOL | *shoalmark {version} @ {sha}: {the PIN's release v{version} / this repository's commit, its files unchanged} · the hooks ran the same files, installed from {sha}* |
+  | no link: not pushed | *no link: not pushed yet* |
+  | no link: no forge | *no link: shoalmark.toml names no forge (`blob`)* |
+  | no link: untagged tool | *no link: an untagged copy, not a release* |
 - **Two shipped strings still say *touch*:** `--answer`'s step 3 (`:3187`) and the dialog's `answer.sign.step.commit`
   (`:3929`; German, `examples/de/labels.yaml:154`). This build gives them the go-to-market seat's words, so that one
   flow never says both.
@@ -352,6 +384,10 @@ the Reviewer privately. This text does not state them.
   - **where it runs:** Subversion and a plain folder, refused before anything is read; no terminal; the hooks' copy;
     a checkout on a seat's branch, behind `origin`, or with a change; a hooks' copy that is not the checkout's tool.
     Each is refused before an ask is read;
+  - **the commits and their links:** with `blob` in GitHub's form and in GitLab's, the head's, the answer's and the
+    tool's links are the derived commit URLs. With `blob` empty, there is no link, and each says why. The answer's
+    commit after a check that stopped the run has no link (not pushed). A pinned, tagged tool links to `TOOL_PAGE`; an
+    untagged one has no link, and says why. A tool run from the working tree is named by the full HEAD, its files equal;
   - **the two requirements recorded privately:** one row each, listed with them.
 - **The mutants:** each is a patched copy of one function in the imported module, and each must turn at least one row
   red:
@@ -364,19 +400,37 @@ the Reviewer privately. This text does not state them.
   - **the push forced:** the moved home is overwritten;
   - **the change not compared after the commit:** the extra file is pushed;
   - **the lines not computed again at the reply:** the turned date is signed unasked;
-  - **the run going on after a failed check:** a second ask is signed.
+  - **the run going on after a failed check:** a second ask is signed;
+  - **a link derived from `origin`'s URL with `blob` empty:** a link appears;
+  - **an unpushed commit linked:** the stopped commit links;
+  - **the tool's commit read from the hooks' copy's record alone:** a copy installed from another commit names the
+    wrong tool.
 - **What each backend can claim:**
   - **git:** the commit holds the lines the view showed for the choice; its signature verifies against a key the
     default branch's signers file lists; it is bound to the put ask it answers (FM-050 3b); and it is pushed,
     fast-forward, to its home, counting once that lands on the default branch. It cannot claim who answered the key's
-    prompt, or that anyone read the lines (FM-007);
+    prompt, or that anyone read the lines (FM-007). A link is the configured forge's address for a commit, not proof
+    that the page exists or that anyone can read it;
   - **Subversion and no version control:** nothing. The run refuses there.
 
 ### 9. The build
 
 - **What it needs first:** R4 and the ask ids, built (FM-050's build: the answer commit, `--answer <ask-id>`,
-  `put_ask`, `answer_commit` and C5's reading); FM-058's fix; and FM-053's signed answer for G5, G6 and G7.
-  Without that answer, the help line stands above the window and the diff carries no tints.
+  `put_ask`, `answer_commit` and C5's reading); FM-058's fix, with the hooks' copy's record below; R11's link helper
+  (FM-057), which the view reuses; and FM-053's signed answer for G5, G6 and G7. Without that answer, the help line
+  stands above the window and the diff carries no tints.
+- **The prerequisite: the hooks' copy records the tool's commit.** It is critical, and built with FM-058, before the
+  view.
+  - **Today:** `install_copy` (`:9602`) writes `COPY` (`:9640–9642`) with the installing repository's short HEAD
+    (`:9632`), its branch, and no word of changes.
+  - **After it:** a pinned copy records the PIN's manifest commit, as `pin_manifest` reads it: the tag and the full
+    commit, or `untagged` with its characters and `(dirty)`. A working-tree copy records HEAD's full commit, and
+    `files: equal` or `files: changed`: whether each copied file (`copy_files()`, `:9587`) equals its blob at HEAD.
+  - **A `COPY` written before it keeps its meaning** (R26): its short commit is read as written. The next run that meets
+    it names `--install-hook` as what records the rest, and `--check` never fails on it alone.
+  - **Its rows:** each of the three records; a changed file, read as `files: changed`; a copy recorded before the
+    change, named and not refused. **Its mutants:** the commit cut short; `files: equal` written without the
+    comparison. Each turns a row red.
 - **Tier: critical,** for signing and rights. A critical Builder, a Reviewer in a session of its own, and CI on the
   pull request.
 - **One branch** (`fm/059-guided-answer`). Each code commit carries its own rows:
@@ -386,15 +440,18 @@ the Reviewer privately. This text does not state them.
   2. **`--guided`'s start and its reading:** the checks, the fetch, the refs, the asks and their homes, and the first
      line. Here the run stops before any view: a stopping point a run sheet can use alone;
   3. **the view:** `render_guided`, its script, its labels in English (German after the native read) and the opener;
-     the prompt, the code and the reply's checks; `later` and `open`;
+     the commits in the header, linked through R11's helper; the prompt, the code and the reply's checks; `later` and
+     `open`;
   4. **the signing:** the worktree, R4's commit in it, the five checks, the push, the run's own branch, the result
-     view and the end. The browser is the run's one new process start: a new entry in
+     view with its TOOL row, and the end. The browser is the run's one new process start: a new entry in
      `test_vcs_launch_ceiling.json`, with its hash in `test_vcs_skeleton.py` (`:129`);
   5. **`test_guided_answer.py`'s mutants,** and its wiring into `test_shoalmark.py`;
   6. **docs:** the README's row, `docs/signing.md` and `docs/index.md` with their German pages, the run sheet's answer
      step, the command's help, and the CHANGELOG.
-- **The size, a guess at 70 % confidence: M–L.** About 450 lines join `shoalmark.py` (the reading 120, the view and its
-  script 180, the reply 60, the signing and the push 90), and about 30 change. About 550 lines join the class test.
+- **The size, a guess at 70 % confidence: M–L.** About 490 lines join `shoalmark.py` (the reading 120, the view and its
+  script 180, the commits and their links 40, the reply 60, the signing and the push 90), and about 30 change. About 610
+  lines join the class test. The commits are an S addition on R11's helper; without that helper, the view would need
+  its own, and the addition would be M. The hooks' copy's record is about 25 lines and 50 of rows, in FM-058's build.
 
 ### Open questions, for the Reviewer and the Owner
 
@@ -417,6 +474,10 @@ the Reviewer privately. This text does not state them.
 6. **`INDEX.md` in the signed commit.**
    - **Proposed:** the view names it and does not show its lines; the run checks that nothing else changes.
    - **The alternative:** the view shows its changed rows too, as the hook will write them.
+7. **A hooks' copy taken from another commit, with equal files.**
+   - **Proposed:** the TOOL row names the run's tool commit, and says that the hooks ran the same files, installed from
+     the commit the copy records.
+   - **The alternative:** the run refuses unless the copy's recorded commit is the run's own.
 
 ## Done when
 
@@ -436,3 +497,4 @@ the Reviewer privately. This text does not state them.
 | 2026-10-16 | Its design started, the Owner with the Designer; the ask now asks only which release builds it. |
 | 2026-10-16 | Quick win 11 in v0.20.1, on the Owner's word: the first proposal withdrawn, the ask filed again proposing v0.20.1. |
 | 2026-10-16 | Designed by the Builder seat (`27f31560/builder-16`): `## The design`, the guided run, its view, the pasted reply, the signing and the push, the ways out, the words as drafts, the class test and the build, with six open questions. The release ask stays as filed; the design's own ask is drafted for the Planner. Records only. |
+| 2026-10-16 | The commits, linked, added to the design on the Owner's word (relayed by the Auditor), by the Builder seat: the ask's head, the answer's commit and the tool's, in the header and a TOOL row, through R11's link helper (FM-057); the hooks' copy records the tool's commit first, built with FM-058; a seventh open question. Records only. |
