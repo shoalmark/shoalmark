@@ -7,14 +7,6 @@ next: build
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt brand/design-guide.md, as it stands at the commit that last filed this ask, as the design and the words the v0.20.1 board is built to?"
-ask-kind: ruling
-ask-since: 2026-10-15
-ask-options: "yes | no: the guide stays a draft"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-16
-answered-by: holgo99
 ---
 
 # FM-053 — the board's design for v0.20.1 is the Owner's word in a sitting, not yet a signed answer
@@ -62,6 +54,13 @@ there. Nothing in them is built into the board.
 - The Owner's signed answer stands here, and the board build's brief cites it.
 - The board build's review checks the board against the guide's acceptance tests (§11).
 
+## Asks
+
+**2026-10-16** · Do you adopt brand/design-guide.md, as it stands at the commit that last filed this ask, as the design and the words the v0.20.1 board is built to?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 1281a75 · G
+
 ## Ship log
 
 | Date | Event |
@@ -71,3 +70,4 @@ there. Nothing in them is built into the board.
 | 2026-10-15 | The ask filed: it adopts the guide as it stands at this commit. Nothing is built into the board. |
 | 2026-10-15 | The ask filed again, at the commit that adds the label `viewer.handover` ("handover") to the guide's §10. |
 | 2026-10-16 | The light `--mute` becomes `#6a6a6a` and the light `--teal` `#187953`, so that every text colour reaches 4.5:1 against `--raise`, as the guide's own contrast rule requires. The ask filed again at that commit. |
+| 2026-10-16 | The first answer recorded under `## Asks` (accepted, signed `1281a75`); next: build. |
