@@ -665,7 +665,20 @@ def fm053_transform(page):
         text = text.replace(old, new)
     return text.encode("utf-8")
 PALETTE_ROW = "| `[palette]` |"
-BRAND_LINES = ("No key chooses the board's look:", "A brand place gives the board a logo and its labels")
+# RV-3345: `--schema`'s two changes, exact — the `[palette]` row inserted as the first row of the top-level keys' table, right after its heads
+# and before `owner`'s row; and the brand line, old for new, whole and between its blank line and the next — each anchored where it occurs once
+FM053_SCHEMA_EDITS = (
+    ("| Key | Value | Says |\n|---|---|---|\n| `owner` |",
+     "| Key | Value | Says |\n|---|---|---|\n"
+     '| `[palette]` | `name` = `"monochrome"` (the default) or `"shoalmark"`; and any of `bg` `ink` `fail` `ok` `warn` `owed` `help` `secbg` `okbg` `warnbg` `failbg` = `["#rrggbb", "#rrggbb"]`, light then dark | the board\'s colours (FM-053): a palette by name, a few of its tokens in your words over it — three meanings, `ok` (teal: done), `warn` (amber: a warning) and `fail` (coral: a failure); `dim`, `mute`, `line`, `box` and `raise` are derived from `bg` and `ink`. The surfaces, `secbg` `okbg` `warnbg` `failbg`, may be named the same way; where none is, the palette\'s own are taken. Every text colour reaches 4.5:1 on the page, `raise` and every surface, in light and in dark, or the palette is refused at configuration in one line naming the pair (exit 1). An older copy of the tool ignores the table |'
+     "\n| `owner` |"),
+    ("\n"
+     "No key chooses the board's look: a brand is files in its places, the later one winning (`--brand` says which gave what). `--brand DIR --from THEME` writes a starter from a theme the tool ships in `brand/themes/`: none in this copy."
+     "\n",
+     "\n"
+     'A brand place gives the board a logo and its labels, the later place winning (`--brand` says which gave what, and names each brand file the board no longer reads: `theme.css`, `fonts/`, `wordmark.svg`). No theme is read or shipped.'
+     "\n"),
+)
 
 
 def fm053_page(baseline, candidate):
@@ -679,18 +692,20 @@ def fm053_page(baseline, candidate):
             and V2_MARK not in old_bytes and fm053_transform(old_bytes) == new_bytes)
 
 
+def fm053_schema(stdout):
+    """The baseline's stdout as A2's `--schema` changes it: FM053_SCHEMA_EDITS applied in order, each to text that occurs exactly once —
+    else None: stdout those edits do not fit is not the schema's."""
+    for old, new in FM053_SCHEMA_EDITS:
+        if stdout.count(old) != 1:
+            return None
+        stdout = stdout.replace(old, new)
+    return stdout
+
+
 def schema_matches(old, new):
-    """Whether two runs' stdout are equal, or differ only as FM-053's `--schema` does: one `[palette]` row added to its table, and the
-    brand line replaced by the v2 one — nothing else."""
-    if old == new:
-        return True
-    o, n = old.split("\n"), new.split("\n")
-    rows = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]
-    if len(rows) != 1 or any(line.startswith(PALETTE_ROW) for line in o):
-        return False
-    n = n[:rows[0]] + n[rows[0] + 1:]
-    diffs = [(a, b) for a, b in zip(o, n) if a != b] if len(o) == len(n) else None
-    return diffs is not None and len(diffs) == 1 and diffs[0][0].startswith(BRAND_LINES[0]) and diffs[0][1].startswith(BRAND_LINES[1])
+    """Whether two runs' stdout are equal, or the candidate's is every character of the baseline's with A2's two exact schema edits
+    (`fm053_schema`, RV-3345) — nothing else."""
+    return old == new or fm053_schema(old) == new
 
 
 def r21_dropped(data):
@@ -1079,6 +1094,30 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(v2 + "--schema differs by its `[palette]` row and its brand line alone; another changed line, or a second row, does not match",
                        schema_old != schema_new and bool(palette) and schema_matches(schema_old, schema_new) and not schema_matches(schema_old, changed)
                        and not schema_matches(schema_old, schema_new.replace(palette, palette + "\n" + palette, 1)))
+        assert_control(v2 + "--schema is every character of the baseline's with FM053_SCHEMA_EDITS applied, and those edits do not fit the candidate's",
+                       fm053_schema(schema_old) == schema_new and fm053_schema(schema_new) is None)
+        # RV-3345: three that the allowance before it took (`two_lines`: one palette row anywhere, one brand line by its opening) and none
+        # matches now — the palette row's contents changed, the brand line's text after its opening changed, the palette row moved
+        opening = "A brand place gives the board a logo and its labels"          # the v2 brand line's opening, all the rule before took
+        brand = next((line for line in schema_new.split("\n") if line.startswith(opening)), "")
+        lines = schema_new.split("\n")
+        at = lines.index(palette) if palette in lines else 0
+        rest = lines[:at] + lines[at + 1:]
+        moved = "\n".join(rest[:rest.index(brand)] + [palette] + rest[rest.index(brand):]) if brand in rest else schema_new
+        def two_lines(new):                 # fde28b7's rule, kept here only to show each variant is one it took
+            o, n = schema_old.split("\n"), new.split("\n")
+            found = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]
+            if len(found) != 1:
+                return False
+            n = n[:found[0]] + n[found[0] + 1:]
+            diffs = [(a, b) for a, b in zip(o, n) if a != b] if len(o) == len(n) else []
+            return len(diffs) == 1 and diffs[0][1].startswith(opening)
+        schemas = {"the palette row's contents changed": schema_new.replace(palette, PALETTE_ROW + " anything at all |"),
+                   "the brand line's text after its opening changed": schema_new.replace(brand, opening + " — and anything at all"),
+                   "the palette row moved out of its table, before the brand line": moved}
+        for what, stdout in schemas.items():
+            assert_control(v2 + f"--schema with A2's two lines, one of them not as approved, does not match — {what}",
+                           bool(brand) and stdout != schema_new and two_lines(stdout) and not schema_matches(schema_old, stdout))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),
