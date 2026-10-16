@@ -631,7 +631,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
     "hooks": "FM-002 · the Owner's box's title, rendered in every view",
     "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
-    "header": "FM-053, RV-3342 · the header row at 375, 640 and 880 px, rendered — the field, its counter and the scheme's action in view",
+    "header": "FM-053, RV-3342, BF-2 · the header row at 375, 640, 880 and 1024 px, rendered — the field, its counter and the scheme's action in view",
     "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
 }
 
@@ -5013,18 +5013,18 @@ if _browser("search"):
         _hung("search", e_)
         fm.configure(HERE)
 
-# --- FM-053, RV-3342: the header row reflows on a phone — at 375, 640 and 880 px, on an empty board and a populated one, the search field, its
-#     counter and the scheme's action stay in view, inside the page's width, the field at its 200 px at least, and neither the header nor the
-#     search box runs wider than it stands. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be
+# --- FM-053, RV-3342: the header row reflows on a phone — at 375, 640, 880 and 1024 px (BF-2), on an empty board and a populated one, the search
+#     field, its counter and the scheme's action stay in view, inside the page's width, the field at its 200 px at least, the counter clear of
+#     the scheme's button, and neither the header nor the search box runs wider than it stands. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be
 #     narrower than Chrome may allow it); the rules before the fix, put back, must fail it ----------------------------------------------------
-_HDR_WIDTHS = (375, 640, 880)
+_HDR_WIDTHS = (375, 640, 880, 1024)
 _HDR_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getElementById(i),de=document.documentElement,'
               'box=i=>{const e=g(i),r=e.getBoundingClientRect(),c=getComputedStyle(e),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);'
-              'return{l:r.left,r:r.right,w:r.width,h:r.height,shown:c.display!="none"&&c.visibility=="visible"&&!!h&&(h==e||e.contains(h))}};'
+              'return{l:r.left,r:r.right,t:r.top,b:r.bottom,w:r.width,h:r.height,shown:c.display!="none"&&c.visibility=="visible"&&!!h&&(h==e||e.contains(h))}};'
               'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,H:[g("H").scrollWidth,g("H").clientWidth],sb:[g("sb").scrollWidth,g("sb").clientWidth],'
               'q:box("q"),n:box("n"),s:box("s"),box:box("sb"),text:g("n").textContent}),"*")})</script>')
 _HDR_BEFORE = (("#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;", "#sb{flex:1;display:flex;align-items:center;gap:1ch;"),
-               ("#n{color:var(--dim);padding:3px 0}", "#n{color:var(--dim);white-space:nowrap}"), ("\n#sb{flex-basis:100%}#s{margin-left:auto}}", "}"))
+               ("#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}", "#n{color:var(--dim);white-space:nowrap}"), ("\n#sb{flex-basis:100%}#s{margin-left:auto}}", "}"))
 
 
 def _header_at(where, page, width, probe=_HDR_PROBE):
@@ -5040,19 +5040,22 @@ def _header_at(where, page, width, probe=_HDR_PROBE):
 
 def _header_faults(rep, width):
     """What is wrong with one frame's header — [] where the field, the counter and the scheme's action are shown, not covered, inside the page's
-    width, the counter inside the search box, the field at least 200 px wide, and neither the header nor the box wider than it stands."""
+    width, the counter inside the search box and clear of the scheme's button (BF-2), the field at least 200 px wide, and neither the header nor
+    the box wider than it stands."""
     if not rep or rep.get("w") != width:
         return [f"no report from the {width} px frame (saw {rep})"]
     out_ = [f"{k} {rep[k]}" for k in ("q", "n", "s") if not (rep[k]["shown"] and rep[k]["w"] > 0 and rep[k]["h"] > 0 and rep[k]["l"] >= -0.5 and rep[k]["r"] <= rep["cw"] + 0.5)]
     out_ += [f"the field {rep['q']['w']:.0f} px"] if rep["q"]["w"] < 199.5 else []
     out_ += [f"{k} {rep[k][0]} px wide in {rep[k][1]}" for k in ("H", "sb") if rep[k][0] > rep[k][1] + 1]
     out_ += [] if rep["box"]["l"] - 0.5 <= rep["n"]["l"] and rep["n"]["r"] <= rep["box"]["r"] + 0.5 else ["the counter outside its box"]
+    n_, s_ = rep["n"], rep["s"]
+    out_ += ["the counter under the scheme's button"] if n_["l"] < s_["r"] - 0.5 and s_["l"] < n_["r"] - 0.5 and n_["t"] < s_["b"] - 0.5 and s_["t"] < n_["b"] - 0.5 else []
     return out_ + ([] if rep["text"].strip() else ["no counter"])
 
 
 _hdr_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, RV-3342 · the header's rules reflow: the search box wraps, its counter is no longer held to one line, the field keeps its 200 px, "
-      "and on a phone the search takes a header row of its own — the rules before the fix are each gone",
+check("FM-053, RV-3342, BF-2 · the header's rules reflow: the search box wraps, its counter is no longer held to one line and stands at the field's "
+      "right edge, the field keeps its 200 px, and on a phone the search takes a header row of its own — the rules before the fix are each gone",
       all(_hdr_src.count(new_) == 1 for new_, _old in _HDR_BEFORE) and _hdr_src.count("#q{flex:1;min-width:200px;") == 1
       and not any(old_ in _hdr_src for _new, old_ in _HDR_BEFORE[:2]))
 if _browser("header"):
@@ -5074,9 +5077,10 @@ if _browser("header"):
                 for w_ in _HDR_WIDTHS:
                     rep_ = _header_at(root / "docs/work-tracker", page_, w_); seen_[(kind, w_)] = (_header_faults(rep_, w_), (rep_ or {}).get("text"))
                 before_[kind] = _header_faults(_header_at(root / "docs/work-tracker", old_page_, 375), 375)
-            check(f"FM-053, RV-3342 · at 375, 640 and 880 px, on an empty and a populated board, the search field, its counter and the scheme's action stay in view "
-                  f"inside the page's width — the field at 200 px at least, the counter inside its box, nothing wider than it stands (saw {seen_})",
-                  len(seen_) == 6 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
+            check(f"FM-053, RV-3342, BF-2 · at 375, 640, 880 and 1024 px, on an empty and a populated board, the search field, its counter and the scheme's action "
+                  f"stay in view inside the page's width — the field at 200 px at least, the counter inside its box and clear of the scheme's button, nothing "
+                  f"wider than it stands (saw {seen_})",
+                  len(seen_) == 8 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
             check(f"FM-053, RV-3342 · the check's control: the header's rules before the fix, put back, fail it at 375 px on both boards (saw {before_})",
                   all(before_.get(k_) and "no report" not in before_[k_][0] for k_ in ("empty", "populated")))
     except _ChromeFailed as e_:

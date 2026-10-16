@@ -3545,13 +3545,14 @@ i{font-style:italic}
 .hot{color:var(--coral)}.go{color:var(--teal)}.warn{color:var(--amber)}.owed{color:var(--owed)}
 svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:.7ch;flex:none}a svg.ico{margin:0 0 0 .7ch}
 /* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it. Where the line is short the
-   count wraps under the field, inside the box, and the field keeps its 200 px; on a phone the search takes a row of its own (RV-3342) */
+   count wraps under the field, inside the box, and the field keeps its 200 px; on a phone the search takes a row of its own (RV-3342). The
+   count stands at the field's right edge, on the field's line where it fits and on a line of its own where it does not (BF-2) */
 #H{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2ch;margin:6px 0 6px}#H img{height:22px;width:auto}
 #H>b{font-weight:600;color:var(--head);white-space:nowrap}#H>span{color:var(--mute)}#H>span:empty{display:none}
 #sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
 #sb:before{content:">";content:">" / "";color:var(--mute)}#sb:focus-within{border-color:var(--ink)}
 #q{flex:1;min-width:200px;border:0;background:none;color:var(--ink);padding:3px 0;outline:0}#q::placeholder{color:var(--mute);opacity:1}
-#n{color:var(--dim);padding:3px 0}
+#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}
 /* never a silent loss: each brand file the board no longer reads, and what replaces it — one line, there while a file is */
 #w{color:var(--amber);margin:0 0 4px}
 /* a box means an action; information is never boxed (the Owner's rule). A button is a word in a 1px frame — the frame in --mute, which carries
