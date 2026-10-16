@@ -2,8 +2,8 @@
 
 ## Get a better-performing human Owner.
 
-Agents do not wait for tools. They wait for their human. Asked what slows them most, three independent agents gave
-the same answer, by a wide margin: **the Owner's unanswered questions** — one question, open three days, held three
+Agents do not wait for tools. They wait for their human. Asked what slows them most, three agents, run
+separately, gave the same answer, by a wide margin: **the Owner's unanswered questions** — one question, open three days, held three
 packages. And where the human does keep up, they keep up by not reading: in the repository this tool came from,
 **200 pull requests were merged in 22 days, 85 % of them less than a minute after opening, none with a review.**
 Blocking and stamping have one root — a person asked for many small decisions in the middle of the work.
