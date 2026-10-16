@@ -42,7 +42,7 @@ ids a branch proposes (§4). It needs FM-058's fix: a command a person runs has 
 link helper (FM-057), built now, and the hooks' copy first records the tool's commit (§9). The view follows the guide on
 `release/v0.20.1` at `f2359b3`: G5 (a diff for the change a command commits), G6 (the guided answer view) and G7 (its
 one help line), pending the Owner's signed answer on FM-053. The approved screen is the quick-wins design of 16 October,
-recorded privately. Two requirements, recorded privately, bind it (item 7).
+recorded privately. Requirements recorded privately bind it (item 7).
 
 *The run* is `--guided`. *An ask* here is an open put ask with an id (FM-050 §1): `ask-id:`, `ask:`, `next: owner`,
 and no `answer:`. *Its home* is the branch its answer is committed on (item 1). *The checkout* is the Owner's own.
@@ -53,7 +53,8 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
   second form: the asks it brings, in its order. With no id, the run brings every ask that `origin` carries.
 - **Where it runs.** Checked in this order before any ask is read. Each refusal is one line that names what fixes it,
   and nothing is read or written:
-  1. **git** (`vcs()`, `:193`). Subversion and no version control: item 5.
+  1. **git** (`vcs()`, `:193`), 2.36 or later, which has `git hook run` (item 4). Subversion and no version control:
+     item 5.
   2. **a terminal on its input:** the run waits for a person's paste. With none (CI, an agent's shell, a pipe) it
      refuses. This keeps an unattended start out; it proves no hand (FM-007).
   3. **not the hooks' copy** (`HOOK_RUN`, `:59`): a hook's run of the copy is bounded, and writes only inside the
@@ -204,7 +205,8 @@ same ask, with the same code.
 terminal's canonical line limit (`MAX_CANON`, 1024 bytes in macOS's `sys/syslimits.h`) is not stopped by that limit.
 That a plain read would stop one is a guess, at 75 %. A reply cut anyway has lost its code, and is refused.
 
-**Before it signs,** the run prints the lines again, with the commit's subject line, and then asks the key (item 4).
+**Before it signs,** the run prints the lines again, with the prepared commit's full message and `INDEX.md`'s changed
+lines, and then asks the key (item 4).
 Where the lines it would sign now differ from those the view showed for that reply (the date turned during the wait,
 or an action's `due:` is read from typed words), it signs nothing until the Owner types `yes` under the new lines.
 Anything else signs nothing, and the run waits again.
@@ -236,16 +238,34 @@ Anything else signs nothing, and the run waits again.
     the commit with `-c`, and checked in the worktree as `owner_change` checks it (`:3077`). Git copies the checkout's
     `config.worktree` into a worktree added from it (git 2.50.1, probed on 16 October); the run relies on that for
     nothing.
-  - **The hooks** are the checkout's: `core.hooksPath` as the checkout resolves it, passed to the commit. Shoalmark's
-    own run the hooks' copy (`:9390–9412`), checked at the start (item 1).
-  - **R4's core does the rest:** `owner_change`'s checks and its signed commit (`-S` where `signed`, `:3187–3193`),
-    factored after R4 so that the working tree it commits in is a parameter. `--answer` passes the checkout; the run
-    passes its worktree.
-- **The checks before the push,** every one, on the commit just made:
+  - **The hooks** are the checkout's: `core.hooksPath` as the checkout resolves it, passed to each hook the run
+    starts. Shoalmark's own run the hooks' copy (`:9390–9412`), checked at the start (item 1).
+  - **R4's core supplies the checks:** `owner_change`'s who may answer, its key and its author (`:3051–3081`),
+    factored after R4 so that the working tree is a parameter. `--answer` passes the checkout; the run passes its
+    worktree.
+- **The prepared commit.** The run prepares the commit unsigned, with every hook's output in it:
+  1. it writes the lines into the tracker in the worktree, and stages it;
+  2. it runs the commit's hooks itself, in the worktree, as `git commit` runs them: `git hook run pre-commit`, then
+     `prepare-commit-msg` and `commit-msg` on a message file that holds the subject and the trailer. The index takes
+     what the pre-commit hook stages (`INDEX.md`, `:9403–9407`);
+  3. it writes the prepared tree (`git write-tree`), and reads the message file as the hooks left it.
+- **The comparison, before the key,** of the prepared tree and message:
+  1. against the home's tip, the tracker's change is the lines shown, byte for byte, read as blobs;
+  2. any other path that changes is one the hooks' copy names as written (`--print-written`, `:10657–10659`):
+     `INDEX.md`;
+  3. the message is the subject and one `Answers: <ask-id>`, with at most the `Session:` trailer that
+     `prepare-commit-msg` adds where the checkout sets `seat.session` (FM-024).
+
+  Any difference is refused, and the key is never asked. The run removes its worktree, writes the result view, and
+  ends: nothing was signed.
+- **The signature.** The terminal prints the lines again, with the full message and `INDEX.md`'s changed lines (item
+  3), then the go-to-market seat's line (item 6). The run then signs that tree with that message:
+  `git commit-tree -S -p <the home's tip> -F <the message> <the tree>`. `git commit-tree` runs no hook, so the commit
+  signed is the one compared.
+- **The checks after the signature, before the push,** every one, on the signed commit:
   1. its parent is the home's tip;
-  2. its change to the tracker is the lines shown, byte for byte. Any other path it changes is `INDEX.md`, as the
-     pre-commit hook regenerates and stages it (`:10657–10659`);
-  3. its message holds the subject and one `Answers: <ask-id>`;
+  2. its tree is the prepared tree, so its change is the one compared;
+  3. its message is the prepared message;
   4. the signature: `verified_as` (`:5736`) for the answering identity, against the default branch's signers file;
   5. the binding: R4's `answer_commit` (FM-050 3b) names this commit as the one head for the id, and the put ask at
      the commit, at its parent and in the file is one.
@@ -297,7 +317,7 @@ it, handed to it with this design. The German comes after the native read, throu
 - **From the go-to-market seat:**
   - *how you sign*, step 3: *confirm, if your key asks — the run asks it to sign one commit: this change*;
   - the terminal, before it signs: *asking your key to sign this commit — the lines above: confirm if it asks*. The
-    commit's subject line is printed above it (that seat's addition, at 60 %);
+    commit's full message is printed above it (that seat's addition of the subject line, at 60 %, taken whole);
   - a Subversion form, should a run work there: step 3 *commit, under your server login — Subversion signs nothing;
     the server names the author*, and the terminal *committing under your server login: nothing is signed*.
 - **From the guide** (G6, and the guide's rows for copy feedback and the page's limits): the header, the window's
@@ -340,10 +360,10 @@ it, handed to it with this design. The German comes after the native read, throu
   (`:3929`; German, `examples/de/labels.yaml:154`). This build gives them the go-to-market seat's words, so that one
   flow never says both.
 
-### 7. The two requirements, recorded privately
+### 7. The requirements recorded privately
 
-Two requirements, recorded privately, bind this design. How it meets them, and the class test's row for each, go to
-the Reviewer privately. This text does not state them.
+Requirements recorded privately bind this design. How it meets them, and the class test's rows for them, go to the
+Reviewer privately. This text does not state them.
 
 ### 8. The class test
 
@@ -371,8 +391,8 @@ the Reviewer privately. This text does not state them.
   - **a signature that does not verify:** the Owner's key only in the branch's signers file, and the key absent from
     the default branch's. Each: nothing pushed, `origin` unchanged, the result view says so, and the run ends. With no
     signing key set, the run refuses at its start;
-  - **a commit that is not the change shown:** a fixture hook stages one more file. The check refuses it, and nothing
-    is pushed;
+  - **a hook that changes the prepared commit:** a fixture hook that stages one more file, and one that adds a line to
+    the message. Each is refused before the key: zero calls to the signing program, no commit made, nothing pushed;
   - **a refused push:** the home moves on `origin` after the `ls-remote`, and a pre-receive hook on the bare `origin`
     refuses. Nothing is forced, `origin` holds only what the other side pushed, and the run ends, naming the commit;
   - **the next ask:** after a push, the next view opens. The branch with two asks takes the second answer on top of
@@ -389,7 +409,7 @@ the Reviewer privately. This text does not state them.
     commit after a check that stopped the run has no link (not pushed). A pinned, tagged tool links to `TOOL_PAGE`; an
     untagged one has no link, and says why. A tool run from the working tree is named by the full HEAD, its files
     equal, and links through `blob` only once that commit is on `origin`;
-  - **the two requirements recorded privately:** one row each, listed with them.
+  - **the requirements recorded privately:** their rows, listed with them.
 - **The mutants:** each is a patched copy of one function in the imported module, and each must turn at least one row
   red:
   - **one code per run, not per ask:** ask 2's id with ask 1's code passes;
@@ -399,7 +419,7 @@ the Reviewer privately. This text does not state them.
   - **the commit made when the view is written:** the row for nothing before a pick turns red;
   - **no `verified_as` before the push:** an unverified commit is pushed;
   - **the push forced:** the moved home is overwritten;
-  - **the change not compared after the commit:** the extra file is pushed;
+  - **the comparison made after the signature:** the signing program is called for the extra file;
   - **the lines not computed again at the reply:** the turned date is signed unasked;
   - **the run going on after a failed check:** a second ask is signed;
   - **a link derived from `origin`'s URL with `blob` empty:** a link appears;
@@ -443,8 +463,9 @@ the Reviewer privately. This text does not state them.
   3. **the view:** `render_guided`, its script, its labels in English (German after the native read) and the opener;
      the commits in the header, linked through R11's helper; the prompt, the code and the reply's checks; `later` and
      `open`;
-  4. **the signing:** the worktree, R4's commit in it, the five checks, the push, the run's own branch, the result
-     view with its TOOL row, and the end. The browser is the run's one new process start: a new entry in
+  4. **the signing:** the worktree, the prepared commit and its comparison, `git commit-tree -S`, the five checks
+     after it, the push, the run's own branch, the result view with its TOOL row, and the end. The browser is the
+     run's one new process start: a new entry in
      `test_vcs_launch_ceiling.json`, with its hash in `test_vcs_skeleton.py` (`:129`);
   5. **`test_guided_answer.py`'s mutants,** and its wiring into `test_shoalmark.py`;
   6. **docs:** the README's row, `docs/signing.md` and `docs/index.md` with their German pages, the run sheet's answer
@@ -473,7 +494,8 @@ the Reviewer privately. This text does not state them.
    - **Proposed:** the Owner types `yes` under the new lines.
    - **The alternative:** the run writes a new view, with a new code.
 6. **`INDEX.md` in the signed commit.**
-   - **Proposed:** the view names it and does not show its lines; the run checks that nothing else changes.
+   - **Proposed:** the view names it and does not show its lines; the terminal prints them before the key, and the
+     prepared commit may change no other path.
    - **The alternative:** the view shows its changed rows too, as the hook will write them.
 7. **A hooks' copy taken from another commit, with equal files.**
    - **Proposed:** the TOOL row names the run's tool commit, and says that the hooks ran the same files, installed from
@@ -500,3 +522,4 @@ the Reviewer privately. This text does not state them.
 | 2026-10-16 | Designed by the Builder seat (`27f31560/builder-16`): `## The design`, the guided run, its view, the pasted reply, the signing and the push, the ways out, the words as drafts, the class test and the build, with six open questions. The release ask stays as filed; the design's own ask is drafted for the Planner. Records only. |
 | 2026-10-16 | The commits, linked, added to the design on the Owner's word (relayed by the Auditor), by the Builder seat: the ask's head, the answer's commit and the tool's, in the header and a TOOL row, through R11's link helper (FM-057); the hooks' copy records the tool's commit first, built with FM-058; a seventh open question. Records only. |
 | 2026-10-16 | The Owner's rulings on the commits folded in (relayed by the Auditor), by the Builder seat: the view names the tool's commit and links the commits as ruled; a release's commit links to the public repository, and a working-tree tool's commit links as the repository's commits do, only if pushed. Records only. |
+| 2026-10-16 | RV-3328 and RV-3333 (recorded privately) fixed in the design, by the Builder seat. Records only. |
