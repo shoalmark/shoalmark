@@ -637,7 +637,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
     "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
     "names": "FM-053, BF-11 · a review row's branch names at 375 px, rendered — each one inline box",
-    "phone": "FM-053, BF-14 · the page at 390 and 360 px, rendered — no sideways scroll, the table's width in the board's box",
+    "phone": "FM-053, BF-14 · the page at 390, 360 and 320 px, rendered — no sideways scroll, only the table scrolls, in its own box",
 }
 
 
@@ -5249,14 +5249,16 @@ if _browser("names"):
         _hung("names", e_)
         fm.configure(HERE)
 
-# --- FM-053, BF-14: on a phone the page never scrolls sideways — what is wider, the work table's columns as they are, scrolls in the board's own
-#     box. Measured in Chrome at 390 and 360 px on a board whose table cannot fit a phone; the rule taken out must let the page scroll -------
-_PH_RULE = "@media(max-width:640px){#B{display:block;overflow-x:auto}}\n"
+# --- FM-053, BF-14: on a phone the page never scrolls sideways — only the work table does, its columns as they are, in its own box; the header,
+#     the box and the toolbar stay put. Measured in Chrome at 390, 360 and 320 px on a board whose table cannot fit a phone; the rule taken out
+#     must let the page scroll ----------------------------------------------------------------------------------------------------------------
+_PH_RULE = "@media(max-width:640px){#B>table{display:block;overflow-x:auto}}\n"
 _PH_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,b=document.getElementById("B");'
-             'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,bc:b.clientWidth,bs:b.scrollWidth}),"*")})</script>')
+             't=document.querySelector("#B>table");parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,bc:b.clientWidth,'
+             'bs:b.scrollWidth,tc:t.clientWidth,ts:t.scrollWidth}),"*")})</script>')
 _ph14_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, BF-14 · at 640 px and narrower the board's box scrolls what is wider than the page: `#B{display:block;overflow-x:auto}` in its own phone rule",
-      _ph14_src.count(_PH_RULE) == 1)
+check("FM-053, BF-14 · at 640 px and narrower only the work table scrolls what is wider than the page, in its own box: `#B>table{display:block;overflow-x:auto}` "
+      "in its own phone rule — never the whole board", _ph14_src.count(_PH_RULE) == 1 and "#B{display:block;overflow-x:auto}" not in _ph14_src)
 if _browser("phone"):
     try:
         with tempfile.TemporaryDirectory() as d:
@@ -5264,12 +5266,23 @@ if _browser("phone"):
             tracker(root, "MSR-001", extra="tier: P1\n", title="Stock-is-booked-per-warehouse-and-counted-per-shelf-in-one-pass-every-night")
             tracker(root, "MSR-002", status="Proposed", title="An untriaged one"); run(root)
             page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
-            seen_ = {w_: _header_at(wt_, page_, w_, _PH_PROBE) or {} for w_ in (390, 360)}
+            seen_ = {w_: _header_at(wt_, page_, w_, _PH_PROBE) or {} for w_ in (390, 360, 320)}
             before_ = _header_at(wt_, page_.replace(_PH_RULE, ""), 360, _PH_PROBE) or {}
-            check(f"FM-053, BF-14 · at 390 and 360 px the page is no wider than its frame, and the table's width scrolls in the board's box (saw {seen_})",
-                  page_.count(_PH_RULE) == 1 and all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["bs"] > r_["bc"] for w_, r_ in seen_.items()))
+            check(f"FM-053, BF-14 · at 390, 360 and 320 px the page is no wider than the screen, the board does not scroll, and only the table does, in its own "
+                  f"box (saw {seen_})",
+                  page_.count(_PH_RULE) == 1 and all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["bs"] <= r_["bc"] + 1 and r_["ts"] > r_["tc"]
+                                                     for w_, r_ in seen_.items()))
             check(f"FM-053, BF-14 · the check's control: the rule taken out, the page scrolls sideways at 360 px (saw {before_})",
                   before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
+            with tempfile.TemporaryDirectory() as d2:
+                plain_ = Path(d2).resolve(); run(plain_, "--init", "--key", "msr")
+                tracker(plain_, "MSR-001", extra="tier: P1\n", title="Stock is booked per warehouse"); tracker(plain_, "MSR-002", status="Proposed", title="An untriaged one")
+                run(plain_)
+                wide_ = {w_: _header_at(plain_ / "docs/work-tracker", (plain_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"), w_, _PH_PROBE) or {}
+                         for w_ in (640, 1024)}
+            check(f"FM-053, BF-14 · nothing changes at 640 and 1024 px: on a board whose table fits, the page is the screen's width and the table does not "
+                  f"scroll (saw {wide_})",
+                  all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["ts"] <= r_["tc"] + 1 for w_, r_ in wide_.items()))
     except _ChromeFailed as e_:
         _hung("phone", e_)
         fm.configure(HERE)

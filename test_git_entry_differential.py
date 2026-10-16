@@ -232,8 +232,8 @@ FM053_PAGE_EDITS = (
      "   row of its own, the scheme's button under it at the right edge (RV-3342) */\n"
      '@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}\n'
      '#sb{flex-basis:100%}#s{margin-left:auto}}\n'
-     "/* a phone: what is wider than the page — the work table's columns as they are — scrolls in the board's own box, never the page (BF-14) */\n"
-     '@media(max-width:640px){#B{display:block;overflow-x:auto}}\n'),
+     "/* a phone: the work table, wider than the page with its columns as they are, scrolls in its own box — the header, the box and the toolbar stay put (BF-14) */\n"
+     '@media(max-width:640px){#B>table{display:block;overflow-x:auto}}\n'),
     # the print rule
     ('@media print{#s{display:none}}\n'
      '@media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}\n',
