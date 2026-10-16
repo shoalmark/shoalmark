@@ -168,7 +168,7 @@ formula, against the page.
 | `--dim` | states, quiet lines, types | `#565656` | `#ababab` | 6.8 / 8.4 |
 | `--mute` | markers, column heads, *not known*, and **every action's frame and the search field's**: the frame carries the meaning, so it needs 3:1 (WCAG 1.4.11) | `#6a6a6a` | `#8f8f8f` | 5.0 / 6.0 |
 | `--line` | row rules | `rgba(0,0,0,.14)` | `rgba(255,255,255,.15)` | — |
-| `--box` | the one titled frame, the Owner's box, and the rule on each band's top edge (§7): structure, so no contrast floor | `rgba(0,0,0,.28)` | `rgba(240,241,244,.26)` | 2.0 / 2.2 |
+| `--box` | the one titled frame, the Owner's box, and the rule on each band's top edge (§7): structure, so no contrast floor | `rgba(0,0,0,.28)` | `rgba(240,241,244,.26)` | 2.0 / 2.1 |
 | `--coral` | **a failure:** NOT READY, *not copied*, *not verified*, a missed act, a failed handover, a removed line, a consequence that names a failure | `#b3402f` | `#ff7b66` | 5.3 / 7.6 |
 | `--teal` | **done, success:** *copied*, READY, *verified*, an added line, the command's left rule in a dialog | `#187953` | `#4fd1a1` | 5.0 / 10.1 |
 | `--amber` | **a warning:** asks waiting for you and every count of them, READY WITH FINDINGS, *ambiguous*, *author only*, an act overdue within its window, a consequence line | `#8a5600` | `#f0b44c` | 5.7 / 10.4 |
@@ -444,7 +444,7 @@ chart's colours:
 - **land's buff** for ids;
 - **chart magenta** for *what is owed to the Owner, and nothing else*;
 - teal for done, its own amber for a warning (`#7d5000`, `#f1c26a`; 6.7:1 and 10.9:1), coral for a failure, and the
-  chart's blue for help (`#1f5ca8`, `#8fb9f3`; 6.2:1 and 9.6:1): violet would sit beside the chart's magenta, which means
+  chart's blue for help (`#1f5ca8`, `#8fb9f3`; 6.4:1 and 9.0:1): violet would sit beside the chart's magenta, which means
   *owed*. Its band and tints are its own, under the same contrast check.
 
 Inside the box it carries magenta for the owed count, amber for a warning, coral for a failure, teal for done and its
