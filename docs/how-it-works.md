@@ -45,7 +45,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 
 - **Once:** you write three lines in your own words in `TRIAGE.md` (what the repository is for, what is true when it works, and what nobody may do to get there) and the current path, what comes first. And you set up your signature, in about ten minutes.
 - **Each week:** one standup each weekday, fifteen minutes at the time you chose (the length can be set), and one command per answer.
-- **The rest comes to you:** every session's last message ends with what waits for you. You open nothing.
+- **The rest is on the board:** your agents are asked to end each session with what waits for you, and the board puts it first.
 
 ## What shoalmark does not do
 

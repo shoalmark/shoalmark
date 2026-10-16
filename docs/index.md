@@ -66,7 +66,8 @@ overwrites a file or a hook it did not write.
 
 - **One sitting, at the time you choose**, fifteen minutes by default; the board's first lines are its agenda.
 - **One command per answer:** `--answer AP-007 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
-- **The rest comes to you:** every session's last message ends with what waits for you. You open nothing.
+- **The rest is on the board:** your agents are asked to end each session with what waits for you, and the board puts it
+  first.
 
 ## What it is not
 

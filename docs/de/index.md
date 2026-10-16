@@ -69,8 +69,8 @@ eigenen Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht s
   Boards sind seine Tagesordnung.
 - **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel
   signiert, sobald Sie das Signieren einschalten.
-- **Der Rest kommt zu Ihnen:** Die letzte Nachricht jeder Session endet mit dem, was auf Sie wartet. Sie müssen nichts
-  öffnen.
+- **Der Rest steht auf dem Board:** Ihre Agenten sind angehalten, jede Session mit dem zu beenden, was auf Sie wartet, und
+  das Board stellt es ganz oben hin.
 
 ## Was es nicht ist
 
