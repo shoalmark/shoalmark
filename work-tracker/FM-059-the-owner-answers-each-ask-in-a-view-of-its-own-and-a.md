@@ -26,6 +26,9 @@ first release after v0.20.1, is withdrawn (its record is under `## Asks`), and t
   chose, push it, and go on to the next ask.
 - **Until it ships:** a run sheet prepares and stops before any answer, and the Owner answers from the Board.
 - **Two requirements for its design, recorded privately.** They go into its design brief.
+- **Designed 2026-10-16** (`## The design`, below), by the Builder seat; not reviewed, nothing built. The design holds
+  for either answer to the release ask. Its own ruling ask is drafted for the Planner, who puts it once the release ask
+  is answered: a tracker holds one open ask.
 - **The ask** asks only which release builds it; proposed, v0.20.1, on the Owner's word.
 - **What it needs first:** R4's ask ids (FM-050), and FM-058's fix, so that a command a person runs has no time bound;
   FM-058 moves into v0.20.1 with it. The seat's confidence, *because* and *then* are new record data and stay outside it:
@@ -432,3 +435,4 @@ the Reviewer privately. This text does not state them.
 | 2026-10-16 | Filed on the Owner's direction (relayed by the Auditor), with its ask. Nothing is designed or built. |
 | 2026-10-16 | Its design started, the Owner with the Designer; the ask now asks only which release builds it. |
 | 2026-10-16 | Quick win 11 in v0.20.1, on the Owner's word: the first proposal withdrawn, the ask filed again proposing v0.20.1. |
+| 2026-10-16 | Designed by the Builder seat (`27f31560/builder-16`): `## The design`, the guided run, its view, the pasted reply, the signing and the push, the ways out, the words as drafts, the class test and the build, with six open questions. The release ask stays as filed; the design's own ask is drafted for the Planner. Records only. |
