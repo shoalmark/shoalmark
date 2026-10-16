@@ -6635,7 +6635,8 @@ def svn_xml_proof(root, document):
                  "entry": ("url", "relative-url", "repository", "wc-info", "commit", "conflict", "lock", "tree-conflict"),
                  "repository": ("root", "uuid"),
                  "wc-info": ("wcroot-abspath", "schedule", "changelist", "copy-from-url", "copy-from-rev", "depth",
-                             "text-updated", "prop-updated", "checksum", "moved-from", "moved-to"),
+                             "text-updated", "prop-updated", "checksum", "moved-from", "moved-to",
+                             *SVN_WC_FORMAT_FIELDS),
                  "conflict": ("version", "prev-base-file", "prev-wc-file", "cur-base-file", "prop-file"),
                  "tree-conflict": ("version",), "version": ()},
         "status": {"status": ("target", "changelist"), "target": ("entry", "against"),
@@ -6649,7 +6650,7 @@ def svn_xml_proof(root, document):
     scalars = {"author", "date", "path", "msg", "url", "relative-url", "root", "uuid", "wcroot-abspath", "schedule",
                "changelist", "copy-from-url", "copy-from-rev", "depth", "text-updated", "prop-updated", "checksum",
                "moved-from", "moved-to", "prev-base-file", "prev-wc-file", "cur-base-file", "prop-file",
-               "token", "owner", "comment", "created", "expires"}
+               "token", "owner", "comment", "created", "expires", *SVN_WC_FORMAT_FIELDS}
     if root is None or root.tag != document or document not in structures:
         raise SvnUnreadable("svn did not print the required proof document")
     rules = dict(shared, **structures[document])
@@ -6666,6 +6667,16 @@ def svn_xml_proof(root, document):
             raise SvnUnreadable("svn printed invalid scalar proof structure")
 
     validate(root)
+    for wc in root.iter("wc-info") if document == "info" else ():
+        for tag, shape in SVN_WC_FORMAT_FIELDS.items():
+            fields = wc.findall(tag)
+            if len(fields) > 1 or any(not re.fullmatch(shape, f.text or "") for f in fields):
+                raise SvnUnreadable("svn printed an invalid working-copy format field")
+
+
+# Subversion 1.15's `svn info --xml` adds three scalars to `wc-info` (its info.rnc; 1.14's has none of them), each with the
+# value its schema allows: a version, a format number, yes or no. Each is accepted once, in `wc-info` alone, with that value.
+SVN_WC_FORMAT_FIELDS = {"wc-compatible-version": r"[1-9][0-9]*\.[0-9]+(?:\.[0-9]+)?", "wc-format": r"[0-9]+", "store-pristine": r"yes|no"}
 
 
 def svn_proof_path(value, absolute=False):

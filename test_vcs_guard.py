@@ -453,6 +453,7 @@ def run_guard_controls(fm, check):
                 check("FM-044 B: known scaffold comparison makes no protected statement", fm.section_changes(view(scaffold), [view(None)]) == [])
                 check("FM-044 B: actual protected local text differs independently of missing authority", bool(fm.section_changes(view(TRIAGE.replace("lose a loan", "lose a key")), [before])))
         run_binding_controls(fm, check, env, programs)
+        run_shape_controls(fm, check, env, programs)
     finally:
         fm.configure(previous)
 
@@ -846,6 +847,98 @@ def run_binding_controls(fm, check, env, programs):
         setup("commit", "-qm", "reverse merged revisions", "--username", "owner", cwd=consumer)
         reverse = setup("info", "--show-item", "revision", "-r", "HEAD", server.as_uri()).strip()
         exercise("RV-3092: real reverse merge retains readable merge proof", lambda tool: tool.svn_merged(int(reverse)), lambda value, _starts: value is True)
+
+
+INFO_115 = "<wc-compatible-version>1.15</wc-compatible-version><wc-format>32</wc-format><store-pristine>yes</store-pristine>"
+
+
+def info_document(fields=""):
+    """One `svn info --xml` entry in the shape svn 1.14.5 prints, `fields` placed after `wcroot-abspath` as 1.15.0's info.rnc orders them."""
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<info>\n<entry kind="file" path="docs/work-tracker/FEAT-001-item.md" revision="3">\n'
+            "<url>file:///srv/repo/alpha/docs/work-tracker/FEAT-001-item.md</url>\n<relative-url>^/alpha/docs/work-tracker/FEAT-001-item.md</relative-url>\n"
+            "<repository>\n<root>file:///srv/repo</root>\n<uuid>0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0</uuid>\n</repository>\n"
+            "<wc-info>\n<wcroot-abspath>/srv/wc</wcroot-abspath>\n" + fields + "<schedule>normal</schedule>\n<depth>infinity</depth>\n"
+            "<text-updated>2026-10-16T06:00:00.000000Z</text-updated>\n<checksum>0123456789abcdef0123456789abcdef</checksum>\n</wc-info>\n"
+            '<commit revision="2">\n<author>owner</author>\n<date>2026-10-16T06:00:00.000000Z</date>\n</commit>\n</entry>\n</info>\n')
+
+
+def with_info_fields(data, fields):
+    """`svn info --xml` output as Subversion 1.15.0 prints it: `fields` in every `wc-info`, after its `wcroot-abspath`."""
+    tree = ET.fromstring(data)
+    for wc in tree.iter("wc-info"):
+        at = next((i + 1 for i, child in enumerate(wc) if child.tag == "wcroot-abspath"), 0)
+        for offset, field in enumerate(list(ET.fromstring("<f>" + fields + "</f>"))):
+            wc.insert(at + offset, field)
+    return ET.tostring(tree)
+
+
+def run_shape_controls(fm, check, env, programs):
+    """The structural proof accepts each Subversion output variant CI's runners print, exactly: one class row for each, and a
+    mutant for each that a malformed variant is still refused. Subversion 1.15.0 (macOS, Homebrew): `svn info --xml` adds
+    `wc-compatible-version`, `wc-format` and `store-pristine` to `wc-info` (its info.rnc; its status, log, blame and common
+    schemas are 1.14.5's but for log's `reverse-merge` attribute, which the log reader already reads)."""
+    def proved(document, kind="info"):
+        try:
+            fm.svn_xml_proof(ET.fromstring(document), kind)
+        except fm.SvnUnreadable:
+            return False
+        return True
+
+    check("FM-044 shape: Subversion 1.14.5 info, with none of the 1.15 fields, is accepted", proved(info_document()))
+    for label, fields in (("1.15.0 info fields, store-pristine yes", INFO_115),
+                          ("1.15.0 info fields, store-pristine no", INFO_115.replace(">yes<", ">no<")),
+                          ("1.15.0 info fields of an older format", INFO_115.replace(">1.15<", ">1.8<").replace(">32<", ">31<")),
+                          ("1.15.0 info fields with a three-part version", INFO_115.replace(">1.15<", ">1.15.0<"))):
+        check("FM-044 shape: class row, Subversion " + label + ", is accepted", proved(info_document(fields)))
+    for label, document, kind in (
+            ("a format that is not a number", info_document(INFO_115.replace(">32<", ">32a<")), "info"),
+            ("an empty format", info_document(INFO_115.replace(">32<", "><")), "info"),
+            ("a pristine store neither yes nor no", info_document(INFO_115.replace(">yes<", ">maybe<")), "info"),
+            ("a compatible version that is not a version", info_document(INFO_115.replace(">1.15<", ">one<")), "info"),
+            ("a compatible version holding an element", info_document(INFO_115.replace(">1.15<", ">1.15<b/><")), "info"),
+            ("a format field twice", info_document(INFO_115 + "<wc-format>31</wc-format>"), "info"),
+            ("a format field outside wc-info", info_document().replace("<url>", "<wc-format>32</wc-format><url>"), "info"),
+            ("text after a format field", info_document(INFO_115.replace("</store-pristine>", "</store-pristine>LOST FORMAT DATA")), "info"),
+            ("an unknown field beside them", info_document(INFO_115 + "<wc-flavour>x</wc-flavour>"), "info"),
+            ("a format field in svn status", '<status><target path="."><entry path="x.md"><wc-status item="normal" props="none" revision="1">'
+                                             "<wc-format>32</wc-format></wc-status></entry></target></status>", "status")):
+        check("FM-044 shape: mutant, Subversion 1.15.0 " + label + ", is refused", not proved(document, kind))
+    if not programs["svn"] or not programs["svnadmin"]:
+        print("  SKIP FM-044 shape: real Subversion reads with the 1.15.0 info fields need svn and svnadmin")
+        return
+    actual_run = subprocess.run
+    with tempfile.TemporaryDirectory() as temp:
+        top = Path(temp).resolve(); server = top / "server"; consumer = top / "consumer"
+        setup = lambda *args, cwd=None: actual_run([programs["svn"], *args], cwd=cwd, env=env, check=True, capture_output=True)
+        actual_run([programs["svnadmin"], "create", str(server)], env=env, check=True, capture_output=True)
+        setup("checkout", "-q", server.as_uri(), str(consumer))
+        original, copied = "docs/work-tracker/FEAT-001-item.md", "docs/work-tracker/FEAT-002-copy.md"
+        (consumer / original).parent.mkdir(parents=True)
+        (consumer / original).write_text("---\nid: FEAT-001\nstatus: Proposed\nanswer: keep\n---\n\n# Fixture\n", encoding="utf-8")
+        (consumer / "shoalmark.toml").write_text('owner = "owner"\n', encoding="utf-8")
+        setup("add", "docs", "shoalmark.toml", cwd=consumer); setup("commit", "-qm", "filed", "--username", "owner", cwd=consumer)
+        setup("copy", original, copied, cwd=consumer); setup("commit", "-qm", "copied", "--username", "copier", cwd=consumer)
+        setup("update", "-q", cwd=consumer)
+
+        def read(fields):
+            """The copy's blame and its answer line's author, and the original's `svn_new`, every `svn info --xml` answer given `fields`."""
+            def answered(cmd, *args, **kwargs):
+                done = actual_run(cmd, *args, **kwargs)
+                if fields is not None and cmd[0] == "svn" and cmd[1] == "info" and "--xml" in cmd and done.returncode == 0:
+                    return subprocess.CompletedProcess(cmd, 0, with_info_fields(done.stdout, fields), done.stderr)
+                return done
+            with patch.object(fm.subprocess, "run", side_effect=answered):
+                fm.configure(consumer)
+                try:
+                    return fm.svn_blame(copied), fm.line_author(consumer / copied, "answer:")[:1], fm.svn_new(original)
+                except fm.SvnUnreadable as error:
+                    return error
+
+        plain = read(None)
+        check("FM-044 shape: real Subversion 1.14.5 reads credit the copy to its copier", isinstance(plain, tuple) and plain[1] == ("copier",) and plain[2] is False)
+        check("FM-044 shape: class row, real reads with the 1.15.0 info fields read as 1.14.5's", read(INFO_115) == plain)
+        check("FM-044 shape: mutant, real reads with a 1.15.0 format that is not a number are refused",
+              isinstance(read(INFO_115.replace(">32<", ">x<")), fm.SvnUnreadable))
 
 
 def main():
