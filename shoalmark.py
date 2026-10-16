@@ -8951,10 +8951,11 @@ CLI_GIT_ONLY = {
     "sessions": ("--sessions: the registry is read from git's commit trailers — this is no git repository", EXIT_LINT),
     "ratio": ("--ratio: the merges are read from git's first-parent history — this is no git repository", 2),
     "queue": ("--queue: not a git repository — the queue is read from GitHub with `gh`", EXIT_NO_FORGE),
-    "answer": ("--answer: signed answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "done": ("--done: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "due": ("--due: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "revoke": ("--revoke: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    # FM-054, RV-3310: an answer branch is signed only where the default branch asks for it — so the capability is said, never *signed*
+    "answer": ("--answer: answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "done": ("--done: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "due": ("--due: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "revoke": ("--revoke: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
 }
 
 

@@ -259,6 +259,51 @@ def other_backends(fm):
     return bad
 
 
+GIT_ONLY = (("--answer", ["AP-001", "accept"]), ("--done", ["AP-001", "the result"]), ("--due", ["AP-001", "2026-10-20T09:00:00+02:00"]),
+            ("--revoke", ["AP-001", "the wrong result"]))
+
+
+def git_only_refusals(fm):
+    """RV-3310: off git — with no version control, and on Subversion — the four answer-branch commands are refused, as the command
+    line runs them and as `owner_change`, the flow they share, refuses them itself: sixteen refusals. Each says the capability
+    and the Subversion signature limitation in `CLI_GIT_ONLY`'s words, exits with its code, and never calls the branch signed.
+    Returns (every mismatch, how many refusals were read); Subversion's eight are left out where svn is not installed."""
+    bad, read = [], 0
+    with tempfile.TemporaryDirectory() as tmp:
+        base, roots = Path(tmp).resolve(), []
+        plain = base / "plain"
+        (plain / "docs/work-tracker").mkdir(parents=True)
+        (plain / "shoalmark.toml").write_text(config("h@x"), encoding="utf-8")
+        (plain / "docs/work-tracker/AP-001-x.md").write_text(ASK, encoding="utf-8")
+        roots.append(("no version control", plain))
+        if shutil.which("svn") and shutil.which("svnadmin"):
+            subprocess.run(["svnadmin", "create", str(base / "server")], check=True, capture_output=True)
+            subprocess.run(["svn", "checkout", "-q", (base / "server").as_uri(), str(base / "wc")], check=True, capture_output=True)
+            (base / "wc/docs/work-tracker").mkdir(parents=True)
+            (base / "wc/shoalmark.toml").write_text(config("h@x"), encoding="utf-8")
+            (base / "wc/docs/work-tracker/AP-001-x.md").write_text(ASK, encoding="utf-8")
+            subprocess.run(["svn", "add", "-q", "shoalmark.toml", "docs"], cwd=base / "wc", check=True, capture_output=True)
+            subprocess.run(["svn", "commit", "-q", "-m", "the ask", "--username", "s@x"], cwd=base / "wc", check=True, capture_output=True)
+            roots.append(("Subversion", base / "wc"))
+        for where, root in roots:
+            for flag, words in GIT_ONLY:
+                said, code = fm.CLI_GIT_ONLY[flag[2:]]
+                c1, _o1, e1 = run(fm, root, flag, *words)                       # the command line, as the Owner runs it
+                fm.configure(root)
+                e2 = io.StringIO()
+                with contextlib.redirect_stderr(e2):
+                    c2 = fm.owner_change("AP-001", {}, {"flag": flag})          # the shared flow's own refusal
+                fm.configure(HERE)
+                for how, c, err in (("the command line", c1, e1), ("owner_change", c2, e2.getvalue())):
+                    read += 1
+                    lines = [l for l in err.splitlines() if l.startswith(f"{flag}:")]      # on Subversion the line goes on with that backend's own limit
+                    if (c != code or len(lines) != 1 or not (lines[0] == said or lines[0].startswith(said + " — Subversion: "))
+                            or re.search(r"\bsigned\b", err) or f"{flag}: answer" not in said
+                            or "require Git" not in said or "Subversion does not provide a commit signature" not in said):
+                        bad.append(f"{where}, {flag}, {how}: exit {c}, said {err.strip()[-200:]!r}")
+    return bad, read
+
+
 def unread_row(fm):
     """The default branch's configuration refused here (a `signed` identity that is not an email): the gate that judges an
     answer is `lint`'s, which reads this checkout's — the page and `-S` read it too, and `--answer` names the refusal in one line."""
@@ -322,6 +367,11 @@ def run_proof_controls(fm, check):
             print("  skip  FM-054 · Subversion's row — svn or svnadmin is not installed here")
         check(f"FM-054 · off git the page says the server's login, or no author — no signed, no preview, no check (saw {[o for o in off if o]})",
               [o for o in off if o] == [])
+        refusals, read = git_only_refusals(fm)
+        if read < 16:
+            print(f"  skip  FM-054 · RV-3310 · Subversion's {16 - read} refusals — svn or svnadmin is not installed here")
+        check(f"FM-054 · RV-3310 · off git the answer-branch commands are refused in one line that says the capability and the Subversion "
+              f"limitation, never *signed* — the command line and `owner_change`, {read} refusals (saw {refusals})", refusals == [] and read in (8, 16))
         unread = unread_row(fm)
         check(f"FM-054 · origin/main's configuration refused here: the page and `-S` read this checkout's, as the gate's `lint` does, and `--answer` names the refusal (saw {unread})",
               unread == [])
