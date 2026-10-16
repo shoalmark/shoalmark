@@ -41,3 +41,4 @@ table of 2026-10-15).
 |---|---|
 | 2026-10-15 | Filed and judged: In Progress, P2, for v0.20.1, on `fm/045-r11-read-at`. |
 | 2026-10-15 | Built by `27f31560/builder-10` on `fm/045-r11-read-at`: `b417b3c` — R11, the board-refresh hooks go and the explicit refresh stays; `4344147` — the board says what it read, and when. Next: the critical-tier review. |
+| 2026-10-16 | Built by `27f31560/builder-10` on `fm/045-r11-read-at`: `db98190` — on the board's own run, `--html-only`, the read-at line says what is changed and not committed is not read, beside the time, the branch and the commit; `view/built.json` records no count there; a plain run counts it. RV-3302: recorded privately. |
