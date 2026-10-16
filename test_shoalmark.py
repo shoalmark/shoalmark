@@ -5154,7 +5154,7 @@ def _pn(rev=None):
     return g_
 _PN_LINE = "tools/shoalmark/PIN names ../../../marks/outside.txt, outside the copy — a PIN names only the copy's own files; vendor again with --vendor"
 def _pn_ok(g):
-    return g["vendored"] == 0 and g["code"] == fm.EXIT_LINT and sum(_PN_LINE in l_ for l_ in g["said"].splitlines()) == 1 and not g["opened"]
+    return g["vendored"] == 0 and g["code"] == fm.EXIT_LINT and sum(_PN_LINE in l_ for l_ in g["said"].splitlines() if not l_.startswith(("  +", "  -"))) == 1 and not g["opened"]     # R22: not INDEX.md's quoted difference
 g_ = _pn()
 if g_["live"]:
     check(f"FM-006 · a private security report · the PIN's names · a name outside the copy: `--check` refuses it in one line, exit 4, and the file it names is never opened "
