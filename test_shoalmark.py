@@ -5152,6 +5152,13 @@ if _browser("owner"):
         _hung("owner", e_)
         fm.configure(HERE)
 
+# --- FM-053, BF-5: on a phone a heading's marker keeps its space — `.sh` is a block there, so the flex gap that spaced `##` from its title is gone
+_ph_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_ph_at = _ph_src.index("@media(max-width:640px){button.act")
+_ph_media = _ph_src[_ph_at:_ph_src.index("}}", _ph_at) + 2]            # the phone's rules, to the media block's end
+check(f"FM-053, BF-5 · at 640 px and narrower a heading's marker keeps its space: `.sh:before{{margin-right:1ch}}` in the phone's rules, beside `.sh{{display:block}}` "
+      f"(saw {_ph_media!r})", ".sh{display:block}.sh:before{margin-right:1ch}" in _ph_media)
+
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _browser("progress"):
     try:

@@ -3657,9 +3657,9 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 /* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
    the tool and leaving the board; the version to its release */
 #r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
-/* a phone: at least 24 px for every button, a heading's state flows under its title; the search a header row of its own, the scheme's button
-   under it at the right edge (RV-3342) */
-@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.how .acts{display:block;margin:4px 0 0}
+/* a phone: at least 24 px for every button, a heading's state flows under its title, its marker keeping its space (BF-5); the search a header
+   row of its own, the scheme's button under it at the right edge (RV-3342) */
+@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
 #sb{flex-basis:100%}#s{margin-left:auto}}
 /* on paper the board is always the light one */
 @media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
