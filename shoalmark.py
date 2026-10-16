@@ -5407,7 +5407,10 @@ def svn_blame(rel):
     copy is its copier's — and its own author's, as the blame reads it through the copy, is kept beside it, so a guarded line
     passes only where both hold its right (`line_author`). Where it merged anything (`svn_merged`), the line is no one's here —
     `MERGED_IN`, refused, neither credited to that revision's author nor followed to an earlier one (v0.19.1). A line a merge
-    brought into a path that was already here is its own author's (`-g`)."""
+    brought into a path that was already here is its own author's (`-g`). Subversion's record of the path — one `svn info`
+    of its folder's files, read once per folder — binds that history to the consumer's path and to the working copy's
+    revision of it: per file, one `svn blame` and one `svn log`. A path scheduled for addition or replacement, a copy
+    included, is not committed."""
     if rel in _SVN_BLAME:
         if isinstance(_SVN_BLAME[rel], Exception):
             raise _SVN_BLAME[rel]
@@ -5442,21 +5445,47 @@ def svn_blame(rel):
                         raise SvnUnreadable("svn blame printed inconsistent merged revisions")
                 out[int(number)] = current
         if out:
-            info = svn_run("info", rel, xml=True)
-            svn_xml_proof(info, "info")
-            if info is None or info.tag != "info" or len(info) != 1 or info[0].tag != "entry" or info[0].get("path") != rel:
+            folder = pathlib.PurePosixPath(rel).parent.as_posix()
+            if ("info", folder) not in _SVN_BLAME:              # one `svn info` of the folder's files, however many of them are blamed
+                try:
+                    info = svn_run("info", "--depth", "files", folder, xml=True)
+                    svn_xml_proof(info, "info")
+                    if info is None or info.tag != "info" or not len(info):
+                        raise SvnUnreadable("svn info did not report the blame path's folder")
+                    found = {}
+                    for entry in info:
+                        at_path = entry.get("path") or ""
+                        if (entry.tag != "entry" or at_path in found or len(entry.findall("commit")) > 1 or len(entry.findall("relative-url")) != 1
+                                or (at_path != folder and pathlib.PurePosixPath(at_path).parent.as_posix() != folder)):
+                            raise SvnUnreadable("svn info printed a foreign, repeated or ambiguous entry")
+                        found[at_path] = entry
+                    prefix = svn_consumer_prefix()
+                    if folder not in found or svn_relative_path(found[folder].findtext("relative-url")) != prefix + ("" if folder == "." else "/" + folder):
+                        raise SvnUnreadable("svn info printed inconsistent blame-path metadata")
+                    _SVN_BLAME[("info", folder)] = (found, prefix)
+                except SvnUnreadable as e:
+                    _SVN_BLAME[("info", folder)] = e
+            if isinstance(_SVN_BLAME[("info", folder)], Exception):
+                raise _SVN_BLAME[("info", folder)]
+            found, prefix = _SVN_BLAME[("info", folder)]
+            entry = found.get(rel)
+            if entry is None:
                 raise SvnUnreadable("svn info did not report one matching blame path")
-            entry = info[0]
-            if not re.fullmatch(r"[0-9]+", entry.get("revision") or "") or len(entry.findall("commit")) != 1 or len(entry.findall("relative-url")) != 1:
+            if (entry.findtext("wc-info/schedule") or "").strip() in ("add", "replace"):
+                _SVN_BLAME[rel] = {}                            # scheduled for addition or replacement, a copy included: not committed (`svn_new`)
+                return _SVN_BLAME[rel]
+            if not re.fullmatch(r"[0-9]+", entry.get("revision") or "") or len(entry.findall("commit")) != 1:
                 raise SvnUnreadable("svn info did not bind the path's committed revision")
             _author, last = svn_proof_commit(entry.find("commit"))
-            path = svn_relative_path(entry.findtext("relative-url"))
-            if int(last) > int(entry.get("revision")) or path != svn_consumer_prefix() + "/" + rel:
+            base, path = entry.get("revision"), svn_relative_path(entry.findtext("relative-url"))
+            if int(last) > int(base) or path != prefix + "/" + rel:
                 raise SvnUnreadable("svn info printed inconsistent blame-path metadata")
-            log = svn_run("log", "-q", "-v", "--stop-on-copy", "-r", last + ":1", rel, xml=True)
+            log = svn_run("log", "-q", "-v", "--stop-on-copy", "-r", base + ":1", rel, xml=True)
             entries = svn_log_proof(log, paths=True)
             revisions = [int(e.get("revision")) for e in entries]
-            if revisions[0] != int(last) or any(a <= b for a, b in zip(revisions, revisions[1:])):
+            # the newest revision is the path's last change — or, where nothing changed it since, the one copy that put it here (a branch's making)
+            if (not int(last) <= revisions[0] <= int(base) or (revisions[0] != int(last) and len(entries) != 1)
+                    or any(a <= b for a, b in zip(revisions, revisions[1:]))):
                 raise SvnUnreadable("svn log did not bind the ordered path history to its committed revision")
             if any(not any(path == p.text or path.startswith(p.text + "/") for p in e.find("paths")) for e in entries):
                 raise SvnUnreadable("svn log reported history for another path")
