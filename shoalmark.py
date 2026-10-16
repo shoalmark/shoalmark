@@ -5425,7 +5425,7 @@ def svn_blame(rel):
         else:
             svn_xml_proof(blame, "blame")
             targets = list(blame)
-            if blame.tag != "blame" or len(targets) != 1 or targets[0].tag != "target" or targets[0].get("path") != rel:
+            if blame.tag != "blame" or len(targets) != 1 or targets[0].tag != "target" or svn_local_path(targets[0].get("path")) != rel:
                 raise SvnUnreadable("svn blame did not report one matching target")
             for e in targets[0]:
                 number = e.get("line-number") or ""
@@ -5454,7 +5454,7 @@ def svn_blame(rel):
                         raise SvnUnreadable("svn info did not report the blame path's folder")
                     found = {}
                     for entry in info:
-                        at_path = entry.get("path") or ""
+                        at_path = svn_local_path(entry.get("path") or "")
                         if (entry.tag != "entry" or at_path in found or len(entry.findall("commit")) > 1 or len(entry.findall("relative-url")) != 1
                                 or (at_path != folder and pathlib.PurePosixPath(at_path).parent.as_posix() != folder)):
                             raise SvnUnreadable("svn info printed a foreign, repeated or ambiguous entry")
@@ -6677,6 +6677,18 @@ def svn_xml_proof(root, document):
 # Subversion 1.15's `svn info --xml` adds three scalars to `wc-info` (its info.rnc; 1.14's has none of them), each with the
 # value its schema allows: a version, a format number, yes or no. Each is accepted once, in `wc-info` alone, with that value.
 SVN_WC_FORMAT_FIELDS = {"wc-compatible-version": r"[1-9][0-9]*\.[0-9]+(?:\.[0-9]+)?", "wc-format": r"[0-9]+", "store-pristine": r"yes|no"}
+# svn prints a working-copy path in its XML in local style (`svn_dirent_local_style`, in blame-cmd.c, status-cmd.c and info-cmd.c):
+# on Windows with backslashes, never a forward slash. `svn_local_path` reads exactly that form as the path the readers compare.
+SVN_LOCAL_SEP = "\\" if os.name == "nt" else "/"
+
+
+def svn_local_path(value):
+    """A working-copy path from svn's XML, in the forward-slash form the readers compare. Where svn's local style is not `/`
+    (Windows), a path printed wholly in it — that separator throughout, no `/` — reads as the same path with `/`; anything
+    else, there or on POSIX, is returned as printed, and the reader that binds it refuses what does not match."""
+    if SVN_LOCAL_SEP != "/" and isinstance(value, str) and "/" not in value:
+        return value.replace(SVN_LOCAL_SEP, "/")
+    return value
 
 
 def svn_proof_path(value, absolute=False):
@@ -6832,14 +6844,14 @@ def svn_shipped_moves(rels):
         target = svn_proof_path(TRACKER_DIR.relative_to(ROOT).as_posix())
         status = svn_run("status", target, xml=True)
         svn_xml_proof(status, "status")
-        if status is None or status.tag != "status" or len(status.findall("target")) != 1 or status.find("target").get("path") != target:
+        if status is None or status.tag != "status" or len(status.findall("target")) != 1 or svn_local_path(status.find("target").get("path")) != target:
             raise SvnUnreadable("svn status did not report the required working-copy change view")
         if any(c.tag not in ("target", "changelist") for c in status) or any(e.tag != "entry" for c in status for e in c):
             raise SvnUnreadable("svn status printed an inconsistent working-copy structure")
         entries, seen = [], set()
         for container in status:
             for e in container:
-                rel = svn_proof_path(e.get("path"))
+                rel = svn_proof_path(svn_local_path(e.get("path")))
                 if rel in seen or not (rel == target or rel.startswith(target + "/")) or len(e) != 1 or e[0].tag != "wc-status":
                     raise SvnUnreadable("svn status printed ambiguous or foreign working-copy bindings")
                 seen.add(rel)

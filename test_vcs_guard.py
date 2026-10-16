@@ -876,7 +876,9 @@ def run_shape_controls(fm, check, env, programs):
     """The structural proof accepts each Subversion output variant CI's runners print, exactly: one class row for each, and a
     mutant for each that a malformed variant is still refused. Subversion 1.15.0 (macOS, Homebrew): `svn info --xml` adds
     `wc-compatible-version`, `wc-format` and `store-pristine` to `wc-info` (its info.rnc; its status, log, blame and common
-    schemas are 1.14.5's but for log's `reverse-merge` attribute, which the log reader already reads)."""
+    schemas are 1.14.5's but for log's `reverse-merge` attribute, which the log reader already reads). Windows (SlikSVN
+    1.14.5): svn prints a working-copy path in its XML in local style, backslashes and no forward slash (blame-cmd.c,
+    status-cmd.c, info-cmd.c: `svn_dirent_local_style`); repository paths, as in `svn log` and blame's `merged`, keep `/`."""
     def proved(document, kind="info"):
         try:
             fm.svn_xml_proof(ET.fromstring(document), kind)
@@ -903,6 +905,16 @@ def run_shape_controls(fm, check, env, programs):
             ("a format field in svn status", '<status><target path="."><entry path="x.md"><wc-status item="normal" props="none" revision="1">'
                                              "<wc-format>32</wc-format></wc-status></entry></target></status>", "status")):
         check("FM-044 shape: mutant, Subversion 1.15.0 " + label + ", is refused", not proved(document, kind))
+    windows_path = "docs\\work-tracker\\FEAT-001-item.md"
+    local_path = lambda value: getattr(fm, "svn_local_path", lambda printed: printed)(value)   # a tool before the reading: as printed
+    with patch.object(fm, "SVN_LOCAL_SEP", "\\", create=True):
+        check("FM-044 shape: class row, a Windows working-copy path in local style reads as its path",
+              local_path(windows_path) == "docs/work-tracker/FEAT-001-item.md" and local_path(".") == "." and local_path("x.md") == "x.md")
+        check("FM-044 shape: mutant, a Windows working-copy path with mixed separators is read as printed",
+              local_path("docs/work-tracker\\FEAT-001-item.md") == "docs/work-tracker\\FEAT-001-item.md")
+    with patch.object(fm, "SVN_LOCAL_SEP", "/", create=True):
+        check("FM-044 shape: mutant, a backslashed working-copy path off Windows is read as printed, and refused as a proof path",
+              local_path(windows_path) == windows_path and isinstance(caught_proof(fm, windows_path), fm.SvnUnreadable))
     if not programs["svn"] or not programs["svnadmin"]:
         print("  SKIP FM-044 shape: real Subversion reads with the 1.15.0 info fields need svn and svnadmin")
         return
@@ -939,6 +951,55 @@ def run_shape_controls(fm, check, env, programs):
         check("FM-044 shape: class row, real reads with the 1.15.0 info fields read as 1.14.5's", read(INFO_115) == plain)
         check("FM-044 shape: mutant, real reads with a 1.15.0 format that is not a number are refused",
               isinstance(read(INFO_115.replace(">32<", ">x<")), fm.SvnUnreadable))
+
+        tracker = {"id": "FEAT-001", "file": "FEAT-001-item.md", "status": "Proposed"}
+
+        def windows(sep, style=lambda path: path.replace("/", "\\")):
+            """The copy's blame, the tracker folder's checked change and `ship_problems`, svn's working-copy paths printed by `style`
+            (Windows' local style by default) in blame, info and status, and the readers reading with `sep`."""
+            def answered(cmd, *args, **kwargs):
+                done = actual_run(cmd, *args, **kwargs)
+                if cmd[0] == "svn" and cmd[1] in ("blame", "info", "status") and "--xml" in cmd and done.returncode == 0 and done.stdout.strip():
+                    tree = ET.fromstring(done.stdout)
+                    for node in tree.iter():
+                        if node.tag in ("target", "entry") and node.get("path"):
+                            node.set("path", style(node.get("path")))
+                    return subprocess.CompletedProcess(cmd, 0, ET.tostring(tree), done.stderr)
+                return done
+            with patch.object(fm.subprocess, "run", side_effect=answered), patch.object(fm, "SVN_LOCAL_SEP", sep, create=True):
+                fm.configure(consumer)
+                try:
+                    blamed = fm.svn_blame(copied)
+                except fm.SvnUnreadable as error:
+                    blamed = error
+                try:
+                    moves = list(fm.svn_shipped_moves({original: tracker}))
+                except fm.SvnUnreadable as error:
+                    moves = error
+                fm.configure(consumer)
+                return blamed, moves, fm.ship_problems([tracker])
+
+        (consumer / "docs/work-tracker/notes.txt").write_text("not a tracker, not added: svn status lists it\n", encoding="utf-8")
+        fm.configure(consumer)
+        posix = (fm.svn_blame(copied), list(fm.svn_shipped_moves({original: tracker})), fm.ship_problems([tracker]))
+        check("FM-044 shape: class row, Windows local-style paths in blame, info and status read as POSIX's", windows("\\") == posix and posix[0] and posix[2] == [])
+        refused = windows("/")
+        check("FM-044 shape: mutant, those paths read where `/` is the local style are refused — the folder's change one line, not a traceback",
+              isinstance(refused[0], fm.SvnUnreadable) and isinstance(refused[1], fm.SvnUnreadable)
+              and len(refused[2]) == 1 and "could not be read" in refused[2][0])
+        mixed = windows("\\", style=lambda path: path.replace("/", "\\", 1) if path.count("/") > 1 else path)
+        check("FM-044 shape: mutant, Windows paths with mixed separators are refused in blame and status",
+              isinstance(mixed[0], fm.SvnUnreadable) and isinstance(mixed[1], fm.SvnUnreadable))
+        foreign = windows("\\", style=lambda path: path.replace("/", "\\").replace("work-tracker", "elsewhere"))
+        check("FM-044 shape: mutant, Windows paths naming another folder are refused in blame and status",
+              isinstance(foreign[0], fm.SvnUnreadable) and isinstance(foreign[1], fm.SvnUnreadable))
+
+
+def caught_proof(fm, value):
+    try:
+        return fm.svn_proof_path(value)
+    except fm.SvnUnreadable as error:
+        return error
 
 
 def main():
