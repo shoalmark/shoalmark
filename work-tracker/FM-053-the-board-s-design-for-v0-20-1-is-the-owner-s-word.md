@@ -7,7 +7,7 @@ next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt the guide's amendment of 16 October, G1 to G7 (three colour meanings, section and state surfaces, the guided answer view), as brand/design-guide.md states it at the commit that last filed this ask?"
+ask: "Do you adopt the guide's amendment of 16 October, G1 to G7 (three colour meanings, section and state surfaces, the guided answer view and its signing words), as brand/design-guide.md states it at the commit that last filed this ask?"
 ask-kind: ruling
 ask-since: 2026-10-16
 ask-options: "yes | yes, with the change I name | no: the guide stays as its first answer adopted it"
@@ -93,3 +93,4 @@ commit that files this tracker's new ask:
 | 2026-10-16 | The first answer recorded under `## Asks` (accepted, signed `1281a75`); next: build. |
 | 2026-10-16 | The guide's amendment, G1 to G7, written in, with the ask that adopts it (`next: owner`). |
 | 2026-10-16 | The section band's token is `--secbg`: `--band` is already the `shoalmark` theme's navy band, on which every section heading would read at about 1.2:1. The ask filed again with it. |
+| 2026-10-16 | G6 takes the go-to-market seat's words for what a key's confirmation is and is not; the ask filed again with them. |
