@@ -44,7 +44,7 @@ proposes stays parked.
 | v0.20.1 | R15: the filing freeze's code goes, look-before-filing and ranking stay. R17: partial and untagged vendoring go. R22: STALE shows the differing published lines. Defect 5's class fix. | — | — |
 | After v0.20.1 | R5; defects 1, 3 and 4; the harness plugin; broader R24 boundary work. | — | As on 12 October |
 | v0.21.x | Research and complex work, each from a round the Owner allocates, as line 6 says. | — | The Owner's allocation |
-| Unchanged | The held rows R6, R7, R8, R16, R20, D3 and D4, looked at on 20 October; R25–R27 kept; #154's RV-2734 wording when the Owner gives it. | — | As on 12 October |
+| Unchanged | The held rows R6, R7, R8, R16, R20, D3 and D4, looked at on 20 October; R25–R27 kept; #154's prerequisite wording as replaced by the Owner's signed answer of 12 October in adaec88 (#168). | — | As on 12 October |
 
 - **Sizes** are S or M, never L, from the quick-wins design of 15 October, recorded privately, checked in the code at
   `272e374`.

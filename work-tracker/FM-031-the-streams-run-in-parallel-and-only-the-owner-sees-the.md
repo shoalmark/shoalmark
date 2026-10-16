@@ -19,8 +19,7 @@ hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests
 - `--queue` and `--standup` give an open pull request the action `merge` when two things hold
   (`shoalmark.py:2443–2466`): a READY verdict names its head, or an ancestor with only addenda after it, and there is
   no conflict.
-- The pull-request list asks GitHub only for `number,headRefName,closedAt,mergedAt` (`:2498`). No check state is read,
-  so a red required check cannot stop a `merge`.
+- The open pull-request list requests QUEUE_FIELDS (shoalmark.py:2005, used at :2036): number,title,headRefName,headRefOid,baseRefName,mergeable,mergeStateStatus,createdAt,isCrossRepository. No required-check result is read, so a red required check cannot stop a merge.
 - **The case:** #173 at `3932e7f` carries the Reviewer's READY verdict. Its CI run `38614474342` failed both required
   Windows suites, and the `CodeQL` check reads FAILURE. The board listed #173 as `merge`.
 

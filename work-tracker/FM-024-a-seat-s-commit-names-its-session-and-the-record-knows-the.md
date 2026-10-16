@@ -38,7 +38,7 @@ brings it back.
   - `--whoami` reads the same keys (`:7038–7044`).
 - **The tool's own setup line names two keys** (`:10030`), and says nothing of the copy.
 - **Seen today:** a Builder worktree added from the Planner's carried the Planner's `seat.harness` until the Planner
-  unset it. Unset, the Builder's `--whoami` would have reported the Planner's model as its own.
+  unset it. Left unchanged, the Builder's `--whoami` would have reported the Planner's model as its own.
 
 **What it breaks:**
 - a child seat commits under its parent's address, with the parent seat's rights;
