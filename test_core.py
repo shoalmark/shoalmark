@@ -503,7 +503,7 @@ check("one model, two renderings: the ranked table and the page row say a ranked
       "| 1 | P1 | run | *complex* | sized, provable, intended | [" in _rk and '["sized", "provable", "intended"], "run", "", "", [], ' in _pg
       and all(k in _pg for k in ('${l("waiting.title")}: <span class="${w.length?"owed":""}">${w.length}</span>', '<b>${l("story.chapters")}</b> — ', 'L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k"', 'l("viewer.stale","7")',
                                  '"waiting.title": "waiting for you"', '"viewer.stale": "stale — older than {0} days'))
-      and '<b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ' in _pg and '<b>${l("viewer.verdict")}</b> — ' in _pg and '"<i>"+l("word.missing")' in _pg and '${t[21]?" → "+esc(t[21]):""}' in _pg and "dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}}" in _pg and _pg.count("decodeURIComponent(") == 1)
+      and '<b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ' in _pg and '<b>${l("viewer.verdict")}</b> — ' in _pg and '"<i>"+l("word.missing")' in _pg and '${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}' in _pg and "dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}}" in _pg and _pg.count("decodeURIComponent(") == 1)
 # `kind-of-problem:`, the second try: left by a seat with the tracker open, never judged by a pass; derived
 # from the move wherever the move already says it (rehearsal 13), so it is owed — a named gap — only on a `build`
 _bk = lambda **kw: [p for p in gti.lint([dict(_live[0], fm={"kind-of-problem": kw["problem"]} if kw else {})]) if "`kind-of-problem:`" in p]
