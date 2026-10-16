@@ -85,9 +85,10 @@ def git(cwd, *a, env):
     return subprocess.run(["git", *a], cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, check=True).stdout
 
 
-def board(tool, area, name, env, branch="main", labels=None):
+def board(tool, area, name, env, branch="main", labels=None, install=None):
     """A repository `<home>/code/<name>`, with one tracker, committed and pushed to a bare origin whose default branch is
-    `branch`; its board built by `tool --html-only`. (the page, the run's exit and stderr)."""
+    `branch`; its board built by `tool --html-only` — or, with `install`, by a real installation of `tool` in that folder of
+    the repository, beside its vendored renderer and VERSION. (the page, the run's exit and stderr)."""
     home = area / "home"
     root = home / "code" / name
     root.mkdir(parents=True)
@@ -110,6 +111,13 @@ def board(tool, area, name, env, branch="main", labels=None):
     git(root, "push", "-q", "origin", f"HEAD:refs/heads/{branch}", env=env)
     git(root, "fetch", "-q", "origin", env=env)
     git(root, "remote", "set-head", "origin", branch, env=env)
+    if install:
+        (root / install / "vendor").mkdir(parents=True)
+        shutil.copy(tool, root / install / "shoalmark.py")
+        for f in tool.parent.glob("vendor/marked-*.js"):
+            shutil.copy(f, root / install / "vendor" / f.name)
+        shutil.copy(tool.parent / "VERSION", root / install / "VERSION")
+        tool = root / install / "shoalmark.py"
     r = subprocess.run([sys.executable, str(tool), "--root", str(root), "--html-only"], cwd=str(root), capture_output=True, text=True,
                        encoding="utf-8", errors="replace", env=dict(env, HOME=str(home), USERPROFILE=str(home)), timeout=300)
     page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
@@ -153,6 +161,12 @@ def run_checks():
                 ok = ok and ((text == "" and len(refused) == 1 and refused[0][0] == key and refused[0][1] == (bad or "")) if key in holds
                              else (text == expected(kind, SAMPLE) and refused == []))
             add(f"day · {key} with {label}: refused in each prompt that holds it, by its name, the other prompt still built", ok, f"{got}"[:300])
+    spaced = fm.day_prompts(dict(SAMPLE, cmd="python3 tool space/shoalmark.py", tool="tool space/shoalmark.py"))
+    unspaced = fm.day_prompts(dict(SAMPLE, tool="tools/shoalmark/shoalmark.py"))
+    add(f"day · a default command whose tool path holds a space fills neither prompt: each names the tool's command, the copied command would split it "
+        f"(saw {spaced}); the same path without a space fills both",
+        all(text == "" and refused == [("cmd", "python3 tool space/shoalmark.py", "split")] for text, refused in spaced.values())
+        and unspaced["standup"] == (expected("standup", SAMPLE), []) and unspaced["closeout"] == (expected("closeout", SAMPLE), []))
     why = {label: fm.day_value_problem(bad) for label, bad in CLASSES}
     add(f"day · each class says its own reason: a character outside the set, over the cap, not known (saw {why})",
         all(v == "chars" for k, v in why.items() if k not in ("over the cap", "not known")) and why["over the cap"] == "long" and why["not known"] == "none")
@@ -206,6 +220,15 @@ def run_checks():
         add(f"day · board: a command holding a line break and a backtick fills neither prompt; each dialog names the tool's command, its line break shown as \\n (saw {refused})",
             code == 0 and all(len(r) == 1 and "<code>python3 shoalmark.py\\n`touch x`</code>" in r[0] for r in refused) and day_data(page) == {"standup": "", "closeout": ""})
 
+        bare = {k: v for k, v in env.items() if k != "SHOALMARK_CMD"}
+        page, code, err = board(tool, area / "spaced", "notes-app", bare, install="tool space")
+        refused = [re.findall(r'<p class="dp hot">(.*?)</p>', template(page, "day-" + k), re.S) for k in HOLDS]
+        split = html.escape(fm.LABELS.get("day.refused.split", "\0no such label"), quote=False).replace("_", "&#95;")
+        add(f"day · board: a real installation in a folder named with a space, without SHOALMARK_CMD, fills neither prompt — each dialog names the "
+            f"tool's command and says the copied command would split its path (saw exit {code}, {refused})",
+            code == 0 and all(len(r) == 1 and html.escape(fm.LABELS["day.value.cmd"], quote=False) in r[0].replace("&#x27;", "'")
+                              and "<code>" + fm.PY + " tool space/shoalmark.py</code>" in r[0] and split in r[0] for r in refused)
+            and day_data(page) == {"standup": "", "closeout": ""})
         de = HERE / "examples/de/labels.yaml"
         if de.is_file():
             page, code, err = board(tool, area / "de", "notes-app", env, labels=de)

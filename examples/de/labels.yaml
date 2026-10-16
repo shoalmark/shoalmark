@@ -186,6 +186,7 @@ day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nich
 day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
 day.refused.long: "ist länger als {0} Zeichen"
 day.refused.none: ist hier nicht bekannt
+day.refused.split: "nennt das Werkzeug über einen Pfad mit Leerzeichen, den der kopierte Befehl in zwei Wörter teilen würde; ein in SHOALMARK_CMD gesetzter Befehl gilt, wie er geschrieben ist"
 day.value.name: der Ordnername des Repositorys
 day.value.path: sein Pfad
 day.value.cmd: der Befehl des Werkzeugs

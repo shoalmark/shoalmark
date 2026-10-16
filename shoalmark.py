@@ -3861,6 +3861,7 @@ LABELS = {
     "day.refused": "Nothing to copy: {0}{1} {2}, so this prompt is not built here.",
     "day.refused.chars": "holds a character outside the plain set — ASCII letters and digits, the space, . _ / ~ : - and the backslash",
     "day.refused.long": "is longer than {0} characters", "day.refused.none": "is not known here",
+    "day.refused.split": "names the tool by a path that holds a space, which the copied command would split in two; a command set in SHOALMARK_CMD is taken as written",
     "day.value.name": "the repository's folder name", "day.value.path": "its path", "day.value.cmd": "the tool's command", "day.value.branch": "the default branch's name",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
@@ -4516,10 +4517,12 @@ def day_value_problem(value):
 
 def day_prompts(values):
     """{"standup" | "closeout": (the prompt with its values filled — "" where one failed, [(the value's key, the value, why), …])}.
-    Pure: the board shows this, and the class test reads it."""
+    Pure: the board shows this, and the class test reads it. `values["tool"]`, where given, is the tool's path as the default
+    command holds it, unquoted: one with a space would be split by the copied command, so the command fails "split"."""
+    why = lambda k: day_value_problem(values.get(k)) or ("split" if k == "cmd" and " " in (values.get("tool") or "") else "")
     out = {}
     for kind, keys in DAY_VALUES.items():
-        failed = [(k, values.get(k) or "", day_value_problem(values.get(k))) for k in keys if day_value_problem(values.get(k))]
+        failed = [(k, values.get(k) or "", why(k)) for k in keys if why(k)]
         out[kind] = ("" if failed else DAY_PROMPTS[kind].format(**{k: values[k] for k in keys}), failed)
     return out
 
@@ -4528,7 +4531,8 @@ def day_values():
     """The four values the board fills the prompts with: the folder name; its path, from `~/` where it lies under the home folder;
     the command every command the board copies names (`CMD`); and the default branch's name as this clone last fetched it —
     the board's own read of it where it made one (`BOARD_TRUNK`), else `default_branch`: read-only git, asking no server; None
-    off git, or where this clone cannot tell it."""
+    off git, or where this clone cannot tell it. Beside them, `tool`: the tool's path as the default command holds it, unquoted
+    (`CMD_OWN`, `PY` and the path) — "" where `SHOALMARK_CMD` names the command, which is taken as written."""
     try:
         home = pathlib.Path(os.path.realpath(pathlib.Path.home()))
         path = "~/" + ROOT.relative_to(home).as_posix() if home in ROOT.parents else str(ROOT)
@@ -4536,7 +4540,8 @@ def day_values():
         path = str(ROOT)
     held = BOARD_TRUNK.get(str(ROOT))                   # the board's own read of it (`answer_refs`), where this board made one: no git started again
     branch = (ref_name(held).split("/", 1)[1] if held else None) if str(ROOT) in BOARD_TRUNK else default_branch()
-    return {"name": ROOT.name, "path": path, "cmd": CMD, "branch": branch}
+    tool = CMD[len(PY) + 1:] if CMD == CMD_OWN and not os.environ.get("SHOALMARK_CMD") and CMD.startswith(PY + " ") else ""
+    return {"name": ROOT.name, "path": path, "cmd": CMD, "branch": branch, "tool": tool}
 
 
 def day_html(labels, prompts=None):

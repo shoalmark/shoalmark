@@ -31,7 +31,7 @@ POISON_KEYS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_
 INDEX_PATH = "work-tracker/INDEX.md"
 R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
 # FM-030, R9's two quick wins: the candidate's board page carries the stand-up's and the close-out's rows and dialogs — four inert `<template>`s
-# after the dialog —, the prompts they copy (`,DAY={…}` before `BRANCH=` in the script's data), its twenty-eight `day.*` words in the label table, and ten lines of
+# after the dialog —, the prompts they copy (`,DAY={…}` before `BRANCH=` in the script's data), its twenty-nine `day.*` words in the label table, and ten lines of
 # script, each marked `FM-030 day`; the answer's
 # second screen copies through their shared clipboard helper, one line in place of its own three. Taken out, the page is the baseline's.
 BOARD_PATH = "work-tracker/index.html"
@@ -39,7 +39,7 @@ DAY_TEMPLATE = re.compile(rb'\n<template id="day-(?:row-)?(?:standup|closeout)">
 DAY_DATA = re.compile(rb",DAY=\{[^{}]*\}(?=,BRANCH=)")
 DAY_LINE = re.compile(rb"\n[^\n]*FM-030 day[^\n]*(?=\n)")
 DAY_LABEL = re.compile(rb', "day\.[a-z.]+": "(?:[^"\\\\]|\\\\.)*"')         # each of its words in the page's label table, `L`
-DAY_LABELS = 28
+DAY_LABELS = 29
 DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
             b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
             b'        .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);\n'
@@ -55,7 +55,7 @@ def r21_dropped(data):
 
 
 def day_dropped(data):
-    """The candidate's board page without FM-030's day: its four templates, its prompts' data, its ten marked lines and its twenty-eight words in
+    """The candidate's board page without FM-030's day: its four templates, its prompts' data, its ten marked lines and its twenty-nine words in
     the label table taken out, and the
     answer's second screen's own clipboard lines put back in place of the shared helper's call. None where any of them is not there as written."""
     data, templates = DAY_TEMPLATE.subn(b"", data)
