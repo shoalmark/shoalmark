@@ -2883,14 +2883,15 @@ def state_dir():
 def r9_leftovers():
     """What invites and notifications left that R9 no longer reads, runs or writes, as (where, what it is and what to do), in
     a fixed order: the calendar files the tool wrote inside the repository — `--invite`'s, `<tracker dir>/evidence/<ID>/<ID>-act.ics`,
-    and `--standup FILE.ics`'s at the repository's top or the tracker folder's — each known by its own first three lines; then,
+    and `--standup FILE.ics`'s wherever a person named it in the repository's tree, walked through no symlinked folder and into no
+    version control's own folder (`calendars`) — each known by its own first three lines; then,
     outside it, the state `--notify` kept (`notified.json`), the log of the README's cron line, the README's launchd agent and its
     log. A file inside the repository is opened only where `real_inside` holds and it is a regular file, and only its first
     bytes are read — one reached through a symlink is no file the tool wrote, since its write rule refused that; outside it,
     each known path is asked whether it is a file, and a log when it was last written. No folder outside the repository is
     walked, no program is started — a crontab is not read: the README's cron line is seen by the log it writes — and nothing
-    is written or removed. A calendar file written elsewhere, a schedule with another name or log, and the events imported
-    into a calendar are not seen here; the README's section on R9 names them."""
+    is written or removed. A calendar file written outside the repository, a schedule with another name or log, and the events
+    imported into a calendar are not seen here; the README's section on R9 names them."""
     found = []
 
     def shown(p):
@@ -2912,12 +2913,19 @@ def r9_leftovers():
         except (OSError, ValueError, OverflowError):
             return "at a time not read here"
 
-    tops = sorted({*ROOT.glob("*.ics"), *TRACKER_DIR.glob("*.ics")}) if TRACKER_DIR.is_dir() else sorted(ROOT.glob("*.ics"))
-    for p in sorted(TRACKER_DIR.glob("evidence/*/*-act.ics")) + tops:
-        kind = ics_kind(p)
-        if kind == "act" and p.name == f"{p.parent.name}-act.ics":
+    def calendars():
+        """Every `*.ics` file in the repository's tree, in order: walked from ROOT, entering no symlinked folder (`os.walk` follows
+        none, and none is kept to walk) and no version control's own folder; a file is read later only through `ics_kind`."""
+        for top, dirs, files in os.walk(ROOT):
+            dirs[:] = sorted(d for d in dirs if d not in (".git", ".svn", ".hg") and not os.path.islink(os.path.join(top, d)))
+            yield from (pathlib.Path(top) / f for f in sorted(files) if f.lower().endswith(".ics"))
+
+    kinds = [(p, ics_kind(p)) for p in calendars()]
+    for p, kind in kinds:                                   # `--invite` wrote only beside a tracker's evidence, under its id
+        if kind == "act" and p.parent.parent == TRACKER_DIR / "evidence" and p.name == f"{p.parent.name}-act.ics":
             found.append((shown(p), "a calendar file `--invite` wrote: delete it, and the event imported from it"))
-        elif kind == "standup" and p.parent in (ROOT, TRACKER_DIR):
+    for p, kind in kinds:                                   # …`--standup FILE.ics` wherever it was named
+        if kind == "standup":
             found.append((shown(p), "the stand-up's calendar file `--standup FILE.ics` wrote: delete it — the weekly event imported from it "
                                     "says to run `--standup`, which stays"))
     try:

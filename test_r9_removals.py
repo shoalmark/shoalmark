@@ -2,10 +2,10 @@
 `done:` and their signed history stay.
 
 - Each removed flag — `--invite <id>`, `--notify`, `--standup FILE.ics` — says so in one line, exits 2 and writes nothing.
-- What they left — a calendar file `--invite` or `--standup FILE.ics` wrote, the state `--notify` kept, the log of the README's
-  cron line, the README's launchd agent and its log — is named by `--standup` and `--owner`, each piece, and stays byte for
-  byte as it was: nothing is removed, nothing is added. A calendar file of a person's own, and one reached through a symlink,
-  are not named.
+- What they left — a calendar file `--invite` or `--standup FILE.ics` wrote (one the base itself wrote below the root among
+  them), the state `--notify` kept, the log of the README's cron line, the README's launchd agent and its log — is named by
+  `--standup` and `--owner`, each piece, and stays byte for byte as it was: nothing is removed, nothing is added. A calendar
+  file of a person's own, at the top or nested, and one reached through a symlinked file or folder, are not named.
 - `--standup`, `--owner`, `--due` and `--done` print, on a fixture with nothing left over, what they printed at b84b8af, the
   commit R9 was built on, and `--due` and `--done` write the same record.
 
@@ -134,9 +134,25 @@ def can_symlink(where):
         return False
 
 
-def leftovers(root, home, xdg, away):
-    """What invites and notifications left, as the tool wrote it or the README told a person to add it: {path: (bytes, as `--standup` names it)}.
-    Beside it, what is not the tool's: a person's own calendar file, and a calendar file of the tool's reached through a symlink (`away`)."""
+def base_tool(area, env):
+    """The tool at BASE, beside its renderer and VERSION, in `area/old-tool` — or None where this clone does not hold BASE."""
+    shown = subprocess.run(["git", "-C", str(HERE), "show", f"{BASE}:shoalmark.py"], capture_output=True, env=env)
+    if shown.returncode != 0:
+        return None
+    old = area / "old-tool"
+    (old / "vendor").mkdir(parents=True)
+    (old / "shoalmark.py").write_bytes(shown.stdout)
+    for f in (HERE / "vendor").glob("marked-*.js"):
+        shutil.copy(f, old / "vendor" / f.name)
+    shutil.copy(HERE / "VERSION", old / "VERSION")
+    return old / "shoalmark.py"
+
+
+def leftovers(root, home, xdg, away, base=None, env=None):
+    """What invites and notifications left, as the tool wrote it or the README told a person to add it: {path: as `--standup` names it},
+    and with `base`, the stand-up's calendar the base itself writes below the root, `--standup calendar/agenda.ics`. Beside them, what is not
+    the tool's: a person's own calendar files, at the top and nested, and the tool's calendars reached through a symlink to a file and
+    through a symlinked folder (`away`). Returns (shown, the symlinked file or None, whether the base wrote its calendar, or None without it)."""
     left = {
         root / "docs/work-tracker/evidence/AP-001/AP-001-act.ics": ACT_ICS,
         root / "standup.ics": STANDUP_ICS,
@@ -150,14 +166,27 @@ def leftovers(root, home, xdg, away):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(data)
     (root / "mine.ics").write_bytes(OWN_ICS)
+    (root / "notes/deep").mkdir(parents=True)
+    (root / "notes/deep/mine-too.ics").write_bytes(OWN_ICS)
+    wrote = None
+    if base:
+        (root / "calendar").mkdir()
+        code, _o, _e = run(base, root, env, "--standup", "calendar/agenda.ics")
+        nested = root / "calendar/agenda.ics"
+        wrote = code == 0 and nested.is_file() and nested.read_bytes().startswith(b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//shoalmark//standup//EN\r\n")
+        if nested.is_file():
+            left[nested] = nested.read_bytes()
     linked = None
     if can_symlink(away):
         (away / "AP-004-act.ics").write_bytes(ACT_ICS)
         (root / "docs/work-tracker/evidence/AP-004").mkdir(parents=True, exist_ok=True)
         linked = root / "docs/work-tracker/evidence/AP-004/AP-004-act.ics"
         os.symlink(away / "AP-004-act.ics", linked)
+        (away / "elsewhere").mkdir()
+        (away / "elsewhere/agenda.ics").write_bytes(STANDUP_ICS)
+        os.symlink(away / "elsewhere", root / "linked-folder", target_is_directory=True)
     shown = {p: (p.relative_to(root).as_posix() if root in p.parents else str(p)) for p in left}
-    return shown, linked
+    return shown, linked, wrote
 
 
 def run_checks():
@@ -173,6 +202,7 @@ def run_checks():
             d.mkdir()
         env = environment(home)
         root = fixture(area / "now", tool, env, clock)
+        old = base_tool(area, env)                               # the base's own tool: it writes the nested calendar, and part 3 compares with it
 
         # 1. each removed flag: one line, exit 2, nothing written — in a clean home, and where leftovers are
         before = snapshot(root, home)
@@ -182,8 +212,12 @@ def run_checks():
             add(f"R9 · {flag} says in one line that R9 removed it, names what lists the acts now, and exits 2; it writes nothing (saw exit {code}, {err.strip()[:160]!r})",
                 code == 2 and out == "" and len(lines) == 1 and lines[0].startswith(f"{flag}: removed by R9 — ") and "`--standup`" in lines[0]
                 and "`--owner`" in lines[0] and snapshot(root, home) == before and not (root / "cal.ics").exists())
-        shown, linked = leftovers(root, home, xdg, away)
+        shown, linked, wrote = leftovers(root, home, xdg, away, old, env)
         before = snapshot(root, home, xdg, away)
+        if wrote is None:
+            add(f"R9 · the stand-up's calendar {BASE} writes below the root", None, f"this clone does not hold {BASE}")
+        else:
+            add(f"R9 · the fixture's nested leftover: {BASE} itself writes `--standup calendar/agenda.ics`, a stand-up calendar below the root", wrote)
 
         # 2. the leftovers: each named by `--standup` and `--owner`, byte for byte as it was, nothing added or removed — with and without XDG_STATE_HOME
         for label, run_env, named in (("XDG_STATE_HOME unset", env, [p for p in shown if xdg not in p.parents]),
@@ -195,8 +229,9 @@ def run_checks():
                 add(f"R9 · {argv[0]} ({label}) names every leftover under its title — the calendar files `--invite` and `--standup FILE.ics` wrote, "
                     f"`notified.json`, the cron line's log, the launchd agent and its log — each with what to do (missing {missing})",
                     code == 0 and bool(block) and not missing and "`--standup` and `--owner` list each act owed with its time" in block)
-                add(f"R9 · {argv[0]} ({label}) names no calendar file of a person's own, and none reached through a symlink",
-                    "mine.ics" not in out and "AP-004-act.ics" not in out)
+                add(f"R9 · {argv[0]} ({label}) names no calendar file of a person's own, at the top or nested, and none reached through a symlinked "
+                    f"file or folder",
+                    "mine.ics" not in out and "mine-too.ics" not in out and "AP-004-act.ics" not in out and "linked-folder" not in out)
                 add(f"R9 · after {argv[0]} ({label}) every leftover is byte for byte as it was, and nothing was added or removed beside it",
                     snapshot(root, home, xdg, away) == before, f"changed: {sorted(set(before) ^ set(snapshot(root, home, xdg, away)))[:4]}")
         for flag, argv in REMOVED:
@@ -207,21 +242,14 @@ def run_checks():
             add("R9 · a calendar file reached through a symlink is not named", None, "this system makes no symlink here")
 
         # 3. on a fixture with nothing left over, `--standup`, `--owner`, `--due` and `--done` print what they printed at the base, and write the same record
-        old = area / "old-tool"
-        shown_old = subprocess.run(["git", "-C", str(HERE), "show", f"{BASE}:shoalmark.py"], capture_output=True, env=environment(home))
-        if shown_old.returncode != 0:
+        if old is None:
             add(f"R9 · `--standup`, `--owner`, `--due` and `--done` as at {BASE}", None, f"this clone does not hold {BASE}")
             return results
-        (old / "vendor").mkdir(parents=True)
-        (old / "shoalmark.py").write_bytes(shown_old.stdout)
-        for f in (HERE / "vendor").glob("marked-*.js"):
-            shutil.copy(f, old / "vendor" / f.name)
-        shutil.copy(HERE / "VERSION", old / "VERSION")
         clean = area / "clean-home"
         clean.mkdir()
         cenv = environment(clean)
         pair = {}
-        for name, t in (("then", old / "shoalmark.py"), ("now", tool)):
+        for name, t in (("then", old), ("now", tool)):
             base = area / f"same-{name}"
             r = fixture(base, t, cenv, clock)
             seq = (["--standup"], ["--owner"], ["--due", "AP-002", clock[1](120)], ["--done", "AP-001", "evidence/AP-001/read.md"], ["--standup"], ["--owner"])

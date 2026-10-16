@@ -336,8 +336,8 @@ runs and removes none of it. `--standup` and `--owner` name each piece they can 
 AND NOTIFICATIONS*, on every run until you remove it; the board names none of it.
 
 - **Calendar files.** `--invite <id>` wrote `<tracker dir>/evidence/<id>/<id>-act.ics`; `--standup FILE.ics` wrote where you
-  named it. Both runs name such a file beside a tracker's evidence, or at the repository's top or the tracker folder's, known
-  by its first three lines; one written anywhere else is not seen. Delete the files, and the events you imported from them —
+  named it. Both runs name such a file wherever it is in the repository — its tree walked through no symlinked folder — known
+  by its first three lines; one written outside the repository is not seen. Delete the files, and the events you imported from them —
   the stand-up's weekly event says to run `--standup`, which stays.
 - **The schedule.** Before R9 this README gave `--notify` a cron line, which writes `~/.local/state/shoalmark/notify.log`, and
   a launchd agent, `~/Library/LaunchAgents/app.shoalmark.notify.plist`, which writes `~/Library/Logs/shoalmark-notify.log`.
