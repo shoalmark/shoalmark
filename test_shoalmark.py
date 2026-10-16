@@ -12992,7 +12992,7 @@ with tempfile.TemporaryDirectory() as tmp:
     guarded37_ = "the Owner's two sections: guarded — origin/main's configuration cannot be read here, so every change to them or their signers file is refused: shoalmark.toml: `owner` is inside `[tags]`, where it does not name the Owner"
     c_ui_, g_ui_ = made37_("ap/037-unread-intent", "AP-037: a better intent", fixed37_(text37_("lose a loan", "lose a book")), SEAT_)
     code_ui_, out_ui_, err_ui_ = run(root, "--check")
-    named_ui_ = [l_ for l_ in err_ui_.splitlines() if c_ui_[:7] in l_]
+    named_ui_ = [l_ for l_ in err_ui_.splitlines() if c_ui_[:7] in l_ and not l_.startswith(("  +", "  -"))]     # R22: not INDEX.md's quoted difference
     check(f"FM-006 · v0.19.1 · where this tool refuses the default branch's configuration, `--check` refuses a branch commit that changes `## The intent`, exit 4, in one line naming the commit, why and the way through — "
           f"and its guard line says guarded (saw {code_ui_}, {named_ui_!r}, {err_ui_.strip()[-200:]!r})",
           code_ui_ == fm.EXIT_LINT and g_ui_[0] == [f'refused: commit {c_ui_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — {unread37_}']
@@ -13059,7 +13059,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code_e1_, out_e1_, err_e1_ = run(root, "--check")
     check(f"FM-006 · v0.19.1 · where the default branch's configuration cannot be read and its tracker is in a folder of its own, `--check` refuses a seat's commit that resets both sections to the scaffold, exit 4, in one line naming the files (saw {code_e1_}, {g_e1_!r})",
           code_e1_ == fm.EXIT_LINT and g_e1_[0] == [f'refused: commit {c_e1_[:7]} "AP-037: tidy" changes `shoalmark.toml` and `tr/TRIAGE.md` — {unread37_}']
-          and [l_ for l_ in err_e1_.splitlines() if c_e1_[:7] in l_] == [f"  lint: {g_e1_[0][0]}"] and g_e1_[1].startswith(guarded_tr_) and guarded_tr_ in out_e1_)
+          and [l_ for l_ in err_e1_.splitlines() if c_e1_[:7] in l_ and not l_.startswith(("  +", "  -"))] == [f"  lint: {g_e1_[0][0]}"] and g_e1_[1].startswith(guarded_tr_) and guarded_tr_ in out_e1_)
     c_e2a_, c_e2b_ = by_hand37_("ap/037-unparsed-two", "main", ("AP-037: tidy", lambda: home_tr_.write_text(scaffold_), SEAT_),
                                 ("AP-037: the configuration change", lambda: (root / "shoalmark.toml").write_text(tr37_), SEAT_))
     g_e2_ = guard37_(); code_e2_, _o, err_e2_ = run(root, "--check")
