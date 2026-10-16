@@ -8151,15 +8151,13 @@ def verdict_reports(days=None):
     names it, ["unnamed", merge] where it names none), and the session of the range's oldest commit that carries one (`oldest_session`, BF-6). The range is the branch's own commits, less other
     verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
     days = TRIAGE_DAYS if days is None else days
-    log = git_out("log", f"--since={days}.days", f"--format=%H%x01%s%x01{TRAILERS}%x02", "HEAD") or ""      # the subject, as `--queue` reads it
-    found, said = [], {}
+    log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
+    found = []
     for rec in log.split("\x02"):
-        sha, _, rest = rec.strip("\n").partition("\x01")
-        subject, _, block = rest.partition("\x01")
+        sha, _, block = rec.strip("\n").partition("\x01")
         reviewed = trailer_values(block, "Reviewed")
         if sha and reviewed:
             found.append((sha, reviewed[0], (trailer_values(block, "Session") or [""])[0]))
-            said[sha] = (lambda m: m.group(1) if m else "")(VERDICT_WORD_RE.search(subject))
     if not found:
         return []
     trunk, tips = trunk_ref(), branch_tips()
@@ -8168,8 +8166,11 @@ def verdict_reports(days=None):
     trunk_sha = shas[trunk] if trunk else ""                                                      # question below is answered from it
     branches = {verdict: verdict_branch(history, verdict, tips, trunk_sha, branch_name(trunk or "")) for verdict, _r, _s in found}
     merges = sorted({b[2] for b in branches.values() if b[0] == "merge"})
-    subjects = dict(line.split("\x01", 1) for line in (git_out("log", "--no-walk=unsorted", "--format=%H%x01%s", *merges) or "").splitlines()
-                    if "\x01" in line) if merges else {}
+    # each verdict's subject — its word, as `--queue` reads it — and each merge's that names a branch, in ONE call, and only where there is a
+    # verdict: a repository without one starts the very processes it started before the board's v2 (the FM-044 Git entry differential)
+    subjects = dict(line.split("\x01", 1) for line in (git_out("log", "--no-walk=unsorted", "--format=%H%x01%s", *[v for v, _r, _s in found], *merges) or "").splitlines()
+                    if "\x01" in line)
+    said = {verdict: (lambda m: m.group(1) if m else "")(VERDICT_WORD_RE.search(subjects.get(verdict, ""))) for verdict, _r, _s in found}
     for verdict, b in branches.items():
         if b[0] == "merge":
             hit = MERGED_BRANCH_RE.match(subjects.get(b[2], ""))
