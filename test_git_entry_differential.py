@@ -44,9 +44,37 @@ def r21_dropped(data):
 # configuration (`PROOF`, `proof_reading`), and says it before *accept*. The page the 615fb1d baseline writes holds neither, and the
 # board's run of the candidate reads that configuration: the second difference the consumer's snapshots may show, and the one in
 # what is started — every start and `subprocess.run` call the candidate makes inside `proof_reading`, each a read (FM054_READS).
+# The page is held to its difference byte for byte (RV-3308): FM054_PAGE_EDITS, applied in order to the baseline's page, each
+# where it occurs exactly once, must give every byte of the candidate's — and nothing else may differ.
 PAGE_PATH = "work-tracker/index.html"
 PROOF_MARK = b',PROOF={"state": '
 FM054_READS = (("symbolic-ref",), ("rev-parse",), ("config", "--get"), ("cat-file", "--batch"), ("ls-tree",))
+# FM-054's and FM-007's changes to the page of this fixture, as reviewed — (the baseline's text, the candidate's), each anchored on text
+# the two share: the proof CSS; the signed commit step without the touch; the new labels (`answer.give.*`, `act.give.title`,
+# `proof.*`); the page's PROOF (this fixture: no seat may answer, so *author only*); the dialog's comment and its proof line; the
+# second screen read from PROOF; and the heading of *waiting for you* with the proof line
+FM054_PAGE_EDITS = (
+    ('#p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}\n',
+     '#p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}\n/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */\n#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--coral)}#p .cq{display:inline-block;padding-left:2ch}#dlg .cq{margin:0 0 8px}\n'),
+    ('"answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch"',
+     '"answer.sign.step.commit": "commits them, signed with your key"'),
+    ('"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.done": ',
+     '"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.give.title": "Give your answer", "act.give.title": "Record your act", "answer.give.intro": "Your decision is made. A browser cannot write it into the repository — your terminal does, as you. Run this command:", "answer.give.step.commit": "commits them as you: this repository asks for no signature, so the commit proves the author only", "answer.give.step.commit.login": "the commit\'s author is your server login, as Subversion records it — with no signature", "answer.give.step.commit.none": "with no version control, nothing records who wrote them", "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.", "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.", "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}", "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author", "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name", "answer.done": '),
+    ('"viewer.none_in_progress": "none in progress"},BRANCH=',
+     '"viewer.none_in_progress": "none in progress"},PROOF={"state": "author", "keys": {"title": "answer.give.title", "act": "act.give.title", "intro": "answer.give.intro", "commit": "answer.give.step.commit", "check": "answer.give.check.text", "fail": "answer.give.fail.text"}, "said": "author only", "format": "%an", "word": "proof.author", "why": "proof.author.why"},BRANCH='),
+    ('    // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.\n',
+     "    // three lines, commits — signed where the default branch's configuration asks for it (FM-054) — and pushes. A browser cannot\n    // commit; the dialog decides, the terminal commits.\n"),
+    ('        <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n',
+     '        <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n        <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}\n'),
+    ('    // decision back. The decision is made; the terminal signs it. This screen says what to run, where, what it does step\n    // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done\n',
+     '    // decision back. The decision is made; the terminal commits it. This screen says what to run, where, what it does step\n    // by step, what the end looks like, how to check it and where to go when it fails — and has ONE way out, Done\n'),
+    ('    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;\n      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>\n        <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre',
+     '    // FM-054: every line that says how the commit is proved is PROOF\'s — the default branch\'s configuration, as the gate and\n    // `--answer` read it (`proof_page`): *signed* only where it asks for a signature; the end previews the terminal\'s own word\n    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>\n        <p class="dp">${l(P.intro)}</p><pre class="cmd">${esc(line)}</pre'),
+    ('        <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  signed, on \\`${br}\\`, pushed`)}</pre>\n        <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>\n        <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" targ',
+     '        <li>${l(P.commit)}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n        ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, on \\`${br}\\`, pushed`)}</pre>`:""}\n        ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}\n        <h4>${l("answer.sign.fail")}</h4><p>${lh(P.fail,`<a href="${l("answer.sign.url")}" targ'),
+    ('    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>5?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\\n"+w.slice(0,14).map(t=>\n',
+     '    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>5?" · "+l("waiting.bottleneck",w.length,held.length):"")\n      // FM-007: how an answer here is proved — the same for every ask on one repository\'s board, so said once, here, before *accept*:\n      // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour\'s (PROOF, `proof_page`)\n      +" · "+lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)+(PROOF.why?`\\n<span class="cq">${l(PROOF.why)}</span>`:"")+"\\n"+w.slice(0,14).map(t=>\n'),
+)
 
 
 def fm054_reads(rows):
@@ -61,18 +89,30 @@ def fm054_read(argv):
             and any(tuple(argv[1:1 + len(form)]) == form for form in FM054_READS))
 
 
+def fm054_transform(page):
+    """The baseline's page as FM-054 and FM-007 change it: FM054_PAGE_EDITS applied in order, each to text that occurs exactly once
+    — else None: a page those edits do not fit is no page the allowance explains."""
+    text = page.decode("utf-8")
+    for old, new in FM054_PAGE_EDITS:
+        if text.count(old) != 1:
+            return None
+        text = text.replace(old, new)
+    return text.encode("utf-8")
+
+
 def fm054_page(baseline, candidate):
-    """FM-054's difference in the board's page: the candidate's page, as the run left it, carries PROOF, and the baseline's does not."""
+    """FM-054's difference in the board's page: every byte of the candidate's page, as the run left it, is the baseline's page
+    transformed by FM054_PAGE_EDITS (`fm054_transform`) — and each hash is the bytes the run left."""
     pages = [base64.b64decode(row["page_after"]["bytes_base64"]) if isinstance(row.get("page_after"), dict) else None for row in (baseline, candidate)]
     return (None not in pages and [hashlib.sha256(p).hexdigest() for p in pages] == [baseline["after"].get(PAGE_PATH), candidate["after"].get(PAGE_PATH)]
-            and PROOF_MARK not in pages[0] and PROOF_MARK in pages[1])
+            and PROOF_MARK not in pages[0] and fm054_transform(pages[0]) == pages[1])
 
 
 def snapshots_match(baseline, candidate):
     """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
     entry and hook — but for R21's difference: INDEX.md after the run may differ where the baseline's, its header line
-    dropped (`r21_dropped`), is the candidate's bytes; and FM-054's: the board's page may differ where the candidate's carries
-    PROOF and the baseline's does not (`fm054_page`)."""
+    dropped (`r21_dropped`), is the candidate's bytes; and FM-054's: the board's page may differ where every byte of the
+    candidate's is the baseline's transformed by FM-054's reviewed edits (`fm054_page`)."""
     if baseline["before"] != candidate["before"]:
         return False
     if baseline["after"] == candidate["after"]:
@@ -438,6 +478,18 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(fm054 + "the candidate's page carries PROOF, and a page that differs from the baseline's without it does not match",
                        PROOF_MARK in page and snapshots_match(old, new) and not snapshots_match(old, as_page(unproved))
                        and not snapshots_match(old, dict(as_page(page), page_after=None)))
+        # RV-3308: the page is held byte for byte — the baseline's page with FM-054's edits is the candidate's; and two candidates that
+        # keep PROOF_MARK, one without an unrelated section, one whose tracker row says something else, do not match
+        section, row = b"#p summary{cursor:pointer}\n", b'"entry origin selection"'
+        before_page = base64.b64decode(old["page_after"]["bytes_base64"]) if isinstance(old.get("page_after"), dict) else b""
+        assert_control(fm054 + "the candidate's page is the baseline's with FM054_PAGE_EDITS applied, every byte",
+                       fm054_transform(before_page) == page and fm054_transform(page) is None)
+        cut = page.replace(section, b"")
+        assert_control(fm054 + "a page that keeps PROOF but deletes an unrelated section (`#p summary`'s rule) does not match",
+                       page.count(section) == 1 and PROOF_MARK in cut and not snapshots_match(old, as_page(cut)))
+        moved = page.replace(row, b'"entry origin, changed"')
+        assert_control(fm054 + "a page that keeps PROOF but changes a tracker row (WORK-001's hook) does not match",
+                       page.count(row) == 1 and PROOF_MARK in moved and not snapshots_match(old, as_page(moved)))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),
