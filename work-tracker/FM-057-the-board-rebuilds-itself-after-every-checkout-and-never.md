@@ -13,6 +13,8 @@ hook: "The board rebuilds itself after every checkout, merge and rebase, and nev
 
 ## What is true now
 
+**2026-10-16 — READY at `2b57c02` by `01a1457e-86f9`:** R11 with Q4 (RV-3302: recorded privately). It rides on `fm/032-dbatch-into-production`, joined after FM-032's R22, R15 and R13 (`aa382dc`), for one pull request; CI runs once, on it.
+
 **Filed and judged 2026-10-15: In Progress, P2.** It carries R11 and the quick win beside it into v0.20.1 (FM-023's
 table of 2026-10-15).
 - **R11,** the Owner's ruling of 12 October (`work-tracker/evidence/rulings-2026-10-12.md`): the global board-refresh
@@ -24,9 +26,9 @@ table of 2026-10-15).
 - **The quick win beside it:** the page names its own moment (when it was built; on git, the commit, the branch and
   whether the tree had changes; on Subversion, the working copy's revision; with none, the folder) and the command that
   rebuilds it. It never says *current*, *live* or *up to date*.
-- **Built, not yet reviewed** (`27f31560/builder-10`, `fm/045-r11-read-at`): `b417b3c` — R11: `--install-hook` writes no refresh hook, removes
+- **Built** (`27f31560/builder-10`, `fm/045-r11-read-at`): `b417b3c` — R11: `--install-hook` writes no refresh hook, removes
   each one an earlier version wrote with a line, and keeps a person's own; `4344147` — the page and `view/built.json` say what the board
-  read, and when, on git, on Subversion and with none. Critical tier: the review is next.
+  read, and when, on git, on Subversion and with none. Critical tier: READY at `2b57c02` (above).
 
 ## Done when
 
@@ -42,3 +44,4 @@ table of 2026-10-15).
 | 2026-10-15 | Filed and judged: In Progress, P2, for v0.20.1, on `fm/045-r11-read-at`. |
 | 2026-10-15 | Built by `27f31560/builder-10` on `fm/045-r11-read-at`: `b417b3c` — R11, the board-refresh hooks go and the explicit refresh stays; `4344147` — the board says what it read, and when. Next: the critical-tier review. |
 | 2026-10-16 | Built by `27f31560/builder-10` on `fm/045-r11-read-at`: `db98190` — on the board's own run, `--html-only`, the read-at line says what is changed and not committed is not read, beside the time, the branch and the commit; `view/built.json` records no count there; a plain run counts it. RV-3302: recorded privately. |
+| 2026-10-16 | **READY** at `2b57c02` by `01a1457e-86f9`, critical: R11 with Q4 (RV-3302: recorded privately). Joined on `fm/032-dbatch-into-production` by `aa382dc`, the fourth merge after FM-032's R22, R15 and R13, for one pull request. |
