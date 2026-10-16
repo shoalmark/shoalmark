@@ -3984,7 +3984,7 @@ LABELS = {
     "next.owner": "you",
     "status.Proposed": "Proposed", "status.In Progress": "In Progress", "status.Parked": "Parked", "status.Reserved": "Reserved",
     "status.Shipped": "Shipped", "status.Closed": "Closed", "status.Blocked": "Blocked",
-    "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.ended": "ended",
+    "section.progress": "progress", "section.triage": "triage", "section.triaged": "triaged", "section.backlog": "backlog", "section.ended": "shipped or closed",     # BF-8: never *ended* (the guide, §10); the key stays
     "desc.progress": "kept by triage — by rank, then tier",
     "desc.progress.none": "empty until a first triage pass has run — --triage",
     "desc.triage": "what the next --triage lists — in progress and unjudged or judged over {0} days ago, and new filings",

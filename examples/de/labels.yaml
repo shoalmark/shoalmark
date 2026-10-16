@@ -25,7 +25,7 @@ section.progress: in Arbeit
 section.triage: zu sichten
 section.triaged: gesichtet
 section.backlog: Vorrat
-section.ended: beendet
+section.ended: shipped or closed
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
 desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
 desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
