@@ -782,6 +782,9 @@ run_index_merge_controls(gti, check)
 from test_stale_shown import run_stale_shown_controls
 run_stale_shown_controls(gti, check)
 
+from test_freeze_removed import run_freeze_removed_controls
+run_freeze_removed_controls(gti, check)
+
 print()
 if FAILS:
     print(f"FAILED: {len(FAILS)} — {', '.join(FAILS)}")

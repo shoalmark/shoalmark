@@ -32,6 +32,20 @@ INDEX_PATH = "work-tracker/INDEX.md"
 R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
 
 
+# R15 (FM-032): `--schema` documents no key of the filing freeze, where the 615fb1d baseline documented `freeze_at` and `freeze_tag`.
+# The one difference the schema case may show: those two rows gone from stdout, and nothing else.
+R15_SCHEMA_CASE = "schema-check-priority"
+R15_SCHEMA_ROWS = ("| `freeze_at` |", "| `freeze_tag` |")
+
+
+def r15_schema_dropped(observed):
+    """(status, stdout, stderr) of a baseline run of the schema case without R15's two rows; None where either is not there once."""
+    lines = observed["stdout"].split("\n")
+    if any(sum(line.startswith(row) for line in lines) != 1 for row in R15_SCHEMA_ROWS):
+        return None
+    return observed["status"], "\n".join(line for line in lines if not line.startswith(R15_SCHEMA_ROWS)), observed["stderr"]
+
+
 def r21_dropped(data):
     """The baseline's INDEX.md bytes without the header's separator and dated, counted line, removed once and in the header
     (before the first `## ` section) only. None where the header holds no such line."""
@@ -331,8 +345,13 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 rows.append(observed); pair.append(observed)
             before, after = pair
             label_prefix = "Git entry " + label + ": "
-            assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
-                           (before["status"], before["stdout"], before["stderr"]) == (after["status"], after["stdout"], after["stderr"]))
+            said = (after["status"], after["stdout"], after["stderr"])
+            if label == R15_SCHEMA_CASE:
+                assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, but for R15's two `--schema` rows, gone",
+                               r15_schema_dropped(before) == said)
+            else:
+                assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
+                               (before["status"], before["stdout"], before["stderr"]) == said)
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             assert_control(label_prefix + "all actual process argv/effective cwd/env match", strip_stack(before["starts"]) == strip_stack(after["starts"]))
             assert_control(label_prefix + "run options and actual process results match", strip_stack(before["run_calls"]) == strip_stack(after["run_calls"]))
@@ -361,6 +380,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                     assert_control(label_prefix + "clean default actually reads local origin once", all(sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts"]) == 1 for observed in pair))
                 if label == "dirty-default-fallback":
                     assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts"]) for observed in pair))
+
+        # R15's allowance is held to its two rows on the real schema pair: anything else the candidate says differently does not match.
+        olds, news = (next(row for row in rows if row["case"] == R15_SCHEMA_CASE and row["version"] == version) for version in ("baseline", "candidate"))
+        r15, lines = "Git entry R15 allowance: ", news["stdout"].split("\n")
+        other = next(i for i, line in enumerate(lines) if line.strip())
+        assert_control(r15 + "the baseline's schema holds each freeze row once, the candidate's neither, and nothing else differs",
+                       not any(line.startswith(R15_SCHEMA_ROWS) for line in lines) and r15_schema_dropped(olds) == (news["status"], news["stdout"], news["stderr"]))
+        assert_control(r15 + "a schema that also changes another line, keeps a freeze row, or changes its exit or stderr does not match",
+                       r15_schema_dropped(olds) != (news["status"], "\n".join(lines[:other] + [lines[other] + " changed"] + lines[other + 1:]), news["stderr"])
+                       and r15_schema_dropped(olds) != (news["status"], news["stdout"] + "| `freeze_at` | kept |\n", news["stderr"])
+                       and r15_schema_dropped(olds) != (news["status"] + 1, news["stdout"], news["stderr"])
+                       and r15_schema_dropped(olds) != (news["status"], news["stdout"], news["stderr"] + "x\n"))
+        assert_control(r15 + "a baseline whose schema does not hold each freeze row once is not allowed at all",
+                       r15_schema_dropped(dict(olds, stdout="")) is None
+                       and r15_schema_dropped(dict(olds, stdout=olds["stdout"] + "| `freeze_tag` | twice |\n")) is None)
 
         # R21's allowance is held to its one difference on the real default pair: equal snapshots match, and no variant below does.
         old, new = (next(row for row in rows if row["case"] == "clean-default-origin" and row["version"] == version) for version in ("baseline", "candidate"))
