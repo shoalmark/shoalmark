@@ -63,7 +63,7 @@ What shoalmark prints for it, every day:
 
 ## What a day costs you
 
-- **One sitting, fifteen minutes**, at the time you choose. The invite comes as a calendar file.
+- **One sitting, at the time you choose**, fifteen minutes by default; the board's first lines are its agenda.
 - **One command per answer:** `--answer AP-007 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
 - **The rest comes to you:** every session's last message ends with what waits for you. You open nothing.
 

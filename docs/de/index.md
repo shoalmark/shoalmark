@@ -65,7 +65,8 @@ geschrieben hat.
 
 ## Was ein Tag Sie kostet
 
-- **Ein Standup, fünfzehn Minuten**, zu der Uhrzeit, die Sie wählen. Die Einladung kommt als Kalenderdatei.
+- **Ein Standup, zu der Uhrzeit, die Sie wählen**, fünfzehn Minuten, wenn Sie nichts anderes einstellen; die ersten Zeilen des
+  Boards sind seine Tagesordnung.
 - **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel
   signiert, sobald Sie das Signieren einschalten.
 - **Der Rest kommt zu Ihnen:** Die letzte Nachricht jeder Session endet mit dem, was auf Sie wartet. Sie müssen nichts

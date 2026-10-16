@@ -44,7 +44,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 ## Ihr Teil
 
 - **Einmal:** Sie schreiben in die `TRIAGE.md` drei Zeilen in Ihren eigenen Worten (wofür das Repository da ist, was gilt, wenn es funktioniert, und was niemand tun darf, um dorthin zu kommen) und den aktuellen Weg, also was zuerst kommt. Dazu richten Sie einmal Ihre Signatur ein, in etwa zehn Minuten.
-- **Jede Woche:** ein Standup je Werktag, fünfzehn Minuten zu der Uhrzeit, die Sie gewählt haben (so steht es in der Kalendereinladung; die Dauer lässt sich einstellen), und ein Befehl pro Antwort.
+- **Jede Woche:** ein Standup je Werktag, fünfzehn Minuten zu der Uhrzeit, die Sie gewählt haben (die Dauer lässt sich einstellen), und ein Befehl pro Antwort.
 - **Der Rest kommt zu Ihnen:** Die letzte Nachricht jeder Session endet mit dem, was auf Sie wartet. Sie müssen nichts öffnen.
 
 ## Was shoalmark nicht tut
