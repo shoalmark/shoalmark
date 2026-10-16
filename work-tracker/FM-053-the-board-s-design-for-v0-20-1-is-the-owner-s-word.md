@@ -7,7 +7,7 @@ next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt the guide's amendment of 16 October, G1 to G7 (three colour meanings, section and state surfaces, the guided answer view and its signing words), as brand/design-guide.md states it at the commit that last filed this ask?"
+ask: "Do you adopt the guide's amendment of 16 October, G1 to G8 (three colour meanings, section and state surfaces with their dividers, the guided answer view and its signing words), as brand/design-guide.md states it at the commit that last filed this ask?"
 ask-kind: ruling
 ask-since: 2026-10-16
 ask-options: "yes | yes, with the change I name | no: the guide stays as its first answer adopted it"
@@ -26,7 +26,7 @@ there. Nothing in them is built into the board.
 
 **2026-10-16 — answered, then amended.** The Owner's signed answer adopts the guide as it stood at `82b8c15` (accepted,
 `1281a75`; its record is under `## Asks`). The same day, in a design sitting, the Owner approved the board with surfaces
-and three colour meanings, and the guided answer view; neither is signed. G1 to G7 are written into the guide at the
+and three colour meanings, and the guided answer view; neither is signed. G1 to G8 are written into the guide at the
 commit that files this tracker's new ask:
 - G1, three meanings, one colour each: teal for done or success, amber for a warning, coral for a failure. `[palette]`'s
   keys `heed` and `go` become `fail` and `ok`, and `warn` is added; `[palette]` has never shipped, so no migration is
@@ -36,7 +36,8 @@ commit that files this tracker's new ask:
 - G4, rows that line up, the id in a column of its own;
 - G5, a diff for the change a command commits;
 - G6, the guided answer view, a new component;
-- G7, its one help line, inside the dialog's window.
+- G7, its one help line, inside the dialog's window;
+- G8, each band's top edge a 1px `--box` rule, so that the band is the divider; none above the first band.
 - On 15 October the Owner decided how the board looks and reads: one look, `monochrome`, on the board's own tokens, in
   the system's monospace, with no chart behind it; a box only for an action; type, state and action told apart; what
   waits for you first. The guide is the public form of those decisions, the v0.20.x rules only.
@@ -94,3 +95,4 @@ commit that files this tracker's new ask:
 | 2026-10-16 | The guide's amendment, G1 to G7, written in, with the ask that adopts it (`next: owner`). |
 | 2026-10-16 | The section band's token is `--secbg`: `--band` is already the `shoalmark` theme's navy band, on which every section heading would read at about 1.2:1. The ask filed again with it. |
 | 2026-10-16 | G6 takes the go-to-market seat's words for what a key's confirmation is and is not; the ask filed again with them. |
+| 2026-10-16 | The Designer's full pass folded in: G8, each band's top edge a 1px `--box` rule, none above the first band, and its wording of G1 to G7. G6 keeps the go-to-market seat's signing words. The ask filed again with it. |
