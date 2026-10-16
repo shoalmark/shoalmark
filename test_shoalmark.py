@@ -524,20 +524,15 @@ with tempfile.TemporaryDirectory() as d:
           nopin.returncode == fm.EXIT_LINT and "tools/shoalmark/PIN is missing" in nopin.stderr and str(root) not in nopin.stderr)
     check("a vendored copy runs from where it sits — and one edited in place is refused by its own gate",
           ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "differs from its PIN" in bad.stderr)
-    # FM-002, 0.18.5: the themes the tool ships travel with the copy, pinned — and a repository that chooses none sees none
-    _shipped = fm.theme_files()
+    # R10's look half: the tool ships no theme and no font, so the copy carries none — and its board wears none
     _cpage = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
-    check(f"FM-002 · --vendor copies brand/themes/ — both starters, their fonts and the README — and pins each file by sha256; the copy's board, choosing none, wears none ({len(_shipped)} files)",
-          len(_shipped) == 11 and {"brand/themes/README.md", "brand/themes/monochrome/theme.css", "brand/themes/shoalmark/theme.css"} <= set(_shipped)
-          and all((dest / r).read_bytes() == (HERE / r).read_bytes() and f"{fm.digest(HERE / r)}  {r}" in pin for r in _shipped)
-          and "<style data-from" not in _cpage and "</html>" in _cpage)
-    _from = subprocess.run(tool + ["--brand", str(root / "docs/work-tracker/brand"), "--from", "monochrome"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
-    check("FM-002 · a vendoring repository starts from a theme its copy carries: `--brand DIR --from` copies it out of the pinned copy, which stays as pinned",
-          _from.returncode == 0 and (root / "docs/work-tracker/brand/theme.css").read_bytes() == (dest / "brand/themes/monochrome/theme.css").read_bytes()
-          and (lambda r_: r_.returncode == 0 and "PIN" not in r_.stderr)(subprocess.run(tool, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)))
+    check("R10 · --vendor copies no theme and no font — the tool ships none: nothing it copies or pins lies under brand/themes/; the copy's board wears none",
+          not (dest / "brand/themes").exists() and "brand/themes/" not in pin and "<style data-from" not in _cpage and "</html>" in _cpage)
     _r9 = (HERE / "README.md").read_text(encoding="utf-8"); _r9 = _r9[_r9.index("## 9. Branding the board"):]; _r9 = _r9[:_r9.index("\n## ", 3) + 1]
-    check(f"FM-002 · the README explains branding in one section of at most 25 lines (the tracker's Done-when) — the places, the starters, `--from`, what a vendoring repository receives ({len(_r9.splitlines())} lines)",
-          len(_r9.splitlines()) <= 25 and all(w in _r9 for w in ("`brand/themes/`", "`monochrome`", "`shoalmark`", "`--brand DIR --from <theme>`", "a vendoring repository receives both", "looks as it did")))
+    check(f"R10 · the README explains branding in one section of at most 25 lines — the places, the logo and the labels, `[palette]` for the colours, and "
+          f"each brand file the board no longer reads, named, never a silent loss ({len(_r9.splitlines())} lines)",
+          len(_r9.splitlines()) <= 25 and all(w in _r9 for w in ("`logo.svg`", "`labels.yaml`", "`[palette]`", "`theme.css`", "`fonts/`", "`wordmark.svg`",
+                                                                 "never a silent loss", "`--check` never fails on them")))
 
 # --- 0.3.0: what a second repository taught ---------------------------------------------------------------
 check("the configuration is read without a library — the subset --init writes, a refusal by line for anything else",
@@ -624,7 +619,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "progress": "FM-021 · the empty progress section, rendered",
     "cell": "the board's cell shows the display form, rendered",
     "german": "C4 · the German board, rendered",
-    "wordmark": "0.18.2 · the wordmark, rendered in a browser",
+    "running": "0.18.2 · the running line, rendered in a browser",
     "queue": "the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions",
     "days": "FM-006 · v0.19.1 · the board's days, rendered in pinned zones — an ask's age, the fresh badge, a verdict's stale mark",
     "dialog": "the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command",
@@ -634,7 +629,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "promise": "FM-030 · 0.18.6 · a promise on the board and in its dialogs, rendered — what he promised, the question below it",
     "way": "FM-030 · 0.18.6 · on their way, rendered — the box's counts, his act and his answers before his merge",
     "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
-    "hooks": "FM-002 · the three hooks, rendered — none seen without a theme, each styled by one",
+    "hooks": "FM-002 · the Owner's box's title, rendered in every view",
 }
 
 
@@ -2969,10 +2964,16 @@ if _SYMLINKS and _has_rev("ae3c9e9"):
         view1_, view2_ = (tdir_ / "view/MSR-001.js").exists(), (tdir_ / "view/MSR-002.js").exists()
         (tdir_ / "index.html").unlink()
         c_old_, o_old_, e_old_ = _tool_run(_old_tool(out_dir_.parent / (out_dir_.name + "-old")), root, "--html-only"); page_old_ = (tdir_ / "index.html").read_text(encoding="utf-8")
-        check("FM-006 · a private security report · the board's run reads no symlink: a tracker, the Owner's page, a theme, the labels, a wordmark and a triage worksheet that are each a symlink to a file outside the repository "
-              f"are left unread — none of their words is in the board, one line names them, exit 0 — and the tool before it read every one (saw exit {c_new_}, left alone: {[l_ for l_ in e_new_.splitlines() if 'left alone' in l_][:1]})",
-              c_new_ == 0 and not any(m_ in page_new_ or m_ in views_new_ for m_ in markers_) and "board: left alone" in e_new_ and "MSR-002-x.md" in e_new_ and "brand/theme.css" in e_new_
-              and len(e_new_.strip().splitlines()) == 1 and view1_ and not view2_
+        left_ = [l_ for l_ in e_new_.strip().splitlines() if "left alone" in l_]
+        check("FM-006 · a private security report · the board's run reads no symlink: a tracker, the Owner's page, the labels and a triage worksheet that are each a symlink to a file outside the repository "
+              "are left unread, one line names them; a theme and a wordmark, symlinks too, are no longer read at all (R10) — each named as such, never followed; none of their words is in the board, exit 0 — "
+              f"and the tool before it read every one (saw exit {c_new_}, left alone: {left_[:1]})",
+              c_new_ == 0 and not any(m_ in page_new_ or m_ in views_new_ for m_ in markers_) and len(left_) == 1 and "board: left alone" in left_[0] and "MSR-002-x.md" in left_[0]
+              and "brand/labels.yaml" in left_[0] and "brand/theme.css" not in left_[0] and "brand/wordmark.svg" not in left_[0]
+              and sorted(l_.strip() for l_ in e_new_.strip().splitlines() if "left alone" not in l_) == [
+                  "brand: docs/work-tracker/brand/theme.css is no longer read — the board's colours are `[palette]` in shoalmark.toml",
+                  "brand: docs/work-tracker/brand/wordmark.svg is no longer read — the header shows the name"]
+              and view1_ and not view2_
               and all(m_ in page_old_ for m_ in markers_ if m_ != "OUTSIDE-WORDMARK") and _tree(out_dir_) == listing_)
         # the configuration: a symlink to a file outside — not read, so its `name` is not the board's
         (tdir_ / "index.html").unlink(); (root / "shoalmark.toml").rename(root / "shoalmark.keep"); os.symlink(out_dir_ / "config.toml", root / "shoalmark.toml")
@@ -3228,9 +3229,8 @@ def _steps_copy(g):
     root, tool, base = g["root"], g["tool"], g["base"]; common = root / ".git"; copy_ = common / "shoalmark-trusted"; x = {}
     # a re-run of `--install-hook` replaces the copy: tamper with it, run again
     (copy_ / "shoalmark.py").write_text((copy_ / "shoalmark.py").read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8"); (copy_ / "COPY").unlink()
-    gone_theme_ = next((p_ for p_ in (copy_ / "brand").rglob("*") if p_.is_file()), None); gone_theme_.unlink() if gone_theme_ else None
     x["rerun"] = _tool_run(tool / "shoalmark.py", root, "--install-hook")
-    x["replaced"] = ((copy_ / "shoalmark.py").read_bytes() == (tool / "shoalmark.py").read_bytes() and (copy_ / "COPY").is_file() and (not gone_theme_ or gone_theme_.is_file()) and "tampered" not in (copy_ / "shoalmark.py").read_text(encoding="utf-8"))
+    x["replaced"] = ((copy_ / "shoalmark.py").read_bytes() == (tool / "shoalmark.py").read_bytes() and (copy_ / "COPY").is_file() and not (copy_ / "brand").exists() and "tampered" not in (copy_ / "shoalmark.py").read_text(encoding="utf-8"))
     # two worktrees share the one copy: a second one, made with the hooks running, gets its board from it — and a stub put in its place answers in both
     x["wt"] = _hooked(root, "worktree", "add", "-q", str(base / "wt2"), "-b", "other")
     wt2 = base / "wt2"
@@ -3247,7 +3247,7 @@ def _steps_copy(g):
     g["x"] = x
 with tempfile.TemporaryDirectory() as d:
     g_ = _hook_scenario(d, _pl_plain, steps=_steps_copy); x_ = g_["x"]
-    check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file, a missing marker and a missing theme file are as the pinned tool has them again", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
+    check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file and a missing marker are as the pinned tool has them again, and the copy carries no theme (R10)", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
     check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had its board from it, its git directory is the first one's, there is one `shoalmark-trusted` in all, "
           f"and a stub put in its place answered in both (saw {x_['copies']}, {x_['wt_common']!r})",
           x_["wt"][0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve() and x_["copies"] == ["repo/.git/shoalmark-trusted"]
@@ -3883,33 +3883,33 @@ else:
     _skipped("FM-006 · a private security report · the write rule · the calendar files", 4, "this system makes no symlink here")
 fm.configure(HERE)
 
-# --- the copies under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR --from THEME`
-# and `--vendor DIR` judge every file they would write before the first folder or copy is made — into a folder of the tree that is a symlink, each is refused in one
-# line naming the first file, exit 4, and nothing is written
+# --- the copies under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--vendor DIR` judges
+# every file it would write before the first folder or copy is made — into a folder of the tree that is a symlink, it is refused in one line naming the first
+# file, exit 4, and nothing is written. (`--brand DIR --from THEME` was judged the same until R10's look half retired it with the themes.)
 def _cp(rev=None):
-    """`--brand DIR --from monochrome` and `--vendor DIR`, each where DIR is a folder of the tree that is a symlink to an empty folder beside the repository."""
+    """`--vendor DIR`, where DIR is a folder of the tree that is a symlink to an empty folder beside the repository."""
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
-        for key_, argv_ in (("brand", ("--brand", "brandx", "--from", "monochrome")), ("vendor", ("--vendor", "vend", "--partial", "--allow-untagged"))):
+        for key_, argv_ in (("vendor", ("--vendor", "vend", "--partial", "--allow-untagged")),):
             away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / argv_[1], target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
             g_[key_] = dict(code=c_, err=e_.strip(), out=o_.strip(), empty=sorted(os.listdir(away_)) == [])
         rm_git(root)
     return g_
-_CP_FIRST = {"brand": "brandx/" + next(r_ for r_ in fm.theme_files() if r_.startswith("brand/themes/monochrome/"))[len("brand/themes/monochrome/"):], "vendor": "vend/shoalmark.py"}
+_CP_FIRST = {"vendor": "vend/shoalmark.py"}
 def _cp_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == f"shoalmark: {_CP_FIRST[k_]} {_WR_SAYS}" and g[k_]["out"] == "" and g[k_]["empty"] for k_ in ("brand", "vendor"))
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == f"shoalmark: {_CP_FIRST[k_]} {_WR_SAYS}" and g[k_]["out"] == "" and g[k_]["empty"] for k_ in ("vendor",))
 if _SYMLINKS:
     g_ = _cp()
-    check(f"FM-006 · a private security report · the write rule · `--brand DIR --from THEME` and `--vendor DIR` into a folder of the tree that is a symlink: each is refused in "
-          f"one line naming the first file, exit 4, and nothing is written (saw {g_['brand']['err'][:90]!r}, {g_['vendor']['err'][:70]!r})", _cp_ok(g_))
+    check(f"FM-006 · a private security report · the write rule · `--vendor DIR` into a folder of the tree that is a symlink: it is refused in "
+          f"one line naming the first file, exit 4, and nothing is written (saw {g_['vendor']['err'][:70]!r})", _cp_ok(g_))
     if _HAVE_RR:
         c_ = _cp(_RR_REV)
         check(f"FM-006 · a private security report · the write rule · the copies · …the control: beside {_RR_REV}'s tool this check FAILS", not _cp_ok(c_))
     else:
         _skipped("FM-006 · a private security report · the write rule · the copies' control", 1, f"this clone does not hold {_RR_REV}")
 else:
-    _skipped("FM-006 · a private security report · the write rule · the copies", 2, "this system makes no symlink here")
+    _skipped("FM-006 · a private security report · the write rule · the copies", 2, "this system makes no symlink here")   # the check and its control
 fm.configure(HERE)
 
 # --- the triage worksheet under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--triage` asks the
@@ -4140,7 +4140,7 @@ def _wf(rev=None):
     return g_
 def _wf_line(g, k):
     """The one line each is refused in: `--brand DIR` names the file, `--init` its tracker folder (the Owner's ruling of 2026-10-04, v0.19.1)."""
-    return (f"shoalmark: brandy/starter/theme.css {_WR_SAYS}" if k == "brand"
+    return (f"shoalmark: brandy/starter/labels.yaml {_WR_SAYS}" if k == "brand"
             else f"the tracker folder docs/work-tracker resolves outside the repository, to {os.path.join(g['init']['away'], 'work-tracker')} — nothing is written")
 def _wf_ok(g):
     return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _wf_line(g, k_) and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
@@ -4590,15 +4590,14 @@ fm.configure(HERE)
 # the file it points to is unchanged
 def _nd(rev=None):
     """Each command at a destination named through `marks/door-*`, a symlink to a folder inside the repository that holds one symlink: `--vendor` meets
-    `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand --from` and `--brand DIR` meet `theme.css`, a
-    symlink to a file that is not there."""
+    `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand DIR` meets `labels.yaml`, a symlink to a file
+    that is not there."""
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
         conf_ = root / "shoalmark.toml"; conf_.write_text('standup = "09:00"\n' + conf_.read_text(encoding="utf-8"), encoding="utf-8")
         sums_ = lambda p_: hashlib.sha256(p_.read_bytes()).hexdigest() if p_.is_file() else None
         for key_, inner_, there_, argv_ in (("vendor", "shoalmark.py", True, lambda door_: ("--vendor", str(door_), "--partial", "--allow-untagged")),
-                                             ("brand", "theme.css", False, lambda door_: ("--brand", str(door_), "--from", "monochrome")),
-                                             ("brand-starter", "theme.css", False, lambda door_: ("--brand", str(door_))),
+                                             ("brand-starter", "labels.yaml", False, lambda door_: ("--brand", str(door_))),
                                              ("standup", "cal.ics", True, lambda door_: ("--standup", str(door_ / "cal.ics")))):
             folder_ = root / "dest" / key_; folder_.mkdir(parents=True); target_ = marks / f"target-{key_}"
             if there_:
@@ -4611,12 +4610,12 @@ def _nd(rev=None):
         rm_git(root)
     return g_
 def _nd_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand", "brand-starter", "standup"))
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand-starter", "standup"))
 if _SYMLINKS:
     g_ = _nd()
-    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR --from`, `--brand DIR` and `--standup FILE.ics`, named through a folder "
+    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR` and `--standup FILE.ics`, named through a folder "
           f"outside the repository that resolves inside it, meet a file under it that is a symlink: each is refused in one line naming it, exit 4, the file it points "
-          f"to unchanged and nothing written (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
+          f"to unchanged and nothing written (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
     if _HAVE_SAME:
         c_ = _nd(_SAME_REV)
         check(f"FM-006 · a private security report · destinations a person names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _nd_ok(c_))
@@ -5079,8 +5078,10 @@ with tempfile.TemporaryDirectory() as d:
     check("a deriver has no side effects: the files it wants are written, staged and drift-checked by the core",
           wrote_ok and drift == fm.EXIT_DRIFT and rel.read_text() == "# Releases\n\n1.2.0\n")
     exe.write_text(PORT_DERIVER)
-    check("a repository's own look is a convention, not a setting: `brand/theme.css` beside the trackers becomes a stylesheet of its own, after the tool's",
-          '<style data-from="repository">:root{--bg:#123456}</style>' in page and page.index('data-from="repository"') > page.index("@media print"))
+    check("R10 · a repository's `brand/theme.css` is no longer worn — no stylesheet of its own; the build and the page name it, with `[palette]` in its place",
+          "--bg:#123456" not in page and "<style data-from" not in page
+          and "docs/work-tracker/brand/theme.css is no longer read — the board's colours are `[palette]` in shoalmark.toml" in err
+          and "no longer read: docs/work-tracker/brand/theme.css → [palette] in shoalmark.toml" in page)
     os.environ["SHOALMARK_CMD"] = "python3 scripts/tracker.py"
     try:
         fm.configure(root); (root / "docs/work-tracker/INDEX.md").write_text("stale"); code, _, err = run(root, "--check")
@@ -5097,7 +5098,7 @@ with tempfile.TemporaryDirectory() as d:
             _hung("cell", e_)
 fm.configure(HERE)
 
-# --- FM-002: a board anyone can brand — three files, four places, the nearest to the viewer wins -------------
+# --- FM-002: a board anyone can brand — a logo and its labels, three places, the nearest to the viewer wins --------
 GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
 search: Suche — Id, Stufe, Status, Wörter
@@ -5262,27 +5263,29 @@ viewer.from_move: aus dem Schritt
 viewer.true_now: was jetzt gilt
 viewer.no_move: ohne benannten Schritt
 viewer.none_in_progress: nichts in Arbeit
+brand.gone: no longer read: {0}
+brand.gone.theme: [palette] in shoalmark.toml
+brand.gone.fonts: the system's monospace
+brand.gone.wordmark: the name
+brand.gone.themes: [palette], by name
 """
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
-# a wordmark as a person draws one: the mark stroked, the name filled, both in the page's ink; an id the page also uses
-_WORDMARK = ('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
-             'viewBox="0 0 40 16" height="16" fill="currentColor"><defs><path id="b" d="M0 0h4v4h-4Z"/></defs>'
-             '<path d="M2 2v12" stroke="currentColor" stroke-width="2" fill="none"/><use xlink:href="#b" x="8"/><text x="14" y="13">Repo __ROWS__</text></svg>')
+_GONE_NAMES = ("theme.css", "wordmark.svg")       # the two files R10's look half stopped reading, which a check below writes and removes again
 with tempfile.TemporaryDirectory() as d:
     base = Path(d).resolve(); root = base / "repo"; home = base / "home" / "shoalmark"; org = HERE / "brand"; _org_was = org.is_dir()
-    # the tool's own brand/ is the organisation's place — and, since 0.18.5, where the themes the tool ships are committed
-    # (brand/themes/): a check writes its brand files there and removes those files alone, never the folder
-    _org_clear = lambda: [(org / n_).unlink(missing_ok=True) for n_ in fm.BRAND_FILES]
+    # the tool's own brand/ is the organisation's place — where this repository keeps its design guide, its icons and its seats: a check writes its
+    # brand files there and removes those files alone, never the folder
+    _org_clear = lambda: [(org / n_).unlink(missing_ok=True) for n_ in fm.BRAND_FILES + _GONE_NAMES]
     root.mkdir(); home.mkdir(parents=True)
     git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     tracker(root, "MSR-001", title="Bestand je Lager"); tracker(root, "MSR-002", status="Shipped", title="Erledigtes")
     wt = root / "docs/work-tracker"
     _xdg = os.environ.get("XDG_CONFIG_HOME")
     def board_with(**files):
-        """files: place_file=text — place is org | repo | me. Returns (INDEX.md bytes, page, --brand report)."""
+        """files: place_file=text — place is org | repo | me | loose. Returns (INDEX.md bytes, page, --brand report, the build's stderr, its exit)."""
         shutil.rmtree(home, ignore_errors=True); _org_clear()
         shutil.rmtree(wt / "brand", ignore_errors=True)
-        for f in fm.BRAND_FILES:
+        for f in fm.BRAND_FILES + _GONE_NAMES:
             (wt / f).unlink(missing_ok=True)
         for key, text in files.items():
             place, _, name = key.partition("_")
@@ -5297,16 +5300,19 @@ with tempfile.TemporaryDirectory() as d:
         plain_index, plain_page, _, _, _ = board_with()
         hostile = dict(me_theme_css=":root{--bg:#ff0000}", me_labels_yaml="status.Shipped: LIVE\nstatus.Parked: GONE\n", me_logo_svg=_SVG,
                        org_theme_css=":root{--ink:#00ff00}", org_labels_yaml="status.Proposed: MAYBE\n")
-        h_index, h_page, h_report, _, h_code = board_with(**hostile)
+        h_index, h_page, h_report, h_err, h_code = board_with(**hostile)
         check("C1 · committed output ignores every brand layer: with a hostile person and a hostile organisation present, INDEX.md is byte-identical and the gate's verdict unchanged",
               h_index == plain_index and h_code == 0 and run(root, "--check")[0] == 0 and run(root, "--print-written")[1].strip() == "docs/work-tracker/INDEX.md")
-        i_org, i_repo, i_me = (h_page.find(f'<style data-from="{w}">') for w in ("organisation", "repository", "person"))
-        check("C2 · one rule — every place's theme is its own stylesheet, in order, the person's last; labels merge key by key; the last logo found wins; --brand says the same",
-              0 < i_org < i_me and i_repo == -1 and '"status.Shipped": "LIVE"' in h_page and '"status.Proposed": "MAYBE"' in h_page and '"status.Closed": "Closed"' in h_page
-              and "theme.css     organisation → person" in h_report and "logo          person" in h_report and "labels changed: 3 of" in h_report)
-        _, p2, r2, _, _ = board_with(org_theme_css="a{}", repo_theme_css="b{}", repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nfooter: set up by X\n")
+        _said = [f"{fm.shown_path(p_)} is no longer read — the board's colours are `[palette]` in shoalmark.toml" for p_ in (org / "theme.css", home / "theme.css")]
+        check("C2 · one rule — labels merge key by key, the person's last; the last logo found wins; no place's theme.css is read, and each is named, in the "
+              "places' order, as no longer read — --brand says the same",
+              '"status.Shipped": "LIVE"' in h_page and '"status.Proposed": "MAYBE"' in h_page and '"status.Closed": "Closed"' in h_page
+              and "#ff0000" not in h_page and "#00ff00" not in h_page and "<style data-from" not in h_page
+              and "logo          person" in h_report and "labels.yaml   organisation → person" in h_report and "labels changed: 3 of" in h_report
+              and 0 <= h_err.find(_said[0]) < h_err.find(_said[1]) and all(f"no longer read: {s_.replace(' is no longer read — ', ' — ')}" in h_report for s_ in _said))
+        _, p2, r2, _, _ = board_with(repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nfooter: set up by X\n")
         check("C2 · the repository beats the organisation, key by key — and what only the organisation says survives",
-              '"tagline": "from the repo"' in p2 and '"footer": "set up by X"' in p2 and "theme.css     organisation → repository" in r2)
+              '"tagline": "from the repo"' in p2 and '"footer": "set up by X"' in p2 and "labels.yaml   organisation → repository" in r2)
         board_with()                                          # every place emptied
         del os.environ["XDG_CONFIG_HOME"]; _h = os.environ.pop("HOME", None)
         try:
@@ -5314,8 +5320,8 @@ with tempfile.TemporaryDirectory() as d:
         finally:
             if _h is not None:
                 os.environ["HOME"] = _h
-        check("C3 · nothing present, no HOME at all — a hook, CI, an agent — and the board still renders, with no theme, no logo and the English words",
-              nohome == 0 and "<style data-from" not in no_page and "<img" not in no_page.split("<script>")[0] and '"status.Shipped": "Shipped"' in no_page)
+        check("C3 · nothing present, no HOME at all — a hook, CI, an agent — and the board still renders, with no logo, no line of what it no longer reads, and the English words",
+              nohome == 0 and "<style data-from" not in no_page and "<img" not in no_page.split("<script>")[0] and 'id="w"' not in no_page and '"status.Shipped": "Shipped"' in no_page)
         _, de_page, _, de_err, _ = board_with(repo_labels_yaml=GERMAN)
         check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
               set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
@@ -5335,151 +5341,38 @@ with tempfile.TemporaryDirectory() as d:
                 _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
                 ldom = dom("")
                 check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
-                # the scheme button: clicked for real, three times round — whatever the machine's own setting is
-                (wt / "brand/theme.css").write_text(":root{--bg:#010203}\n@media screen and (prefers-color-scheme:dark){:root{--bg:#040506}}\n", encoding="utf-8"); run(root)
+                # the scheme button: clicked for real, three times round — whatever the machine's own setting is — on the page's own grounds
                 probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
                 (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
                 pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
                 seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-                check(f"the scheme button switches any theme's light and dark by hand — a brand needs to know nothing about it (saw: {seen})",
-                      "light=rgb(1, 2, 3)" in seen and "dark=rgb(4, 5, 6)" in seen and seen.count("auto=") == 1)
-                (wt / "probe.html").unlink(); (wt / "brand/theme.css").unlink()
+                check(f"the scheme button switches the page's own light and dark by hand (saw: {seen})",
+                      "light=rgb(247, 247, 245)" in seen and "dark=rgb(14, 14, 14)" in seen and seen.count("auto=") == 1)
+                (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
                 _hung("german", e_)
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
         code, _, err = run(root)
         check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
-        # --- 0.18.2 (FM-006): a fourth brand file, wordmark.svg — the mark and the name as one drawing, inline in the header
         head = lambda page: page[page.index('<div id="H">'):page.index('<button id="s">')]
-        _, w_page, w_report, w_err, w_code = board_with(repo_wordmark_svg=_WORDMARK, repo_logo_svg=_SVG.replace("<script>document.title=\"PWNED\"</script>", ""))
-        w_head = head(w_page)
-        check("0.18.2 · a wordmark is inlined in the header in place of the logo and the name; the name stays the page's title and the wordmark's accessible name; the logo stays the tab's",
-              w_code == 0 and w_head.startswith('<div id="H"><b class="wm" role="img" aria-label="repo"><svg viewBox="0 0 40 16" height="16" fill="currentColor">')
-              and "<img" not in w_head and "<b>repo</b>" not in w_page and "<title>repo — work tracker</title>" in w_page and '<link rel="icon" href="data:image/svg+xml;base64,' in w_page)
-        check("0.18.2 · the wordmark keeps currentColor, fill and stroke — it takes the page's ink — and is written out again from what was read: its ids and their references prefixed, no placeholder of the page's spelled in it",
-              '<path d="M2 2v12" stroke="currentColor" stroke-width="2" fill="none"></path>' in w_head and '<path id="wm-b" d="M0 0h4v4h-4Z"></path>' in w_head
-              and '<use xlink:href="#wm-b" x="8"></use>' in w_head and "Repo &#95;&#95;ROWS&#95;&#95;</text>" in w_head and w_page.count('id="b"') == 1 and "<?xml" not in w_page)
-        check("0.18.2 · --brand lists the wordmark's place like the other files", "wordmark      repository" in w_report and "logo          repository" in w_report)
-        _, n_page, n_report, _, _ = board_with(repo_logo_svg=_SVG)
-        check("0.18.2 · without a wordmark nothing changes: the logo, then the name", head(n_page).startswith('<div id="H"><img alt="" src="data:image/svg+xml;base64,') and head(n_page).endswith('"><b>repo</b><span data-l="tagline"></span>')
-              and "wordmark      built in" in n_report)
-        refused = {why: board_with(repo_wordmark_svg=svg, repo_logo_svg=_SVG) for why, svg in (
-            ("it holds <script>", _SVG), ("it holds onload= on <svg>, which a wordmark may not carry", _WORDMARK.replace('height="16"', 'height="16" onload="document.title=1"')),
-            ('its href="https://example.org/w.svg#b" on <use> is not what href takes', _WORDMARK.replace('xlink:href="#b"', 'xlink:href="https://example.org/w.svg#b"')),
-            ("it holds <style>", _WORDMARK.replace("<defs>", "<style>body{display:none}</style><defs>")),
-            ("it holds <foreignObject>", _WORDMARK.replace("<defs>", '<foreignObject><p xmlns="http://www.w3.org/1999/xhtml">x</p></foreignObject><defs>')))}
-        check("0.18.2 · a wordmark holding a script, a handler, an outside reference, a <style> or a foreignObject is refused whole, with a warning that says why — the header keeps the logo and the name",
-              all(code_ == 0 and f"repository's wordmark.svg is not shown: {why}" in err_ and "the header keeps the logo and the name" in err_ and 'class="wm"' not in page_
-                  and "<b>repo</b>" in page_ and "PWNED" not in page_ for why, (_, page_, _, err_, code_) in refused.items()))
-        _, c_page, _, c_err, c_code = board_with(repo_wordmark_svg=_WORDMARK.replace("</svg>", "<desc>" + "x" * fm.LOGO_MAX + "</desc></svg>"))
-        check("0.18.2 · a wordmark past the size cap is skipped with a warning that names its bytes, never inlined",
-              c_code == 0 and f"wordmark.svg is not shown: it is {len(_WORDMARK) + 13 + fm.LOGO_MAX:,} bytes — over 200,000" in c_err and 'class="wm"' not in c_page)
-        # FM-035: the same file checked out with Windows line ends (`core.autocrlf`) is the same file — the cap counts it as
-        # committed, `\r\n` as `\n`; the Windows runner wrote it one byte longer and the count above failed there
-        with open(wt / "brand" / "wordmark.svg", "w", encoding="utf-8", newline="\r\n") as f_:
-            f_.write(_WORDMARK.replace("</svg>", "<desc>" + "x" * fm.LOGO_MAX + "</desc></svg>"))
-        crlf_code, _o, crlf_err = run(root); crlf_page = (wt / "index.html").read_text(encoding="utf-8")
-        with open(wt / "brand" / "wordmark.svg", "w", encoding="utf-8", newline="\r\n") as f_:
-            f_.write(_WORDMARK)
-        run(root); crlf_shown = (wt / "index.html").read_text(encoding="utf-8")
-        _, lf_shown, _, _, _ = board_with(repo_wordmark_svg=_WORDMARK)
-        check("FM-035 · a wordmark with Windows line ends is counted as committed: the same bytes named past the cap, and under it inlined exactly as the LF file is",
-              crlf_code == 0 and f"wordmark.svg is not shown: it is {len(_WORDMARK) + 13 + fm.LOGO_MAX:,} bytes — over 200,000" in crlf_err and 'class="wm"' not in crlf_page
-              and head(crlf_shown) == head(lf_shown) and 'class="wm"' in crlf_shown and "\r" not in head(crlf_shown))
-        _, o_page, o_report, o_err, _ = board_with(org_wordmark_svg=_WORDMARK, repo_wordmark_svg=_SVG)
-        check("0.18.2 · a later place's wordmark wins, and one that is refused leaves the earlier one standing",
-              "wordmark      organisation" in o_report and 'aria-label="repo"><svg viewBox="0 0 40 16"' in o_page and "the header keeps the wordmark before it" in o_err)
-        # --- 0.18.2, the Reviewer's R1–R5: a wordmark is held to a grammar — one check per refusal, each case the Reviewer's
-        _W = lambda body, root="": (f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"{root}>'
-                                    f'{body}</svg>').encode("utf-8")
-        _fan = ('<defs><g id="l0"><path d="M0 0h1v1h-1Z"/></g>' + "".join(f'<g id="l{i}">' + f'<use href="#l{i - 1}"/>' * 10 + "</g>" for i in range(1, 7))
-                + '</defs><use href="#l6"/>')                  # 1.3 kB, a million instances
-        _chain = '<defs><path id="l0" d="M0 0h1v1h-1Z"/>' + "".join(f'<g id="l{i}"><use href="#l{i - 1}"/></g>' for i in range(1, 6)) + '</defs><use href="#l5"/>'
-        _decoy = ('<defs><g id="l0"><path d="M0 0h1v1h-1Z"/></g><g id="l0"/>'
-                  + "".join(f'<g id="l{i}">' + f'<use href="#l{i - 1}"/>' * 10 + f'</g><g id="l{i}"/>' for i in range(1, 7)) + '</defs><use href="#l6"/>')
-        _masks = lambda el, attr: (f'<defs><{el} id="m0"><rect width="1" height="1" fill="white"/></{el}>'
-                                   + "".join(f'<{el} id="m{k}">' + f'<rect width="1" height="1" fill="white" {attr}="url(#m{k - 1})"/>' * 10 + f'</{el}>' for k in range(1, 8))
-                                   + f'</defs><rect width="10" height="10" {attr}="url(#m7)"/>')
-        _mask_used = lambda n: '<defs><mask id="m">' + '<rect width="1" height="1" fill="white"/>' * 100 + '</mask></defs>' + '<rect width="1" height="1" mask="url(#m)"/>' * n
-        _laughs = ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE svg [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>'
-                   '<svg xmlns="http://www.w3.org/2000/svg"><text>&b;</text></svg>')
-        for case, svg, why in (
-                ("a CSS escape \\72 in fill", _W('<path d="M0 0" fill="u\\72l(http://127.0.0.1:8765/a)"/>'), 'its fill="u\\72l(http://127.0.0.1:8765/a)" on <path> is not what fill takes'),
-                ("a CSS escape \\r in fill", _W('<path d="M0 0" fill="u\\rl(//127.0.0.1:8765/a)"/>'), 'its fill="u\\rl(//127.0.0.1:8765/a)" on <path> is not what fill takes'),
-                ("a CSS escape \\0072 in stroke", _W('<path d="M0 0" stroke="u\\0072l(//127.0.0.1:8765/a)"/>'), 'its stroke="u\\0072l(//127.0.0.1:8765/a)" on <path> is not what stroke takes'),
-                ("a CSS escape \\u in mask", _W('<path d="M0 0" mask="\\u0075rl(//127.0.0.1:8765/a)"/>'), 'its mask="\\u0075rl(//127.0.0.1:8765/a)" on <path> is not what mask takes'),
-                ("the escape's backslash as &#92;", _W('<path d="M0 0" fill="u&#92;72l(//127.0.0.1:8765/a)"/>'), 'its fill="u\\72l(//127.0.0.1:8765/a)" on <path> is not what fill takes'),
-                ("a style attribute", _W('<path d="M0 0"/>', ' style="background-image:u\\72l(http://127.0.0.1:8765/a)"'), "it holds style= on <svg>, which a wordmark may not carry"),
-                ("an unknown attribute", _W('<path d="M0 0"/>', ' autofocus="" tabindex="0"'), "it holds autofocus= on <svg>, which a wordmark may not carry"),
-                ("a class", _W('<path class="m" d="M0 0"/>'), "it holds class= on <path>, which a wordmark may not carry"),
-                ("xml:base", _W('<path d="M0 0"/>', ' xml:base="http://e.x/"'), "it holds xml:base= on <svg>, which a wordmark may not carry"),
-                ("a UTF-16 file with a DOCTYPE and entities", _laughs.encode("utf-16"), "it is not UTF-8 without a byte-order mark"),
-                ("the same UTF-16, no byte-order mark", _laughs.encode("utf-16-le"), "it holds a control character"),
-                ("a UTF-8 byte-order mark", b"\xef\xbb\xbf" + _W('<path d="M0 0"/>'), "it is not UTF-8 without a byte-order mark"),
-                ("another encoding declared", b'<?xml version="1.0" encoding="ISO-8859-1"?>' + _W('<path d="M0 0"/>'), "its <?xml?> names the encoding ISO-8859-1, not UTF-8"),
-                ("the Reviewer's 1.3 kB <use> fan-out", _W(_fan), "its references nest deeper than 3"),
-                ("a <use> chain five deep", _W(_chain), "its references nest deeper than 3"),
-                ("a <use> cycle", _W('<g id="a"><use href="#a"/></g>'), "its references form a cycle"),
-                ("a <use> of an id it does not have", _W('<use href="#nope"/>'), "it refers to #nope, which the file does not have"),
-                ("1,000 nested <g>", _W("<g>" * 1000 + '<path d="M0 0"/>' + "</g>" * 1000), "it nests deeper than 32"),
-                # the second pass: R7 — the graph the browser draws; R9 — the rule's letter; R8's grammar, stricter
-                ("R7 · the fan-out with every id defined twice, a decoy after each", _W(_decoy), "the id l0 is defined twice"),
-                ("R7 · masks nested 7 deep, ten a level", _W(_masks("mask", "mask")), "its references nest deeper than 3"),
-                ("R7 · clip-paths nested 7 deep, ten a level", _W(_masks("clipPath", "clip-path")), "its references nest deeper than 3"),
-                ("R7 · a mask of 100 used 30 times — it paints 30 times", _W(_mask_used(30)), "it paints over 2,000 elements once its references are followed"),
-                ("R9 · url(#id) of an id it does not have", _W('<path d="M0 0" fill="url(#nope)"/>'), "it refers to #nope, which the file does not have"),
-                ("R9 · Unicode digits", _W('<rect width="\u0661\u0662"/>'), 'its width="\u0661\u0662" on <rect> is not what width takes'),
-                ("R9 · a full-width digit", _W('<rect x="\uff11"/>'), 'its x="\uff11" on <rect> is not what x takes'),
-                ("R9 · DEL", _W("<text>a\x7fb</text>"), "it holds a control character"),
-                ("R9 · a C1 control", _W("<text>a\x85b</text>"), "it holds a control character"),
-                ("R8 · two numbers in a path without a separator", _W('<path d="M1-2"/>'), 'its d="M1-2" on <path> is not what d takes'),
-                ("R8 · a number with no digit before its point", _W('<rect width=".5"/>'), 'its width=".5" on <rect> is not what width takes'),
-                ("R8 · an exponent", _W('<rect width="1e3"/>'), 'its width="1e3" on <rect> is not what width takes'),
-                ("R8 · two separators in a transform's list", _W('<path d="M0 0" transform="translate(1, 2)"/>'), 'its transform="translate(1, 2)" on <path> is not what transform takes')):
-            check(f"0.18.2 · R1–R5 · {case} is refused: {why}", fm.inline_svg(svg) == ("", why))
-        _ok = fm.inline_svg(_W('<defs><linearGradient id="g" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#123456"/></linearGradient></defs>'
-                               '<path d="M0 0h1v1h-1Z" fill="url(#g)" transform="translate(1,2) scale(2)"/><path d="M1 1" stroke="navy" stroke-width="1.5px"/>'
-                               '<text x="1 2.5px,3%" y="4" transform="translate(1,2)scale(2)">a</text>'))[0]
-        check("0.18.2 · what a drawing needs still passes: a gradient by url(#id) of its own, a transform, a named colour, a list of lengths — and a mask of 100 used 10 times",
-              'fill="url(#wm-g)" transform="translate(1,2) scale(2)"' in _ok and '<linearGradient id="wm-g" gradientUnits="userSpaceOnUse">' in _ok and 'stroke="navy"' in _ok
-              and '<text x="1 2.5px,3%" y="4" transform="translate(1,2)scale(2)">a</text>' in _ok and fm.inline_svg(_W(_mask_used(10)))[1] == "")
-        # R8: one pass of a scanner, never a regex — the Reviewer's backtracking cases at 10 kB, timed; R9: the count stops early
-        import time as _time
-        _slow = (("the Reviewer's `x=\"111 111 … !\"`", _W('<text x="' + "111 " * 2500 + '!">a</text>'), 0.05),
-                 ("a transform of 1,100 functions and a `!`", _W('<path d="M0 0" transform="' + "scale(1) " * 1100 + '!"/>'), 0.05),
-                 ("the same with two spaces between", _W('<path d="M0 0" transform="' + "scale(1)  " * 1000 + '!"/>'), 0.05),
-                 ("a width of 20,000 digits and a `!`", _W('<rect width="' + "1" * 20000 + '!"/>'), 0.05),
-                 ("800 paths drawn by 10,000 <use>s, 179 kB — refused by the count as it goes", _W('<defs><g id="a">' + '<path d="M0 0h1v1h-1Z"/>' * 800 + '</g></defs>' + '<use href="#a"/>' * 10000), 1.0))
-        for case, svg, limit in _slow:
-            _t0 = _time.thread_time(); _why = fm.inline_svg(svg)[1]; _ms = (_time.thread_time() - _t0) * 1000     # this thread's CPU time, not the wall clock other work on the machine stretches
-            check(f"0.18.2 · R8/R9 · {case} ({len(svg):,} bytes) is refused in under {limit * 1000:.0f} ms of this thread's CPU time (took {_ms:.1f} ms): {_why}", _why and _ms < limit * 1000)
-        _, x_page, _, x_err, x_code = board_with(repo_wordmark_svg=_W('<text x="' + "111 " * 30 + '!">a</text>').decode(), repo_logo_svg=_SVG)
-        check("0.18.2 · R8 · the Reviewer's 246-byte wordmark that hung the build is a warning: the build and --print-written exit 0",
-              x_code == 0 and "wordmark.svg is not shown: its x=" in x_err and "<b>repo</b>" in x_page and run(root, "--print-written")[0] == 0)
-        _, d_page, _, d_err, d_code = board_with(repo_wordmark_svg="<svg xmlns=\"http://www.w3.org/2000/svg\">" + "<g>" * 1000 + "</g>" * 1000 + "</svg>", repo_logo_svg=_SVG)
-        check("0.18.2 · R4 · a wordmark nested 1,000 deep is a warning, not a traceback: the build and --print-written exit 0",
-              d_code == 0 and "wordmark.svg is not shown: it nests deeper than 32" in d_err and "<b>repo</b>" in d_page and run(root, "--print-written")[0] == 0)
+        _, n_page, n_report, _, _ = board_with(repo_logo_svg=_SVG, repo_wordmark_svg=_SVG.replace("<script>document.title=\"PWNED\"</script>", ""))
+        check("R10 · the header is the logo, then the name: a wordmark.svg is never inlined — it is named as no longer read, and the header shows the name",
+              head(n_page).startswith('<div id="H"><img alt="" src="data:image/svg+xml;base64,') and head(n_page).endswith('"><b>repo</b><span data-l="tagline"></span>')
+              and "#0a7" not in n_page and "no longer read: docs/work-tracker/brand/wordmark.svg — the header shows the name" in n_report)
         # --- 0.18.2: the running line — the tool's mark, name and version, on every page, whatever the brand
         _ver = (HERE / "VERSION").read_text(encoding="utf-8").strip()
         _run = lambda page: (re.search(r'</article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n(<p id="r" class="m">.*?</p>)</footer>\n<dialog', page) or [None, ""])[1]
         _links = lambda line: re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener" aria-label="([^"]+)">', line)
-        check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a wordmark, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
+        check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
               all(_links(_run(pg)) == [("https://github.com/shoalmark/shoalmark", "shoalmark on GitHub"), (f"https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
                   and _run(pg).endswith(f'shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
-                  for pg in (plain_page, h_page, de_page, w_page, n_page)))
+                  for pg in (plain_page, h_page, de_page, n_page)))
         check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark",
               f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
               and fm.PRICKE == re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1))
-        if _browser("wordmark"):
+        if _browser("running"):
             try:
-                board_with(repo_wordmark_svg=_WORDMARK, repo_theme_css=":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n")
-                probe = ('<script>{const o=[],p=document.querySelector("#H .wm svg path[stroke]");for(let i=0;i<3;i++){$("s").click();'
-                         'o.push($("s").dataset.scheme+"="+getComputedStyle(p).stroke+"/"+getComputedStyle(document.querySelector("#H .wm svg")).height)}document.body.dataset.probe=o.join("|")}</script>')
-                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
-                seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-                check(f"0.18.2 · in a browser the wordmark's stroke is the theme's ink, light and dark, through the ◐ switch, at the height it declares (saw: {seen})",
-                      "light=rgb(1, 2, 3)/16px" in seen and "dark=rgb(253, 252, 251)/16px" in seen)
+                board_with()
                 shown = []
                 for frag in ("", "#=MSR-001"):                   # the board, then a tracker's view: every screen a viewer can be on
                     probe = '<script>document.body.dataset.probe=[$("B").hidden,$("v").hidden,$("r").offsetHeight>0,$("r").textContent].join("|")</script>'
@@ -5490,39 +5383,29 @@ with tempfile.TemporaryDirectory() as d:
                       shown == [f"false|true|true|shoalmark · v{_ver}", f"true|false|true|shoalmark · v{_ver}"])
                 (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
-                _hung("wordmark", e_)
-        _, _, _, c_err, c_code = board_with(me_theme_css=":root{--bg:#777777;--ink:#888888}")
-        check("C6 · an unreadable theme is a warning that names the two colours and whose file it is — never a failure", c_code == 0 and "person's theme.css: text #888888 on ground #777777" in c_err and "below 4.5:1" in c_err)
+                _hung("running", e_)
         check("C6 · contrast is the WCAG ratio", round(fm.contrast("#000000", "#ffffff")) == 21 and fm.contrast("#777777", "#888888") < 1.5)
-        _, i_page, _, i_err, i_code = board_with(repo_theme_css='@import url("../../gone/tokens.css");\n:root{--bg:var(--x)}', repo_labels_yaml="tagline: still here\n", me_theme_css=":root{--mute:#123123}")
-        check("C10 · a theme whose import is missing is left out whole — the board keeps its colours, says so once, and the other places still apply",
-              i_code == 0 and "imports ../../gone/tokens.css, which is not there" in i_err and "var(--x)" not in i_page and "--mute:#123123" in i_page and '"tagline": "still here"' in i_page)
-        (wt / "brand/fonts").mkdir(parents=True, exist_ok=True); (wt / "brand/fonts/mine.woff2").write_bytes(b"x"); (home / "tokens.css").parent.mkdir(parents=True, exist_ok=True)
-        _, u_page, _, u_err, _ = board_with(repo_theme_css='@font-face{font-family:"Mine";src:url("fonts/mine.woff2")}\na{background:url(https://example.org/x.png)}',
-                                            me_theme_css='@import url("tokens.css");\n:root{--mute:#abcabc}', me_tokens_css=":root{--x:1}")
-        (wt / "brand/fonts").mkdir(parents=True, exist_ok=True); (wt / "brand/fonts/mine.woff2").write_bytes(b"x"); run(root)
-        u_page = (wt / "index.html").read_text(encoding="utf-8")
-        check("a path in a theme is written relative to the file it is in, and re-based onto the page — so a font beside the theme, and an import in the person's own folder, both resolve; an absolute URL is left alone",
-              'src:url("brand/fonts/mine.woff2")' in u_page and "url(https://example.org/x.png)" in u_page
-              and re.search(r'@import url\("(\.\./)+.*home/shoalmark/tokens\.css"\)', u_page) is not None and "is not there" not in u_err)
-        _, l_page, _, l_err, l_code = board_with(loose_theme_css=":root{--bg:#010203}", loose_labels_yaml="tagline: old place\n")
-        check("brand files left loose beside the trackers are not read — and the warning says where they belong",
-              l_code == 0 and "--bg:#010203" not in l_page and "old place" not in l_page and "theme.css, labels.yaml beside the trackers are not read" in l_err and "docs/work-tracker/brand/" in l_err)
+        _, l_page, _, l_err, l_code = board_with(loose_logo_svg=_SVG, loose_labels_yaml="tagline: old place\n", loose_theme_css=":root{--bg:#010203}")
+        check("brand files left loose beside the trackers are not read — the warning says where a logo and the labels belong, and a theme.css there is named as no longer read",
+              l_code == 0 and "--bg:#010203" not in l_page and "old place" not in l_page and "<img" not in l_page.split("<script>")[0]
+              and "logo.svg, labels.yaml beside the trackers are not read" in l_err and "docs/work-tracker/brand/" in l_err
+              and "docs/work-tracker/theme.css is no longer read — the board's colours are `[palette]` in shoalmark.toml" in l_err)
         _, t_page, _, t_err, t_code = board_with(repo_labels_yaml="tagine: a typo\nstatus.Shipped: Live\n")
         check("a mistyped label is named in a warning and never reaches the page — the rest of the file still applies",
               t_code == 0 and "labels.yaml: tagine is not a label" in t_err and '"tagine"' not in t_page and '"status.Shipped": "Live"' in t_page)
-        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n")
+        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n", org_logo_svg=_SVG)
         dest = base / "client" / "tools" / "shoalmark"
         with redirect_stdout(io.StringIO()):
             fm.vendor(dest, allow_untagged=True)
-        check("C7 · the organisation's brand travels with --vendor and is pinned like the rest of the copy",
-              (dest / "brand/theme.css").read_text() == ":root{--blue:#123456}" and "brand/theme.css" in (dest / "PIN").read_text() and "brand/labels.yaml" in (dest / "PIN").read_text())
+        check("C7 · the organisation's logo and labels travel with --vendor and are pinned like the rest of the copy — its theme.css, read by no board, does not",
+              (dest / "brand/labels.yaml").read_text() == "footer: set up by X with shoalmark\n" and "brand/labels.yaml" in (dest / "PIN").read_text()
+              and "brand/logo.svg" in (dest / "PIN").read_text() and not (dest / "brand/theme.css").exists() and "theme.css" not in (dest / "PIN").read_text())
         (base / "client/docs/work-tracker").mkdir(parents=True)
         (base / "client/docs/work-tracker/MSR-001-x.md").write_text('---\nid: MSR-001\nstatus: Proposed\nconsidered: none\nhook: "h"\n---\n\n# MSR-001 — x\n')
         (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("footer: ours\n")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
-        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" in cpage)
+        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" not in cpage)
         (dest / "VERSION").write_text("0.0.1-vendored\n", encoding="utf-8")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client"), "--html-only"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         check("0.18.2 · a vendored copy's running line names the version IT runs — its own VERSION, its own release page",
@@ -5531,11 +5414,8 @@ with tempfile.TemporaryDirectory() as d:
         with redirect_stdout(io.StringIO()):
             fm.brand_report(str(base / "starter"))
         starter = fm.read_flat((base / "starter/labels.yaml").read_text(encoding="utf-8"))
-        check("--brand DIR writes a starter a person can edit: every label in English, and a theme that names the nine variables",
-              starter == {k: v for k, v in fm.LABELS.items()} and all(v in (base / "starter/theme.css").read_text() for v in ("--bg", "--ink", "--dim", "--mute", "--line", "--teal", "--coral", "--blue", "--yellow")))
-        check("0.18.2 · the starter's theme states the whole drawing rule in a comment — viewBox and height, currentColor, the name as paths or <text>, the pixel grid, shapes only, never style, the logo stays the tab's (R6)",
-              all(w in (base / "starter/theme.css").read_text() for w in ("wordmark.svg", 'fill="currentColor"', "the browser tab", "viewBox", "the name as paths",
-                                                                           "whole multiple of its grid", 'never style="…"', "refuses it whole")))
+        check("--brand DIR writes a labels.yaml a person can edit: every label in English — and no theme.css, which no board reads",
+              starter == {k: v for k, v in fm.LABELS.items()} and sorted(p_.name for p_ in (base / "starter").iterdir()) == ["labels.yaml"])
     finally:
         _org_clear()
         if not _org_was and org.is_dir() and not any(org.iterdir()):
@@ -5546,9 +5426,7 @@ with tempfile.TemporaryDirectory() as d:
             os.environ["XDG_CONFIG_HOME"] = _xdg
 fm.configure(HERE)
 
-# --- FM-002, 0.18.5: the three hooks a theme styles — the Owner's box's title, the last line's one element, the striped rows.
-# The mocks worked around each in CSS (FM-006's evidence): the title an English word in `content:`, which labels.yaml cannot
-# reach; the running line lifted onto the claim's line; `nth-child(even)`, which counts a group's head and the hidden rows.
+# --- FM-002, 0.18.5: the Owner's box carries its title, and the last line is one element — the claim and the running line ------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     for n_ in (1, 2, 3):
@@ -5558,48 +5436,20 @@ with tempfile.TemporaryDirectory() as d:
     _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
     try:
         run(root); page = (wt / "index.html").read_text(encoding="utf-8")
-        check("FM-002 · the board carries three hooks a theme styles: the Owner's box's title, the label `owner.title`; the claim and the running line in one footer element, after the viewer; `zebra` on every other row of a group — the default CSS hides the title, and the claim in the viewer, where it stood hidden in the board before",
+        check("FM-002 · the board carries the Owner's box's title, the label `owner.title`, and the claim and the running line in one footer element, after the viewer — "
+              "the default CSS hides the title, and the claim in the viewer; no row carries the stripe a theme once drew",
               '</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n<p id="r" class="m">' in page
               and page.count("<footer") == 1 and ".pt{display:none}#B[hidden]~#F #f{display:none}" in page
-              and '`<span class="pt">${l("owner.title")}</span>`+' in page and '${i%2?" zebra":""}' in page and '"owner.title": "owed to the owner"' in page)
+              and '`<span class="pt">${l("owner.title")}</span>`+' in page and "zebra" not in page and '"owner.title": "owed to the owner"' in page)
         if _browser("hooks"):
             try:
                 import html as _html
-                # the page as it was before the hooks: the claim at the board's end, no footer element, no title, no stripes
-                undo = (('</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n',
-                         '</tbody></table>\n<p id="f" class="m" data-l="footer"></p></div>\n<article id="v" hidden></article>\n'),
-                        ("</p></footer>\n<dialog", "</p>\n<dialog"), ('`<span class="pt">${l("owner.title")}</span>`+', ""), ('${i%2?" zebra":""}', ""))
-                before = page
-                for a_, b_ in undo:
-                    before = before.replace(a_, b_) if before.count(a_) == 1 else ""
-                # what is seen: each part's box — none where it is not rendered — its ink and its ground, and every cell's ground
-                probe = ('<script>{const r=s=>{const e=document.querySelector(s),b=e.getBoundingClientRect(),c=getComputedStyle(e);'
-                         'return s+"="+(e.getClientRects().length?[b.x,b.y,b.width,b.height].map(Math.round):"none")+"/"+c.color+"/"+c.backgroundColor};'
-                         'document.body.dataset.probe=["#H","header","#l","#p","table","#f","#r"].map(r).join(" ")+" cells="+[...document.querySelectorAll("tr.t td")].map(x=>getComputedStyle(x).backgroundColor).join(";")}</script>')
-                seen_ = {}
-                for name_, html_ in (("before", before), ("after", page)):
-                    for frag in ("", "#=MSR-001"):
-                        (wt / "probe.html").write_text(html_.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                        pdom = _chrome_run(["--window-size=1300,900", "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri() + frag]).stdout
-                        seen_[name_ + frag] = _html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1])
                 probe = ('<script>{const o=[],s=()=>o.push(($("p").querySelector(".pt")||{}).textContent||"-");s();$("q").value="row";draw();s();'
                          '$("q").value="";$("g").click();s();document.body.dataset.probe=o.join("|")}</script>')
                 (wt / "probe.html").write_text(page.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
                 views_ = _html.unescape((re.search(r'data-probe="([^"]*)"', _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout) or [None, ""])[1])
-                check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view — so a theme titles the box wherever it stands (saw {views_!r})",
+                check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view (saw {views_!r})",
                       views_ == "owed to the owner|owed to the owner|owed to the owner")
-                check(f"FM-002 · with no theme the hooks carry no visible change: the board and a tracker's view render as the page without them — every part's box, ink and ground, every cell's ground; the claim shown on the board, not in the view (saw {seen_})",
-                      before and seen_["before"] == seen_["after"] and seen_["before#=MSR-001"] == seen_["after#=MSR-001"]
-                      and "#f=none" not in seen_["after"] and "#f=none" in seen_["after#=MSR-001"] and "#r=none" not in seen_["after#=MSR-001"] and seen_["after"].count("rgba(0, 0, 0, 0)") >= 12)
-                (wt / "brand/theme.css").write_text("#p>.pt{display:block}tr.zebra td{background:#010203}#F{display:flex;align-items:baseline}#F #f{flex:1;margin:0}#F #r{margin:0}\n", encoding="utf-8")
-                run(root)
-                probe = ('<script>{const p=document.querySelector("#p>.pt"),f=$("f").getBoundingClientRect(),r=$("r").getBoundingClientRect();'
-                         'document.body.dataset.probe=[p.getClientRects().length>0,p.textContent,[...document.querySelectorAll("tr.t")].map(x=>getComputedStyle(x.cells[0]).backgroundColor).join(";"),f.top<r.bottom&&r.top<f.bottom&&f.right<=r.left].join("|")}</script>')
-                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                pdom = _chrome_run(["--window-size=1300,900", "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
-                themed_ = _html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1])
-                check(f"FM-002 · a theme styles each hook with no workaround: the box's title shows its label, every other row of a group takes the stripe, the claim and the running line stand on one line (saw {themed_!r})",
-                      themed_ == "true|owed to the owner|rgba(0, 0, 0, 0);rgb(1, 2, 3);rgba(0, 0, 0, 0)|true")
                 (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
                 _hung("hooks", e_)
@@ -5607,174 +5457,142 @@ with tempfile.TemporaryDirectory() as d:
         os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
 fm.configure(HERE)
 
-# --- FM-002, 0.18.5: the tool ships two themes as starters — brand/themes/monochrome/ and brand/themes/shoalmark/ (the
-# Owner's signed answer, 4e00f85: the tool ships monochrome and shoalmark as starters), cut from FM-006's mocks (9467b83)
-_th = HERE / "brand/themes"
-_THEMES = ("monochrome", "shoalmark")
-_FONTS = {"IBMPlexMono-Regular-Latin1.woff2": "10d3c7fa7eaf48e78db24f317b64f008a75e00f63a68bb3c2afc6ef51e58674f",       # @ibm/plex-mono 1.1.0,
-          "IBMPlexMono-SemiBold-Latin1.woff2": "1ce95cff1c5056cb0fed049c2912823293b158b816e193a6f937f2d92b1e0f39",      # fonts/split/woff2/
-          "IBMPlexMono-Italic-Latin1.woff2": "08c4566f535253ee314ea35e4d75384a7bb151b4ed8345353698d95b33516d3b"}
-_readme = (_th / "README.md").read_text(encoding="utf-8") if (_th / "README.md").is_file() else ""
-_css = {n: (_th / n / "theme.css").read_text(encoding="utf-8") if (_th / n / "theme.css").is_file() else "" for n in _THEMES}
-check("FM-002 · the tool ships two themes in brand/themes/ — monochrome and shoalmark, each a theme.css with the three Plex Mono cuts it loads and their licence; the README names each in one line and lists the fonts by name and sha256, and each file is that hash",
-      sorted(p.name for p in _th.iterdir() if p.is_dir()) == list(_THEMES) and all(_css.values())
-      and all(sorted(p.name for p in (_th / n / "fonts").iterdir()) == sorted([*_FONTS, "LICENSE.txt"]) for n in _THEMES)
-      and all(fm.digest(_th / n / "fonts" / k) == v and f"`fonts/{k}` | `{v}`" in _readme for n in _THEMES for k, v in _FONTS.items())
-      and all(len(re.findall(rf"^- `{n}` — [^\n]+\.$", _readme, re.M)) == 1 for n in _THEMES)
-      and all((_th / n / "fonts/LICENSE.txt").read_bytes() == (HERE / "work-tracker/brand/fonts/LICENSE.txt").read_bytes() for n in _THEMES)
-      and (_th / "monochrome/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes() == (HERE / "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes())
-# every edit a starter makes to FM-006's mocks (evidence/FM-006/themes/, 9467b83), the mock's text -> the starter's: the font
-# urls and the Regular, the placeholder's ink (contrast, slice A's measure), hooks 1 and 2 in place of the two workarounds,
-# and hook 3 left unused, the mock's stripes kept — each marked SLICE B where it stands. Nothing else may differ: the
-# Owner took the mocks as they are.
-_EDITS = {
-    "monochrome.css": [
-        ('@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("brand/fonts/',
-         '/* SLICE B: the font urls relative to this file, as a brand place reads them (the mock\'s were the page\'s, brand/fonts/…),\n'
-         '   and the Regular declared beside the two cuts — the mock\'s page had it from the repository\'s own theme; a board with no\n'
-         '   brand of its own would set every word in the SemiBold */\n'
-         '@font-face{font-family:"IBM Plex Mono";font-weight:400;src:url("fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2")}\n'
-         '@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("fonts/'),
-        ('font-weight:400;src:url("brand/fonts/IBMPlexMono-Italic', 'font-weight:400;src:url("fonts/IBMPlexMono-Italic'),
-        ('header button[aria-pressed=true]{color:var(--ink);font-weight:600}\n',
-         'header button[aria-pressed=true]{color:var(--ink);font-weight:600}\n'
-         '/* SLICE B, not the mock\'s — the built board\'s measure (slice A, 70fedd3): the browser\'s own placeholder ink, #757575, reads\n'
-         '   4.30:1 by day and 4.19:1 by night on this theme\'s grounds; --mute reads 4.75:1 and 5.97:1 */\n'
-         '::placeholder{color:var(--mute);opacity:1}\n'),
-        ('each section a markdown heading */\n',
-         'each section a markdown heading.\n'
-         '   SLICE B, hook 1 of 3: the title is the board\'s label owner.title, the element #p>.pt — the mock\'s #p::before set it as\n'
-         '   CSS content, English, which labels.yaml cannot reach */\n'),
-        ('#p::before{content:"owed to the owner";position:absolute;', '#p>.pt{display:block;position:absolute;'),
-        ('/* over the last line\'s own rules below; the lifted #r keeps its -21px */',
-         '/* over the last line\'s own rules below (SLICE B: nothing is lifted — hook 2) */'),
-        ('\n#f{margin:28px 0 0;padding-right:26ch;line-height:21px}\n',
-         '\n/* SLICE B, hook 2 of 3: the claim and the running line stand in one element, the footer #F — the mock lifted the running\n'
-         '   line onto the claim\'s line, #B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}. While the board shows, the two\n'
-         '   share one cell, the running line at its foot, so it stands on the claim\'s last line; the claim is painted over the\n'
-         '   band the running line draws. In the viewer the footer is a block: the running line alone, as the mock\'s */\n'
-         '#f{margin:28px 0 0;padding-right:26ch;line-height:21px}\n'),
-        ('#B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}\n',
-         '#B:not([hidden])~#F{display:grid}#F>#f,#F>#r{grid-area:1/1}#F>#r{align-self:end}#F>#f{position:relative}\n')],
-    "shoalmark.css": [
-        ('#p::before{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}',
-         '#p>.pt{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}   /* SLICE B: hook 1 of 3 */'),
-        ('tr.t:nth-child(even) td{background:var(--zebra)}',
-         '/* SLICE B, hook 3 of 3, not used here: the board writes the class zebra on every other row of a group, and a true\n'
-         '   alternate-row stripe is one line — tr.zebra td{background:var(--zebra)} in place of the nth-child rule below. Not made:\n'
-         '   the Owner took the mock as it is (2026-09-26), and the mock\'s tr.t:nth-child(even), which counts a group\'s head and its\n'
-         '   hidden rows, tints every row of a group or none — as the renders he approved show */\n'
-         'tr.t:nth-child(even) td{background:var(--zebra)}')]}
+# --- R10's look half (FM-053's answer): never a silent loss. Each brand file the board no longer reads — theme.css, fonts/ and wordmark.svg in every
+# place, the two files beside the trackers, and the themes/ an older copy shipped in the tool's own brand/ — is named, file by file, with what replaces
+# it: by the build's output, on the page (one line) and by `--brand`; `--check` never fails on one; with them removed, no line remains.
+# The class test, run on the tool and on two mutants — one place dropped, one file not named — each of which it must fail
+_GONE_SAYS = {"theme.css": ("the board's colours are `[palette]` in shoalmark.toml", "[palette] in shoalmark.toml"),
+              "fonts/": ("the board is set in the system's monospace", "the system's monospace"),
+              "wordmark.svg": ("the header shows the name", "the name"),
+              "themes/": ("no theme is copied: the board's colours are `[palette]` in shoalmark.toml, by name — monochrome or shoalmark", "[palette], by name")}
+_GONE_WHERE = {"organisation": ("theme.css", "fonts/", "wordmark.svg", "themes/"), "repository": ("theme.css", "fonts/", "wordmark.svg"),
+               "person": ("theme.css", "fonts/", "wordmark.svg"), "beside the trackers": ("theme.css", "wordmark.svg")}
 
 
-def _cut(name):
-    """The mock `name` with its SLICE B edits — "" when an edit's text is not in it exactly once."""
-    text = (HERE / "work-tracker/evidence/FM-006/themes" / name).read_text(encoding="utf-8")
-    for a_, b_ in _EDITS[name]:
-        if text.count(a_) != 1:
-            return ""
-        text = text.replace(a_, b_)
-    return text
+def _gone_class(source):
+    """The class test on a tool whose source is `source`: a copy of it outside the repository (its brand/ the organisation's place), a person's
+    `~/.config/shoalmark/` under a temporary HOME, a leftover of every name in every place it can stand — then each removed. (ok, what was missed)."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_, home_ = base_ / "tool", base_ / "repo", base_ / "home"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir(); home_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        env_ = {k: v for k, v in _ENV.items() if k != "XDG_CONFIG_HOME"}; env_.update(HOME=str(home_), USERPROFILE=str(home_))    # Windows reads USERPROFILE
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=env_)
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr"); tracker(root_, "MSR-001")
+        places_ = {"organisation": tool_ / "brand", "repository": root_ / "docs/work-tracker/brand", "person": home_ / ".config/shoalmark",
+                   "beside the trackers": root_ / "docs/work-tracker"}
+        shown_ = lambda where, name: {"organisation": (tool_ / "brand").as_posix() + "/", "repository": "docs/work-tracker/brand/",
+                                      "person": "~/.config/shoalmark/", "beside the trackers": "docs/work-tracker/"}[where] + name
+        made_ = []
+        for where, names in _GONE_WHERE.items():
+            for name in names:
+                p_ = places_[where] / name.rstrip("/"); made_.append((where, name, p_))
+                if name.endswith("/"):
+                    p_.mkdir(parents=True); (p_ / "a-file").write_text("x", encoding="utf-8")
+                else:
+                    p_.parent.mkdir(parents=True, exist_ok=True); p_.write_text("x", encoding="utf-8")
+        c_, _o, e_ = tr_(); page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        _c, rep_, _e = tr_("--brand"); chk_ = tr_("--check")[0]
+        line_ = re.findall(r'<p id="w" class="m">([^<]*)</p>', page_)
+        missed_ = [f"{where} {name}: " + ",".join(k_ for k_, ok_ in (
+            ("output", f"  brand: {shown_(where, name)} is no longer read — {_GONE_SAYS[name][0]}\n" in e_),
+            ("page", len(line_) == 1 and f"{_html_esc(shown_(where, name))} → {_html_esc(_GONE_SAYS[name][1])}" in line_[0]),
+            ("--brand", f"  no longer read: {shown_(where, name)} — {_GONE_SAYS[name][0]}\n" in rep_)) if not ok_)
+                   for where, name, _p in made_]
+        missed_ = [m_ for m_ in missed_ if not m_.endswith(": ")]
+        for _w, name, p_ in made_:
+            shutil.rmtree(p_) if name.endswith("/") else p_.unlink()
+        c2_, _o2, e2_ = tr_(); page2_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"); rep2_ = tr_("--brand")[1]
+        rm_git(root_)
+        ok_ = (c_ == 0 and chk_ == 0 and not missed_ and line_ and line_[0].startswith("no longer read: ") and line_[0].count(" → ") == len(made_)
+               and c2_ == 0 and "no longer read" not in e2_ + rep2_ and 'id="w"' not in page2_)
+        return ok_, dict(exit=c_, check=chk_, missed=missed_, after=[l_ for l_ in (e2_ + rep2_).splitlines() if "no longer read" in l_])
 
 
-_head = lambda css: css[:css.index("*/\n") + 3] if css.startswith("/* THE STARTER") else "\0"
-check("FM-002 · each starter is FM-006's mocks as the Owner took them — monochrome, and monochrome then shoalmark as build-mocks.py stacks them — under a header of its own, every rule verbatim but the SLICE B edits, each marked where it stands: the font urls and the Regular, the placeholder's ink, the box's title and the last line on hooks 1 and 2, the mock's stripes kept and hook 3's one line named",
-      _cut("monochrome.css") and _cut("shoalmark.css") and _css["monochrome"] == _head(_css["monochrome"]) + _cut("monochrome.css")
-      and _css["shoalmark"] == _head(_css["shoalmark"]) + _cut("monochrome.css") + "\n" + _cut("shoalmark.css")
-      and _css["monochrome"].count("SLICE B") == 6 and _css["shoalmark"].count("SLICE B") == 8)
-check("FM-002 · each starter styles the box's title and the last line through hooks 1 and 2, the two workarounds gone as rules, and keeps the mock's stripes; every url() it names is a file beside it; every drawn marker and figure has empty alt text (AU-16)",
-      all(re.findall(r'url\("([^"]+)"\)', c) and all((_th / n / u).is_file() for u in re.findall(r'url\("([^"]+)"\)', c)) for n, c in _css.items())
-      and all("\n#p>.pt{display:block;" in c and "\n#B:not([hidden])~#F{display:grid}" in c and "\n#p::before" not in c and "\n#B:not([hidden]):has(" not in c
-              and 'url("brand/fonts/' not in c and all(f'content:"{x}" / ""' in c for x in re.findall(r'content:"([^"]+)"', c)) for c in _css.values())
-      and "\ntr.t:nth-child(even) td{background:var(--zebra)}" in _css["shoalmark"] and "\ntr.zebra" not in _css["shoalmark"])
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
-    tracker(root, "MSR-001"); wt = root / "docs/work-tracker"
-    _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
-    try:
-        # the default look of a repository that chooses nothing: the tool's brand/ holding the themes changes no byte of the board
-        code0, _, err0 = run(root, "--html-only"); page0 = (wt / "index.html").read_text(encoding="utf-8")
-        _here = fm.HERE
-        try:
-            fm.HERE = Path(d) / "a-copy-with-no-brand"; run(root, "--html-only"); bare = (wt / "index.html").read_text(encoding="utf-8")
-        finally:
-            fm.HERE = _here
-        check("FM-002 · a repository that chooses no theme sees no change: with the themes in the tool's brand/ its board is byte for byte the board of a copy that has no brand/ at all — no theme, no warning",
-              _th.is_dir() and code0 == 0 and page0 == bare and "<style data-from" not in page0 and "brand:" not in err0)
-        _, rep_, _ = run(root, "--brand")
-        check(f"FM-002 R3 · `--brand` marks the tool's brand/ as a place with no brand file, its themes starters no board wears — and every source still reads built in (saw {rep_.splitlines()[1:2]})",
-              f"organisation  {HERE / 'brand'}  — no brand file here: its themes/ are starters, worn only once --from copies one" in rep_
-              and all(f"{k:<13} built in" in rep_ for k in ("theme.css", "logo", "wordmark", "labels.yaml")))
-        worn = {}
-        for n in _THEMES:
-            shutil.rmtree(wt / "brand", ignore_errors=True); shutil.copytree(_th / n, wt / "brand")
-            code_, _, err_ = run(root, "--html-only"); page_ = (wt / "index.html").read_text(encoding="utf-8")
-            worn[n] = (code_, err_.strip(), re.findall(r'url\("([^"]+)"\)', page_.split('<style data-from="repository">')[1].split("</style>")[0]) if '<style data-from="repository">' in page_ else None)
-        check(f"FM-002 · each theme, worn from the repository's place, loads with no warning, and every font it names resolves from the page (saw {worn})",
-              all(c_ == 0 and "brand:" not in e_ and u_ and all((wt / u).is_file() and u.startswith("brand/fonts/") for u in u_) for c_, e_, u_ in worn.values()))
-    finally:
-        os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
-fm.configure(HERE)
+_html_esc = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+_tool_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_gone_ok, _gone_saw = _gone_class(_tool_src)
+check(f"R10 · never a silent loss: every brand file the board no longer reads, in every place it can stand — the organisation's, the repository's, a "
+      f"person's under a temporary HOME, beside the trackers — is named, file by file, with what replaces it, by the build's output, on the page in one "
+      f"line, and by `--brand`; `--check` exits 0 beside them; with them removed, no line remains (saw {_gone_saw})", _gone_ok)
+_GONE_MUTANTS = {
+    "one place dropped — the person's": ('    places = [(d, BRAND_GONE + (BRAND_GONE_TOOL if who == "organisation" else ())) for who, d in brand_places()]',
+                                          '    places = [(d, BRAND_GONE + (BRAND_GONE_TOOL if who == "organisation" else ())) for who, d in brand_places() if who != "person"]'),
+    "one file not named — wordmark.svg": ('            for d, gone in places for name, instead, key in gone if os.path.lexists(d / name.rstrip("/"))]',
+                                          '            for d, gone in places for name, instead, key in gone if os.path.lexists(d / name.rstrip("/")) and name != "wordmark.svg"]')}
+for _what, (_a, _b) in _GONE_MUTANTS.items():
+    check(f"R10 · the class test's mutant, {_what}: the class test FAILS on it", _tool_src.count(_a) == 1 and not _gone_class(_tool_src.replace(_a, _b))[0])
 
-# --- FM-002, 0.18.5: `--brand DIR --from <theme>` writes a starter from a theme the tool ships ----------------------------
+# --- R10's look half: `--from`, which copied a theme the tool shipped, is retired — named, with what replaces it, and refused, nothing written --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     tracker(root, "MSR-001"); wt = root / "docs/work-tracker"; dest = wt / "brand"
-    _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
-    try:
-        code_, out_, err_ = run(root, "--brand", str(dest), "--from", "shoalmark")
-        _want = sorted(p.relative_to(_th / "shoalmark").as_posix() for p in (_th / "shoalmark").rglob("*") if p.is_file())
-        _got = sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file())
-        check(f"FM-002 · `--brand DIR --from shoalmark` copies the theme's files into DIR byte for byte — its theme.css and its fonts — and names the theme (saw {out_.splitlines()[:2]})",
-              code_ == 0 and _got == _want and all((dest / r).read_bytes() == (_th / "shoalmark" / r).read_bytes() for r in _want)
-              and out_.startswith("the shoalmark theme") and all(f"wrote {dest / r}" in out_ for r in _want))
-        code_b, _, err_b = run(root, "--html-only"); page_ = (wt / "index.html").read_text(encoding="utf-8")
-        check("FM-002 · the board wears the starter from the repository's place: its stylesheet, no warning, every font resolving",
-              code_b == 0 and "brand:" not in err_b and '<style data-from="repository">' in page_ and "\n#p>.pt{display:block;" in page_
-              and all((wt / u).is_file() for u in re.findall(r'url\("(brand/fonts/[^"]+)"\)', page_)) and len(re.findall(r'url\("(brand/fonts/[^"]+)"\)', page_)) == 3)
-        (dest / "theme.css").write_text("/* mine */\n", encoding="utf-8")
-        code_k, out_k, _ = run(root, "--brand", str(dest), "--from", "monochrome")
-        check("FM-002 · a second `--from` never overwrites: a file that is there is kept, and said so, and the theme named",
-              code_k == 0 and (dest / "theme.css").read_text(encoding="utf-8") == "/* mine */\n" and f"kept {dest / 'theme.css'}" in out_k and out_k.startswith("the monochrome theme"))
-        code_u, out_u, err_u = run(root, "--brand", str(root / "nowhere"), "--from", "catkin")
-        code_a, _, err_a = run(root, "--from", "shoalmark")
-        code_n, _, err_n = run(root, "--brand", "--from", "shoalmark")
-        check(f"FM-002 · an unknown theme is refused with the two the tool ships, nothing written; `--from` without `--brand DIR` is refused (saw {err_u.strip()!r}, {err_a.strip()!r})",
-              code_u == 2 and "monochrome or shoalmark" in err_u and "nothing was written" in err_u and not (root / "nowhere").exists()
-              and code_a == 2 == code_n and "--from goes with --brand DIR" in err_a and "--from goes with --brand DIR" in err_n)
-        _help = io.StringIO()
-        with redirect_stdout(_help):
-            _try(lambda: fm.parse_args(["--help"]))
-        check("FM-002 · `--schema` and `--help` say it: no key chooses the look, `--brand DIR --from` and the two themes",
-              "`--brand DIR --from THEME`" in fm.render_schema() and "`monochrome` · `shoalmark`" in fm.render_schema() and "No key chooses the board's look" in fm.render_schema()
-              and "--from THEME" in _help.getvalue() and "monochrome or shoalmark" in re.sub(r"\s+", " ", _help.getvalue()))
-    finally:
-        os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
+    code_, out_, err_ = run(root, "--brand", str(dest), "--from", "shoalmark")
+    code_a, _, err_a = run(root, "--from", "monochrome")
+    check(f"R10 · `--brand DIR --from THEME` and `--from` alone are refused — the themes are gone, `[palette]` named in their place, nothing written (saw {err_.strip()!r})",
+          code_ == 2 == code_a and not dest.exists() and out_ == ""
+          and all(e_.strip() == "--from: the tool ships no theme any more — the board's colours are `[palette]` in shoalmark.toml, by name (monochrome or shoalmark) "
+                  "or by a few colours; nothing was written" for e_ in (err_, err_a)))
+    _help = io.StringIO()
+    with redirect_stdout(_help):
+        _try(lambda: fm.parse_args(["--help"]))
+    check("R10 · `--schema` and `--help` say it: no theme is read or shipped, and `--brand` names the files the board no longer reads; `--from` is in neither",
+          "No theme is read or shipped" in fm.render_schema() and "`--brand DIR --from" not in fm.render_schema() and "--from" not in _help.getvalue()
+          and "each brand file it no longer reads" in re.sub(r"\s+", " ", _help.getvalue()))
 fm.configure(HERE)
 
-# --- 0.18.2 (FM-006): this repository's own board wears the site's brand — its brand files, held to their sources ------
+# --- R10's look half: the documentation keeps its look — every file the docs load stays, and the docs' chart is drawn by their own stylesheet ------
+
+
+def _docs_refs():
+    """Every file the documentation site loads or includes, as its sources name it: zensical.toml's extra_css and favicon, its custom_dir and the logo
+    icon in it; each url() of a docs stylesheet; each `--8<--` include and each relative link of a docs page; each `{{ '…' | url }}` of the overrides."""
+    conf_ = (HERE / "zensical.toml").read_text(encoding="utf-8")
+    docs_ = HERE / re.search(r'^docs_dir\s*=\s*"([^"]+)"', conf_, re.M).group(1)
+    refs_ = [docs_ / c_ for c_ in re.findall(r'"([^"]+)"', re.search(r"^extra_css\s*=\s*\[([^\]]*)\]", conf_, re.M).group(1))]
+    refs_.append(docs_ / re.search(r'^favicon\s*=\s*"([^"]+)"', conf_, re.M).group(1))
+    custom_ = HERE / re.search(r'^custom_dir\s*=\s*"([^"]+)"', conf_, re.M).group(1)
+    refs_ += [custom_, custom_ / ".icons" / (re.search(r'^logo\s*=\s*"([^"]+)"', conf_, re.M).group(1) + ".svg")]
+    for css_ in sorted((docs_ / "stylesheets").glob("*.css")):
+        refs_ += [(css_.parent / u_.strip("'\"")).resolve() for u_ in re.findall(r"url\(([^)]+)\)", css_.read_text(encoding="utf-8"))
+                  if not re.match(r"['\"]?(data:|https?:|#)", u_)]
+    for md_ in sorted(docs_.rglob("*.md")):
+        t_ = md_.read_text(encoding="utf-8")
+        refs_ += [HERE / s_ for s_ in re.findall(r'^--8<-- "([^"]+)"', t_, re.M)]
+        refs_ += [(md_.parent / l_.split("#")[0]).resolve() for l_ in re.findall(r"\]\(([^)\s]+)\)", t_) if not re.match(r"(https?:|mailto:|#)", l_)]
+    for tpl_ in sorted(custom_.rglob("*.html")):
+        refs_ += [docs_ / u_ for u_ in re.findall(r"\{\{\s*'([^']+)'\s*\|\s*url\s*\}\}", tpl_.read_text(encoding="utf-8"))]
+    return sorted(set(refs_))
+
+
+_dref = _docs_refs()
+_dgone = [p_.relative_to(HERE).as_posix() if HERE in p_.parents else str(p_) for p_ in _dref if not p_.exists()]
+check(f"R10 · the docs keep their look: every file the documentation loads or includes is there — its stylesheets, its self-hosted fonts, its icons, "
+      f"its includes and its pages ({len(_dref)} files; missing: {_dgone})",
+      not _dgone and len(_dref) >= 30 and HERE / "docs/stylesheets/shoalmark.css" in _dref and HERE / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2" in _dref
+      and HERE / "README.md" in _dref)
+_dcss = (HERE / "docs/stylesheets/shoalmark.css").read_text(encoding="utf-8")
+check("R10 · the docs draw their own chart: their stylesheet holds the chart's frame, its graticule and its figures, and loads no board file",
+      "body::before" in _dcss and "repeating-linear-gradient(var(--chart)" in _dcss and "53°57'N" in _dcss and "8°24'E" in _dcss
+      and "work-tracker/brand" not in _dcss and "brand/themes" not in _dcss)
+
+# --- this repository's own board: its brand files, held to their sources — a logo and the labels; its theme, fonts and wordmark gone with R10 -------
 _rb, _xdg = HERE / "work-tracker/brand", os.environ.get("XDG_CONFIG_HOME")
 with tempfile.TemporaryDirectory() as _nowhere:
     os.environ["XDG_CONFIG_HOME"] = _nowhere                 # the person's own place stays out of it
     try:
-        fm.configure(HERE); _themes, _logo, _labels, _src, _warn, _wm = fm.brand()
+        fm.configure(HERE); _logo, _labels, _src, _warn, _gone = fm.brand()
     finally:
         os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
-_given, _css = fm.read_flat((_rb / "labels.yaml").read_text(encoding="utf-8")), (_rb / "theme.css").read_text(encoding="utf-8")
+_given = fm.read_flat((_rb / "labels.yaml").read_text(encoding="utf-8"))
 check("0.18.2 · this repository's labels.yaml is valid — every key a label — with no tagline (the claim speaks to agents; the Owner, 2026-09-24) and the English footer he ruled",
       set(_given) <= set(fm.LABELS) and "tagline" not in _given and _given.get("footer") == "A Pricke on the Wadden flats keeps the fleet in the channel." and _labels["footer"] == _given["footer"])
-check("0.18.2 · this repository's theme.css loads as its own stylesheet with no warning — ink on ground set for light and dark and readable in both — and every font it names is on disk, with its licence",
-      _src["theme.css"] == ["repository"] and not _warn and len(re.findall(r"--bg\s*:\s*#[0-9a-f]{6}", _css)) == len(re.findall(r"--ink\s*:\s*#[0-9a-f]{6}", _css)) == 2
-      and "prefers-color-scheme:dark" in _css and all((_rb / u).is_file() for u in re.findall(r'url\("([^"]+)"\)', _css)) and "SIL Open Font License" in (_rb / "fonts/LICENSE.txt").read_text(encoding="utf-8"))
-_wsrc = (_rb / "wordmark.svg").read_text(encoding="utf-8")
-check("0.18.2 · this repository's wordmark is the site's mark at the ruled 16 px beside the name, in one ink: inlined, drawn in currentColor only, the mark's path the site's own",
-      _src["wordmark"] == ["repository"] and _wm and 'height="16"' in _wm[1] and 'fill="currentColor"' in _wm[1] and not re.search(r'(?:fill|stroke)="(?!currentColor|none)', _wsrc)
-      and re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1) in _wsrc)
-check("0.18.2 · R1–R5 · this repository's own wordmark.svg passes the grammar, as the file is", fm.inline_svg((_rb / "wordmark.svg").read_bytes())[1] == "" and _wm and _wm[1] == fm.inline_svg((_rb / "wordmark.svg").read_bytes())[0])
-check("FM-002 R1 · this repository's theme is re-cut on the board's hooks: the box's title is #p>.pt, the claim and the running line share the footer #F, nothing is lifted onto the claim's line, and the stripes stay the mock's nth-child rule the Owner approved",
-      all(w in _css for w in ("\n#p>.pt{display:block;", "\n#B:not([hidden])~#F{display:grid}", "\ntr.t:nth-child(even) td{background:var(--zebra)}"))
-      and not any(w in _css for w in ("\n#p::before", "\n#B:not([hidden]):has(", "\ntr.zebra")))
 check("0.18.2 · this repository's logo — the tab's — is the site's tab icon, byte for byte", _src["logo"] == ["repository"] and (_rb / "logo.svg").read_bytes() == (HERE / "docs/assets/favicon.svg").read_bytes())
+check(f"R10 · this repository holds no brand file the board no longer reads — its theme.css, fonts/ and wordmark.svg are gone, and the tool's own brand/ "
+      f"ships no themes/ — so its board names none, and warns of nothing (saw {_gone}, {_warn})",
+      sorted(p_.name for p_ in _rb.iterdir()) == ["labels.yaml", "logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
 
 # --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
 with tempfile.TemporaryDirectory() as tmp:
@@ -11157,7 +10975,7 @@ def _bj(root):
         v_ = None
     return v_ if isinstance(v_, dict) else None
 def _bj_rev(root, ref="HEAD"):
-    """A ref's full sha, as git prints it (`_head` is a theme's reader by the time these blocks run)."""
+    """A ref's full sha, as git prints it."""
     return subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
 def _bj_says(root):
     """What `--owner` and `--standup` say of what the board was built from: (both exits, the lines of `--owner`, the lines of `--standup`)."""
@@ -14440,7 +14258,6 @@ def _ci_wf_regressions(text, root, shapes):
              ("the folder's whole top counts as records", lambda t: t.replace('                "$dir"/*.md) ;;\n', '                "$dir"/*) ;;\n', 1)),
              ("anything under the folder counts as records", lambda t: t.replace('"$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;', '"$dir"/*/*) ;;', 1)),
              ("the landing mock is not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/landing/index.html) records=false ;;\n', "", 1)),
-             ("the themes are not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;\n', "", 1)),
              ("FM-007's entry is not among what the suites read", lambda t: t.replace('                "$dir"/FM-007-*.md) records=false ;;\n', "", 1)))
     out = []
     for what, change in rows:

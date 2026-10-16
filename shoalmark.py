@@ -385,7 +385,7 @@ def left_alone(path, why):
 
 
 # THE READING RULE (the Owner's ruling filed in FM-006, *The fix round after the critical review*, on a private security report): in EVERY run, a file of
-# the tree — a tracker, the configuration, TRIAGE.md, a theme, the labels, a worksheet, a file the configuration names — is read only where it is a regular
+# the tree — a tracker, the configuration, TRIAGE.md, a logo, the labels, a worksheet, a file the configuration names — is read only where it is a regular
 # file inside the repository, reached through no symlink. `board_isfile` and `board_text` are the rule, and every reader of the tree asks them. The
 # board's refresh leaves such a file unread and names it once at its end; every other run refuses in one line naming it (`refuse_tree_file`).
 def board_isfile(path):
@@ -3574,9 +3574,8 @@ tr.c td:first-child{padding-left:20px}
 #v [data-s]{cursor:pointer;text-decoration:underline}#v .toc{white-space:normal;line-height:1.9;margin:10px 0}
 #v blockquote{margin:12px 0;padding-left:12px;border-left:2px solid var(--line);color:var(--dim)}
 @media(max-width:640px){.x{display:none}}
-/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise. A wordmark takes the
-   place of the logo and the name, inline, so its currentColor is the name's ink: the size its height says, else the logo's */
-#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#H .wm{display:flex}#H .wm svg{display:block;flex:none}#H .wm svg:not([height]){height:22px;width:auto}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
+/* the brand: a logo, the name, a tagline — and a footer, all empty unless someone says otherwise */
+#H{display:flex;gap:10px;align-items:center;margin-bottom:14px}#H img{height:22px;width:auto}#H b{font-size:16px}#s{margin-left:auto}#H span,#f{color:var(--mute);font-size:13px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 /* an act that is a promise: what they promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
 #p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
@@ -3590,9 +3589,8 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
 #dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
-/* three hooks a theme styles (FM-002), none of them seen without one: the Owner's box's title `.pt`, the label
-   `owner.title`; the last line's one element `#F` — the claim `#f`, shown with the board only, as when it stood in it,
-   and the running line `#r`; `zebra` on every other row of a group, which `nth-child` cannot count past a group's head */
+/* the Owner's box's title `.pt`, the label `owner.title`, not shown; the last line's one element `#F` — the claim `#f`,
+   shown with the board only, as when it stood in it, and the running line `#r` */
 .pt{display:none}#B[hidden]~#F #f{display:none}
 /* the running line: the tool's, on every screen, below the footer — its mark at 16 px, the smallest size its 16-unit grid
    stays sharp at, and the name linking to the tool; the version to its release. Muted like any link here: underlined on hover */
@@ -3600,8 +3598,8 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 /* on paper the board is always the light one */
 @media print{#s{display:none}}
 @media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
-</style>__THEMES__
-<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><button id="s"></button></div>
+</style>
+<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><button id="s"></button></div>__GONE__
 <header><input id="q" autofocus>
 <button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
 <p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
@@ -3685,7 +3683,7 @@ function draw(){
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
     const head=`<tr class="g" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m">${folded?"▸":"▾"} <b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?" · "+BOARD[k]:BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
-    return head+(folded?"":g.map((t,i)=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}${i%2?" zebra":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+esc(t[21]):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
   $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
@@ -3843,8 +3841,8 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}<
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
 for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
-// light or dark is the viewer's choice: auto follows the system; the other two switch every theme's
-// `prefers-color-scheme` rule on or off — so a brand needs to know nothing about the button. Paper stays light.
+// light or dark is the viewer's choice: auto follows the system; the other two switch the page's own
+// `prefers-color-scheme` rules on or off. Paper stays light.
 const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
 let scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(!SCHEMES.includes(scheme))scheme="auto";
 const rules=(s,f)=>{try{for(const r of s.cssRules){if(r.styleSheet)rules(r.styleSheet,f);else if(r.media)f(r)}}catch(e){}},
@@ -3892,7 +3890,7 @@ LABELS = {
     "group.none": "no {0}",
     "count.trackers": "trackers", "count.open": "open", "count.around": "around {0}", "count.id": "tracker · {0}", "count.in_progress": "in progress",
     "count.blocked": "blocked", "count.untriaged": "untriaged",
-    "owner.title": "owed to the owner",   # the title of the Owner's box — shown by a theme that styles `.pt` (FM-002)
+    "owner.title": "owed to the owner",   # the title of the Owner's box, `.pt`
     "path.title": "the current path", "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is the Owner's",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
@@ -3948,169 +3946,23 @@ LABELS = {
     "viewer.stale": "stale — older than {0} days, it counts as untriaged again",
     "viewer.handover": "hand-over", "viewer.next": "next", "viewer.kind": "kind", "viewer.from_move": "from the move",
     "viewer.true_now": "what is true now", "viewer.no_move": "with no move named", "viewer.none_in_progress": "none in progress",
+    # never a silent loss (R10's look half): the page's one line for each brand file the board no longer reads, and what replaces it
+    "brand.gone": "no longer read: {0}", "brand.gone.theme": "[palette] in shoalmark.toml", "brand.gone.fonts": "the system's monospace",
+    "brand.gone.wordmark": "the name", "brand.gone.themes": "[palette], by name",
 }
-BRAND_FILES = ("theme.css", "logo.svg", "logo.png", "wordmark.svg", "labels.yaml")
+BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
+# What the board no longer reads (R10's look half, FM-053's answer): each a file or a folder a brand place may still hold, what replaces it, and
+# the label the page names it with. A board build, `--brand` and the page name each one, file by file, while it is there — seen, never read or
+# followed, and never removed; `--check` never fails on one. Beside the trackers, where no brand file was ever read, the two files are named too.
+BRAND_GONE = (("theme.css", "the board's colours are `[palette]` in " + CONFIG_NAME, "brand.gone.theme"),
+              ("fonts/", "the board is set in the system's monospace", "brand.gone.fonts"),
+              ("wordmark.svg", "the header shows the name", "brand.gone.wordmark"))
+# …and in the tool's own brand/, the themes an older copy shipped and `--vendor` copied: a copy vendored again keeps the folder, and no theme is copied
+BRAND_GONE_TOOL = (("themes/", "no theme is copied: the board's colours are `[palette]` in " + CONFIG_NAME + ", by name — monochrome or shoalmark", "brand.gone.themes"),)
 # The tool's own mark, the Pricke (FM-006) — the site's `overrides/.icons/shoalmark/pricke.svg`, one path on a 16-unit
 # grid. The running line ends every page with it: the tool's name and version, not a brand, not a label, in every repository.
 PRICKE = "M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"
-LOGO_MAX = 200_000            # bytes — a logo or a wordmark is inlined into the page; past this it is skipped, with a warning
-# What an inlined SVG may be. A logo sits in an <img>, where nothing an SVG carries can run or load; a wordmark sits IN
-# the page, where a script would run, a handler fire, a reference load and a style restyle the board — so it is held to a
-# grammar, not screened for bad words, and written out again from what was read (0.18.2; the Reviewer's R1–R9).
-#   the file   at most LOGO_MAX bytes; UTF-8, no byte-order mark, no control character (C0 but tab and line ends, DEL,
-#              C1); no DOCTYPE, ENTITY or CDATA; an <?xml?> that names an encoding names UTF-8 — all before the parse
-#   the tree   at most SVG_DEPTH deep; only the elements below (another namespace's are left out, with what they hold);
-#              every id defined once; every reference — a <use>'s href, a url(#id) in fill, stroke, mask or clip-path —
-#              to an id the file has, followed at most SVG_REF_DEPTH deep, never in a cycle, and at most SVG_DRAWN
-#              elements painted with every reference followed (a mask used n times paints n times)
-#   attributes only those the element's row names — no style, no class, no handler, nothing else — each value ASCII,
-#              without \ & < http data: javascript, and whole in its kind, read by one pass of a scanner, never a regex:
-#                number   -?[0-9]+(.[0-9]+)?   — no +, no exponent, no .5; a length adds px or % (a font size em)
-#                list     numbers, one space or one comma between two (x, y, dx, dy, points; viewBox exactly four)
-#                path     path letters and numbers; one space or one comma between two numbers, at most one around a
-#                         letter; nothing before the first, nothing after the last
-#                transform  name(list) — matrix translate scale rotate skewX skewY — one space or comma between two
-#                paint    #hex (3, 4, 6, 8) · currentColor · none · a plain colour name · url(#id); mask, clip: none · url(#id)
-#              at most SVG_VALUE characters a value (a path's and points' at most SVG_TOKENS tokens), and SVG_BUDGET steps
-#              for the whole file — every token read and every element visited is a step; past it, the file is refused
-_SVG_SHAPE = {"id", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-opacity", "stroke-linecap", "stroke-linejoin",
-              "stroke-miterlimit", "opacity", "transform", "clip-path", "clip-rule", "mask", "shape-rendering"}
-_SVG_TEXT = {"x", "y", "dx", "dy", "font-family", "font-size", "font-weight", "font-style", "text-anchor", "letter-spacing", "xml:space"}
-SVG_ATTRS = {
-    "svg": _SVG_SHAPE | {"viewBox", "width", "height", "x", "y", "preserveAspectRatio", "version", "xml:space"},
-    "g": _SVG_SHAPE, "defs": {"id"}, "symbol": _SVG_SHAPE | {"viewBox", "preserveAspectRatio"},
-    "use": _SVG_SHAPE | {"href", "x", "y", "width", "height"}, "title": set(), "desc": set(), "metadata": set(),
-    "path": _SVG_SHAPE | {"d"}, "rect": _SVG_SHAPE | {"x", "y", "width", "height", "rx", "ry"}, "circle": _SVG_SHAPE | {"cx", "cy", "r"},
-    "ellipse": _SVG_SHAPE | {"cx", "cy", "rx", "ry"}, "line": _SVG_SHAPE | {"x1", "y1", "x2", "y2"},
-    "polyline": _SVG_SHAPE | {"points"}, "polygon": _SVG_SHAPE | {"points"}, "text": _SVG_SHAPE | _SVG_TEXT, "tspan": _SVG_SHAPE | _SVG_TEXT,
-    "clipPath": {"id", "transform", "clipPathUnits"}, "mask": {"id", "x", "y", "width", "height", "maskUnits", "maskContentUnits"},
-    "linearGradient": {"id", "x1", "y1", "x2", "y2", "gradientUnits", "gradientTransform", "spreadMethod"},
-    "radialGradient": {"id", "cx", "cy", "r", "fx", "fy", "gradientUnits", "gradientTransform", "spreadMethod"},
-    "stop": {"offset", "stop-color", "stop-opacity"},
-}
-SVG_DEPTH, SVG_DRAWN, SVG_REF_DEPTH = 32, 2000, 3
-SVG_VALUE, SVG_TOKENS, SVG_BUDGET = 1000, 20_000, 200_000
-SVG_NS, XLINK_NS, XML_NS = "http://www.w3.org/2000/svg", "http://www.w3.org/1999/xlink", "http://www.w3.org/XML/1998/namespace"
-_SVG_COLOURS = {"currentColor", "none", "black", "white", "silver", "gray", "grey", "red", "maroon", "orange", "yellow", "olive", "lime",
-                "green", "teal", "aqua", "cyan", "blue", "navy", "fuchsia", "magenta", "purple", "transparent"}
-_SVG_ENUMS = {
-    "fill-rule": {"nonzero", "evenodd"}, "clip-rule": {"nonzero", "evenodd"}, "stroke-linecap": {"butt", "round", "square"},
-    "stroke-linejoin": {"miter", "round", "bevel"}, "shape-rendering": {"auto", "crispEdges", "geometricPrecision", "optimizeSpeed"},
-    "gradientUnits": {"userSpaceOnUse", "objectBoundingBox"}, "clipPathUnits": {"userSpaceOnUse", "objectBoundingBox"},
-    "maskUnits": {"userSpaceOnUse", "objectBoundingBox"}, "maskContentUnits": {"userSpaceOnUse", "objectBoundingBox"},
-    "spreadMethod": {"pad", "reflect", "repeat"}, "font-weight": {"normal", "bold", *(f"{n}00" for n in range(1, 10))},
-    "font-style": {"normal", "italic", "oblique"}, "text-anchor": {"start", "middle", "end"}, "xml:space": {"default", "preserve"},
-    "preserveAspectRatio": {"none", *(f"x{a}Y{b}{m}" for a in ("Min", "Mid", "Max") for b in ("Min", "Mid", "Max") for m in ("", " meet", " slice"))},
-}
-_SVG_NUMBERS = {  # attribute: (units a number may carry, at most how many numbers — 0 is any, up to SVG_TOKENS)
-    **{k: (("", "px", "%"), 1) for k in ("width", "height", "rx", "ry", "cx", "cy", "r", "fx", "fy", "x1", "y1", "x2", "y2", "stroke-width", "stroke-miterlimit")},
-    **{k: (("", "%"), 1) for k in ("opacity", "fill-opacity", "stroke-opacity", "stop-opacity", "offset")},
-    **{k: (("", "px", "%"), 0) for k in ("x", "y", "dx", "dy")},
-    "font-size": (("", "px", "em", "%"), 1), "letter-spacing": (("", "px", "em"), 1), "version": (("",), 1), "points": (("",), 0), "viewBox": (("",), 4),
-}
-_SVG_PATH_LETTERS, _SVG_TRANSFORMS = set("MmZzLlHhVvCcSsQqTtAa"), ("matrix(", "translate(", "scale(", "rotate(", "skewX(", "skewY(")
-
-
-def _svg_number(v, i):
-    """The end of the number -?[0-9]+(.[0-9]+)? that starts at i, or -1. One step a character, never back."""
-    n = len(v)
-    if i < n and v[i] == "-":
-        i += 1
-    j = i
-    while i < n and "0" <= v[i] <= "9":
-        i += 1
-    if i == j:
-        return -1
-    if i < n and v[i] == ".":
-        i += 1; j = i
-        while i < n and "0" <= v[i] <= "9":
-            i += 1
-        if i == j:
-            return -1
-    return i
-
-
-def _svg_value(key, v):
-    """How many tokens `v` is, read whole as `key`'s kind in one pass — or -1 at the first character that does not fit.
-    The kinds are the comment above SVG_ATTRS; nothing here backtracks, so a value costs its length and no more."""
-    n = len(v)
-    is_id = lambda t: 0 < len(t) <= 64 and t[0].isalpha() and all(c.isalnum() or c in "_-" for c in t)
-    ref = lambda t: t.startswith("url(#") and t.endswith(")") and is_id(t[5:-1])
-    if key == "id":
-        return 1 if is_id(v) else -1
-    if key == "href":
-        return 1 if v[:1] == "#" and is_id(v[1:]) else -1
-    if key in ("fill", "stroke", "stop-color"):
-        hexa = v[:1] == "#" and len(v) in (4, 5, 7, 9) and all(c in "0123456789abcdefABCDEF" for c in v[1:])
-        return 1 if hexa or v in _SVG_COLOURS or key != "stop-color" and ref(v) else -1
-    if key in ("mask", "clip-path"):
-        return 1 if v == "none" or ref(v) else -1
-    if key in _SVG_ENUMS:
-        return 1 if v in _SVG_ENUMS[key] else -1
-    if key == "font-family":
-        return 1 if v and all(c.isalnum() or c in " ,'-" for c in v) else -1
-    if key in _SVG_NUMBERS:                                 # numbers, each with a unit it may carry, one separator between two
-        units, most = _SVG_NUMBERS[key]
-        i, count = 0, 0
-        while True:
-            i = _svg_number(v, i)
-            if i < 0:
-                return -1
-            i += next((len(u) for u in units if u and v.startswith(u, i)), 0)
-            count += 1
-            if count > (most or SVG_TOKENS):
-                return -1
-            if i == n:
-                return count if most in (0, 1) or count == most else -1
-            if v[i] not in " ,":
-                return -1
-            i += 1
-    if key == "d":                                          # letters and numbers; a separator only between two tokens, at most one
-        i, count, last = 0, 0, ""                           # last: "" nothing yet · L a letter · N a number · S a separator
-        while i < n:
-            c = v[i]
-            if c in _SVG_PATH_LETTERS:
-                i, last = i + 1, "L"
-            elif c in " ,":
-                if last in ("", "S"):
-                    return -1
-                i, last = i + 1, "S"
-            else:
-                if last == "N":
-                    return -1                               # two numbers need a separator: no 1-2, no .5.5
-                i, last = _svg_number(v, i), "N"
-                if i < 0:
-                    return -1
-            count += 1
-            if count > SVG_TOKENS:
-                return -1
-        return count if last != "S" else -1
-    if key in ("transform", "gradientTransform"):          # name(numbers), one separator or none between two
-        i, count = 0, 0
-        while True:
-            name = next((f for f in _SVG_TRANSFORMS if v.startswith(f, i)), None)
-            if not name:
-                return -1
-            i += len(name)
-            while True:
-                i = _svg_number(v, i)
-                if i < 0:
-                    return -1
-                count += 1
-                if count > SVG_TOKENS:
-                    return -1
-                if i < n and v[i] in " ," and i + 1 < n and v[i + 1] != ")":
-                    i += 1
-                    continue
-                break
-            if i >= n or v[i] != ")":
-                return -1
-            i += 1
-            if i == n:
-                return count
-            if v[i] in " ,":
-                i += 1
-    return -1
+LOGO_MAX = 200_000            # bytes — a logo is inlined into the page; past this it is skipped, with a warning
 
 
 def brand_bytes(f):
@@ -4124,126 +3976,6 @@ def brand_bytes(f):
     data = f.read_bytes()
     data = data.replace(b"\r\n", b"\n") if f.suffix == ".svg" else data
     return data, len(data)
-
-
-def inline_svg(data, prefix="wm-"):
-    """(markup, "") — the SVG written out again from what was read, safe to put in the page — or ("", why it is not).
-    The rules are the comment above SVG_ATTRS; the first one broken refuses the file whole. Every id gets `prefix`, and
-    every `#id` it is referred to by, so no id of the page's is ever shadowed; an underscore is written `&#95;`, so no
-    `__PLACEHOLDER__` of the page's template can be spelled inside it. No step recurses, and none backtracks: the whole
-    file costs at most SVG_BUDGET steps, and the count of what it paints stops the moment it passes SVG_DRAWN."""
-    import xml.etree.ElementTree as ET
-    if len(data) > LOGO_MAX:
-        return "", f"it is {len(data):,} bytes — over {LOGO_MAX:,}"
-    try:
-        if data.startswith((b"\xef\xbb\xbf", b"\xff\xfe", b"\xfe\xff")):
-            raise UnicodeError
-        text = data.decode("utf-8")
-    except UnicodeError:
-        return "", "it is not UTF-8 without a byte-order mark"
-    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", text):
-        return "", "it holds a control character"
-    if re.search(r"<!(?:DOCTYPE|ENTITY)|<!\[CDATA\[", text, re.I):
-        return "", "it declares a DOCTYPE, an entity or CDATA"
-    decl = re.match(r"\s*<\?xml\b[^>]*?\bencoding\s*=\s*[\"']([^\"']*)", text[:200])
-    if decl and decl.group(1).lower().replace("-", "") != "utf8":
-        return "", f"its <?xml?> names the encoding {decl.group(1)[:20]}, not UTF-8"
-
-    class Builder(ET.TreeBuilder):                          # a DOCTYPE the checks above missed still stops the parse
-        def doctype(self, *_):
-            raise ValueError("it declares a DOCTYPE")
-    try:
-        top = ET.fromstring(text.encode("utf-8"), parser=ET.XMLParser(target=Builder(), encoding="utf-8"))
-    except ValueError as e:
-        return "", str(e)
-    except ET.ParseError as e:
-        return "", f"it is not well-formed XML ({e})"
-    split = lambda n: n[1:].partition("}")[::2] if isinstance(n, str) and n.startswith("{") else ("", n)
-    if split(top.tag) != (SVG_NS, "svg"):
-        return "", "its root is not an <svg> in the SVG namespace"
-    steps = [0]
-
-    def spend(k):
-        steps[0] += k
-        if steps[0] > SVG_BUDGET:
-            raise ValueError(f"it takes over {SVG_BUDGET:,} steps to check")
-    esc = lambda t: html_escape(t).replace("_", "&#95;")
-    try:
-        stack = [(top, 1)]
-        while stack:                                        # the depth first, without recursion: 1,000 nested <g> is a refusal
-            e, depth = stack.pop()
-            spend(1)
-            if depth > SVG_DEPTH:
-                raise ValueError(f"it nests deeper than {SVG_DEPTH}")
-            stack.extend((c, depth + 1) for c in e)
-        out, ids, edges, stack = [], {}, [], [top]
-        while stack:
-            e = stack.pop()
-            if isinstance(e, str):                           # a closing tag and the text after it
-                out.append(e)
-                continue
-            spend(1)
-            ns, tag = split(e.tag)
-            tail = "" if e is top else esc(e.tail or "")
-            if ns != SVG_NS:
-                out.append(tail)
-                continue
-            if tag not in SVG_ATTRS:
-                raise ValueError(f"it holds <{tag}>")
-            attrs, refs = "", []
-            for k, v in e.attrib.items():
-                kns, name = split(k)
-                if kns not in ("", XLINK_NS, XML_NS):
-                    continue                                 # an editor's own attribute (Inkscape's, Sketch's) draws nothing
-                key = "xml:" + name if kns == XML_NS else name
-                if key not in SVG_ATTRS[tag] or kns == XLINK_NS and name != "href":
-                    raise ValueError(f"it holds {'xlink:' if kns == XLINK_NS else ''}{key}= on <{tag}>, which a wordmark may not carry")
-                low = v.lower()
-                bad = (not v.isascii() or any(c in v for c in "\\&<") or "http" in low or "data:" in low or "javascript" in low
-                       or len(v) > SVG_VALUE and key not in ("d", "points"))
-                tokens = -1 if bad else _svg_value(key, v)
-                if tokens < 0:
-                    raise ValueError(f'its {key}="{v[:40]}" on <{tag}> is not what {key} takes')
-                spend(tokens)
-                if key == "id":
-                    if v in ids:
-                        raise ValueError(f"the id {v} is defined twice")
-                    ids[v] = e
-                    v = prefix + v
-                elif key == "href":
-                    refs.append(v[1:]); v = "#" + prefix + v[1:]
-                elif v.startswith("url(#"):
-                    refs.append(v[5:-1]); v = "url(#" + prefix + v[5:]
-                attrs += f' {"xlink:" if kns == XLINK_NS else ""}{key}="{esc(v)}"'
-            if refs:
-                edges.append((e, refs))
-            out.append(f"<{tag}{attrs}>{esc(e.text or '')}")
-            stack.append(f"</{tag}>{tail}")
-            stack.extend(reversed(list(e)))
-        refers = {}
-        for e, refs in edges:
-            for r in refs:
-                spend(1)
-                if r not in ids:
-                    raise ValueError(f"it refers to #{r[:40]}, which the file does not have")
-            refers[e] = refs
-        painted, stack = 0, [(top, ())]                     # what the browser paints: every element, and at every reference
-        while stack:                                        # the whole of what it refers to — counted as it goes, never after
-            e, chain = stack.pop()
-            painted += 1
-            spend(1)
-            if painted > SVG_DRAWN:
-                raise ValueError(f"it paints over {SVG_DRAWN:,} elements once its references are followed")
-            stack.extend((c, chain) for c in e if split(c.tag)[0] == SVG_NS)
-            for r in refers.get(e, ()):
-                if r in chain:
-                    raise ValueError("its references form a cycle")
-                if len(chain) >= SVG_REF_DEPTH:
-                    raise ValueError(f"its references nest deeper than {SVG_REF_DEPTH}")
-                stack.append((ids[r], chain + (r,)))
-    except ValueError as e:
-        return "", str(e)
-    return "".join(out), ""
 
 
 def brand_places():
@@ -4280,31 +4012,9 @@ def contrast(a, b):
 
 
 def brand():
-    """The board's brand, assembled: (themes [(who, css)], logo (who, data-uri) or None, labels, sources, warnings,
-    wordmark (who, inline svg markup) or None)."""
-    themes, logo, wordmark, labels, src, warn = [], None, None, dict(LABELS), {"theme.css": [], "logo": [], "wordmark": [], "labels.yaml": []}, []
+    """The board's brand, assembled: (logo (who, data-uri) or None, labels, sources, warnings, gone — what `brand_gone` names)."""
+    logo, labels, src, warn = None, dict(LABELS), {"logo": [], "labels.yaml": []}, []
     for who, d in brand_places():
-        f = d / "theme.css"
-        if board_isfile(f):
-            css = f.read_text(encoding="utf-8")
-            # A path in a theme is written relative to THE FILE IT IS IN — what an editor resolves, what a person expects.
-            # The page inlines the css, so each is re-based onto the page's directory; that also makes an import or a
-            # font work from the organisation's and the person's place, not only from beside the trackers.
-            # A theme that maps colours onto an imported file's variables is ALL-OR-NOTHING: with the import missing — a
-            # submodule not checked out — every mapped colour is invalid, not the previous place's; so it is left out.
-            local = lambda u: not re.match(r"[a-z][a-z0-9+.-]*:|/|#", u, re.I)
-            refs = re.findall(r"""@import\s+(?:url\(\s*)?["']?([^"')\s;]+)""", css)
-            gone = [u for u in refs if local(u) and not (d / u).exists()]
-            css = re.sub(r"""(url\(\s*["']?|@import\s+["'])([^"')\s;]+)""",
-                         lambda m: m.group(1) + (os.path.relpath(os.path.normpath(d / m.group(2)), TRACKER_DIR).replace(os.sep, "/") if local(m.group(2)) else m.group(2)), css)
-            if gone:
-                warn.append(f"{who}'s theme.css imports {gone[0]}, which is not there — that theme is left out, the board keeps the colours it had")
-            else:
-                themes.append((who, css)); src["theme.css"].append(who)
-            bg, ink = re.findall(r"--bg\s*:\s*(#[0-9a-fA-F]{6})\b", css), re.findall(r"--ink\s*:\s*(#[0-9a-fA-F]{6})\b", css)
-            for b, i in zip(bg, ink):                       # the light pair, then the dark one, as a theme writes them
-                if contrast(b, i) < 4.5:
-                    warn.append(f"{who}'s theme.css: text {i} on ground {b} has a contrast of {contrast(b, i):.1f}:1 — below 4.5:1, hard to read")
         for name, mime in (("logo.svg", "image/svg+xml"), ("logo.png", "image/png")):
             f = d / name
             if board_isfile(f):
@@ -4314,14 +4024,6 @@ def brand():
                 else:
                     logo = (who, "data:%s;base64,%s" % (mime, base64.b64encode(data).decode("ascii"))); src["logo"].append(who)
                 break
-        f = d / "wordmark.svg"
-        if board_isfile(f):
-            data, size = brand_bytes(f)
-            svg, why = ("", f"it is {size:,} bytes — over {LOGO_MAX:,}") if size > LOGO_MAX else inline_svg(data)
-            if svg:
-                wordmark = (who, svg); src["wordmark"].append(who)
-            else:
-                warn.append(f"{who}'s wordmark.svg is not shown: {why} — the header keeps {'the wordmark before it' if wordmark else 'the logo and the name'}")
         f = d / "labels.yaml"
         if board_isfile(f):
             given = read_flat(f.read_text(encoding="utf-8"))
@@ -4333,103 +4035,58 @@ def brand():
     if loose:
         warn.append(f"{', '.join(loose)} beside the trackers {'are' if len(loose) > 1 else 'is'} not read — a repository's brand lives in "
                     f"{(TRACKER_DIR / 'brand').relative_to(ROOT).as_posix()}/ (since 0.9.0); move {'them' if len(loose) > 1 else 'it'} there")
-    return themes, logo, labels, src, warn, wordmark
+    return logo, labels, src, warn, brand_gone()
 
 
-def shipped_themes():
-    """The themes this copy of the tool ships (FM-002): each folder of `brand/themes/` that holds a theme.css. Starters —
-    no board reads them there; `--brand DIR --from <theme>` copies one into a place."""
-    d = HERE / "brand" / "themes"
-    return sorted(p.name for p in d.iterdir() if (p / "theme.css").is_file()) if d.is_dir() else []
+def brand_gone():
+    """Never a silent loss (R10's look half): what a brand place still holds that the board no longer reads — `BRAND_GONE` in every place,
+    `BRAND_GONE_TOOL` in the tool's own, and the two files beside the trackers — as [(the path as a person finds it, what replaces it, the page's
+    label for that)], in the places' order. A name is only seen, never read: `lexists`, so a symlink is named and never followed."""
+    places = [(d, BRAND_GONE + (BRAND_GONE_TOOL if who == "organisation" else ())) for who, d in brand_places()]
+    places.append((TRACKER_DIR, tuple(g for g in BRAND_GONE if not g[0].endswith("/"))))
+    return [(shown_path(d / name.rstrip("/")) + ("/" if name.endswith("/") else ""), instead, key)
+            for d, gone in places for name, instead, key in gone if os.path.lexists(d / name.rstrip("/"))]
 
 
-def theme_files():
-    """Every file of `brand/themes/`, relative to the tool — what `--vendor` pins and a theme's folder `--from` copies.
-    A dot file (a desktop's .DS_Store) is no part of a theme and never travels."""
-    d = HERE / "brand" / "themes"
-    return tuple(sorted(p.relative_to(HERE).as_posix() for p in d.rglob("*")
-                        if p.is_file() and not any(s.startswith(".") for s in p.relative_to(d).parts))) if d.is_dir() else ()
+def shown_path(path):
+    """A path as a person finds it: from the repository's root inside it, from `~` under their home, else whole."""
+    if in_tree(path):
+        return os.path.relpath(path, ROOT).replace(os.sep, "/")
+    try:
+        return "~/" + pathlib.Path(path).relative_to(pathlib.Path.home()).as_posix()
+    except (ValueError, RuntimeError, KeyError):            # outside the home, or no home at all — a hook, CI, an agent
+        return pathlib.Path(path).as_posix()
 
 
-def brand_report(dest=None, theme=None):
-    """`--brand`: why does my board look like this? `--brand DIR`: a commented starter to edit. `--brand DIR --from
-    <theme>`: a starter from a theme the tool ships — its files copied, never over a file that is there."""
-    if dest and theme is not None:
-        names = shipped_themes()
-        if theme not in names:
-            print(f"--from {theme}: the tool ships no such theme — {' or '.join(names) if names else 'this copy ships none'}; nothing was written", file=sys.stderr)
-            return 2
-        named, src = pathlib.Path(dest), HERE / "brand" / "themes" / theme
-        dest = pathlib.Path(os.path.realpath(named))        # a destination a person names: resolved once, where it is named
-        rels = [r[len(f"brand/themes/{theme}/"):] for r in theme_files() if r.startswith(f"brand/themes/{theme}/")]
-        for rel in rels:                                    # the write rule for every file it may write — as the path is named, and under the folder it resolves
-            write_rule(named / rel)                         # to — before the first folder or copy is made
-            write_rule(dest / rel)
-        print(f"the {theme} theme — a starter from {src}")
-        for rel in rels:
-            if (dest / rel).exists():
-                print(f"kept {named / rel} — it is there already; delete it to start from {theme}")
-                continue
-            (dest / rel).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(src / rel, dest / rel); print(f"wrote {named / rel}")
-        print(f"yours to change; a board wears it from a brand place — <tracker dir>/brand/, or ~/.config/shoalmark/ for you alone (`--brand` lists them)")
-        return EXIT_OK
+def brand_report(dest=None):
+    """`--brand`: why does my board look like this — its places, what each gave, and each brand file it no longer reads. `--brand DIR`: a commented
+    labels.yaml to edit, never over one that is there."""
     if dest:
         named = pathlib.Path(dest)
         dest = pathlib.Path(os.path.realpath(named))        # a destination a person names: resolved once, where it is named
-        for name in ("theme.css", "labels.yaml"):          # the write rule for both — as the path is named, and under the folder it resolves to — before
-            write_rule(named / name)                        # the folder is made
-            write_rule(dest / name)
+        write_rule(named / "labels.yaml")                   # the write rule — as the path is named, and under the folder it resolves to — before the
+        write_rule(dest / "labels.yaml")                    # folder is made
         dest.mkdir(parents=True, exist_ok=True)
-        for name, text in (("theme.css", THEME_STARTER), ("labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
-                                                           + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))):
-            if not (dest / name).exists():
-                put(dest / name, text); print(f"wrote {named / name}")
-        print("a logo is logo.svg or logo.png beside them, a wordmark wordmark.svg; the name is `name` in " + CONFIG_NAME)
+        if not (dest / "labels.yaml").exists():
+            put(dest / "labels.yaml", "# every word of the board's chrome — change a value, delete the lines you keep\n"
+                + "".join(f"{k}: {json.dumps(v, ensure_ascii=False)}\n" for k, v in LABELS.items()))
+            print(f"wrote {named / 'labels.yaml'}")
+        print(f"a logo is logo.svg or logo.png beside it; the name is `name` in {CONFIG_NAME}, and the colours are `[palette]` there")
         return EXIT_OK
-    themes, logo, labels, src, warn, _wordmark = brand()
+    logo, labels, src, warn, gone = brand()
     print("the board is built from these places, the later one winning:")
     for who, d in brand_places():
-        print(f"  {who:<13} {d}" + ("" if any((d / n).is_file() for n in BRAND_FILES) else "  — no brand file here"
-                                    + (": its themes/ are starters, worn only once --from copies one" if (d / "themes").is_dir() else "")))
+        print(f"  {who:<13} {d}" + ("" if any((d / n).is_file() for n in BRAND_FILES) else "  — no brand file here"))
     print(f"  name          {CONFIG['name'] or ROOT.name}  ({CONFIG_NAME})")
-    for kind in ("theme.css", "logo", "wordmark", "labels.yaml"):
+    for kind in ("logo", "labels.yaml"):
         print(f"  {kind:<13} {' → '.join(src[kind]) or 'built in'}")
     changed = sorted(k for k in LABELS if labels[k] != LABELS[k])
     print(f"  labels changed: {len(changed)} of {len(LABELS)}")
+    for path, instead, _key in gone:
+        print(f"  no longer read: {path} — {instead}")
     for w in warn:
         print(f"  warning: {w}", file=sys.stderr)
     return EXIT_OK
-
-
-THEME_STARTER = """/* The board's colours and fonts. Every place's theme.css is its own stylesheet, applied in order — the tool's, the
-   organisation's, the repository's, the person's — so a file with ONE variable changes one colour.
-   The four status colours keep their MEANING whatever their shade: blue in progress · teal shipped · yellow parked ·
-   coral blocked, and P0/P1. */
-:root{
-  --bg:#f7f7f5;      /* the ground */
-  --ink:#161616;     /* text */
-  --dim:#565656;     /* secondary text */
-  --mute:#6e6e6e;    /* labels, legends */
-  --line:rgba(0,0,0,.14);
-  --teal:#1a7f5a; --coral:#b3402f; --blue:#2f62d6; --yellow:#946c0f;
-}
-@media(prefers-color-scheme:dark){:root{
-  --bg:#0e0e0e; --ink:#efefef; --dim:#ababab; --mute:#8f8f8f; --line:rgba(255,255,255,.15);
-  --teal:#4fd1a1; --coral:#ff7b66; --blue:#6f9bff; --yellow:#e8cf5a;
-}}
-/* fonts: name one that is installed, or put a font file beside the trackers and load it:
-   @font-face{font-family:"Mine";src:url("mine.woff2")}  body{font-family:"Mine",system-ui,sans-serif} */
-/* a wordmark — the mark and the name drawn as one — is wordmark.svg beside this file. It is inlined in the header in
-   place of the logo and the name; the logo stays the browser tab's. To draw one:
-   - one <svg> with a viewBox, and a height in pixels to fix its size — else it is the logo's 22 px;
-   - fill="currentColor" (stroke="currentColor" where it strokes), so it takes --ink in light and dark alike;
-   - the name as paths (outline the text in your editor), or as <text> in a font this file loads;
-   - a pixel mark at a whole multiple of its grid stays sharp;
-   - UTF-8, shapes, text, gradients, masks and a <use> of its own ids only; colours as #hex, currentColor, none or a
-     plain name; numbers as -?digits(.digits)?, one space or comma between two (no .5, 1e3, 1-2: do not minify them);
-     every id once; presentation attributes, never style="…" (export "with attributes, not CSS"). Anything else — a
-     script, a handler, a <style>, a class, a reference outside the file — refuses it whole, with a warning. */
-"""
 
 
 def triage_home():
@@ -4548,29 +4205,32 @@ def board_basis():
     """FM-045 — what the board is built from, one SHA-256 per part, computed one way for the board's run, every run that writes the board, and
     `--owner` and `--standup`:
     - `trackers`, the tracker folder: each tracker, each triage worksheet and `TRIAGE.md` — the files of it the board reads;
-    - `configuration`: `shoalmark.toml`, and the repository's brand files in `<tracker dir>/brand/` as `brand` reads them — theme.css, the first of
-      logo.svg and logo.png there is, wordmark.svg, labels.yaml;
+    - `configuration`: `shoalmark.toml`, and the repository's brand files in `<tracker dir>/brand/` as `brand` reads them — the first of logo.svg
+      and logo.png there is, labels.yaml — and, by its name alone, each one there the board no longer reads and the page names (`BRAND_GONE`);
     - `answers`, the answer branches: what `on_their_way` reads of them (`answer_refs`) — the default branch it measures against, and each unmerged
       `origin/answer/<id>` with its tip.
     A file is its path from the repository and the SHA-256 of its bytes, read under the reading rule; one that is not there, or is not read, is `-`.
     {} on Subversion and in a plain folder: nothing is recorded there."""
     if vcs() != "git":
         return {}
-    def files(paths):
+    def files(paths, seen=()):
         h = hashlib.sha256()
         for p in paths:
             data = pathlib.Path(p).read_bytes() if board_isfile(p) else None       # the reading rule
             h.update(f"{os.path.relpath(p, ROOT).replace(os.sep, '/')}\0{hashlib.sha256(data).hexdigest() if data is not None else '-'}\n".encode("utf-8"))
+        for p in seen:                                      # a file the page names and the board never reads: its path, and that it is there
+            h.update(f"{os.path.relpath(p, ROOT).replace(os.sep, '/')}\0there\n".encode("utf-8"))
         return h.hexdigest()
     trackers = [p for p in sorted(TRACKER_DIR.glob("*.md")) if KIND_RE.match(p.name)]
     sheets = sorted((TRACKER_DIR / "evidence" / "triage").glob("triage-*.md"))
-    brand_dir, brand_read = TRACKER_DIR / "brand", []
-    if brand_dir.is_dir():                                  # as `brand` reads the repository's place: its theme, the first logo there is, its wordmark, its labels
+    brand_dir, brand_read, brand_seen = TRACKER_DIR / "brand", [], []
+    if brand_dir.is_dir():                                  # as `brand` reads the repository's place: the first logo there is, its labels
         logo = next((brand_dir / n for n in ("logo.svg", "logo.png") if board_isfile(brand_dir / n)), None)
-        brand_read = [brand_dir / "theme.css", *([logo] if logo else []), brand_dir / "wordmark.svg", brand_dir / "labels.yaml"]
+        brand_read = [*([logo] if logo else []), brand_dir / "labels.yaml"]
+        brand_seen = [brand_dir / n.rstrip("/") for n, _i, _k in BRAND_GONE if os.path.lexists(brand_dir / n.rstrip("/"))]
     trunk, refs = answer_refs()
     return {"trackers": files([*trackers, *sheets, TRACKER_DIR / "TRIAGE.md"]),     # in the order the board reads them
-            "configuration": files([ROOT / CONFIG_NAME, *brand_read]),
+            "configuration": files([ROOT / CONFIG_NAME, *brand_read], brand_seen),
             "answers": hashlib.sha256(f"{trunk or ''}\n{refs}".encode("utf-8")).hexdigest()}
 
 
@@ -4670,16 +4330,16 @@ def render_html(trackers):
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
             .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]))
-    themes, logo, labels, _src, warnings, wordmark = brand()
+    logo, labels, _src, warnings, gone = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
-    # each place's theme is its OWN stylesheet, in order — `@import` and `@font-face` only work at the top of one
-    page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
-    # a wordmark is the mark and the name in one drawing: it takes their place, and the name stays the page's title and
-    # the wordmark's accessible name. The logo stays the tab's.
+    # never a silent loss (R10's look half): each brand file the board no longer reads, file by file, in the run's output and in one line of the page
+    for path, instead, _key in gone:
+        print(f"  brand: {path} is no longer read — {instead}", file=sys.stderr)
+    said = lambda key, *a: html_escape(re.sub(r"\{(\d)\}", lambda m: a[int(m.group(1))] if int(m.group(1)) < len(a) else "", labels[key]))
+    page = page.replace("__GONE__", f'<p id="w" class="m">{said("brand.gone", " · ".join(f"{path} → {labels[key]}" for path, _i, key in gone))}</p>' if gone else "")
     name = html_escape(CONFIG["name"] or ROOT.name)
-    page = page.replace("__HEADMARK__", f'<b class="wm" role="img" aria-label="{name}">{wordmark[1]}</b>' if wordmark
-                        else (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>")
+    page = page.replace("__HEADMARK__", (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>")
     page = page.replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
     # the running line: outside the board and the tracker view, so every screen shows it — the copy's own VERSION
     v = html_escape(__version__)
@@ -5323,9 +4983,8 @@ def render_schema():
                      + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in CONFIG_KEYS.items()]
                      + ["", "A seat's worktree, `git config --worktree <key> <value>`:", "", "| Key | Value | Says |", "|---|---|---|"]
                      + [f"| `{k}` | {shape} | {says} |" for k, (shape, says) in WORKTREE_KEYS.items()]
-                     + ["", "No key chooses the board's look: a brand is files in its places, the later one winning (`--brand` says which gave "
-                            "what). `--brand DIR --from THEME` writes a starter from a theme the tool ships in `brand/themes/`: "
-                            + (" · ".join(f"`{n}`" for n in shipped_themes()) or "none in this copy") + "."])
+                     + ["", "A brand place gives the board a logo and its labels, the later place winning (`--brand` says which gave what, and "
+                            "names each brand file the board no longer reads: `theme.css`, `fonts/`, `wordmark.svg`). No theme is read or shipped."])
 
 
 def git_user():
@@ -8977,13 +8636,12 @@ def parse_args(argv):
         help="hand NAME to the repository's deriver as one of its `flags` — the ONLY way a deriver is told anything beyond the trackers: "
              "it must never read the environment, which a git hook inherits from whatever shell ran the commit")
     add("--brand", nargs="?", const="", metavar="DIR",
-        help="why does my board look like this: which places gave it its theme, logo, wordmark and labels. With DIR: write a commented starter there")
-    add("--from", dest="theme", metavar="THEME",
-        help=f"with --brand DIR: the starter is a theme the tool ships in brand/themes/ — {' or '.join(shipped_themes()) or 'none in this copy'}: its theme.css and "
-             "its fonts copied into DIR, never over a file there, and yours to change. No setting chooses a theme: a board wears the one in its places")
+        help="why does my board look like this: which places gave it its logo and labels, and each brand file it no longer reads. With DIR: write a "
+             "commented labels.yaml there")
+    add("--from", dest="theme", metavar="THEME", help=argparse.SUPPRESS)      # retired with the themes: named and refused, never a silent loss
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word, cut to five characters")
-    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR — its themes included — with a PIN of sha256 hashes. From a release: "
+    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR with a PIN of sha256 hashes. From a release: "
                                             "a clean Git checkout at its VERSION tag, or an already-unpacked release archive holding RELEASE. Unzip first; a ZIP path is not a source argument. "
                                             "An archive's complete inventory and exact raw bytes are validated before copying the tool files; its manifest verifies internal bytes, not external origin. "
                                             "The PIN names the source; `--check` in the consumer reads it")
@@ -9214,7 +8872,7 @@ def vendor(dest, partial=False, allow_untagged=False):
     not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
     (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
     in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial."""
-    copied = [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]   # the themes it ships travel, pinned (FM-002)
+    copied = [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) if (HERE / rel).is_file()]
     named = pathlib.Path(dest).absolute()
     dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
     for rel in copied + ["PIN"]:                            # the write rule for every file it writes — as the path is named, and under the folder it resolves to —
@@ -9585,8 +9243,8 @@ def install_hook_svn():
 
 
 def copy_files():
-    """What the hooks' copy of the tool holds, relative to the tool: the tool, the vendored `marked`, the VERSION, and the themes it ships — all it needs to render the board."""
-    return ("shoalmark.py", MARKED.relative_to(HERE).as_posix(), "VERSION") + theme_files()
+    """What the hooks' copy of the tool holds, relative to the tool: the tool, the vendored `marked` and the VERSION — all it needs to render the board."""
+    return ("shoalmark.py", MARKED.relative_to(HERE).as_posix(), "VERSION")
 
 
 def default_branch():
@@ -10391,11 +10049,14 @@ def main(argv=None, *, _notice=True):
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
     args = parse_args(argv)
     for flag, needs, alone, like in (("--tags", "--new", args.tags is not None and not args.new, '`--new KIND "the title" --tags bug`'),
-                                     ("--supersede", "--answer", args.supersede and not args.answer, '`--answer <id> accept|reject "<option>" --supersede`'),
-                                     ("--from", "--brand DIR", args.theme is not None and not args.brand, f"`--brand DIR --from {'|'.join(shipped_themes()) or 'THEME'}`")):
+                                     ("--supersede", "--answer", args.supersede and not args.answer, '`--answer <id> accept|reject "<option>" --supersede`')):
         if alone:                                           # a flag that means nothing alone is refused, never silently ignored
             print(f"{flag} goes with {needs} — {like}", file=sys.stderr)
             return 2
+    if args.theme is not None:                              # retired with the themes (R10's look half): named, with what replaces it, and refused
+        print(f"--from: the tool ships no theme any more — {BRAND_GONE[0][1]}, by name (monochrome or shoalmark) or by a few colours; "
+              "nothing was written", file=sys.stderr)
+        return 2
     if args.html_only:                                      # …and nothing else, whatever else was said: the board's run is read-only and stands alone
         others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
         if others:
@@ -10442,7 +10103,7 @@ def main(argv=None, *, _notice=True):
     if args.vendor:
         return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
     if args.brand is not None:
-        return brand_report(args.brand or None, args.theme)
+        return brand_report(args.brand or None)
     if args.init:
         return init(args.key)
     if args.install_hook:

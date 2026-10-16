@@ -326,7 +326,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
 | `<tracker dir>/derive` | optional, executable — the repository's own axis (§7) |
-| `<tracker dir>/brand/` | optional — the repository's `theme.css`, `logo.svg`, `wordmark.svg`, `labels.yaml`, fonts (§9) |
+| `<tracker dir>/brand/` | optional — the repository's `logo.svg`, `labels.yaml` (§9) |
 
 ### An act's reminder
 
@@ -583,27 +583,25 @@ Owner's signed answers of 2026-09-24, in [`AGENTS.md`](https://github.com/shoalm
 
 ## 9. Branding the board
 
-Four optional files, the same names in every place — the board is built from the places in order, **the later one
+Two optional files, the same names in every place — the board is built from the places in order, **the later one
 wins**: `tools/shoalmark/brand/`, the organisation's that set the repository up (`--vendor` copies and pins it) ·
 `<tracker dir>/brand/`, the repository's, never loose among the trackers · `~/.config/shoalmark/`, the person's, in
 every repository. Only the git-ignored board reads them: `INDEX.md` and the gate are the same whoever runs them.
 
 | File | Carries |
 |---|---|
-| `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work, **with paths written relative to the `theme.css` they are in** — a font goes in `brand/fonts/`. A theme whose import is missing is left out whole |
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
-| `wordmark.svg` | the mark and the name drawn as one, **inline** in the header in place of the logo and the name — the logo stays the tab's, the name the page's title and the wordmark's accessible name. At most 200 kB of UTF-8; shapes, text, gradients, masks and a `<use>` of its own ids, each attribute from a fixed list with a fixed grammar — colours `#hex`, `currentColor`, `none` or a plain name, numbers as `-?digits(.digits)?` with one space or comma between, every id once, never `style`. Anything else refuses it whole, with a warning |
 | `labels.yaml` | every word of the board — flat `key: value` lines, `tagline` and `footer` among them. A German board is this file |
 
-- **`--brand`** says which place gave the board its theme, logo, wordmark and labels; `--brand DIR` writes a commented
-  starter. The name is `name` in `shoalmark.toml`. A theme hard to read is a warning; status colours keep their meaning.
-- **Two themes ship as starters** in the tool's `brand/themes/`, `monochrome` and `shoalmark`, each a `theme.css` with
-  its fonts; `--vendor` copies and pins them, so a vendoring repository receives both. None is worn until
-  `--brand DIR --from <theme>` copies it into a place: a board that chooses none looks as it did. A theme styles three
-  hooks: the Owner's box's title `#p>.pt` (label `owner.title`), the last line `#F` (`#f`, `#r`), `tr.zebra`.
-- **Light and dark:** dark colours go under `@media (prefers-color-scheme:dark)`; `◐` (auto → light → dark) switches
-  that rule for any theme and remembers the choice in the browser; paper stays light. A wordmark in `currentColor`
-  takes the page's ink, at its `height`, else 22 px. Every page ends in the tool's line: its mark, name and version.
+- **The look is the board's own:** no theme is read and no font ships. The board's colours are `[palette]` in
+  `shoalmark.toml`.
+- **No longer read, never a silent loss:** a place's `theme.css`, `fonts/` and `wordmark.svg` — and the `themes/` an
+  older copy shipped — are named, file by file, by every board build, by `--brand` and in one line of the board, with
+  what replaces each: `[palette]`, the system's monospace, the name. `--check` never fails on them; delete them.
+- **`--brand`** says which place gave the board its logo and labels; `--brand DIR` writes a commented `labels.yaml`.
+  The name is `name` in `shoalmark.toml`.
+- **Light and dark:** the board follows the system; `◐` (auto → light → dark) switches it by hand and remembers the
+  choice in the browser; paper stays light. Every page ends in the tool's line: its mark, name and version.
 - **Another language:** `labels.yaml` for the board's words; `[headings]` in `shoalmark.toml` for the gate's sections.
 
 ## Licence

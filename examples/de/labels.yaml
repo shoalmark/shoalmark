@@ -162,3 +162,9 @@ answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt
 answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
 answer.sign.url: "https://shoalmark.github.io/shoalmark/de/signing.html"
 answer.done: Fertig
+# R10's look half: the line for each brand file the board no longer reads — English until the native read
+brand.gone: "no longer read: {0}"
+brand.gone.theme: "[palette] in shoalmark.toml"
+brand.gone.fonts: "the system's monospace"
+brand.gone.wordmark: the name
+brand.gone.themes: "[palette], by name"
