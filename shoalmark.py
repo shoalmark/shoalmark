@@ -3663,6 +3663,8 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
    row of its own, the scheme's button under it at the right edge (RV-3342) */
 @media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
 #sb{flex-basis:100%}#s{margin-left:auto}}
+/* a phone: what is wider than the page — the work table's columns as they are — scrolls in the board's own box, never the page (BF-14) */
+@media(max-width:640px){#B{display:block;overflow-x:auto}}
 /* on paper the board is always the light one */
 @media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
 </style>

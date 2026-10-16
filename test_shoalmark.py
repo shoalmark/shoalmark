@@ -637,6 +637,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
     "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
     "names": "FM-053, BF-11 · a review row's branch names at 375 px, rendered — each one inline box",
+    "phone": "FM-053, BF-14 · the page at 390 and 360 px, rendered — no sideways scroll, the table's width in the board's box",
 }
 
 
@@ -5246,6 +5247,31 @@ if _browser("names"):
                   and any(n_["t"].startswith("fm/053-board-v2-") for n_ in names_))
     except _ChromeFailed as e_:
         _hung("names", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-14: on a phone the page never scrolls sideways — what is wider, the work table's columns as they are, scrolls in the board's own
+#     box. Measured in Chrome at 390 and 360 px on a board whose table cannot fit a phone; the rule taken out must let the page scroll -------
+_PH_RULE = "@media(max-width:640px){#B{display:block;overflow-x:auto}}\n"
+_PH_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,b=document.getElementById("B");'
+             'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,bc:b.clientWidth,bs:b.scrollWidth}),"*")})</script>')
+_ph14_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-14 · at 640 px and narrower the board's box scrolls what is wider than the page: `#B{display:block;overflow-x:auto}` in its own phone rule",
+      _ph14_src.count(_PH_RULE) == 1)
+if _browser("phone"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock-is-booked-per-warehouse-and-counted-per-shelf-in-one-pass-every-night")
+            tracker(root, "MSR-002", status="Proposed", title="An untriaged one"); run(root)
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _header_at(wt_, page_, w_, _PH_PROBE) or {} for w_ in (390, 360)}
+            before_ = _header_at(wt_, page_.replace(_PH_RULE, ""), 360, _PH_PROBE) or {}
+            check(f"FM-053, BF-14 · at 390 and 360 px the page is no wider than its frame, and the table's width scrolls in the board's box (saw {seen_})",
+                  page_.count(_PH_RULE) == 1 and all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["bs"] > r_["bc"] for w_, r_ in seen_.items()))
+            check(f"FM-053, BF-14 · the check's control: the rule taken out, the page scrolls sideways at 360 px (saw {before_})",
+                  before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
+    except _ChromeFailed as e_:
+        _hung("phone", e_)
         fm.configure(HERE)
 
 # --- FM-053, BF-3: on the board the Owner is *you* (the guide, §10) — `next: owner` reads *→ you* in the tier's cell, and the viewer's handover
