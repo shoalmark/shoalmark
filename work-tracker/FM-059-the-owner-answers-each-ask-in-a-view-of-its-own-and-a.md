@@ -21,6 +21,8 @@ answered-by: holgo99
 
 ## What is true now
 
+**2026-10-17 — S2 built, awaiting independent critical review:** `3baabe1` records the hooks' copy's source commit and canonical file comparison; its reader retains older short records as incomplete and names `--install-hook` without refusing them. The scoped checks and four mutants pass on Python 3.15 and 3.9.6, with the CRLF stand-in on 3.15. Requirements recorded privately.
+
 **2026-10-17 — judged In Progress, P2, for v0.20.1's build (quick win 11), before the first build commit.** Its first
 slice, the hooks' copy recording the tool's full commit, is built on `fm/059-copy-provenance`.
 
@@ -57,3 +59,4 @@ first release after v0.20.1, is withdrawn (its record is under `## Asks`), and t
 | 2026-10-16 | Filed on the Owner's direction (relayed by the Auditor), with its ask. Nothing is designed or built. |
 | 2026-10-16 | Its design started, the Owner with the Designer; the ask now asks only which release builds it. |
 | 2026-10-16 | Quick win 11 in v0.20.1, on the Owner's word: the first proposal withdrawn, the ask filed again proposing v0.20.1. |
+| 2026-10-17 | S2 built in `3baabe1` by the Builder seat: source provenance for the hooks' COPY, its reader and legacy notice, with the scoped checks and four mutants on Python 3.15 and 3.9.6 and the CRLF stand-in on 3.15. An independent critical review remains. |
