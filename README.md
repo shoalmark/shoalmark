@@ -259,7 +259,7 @@ shoalmark writes runs after a checkout, a merge, a rebase or a pull. The board i
 the commit stages a tracker, and by `--answer`, `--done`, `--due` and `--revoke` right after each pushes.
 Where an earlier version wrote `post-checkout`, `post-merge` or `post-rewrite`, the next `--install-hook` removes each one exactly as that version wrote it, with a line; a hook of
 those names that it did not write — or one changed since — is kept as it is, and named. A commit's hook writes only inside the repository, outside its git directory and through no
-symlink, and it fails closed: where the copy is not there, refuses, or does not finish within 35 seconds (`SHOALMARK_BOARD_SECONDS` gives it longer), the commit is refused with
+symlink, and it fails closed: where the copy is not there, refuses, or does not finish within 60 seconds (`SHOALMARK_BOARD_SECONDS` gives it longer), the commit is refused with
 one line. No hook runs the repository's deriver: where there is one, the commit's hook leaves INDEX.md and the files it derives as staged and says so in one line — run the tool
 before committing; CI's `--check`, which runs the deriver, holds them. `--install-hook` refuses a hooks folder inside the working tree — a `core.hooksPath` there, or a symlink into
 it — where a branch could change the hooks themselves, and writes no hook and no copy. Only `--install-hook` writes the copy — from a pinned
@@ -267,6 +267,11 @@ copy that passes its PIN, else from the working tree's tool, and it says which c
 tree's tool differs from the copy, a hook still judges with the copy and prints one line that says so. A person, an agent and CI run the repository's own tool, as ever. Developing the
 tool itself means installing the branch's copy deliberately: `--install-hook` on that branch, which warns that the copy carries that branch's tool.
 On git and on Subversion alike, after a checkout, a pull or `svn update`, run `--html-only` to rebuild the board.
+
+The board's `--html-only` run has the same 60 s default and environment override. Explicit person commands such as `--answer` and `--check` have no watchdog,
+through either the repository's tool or the hooks' copy. The copy's `COPY` marker still applies all its existing restrictions. For the timeout alone, the tool reads parsed
+arguments: `--session-check`, `--session-trailer`, `--commit-msg`, `--print-written`, `--tsvn-hook` and `--html-only` stay bounded even alongside a person command.
+A plain, unknown or malformed invocation of the copy cannot be distinguished from a hook and stays bounded, including when typed by hand.
 
 Then **the Owner** writes the intent and the current path in `<tracker dir>/TRIAGE.md`. Nobody else edits those two
 sections. The intent is three lines in their own words about the repository as a whole, never one feature of it: what

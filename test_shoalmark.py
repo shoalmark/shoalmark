@@ -3712,7 +3712,7 @@ with tempfile.TemporaryDirectory() as d:
         t0_ = time.monotonic(); g["hung"] = _hand(g["root"], env=env_); g["hung_s"] = time.monotonic() - t0_
     g_ = _hook_scenario(d, _pl_plain, steps=_steps_hang)
     check(f"FM-006 · a private security report · a copy that hangs is bounded: the checkout runs no refresh and succeeds on the branch asked for in {g_['moved_s']:.0f} s; the copy's refresh by hand, "
-          f"whose main thread waits 25 s, is stopped by its own bound (2 s here, 35 s by default) in {g_['hung_s']:.0f} s, exit 4, with one line (saw {g_['moved'][1]!r} · {g_['hung']!r})",
+          f"whose main thread waits 25 s, is stopped by its own bound (2 s here, 60 s by default) in {g_['hung_s']:.0f} s, exit 4, with one line (saw {g_['moved'][1]!r} · {g_['hung']!r})",
           g_["moved"] == (0, "") and g_["hung_at"] == "payload" and g_["moved_s"] < 15 and g_["hung_s"] < 15
           and g_["hung"] == (fm.EXIT_LINT, "the board's run took longer than 2 s and was stopped"))
     rm_git(g_["root"])
@@ -4047,7 +4047,7 @@ def _rv_bound_ok(g):
 def _rv_gone_ok(g):
     return g["gone_code"] != 0 and g["gone_said"] == _GONE_LINE and g["gone_head"]
 g_ = _rv_bound()
-check(f"FM-006 · a private security report · RV-2300 · the 35-second bound covers a commit's hooks too, and there it fails closed: a copy whose main thread waits 25 s is stopped by its bound "
+check(f"FM-058 · the 60-second bound covers a commit's hooks too, and there it fails closed: a copy whose main thread waits 25 s is stopped by its bound "
       f"(2 s here), and the commit is refused with one line naming `SHOALMARK_BOARD_SECONDS` as the way to raise it, in {g_['took']:.0f} s (saw {g_['said'][-120:]!r})", _rv_bound_ok(g_))
 check(f"FM-006 · a private security report · RV-2300 · a commit's hook whose copy is not in the git directory refuses the commit with one line naming `--install-hook` (saw {g_['gone_said']!r})", _rv_gone_ok(g_))
 if _HAVE_RV:
@@ -4057,6 +4057,9 @@ if _HAVE_RV:
 if not _HAVE_RV:
     _skipped("FM-006 · a private security report · RV-2300 · the controls", 4, f"this clone does not hold {_RV_REV}")
 fm.configure(HERE)
+
+import test_run_bounds
+test_run_bounds.run_controls(HERE / "shoalmark.py", check)
 
 # --- No deriver in hooks (the Owner's ruling filed in FM-006): a hook's run of the copy starts no deriver, and the commit's hook leaves INDEX.md as staged ------------------
 # A repository with a deriver that leaves an inert marker when it runs. Each control is the same operation beside fc5f197's tool, whose `--install-hook` accepted a deriver and
