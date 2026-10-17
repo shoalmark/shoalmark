@@ -3,13 +3,16 @@ id: FM-058
 status: Proposed
 considered: FM-006, FM-045, FM-050
 tags: bug
-next: owner
+next: build
 hook: "A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push can take longer"
 ask: "How long may a run of shoalmark take before the tool stops it: a hook's run, the board's run, and a command a person runs?"
 ask-kind: ruling
 ask-since: 2026-10-16
 ask-options: "60 s for a hook's run and the board's run; no bound on a command a person runs | 60 s for every run, a person's commands included | the bounds I name in my answer"
 ask-proposal: "60 s for a hook's run and the board's run; no bound on a command a person runs"
+answer: "accepted - 60 s for a hook's run and the board's run; no bound on a command a person runs"
+answered: 2026-10-17
+answered-by: holgo99
 ---
 
 # FM-058 — a command a person runs through the hooks' copy is stopped at the hook's 35 s
