@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 
 HERE = Path(__file__).resolve().parent
-STARTUP = "if SAFE_READS or (HOOK_RUN and hook_watchdog_required(sys.argv[1:])):"
+STARTUP = 'WATCHDOG_MODE = watchdog_mode(sys.argv[1:]) if __name__ == "__main__" else None'
 HOOK_LINE = ("shoalmark: the hook's run took longer than 1 s and was stopped — "
              "the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer\n")
 BOARD_LINE = "the board's run took longer than 1 s and was stopped\n"
@@ -73,13 +73,24 @@ def classification_filesystem_calls(tool, argv, repository, copy):
             for name in names:
                 original = getattr(module, name)
                 stack.enter_context(patch.object(module, name, spy(original, module.__name__ + "." + name)))
-        if tool.hook_watchdog_required(argv):
-            tool.board_watchdog()
+        mode = tool.watchdog_mode(argv)
+        if mode is not None:
+            tool.board_watchdog(board=mode == "board")
             assert armed[0], "the filesystem spy must extend through watchdog arming"
     return calls
 
 
-def run_controls(source, check):
+def board_spellings(tool):
+    """RV-3371: derive every accepted --html-only prefix from this parser's own option names."""
+    with patch.object(tool.argparse.ArgumentParser, "parse_args", lambda parser, argv: parser):
+        parser = tool.parse_args([], classification_only=True)
+    options = tuple(parser._option_string_actions)
+    target = "--html-only"
+    return [target[:length] for length in range(3, len(target) + 1)
+            if [option for option in options if option.startswith(target[:length])] == [target]]
+
+
+def run_controls(source, check, *, only=None):
     """FM-058's contract: real children, unchanged COPY classification, defaults and fail-safe cases."""
     tool = load_tool(source)
     source = Path(source).read_text(encoding="utf-8")
@@ -96,6 +107,9 @@ SAFE_READS = False
 '''
     with tempfile.TemporaryDirectory(prefix="fm058-bounds-") as directory:
         base = Path(directory)
+        paths, message = base / "paths.txt", base / "message.txt"
+        paths.write_text(str(base) + "\n", encoding="utf-8")
+        message.write_text("FM-058\n", encoding="utf-8")
         tools = {}
         for kind in ("tree", "copy"):
             folder = base / kind
@@ -122,6 +136,8 @@ SAFE_READS = False
                    ("copy", ["--answer", "FM-058", "accept"], "person"),
                    ("tree", ["--answer", "FM-058", "accept"], "person"))
         for kind, argv, run in classes:
+            if only is not None:
+                continue
             calls = classification_filesystem_calls(tool, argv, base, kind == "copy")
             check("RV-3370 early pass: " + kind + " " + repr(argv) + " — " + repr(calls), not calls)
             result, _ = launch(kind, argv)
@@ -130,7 +146,7 @@ SAFE_READS = False
                   result.returncode == 0 and not result.stderr and json.loads(result.stdout) == expected)
 
         # Person cases come first so the over-bounding mutant has a direct witness.
-        waits = (("copy", ["--answer", "FM-058", "accept"], "person"),
+        waits = [("copy", ["--answer", "FM-058", "accept"], "person"),
                  ("tree", ["--answer", "FM-058", "accept"], "person"),
                  ("copy", ["--root", str(base), "--check"], "person"),
                  ("tree", ["--check"], "person"),
@@ -146,8 +162,24 @@ SAFE_READS = False
                  ("copy", ["--sess"], "hook"),
                  ("copy", ["--answer"], "hook"),
                  ("copy", ["--unknown"], "hook"),
-                 ("copy", [], "hook"))
+                 ("copy", [], "hook")]
+        for kind in ("tree", "copy"):
+            waits.extend((kind, ["--tsvn-hook", *layout], "hook") for layout in (
+                ["start", str(paths), str(message), str(base)],
+                ["pre", str(paths), "3", str(message), str(base)]))
+            for spelling in board_spellings(tool):
+                case = (kind, [spelling], "board")
+                if case not in waits:
+                    waits.append(case)
+        waits.extend(("tree", argv, run) for argv, run in (
+            ([], "person"), (["--unknown"], "person"), (["--answer"], "person"),
+            (["--session-check"], "hook"), (["--session-trailer", "message", ""], "hook"),
+            (["--commit-msg", "message"], "hook"), (["--print-written"], "hook"),
+            (["--answer", "FM-058", "accept", "--session-check"], "hook"),
+            (["--check", "--html-o"], "board")))
         for kind, argv, run in waits:
+            if only is not None and not only(kind, argv, run):
+                continue
             calls = classification_filesystem_calls(tool, argv, base, kind == "copy")
             check("RV-3370 early pass: " + kind + " " + repr(argv) + " — " + repr(calls), not calls)
             result, elapsed = launch(kind, argv, bounded="1", wait="2")
@@ -168,8 +200,9 @@ SAFE_READS = False
 def run_mutants(source, check):
     text = Path(source).read_text(encoding="utf-8")
     mutations = (
-        ("person copy treated as hook", STARTUP, "if SAFE_READS or HOOK_RUN:"),
-        ("hook treated as unbounded person", STARTUP, "if SAFE_READS:"),
+        ("person copy treated as hook", STARTUP,
+         'WATCHDOG_MODE = ("board" if SAFE_READS else "hook") if __name__ == "__main__" and (SAFE_READS or HOOK_RUN) else None'),
+        ("hook treated as unbounded person", STARTUP, 'WATCHDOG_MODE = "board" if SAFE_READS else None'),
         ("default remains 35 s", 'os.environ.get("SHOALMARK_BOARD_SECONDS") or 60',
          'os.environ.get("SHOALMARK_BOARD_SECONDS") or 35'),
         ("RV-3370 early theme discovery", "args = parse_args(argv, classification_only=True)",
@@ -191,6 +224,26 @@ def run_mutants(source, check):
                 check("FM-058 mutant rejected: " + name + " — " + str(error), True)
             else:
                 check("FM-058 mutant rejected: " + name, False)
+
+    # The copy-only mutant must fail every affected tree layout and board spelling,
+    # rather than being stopped at the first unrelated hook failure.
+    assert text.count(STARTUP) == 1
+    with tempfile.TemporaryDirectory(prefix="fm058-copy-only-") as directory:
+        candidate = Path(directory) / "shoalmark.py"
+        candidate.write_text(text.replace(STARTUP,
+            'WATCHDOG_MODE = watchdog_mode(sys.argv[1:]) if __name__ == "__main__" and HOOK_RUN else None', 1), encoding="utf-8")
+        rejected = []
+
+        def expect_failure(label, passed):
+            if "short bound:" in label:
+                rejected.append(not passed)
+                check("RV-3371 copy-only mutant rejected: " + label, not passed)
+            else:
+                check(label, passed)
+
+        run_controls(candidate, expect_failure, only=lambda kind, argv, run:
+                     kind == "tree" and bool(argv) and (argv[0] == "--tsvn-hook" or argv[0].startswith("--ht")))
+        check("RV-3371 copy-only mutant fails Tortoise layouts and every accepted board spelling", bool(rejected) and all(rejected))
 
 
 def main():

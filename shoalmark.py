@@ -10995,17 +10995,20 @@ _AUDIT_HOOKED = [False]
 BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 60)      # the board's run and a hook's run; explicit person commands have no watchdog
 
 
-def hook_watchdog_required(argv):
-    """Read command arguments, never relax the COPY restrictions. Hook modes win even in mixed commands.
-    An explicit person command is unbounded; an unknown, malformed or plain copy invocation is ambiguous and stays bounded.
-    These are the modes the installed hooks (including former board hooks) run; keep them bounded even when typed by hand."""
+def watchdog_mode(argv):
+    """Select the board/hook timeout from parsed argv for either tool, without changing COPY permissions or SAFE_READS.
+    Board and hook modes win in mixed commands. Explicit person commands are unbounded; ambiguous copy invocations stay bounded."""
     try:
         with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
             args = parse_args(argv, classification_only=True)
     except SystemExit:
-        return True
-    return (args.html_only or args.print_written or args.session_check or args.session_trailer is not None
-            or args.commit_msg is not None or args.tsvn_hook is not None or cli_operation(args) == "write")
+        return "hook" if HOOK_RUN else None
+    if args.html_only:
+        return "board"
+    if (args.print_written or args.session_check or args.session_trailer is not None
+            or args.commit_msg is not None or args.tsvn_hook is not None):
+        return "hook"
+    return "hook" if HOOK_RUN and cli_operation(args) == "write" else None
 
 
 def board_watchdog(board=True):
@@ -11478,8 +11481,9 @@ if __name__ == "__main__":                                  # what is said while
         if hasattr(_stream, "reconfigure"):
             _stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
 SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
-if SAFE_READS or (HOOK_RUN and hook_watchdog_required(sys.argv[1:])):
-    board_watchdog(board=SAFE_READS)                                        # fail closed for hook modes and ambiguous copy invocations
+WATCHDOG_MODE = watchdog_mode(sys.argv[1:]) if __name__ == "__main__" else None
+if WATCHDOG_MODE is not None:
+    board_watchdog(board=WATCHDOG_MODE == "board")                          # timeout selection is independent of the configuration's read rule
 configure()
 SAFE_READS = False
 
