@@ -1,11 +1,15 @@
 """FM-058: the signed run-bound classes, exercised at the program entry point.
 
-Run directly with --mutants to prove the three required regressions are caught.
+Run directly with --mutants to prove the required regressions are caught.
 Only a disposable tool's first configure call is replaced: the real startup,
 argument classification and watchdog run before a child that outlasts the bound.
 """
 
 import argparse
+import builtins
+import contextlib
+import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -13,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from unittest.mock import patch
 
 
 HERE = Path(__file__).resolve().parent
@@ -22,8 +27,61 @@ HOOK_LINE = ("shoalmark: the hook's run took longer than 1 s and was stopped —
 BOARD_LINE = "the board's run took longer than 1 s and was stopped\n"
 
 
+def load_tool(source):
+    spec = importlib.util.spec_from_file_location("bounds_tool", source)
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    return tool
+
+
+def classification_filesystem_calls(tool, argv, repository, copy):
+    """RV-3370: watch resolved tool/repository paths from classification through watchdog arming."""
+    roots = {tool.HERE.resolve(), tool.ROOT.resolve(), repository.resolve()}
+    calls, resolving, armed = [], [False], [False]
+
+    class Timer:
+        def __init__(self, *args):
+            pass
+
+        def start(self):
+            armed[0] = True
+
+    def spy(original, label):
+        def watched(path=".", *args, **kwargs):
+            if not resolving[0] and isinstance(path, (str, bytes, os.PathLike)):
+                resolving[0] = True
+                try:
+                    resolved = Path(os.fsdecode(path)).resolve()
+                    for root in roots:
+                        try:
+                            resolved.relative_to(root)
+                        except ValueError:
+                            continue
+                        calls.append((label, str(resolved)))
+                        break
+                finally:
+                    resolving[0] = False
+            return original(path, *args, **kwargs)
+        return watched
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(patch.object(tool, "HOOK_RUN", copy))
+        stack.enter_context(patch.object(tool.threading, "Timer", Timer))
+        for module, names in ((os, ("stat", "lstat", "scandir", "listdir", "open")),
+                              (builtins, ("open",)), (io, ("open",)),
+                              (Path, ("stat", "lstat", "exists", "is_dir", "is_file", "iterdir", "open"))):
+            for name in names:
+                original = getattr(module, name)
+                stack.enter_context(patch.object(module, name, spy(original, module.__name__ + "." + name)))
+        if tool.hook_watchdog_required(argv):
+            tool.board_watchdog()
+            assert armed[0], "the filesystem spy must extend through watchdog arming"
+    return calls
+
+
 def run_controls(source, check):
     """FM-058's contract: real children, unchanged COPY classification, defaults and fail-safe cases."""
+    tool = load_tool(source)
     source = Path(source).read_text(encoding="utf-8")
     anchor = "\nconfigure()\nSAFE_READS = False\n"
     assert source.count(anchor) == 1, "the first configure call must be instrumented exactly once"
@@ -64,6 +122,8 @@ SAFE_READS = False
                    ("copy", ["--answer", "FM-058", "accept"], "person"),
                    ("tree", ["--answer", "FM-058", "accept"], "person"))
         for kind, argv, run in classes:
+            calls = classification_filesystem_calls(tool, argv, base, kind == "copy")
+            check("RV-3370 early pass: " + kind + " " + repr(argv) + " — " + repr(calls), not calls)
             result, _ = launch(kind, argv)
             expected = {"seconds": 60, "copy": kind == "copy"}
             check("FM-058 default: " + kind + " " + run + " reads 60 s without waiting",
@@ -88,6 +148,8 @@ SAFE_READS = False
                  ("copy", ["--unknown"], "hook"),
                  ("copy", [], "hook"))
         for kind, argv, run in waits:
+            calls = classification_filesystem_calls(tool, argv, base, kind == "copy")
+            check("RV-3370 early pass: " + kind + " " + repr(argv) + " — " + repr(calls), not calls)
             result, elapsed = launch(kind, argv, bounded="1", wait="2")
             label = "FM-058 short bound: " + kind + " " + repr(argv)
             if run == "person":
@@ -110,6 +172,8 @@ def run_mutants(source, check):
         ("hook treated as unbounded person", STARTUP, "if SAFE_READS:"),
         ("default remains 35 s", 'os.environ.get("SHOALMARK_BOARD_SECONDS") or 60',
          'os.environ.get("SHOALMARK_BOARD_SECONDS") or 35'),
+        ("RV-3370 early theme discovery", "args = parse_args(argv, classification_only=True)",
+         "args = parse_args(argv, classification_only=False)"),
     )
     for name, before, after in mutations:
         assert text.count(before) == 1, "each mutant must change exactly one decision"

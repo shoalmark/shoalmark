@@ -9343,7 +9343,7 @@ def cli_preflight(args, backend):
     return CLI_GIT_ONLY[operation] if backend != "git" and operation in CLI_GIT_ONLY else (None, EXIT_OK)
 
 
-def parse_args(argv):
+def parse_args(argv, *, classification_only=False):
     parser = argparse.ArgumentParser(prog=os.environ.get("SHOALMARK_CMD") or "shoalmark", description="A work tracker that lives in the repository it tracks.")
     add = parser.add_argument
     add("--root", metavar="DIR", help="the repository to track; default: the nearest shoalmark.toml or git toplevel above the working directory")
@@ -9435,7 +9435,7 @@ def parse_args(argv):
     add("--brand", nargs="?", const="", metavar="DIR",
         help="why does my board look like this: which places gave it its theme, logo, wordmark and labels. With DIR: write a commented starter there")
     add("--from", dest="theme", metavar="THEME",
-        help=f"with --brand DIR: the starter is a theme the tool ships in brand/themes/ — {' or '.join(shipped_themes()) or 'none in this copy'}: its theme.css and "
+        help=f"with --brand DIR: the starter is a theme the tool ships in brand/themes/ — {'available starters' if classification_only else (' or '.join(shipped_themes()) or 'none in this copy')}: its theme.css and "
              "its fonts copied into DIR, never over a file there, and yours to change. No setting chooses a theme: a board wears the one in its places")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word, cut to five characters")
@@ -11001,7 +11001,7 @@ def hook_watchdog_required(argv):
     These are the modes the installed hooks (including former board hooks) run; keep them bounded even when typed by hand."""
     try:
         with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
-            args = parse_args(argv)
+            args = parse_args(argv, classification_only=True)
     except SystemExit:
         return True
     return (args.html_only or args.print_written or args.session_check or args.session_trailer is not None
