@@ -3,8 +3,13 @@ id: FM-059
 status: Proposed
 considered: FM-050, FM-007, FM-054, FM-058
 tags: process
-next: build
+next: owner
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
+ask: "Do you adopt the guided answer design and its seven proposals as FM-059's body states them in the commit that last filed this ask?"
+ask-kind: ruling
+ask-since: 2026-10-17
+ask-options: "yes | yes, with the changes I name | no: run sheets stop before each answer until it is designed again"
+ask-proposal: "yes"
 ---
 
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
@@ -23,8 +28,8 @@ first release after v0.20.1, is withdrawn (its record is under `## Asks`), and t
 - **Two requirements for its design, recorded privately.** They go into its design brief.
 - **Designed 2026-10-16** (`## The design`, below), by the Builder seat. Reviewed in round 1, not ready (`8ba48f6`),
   and in round 2 READY (`394ad4d`): its six findings are fixed below. Nothing is built. The design holds
-  for either answer to the release ask. Its own ruling ask is drafted for the Planner, who puts it once the release ask
-  is answered: a tracker holds one open ask.
+  for either answer to the release ask. Its own ruling ask is put (2026-10-17): whether the Owner adopts the design and
+  its seven proposals, the *Proposed* lines of its open questions.
 - **The release ask is answered:** *accepted - v0.20.1*, the Owner's signed answer (`99b1708`), recorded under `## Asks`.
 - **What it needs first:** R4's ask ids (FM-050), and FM-058's fix, so that a command a person runs has no time bound;
   FM-058 moves into v0.20.1 with it. The seat's confidence, *because* and *then* are new record data and stay outside it:
@@ -553,3 +558,4 @@ Reviewer privately. This text does not state them.
 | 2026-10-16 | RV-3328 and RV-3333 (recorded privately) fixed in the design, by the Builder seat. Records only. |
 | 2026-10-16 | RV-3329 to RV-3332 fixed in the design, by the Builder seat: the tool's files compared with each CRLF read as LF; the PIN and the hooks' copy record full commits, and older records are named incomplete (R26); an author-only identity is refused before any view; the fetch's metadata is named as the one write before a pick, and the class row's baseline is taken after it. Records only. |
 | 2026-10-17 | Main joined (`6336355`), and the release ask's exchange recorded under `## Asks`: accepted - v0.20.1, signed `99b1708`. By the Planner seat. Records only. |
+| 2026-10-17 | Its design's own ruling ask put, by the Planner seat, as the Builder seat drafted it: whether the Owner adopts the design and its seven proposals. Records only. |
