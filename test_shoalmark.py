@@ -15140,6 +15140,17 @@ for _label, _ok, _detail in test_day_prompts.run_checks():
         if not _ok and _detail:
             print(f"        {_detail}")
 
+# Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
+import test_standup_repos
+for _label, _ok, _detail in test_standup_repos.run_checks():
+    if _ok is None:
+        _skipped(_label, 1, _detail)
+    else:
+        check(_label, _ok)
+        if not _ok and _detail:
+            print(f"        {_detail}")
+fm.configure(HERE)
+
 # FM-044 bounded local-stage runtime controls. Component-only AST assertions
 # remain with their immutable standalone reviews; core retains the unchanged
 # production/every-parent history ratchet for this composed tool.

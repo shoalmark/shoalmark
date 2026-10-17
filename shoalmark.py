@@ -32,6 +32,7 @@ import difflib
 import fnmatch
 import hashlib
 import collections
+import io
 import itertools
 import json
 import math
@@ -288,7 +289,7 @@ def git_dirs():
         if vcs() == "git":
             try:
                 out = vcs_process("git", "rev-parse", "--absolute-git-dir", "--git-common-dir", cwd=ROOT, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", env=nested_git_env())
+                                  encoding="utf-8", errors="replace", env=nested_git_env(), **standup_program("git"))
             except OSError as e:
                 metadata_unreadable(f"Git could not be run: {e}")
             dirs = out.stdout.splitlines()
@@ -1658,34 +1659,38 @@ def asks_by_key(trackers):
     return {k: sorted(v) for k, v in out.items()}
 
 
-def owner_queue(trackers):
+def owner_queue(trackers, provenance=True):
     """What waits for the Owner, oldest ask first: (tracker, age in days or None, what it holds up) — and ONLY what
     passes the ask rules. A malformed one is `malformed_asks` below: the Owner never sees a broken question as a
-    question, and a draft (`next: review`) never reaches them at all."""
+    question, and a draft (`next: review`) never reaches them at all. `provenance` False holds the asks to their form
+    alone, without the `[seats]` check: `--standup DIR …` (Q7), which says so where a repository has `[seats]`."""
     today = datetime.date.today()
     by_ask = asks_by_key(trackers)
     age = lambda t: (today - datetime.date.fromisoformat(t["ask_since"])).days if re.fullmatch(r"\d{4}-\d{2}-\d{2}", t.get("ask_since") or "") else None
     q = [(t, age(t), held_up_by(t, trackers)) for t in trackers
-         if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer") and not ask_problems(t, by_ask)]
+         if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer") and not ask_problems(t, by_ask, provenance)]
     return sorted(q, key=lambda r: (-(r[1] if r[1] is not None else -1), r[0]["id"]))
 
 
-def malformed_asks(trackers):
+def malformed_asks(trackers, provenance=True):
     """The third layer: what was sent to the Owner and is not a question they can answer — (tracker, reasons), by id.
     The gate already refuses each of these; this is what the board, `--owner` and `--standup` show when one got in
-    anyway — on a merge, under `--no-verify`, or from an agent that never ran the gate."""
+    anyway — on a merge, under `--no-verify`, or from an agent that never ran the gate. `provenance` as `owner_queue`'s."""
     by_ask, out = asks_by_key(trackers), []
     for t in sorted(trackers, key=lambda t: t["id"]):
-        why = ask_problems(t, by_ask) if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer") else []
+        why = ask_problems(t, by_ask, provenance) if t["status"] in OPEN_STATUSES and t.get("next") == "owner" and not t.get("answer") else []
         if why:
             out.append((t, why))
     return out
 
 
+BOTTLENECK_SAYS = "you are the bottleneck — {0} asks, {1} trackers held up"
+
+
 def bottleneck(q):
     """The one line the Owner is owed when their queue is the finding — not a tracker's problem, theirs."""
     held = {h for _, _, hs in q for h in hs}
-    return f"you are the bottleneck — {len(q)} asks, {len(held)} trackers held up" if len(q) > BOTTLENECK else ""
+    return BOTTLENECK_SAYS.format(len(q), len(held)) if len(q) > BOTTLENECK else ""
 
 
 def sent_back(trackers, log=None):
@@ -1921,6 +1926,7 @@ def answered(trackers):
 
 
 ACTS_TITLE = "ACTS — yours, with their time"
+ACT_ORDER = {"missed": 0, "overdue": 1, "due": 2, "nodate": 3}         # the order acts are listed in, by `act_state`
 
 
 def acts_lines(trackers, now=None):
@@ -1929,9 +1935,8 @@ def acts_lines(trackers, now=None):
     board's words, and the day they promised it. A promise's line is what they promised, and the question it answered follows
     on the next line, as context (the Owner's word of 2026-09-27 13:38:30). [] where they owe none."""
     now = now or datetime.datetime.now(datetime.timezone.utc)
-    order = {"missed": 0, "overdue": 1, "due": 2, "nodate": 3}
     acts = sorted(((t, a) for t, a in ((t, act_of(t)) for t in trackers) if a),
-                  key=lambda p: (order[act_state(p[1], now)], parse_due(p[1][3]) or now, p[0]["id"]))
+                  key=lambda p: (ACT_ORDER[act_state(p[1], now)], parse_due(p[1][3]) or now, p[0]["id"]))
     return [f"  {t['id']} — {a[0]} · {act_words(a, now)}" + (" · " + LABELS["acts.promised"].format(a[2], a[1]) if a[1] else "")
             + (f"\n       {LABELS['acts.asked'].format(a[5])}" if a[5] else "") for t, a in acts]
 
@@ -2148,6 +2153,309 @@ def digest_read(read, trackers, who):
     if line:
         print(line, file=sys.stderr)
     return code
+
+
+# Q7 (FM-031) — ONE STAND-UP ACROSS THE REPOSITORIES YOU NAME. `--standup DIR [DIR …]`: one agenda for the sitting, by kind, across the folders
+# named — each found as `--root` finds a repository (`configure`), its trackers read as they stand, by this tool's own readers. A data-only view,
+# built on request: it runs nothing of a repository's own — no tool, deriver, forge queue, hook or program its configuration names —, starts no
+# git but the three reads of `STANDUP_GIT` and on Subversion the board's one local status (`read_only_svn`), and writes nothing, in a listed
+# repository or anywhere else. It starts git and svn by their absolute paths, found on PATH's absolute entries outside the repositories named
+# (`standup_programs`), with `NoDefaultCurrentDirectoryInExePath` set while it runs. `standup_tripwire` holds each folder's read to that. It speaks of *the repositories you named*, never of all of
+# anyone's projects; a folder it cannot read is named with why, and counted in nothing. Every count is a repository's own, then added: an id
+# belongs to its repository, and FM-001 in two of them is two items. `configure` rebinds the module for each folder; the run puts back what it
+# found (`bound_state`), so no folder's row is read under another's configuration. `--standup` alone is the one repository's agenda, as before.
+STANDUP_GIT = (("rev-parse", "--verify", "-q", "HEAD"),                 # its commit, as `head_commit` reads it
+               ("branch", "--show-current"),                           # its branch, as `built_on` reads it
+               ("rev-parse", "--absolute-git-dir", "--git-common-dir"))  # its git directories, which the reading rule keeps out of (`git_dirs`)
+STANDUP_NOT_READ = ("not read here: whether a git working tree has changes (`git status` there tells it); what you answered or did that is on its "
+                    "way on a repository's answer branches — an ask you answered shows here until your merge (`--standup` there reads it); the "
+                    "pull-request queue, which fetches (`--queue` there reads it)")
+STANDUP_NOT_RUN = ("not run here: a repository's own tool, its deriver — `--standup` in that repository still runs it —, its hooks, or a program "
+                   "its configuration names; nothing was written")
+STANDUP_SEATS = "who asked is not checked here (`[seats]`) — `--standup` there checks it"
+_STANDUP_WIRE = [False, False, False]   # on while `--standup DIR …` reads one folder · inside the judge · the audit hook is added
+STANDUP_PROGRAMS = {}                   # the absolute path `--standup DIR …` starts git and svn from, while it runs (`standup_programs`); empty otherwise
+
+
+def standup_roots(dirs):
+    """The folders `--standup DIR …` names, and the repository each finds (`find_root`), as far as each is there: the places no program it starts
+    comes from (`standup_programs`)."""
+    roots = []
+    for arg in dirs:
+        try:
+            if arg and os.path.isdir(arg):
+                roots.append(os.path.abspath(arg))
+                roots.append(str(find_root(pathlib.Path(arg))))
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return roots
+
+
+def standup_programs(roots, path=None, cwd=None):
+    """Where `--standup DIR …` starts git and svn from (RV-3303: recorded privately): {"git": an absolute path or "", "svn": …}. For each, the first
+    of PATH's entries, in PATH's order, that is absolute — on Windows with its drive or share —, is not the current folder, lies inside none of
+    `roots`, and holds the program as a regular file that lies inside none of them either: on Windows `git.exe` or `svn.exe`, never another kind;
+    elsewhere one this user may execute. A relative entry (`.`, `bin`, an empty one) is passed over. `path` and `cwd`: PATH and the current folder,
+    the run's own where not given."""
+    entries = (os.environ.get("PATH", "") if path is None else path).split(os.pathsep)
+    real = lambda p: os.path.normcase(os.path.realpath(p))
+    try:
+        here = real(cwd or os.getcwd())
+    except OSError:                                         # a current folder that is gone is no entry's folder
+        here = None
+    named = [real(r) for r in roots]
+    inside = lambda p: any(p == r or p.startswith(r.rstrip(os.sep) + os.sep) for r in named)
+    found = {}
+    for program in ("git", "svn"):
+        found[program] = ""
+        for entry in entries:
+            if not (os.path.isabs(entry) and (os.name != "nt" or os.path.splitdrive(entry)[0])):
+                continue
+            folder = real(entry)
+            candidate = os.path.join(entry, program + ".exe" if os.name == "nt" else program)
+            if folder == here or inside(folder) or not os.path.isfile(candidate):
+                continue
+            target = real(candidate)
+            if inside(target) or os.path.dirname(target) == here or not (os.name == "nt" or os.access(candidate, os.X_OK)):
+                continue
+            found[program] = candidate
+            break
+    return found
+
+
+def standup_program(program):
+    """`{"executable": <its absolute path>}` for a start of git or svn while `--standup DIR …` runs and `standup_programs` found it — {} on every
+    other run, which starts it as it always has."""
+    return {"executable": STANDUP_PROGRAMS[program]} if STANDUP_PROGRAMS.get(program) else {}
+
+
+def standup_judge(event, args):
+    """What `standup_tripwire` decides for one event while one folder is read: nothing, or `ReadOnlyRun`. No program but a read of `STANDUP_GIT`
+    in that repository, or Subversion's one local status there; no network; nothing written, made, moved or removed, anywhere; no file of the
+    repository opened, nor a folder of it listed, but a regular one reached through no symlink — the board's run's rules (`board_judge`) without
+    its writes, and with its git narrowed from `read_only_git` to the three argument lists of `STANDUP_GIT`."""
+    why = ""
+    if event == "subprocess.Popen":
+        argv = args[1] if isinstance(args[1], (list, tuple)) else split_cmdline(args[1]) if isinstance(args[1], str) else [str(args[1])]
+        here = isinstance(args[2], (str, bytes, os.PathLike)) and os.fsdecode(args[2]) == os.fsdecode(ROOT)
+        # the program started is the one `standup_programs` found, by its absolute path: CPython audits it as the executable given
+        started = lambda program: (bool(STANDUP_PROGRAMS.get(program)) and isinstance(args[0], (str, bytes, os.PathLike))
+                                   and os.path.normcase(os.fsdecode(args[0])) == os.path.normcase(STANDUP_PROGRAMS[program]))
+        if vcs() == "svn":
+            allowed = read_only_svn(argv) and started("svn")
+        else:
+            allowed = (vcs() == "git" and len(argv) > 1 and _PATH_SEP.split(str(argv[0]))[-1].lower() in ("git", "git.exe")
+                       and tuple(str(a) for a in argv[1:]) in STANDUP_GIT and started("git"))
+        if not (allowed and here):
+            why = f"it would start {' '.join(str(a) for a in argv[:4])}"
+    elif event in ("os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile", "os.fork", "os.forkpty", "webbrowser.open", "socket.connect"):
+        why = f"{event} is not for this view"
+    elif event in ("os.rename", "os.rmdir", "os.symlink", "os.link", "os.truncate", "os.chmod", "os.chown", "os.utime", "os.mkdir", "os.remove") or event.startswith("shutil."):
+        why = f"{event}: this view writes nothing"
+    elif event == "open":
+        target, mode, flags = args
+        if isinstance(target, int) or target is None:
+            return
+        flags = flags if isinstance(flags, int) else 0
+        if any(c in str(mode or "") for c in "wax+") or bool(flags & (os.O_WRONLY | os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_TRUNC)):
+            why = f"it would write {os.fsdecode(target)}"
+        elif in_tree(os.fsdecode(target)) and not (real_inside(os.fsdecode(target)) and os.path.isfile(os.fsdecode(target))):
+            why = f"it would read {os.fsdecode(target)}, which is no regular file inside the repository"
+    elif event in ("os.listdir", "os.scandir"):
+        if args[0] is not None and not isinstance(args[0], int) and in_tree(os.fsdecode(args[0])) and not real_inside(os.fsdecode(args[0])):
+            why = f"it would list {os.fsdecode(args[0])}, a symlink or reached through one"
+    if why:
+        raise ReadOnlyRun(why)
+
+
+def standup_tripwire(event, args):
+    """`--standup DIR …`'s read of one folder, enforced where Python itself does the thing (`sys.addaudithook`), as the board's run is
+    (`board_tripwire`): whatever a reader reaches that this view is not for is refused there, and the folder is named as not read, with why."""
+    if not _STANDUP_WIRE[0] or _STANDUP_WIRE[1]:
+        return
+    _STANDUP_WIRE[1] = True
+    try:
+        standup_judge(event, args)
+    finally:
+        _STANDUP_WIRE[1] = False
+
+
+def bound_state():
+    """What `configure` binds, before a run that binds it to several repositories in turn (A13): every module global its code names, and a copy
+    of what each container among them holds — it clears some in place — for `restore_state` to put back."""
+    space = configure.__globals__                       # this module's own namespace, as `configure` sees it
+    return {name: (space[name], space[name].copy() if isinstance(space[name], (dict, list, set)) else None)
+            for name in configure.__code__.co_names if name in space}
+
+
+def restore_state(kept):
+    """Put back what `bound_state` read: each name bound to the object it held, and each container holding what it held."""
+    space = configure.__globals__
+    for name, (value, held) in kept.items():
+        if isinstance(value, list):
+            value[:] = held
+        elif held is not None:
+            value.clear()
+            value.update(held)
+        space[name] = value
+
+
+def standup_where():
+    """How `--standup DIR …` names the folder's version control: git's branch and commit; Subversion's revision, from the board's one local
+    status; or none. Whether a git working tree has changes is not read (`STANDUP_NOT_READ`)."""
+    if vcs() == "git":
+        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(),
+                                     **standup_program("git"))
+        head, branch = git(*STANDUP_GIT[0]), git(*STANDUP_GIT[1])
+        sha, name = head.stdout.strip(), branch.stdout.strip() if branch.returncode == 0 else ""
+        if head.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha):
+            return f"git · {name or 'detached HEAD'} @ {sha[:7]}"
+        if head.returncode == 1 and not head.stderr.strip() and branch.returncode == 0:
+            return f"git · {name or 'no branch'}, no commit yet"
+        said = (head.stderr.strip() or branch.stderr.strip() or f"git exited {head.returncode}").splitlines()[0]
+        return f"git · its branch and commit not read: {said[:160]}"
+    if vcs() == "svn":
+        try:
+            rev = (svn_local_status()["."].get("revision") or "").strip()
+        except SvnUnreadable as e:
+            return f"Subversion · its revision not read: {str(e)[:160]}"
+        return f"Subversion · r{rev}" if rev and rev != "-1" else "Subversion · no revision yet"
+    return "no version control"
+
+
+def standup_read(arg, seen, now):
+    """One folder of `--standup DIR …`: {named, root, name, where, why, queue, acts, sent, seats}. `why` says why it was not read, and nothing of it is
+    counted then: a name that is no folder, one that cannot be listed, a second name for a repository already read (`seen`: its root → the name it was
+    read under), a configuration not understood, no tracker folder, or a refusal of the reading rule or of `standup_tripwire`. The module is left
+    bound to this folder; `standup_across` puts back its own."""
+    out = {"named": arg, "root": None, "name": pathlib.Path(arg).name or arg, "where": "", "why": "", "queue": [], "acts": [], "sent": [], "seats": False}
+    if not arg:
+        out["why"] = "an empty name names no folder"
+        return out
+    path = pathlib.Path(arg)
+    try:
+        if not os.path.lexists(path):
+            out["why"] = "the folder is missing"
+            return out
+        if not path.is_dir():
+            out["why"] = "not a folder"
+            return out
+        with os.scandir(path) as entries:
+            next(entries, None)
+        root = find_root(path)                              # as `configure` finds it: a name inside a repository reads that repository
+    except (OSError, ValueError, RuntimeError) as e:        # a folder that cannot be listed; a name with a NUL; a loop of symlinks
+        out["why"] = f"cannot be read: {getattr(e, 'strerror', None) or e}"
+        return out
+    if _norm(root) in seen:
+        out["why"] = f"the same repository as {seen[_norm(root)]}, read once"
+        return out
+    seen[_norm(root)] = arg
+    said, stderr = io.StringIO(), sys.stderr
+    global LAZY_OFF
+    try:
+        sys.stderr = said                                   # a refusal's own line becomes the folder's reason
+        configure(path)
+        out.update(root=ROOT, name=str(CONFIG.get("name") or "").strip() or ROOT.name, seats=bool(SEATS))
+        if vcs() and not STANDUP_PROGRAMS.get(vcs()):
+            out["why"] = f"{vcs()} is not found on PATH's absolute entries outside the repositories named"
+            return out
+        if not TRACKER_DIR.is_dir():
+            out["why"] = f"no tracker folder — {tracker_folder(CONFIG).as_posix()} is not there"
+            return out
+        LAZY_OFF = True                                     # every git it starts fetches nothing, with the board's settings (`nested_git_env`)
+        _STANDUP_WIRE[0] = True
+        try:
+            trackers = load_trackers()
+            out["where"] = standup_where()
+            out["queue"] = owner_queue(trackers, provenance=False)
+            out["acts"] = [((ACT_ORDER[act_state(a, now)], parse_due(a[3]) or now), t["id"], acts_lines([t], now)[0])
+                           for t, a in ((t, act_of(t)) for t in trackers) if a]
+            out["sent"] = malformed_asks(trackers, provenance=False)
+        finally:
+            _STANDUP_WIRE[0] = False
+    except SystemExit as e:
+        lines = [l for l in said.getvalue().splitlines() if l.strip()]
+        reason = e.code if isinstance(e.code, str) else lines[-1] if lines else f"exit {e.code}"
+        out["why"] = reason.splitlines()[0].replace("shoalmark: ", "", 1).split(" — ")[0][:200]
+    except ReadOnlyRun as e:
+        out["why"] = f"refused — {str(e)[:200]}"
+    except (OSError, UnicodeError, ValueError, SvnUnreadable) as e:
+        out["why"] = f"cannot be read: {str(e)[:200]}"
+    finally:
+        sys.stderr = stderr
+    if out["why"]:
+        out.update(queue=[], acts=[], sent=[])
+    return out
+
+
+def shown_path(path):
+    """A folder as `--standup DIR …` shows it: under the home, from `~`."""
+    try:
+        home = str(pathlib.Path.home())
+    except (RuntimeError, KeyError):
+        return str(path)
+    text = str(path)
+    return "~" + text[len(home):] if home and (text == home or text.startswith(home.rstrip(os.sep) + os.sep)) else text
+
+
+def standup_across(dirs):
+    """`--standup DIR [DIR …]` (Q7): one agenda across the repositories named — a line for each folder, its version control and its counts, or why
+    it was not read; then the asks by kind as `standup` orders them — inside a kind, what frees the most first, then the oldest — each with its
+    repository; the acts owed, missed and overdue first; the asks sent back; and what this view does not read or run. Exit 0: a view fails nothing."""
+    guard = os.environ.get("NoDefaultCurrentDirectoryInExePath")
+    os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"  # set before anything is read, and put back after, as `board_run` does
+    import xml.etree.ElementTree                            # Subversion's reader takes it; imported here, never under the tripwire
+    kept, bytecode, now, seen, reads = bound_state(), sys.dont_write_bytecode, datetime.datetime.now(datetime.timezone.utc), {}, []
+    if not _STANDUP_WIRE[2]:
+        sys.addaudithook(standup_tripwire)
+        _STANDUP_WIRE[2] = True
+    sys.dont_write_bytecode = True                          # no cache file for a module a reader imports
+    try:
+        STANDUP_PROGRAMS.update(standup_programs(standup_roots(dirs)))     # git and svn, each by its absolute path, found once for the run
+        for arg in dirs:
+            reads.append(standup_read(arg, seen, now))
+    finally:
+        _STANDUP_WIRE[0] = False
+        STANDUP_PROGRAMS.clear()
+        sys.dont_write_bytecode = bytecode
+        restore_state(kept)
+        if guard is None:
+            os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
+        else:
+            os.environ["NoDefaultCurrentDirectoryInExePath"] = guard
+    read = [r for r in reads if not r["why"]]
+    asks, acts = sum(len(r["queue"]) for r in read), sum(len(r["acts"]) for r in read)
+    held = sum(len({h for _t, _a, hs in r["queue"] for h in hs}) for r in read)        # each repository's own, then added: never joined by id
+    w = max([len(r["name"]) for r in reads] or [0])
+    print(f"STANDUP · in the {len(reads)} repositories you named, {len(read)} read · {asks} item(s)" + (f" · {acts} act(s)" if acts else "")
+          + ("" if asks or acts else " — nothing needs the Owner in them today.") + f" · read {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"
+          + (f"\n{BOTTLENECK_SAYS.format(asks, held)}" if asks > BOTTLENECK else ""))
+    for r in reads:
+        where = (shown_path(r["root"]) if r["root"] else r["named"])
+        if r["why"]:
+            print(f"  {r['name']:<{w}}  {where}  not read: {r['why']} — counted in nothing")
+        else:
+            print(f"  {r['name']:<{w}}  {where}  {r['where']} · {len(r['queue'])} item(s)" + (f" · {len(r['acts'])} act(s)" if r["acts"] else "")
+                  + (f" · {STANDUP_SEATS}" if r["seats"] else ""))
+    for kind, title in STANDUP_ORDER:
+        rows = sorted(((n, r["name"], t, a, hs) for n, r in enumerate(read) for t, a, hs in r["queue"] if (t.get("ask_kind") or "") == kind),
+                      key=lambda x: (-len(x[4]), -(x[3] if x[3] is not None else -1), x[0], x[2]["id"]))
+        if rows:
+            print(f"\n{title}")
+        for i, (_n, name, t, a, hs) in enumerate(rows, 1):
+            print(f"  {i}. {name:<{w}}  {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
+    owed = sorted((key, n, tid, r["name"], line) for n, r in enumerate(read) for key, tid, line in r["acts"])
+    if owed:
+        print(f"\n{ACTS_TITLE}")
+        for _key, _n, _tid, name, line in owed:
+            print(f"  {name:<{w}}" + line.replace("\n", "\n  " + " " * w))
+    bad = [(r["name"], t, why) for r in read for t, why in r["sent"]]
+    if bad:
+        print(f"\n{len(bad)} ASK(S) SENT BACK — NOT FOR YOU (the seat fixes these; they reach you when they pass the gate)")
+        for name, t, why in bad:
+            print(f"  {name:<{w}}  {t['id']} — {why[0]}")
+    print(f"\n{STANDUP_NOT_READ}\n{STANDUP_NOT_RUN}")
+    return EXIT_OK
 
 
 # a ship-log row `--answer … revoke` or `--supersede` writes: `| <date> | Answer of <answered> superseded: *"<answer>"* (<sha>) — …`
@@ -2852,9 +3160,11 @@ R9_LAUNCHD = "app.shoalmark.notify"         # the launchd agent's label and file
 
 def cli_removed(args):
     """R9's one line for the operation `cli_operation` selects, where that operation is gone — `--invite`, `--notify`, or
-    `--standup` with a file — else None. Pure: what a run says before it reads anything; the caller prints it and exits 2."""
+    `--standup` with a calendar file: a name ending in `.ics`, whatever its case; any other name is a folder `--standup DIR …`
+    reads (Q7), and a folder of such a name is named with a `/` after it — else None. Pure: what a run says before it reads
+    anything; the caller prints it and exits 2."""
     operation = cli_operation(args)
-    if operation in ("invite", "notify") or (operation == "standup" and args.standup):
+    if operation in ("invite", "notify") or (operation == "standup" and any(str(a).lower().endswith(".ics") for a in args.standup or ())):
         return R9_REMOVED[operation]
     return None
 
@@ -6794,7 +7104,7 @@ def svn_run(*args, xml=False, answers=()):
     All text reads, including `svn cat`, return LF line endings at this boundary."""
     import xml.etree.ElementTree as ET
     try:
-        done = vcs_process("svn", *args, *(["--xml"] if xml else []), cwd=ROOT, capture_output=True)
+        done = vcs_process("svn", *args, *(["--xml"] if xml else []), cwd=ROOT, capture_output=True, **standup_program("svn"))
     except OSError as e:
         raise SvnUnreadable(f"svn could not be run: {e}")
     stdout, stderr = (s.decode("utf-8", "replace") for s in (done.stdout, done.stderr))
@@ -9417,8 +9727,10 @@ def parse_args(argv):
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
              "tracks; its board carries no derived columns. It stands alone, with --root. No hook shoalmark writes runs it: it is the explicit refresh")
     add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg and commit-msg — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. No hook refreshes the board: a post-checkout, post-merge or post-rewrite an earlier version wrote is removed, with a line, and any other is kept and named; --html-only rebuilds the board. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
-    add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first; "
-                                                                   "then what invites and notifications left here, each named, never removed (R9). With FILE.ics: removed by R9 — one line, exit 2")
+    add("--standup", nargs="*", metavar="DIR", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first; "
+                                                     "then what invites and notifications left here, each named, never removed (R9). With DIR …: one agenda across the repositories named, each "
+                                                     "read as it stands — its branch and commit, a Subversion working copy's revision, or the folder — running nothing of theirs and writing "
+                                                     "nothing; a folder it cannot read is named with why and counted in nothing (Q7). A name ending in .ics: removed by R9 — one line, exit 2")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
              "origin's default branch, and refused, naming `git branch -D`, when it is not. An answer given already: `--answer <id> revoke \"<reason>\"`, or "
@@ -11215,6 +11527,11 @@ def main(argv=None, *, _notice=True):
     if removed:                                             # R9: a flag that is gone says so in one line, before anything is read
         print(removed, file=sys.stderr)
         return 2
+    if cli_operation(args) == "standup" and args.standup:   # Q7: the repositories it names, before anything of this run's own is read or run
+        if args.root:
+            print("--standup DIR … reads the repositories it names, and --root names the one a run reads: name that folder after --standup", file=sys.stderr)
+            return 2
+        return standup_across(args.standup)
     if args.html_only:                                    # …and nothing else, whatever else was said: the board's run is read-only and stands alone
         others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
         if others:
@@ -11308,7 +11625,7 @@ def main(argv=None, *, _notice=True):
     for words, verb in ((args.done, "recording"), (args.due, "rescheduling"), (args.revoke, "revoking")):
         if words:
             answer_step(words[0].upper(), 1, "reading the trackers", verb)
-    digest = "--owner" if args.owner else "--standup" if args.standup == "" and not (args.answered or args.answer or args.done or args.due or args.revoke or args.clear_ask) else ""
+    digest = "--owner" if args.owner else "--standup" if args.standup == [] and not (args.answered or args.answer or args.done or args.due or args.revoke or args.clear_ask) else ""
     if digest and not (args.schema or args.new):     # the Owner's digest reads what the board reads: it fetches nothing, up to its queue
         lazy_fetch_off()
         why = lazy_fetch_problem()
@@ -11349,7 +11666,7 @@ def main(argv=None, *, _notice=True):
         return revoke_cmd(args.revoke, trackers)
     if args.clear_ask:
         return clear_ask(args.clear_ask, trackers)
-    if args.standup is not None:                            # `--standup` alone: a file after it is refused above (R9)
+    if args.standup is not None:                            # `--standup` alone: a file after it is refused above (R9), folders are read above (Q7)
         code = digest_read(standup, trackers, "--standup")
         say_board_basis()                                   # FM-045: where the board is older than what it shows, one line
         say_r9_leftovers()                                  # R9: what invites and notifications left here, named — never removed

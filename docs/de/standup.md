@@ -23,8 +23,29 @@ standup_minutes = 15
 ```
 
 Die erste Zeile der Tagesordnung trägt diese Uhrzeit und Dauer. Den Termin in Ihrem Kalender legen Sie selbst an: das
-Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Jedes bekommt
-einen eigenen Termin, und sie dürfen sich nicht überschneiden.
+Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Ein Standup kann
+sie alle halten: der nächste Abschnitt.
+
+## Mehrere Repositories, ein Standup
+
+```
+python3 tools/shoalmark/shoalmark.py --standup ~/code/notes-app ~/work/client-site ~/code/side-project
+```
+
+Eine Tagesordnung, nach Art geordnet, über die Repositories, die Sie nennen — jeder Punkt mit seinem Repository. Jedes
+wird gelesen, wie es steht: ein git-Repository mit seinem Branch und seinem Commit, eine Subversion-Arbeitskopie mit ihrer
+Revision, ein einfacher Ordner, wie er ist. Ein Ordner, der sich nicht lesen lässt, wird mit dem Grund genannt und
+nirgends gezählt. Jede Zahl gehört einem Repository und wird dann addiert: FM-001 in zwei Repositories sind zwei Punkte.
+
+Es führt nichts von ihnen aus — kein eigenes Werkzeug eines Repositorys, keinen Deriver, keinen Hook und kein
+konfiguriertes Programm, und es holt nichts — und es schreibt nichts, weder in einem Repository noch anderswo. git und svn
+startet es aus den absoluten Einträgen von PATH außerhalb der genannten Repositories; wo keiner eines enthält, werden die
+Ordner, die es brauchen, mit dem Grund genannt. Es sagt,
+was dadurch ungelesen bleibt: ob ein git-Arbeitsbaum Änderungen hat, was `git status` dort sagt; und was das eigene
+`--standup` eines Repositorys auf diesen Wegen liest — was Sie beantwortet oder getan haben und auf einem Antwort-Branch
+unterwegs ist (eine Frage, die Sie beantwortet haben, steht hier bis zu Ihrem Merge), die Warteschlange der Pull
+Requests und, wo ein Repository `[seats]` hat, wer gefragt hat. Sie antworten in jedem Repository wie bisher, und sein
+eigenes `--standup` dort sagt den Rest.
 
 Auf der Tafel trägt der Kasten mit dem, was auf Sie wartet, zwei Knöpfe: **Standup-Prompt** vor den Sitzungen des letzten Tages
 und **Abschluss-Prompt** an seinem Ende. Jeder kopiert einen festen Prompt für die Sitzung, die Sie nutzen — Claude Code, Codex
