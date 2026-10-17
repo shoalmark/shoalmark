@@ -85,6 +85,10 @@ existing signed scope; they grant no new authority, capability acceptance or own
   successful XML precedes a claim that a property is absent. Administrative/symlink paths and option/peg ambiguity
   must refuse. Add/propset results are checked. This is not admitted by the board tripwire, whose local SVN capability
   remains its exact agreed status tuple. A alone edits this adapter and its callers.
+  A's actual fixture establishes that an absent property yields empty `<properties/>`; P agrees the refinement:
+  local `svn info ./REL@ --xml` first validates a directory entry and consumer WC root, then proplist may return
+  that empty shape or one matching target with unique property names. Both reads preserve confinement, require
+  no operative revision/URL/server fallback, and preserve raw property text and the existing three-line hook format.
 - C proposed: "on SVN return the empty presentation placeholder without starting Git" from `git_user`.
   P agrees empty presentation text supplies no WC/process/server author or authority; B retains actual attribution
   and missing-proof refusal. Git retains cached `user.name` through the existing boundary and configure invalidation.

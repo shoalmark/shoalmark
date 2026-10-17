@@ -317,7 +317,8 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
         root, tool = fresh("board"); got = run("board", root, tool, ["--html-only"])
         processes = checks("board", got, local=True)
         check("entry: board uses exactly its allowed local status tuple", len(processes) == 1 and same_start(processes[0]["argv"], processes[0].get("raw"), STATUS))
-        check("entry: board writes its page/views and no canonical or Git-basis record", "work-tracker/index.html" in got["changed"] and "work-tracker/view/WORK-001.js" in got["changed"] and "work-tracker/view/built.json" not in got["changed"] and all(p == "work-tracker/index.html" or p.startswith("work-tracker/view/") for p in got["changed"]))
+        built = root / "work-tracker" / "view" / "built.json"
+        check("entry: board writes its page/views and no canonical or Git-basis record — its record holds only what it read, and when (FM-057)", "work-tracker/index.html" in got["changed"] and "work-tracker/view/WORK-001.js" in got["changed"] and "work-tracker/view/built.json" in got["changed"] and built.is_file() and sorted(json.loads(built.read_text(encoding="utf-8"))) == ["built_at", "revision", "vcs"] and all(p == "work-tracker/index.html" or p.startswith("work-tracker/view/") for p in got["changed"]))
 
         root, tool = fresh("damaged-board"); (root / ".svn" / "wc.db").write_bytes(b"broken WC metadata")
         got = run("damaged-board", root, tool, ["--html-only"]); checks("damaged-board", got, 4, readonly=True, local=True)

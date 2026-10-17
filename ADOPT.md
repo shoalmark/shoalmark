@@ -24,7 +24,7 @@ On Subversion it reads its history from the server through svn, so offline its c
 suite, but it has not been used in real work and comes without a guarantee: say so in your report.
 SVN supplies no cryptographic commit signature. A server-authenticated revision author is distinct from a local
 working-copy label; unavailable author proof cannot be replaced by that label. Signed answer-branch acts, Git worktree
-identity, commit-trailer reports, the merge ratio and the forge queue require Git. `--session new` can generate an id
+identity, commit-trailer reports and the forge queue require Git. `--session new` can generate an id
 on SVN, without proving uniqueness against a commit-trailer registry.
 
 An unpacked release archive can supply the tool without a Git source checkout: keep `RELEASE` and every required

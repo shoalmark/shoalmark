@@ -68,10 +68,9 @@ never on a default; a word in chat changes none of them until they sign it.
 - **A miss is rowed only when it cost the Owner** (FM-032 S3). A seat's own error, found after it was made, gets a row —
   a ship-log line, a tracker, a pitfall — only if it cost the Owner a command or a decision. Otherwise it is fixed, and
   the fixing commit's message says what was wrong: git is its record.
-- **The filing freeze** (FM-032 S4). While 8 or more trackers are open (`freeze_at` in `shoalmark.toml`), only product
-  defects are filed — `tags: bug`, something the tool does wrong for the person using it. Anything else goes as one line
-  into the closest open tracker's body (rule 6), or waits. `--new "…" --tags bug` files a defect; `--new` refuses the rest,
-  and `--check` says when the freeze holds.
+- **The filing freeze** (FM-032 S4) — ruled 2026-09-24 (`ffa63b8`), removed by the Owner's signed ruling R15 of
+  12 October (`work-tracker/evidence/rulings-2026-10-12.md`). Not a rule. Look before you file (rule 2) and the
+  ranking (`rank:`, `--triage`, `--next`) stay.
 - **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner's signed
   answer the same day (`7c97c5b`, PR 46, merged 12:53:19). Not a rule. What waits on them is read from `--queue`,
   pull requests and pushed branches alike.
