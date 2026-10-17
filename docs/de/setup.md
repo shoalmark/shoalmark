@@ -75,8 +75,9 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 
 ## 6. Die Tafel öffnen
 
-`docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und
-Merge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
+`docs/work-tracker/index.html` — sie ist git-ignoriert und wird neu gebaut, wenn das Werkzeug läuft, bei einem Commit, der ein
+Arbeitspaket ändert, und gleich nach jeder Ihrer Antworten und Handlungen; unter Subversion bei einem Commit über TortoiseSVN oder
+wenn das Werkzeug läuft. Nach einem Checkout, einem Merge oder einem Update baut sie nichts neu: das tut `--html-only`. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

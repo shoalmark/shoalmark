@@ -280,8 +280,9 @@ _live_problems = gti.identity_problems(_live)
 check(f"identity_problems() empty on the live corpus (got {len(_live_problems)})", _live_problems == [])
 
 print("\nthe dashboard is one deterministic static page")
-_html = gti.render_html(_live)
-check("same trackers -> same bytes (no date, no baked counts)", _html == gti.render_html(list(reversed(_live))))
+_read = gti.read_at()                                    # FM-057: what the board read, and when — the one moment the page names
+_html = gti.render_html(_live, _read)
+check("same trackers read at one moment -> same bytes (no other date, no baked counts)", _html == gti.render_html(list(reversed(_live)), _read))
 check("every tracker is exactly one data row", all(_html.count(f'\n["{t["id"]}", ') == 1 for t in _live))
 check("the page owns its whole ground and declares its colour scheme (V6.4: one green-black ground, no second surface)",
       '<meta name="color-scheme" content="light dark">' in _html and "html{min-height:100%;background:var(--bg);color-scheme:light dark}" in _html)
@@ -778,6 +779,15 @@ run_review_controls(gti, check)
 
 from test_index_merges import run_index_merge_controls
 run_index_merge_controls(gti, check)
+
+from test_stale_shown import run_stale_shown_controls
+run_stale_shown_controls(gti, check)
+
+from test_freeze_removed import run_freeze_removed_controls
+run_freeze_removed_controls(gti, check)
+
+from test_ratio_removed import run_ratio_removed_controls
+run_ratio_removed_controls(gti, check)
 
 print()
 if FAILS:

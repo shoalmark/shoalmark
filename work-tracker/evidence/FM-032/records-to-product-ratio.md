@@ -11,6 +11,11 @@ Filed 2026-09-30 on the Owner's words, one line each, *normalised* (spelling and
   the freeze; the public definition page folded into it; Implementer on Sonnet, Reviewer on Opus; report per Berlin day, judge on
   rolling seven-day sums; the page names the command as the reference.
 
+**Retired by R13, the Owner's signed ruling of 12 October 2026** (`work-tracker/evidence/rulings-2026-10-12.md`): the ratio command
+and compulsory ratio reporting are removed, and the records classification a move to `Shipped` reads stays (`[ratio] records`). What
+follows is the record of the rule as it stood from 30 September until R13 — no plan, seat or report is asked to give the ratio now, and
+no counting view replaces it until the receipts ship.
+
 ## The rule
 
 - **ratio = record lines added : product lines added**, per repository, per Europe/Berlin calendar day of the merge.
@@ -20,14 +25,14 @@ Filed 2026-09-30 on the Owner's words, one line each, *normalised* (spelling and
 - **A moved or renamed file counts as its lines deleted and added**: git's rename detection is a heuristic and a user setting, so the
   reference counts without it, and each side of a rename counts as its lines.
 - **Aggregates are summed counts**, never averaged ratios. Zero product added: the counts, and no finite ratio (0:0 undefined).
-- **Judged on rolling seven-day sums, reported per day.** Every plan states its expected records added, product added, record deletions,
-  product deletions and ratio effect.
+- **It was judged on rolling seven-day sums and reported per day,** and every plan was to state its expected records added, product
+  added, record deletions, product deletions and ratio effect. R13 ended that requirement.
 - *Product* is a measurement category: it asserts no delivered functionality. No code-volume target is implied.
 - **shoalmark's records:** `work-tracker/`. **Product:** everything else. Submodule pointers are excluded; a binary file counts 0 lines.
 
-**The reference is the command:** `python3 shoalmark.py --ratio` with the `[ratio]` section of `shoalmark.toml`. A difference between this
-page and the command is a bug against this page: the page is the rule, the command is fixed to it, and an ambiguity in the page is fixed
-by the Owner's word.
+**The reference was the command,** `python3 shoalmark.py --ratio` with the `[ratio]` section of `shoalmark.toml`, until R13 removed it. A
+difference between this page and the command was a bug against this page: the page was the rule, the command was fixed to it, and an
+ambiguity in the page was fixed by the Owner's word. The command is gone, and nothing counts in its place.
 
 ## Check outputs
 
@@ -48,7 +53,8 @@ together."* The Jev scorer's output (`jev-gate-test-score-output-2026-09-23.txt`
 | records deleted / product deleted | 1,015 / 1,784 (relayed, not remeasured) | 972 / 1,764 |
 
 The command's per-day lines for the window (`--ratio --since 2026-09-22 --until 2026-09-29`), 111 merges; the 09-27 day carries four check
-outputs of two folders (`073f21f` and `9d10d08`, both 12:02). `test_shoalmark.py` asserts the window's four numbers above.
+outputs of two folders (`073f21f` and `9d10d08`, both 12:02). `test_shoalmark.py` asserted the window's four numbers above until R13
+removed that test with the command.
 
 | day | records +added −deleted | product +added −deleted | ratio | merges |
 |---|---|---|---|---|

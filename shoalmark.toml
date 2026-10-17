@@ -19,5 +19,5 @@ auditor = ["auditor@seat", "336431811+shoalmark-auditor[bot]@users.noreply.githu
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"
 
-[ratio]            # the records-to-product ratio (FM-032): `--ratio` counts these prefixes as records, every other path as product
+[ratio]            # the records a move to `Shipped` reads (FM-005): a commit its ship log names must change a path outside them; R13 removed `--ratio`
 records = ["work-tracker/"]

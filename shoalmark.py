@@ -11,7 +11,6 @@ Markdown trackers with a small front matter, and one command that reads them all
                                    refuses the file until `considered:` says what it was held against
     shoalmark.py --triage        a triage pass: the seat judges a worksheet, the command applies it
     shoalmark.py --schema        every front-matter key, its shape, who writes it
-    shoalmark.py --ratio         records added : product added, per Berlin day of the merge (FM-032)
     shoalmark.py --init          scaffold the tracker directory, TRIAGE.md and shoalmark.toml
     shoalmark.py --vendor DIR    copy this tool, pinned by hash, into another repository
 
@@ -72,14 +71,10 @@ DEFAULTS = {
     "kinds": {"FEAT": "Features", "BUG": "Bugs"},
     "considered_from": {},                       # kind -> first number that must carry `considered:`; default 1
     "blob": "",                                  # URL prefix for a tracker file on the forge; empty = local links
+    # FM-057: the URL a commit's id is appended to, for a forge whose `blob` gives no commit page (`/blob/` and `/-/blob/` do), and for a
+    # Subversion viewer — the revision's number is appended; empty = derived from `blob` on git, none on Subversion
+    "commit_url": "",
     "triage_days": 7,
-    # THE FILING FREEZE (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a
-    # filing that carries `tags: bug`; anything else goes as one line into the closest open tracker's body, or waits.
-    # Filing outran closing two to one, and the open count only grew. 0 = off.
-    "freeze_at": 0,
-    # the tag that passes the freeze — a repository's own `[tags]` may have no `bug`; one that names none of its tags
-    # freezes nothing, and `--check` says so
-    "freeze_tag": "bug",
     # A PASS JUDGES BEFORE THE FIRST BUILD COMMIT (FM-033, the Owner's rule of 2026-09-24): a commit that changes a path
     # outside the tracker directory names a tracker that, at the commit's parent, a pass has kept `In Progress`. Off by
     # default: a repository that vendors the tool may carry no `triaged:` yet.
@@ -246,7 +241,7 @@ def put(path, text):
         f.write(text)
 
 
-# THE BOARD'S RUN — `--html-only`, what a checkout and a merge hook starts (a private security report). A branch brings the files this run
+# THE BOARD'S RUN — `--html-only`, the explicit refresh, and what an act starts right after it (a private security report). A branch brings the files this run
 # reads, so it reads only what a regular file inside the repository holds, through no symlink; it starts nothing but read-only git; it
 # writes only the board's files. Each is checked where the file is read or written, and `board_tripwire` refuses at the interpreter
 # whatever else a path of the tool might reach.
@@ -441,6 +436,7 @@ def tracker_folder_problem(what="the board is not refreshed"):
 
 
 _TRACKED = None
+_SVN_REVISION = None        # FM-057: the working copy's revision — its root's, "" where it has none — from the board's run's own local status snapshot, for that run only; None: not read
 
 
 def svn_local_status():
@@ -500,8 +496,10 @@ def svn_local_status():
 
 
 def svn_tracked_board_rels():
-    """Versioned board paths in the local snapshot. Unreadable metadata is not an empty inventory."""
+    """Versioned board paths in the local snapshot. Unreadable metadata is not an empty inventory. The snapshot's revision is kept for the page (FM-057)."""
+    global _SVN_REVISION
     status = svn_local_status()
+    _SVN_REVISION = svn_root_revision(status)
     wanted = (HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix())
     versioned = {"normal", "modified", "added", "replaced", "deleted", "missing", "conflicted", "merged"}
     out = []
@@ -804,14 +802,14 @@ def configure(root=None):
     global HEAD, STATE_HEAD_RE, DONE_RE
     global _VCS, _GIT_DIRS, _TRACKED, _SVN_LOG, _GIT_USER
     global ANSWERERS, SEATS, SEAT_RIGHTS, ASKS_HEAD_RE, RAISED_HEAD_RE, ACTS_HEAD_RE, COMMITTING, _STAGED, _LINE_AUTHOR, _SVN_BLAME, _BLAME_REFUSED
-    global FREEZE_AT, FREEZE_TAG, CMD_OWN, WANTED_NUM
+    global CMD_OWN, WANTED_NUM
     global DERIVED_COLUMNS, DERIVED_FILES, DERIVED_NOTES, INDEX_COLUMNS, BOARD_COLUMNS, DERIVER_LEFT
     # No path discovery, metadata/configuration read or validation may see the previous repository's state.
     ROOT = TRACKER_DIR = OUT = HTML_OUT = VIEW_DIR = None
     CONFIG, TAGS, CONSIDERED_FROM, KIND_LABELS, HEAD, FRONT_MATTER = {}, {}, {}, {}, {}, {}
     ANSWERERS, SEATS, SEAT_RIGHTS = {}, {}, {}
     KINDS, REPO_BLOB, _IDS, CMD, CMD_OWN = (), "", "", "", ""
-    TRIAGE_DAYS, FREEZE_AT, FREEZE_TAG, WANTED_NUM = 0, 0, "", None
+    TRIAGE_DAYS, WANTED_NUM = 0, None
     KIND_RE = TITLE_RE = TRACKER_LINK_RE = H1_ID_RE = ROW_ID_RE = None
     STATE_HEAD_RE = DONE_RE = ASKS_HEAD_RE = RAISED_HEAD_RE = ACTS_HEAD_RE = None
     _VCS, _GIT_DIRS, _TRACKED, _SVN_LOG, _GIT_USER = ("", None), None, None, None, None
@@ -848,13 +846,6 @@ def configure(root=None):
     TRACKER_DIR = ROOT / tracker_folder(CONFIG)
     OUT, HTML_OUT, VIEW_DIR = TRACKER_DIR / "INDEX.md", TRACKER_DIR / "index.html", TRACKER_DIR / "view"
     REPO_BLOB, TAGS, TRIAGE_DAYS = CONFIG["blob"], dict(CONFIG["tags"]), int(CONFIG["triage_days"])
-    FREEZE_AT = CONFIG["freeze_at"]
-    if isinstance(FREEZE_AT, bool) or not isinstance(FREEZE_AT, int) or FREEZE_AT < 0:
-        raise SystemExit(f"{CONFIG_NAME}: `freeze_at` is a whole number of open trackers — the filing freeze holds at that count and above; 0 turns it off. Got {FREEZE_AT!r}")
-    FREEZE_TAG = CONFIG["freeze_tag"]
-    if not isinstance(FREEZE_TAG, str) or not FREEZE_TAG.strip():
-        raise SystemExit(f"{CONFIG_NAME}: `freeze_tag` is the one tag, from [tags], that passes the filing freeze — `bug` by default. Got {FREEZE_TAG!r}")
-    FREEZE_TAG = FREEZE_TAG.strip()
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
@@ -2715,7 +2706,7 @@ def queue_section():
 
 def answer_step(tid, n, text, verb="answering"):
     """`--answer` says what it is doing AS EACH STEP STARTS — on stderr, flushed, before the wait and not after it. It
-    reads the trackers, and a checkout hook and the pre-commit gate read them again; silent for that long, it was
+    reads the trackers, and the pre-commit gate and the board's rebuild read them again; silent for that long, it was
     stopped by an Owner who took it for hung (FM-012). What it prints at the end is unchanged. `--done` and `--due` say
     theirs the same way, with their own word."""
     print(f"{verb} {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
@@ -3167,7 +3158,7 @@ def owner_change(tid, t, how):
                 print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {printed_arg(branch)}`, then answer again", file=sys.stderr)
                 return EXIT_LINT
             print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{ref_name(trunk)}` — deleted, and cut fresh", file=sys.stderr)
-        step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}` — the checkout hook, where one is installed, rebuilds the board")
+        step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}`")
         r = git("switch", "-c", branch)                        # from the branch that carries the ask: this one
         created = r.returncode == 0
         if r.returncode:
@@ -3224,17 +3215,14 @@ def board_stamp():
 
 def board_after_act(stamp):
     """FM-030, their signed answer 920970b7 — *right after the act* the board shows it: they pressed the button, ran the command,
-    and the page they return to must say *done, on its way* (their words of 13:57:50). Put back where they started, the checkout hook
-    `--install-hook` writes — it runs the copy of the tool kept in the git directory as `--html-only` — has written it already,
-    and it reads the branch just pushed (`on_their_way`). How that is known: the board's file changed — its modification time or
-    its size — between the push and now. Where it did not — no such hook is installed, the checkout ran none (they ran the command on
-    `answer/<id>` itself), or the hook failed — the command rebuilds it itself, as the hook would: `--html-only`, in its own
-    process; but never where the board is tracked by git — `--init` ignores it, and written, a committed board would leave
-    the tree changed and refuse their next command. What it says of it, one line; "" where there is no tracker directory."""
+    and the page they return to must say *done, on its way* (their words of 13:57:50). Put back where they started — or on `answer/<id>`
+    itself, where they ran it — the command rebuilds the board itself: `--html-only`, in its own process, which reads the branch just
+    pushed (`on_their_way`). No hook rebuilds it (R11, FM-057): the act does, every time. Never where the board is tracked by git —
+    `--init` ignores it, and written, a committed board would leave the tree changed and refuse their next command. `stamp` is the
+    board's file as the push left it — its modification time and size: the rebuild is known by its change. What it says of it, one
+    line; "" where there is no tracker directory."""
     if not TRACKER_DIR.is_dir():
         return ""
-    if board_stamp() != stamp:
-        return "the board was rebuilt by the checkout hook — it reads the branch just pushed"
     tracked = (git_out("ls-files", "--", HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()) or "").split()
     if tracked:
         return f"the board is NOT rebuilt — git tracks {tracked[0]} here, and writing it would leave the tree changed; `{CMD} --html-only` rebuilds it"
@@ -3245,7 +3233,7 @@ def board_after_act(stamp):
         return f"the board was NOT rebuilt ({type(e).__name__}) — `{CMD} --html-only` rebuilds it"
     if r.returncode != 0 or board_stamp() == stamp:
         return f"the board was NOT rebuilt — `{CMD} --html-only` rebuilds it" + (f": {(r.stderr.strip().splitlines() or [''])[-1][:160]}" if r.stderr.strip() else "")
-    return "the board is rebuilt — no checkout hook rebuilt it; it reads the branch just pushed"
+    return "the board is rebuilt — it reads the branch just pushed"
 
 
 def refusal_reason(what, said=""):
@@ -3589,6 +3577,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 #dlg h4{margin:14px 0 4px;font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}#dlg ol{margin:4px 0;padding-left:20px}#dlg li{margin:2px 0}#dlg p{margin:4px 0}
 #dlg pre{font:13px/1.45 "Berkeley Mono",ui-monospace,monospace;margin:6px 0;padding:8px 10px;border:1px solid var(--line);white-space:pre-wrap;word-break:break-all}#dlg pre.cmd{border-left:2px solid var(--teal);user-select:all}
 #dlg code{font:12px "Berkeley Mono",ui-monospace,monospace}#dlg button.copy{padding:2px 8px;font-size:11px;text-transform:none;letter-spacing:0}#dlg .said{margin-left:6px}#dlg .sign a{text-decoration:underline}
+#ra{color:var(--mute);font-size:12px;margin:-8px 0 12px;line-height:1.7}#ra code{font:12px "Berkeley Mono",ui-monospace,monospace;color:var(--dim)}#ra .said{margin-left:6px}
 #l span{text-transform:lowercase}#f{margin-top:28px}#f:empty,#H span:empty{display:none}
 /* three hooks a theme styles (FM-002), none of them seen without one: the Owner's box's title `.pt`, the label
    `owner.title`; the last line's one element `#F` — the claim `#f`, shown with the board only, as when it stood in it,
@@ -3602,6 +3591,7 @@ button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-siz
 @media print{:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}header,#l{display:none}}
 </style>__THEMES__
 <div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><button id="s"></button></div>
+<p id="ra" class="m">__READAT__</p>
 <header><input id="q" autofocus>
 <button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n" class="m"></span></header>
 <p id="l" class="m"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p>
@@ -3843,6 +3833,9 @@ ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}<
 }
 $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElementById("h-"+s.dataset.s)?.scrollIntoView()};
 for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
+// FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so
+$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())
+  .then(()=>$("rs").textContent=L["read.copied"],()=>$("rs").textContent=L["answer.sign.nocopy"]);
 // light or dark is the viewer's choice: auto follows the system; the other two switch every theme's
 // `prefers-color-scheme` rule on or off — so a brand needs to know nothing about the button. Paper stays light.
 const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
@@ -3854,8 +3847,8 @@ paint=m=>{for(const s of document.styleSheets)rules(s,r=>{if(!ORIG.has(r)){if(!r
 setScheme=m=>{scheme=m;paint(m);$("s").textContent="◐ "+L["scheme."+m];$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
 $("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));
 onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
-// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull
-// changed is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field
+// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so a board rebuilt meanwhile — by an
+// explicit run, a commit or an act; no hook rebuilds it — is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field
 // holds input — the search box aside: its filter, typed or linked, is kept across the reload, as the scroll position is.
 let want=null,wantQ=null,hiddenAt=0;
 try{const k=JSON.parse(sessionStorage.getItem("shoalmark.keep")||"null");sessionStorage.removeItem("shoalmark.keep");if(k&&k.h==location.hash&&Date.now()-k.t<1e4){want=k.y;wantQ=typeof k.q=="string"?k.q:null}}catch(e){}
@@ -3914,6 +3907,19 @@ LABELS = {
     "act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again",
     "act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log",
     "sessions.recent": "sessions · {0} in the last day ({1} with their sub-sessions)",
+    # FM-057: what the board read, and when — the page's own moment, never *current*, *live* or *up to date*
+    "read.git.branch": "read from {0} at {1}", "read.git.detached": "read from a detached HEAD at {0}", "read.git.unborn": "read from {0}, which has no commit yet",
+    "read.git.clean": "nothing changed and not committed", "read.git.changed": "{0} paths changed and not committed",
+    "read.git.changed.one": "1 path changed and not committed", "read.git.unread": "what is changed and not committed is not read here",
+    "read.svn": "read from the working copy at {0}", "read.svn.unread": "read from the working copy: its revision is not read here",
+    "read.svn.new": "read from the working copy, which has no revision yet",
+    "read.none": "read from the folder {0}", "read.none.why": "no version control: no commit or revision to name",
+    "read.at": "built {0}", "read.self": "it reads its file again when you come back to it; nothing polls", "read.rebuild": "rebuild it:", "read.copy": "copy",
+    "read.unlinked": "{0} ({1})",                # the commit, and why it is not a link
+    "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
+    "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
+    "link.noviewer": "no Subversion viewer configured (`commit_url`), so not linked", "link.nocommit": "no commit to link",
+    "read.copied": "Copied — run it in the repository's folder, then reload this page.",
     "reviews.week": "reviews this week · independent {0} · same session {1}", "reviews.untraced": "untraced {0}", "reviews.trunk": "on trunk {0}",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "Other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
@@ -4544,6 +4550,89 @@ def head_commit():
     return sha if out.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) else ""
 
 
+# WHAT THE BOARD READ, AND WHEN (FM-057, the quick win beside R11): no hook rebuilds the board, so a page can be hours old and look as it did. The page names its
+# own moment — the time it was built; on git HEAD, the branch or a detached HEAD, and how many paths are changed and not committed (a plain run counts them;
+# the board's own run, `--html-only`, says it does not read them); on Subversion the working
+# copy's revision, from the one local status the board reads; with no version control, the folder — and the command that rebuilds it. `view/built.json`
+# records the same. It never says *current*, *live* or *up to date*.
+def read_at(count=True):
+    """What the board reads, and when: {"built_at": the time, to the second, with its offset; "vcs": "git", "svn" or "none"; on git "commit" (HEAD's full sha,
+    "" before a first commit), "branch" (None on a detached HEAD) and "changes" (`tree_changes` — None where `count` is false: the board's own run,
+    `--html-only`, reads no changed paths, and its line says so); on Subversion "revision" (`svn_revision`); with none, "folder", the repository's root}."""
+    out = {"built_at": datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), "vcs": vcs() or "none"}
+    if vcs() == "git":
+        out.update(commit=head_commit(), branch=built_on() or None, changes=tree_changes() if count else None)
+    elif vcs() == "svn":
+        out["revision"] = svn_revision()
+    else:
+        out["folder"] = str(ROOT)
+    return out
+
+
+def tree_changes():
+    """How many paths of the working tree are changed and not committed, read as git reads them without writing: each file whose index differs from HEAD
+    (`diff --cached`), each whose file differs from the index, a deletion too (`ls-files --modified`), and each new path git does not ignore, a new folder
+    as one (`ls-files --others`) — each counted once. None where git cannot read it: a read that fails, as one in a partial clone may."""
+    staged = vcs_process("git", "diff", "--cached", "--name-only", "--no-renames", "-z", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                         errors="replace", env=nested_git_env())
+    tree = vcs_process("git", "ls-files", "-z", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory", cwd=ROOT,
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    if staged.returncode or tree.returncode:
+        return None
+    return len({p for p in staged.stdout.split("\0") + tree.stdout.split("\0") if p})
+
+
+def svn_root_revision(status):
+    """The working copy's revision in a local status snapshot (`svn_local_status`): its root's — digits —, or "" where the root has none yet (scheduled for
+    addition, never committed)."""
+    root = status.get(".")
+    revision = root.get("revision") if root is not None else None
+    return revision if revision is not None and re.fullmatch(r"[0-9]+", revision) else ""
+
+
+def svn_revision():
+    """The working copy's revision — its root's, "" where it has none yet: from the board's run's own snapshot where it took one (`svn_tracked_board_rels`) —
+    so the run starts no second status —, else from one local status read here (`svn_local_status`), under the tool's Subversion rules; None where it cannot be
+    read."""
+    if _SVN_REVISION is not None:
+        return _SVN_REVISION
+    try:
+        return svn_root_revision(svn_local_status())
+    except (SvnUnreadable, OSError):
+        return None
+
+
+def read_at_html(read, labels):
+    """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it: each part escaped, the
+    rebuild command in a `<code>`, and its copy button. Every `_` is written as a character reference, so no placeholder of the page can match inside it. Each
+    part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
+    def say(key, *args):
+        return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
+    esc = lambda text: html_escape(text).replace("_", "&#95;")
+    def head(shown, commit):
+        """The commit as the line shows it: a link to its page on the forge (`commit_link`), or the commit and why it is not one."""
+        url, why = commit_link(commit)
+        return (f'<a id="rh" href="{esc(url)}" target="_blank" rel="noopener">{esc(shown)}</a>' if url
+                else esc(say("read.unlinked", shown, say(why))))
+    held = "\0"                                            # where a commit's own markup goes, once the label around it is escaped
+    if read.get("vcs") == "git":
+        sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")
+        where = say("read.git.unborn", branch or "HEAD") if not sha else say("read.git.detached", held) if branch is None else say("read.git.branch", branch, held)
+        facts = [esc(where).replace(held, head(sha, read.get("commit"))) if sha else esc(where),
+                 esc(say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n))]
+    elif read.get("vcs") == "svn":
+        revision = read.get("revision")
+        facts = [esc(say("read.svn.unread")) if revision is None else esc(say("read.svn.new")) if not revision
+                 else esc(say("read.svn", held)).replace(held, head("r" + revision, revision))]
+    else:
+        facts = [esc(say("read.none", read.get("folder", ""))), esc(say("read.none.why"))]
+    at = datetime.datetime.fromisoformat(read["built_at"])
+    zone = at.strftime("%z")
+    facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]
+    return (" · ".join(facts) + f' · {esc(say("read.rebuild"))} <code id="rc">{esc(CMD + " --html-only")}</code>'
+            f'<button type="button" id="rb" class="act">{esc(say("read.copy"))}</button><span id="rs" class="said" aria-live="polite"></span>')
+
+
 def board_basis():
     """FM-045 — what the board is built from, one SHA-256 per part, computed one way for the board's run, every run that writes the board, and
     `--owner` and `--standup`:
@@ -4574,13 +4663,15 @@ def board_basis():
             "answers": hashlib.sha256(f"{trunk or ''}\n{refs}".encode("utf-8")).hexdigest()}
 
 
-def write_built(basis, left):
-    """FM-045 — `view/built.json`: `basis`, read before the board was rendered, and HEAD for the line's wording, written by the board's own write —
-    last, and only where the page and every view were written in this run: nothing of them left alone since `left`, what was left before the writes.
-    Nothing on Subversion or in a plain folder (`basis` is {} there). A run that stops before it leaves the previous one. Returns whether it wrote."""
-    if not basis or len(BOARD_LEFT) != left:
+def write_built(basis, left, read):
+    """FM-045 — `view/built.json`: on git `basis`, read before the board was rendered, and HEAD for the line's wording; and, FM-057, what the board read, and
+    when (`read`, `read_at`) — on Subversion and in a plain folder that alone: no basis is recorded there (`basis` is {}). Written by the board's own write —
+    last, and only where the page and every view were written in this run: nothing of them left alone since `left`, what was left before the writes. A run
+    that stops before it leaves the previous one. Returns whether it wrote."""
+    if len(BOARD_LEFT) != left:
         return False
-    return board_write(VIEW_DIR / BUILT_NAME, json.dumps({"commit": head_commit(), **basis}) + "\n")
+    return board_write(VIEW_DIR / BUILT_NAME, json.dumps({**({"commit": read.get("commit") or ""} if basis else {}), **basis,
+                                                          **{k: v for k, v in read.items() if k != "commit"}}) + "\n")
 
 
 def board_basis_line():
@@ -4627,6 +4718,54 @@ def board_blob():
     return REPO_BLOB
 
 
+# A COMMIT'S PAGE (FM-057, the read-at line's head; the guided answer view reuses it): only where the repository's own configuration names its
+# forge — `commit_url`, else derived from `blob` (`…/blob/…` → `…/commit/<sha>`, GitLab's `…/-/blob/…` → `…/-/commit/<sha>`) — and only for a
+# commit already on origin (one of its remote-tracking refs holds it). The tool never guesses whether a remote is public: no link is derived
+# from a remote's URL. On Subversion a revision links only where `commit_url` names a viewer. Each refusal is a reason, in a label.
+LINK_WHY = ("link.unpushed", "link.noforge", "link.unknown", "link.noviewer", "link.nocommit")
+
+
+def commit_prefix():
+    """The URL a commit's id is appended to, from this repository's configuration — `commit_url` where it is an http(s) URL, else on git what `blob`
+    says of its forge — or "" where it names none it can be told from."""
+    said = str(CONFIG.get("commit_url") or "")
+    if said and re.match(r"https?://[^\s\"'<>]+$", said, re.I):
+        return said
+    if said:
+        print(f"  commit_url: `commit_url = {said[:60]!r}` in {CONFIG_NAME} is not an http(s) URL — the board makes no link to a commit", file=sys.stderr)
+        return ""
+    blob = REPO_BLOB if vcs() == "git" and re.match(r"https?://[^\s\"'<>]+$", REPO_BLOB or "", re.I) else ""     # `board_blob` says once what it refuses
+    m = re.match(r"(https?://[^\s\"'<>]+?/-)/blob/", blob, re.I) or re.match(r"(https?://[^\s\"'<>]+?)/blob/", blob, re.I)
+    return m.group(1) + "/commit/" if m else ""
+
+
+def commit_on_origin(sha):
+    """Whether the git commit `sha` is on origin as this clone knows it: one of `refs/remotes/origin/` holds it. A read that fails is no."""
+    out = vcs_process("git", "for-each-ref", f"--contains={sha}", "--format=%(refname)", "refs/remotes/origin/", cwd=ROOT, capture_output=True, text=True,
+                      encoding="utf-8", errors="replace", env=nested_git_env())
+    return out.returncode == 0 and any(line.strip() for line in out.stdout.splitlines())
+
+
+def commit_link(commit, tool=False):
+    """(the page of `commit` on its forge, "") — or (None, the label that says why there is none): `link.unpushed` (on no remote-tracking ref of
+    origin), `link.noforge` (no `blob` and no `commit_url`), `link.unknown` (a `blob` that gives no commit page, and no `commit_url`),
+    `link.noviewer` (Subversion with no `commit_url`), `link.nocommit` (no commit to name). `tool`: the tool's own commit, on `TOOL_PAGE`'s repository."""
+    commit = str(commit or "")
+    if tool:
+        return (f"{TOOL_PAGE}/commit/{commit}", "") if re.fullmatch(r"[0-9a-f]{7,64}", commit) else (None, "link.nocommit")
+    if vcs() == "svn":
+        prefix = commit_prefix()
+        return (None, "link.nocommit") if not re.fullmatch(r"[0-9]+", commit) else (prefix + commit, "") if prefix else (None, "link.noviewer")
+    if vcs() != "git" or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+        return None, "link.nocommit"
+    prefix = commit_prefix()
+    if not prefix:
+        return None, "link.unknown" if REPO_BLOB or CONFIG.get("commit_url") else "link.noforge"
+    if not commit_on_origin(commit):
+        return None, "link.unpushed"
+    return prefix + commit, ""
+
+
 def html_escape(text):
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
@@ -4638,10 +4777,12 @@ def script_json(value):
             .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
 
 
-def render_html(trackers):
+def render_html(trackers, read=None):
     """one static page: data rows + ~25 lines of vanilla JS. No dates and no
-    counts are baked in (both are computed in the browser), so equal trackers give
+    counts are baked in (both are computed in the browser) but the moment the page
+    names (`read`, `read_at`, FM-057), so equal trackers read at one moment give
     equal bytes. The row layout is documented once, in the page's script."""
+    read = read or read_at()
 
     epics = {t.get("epic", "—") for t in trackers}
     by_id, verdicts, by_ask = {t["id"]: t for t in trackers}, latest_verdicts(), asks_by_key(trackers)
@@ -4673,6 +4814,7 @@ def render_html(trackers):
     themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
+    page = page.replace("__READAT__", read_at_html(read, labels))     # FM-057: what it read, and when — no `_` in it, so no later placeholder matches there
     # each place's theme is its OWN stylesheet, in order — `@import` and `@font-face` only work at the top of one
     page = page.replace("__THEMES__", "".join(f'<style data-from="{who}">' + css.replace("</", "<\\/") + "</style>" for who, css in themes))
     # a wordmark is the mark and the name in one drawing: it takes their place, and the name stays the page's title and
@@ -4688,7 +4830,7 @@ def render_html(trackers):
                         f'<path d="{PRICKE}"></path></svg>shoalmark</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
                         f'aria-label="release v{v}">v{v}</a></p>')
     page = page.replace("__LABELS__", script_json(labels))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(built_on())).replace(
+    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(read.get("branch") or "")).replace(
         "__ROWS__", ",\n".join(rows)
     )
 
@@ -5284,17 +5426,13 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                        "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
                        "`principal` and `implementer`, the former names of `planner` and `builder`, still read and hold the same. "
                        "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none"),
-    "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default (the default where `[ratio]` is present)",
-                        "the records-to-product ratio (FM-032): what `--ratio` counts as a record — a prefix with a trailing slash is a directory, a plain "
-                        "path is that one file; every other path is product. A repository without a `[ratio]` section has no ratio: `--ratio` says so, exit 2"),
+    "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default, with or without `[ratio]`",
+                        "the records, as a move to `Shipped` reads them (FM-005, FM-032): a commit its ship log names is a commit behind the change only "
+                        "where it changes a path outside them — a prefix with a trailing slash is a directory, a plain path is that one file. The ratio "
+                        "`--ratio` counted from them is gone (R13); a key of `[ratio]` other than these two is named by `--check` and not read"),
     "[ratio] exclude": ("a list of repository-relative prefixes; `[]` (the default)",
-                        "prefixes `--ratio` leaves out of both sides — neither a record nor product (a vendored copy, a generated tree)"),
-    "freeze_at": ("a whole number; `0` = off (the default)",
-                  "the filing freeze (FM-032 S4): while this many trackers or more are open, `--new` files only a product defect — a filing that "
-                  "carries `freeze_tag` (`bug`), as `--new KIND \"the title\" --tags bug` writes it; anything else goes as one line into the closest "
-                  "open tracker's body, or waits. The configured Owner may file any tag. `--check` says when it holds"),
-    "freeze_tag": ("one tag from `[tags]`; `bug` (the default)",
-                   "the tag that passes the filing freeze. Where `[tags]` does not carry it, the freeze refuses nothing, and `--check` says so in one line"),
+                        "kept as written (R26), and checked as `records` is; nothing counts with it since R13 removed `--ratio`, which left these "
+                        "prefixes out of both sides — a move to `Shipped` reads `records` alone, as it always has, and `--check` says so where it is set"),
     "judged_before_build": ("`true` or `false` (the default)",
                             "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
                             "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
@@ -6517,7 +6655,7 @@ def commits_named(rows):
 
 
 def ship_records():
-    """The prefixes that are the records for this rule — `[ratio] records` where that section is set, as `--ratio` reads it, else the
+    """The prefixes that are the records for this rule — `[ratio] records` where that section is set, else the
     tracker directory, written from the top of the repository (git). A ValueError with the line to print where `[ratio]` is malformed."""
     section = CONFIG.get("ratio")
     if isinstance(section, dict):
@@ -7118,13 +7256,31 @@ def sessions_cmd():
     return EXIT_OK
 
 
-# --- the records-to-product ratio (FM-032) -----------------------------------------------------------------------------
-# The rule is filed on its own page (work-tracker/evidence/FM-032/records-to-product-ratio.md); this is the command that page
-# names as the reference, and a difference between the two is a bug against the page. Merged pull requests are the merge
-# commits on the default branch's first-parent line, each compared with its first parent; a day is the merge's committer date
-# in Europe/Berlin; added and deleted lines are counted apart and never netted; a submodule pointer is no line, a binary file
-# is 0 lines and one file.
-RATIO_DAYS = 7          # the window when `--since` is not given, and the rolling sum's length
+# --- the records, as a move to `Shipped` reads them (FM-005, FM-032) ---------------------------------------------------------
+# `[ratio] records` names them, the tracker directory by default; a commit a ship log names is behind the change only where it changes a
+# path outside them. R13 (the Owner's ruling of 12 October) removed `--ratio`, the records-to-product count these prefixes once fed, and
+# its `--since` and `--until`: each is named when it is given (`ratio_removed`), and `[ratio]` keeps its two keys as written (R26).
+RATIO_REMOVED = "{flag}: R13, the Owner's ruling of 12 October, removed it{also} — no counting view replaces it until the receipts ship"
+
+
+def ratio_removed(args):
+    """R13: one line for each of `--ratio`, `--since` and `--until` given — what removed it, and that nothing counts in its place yet."""
+    given = [("--ratio", args.ratio), ("--since", args.since is not None), ("--until", args.until is not None)]      # an empty value is given too
+    return [RATIO_REMOVED.format(flag=flag, also="" if flag == "--ratio" else " with --ratio") for flag, value in given if value]
+
+
+def ratio_notices():
+    """R13: what `--check` says of a `[ratio]` section beyond what a move to `Shipped` reads — said, never refused (R26)."""
+    section = CONFIG.get("ratio")
+    if not isinstance(section, dict):
+        return []
+    other = sorted(k for k in section if k not in ("records", "exclude"))
+    lines = [f"{CONFIG_NAME}: `[ratio]` " + ", ".join(f"`{k}`" for k in other) + (" is" if len(other) == 1 else " are")
+             + " not read — `[ratio]` holds `records` and `exclude`; R13 removed the ratio it counted"] if other else []
+    if section.get("exclude"):
+        lines.append(f"{CONFIG_NAME}: `[ratio] exclude` is kept as written, but nothing counts with it since R13 removed `--ratio`, the one "
+                     "reader that left those prefixes out — a move to `Shipped` reads `records` alone, as it always has")
+    return lines
 
 
 def ratio_defaults():
@@ -7150,120 +7306,6 @@ def ratio_class(path, records, exclude):
     """"skip" for a path left out, "records", or "product" — a prefix with a trailing slash is a directory, a plain one is that file."""
     hit = lambda prefixes: any(path.startswith(p) if p.endswith("/") else path == p for p in prefixes)
     return "skip" if hit(exclude) else "records" if hit(records) else "product"
-
-
-def ratio_merge(merge, records, exclude):
-    """One merge against its first parent: {"records": [added, deleted], "product": [added, deleted], "binary": files}."""
-    tot = {"records": [0, 0], "product": [0, 0], "binary": 0}
-    raw = (git_out("diff", "--raw", "--no-renames", "-z", "--ignore-submodules=none", f"{merge}^1", merge) or "").split("\0")
-    pointers = {raw[i + 1] for i in range(0, len(raw) - 1, 2) if "160000" in raw[i].lstrip(":").split()[:2]}       # ":100644 160000 <sha> <sha> M"
-    for entry in (git_out("diff", "--numstat", "--no-renames", "-z", "--ignore-submodules=none", f"{merge}^1", merge) or "").split("\0"):
-        if not entry:
-            continue
-        added, deleted, path = entry.split("\t", 2)
-        kind = ratio_class(path, records, exclude)
-        if path in pointers or kind == "skip":
-            continue
-        if added == "-":                                  # binary: no lines, one file
-            tot["binary"] += 1
-        else:
-            tot[kind][0] += int(added)
-            tot[kind][1] += int(deleted)
-    return tot
-
-
-def ratio_zone():
-    """(the zone as datetime's tzinfo or None, whether it is Europe/Berlin): where no tz database is installed, None."""
-    try:
-        import zoneinfo
-        return zoneinfo.ZoneInfo("Europe/Berlin"), True
-    except Exception:                                     # no zoneinfo module, or no tzdata on this machine
-        return None, False
-
-
-def ratio_line(label, tot, merges=None):
-    """One day's line — the four counts, the ratio (records added : product added, or why there is none), and the merges."""
-    (ra, rd), (pa, pd) = tot["records"], tot["product"]
-    ratio = f"{ra / pa:.1f}:1" if pa else "no finite ratio"
-    tail = "" if merges is None else f"  ({merges} merge{'' if merges == 1 else 's'}" + (f", {tot['binary']} binary" if tot["binary"] else "") + ")"
-    return f"{label}  records +{ra:,} \u2212{rd:,}  product +{pa:,} \u2212{pd:,}  {ratio}{tail}"
-
-
-def ratio_cmd(since=None, until=None):
-    """`--ratio`: records added : product added per Berlin day of the merge, and the rolling seven-day sums. Exit 0; 2 where
-    there is nothing to read (no `[ratio]`, no git, no default branch, a date that is none)."""
-    refused = cli_git_refusal('ratio')
-    if refused is not None:
-        return refused
-    section = CONFIG.get("ratio")
-    if not isinstance(section, dict):
-        print(f"--ratio: {CONFIG_NAME} has no [ratio] section, so there is no ratio to count — add `[ratio]` with `records = {json.dumps(ratio_defaults()['records'])}` "
-              "(the prefixes that are records; everything else is product)", file=sys.stderr)
-        return 2
-    try:
-        records, exclude = ratio_paths(section)
-    except ValueError as e:
-        print(f"--ratio: {e}", file=sys.stderr)
-        return 2
-    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    trunk = default_trunk(git) or trunk_ref()             # origin's default as this clone fetched it (as `--answer` and the gate read it), else the local one
-    if trunk is None:
-        print("--ratio: no default branch (origin/HEAD, origin/main, origin/master, main or master) to read the merges from", file=sys.stderr)
-        return 2
-    zone, berlin = ratio_zone()
-    parse = lambda s: datetime.date.fromisoformat(s)
-    try:
-        today = datetime.datetime.now(zone).date() if zone else datetime.date.today()
-        last = parse(until) if until else today
-        first = parse(since) if since else last - datetime.timedelta(days=RATIO_DAYS - 1)
-    except ValueError:
-        print("--ratio: --since and --until are days, YYYY-MM-DD", file=sys.stderr)
-        return 2
-    if first > last:
-        print(f"--ratio: --since {first} is after --until {last}", file=sys.stderr)
-        return 2
-    log = git_out("log", "--first-parent", "--merges", "--format=%H%x00%cI", trunk)
-    if log is None:
-        print(f"--ratio: git could not read {ref_name(trunk)}", file=sys.stderr)
-        return 2
-    lo = first - datetime.timedelta(days=RATIO_DAYS - 1)           # the sums of the window's first days reach back before it
-    days = {}
-    for row in log.splitlines():
-        sha, _, stamp = row.partition("\0")
-        when = datetime.datetime.fromisoformat(stamp[:-1] + "+00:00" if stamp.endswith("Z") else stamp)     # 3.9 reads no `Z`
-        day = (when.astimezone(zone) if zone else when).date()     # no zone database: the commit's own offset
-        if lo <= day <= last:
-            tot = days.setdefault(day, {"records": [0, 0], "product": [0, 0], "binary": 0, "merges": 0})
-            one = ratio_merge(sha, records, exclude)
-            for k in ("records", "product"):
-                tot[k][0] += one[k][0]
-                tot[k][1] += one[k][1]
-            tot["binary"] += one["binary"]
-            tot["merges"] += 1
-    empty = lambda: {"records": [0, 0], "product": [0, 0], "binary": 0, "merges": 0}
-    def add(a, b):
-        return {"records": [a["records"][0] + b["records"][0], a["records"][1] + b["records"][1]],
-                "product": [a["product"][0] + b["product"][0], a["product"][1] + b["product"][1]],
-                "binary": a["binary"] + b["binary"], "merges": a["merges"] + b["merges"]}
-    span = lambda a, b: [a + datetime.timedelta(days=i) for i in range((b - a).days + 1)]
-    print(f"records-to-product ratio \u2014 records: {', '.join(records)}"
-          + (f" (left out: {', '.join(exclude)})" if exclude else "") + "; product: every other path; a submodule pointer is no line, a binary file 0 lines")
-    print(f"trunk {ref_name(trunk)} \u00b7 {first} to {last} \u00b7 days are Europe/Berlin"
-          + ("" if berlin else " \u2014 NOT: no time zone database here, so each day is the merge's own UTC offset"))
-    print("added and deleted lines are apart, never netted; the ratio is records added : product added\n")
-    whole = empty()
-    for day in span(first, last):
-        one = days.get(day, empty())
-        whole = add(whole, one)
-        print(ratio_line(str(day), one, one["merges"]))
-    print("\n" + ratio_line("window    ", whole, whole["merges"]))
-    print(f"\n{RATIO_DAYS}-day sums \u2014 each day and the {RATIO_DAYS - 1} before it, read from the repository, not only the window")
-    for day in span(first, last):
-        run = empty()
-        for back in span(day - datetime.timedelta(days=RATIO_DAYS - 1), day):
-            run = add(run, days.get(back, empty()))
-        print(ratio_line(str(day), run, run["merges"]))
-    return EXIT_OK
 
 
 def session_cmd(words):
@@ -9187,6 +9229,61 @@ def drift_normalize(text):
     return GENERATED_RE.sub("", head, count=1) + sep + rest
 
 
+# R22 (FM-032): a STALE line shows what differs — the file as it stands against what the tool would write there — so a drift whose cause
+# nobody can see, such as one only Windows meets, reads as itself. The difference is bounded; what is invisible is marked.
+STALE_SHOWN = 40
+SHOWN_MARKS = {"\r": ("␍", "a carriage return"), "\t": ("␉", "a tab"), "\ufeff": ("⟨BOM⟩", "a byte-order mark"),
+               " ": ("␠", "a space at the line's end"), "": ("⟨U+…⟩", "another invisible character, by its code point")}
+NO_FINAL_NEWLINE = "\\ No newline at end of file"
+
+
+def shown_line(line, used):
+    """One line of a STALE file's difference as it is printed: a carriage return, a tab, a byte-order mark, a space at the line's end and any
+    other control, format or non-ASCII space character each become a visible mark, and the mark is added to `used`. Nothing the file holds
+    reaches the terminal as a control character."""
+    tail = len(line) - len(line.rstrip())                 # the line's trailing whitespace: there, a space is marked too
+    out = []
+    for i, ch in enumerate(line):
+        key = ch if ch in SHOWN_MARKS and (ch != " " or i >= len(line) - tail) else None
+        if key is None and ch != " " and unicodedata.category(ch) in ("Cc", "Cf", "Zs", "Zl", "Zp"):
+            key = ""
+        if key is None:
+            out.append(ch)
+        else:
+            used.add(key)
+            out.append(SHOWN_MARKS[key][0] if key else f"⟨U+{ord(ch):04X}⟩")
+    return "".join(out)
+
+
+def stale_lines(path, would):
+    """R22 (FM-032): the lines `--check` prints under a STALE line — a unified diff, with no context, of `path` as it stands against `would`,
+    what the tool writes there. At most STALE_SHOWN lines of it, then how many more, then the marks it used. The file is read as its bytes,
+    so a carriage return, a byte-order mark and a missing final newline show where they are. A CRLF line end is compared as the check reads
+    it, as LF: a checkout that writes CRLF line ends is not drift, and on a line that differs its carriage return still shows."""
+    rel = path.relative_to(ROOT).as_posix()
+    stands = pathlib.Path(path).read_bytes().decode("utf-8", errors="replace") if board_text(path) is not None else ""   # the reading rule
+    a, b = (re.findall(r"[^\n]*\n|[^\n]+\Z", text) for text in (stands, would))
+    key = lambda line: line[:-2] + "\n" if line.endswith("\r\n") else line
+    span = lambda lo, hi: f"{lo + 1}" if hi - lo == 1 else f"{lo + (hi > lo)},{hi - lo}"
+    diff, used = [], set()
+    for group in difflib.SequenceMatcher(None, [key(x) for x in a], [key(x) for x in b]).get_grouped_opcodes(0):
+        diff.append(f"@@ -{span(group[0][1], group[-1][2])} +{span(group[0][3], group[-1][4])} @@")
+        for _, i1, i2, j1, j2 in group:
+            for sign, lines in (("-", a[i1:i2]), ("+", b[j1:j2])):
+                for line in lines:
+                    diff.append(sign + shown_line(line[:-1] if line.endswith("\n") else line, used))
+                    if not line.endswith("\n"):
+                        diff.append(NO_FINAL_NEWLINE)
+    shown = diff[:STALE_SHOWN]
+    out = [f"--- {rel}, as it stands", f"+++ {rel}, as the tool would write it"] + shown
+    if len(diff) > len(shown):
+        out.append(f"… and {len(diff) - len(shown)} more lines")
+    if any(k in used for k in SHOWN_MARKS):
+        out.append("marks: " + " · ".join(f"{m} {what}" for k, (m, what) in SHOWN_MARKS.items() if k in used)
+                   + (" — a CRLF line end alone is not drift: the check reads it as LF" if "\r" in used else ""))
+    return [f"  {line}" for line in out]
+
+
 
 def printed_arg(token):
     """Spell one argument for a copied command: a PowerShell literal on Windows, shlex.quote elsewhere.
@@ -9200,7 +9297,6 @@ CLI_GIT_ONLY = {
     "session_check": ("--session-check: the Git-hook session capability is unavailable under Subversion", EXIT_LINT),
     "commit_msg": ("--commit-msg: the Git-hook commit-message capability is unavailable under Subversion", EXIT_LINT),
     "sessions": ("--sessions: the registry is read from git's commit trailers — this is no git repository", EXIT_LINT),
-    "ratio": ("--ratio: the merges are read from git's first-parent history — this is no git repository", 2),
     "queue": ("--queue: not a git repository — the queue is read from GitHub with `gh`", EXIT_NO_FORGE),
     "answer": ("--answer: signed answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
     "done": ("--done: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
@@ -9224,7 +9320,7 @@ def cli_operation(args):
     ordered = (("html_only", args.html_only), ("vendor", args.vendor), ("brand", args.brand), ("init", args.init),
                ("install_hook", args.install_hook), ("session_trailer", args.session_trailer), ("whoami", args.whoami),
                ("session_check", args.session_check), ("commit_msg", args.commit_msg), ("session", args.session),
-               ("sessions", args.sessions), ("ratio", args.ratio), ("ratio_window", args.since or args.until),
+               ("sessions", args.sessions), ("ratio", args.ratio), ("ratio_window", args.since is not None or args.until is not None),
                ("queue", args.queue), ("schema", args.schema), ("new", args.new), ("invite", args.invite),
                ("notify", args.notify), ("owner", args.owner), ("answered", args.answered), ("answer", args.answer),
                ("done", args.done), ("due", args.due), ("revoke", args.revoke), ("clear_ask", args.clear_ask),
@@ -9240,8 +9336,8 @@ def cli_preflight(args, backend):
     """Return (one diagnostic, exit code), or (None, 0) to continue the existing handler and its proof.
     Only the selected operation matters: an ignored lower-priority flag changes no capability."""
     operation = cli_operation(args)
-    if operation == "ratio_window":
-        return "--since and --until go with --ratio", 2
+    if operation in ("ratio", "ratio_window"):                # R13: named on every backend, before any tracker is read
+        return "\n".join(ratio_removed(args)), 2
     return CLI_GIT_ONLY[operation] if backend != "git" and operation in CLI_GIT_ONLY else (None, EXIT_OK)
 
 
@@ -9259,7 +9355,7 @@ def parse_args(argv):
              "prints what is related, writes the id with a front matter whose `considered:` is yours to fill; `<tracker dir>/TEMPLATE.md`, if there is one, is the template; "
              "the id prefix is needed only where the configuration names several")
     add("--tags", metavar="TAG,TAG", help="with --new: the kind of work, as it is filed — `--new KIND \"the title\" --tags bug,process` writes `tags:` into the new tracker; "
-                                           "comma-separated, deduplicated, each from [tags] in the configuration. Under the filing freeze (`freeze_at`) only a `bug` filing is written")
+                                           "comma-separated, deduplicated, each from [tags] in the configuration")
     add("--triage", action="store_true",
         help="start or continue a triage pass: applies the verdicts filled in today's worksheet, rewrites it, prints the rules")
     add("--next", action="store_true", help="the cold-start question: what to work on, in order, and what is true now of each. Read-only")
@@ -9267,8 +9363,8 @@ def parse_args(argv):
     add("--html-only", action="store_true",
         help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
-             "tracks; its board carries no derived columns. It stands alone, with --root. The checkout and merge hooks run it from the copy of the tool kept in the git directory")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, and post-checkout, post-merge and post-rewrite, which refresh the board — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+             "tracks; its board carries no derived columns. It stands alone, with --root. No hook shoalmark writes runs it: it is the explicit refresh")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg and commit-msg — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. No hook refreshes the board: a post-checkout, post-merge or post-rewrite an earlier version wrote is removed, with a line, and any other is kept and named; --html-only rebuilds the board. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="?", const="", metavar="FILE.ics", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first. With FILE.ics: the recurring calendar invite (weekdays at `standup` in the configuration)")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
              "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
@@ -9310,12 +9406,8 @@ def parse_args(argv):
         help="a seat's session (FM-024): the worktree carries its id as `git config --worktree seat.session <id>`, beside the seat's `user.email` — the harness's session id, "
              "its first eight hex characters; a sub-agent's is its parent's and its hand, `<parent>/<seat>-<n>`. `--session new` prints an id no commit carries, for a session "
              "with no parent and a harness with no id. `open` and `close` are gone since 0.18.0: the registry is a report, `--sessions`")
-    add("--ratio", action="store_true", help="the records-to-product ratio (FM-032): per Europe/Berlin day of the merge, the lines added and deleted in records "
-                                            "(`[ratio] records` in the configuration) and in product (every other path), counted apart, for the merge commits on "
-                                            "the default branch's first-parent line — then the rolling seven-day sums. The rule is "
-                                            "work-tracker/evidence/FM-032/records-to-product-ratio.md. Read-only; exit 2 without a `[ratio]` section")
-    add("--since", metavar="YYYY-MM-DD", help="with --ratio: the first day of the window (default: six days before --until)")
-    add("--until", metavar="YYYY-MM-DD", help="with --ratio: the last day of the window (default: today, Europe/Berlin)")
+    for flag, value in (("--ratio", {"action": "store_true"}), ("--since", {}), ("--until", {})):    # R13 removed them: each is named when given
+        add(flag, help=argparse.SUPPRESS, **value)
     add("--sessions", action="store_true", help="the registry of seat sessions, generated from the `Session:` and `Worktree:` trailers of this checkout's history "
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
@@ -10026,11 +10118,9 @@ HOOK_MARK = "# shoalmark"
 LEGACY_HOOK_MARK = "# fathom-mark"          # the name until 0.6.0 — a hook it wrote is still ours to rewrite
 # THE HOOKS RUN THE COPY (a private security report): every hook `--install-hook` writes runs the copy of the tool kept in the common git directory — shared by
 # every worktree, outside every working tree, written only by `--install-hook` — against the worktree it runs in, and never the tool a branch brings. The commit's
-# hooks fail closed: no copy, a refusal or the copy's bound, and the commit is refused with one line. The checkout and merge hooks never block: they run the copy's
-# read-only `--html-only` and always exit 0, with one line where the refresh failed. A person, an agent and CI run the repository's own tool, as ever.
+# hooks fail closed: no copy, a refusal or the copy's bound, and the commit is refused with one line. A person, an agent and CI run the repository's own tool, as ever.
 COPY_DIR = "shoalmark-trusted"
 COPY_AT = '"$(git rev-parse --git-common-dir)/' + COPY_DIR + '/shoalmark.py" --root "$(git rev-parse --show-toplevel)"'      # the copy, against this worktree — after the interpreter and `-I`
-COPY_RUN = COPY_AT + " --html-only"
 _COPY_FIND = 'root=$(git rev-parse --show-toplevel 2>/dev/null)\ncopy="$(git rev-parse --git-common-dir 2>/dev/null)/' + COPY_DIR + '/shoalmark.py"\n'
 _COPY_SAYS = ("# It runs the copy of the tool kept in the git directory, which only `--install-hook` writes — never the tool a branch brings; the commit is refused\n"
               "# with one line where the copy is not there, refuses it, or does not finish within its bound.\n")
@@ -10049,17 +10139,41 @@ HOOKS = {
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
-              "post-checkout": "--html-only", "post-merge": "--html-only", "post-rewrite": "--html-only"}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
-COPY_HOOKS = {
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"'}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
+# R11, the Owner's ruling of 12 October (FM-057): NO HOOK REFRESHES THE BOARD. `--install-hook` writes none after a checkout, a merge or a rewrite; the board is
+# rebuilt by an explicit run (the plain run, `--html-only`), by the commit's own hook where a tracker is staged, and by each act right after it (`board_after_act`).
+# The three an earlier version wrote are each removed on its next run, with a line — only where the file is, byte for byte but the interpreter or command it
+# names, what that version wrote: 0.3.0 to 0.19.0 (`FORMER_PLAIN`, `post-checkout` and `post-merge`, marked `# fathom-mark` until 0.6.0), and from the hooks' copy until R11
+# (`FORMER_COPY`, all three). Any other file of those names is a person's own: it is kept, byte for byte, and named.
+REFRESH_HOOKS = {"post-checkout": "checkout", "post-merge": "merge", "post-rewrite": "rebase or an amend"}
+FORMER_PLAIN = "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n"
+FORMER_COPY = {
     name: "#!/bin/sh\n{mark} — after a " + when + ": refresh the git-ignored board, from the copy of the tool kept in the git directory (`--install-hook` writes it). It reads the tree\n"
           "# and writes the board, and runs nothing a branch brings; it never blocks a " + when + " — it exits 0, with one line where the refresh failed.\n"
           + _COPY_FIND +
           'if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the board is not refreshed — the hooks\' copy of the tool is not in the git directory: run --install-hook"\n  exit 0\nfi\n'
           'out=$({py} -I "$copy" --root "$root" --html-only 2>&1)\ncode=$?\n'
           'if [ "$code" -eq 0 ]; then\n  printf \'%s\\n\' "$out"\nelse\n  echo "shoalmark: the board is not refreshed (exit $code): $(printf \'%s\' "$out" | tail -n 1)"\nfi\nexit 0\n'
-    for name, when in (("post-checkout", "checkout"), ("post-merge", "merge"), ("post-rewrite", "rebase or an amend"))
-}       # `post-rewrite`: a rebase — `git pull --rebase` with local commits among them — runs `post-checkout` before it replays them, and no other refresh after
+    for name, when in REFRESH_HOOKS.items()
+}
+
+
+def former_refresh_hook(name, path):
+    """R11 — what the file `path`, the hook `name` (one of `REFRESH_HOOKS`), is: "former" where it is exactly a refresh hook an earlier version wrote, but the
+    interpreter or the command it names (one line each), read with `\\r\\n` as `\\n`; "changed" where its second line is the mark such a hook opens with and the
+    rest is not that hook's; "" for any other — a person's own, a symlink, a folder, a file that cannot be read as UTF-8."""
+    if path.is_symlink() or not path.is_file():
+        return ""
+    try:
+        text = path.read_bytes().decode("utf-8").replace("\r\n", "\n")
+    except (OSError, UnicodeDecodeError):
+        return ""
+    shapes = [FORMER_COPY[name].format(mark=HOOK_MARK, py="\0")] + [FORMER_PLAIN.format(mark=m, cmd="\0") for m in (HOOK_MARK, LEGACY_HOOK_MARK) if name != "post-rewrite"]
+    if any(re.fullmatch(r"[^\n\0]+".join(re.escape(part) for part in shape.split("\0")), text) for shape in shapes):
+        return "former"
+    return "changed" if text.split("\n")[1:2] and text.split("\n")[1] in {shape.split("\n")[1] for shape in shapes} else ""
+
+
 TSVN_HOOKS = {"tsvn:startcommithook": "start", "tsvn:precommithook": "pre"}
 
 
@@ -10186,7 +10300,9 @@ def svn_ignore_board():
 
 def install_hook_svn():
     """What Subversion has. Its command line runs NO client-side hook; TortoiseSVN does, from versioned properties,
-    after asking the user once. The board is ignored by property, not by file."""
+    after asking the user once. The board is ignored by property, not by file. No property refreshes the board after an
+    update (R11): TortoiseSVN's start-commit hook runs the plain run, as git's pre-commit hook does, and its pre-commit hook
+    `--check`."""
     code = EXIT_OK
     try:
         info, target = svn_local_directory(".")
@@ -10580,7 +10696,7 @@ def install_hook():
                 tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
     code = EXIT_OK
     copy_code, copy_lines = install_copy()
-    hook_set = {**HOOKS, **COPY_HOOKS} if copy_code == EXIT_OK else {}      # every hook runs the copy: none is written where it is not there
+    hook_set = HOOKS if copy_code == EXIT_OK else {}      # every hook runs the copy: none is written where it is not there
     for name, text in hook_set.items():
         path = hooks / name
         if path.exists() and not any(m in path.read_text(encoding="utf-8", errors="replace") for m in (HOOK_MARK, LEGACY_HOOK_MARK)):
@@ -10590,6 +10706,20 @@ def install_hook():
         put(path, text.format(py=PY, **fill))
         path.chmod(0o755)
         print(f"wrote {path}")
+    for name, when in REFRESH_HOOKS.items():                # R11: no hook refreshes the board — an earlier version's is removed, a person's own kept, each named
+        path = hooks / name
+        if not os.path.lexists(path):
+            continue
+        kind = former_refresh_hook(name, path)
+        if kind == "former":
+            path.unlink()
+            print(f"removed {path} — an earlier shoalmark wrote it to rebuild the board after every {when}; no hook does now: "
+                  f"`{CMD} --html-only` rebuilds it, and each act rebuilds it right after itself")
+        elif kind == "changed":
+            print(f"kept {path} — an earlier shoalmark wrote it, and it was changed since: it is left as it is, and still rebuilds the board after every "
+                  f"{when} — remove it, or what of it is shoalmark's, where you no longer want that")
+        else:
+            print(f"kept {path} — not one shoalmark wrote; nothing shoalmark writes runs after a {when}")
     for line in copy_lines:
         print(line, file=sys.stderr if copy_code != EXIT_OK or line.startswith("warning:") else sys.stdout)
     return code or copy_code
@@ -10716,20 +10846,20 @@ def next_up(trackers):
 WANTED_NUM = None
 
 
-def filing_freeze(trackers):
-    """FM-032 S4 — (open, the line) while the filing freeze holds: the trackers whose status is open number `freeze_at` or
-    more. None while they do not, where `freeze_at` is 0, and where `[tags]` has no `freeze_tag` — a freeze nothing could
-    pass would refuse even the defect it exists to let through (`freeze_unpassable` says so)."""
-    n = sum(t["status"] in OPEN_STATUSES for t in trackers)
-    return (n, FREEZE_AT) if FREEZE_AT and n >= FREEZE_AT and not freeze_unpassable() else None
+# R15 (FM-032): the filing freeze is gone — the Owner's ruling of 12 October. Until then, at `freeze_at` open trackers or more, `--new`
+# refused every filing but a product defect (`freeze_tag`). A configuration that still sets either key is named in one line where `--new`
+# and `--check` speak, and is never refused (R26): the keys are not read.
+FREEZE_KEYS = ("freeze_at", "freeze_tag")
 
 
-def freeze_unpassable():
-    """The one line `--check` owes a repository whose freeze is set and whose `[tags]` cannot pass it — or ""."""
-    if FREEZE_AT and FREEZE_TAG.lower() not in {k.lower() for k in TAGS}:
-        return (f"filing freeze: off — `freeze_tag` {FREEZE_TAG!r} is not in [tags] ({', '.join(sorted(TAGS)) or 'none'}); "
-                f"add it there, or set `freeze_tag` in {CONFIG_NAME} to the tag a product defect carries")
-    return ""
+def freeze_retired():
+    """R15: the one line naming the filing freeze's keys this configuration still sets — or "". Never a refusal."""
+    keys = [k for k in FREEZE_KEYS if k in CONFIG]
+    if not keys:
+        return ""
+    return (f"{CONFIG_NAME}: " + " and ".join(f"`{k}`" for k in keys) + (" is" if len(keys) == 1 else " are")
+            + " not read — R15, the Owner's ruling of 12 October, removed the filing freeze, so every filing is written; looking before "
+            "filing (`--new` prints the closest trackers first, `--related`) and the ranking (`rank:`, `--triage`, `--next`) stay. Delete the line")
 
 
 def new_tracker(words, trackers, tags_arg=None):
@@ -10749,7 +10879,6 @@ def new_tracker(words, trackers, tags_arg=None):
         print(f'{score:7.1f}  {t["id"]:<9} {t["status"]:<12} {t["title"][:60]}')
     house = TRACKER_DIR / "TEMPLATE.md"                     # a repository's own template, by convention — its language, its sections
     template = board_text(house) or TRACKER_TEMPLATE        # the reading rule
-    frozen = filing_freeze(trackers)
     tags = [x.strip().lstrip("#").lower() for x in (parse_frontmatter(template)[0].get("tags") or "").split(",") if x.strip()]
     if tags_arg is not None:                                # `--tags bug,process`: the kind of work, said as it is filed
         vocab = {k.lower(): k for k in TAGS}                # matched as the template's are, case aside; written as [tags] spells it
@@ -10761,11 +10890,8 @@ def new_tracker(words, trackers, tags_arg=None):
                    else f"at most {MAX_TAGS} tags, from [tags] in {CONFIG_NAME}")
             print(f"--new: --tags {tags_arg!r} — {why} — nothing was written", file=sys.stderr)
             return EXIT_LINT
-    if frozen and FREEZE_TAG.lower() not in {x.lower() for x in tags} and not pending_owner():
-        print(f"--new: filing freeze — {frozen[0]} open, at or above {frozen[1]} (`freeze_at` in {CONFIG_NAME}): only product defects are filed; "
-              f"anything else goes as one line into the closest open tracker's body, or waits. This filing carries no `{FREEZE_TAG}` tag — "
-              f"a product defect is filed with `--tags {FREEZE_TAG}`; nothing was written", file=sys.stderr)
-        return EXIT_LINT
+    if freeze_retired():                                    # R15: the freeze's keys are named, and the filing is written
+        print(freeze_retired(), file=sys.stderr)
     # a repository that already numbers its work keeps its numbers: `--new AP-037 "title"` takes that id if it is free
     num = max([t["num"] for t in trackers if t["kind"] == kind] or [0]) + 1
     if WANTED_NUM is not None:
@@ -10785,7 +10911,7 @@ def new_tracker(words, trackers, tags_arg=None):
 
 
 def board_run(root):
-    """`--html-only`: the board's own run, the one a checkout and a merge hook starts (a private security report). It reads what the repository holds
+    """`--html-only`: the board's own run — the explicit refresh, and the rebuild an act starts right after itself (a private security report). It reads what the repository holds
     and writes the board — `index.html`, `view/<ID>.js` and, last, `view/built.json` (FM-045) in the tracker folder — and does nothing else:
     - it starts no deriver and no program but read-only git — `board_tripwire` refuses anything else where Python does it;
     - it reads the tree only as regular files inside the repository, through no symlink: the trackers, the configuration, the brand's files;
@@ -10794,9 +10920,9 @@ def board_run(root):
     - it fetches nothing: every git it starts runs with lazy fetching switched off (`nested_git_env`); where git is too old to switch it off and the repository
       is a partial clone, it reads nothing, says so in one line, and exits 0; what a read met missing it does not say, and names in one line (`unread_line`).
     What it leaves alone it names, in one line — and where that is the page itself, it prints that line and no link; a tracker folder it refuses, in one line, exit 4."""
-    global SAFE_READS, SAFE_WRITES, _TRIPWIRE, _TRACKED
+    global SAFE_READS, SAFE_WRITES, _TRIPWIRE, _TRACKED, _SVN_REVISION
     saved = (sys.dont_write_bytecode, list(sys.path), os.environ.get("NoDefaultCurrentDirectoryInExePath"), SAFE_WRITES)
-    SAFE_READS, SAFE_WRITES, _TRACKED = True, True, None
+    SAFE_READS, SAFE_WRITES, _TRACKED, _SVN_REVISION = True, True, None, None
     BOARD_LEFT.clear(), TRIPPED.clear()
     sys.dont_write_bytecode = True
     os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
@@ -10816,6 +10942,7 @@ def board_run(root):
         tracked = tracked_board_rels() if TRACKER_DIR.is_dir() else []
         _TRACKED = {_norm(ROOT / rel) for rel in tracked}        # the single validated snapshot precedes every board write
         basis = board_basis()                                       # FM-045: what the board is built from, read before the trackers are
+        read = read_at(count=False)                                 # FM-057: what it reads, and when — no changed paths on this run
         trackers = load_trackers()
         no_derived(trackers)                                        # no deriver: no derived column, file, note or key
         if TRACKER_DIR.is_dir():
@@ -10824,16 +10951,16 @@ def board_run(root):
                 if board_write(HTML_OUT, tracked_board_page(line)):     # a page git tracks itself is left as committed, with its line
                     print(line, file=sys.stderr)                    # in place of the link
             else:                                                   # a page git tracks is left as committed, its line said in place of the link
-                page, left = render_html(trackers), len(BOARD_LEFT)
+                page, left = render_html(trackers, read), len(BOARD_LEFT)
                 written = board_write(HTML_OUT, page)
                 if written or vcs() != "svn":                   # a versioned SVN page and all its existing views are left untouched
                     write_views(trackers)
                 if written:
-                    write_built(basis, left)                        # FM-045: last, only after the page and every view
+                    write_built(basis, left, read)                  # FM-045: last, only after the page and every view
                     print(board_link())                             # where the board is written, to open (FM-006) — only a board this run wrote; never with --print-written
             drift = hooks_copy_drift()
             if drift:
-                print(drift)                                        # the hook still refreshed: it only says that the copy is not what the repository pins
+                print(drift)                                        # a run of the copy — a person's own hook may start one — still refreshed: it only says that the copy is not what the repository pins
         return EXIT_OK
     except ReadOnlyRun as e:
         capability = "the one local Subversion status query" if vcs() == "svn" else "read-only git"
@@ -10847,7 +10974,7 @@ def board_run(root):
         return EXIT_OK
     finally:
         _TRIPWIRE = SAFE_READS = False
-        SAFE_WRITES = saved[3]
+        SAFE_WRITES, _SVN_REVISION = saved[3], None
         sys.dont_write_bytecode, sys.path[:] = saved[0], saved[1]
         if saved[2] is None:
             os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
@@ -10867,9 +10994,9 @@ BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 35)      # 
 
 
 def board_watchdog(board=True):
-    """Bound the board's run when it is a program (a hook's, a hand run's), and every hook's run of the copy: after `BOARD_RUN_SECONDS` a thread of its own says so on stderr
-    and ends the process, exit 4, whatever the main thread waits on — a lock, a child, a pipe. A checkout or a merge hook prints one line and returns, so they never wait on
-    it; a commit's hook (`board` false) fails closed: its one line says the commit is refused, and the hook's exit refuses it."""
+    """Bound the board's run when it is a program (an act's rebuild, a hand run's), and every hook's run of the copy: after `BOARD_RUN_SECONDS` a thread of its own says so on stderr
+    and ends the process, exit 4, whatever the main thread waits on — a lock, a child, a pipe: nothing waits on it longer; a commit's hook (`board` false) fails closed:
+    its one line says the commit is refused, and the hook's exit refuses it."""
     said = (f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped" if board
             else f"shoalmark: the hook's run took longer than {BOARD_RUN_SECONDS} s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer")
     def stop():
@@ -11116,10 +11243,8 @@ def main(argv=None, *, _notice=True):
         return session_cmd(args.session)
     if args.sessions:                                       # the registry: a report of the trailers, read from git alone
         return sessions_cmd()
-    if args.ratio:                                          # FM-032: a report of git's first-parent history — no tracker is read
-        return ratio_cmd(args.since, args.until)
-    if args.since or args.until:
-        print("--since and --until go with --ratio", file=sys.stderr)
+    if args.ratio or args.since is not None or args.until is not None:      # R13: each is named, an empty value too; no tracker and no history is read
+        print("\n".join(ratio_removed(args)), file=sys.stderr)
         return 2
     if args.queue:                                          # FM-031 S2: the forge's queue — no tracker is read
         return queue_cmd()
@@ -11257,13 +11382,15 @@ def main(argv=None, *, _notice=True):
         drifted = drift_normalize(on_disk) != drift_normalize(body)
         if drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is STALE — a tracker changed without regenerating. Run: {CMD}", file=sys.stderr)
+            print("\n".join(stale_lines(OUT, body)), file=sys.stderr)          # R22: what differs, under its STALE line
         for path, text in sorted(DERIVED_FILES.items()):
             if board_text(path) != text:
                 drifted = True
                 print(f"{path.relative_to(ROOT).as_posix()} is STALE — regenerate. Run: {CMD}", file=sys.stderr)
+                print("\n".join(stale_lines(path, text)), file=sys.stderr)
         if not drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
-        for line in sessions_report() + pin_report():       # reports, never refusals (FM-024, FM-011)
+        for line in sessions_report() + pin_report() + ratio_notices():     # reports, never refusals (FM-024, FM-011, R13)
             print(line, file=log)
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         if vcs() == "git":
@@ -11272,11 +11399,8 @@ def main(argv=None, *, _notice=True):
             print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
         elif vcs() == "git" and _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
             print("the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits", file=log)
-        frozen = filing_freeze(trackers)                    # FM-032 S4: said, never refused — the refusal is `--new`'s
-        if frozen:
-            print(f"filing freeze: {frozen[0]} open, at or above {frozen[1]} — only {FREEZE_TAG} filings", file=log)
-        elif freeze_unpassable():
-            print(freeze_unpassable(), file=log)
+        if freeze_retired():                                # R15: a key of the filing freeze is named, never refused (R26)
+            print(freeze_retired(), file=log)
     else:
         refused = tracker_folder_problem("nothing is written, and the commit is refused") if SAFE_WRITES else ""
         if refused:                                             # a hook's run of the copy writes nothing where the tracker folder may lead it out
@@ -11291,11 +11415,11 @@ def main(argv=None, *, _notice=True):
                 print(DERIVER_HOOK_LINE.format(cmd=CMD), file=sys.stderr)
             else:
                 put(OUT, body)
-            basis = board_basis()                                   # FM-045: what the board is built from, read before it is rendered
-            page, left = render_html(trackers), len(BOARD_LEFT)
+            basis, read = board_basis(), read_at()                  # FM-045: what the board is built from, read before it is rendered; FM-057: and when
+            page, left = render_html(trackers, read), len(BOARD_LEFT)
             board_write(HTML_OUT, page)                             # git-ignored; never staged
             write_views(trackers)
-            write_built(basis, left)                                # FM-045: last, only after the page and every view
+            write_built(basis, left, read)                          # FM-045: last, only after the page and every view
             if not DERIVER_LEFT:
                 print(f"wrote {OUT.relative_to(ROOT).as_posix()} — {len(trackers)} trackers, {len(unknown)} unknown-status", file=log)
                 print(f"  buckets — In Progress: {sum(t['status'] == 'In Progress' for t in trackers)} · generated files: {len(DERIVED_FILES)}", file=log)

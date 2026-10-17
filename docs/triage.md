@@ -165,8 +165,8 @@ process on their account holds that key (FM-007)*.
 
 ## What an edit does not do
 
-- **It changes no check.** The gate's refusals, `--queue`'s reading of a pull request, the filing freeze and each
-  seat's rights come from the tool's code and `shoalmark.toml`. Path line 3 asks for a review's evidence file, and
+- **It changes no check.** The gate's refusals, `--queue`'s reading of a pull request and each seat's rights come
+  from the tool's code and `shoalmark.toml`. Path line 3 asks for a review's evidence file, and
   `--queue` asks for a verdict on the head because its code does. Deleting line 3 wouldn't change that. *The tool:*
   no check reads what your lines say; the raise check reads their numbers (above).
 - **It moves no tier and no rank by itself.** A tracker's tier moves only when the tracker is on a pass's sheet and
