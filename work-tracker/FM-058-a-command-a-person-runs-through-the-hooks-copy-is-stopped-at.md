@@ -1,9 +1,11 @@
 ---
 id: FM-058
-status: Proposed
+status: In Progress
 considered: FM-006, FM-045, FM-050
 tags: bug
 next: build
+triaged: 2026-10-17
+tier: P1
 hook: "A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push can take longer"
 ask: "How long may a run of shoalmark take before the tool stops it: a hook's run, the board's run, and a command a person runs?"
 ask-kind: ruling
@@ -19,7 +21,8 @@ answered-by: holgo99
 
 ## What is true now
 
-**Filed 2026-10-16, defect 10, with its ask; nothing is built.** On the Owner's word of the same day it moves into
+**Filed 2026-10-16, defect 10, with its ask. Answered and signed on 2026-10-17 (`96afebd`): 60 s for a hook's run
+and the board's run; no bound on a command a person runs. Judged the same day: In Progress, P1. Nothing is built.** On the Owner's word of the same day it moves into
 v0.20.1: the guided answer view (FM-059, quick win 11) needs a command a person runs to have no bound, so it is built
 first.
 
@@ -62,5 +65,6 @@ copy and through the tree's tool.
 
 | Date | Event |
 |---|---|
+| 2026-10-17 | Judged In Progress, P1, by the Planner on the Owner's signed answer (`96afebd`), before the first build commit, on `fm/058-run-bounds`. |
 | 2026-10-16 | Filed, defect 10, with its ask (the Auditor's finding, relayed by the Owner). Nothing is built. |
 | 2026-10-16 | Moved into v0.20.1 on the Owner's word: the guided answer view (FM-059) needs it first. |
