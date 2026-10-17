@@ -36,6 +36,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | P2 | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | In Progress | progress | 2026-10-17 |
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |
 | [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | P1 | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress | progress | 2026-10-13 |
@@ -60,7 +61,6 @@
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
 | [FM-060](FM-060-the-answer-s-refusal-record-is-committed-unsigned-under-the.md) | — | --answer's refusal record is committed unsigned under the Owner's name, and R14 then refuses every branch that carries… | Proposed | triage | — |
-| [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | — | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | Proposed | triage | — |
 | [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | — | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | Proposed | triage | — |
 | [FM-056](FM-056-the-gate-can-name-the-commit-that-removed-a-line-as-the-one.md) | — | The gate names who set a tracker's line with a pickaxe that also matches the commit that removed it, so a line a merge… | Proposed | triage | — |
 | [FM-055](FM-055-the-receipts-need-the-owner-s-definitions-of-a-day-a-sitting.md) | — | The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories co… | Proposed | triage | — |

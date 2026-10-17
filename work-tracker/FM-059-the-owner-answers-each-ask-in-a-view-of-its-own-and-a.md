@@ -1,9 +1,11 @@
 ---
 id: FM-059
-status: Proposed
+status: In Progress
 considered: FM-050, FM-007, FM-054, FM-058
 tags: process
 next: build
+triaged: 2026-10-17
+tier: P2
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
 ask: "Which release builds the guided answer view: the Board view that holds only one ask's dialog, opened by a prepared run that signs what you chose?"
 ask-kind: ruling
@@ -18,6 +20,9 @@ answered-by: holgo99
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
 
 ## What is true now
+
+**2026-10-17 — judged In Progress, P2, for v0.20.1's build (quick win 11), before the first build commit.** Its first
+slice, the hooks' copy recording the tool's full commit, is built on `fm/059-copy-provenance`.
 
 **Filed 2026-10-16 on the Owner's direction, with its ask. Its design started the same day, the Owner with the Designer;
 nothing is built.** On the Owner's word of the same day it is quick win 11, in v0.20.1: the ask's first proposal, the
@@ -48,6 +53,7 @@ first release after v0.20.1, is withdrawn (its record is under `## Asks`), and t
 
 | Date | Event |
 |---|---|
+| 2026-10-17 | Judged In Progress, P2, by the Planner for quick win 11's build, before the first build commit, on `fm/059-copy-provenance`. |
 | 2026-10-16 | Filed on the Owner's direction (relayed by the Auditor), with its ask. Nothing is designed or built. |
 | 2026-10-16 | Its design started, the Owner with the Designer; the ask now asks only which release builds it. |
 | 2026-10-16 | Quick win 11 in v0.20.1, on the Owner's word: the first proposal withdrawn, the ask filed again proposing v0.20.1. |
