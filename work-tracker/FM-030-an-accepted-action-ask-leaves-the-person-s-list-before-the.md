@@ -13,6 +13,8 @@ hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner
 
 ## What is true now
 
+**Built on `fm/030-r9-standup`, not merged — R9, signed 12 October, and its two quick wins, from the quick-wins design of 15 October, recorded privately.** `ac8899d`: `--invite`, `--notify` and `--standup FILE.ics` print one line that R9 removed them and exit 2; `--standup` and `--owner` name what they left — a calendar file, `notified.json`, the cron line's log, the launchd agent — and never remove it; owed acts, `due:`, `done:` and their history stay. `374cf21`: the board's box of what waits for the Owner carries a stand-up prompt and a close-out prompt, each copied from one dialog, the design's text filled with four values each checked first; a value that fails fills no prompt, and the dialog names it.
+
 **Filed 2026-09-24; built in part, and more on a branch not merged.** 0.18.3 and 0.18.4 shipped its first lines — an
 answer writes the next move; the acts owed to the Owner on his board with their time, *done* and *reschedule*, an invite
 and a notice per act — `fm/030-the-done-dialog-shows-the-question` built four lines more for 0.18.6, merged as PR 103
@@ -196,3 +198,4 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-10-09 | RV-2830: recorded privately |
 | 2026-10-10 | The notice's fix ships in 0.19.3, dated 2026-10-10: on macOS and Linux its code is literal and its text travels as data; on Windows `--notify` starts no program and prints each notice (`baa58cc`). |
 | 2026-10-10 | **Shipped in v0.19.3:** the notice's fix — `7b55f46`, `3a0757c` (RV-2942), `44bde64`, `7738037`; RV-2830, RV-2960, RV-2980 and RV-2981: recorded privately — `release/v0.19.3` merged to main as `3432566` (#157); tagged `v0.19.3` on `3432566`. |
+| 2026-10-16 | Built on `fm/030-r9-standup`, not merged: R9 — invites, notifications and their scheduler state go; owed acts, due and done stay (`ac8899d`); the stand-up and close-out prompts, copied from the board (`374cf21`). Not pushed; the Owner pushes. |

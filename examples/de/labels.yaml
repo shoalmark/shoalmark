@@ -186,3 +186,32 @@ answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt
 answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
 answer.sign.url: "https://shoalmark.github.io/shoalmark/de/signing.html"
 answer.done: Fertig
+day.standup.title: Standup
+day.standup.row: "ein Prompt, der eine Sitzung bittet, Ihren Standup nach der Tagesordnung oben zu halten, einen Punkt nach dem anderen"
+day.standup.button: Standup-Prompt
+day.standup.spoken: den Standup-Prompt kopieren
+day.closeout.title: Tagesabschluss
+day.closeout.row: "ein Prompt, der eine Sitzung bittet, den Tag aus dem Verlauf vorzulesen und nichts zu ändern"
+day.closeout.button: Abschluss-Prompt
+day.closeout.spoken: den Abschluss-Prompt kopieren
+day.standup.dialog: Der Standup-Prompt
+day.closeout.dialog: Der Abschluss-Prompt
+day.paste: "Fügen Sie ihn in die Sitzung ein, die Sie für dieses Repository nutzen — Claude Code, Codex oder eine andere —, auf dem Rechner, auf dem das Repository liegt."
+day.asks: Worum er bittet
+day.standup.asks: "Er bittet die Sitzung, einen Punkt nach dem anderen zu nehmen und auf Ihr Wort zu warten. Ein Prompt bittet; er kann keine Sitzung zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Ihre Entscheidung hält der Befehl fest, den Sie in Ihrem eigenen Terminal ausführen."
+day.closeout.asks: "Er bittet die Sitzung, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Sitzung über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält Ihre Zahl getragener Nachrichten aus den Händen der Sitzung. Eine Nachricht ist nie eine Antwort."
+day.runs: Was die Sitzung ausführen soll
+day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
+day.closeout.runs: "{0} und {1}, und ein git log des Standardzweigs. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
+day.not: Was der Knopf nicht tut
+day.not.text: "Er kopiert Text. Er führt nichts aus, plant nichts und sendet nichts; wann Sie sich setzen, entscheiden Sie."
+day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standardzweigs füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
+day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
+day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
+day.refused.long: "ist länger als {0} Zeichen"
+day.refused.none: ist hier nicht bekannt
+day.refused.split: "nennt das Werkzeug über einen Pfad mit Leerzeichen, den der kopierte Befehl in zwei Wörter teilen würde; ein in SHOALMARK_CMD gesetzter Befehl gilt, wie er geschrieben ist"
+day.value.name: der Ordnername des Repositorys
+day.value.path: sein Pfad
+day.value.cmd: der Befehl des Werkzeugs
+day.value.branch: der Name des Standardzweigs

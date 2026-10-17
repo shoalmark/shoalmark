@@ -2376,8 +2376,8 @@ fm.configure(HERE)
 #     (`NEVER_IN_BOARD_RUN`). Read from the tool's own source with `ast`: a command in neither fails here, and so does a start in a form the reading does not
 #     follow. Its control is a copy of the source with one start injected, in each form. The runtime half is at the suite's end
 # the programs a start may not name: the command wrappers, which start the program a later word of their argv names, and the shells and interpreters, which
-# run code or a script they are handed. A start of one is not read, but at the deriver's exception and the notice's fixed argv below, and Python on the
-# tool's own file; matched by name, any path, any case, `.exe` or not
+# run code or a script they are handed. A start of one is not read, but at the deriver's exception below, and Python on the tool's own file;
+# matched by name, any path, any case, `.exe` or not
 _WRAPPERS = frozenset({"env", "nice", "nohup", "timeout", "stdbuf", "setsid", "time", "command", "exec", "builtin", "sudo", "doas", "xargs", "caffeinate", "ionice",
                       "chrt", "taskset", "flock", "arch", "unbuffer", "wsl", "start"})
 _PYTHONS = frozenset({"python", "python3", "py", "pythonw"})
@@ -2400,14 +2400,8 @@ _PROCESS_APIS = {
     "_winapi": {"CreateProcess": "unread"},
     "_posixsubprocess": {"fork_exec": "unread"},
 }
-# THE NOTICE'S FIXED CODE (FM-030): a start of osascript is read only where its argv is, word for word and literal in full, the notice's — the fixed
-# code `notify_argv` hands it on macOS, which reads the notice's title and body from the environment and starts no process. Any other code handed to
-# osascript, and any code handed to PowerShell, anywhere, is not read. The notice's own checks hold `notify_argv` to these words
-_NOTICE_ARGV = {
-    "osascript": ["osascript", "-e", 'use framework "Foundation"\nuse scripting additions\n'
-                                     "set e to current application's NSProcessInfo's processInfo()'s environment()\n"
-                                     """display notification ((e's objectForKey:"SM_BODY") as text) with title ((e's objectForKey:"SM_TITLE") as text)"""],
-}
+# THE NOTICE'S FIXED CODE (FM-030) went with `--notify` (R9): the tool starts no osascript and no PowerShell, and a start of either, anywhere, is
+# not read. `_NOTICE_ARGV` is gone with it; `_HELD_PY` still names it for an older suite's reading (its control)
 # THE DERIVER'S EXCEPTION, permanent (the Owner's ruling of 2026-10-08): `run_deriver` starts the repository's own program, `derive` in the tracker folder —
 # directly, and on Windows as `[sys.executable, derive]` — by design, on an explicit run only: never in a hook's run (the Owner's ruling *No deriver in hooks*,
 # filed in FM-006) and never in the board's run. These two forms alone are admitted, each by the function and the start's shape, and each met once
@@ -2420,13 +2414,16 @@ def _git_starts(src):
     (`_PROCESS_APIS`) called by its plain name — the module's attribute, or the name it is imported by, called directly — with its argument list resolved in
     full, and every argument that can choose the program or a shell resolved too: `executable` and `shell`, by keyword, by position and through a `**`
     expansion. Any other reference to a process API or a process module, in whatever access form, is not read and named in the second list; so is a start
-    of a shell, an interpreter or a command wrapper, but at the deriver's exception, matched by its site, the notice's fixed argv (`_NOTICE_ARGV`), word
-    for word, and Python run on the tool's own file (`__file__`).
+    of a shell, an interpreter or a command wrapper, but at the deriver's exception, matched by its site, and Python run on the tool's own file
+    (`__file__`).
     Followed: a literal `["git", …]` argv, and one bound to a name apart from its call (`args = [...] if … else [...]`, `for cmd in ([...], …)`), kept as it
     was bound; every callable that hands its own `*a` to git where the command goes — `git_out`, a local `git = lambda *a: …`, a lambda or a name handed to
     a function whose parameter then starts git (`default_trunk(git)`) — and every call of one; each call of a forwarding helper read as its own start, with that caller's own keywords; git's own options before
-    the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`,
-    any case. A word of any other program that names git is not read."""
+    the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`); a row of a table the source spells out where the command goes
+    (`*STANDUP_GIT[0]`, `table_row`); and the stand-up's options, `**standup_program("git")` or `("svn")`, read as the
+    two calls they stand for — no `executable`, and `executable` that program — only where `standup_program`, `STANDUP_PROGRAMS` and `standup_programs`
+    are as the tool writes them (`standup_form_exact`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`, any case. A word
+    of any other program that names git is not read."""
     tree = ast.parse(src)
     # FM-044: classify callers of the transparent process boundary as the starts they request. The process boundary is exercised separately by core controls.
     # Keep the existing Git command classification and forwarding-helper analysis: git_out still forwards the caller's own command/keywords.
@@ -2440,6 +2437,67 @@ def _git_starts(src):
     defs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
     scopes, comps = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda), (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
     bound = {}
+
+    def standup_form_exact():
+        """Whether the stand-up's absolute-path form is the tool's as written (FM-031, Q7): `standup_program(program)` returns
+        `{"executable": STANDUP_PROGRAMS[program]}` where `STANDUP_PROGRAMS.get(program)`, else `{}`; `STANDUP_PROGRAMS`, bound once at the top to `{}`,
+        is only cleared, read, or updated with `standup_programs(…)`; and `standup_programs` gives each program only a path of its own name — `candidate`,
+        bound once to `os.path.join(entry, program + ".exe" if os.name == "nt" else program)`, under `for program in ("git", "svn")`, and `found`, bound
+        once to `{}`, written only `found[program] = ""` or `= candidate` and returned."""
+        same = lambda node, code: ast.unparse(node) == ast.unparse(ast.parse(code).body[0])
+        fn, finder = defs.get("standup_program"), defs.get("standup_programs")
+        if fn is None or finder is None:
+            return False
+        a_ = fn.args
+        body = [st for st in fn.body if not (isinstance(st, ast.Expr) and isinstance(st.value, ast.Constant) and isinstance(st.value.value, str))]
+        if ([x.arg for x in a_.args] != ["program"] or a_.vararg or a_.kwarg or a_.kwonlyargs or a_.defaults or a_.posonlyargs or len(body) != 1
+                or not isinstance(body[0], ast.Return) or body[0].value is None
+                or not same(body[0].value, '{"executable": STANDUP_PROGRAMS[program]} if STANDUP_PROGRAMS.get(program) else {}')):
+            return False
+        top = [n for n in tree.body if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign)) and "STANDUP_PROGRAMS" in
+               {t.id for t in ast.walk(n) if isinstance(t, ast.Name) and not isinstance(t.ctx, ast.Load)}]
+        if len(top) != 1 or not (isinstance(top[0], ast.Assign) and len(top[0].targets) == 1 and isinstance(top[0].targets[0], ast.Name)
+                                 and isinstance(top[0].value, ast.Dict) and not top[0].value.keys):
+            return False
+        for n in every:
+            if isinstance(n, ast.Global) and "STANDUP_PROGRAMS" in n.names:
+                return False
+            if not (isinstance(n, ast.Name) and n.id == "STANDUP_PROGRAMS") or n is top[0].targets[0]:
+                continue
+            up = parent.get(n)
+            if not isinstance(n.ctx, ast.Load):
+                return False
+            if isinstance(up, ast.Subscript) and up.value is n and isinstance(up.ctx, ast.Load):
+                continue                                    # a read of one program's path
+            call = parent.get(up)
+            if not (isinstance(up, ast.Attribute) and up.value is n and isinstance(call, ast.Call) and call.func is up):
+                return False                                # handed on, aliased or reached another way
+            if up.attr in ("clear", "get") or (up.attr == "update" and len(call.args) == 1 and not call.keywords and isinstance(call.args[0], ast.Call)
+                                               and isinstance(call.args[0].func, ast.Name) and call.args[0].func.id == "standup_programs"):
+                continue
+            return False
+        inner = list(ast.walk(finder))
+        loops = [n for n in inner if isinstance(n, ast.For) and isinstance(n.target, ast.Name) and n.target.id == "program"]
+        cands = [n for n in inner if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "candidate" for t in n.targets)]
+        founds = [n for n in inner if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "found" for t in n.targets)]
+        stores = [n for n in inner if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load) and n.id in ("program", "candidate", "found")]
+        if (len(loops) != 1 or not same(loops[0].iter, '("git", "svn")') or len(cands) != 1 or len(cands[0].targets) != 1
+                or not same(cands[0].value, 'os.path.join(entry, program + ".exe" if os.name == "nt" else program)') or cands[0] not in ast.walk(loops[0])
+                or len(founds) != 1 or len(founds[0].targets) != 1 or not (isinstance(founds[0].value, ast.Dict) and not founds[0].value.keys)
+                or len(stores) != 3 or any(isinstance(n, (ast.Global, ast.Nonlocal)) for n in inner)):
+            return False
+        for n in inner:
+            if isinstance(n, ast.Name) and n.id == "found" and isinstance(n.ctx, ast.Load):
+                up = parent.get(n)
+                if isinstance(up, ast.Return) and up.value is n:
+                    continue
+                if not (isinstance(up, ast.Subscript) and up.value is n and isinstance(up.ctx, ast.Store) and same(up.slice, "program")
+                        and isinstance(parent.get(up), ast.Assign) and len(parent[up].targets) == 1
+                        and (same(parent[up].value, '""') or same(parent[up].value, "candidate"))):
+                    return False
+        return True
+
+    standup_exact = standup_form_exact()
 
     def scope_of(node):
         while node in parent:
@@ -2575,7 +2633,7 @@ def _git_starts(src):
 
     def argv_lists(expr, seen=()):
         """The argv lists a start can be handed: a list or tuple; a name bound to one and kept as it is (`kept`); a sum of them, either side `x if … else y`;
-        what a module function returns (`notify_argv`). None: not read."""
+        what a module function returns (as `notify_argv` did, before R9). None: not read."""
         if isinstance(expr, (ast.List, ast.Tuple)):
             reached.add(expr)
             return [expr.elts]
@@ -2666,7 +2724,7 @@ def _git_starts(src):
 
     def read_start(prog_expr, words, call, scope, by=()):
         """One start, by its program and the words after it: git — its command classified; a command wrapper, a shell or an interpreter — not read, but at the
-        deriver's exception, the notice's fixed argv and Python on the tool's own file; any other program — git named in its words is not read. `by`: the
+        deriver's exception and Python on the tool's own file; any other program — git named in its words is not read. `by`: the
         invocation of a forwarding helper this start is read for, () for the start's own call."""
         line = call.lineno
         if top_function(call) == "run_deriver":            # the deriver's exception: its two forms, by their shape
@@ -2685,8 +2743,6 @@ def _git_starts(src):
         if names & _WRAPPERS:
             return unread.append((line, f"a start through a wrapper, {who}"))
         if names & _SHELLS:
-            if who in _NOTICE_ARGV and [whole(prog_expr), *(whole(w) for w in words)] == _NOTICE_ARGV[who]:
-                return others.append((line, f"{who}: the notice's fixed code"))
             if names <= _PYTHONS and words and not isinstance(words[0], ast.Starred) and program(words[0]) == {THIS_TOOL}:
                 return others.append((line, f"{who}: the tool's own file"))
             return unread.append((line, f"a start of {who}, a shell or an interpreter: {ast.unparse(call)[:80]}"))
@@ -2726,6 +2782,11 @@ def _git_starts(src):
                              else f"a call at line {n.lineno} whose keywords the reading cannot see: {ast.unparse(parent[n])[:80]}", (id(parent[n]),)) for n in refs]
             elif dict_of(v) is not None:
                 alts = [(dict_of(v), ())]
+            elif (isinstance(v, ast.Call) and isinstance(v.func, ast.Name) and v.func.id == "standup_program" and len(v.args) == 1 and not v.keywords
+                  and isinstance(v.args[0], ast.Constant) and v.args[0].value in ("git", "svn") and standup_exact
+                  and [b[1] for b in bindings(v.func)] == [defs["standup_program"]]):
+                # the stand-up's options: none on every other run, and on the stand-up's path `executable` the program found for it (`standup_form_exact`)
+                alts = [({}, ()), ({"executable": ast.copy_location(ast.Constant(value=v.args[0].value), v)}, ())]
             if alts is None:
                 return None
             out = [(base if isinstance(base, str) else alt if isinstance(alt, str) else f"a keyword given twice: {sorted(set(base) & set(alt))}"
@@ -2813,6 +2874,24 @@ def _git_starts(src):
 
     found, unread, others, fixed, excepted = collections.defaultdict(set), [], [], [], collections.defaultdict(set)
 
+    def table_row(expr):
+        """The words of `NAME[i]`, a row of a table the source spells out (FM-031, Q7's `STANDUP_GIT`): `NAME` bound once, at the top, to a tuple of
+        tuples of literal strings, and nowhere else bound, changed or declared global; `i` a literal index it holds. None: not read."""
+        if not (isinstance(expr, ast.Subscript) and isinstance(expr.value, ast.Name) and isinstance(expr.ctx, ast.Load)
+                and isinstance(expr.slice, ast.Constant) and type(expr.slice.value) is int):
+            return None
+        name, bs = expr.value.id, bindings(expr.value)
+        if len(bs) != 1 or bs[0][0] != "value" or names_bound(tree).get(name) != bs:
+            return None
+        table = bs[0][1]
+        if not (isinstance(table, ast.Tuple) and all(isinstance(row, ast.Tuple) and all(isinstance(w, ast.Constant) and isinstance(w.value, str) for w in row.elts)
+                                                     for row in table.elts) and 0 <= expr.slice.value < len(table.elts)):
+            return None
+        if any((isinstance(n, ast.Name) and n.id == name and not isinstance(n.ctx, ast.Load) and not (isinstance(parent.get(n), ast.Assign) and parent[n].value is table))
+               or (isinstance(n, (ast.Global, ast.Nonlocal)) and name in n.names) for n in every):
+            return None
+        return list(table.elts[expr.slice.value].elts)
+
     def command(elts, line, scope):
         """The command of git's argv words after `git` (or of a call of a starter): git's own options skipped; a constant names it; the scope's own `*a`
         there makes the scope a starter; a name bound apart is read through; anything else is not read."""
@@ -2847,6 +2926,9 @@ def _git_starts(src):
                 for alt in (x for a in alts for x in a):
                     command(list(alt) + elts[i + 1:], line, scope)
                 return
+        if isinstance(e, ast.Starred) and table_row(e.value) is not None:      # a row of a table the source spells out
+            command(table_row(e.value) + elts[i + 1:], line, scope)
+            return
         unread.append((line, f"git started with {ast.unparse(e)} where its command goes"))
 
     def module_of(expr):
@@ -2999,15 +3081,14 @@ with tempfile.TemporaryDirectory() as d:
     never_ = getattr(fm, "NEVER_IN_BOARD_RUN", {})
     unclassified_ = lambda found: sorted(set(found) - set(fm.READ_ONLY_GIT) - set(never_))
     as_named_ = lambda excepted: set(excepted) == set(_DERIVER) and all(v_ == 1 for v_ in excepted.values())     # the deriver's exception: its sites, each met once
-    notice45_ = {f"{p_}: the notice's fixed code" for p_ in _NOTICE_ARGV}
     check(f"FM-045 · every git command the tool can start is classified — on READ_ONLY_GIT, or named as never started in the board's run with its reason in one line, `ls-remote` among "
           f"them; none in both, none named that the tool never starts; Check A accepts a start only in the form the product writes — a process API called by its plain name, "
           f"its argument list and every argument that can choose the program or a shell resolved in full — and reads any other as not read, but at the Owner's one exception, "
-          f"the repository's deriver that `run_deriver` starts, matched by its site and met once; the notice's start of osascript is an ordinary start, its argv the "
-          f"notice's fixed code word for word, and no start of PowerShell is read in the tool (saw {len(found_)} commands, {len(never_)} never started; unclassified {unclassified_(found_)}; not read "
+          f"the repository's deriver that `run_deriver` starts, matched by its site and met once; no start of osascript or PowerShell is read in the tool, the "
+          f"notice that started one gone with `--notify` (R9) (saw {len(found_)} commands, {len(never_)} never started; unclassified {unclassified_(found_)}; not read "
           f"{unread_}; the exception {excepted_}; programs not git {sorted({p_ for _l, p_ in others_})})",
-          len(found_) > 1 and not unclassified_(found_) and not unread_ and as_named_(excepted_) and notice45_ <= {p_ for _l, p_ in others_}
-          and not any("powershell" in p_.lower() for _l, p_ in others_) and "ls-remote" in never_
+          len(found_) > 1 and not unclassified_(found_) and not unread_ and as_named_(excepted_)
+          and not any("powershell" in p_.lower() or "osascript" in p_.lower() for _l, p_ in others_) and "ls-remote" in never_
           and not set(never_) & set(fm.READ_ONLY_GIT) and set(never_) <= set(found_) and all(isinstance(w_, str) and w_.strip() and "\n" not in w_ for w_ in never_.values()))
     injected_ = {       # each form the reading follows, starting a command the table does not hold; then those it does not follow, each named
         'a literal argv': ('def _injected():\n    return subprocess.run(["git", "gc"], capture_output=True)\n', 'gc'),
@@ -3031,6 +3112,38 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-045 · the classification's control: a source line starting a git command the table does not hold fails it, in each form the reading follows — a literal argv, "
           f"`git_out`, after `*signers_args()`, a local wrapper, a wrapper handed to a function, an argv built apart, in a loop or bound whole to a name, a program named by "
           f"`executable=` — and a start in a form it does not follow is named (saw {caught_})", all(caught_.values()))
+    standup_ = {        # FM-031, Q7: the stand-up's starts — a row of a table where git's command goes, and the stand-up's options — followed exactly
+        'a row of a table the source spells out': ('_INJ_ROWS = (("gc",), ("log",))\n\n\ndef _injected():\n    return git_out(*_INJ_ROWS[0])\n', 'gc'),
+        "the stand-up's options for git": ('def _injected():\n    return vcs_process("git", "gc", capture_output=True, **standup_program("git"))\n', 'gc'),
+        'not followed: a row at an index not spelled out': ('_INJ_ROWS = (("gc",),)\n\n\ndef _injected(i):\n    return git_out(*_INJ_ROWS[i])\n', None),
+        'not followed: a table bound again elsewhere': ('_INJ_ROWS = (("log",),)\n\n\ndef _inj_change():\n    global _INJ_ROWS\n    _INJ_ROWS = (("gc",),)\n\n\n'
+                                                       'def _injected():\n    return git_out(*_INJ_ROWS[0])\n', None),
+        'not followed: a row that is not literal': ('_INJ_WORD = "gc"\n_INJ_ROWS = ((_INJ_WORD,),)\n\n\ndef _injected():\n    return git_out(*_INJ_ROWS[0])\n', None),
+        "not followed: the stand-up's options for a program it does not name": ('def _injected():\n    return vcs_process("git", "gc", **standup_program("ssh"))\n', None),
+        "not followed: the stand-up's options for a program not spelled out": ('def _injected(p):\n    return vcs_process("git", "gc", **standup_program(p))\n', None),
+        "not followed: another function's options": ('def _inj_program(p):\n    return {"executable": "/bin/sh"}\n\n\ndef _injected():\n    return vcs_process("git", "gc", **_inj_program("git"))\n', None),
+        "not followed: a local `standup_program`": ('def _injected():\n    standup_program = lambda p: {"executable": "/bin/sh"}\n    return vcs_process("git", "gc", **standup_program("git"))\n', None),
+        "not followed: `STANDUP_PROGRAMS` written elsewhere": ('def _injected():\n    STANDUP_PROGRAMS["git"] = "/bin/sh"\n', None),
+        "not followed: `STANDUP_PROGRAMS` updated with another table": ('def _injected():\n    STANDUP_PROGRAMS.update({"git": "/bin/sh"})\n', None),
+    }
+    edited_ = {         # …and the tool's own definitions changed: its own starts of git and svn on the stand-up's path are then not read
+        "`standup_program` returning another program": ('    return {"executable": STANDUP_PROGRAMS[program]} if STANDUP_PROGRAMS.get(program) else {}\n', '    return {"executable": "/bin/sh"}\n'),
+        "`standup_programs` naming a candidate after something else": ('            candidate = os.path.join(entry, program + ".exe" if os.name == "nt" else program)\n',
+                                                                       '            candidate = os.path.join(entry, "sh")\n'),
+        "`standup_programs` finding a path it did not name": ('            found[program] = candidate\n', '            found[program] = "/bin/sh"\n'),
+    }
+    seen_ = {}
+    for what_, (code_, want_) in standup_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        seen_[what_] = unclassified_(f_) == [want_] if want_ else len(u_) > len(unread_)
+    for what_, (old_, new_) in edited_.items():
+        seen_[what_] = src_.count(old_) == 1 and len(_git_starts(src_.replace(old_, new_))[1]) >= 3 + len(unread_)
+    check(f"FM-045 · FM-031 · the reading follows the stand-up's starts exactly — a row of a table the source spells out where git's command goes, and the stand-up's "
+          f"options for git or svn, read as no `executable` and as that program — and names as not read a row at an index not spelled out, a table bound again or not "
+          f"literal, the options for a program it does not name or does not spell out, another function's options, a local `standup_program`, `STANDUP_PROGRAMS` "
+          f"written elsewhere or updated with another table, and the tool's own starts once `standup_program` returns another program or `standup_programs` names or "
+          f"finds a path other than the program's (saw {seen_})", all(seen_.values()))
     program_ = {        # the program as `read_only_git` reads it; a start through a wrapper; what the reading cannot resolve
         'git by its absolute path': ('def _injected():\n    return subprocess.run(["/usr/bin/git", "gc"])\n', ('unclassified', 'gc')),
         'git as `git.exe`': ('def _injected():\n    return subprocess.run(["git.exe", "prune"])\n', ('unclassified', 'prune')),
@@ -3156,44 +3269,33 @@ with tempfile.TemporaryDirectory() as d:
           f"arguments, in any order, list or tuple — is read and its git classified; forwarded options changed in the helper, any other reference to a process API or a "
           f"process module, code handed to any shell or interpreter, a start through a wrapper, a program the system chooses, and an argument it cannot resolve in full are each "
           f"named as not read (saw {shut45_})", all(shut45_.values()))
-    notify45_ = next(n_ for n_ in ast.parse(src_).body if isinstance(n_, ast.FunctionDef) and n_.name == "notify_argv")
-    fixed45_ = {l_.elts[0].value: ast.get_source_segment(src_, l_) for l_ in ast.walk(notify45_)        # the notice's fixed argv, as the source spells each
-                if isinstance(l_, ast.List) and l_.elts and isinstance(l_.elts[0], ast.Constant) and l_.elts[0].value in _NOTICE_ARGV}
-    del notify45_
-    ns45_ = next(l_.strip() for l_ in src_.splitlines() if l_.strip().startswith('return ["notify-send", '))
     der45_ = next(l_ for l_ in src_.splitlines() if l_.strip().startswith("run = subprocess.run(([sys.executable]"))
-    ind45_, tail45_ = der45_[:len(der45_) - len(der45_.lstrip())], "    return None\n\n\ndef post_notice"
+    ind45_ = der45_[:len(der45_) - len(der45_.lstrip())]
     run45_ = next(n_ for n_ in ast.walk(next(n_ for n_ in ast.parse(src_).body if isinstance(n_, ast.FunctionDef) and n_.name == "run_deriver"))
                   if isinstance(n_, ast.Assign) and isinstance(n_.value, ast.Call) and ast.unparse(n_.value.func) == "subprocess.run")
     helper45_ = lambda times: src_.replace(ast.get_source_segment(src_, run45_), f"def _review_run(**options):\n{ind45_}    return subprocess.run(**options)" + "".join(
         f"\n{ind45_}run = " + ast.get_source_segment(src_, run45_.value).replace("subprocess.run(", "_review_run(args=", 1) for _ in range(times)), 1)    # its start through a forwarding helper, `times` invocations
-    copies45_ = {       # the deriver's exception admits its own sites and the notice's fixed code itself, word for word, and nothing else: each copy fails the check
-        "code handed to osascript inside `notify_argv` in place of its fixed code": src_.replace(fixed45_.get("osascript", "\0"), '["osascript", "-e", f"return {title}"]', 1),
-        "a branch handing code to PowerShell inside `notify_argv`": src_.replace(tail45_, '    if platform == "win32":\n        return ["powershell", "-Command", f"Write-Output {title}"]\n' + tail45_, 1),
-        "a branch handing literal code to PowerShell inside `notify_argv`": src_.replace(tail45_, '    if platform == "win32":\n        return ["powershell", "-NoProfile", "-NonInteractive", '
-                                                                                         '"-Command", "Write-Output 1"]\n' + tail45_, 1),
-        "the notice's fixed osascript code with a statement added": src_.replace(fixed45_.get("osascript", "\0"), repr(_NOTICE_ARGV["osascript"][:-1] + [_NOTICE_ARGV["osascript"][-1]
-                                                                                                                       + '\ndo shell script "git gc"']), 1),
-        "the notice's fixed argv with a word more": src_.replace(fixed45_.get("osascript", "\0"), repr(_NOTICE_ARGV["osascript"] + ["-e", 'do shell script "git gc"']), 1),
-        "the osascript form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["osascript", "-e", f"return {value}"])\n',
-        "the PowerShell form outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["powershell", "-NoProfile", "-Command", f"Write-Output {value}"])\n',
-        "the osascript form through `__call__` outside `notify_argv`": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("osascript", "-e", f"return {value}"), capture_output=True)\n',
-        "the PowerShell form through `__call__` outside `notify_argv`": src_ + ('\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("powershell", "-Command", f"Write-Output {value}"), '
+    copies45_ = {       # the deriver's exception admits its own sites and nothing else, and no start of osascript or PowerShell is read: each copy fails the check
+        "the osascript form in the tool": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["osascript", "-e", f"return {value}"])\n',
+        "the notice's fixed code before R9, word for word": src_ + ("\n\ndef _injected_notice():\n    return subprocess.run(" + repr(["osascript", "-e",
+            'use framework "Foundation"\nuse scripting additions\nset e to current application\'s NSProcessInfo\'s processInfo()\'s environment()\n'
+            'display notification ((e\'s objectForKey:"SM_BODY") as text) with title ((e\'s objectForKey:"SM_TITLE") as text)']) + ")\n"),
+        "the PowerShell form in the tool": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run(["powershell", "-NoProfile", "-Command", f"Write-Output {value}"])\n',
+        "the osascript form through `__call__` in the tool": src_ + '\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("osascript", "-e", f"return {value}"), capture_output=True)\n',
+        "the PowerShell form through `__call__` in the tool": src_ + ('\n\ndef _injected_notice(value):\n    return subprocess.run.__call__(("powershell", "-Command", f"Write-Output {value}"), '
                                                                                'capture_output=True)\n'),
-        "another program's code inside `notify_argv`": src_.replace(ns45_, 'return ["sh", "-c", f"echo {platform}"]', 1),
-        "a second branch handing code to osascript inside `notify_argv`": src_.replace(tail45_, '    if platform == "x":\n        return ["osascript", "-e", f"return {platform}"]\n' + tail45_, 1),
-        "Python code defining its own `notify_argv`": src_ + ('\n\ndef _injected():\n    return subprocess.run([sys.executable, "-c", "import subprocess\\ndef notify_argv(t):\\n'
+        "Python code that starts osascript": src_ + ('\n\ndef _injected():\n    return subprocess.run([sys.executable, "-c", "import subprocess\\ndef notify_argv(t):\\n'
                                                            '    return subprocess.run([\'osascript\', \'-e\', f\'return {t}\'])\\n"])\n'),
         "the deriver's form outside `run_deriver`": src_ + ('\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n'
                                                          '    return subprocess.run(([sys.executable] if os.name == "nt" else []) + [str(exe)])\n'),
         "a third form inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run(["sh", str(exe)])\n' + der45_, 1),
         "the deriver's form a second time inside `run_deriver`": src_.replace(der45_, ind45_ + 'subprocess.run([str(exe)])\n' + der45_, 1),
         "the deriver's form through a forwarding helper inside `run_deriver`, invoked twice": helper45_(2),
-        'the osascript form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
-        'the PowerShell form through a helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
+        'the osascript form through a helper in the tool': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
+        'the PowerShell form through a helper in the tool': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
         "the deriver's form through a helper outside `run_deriver`": src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n    return _injected_helper(args=([sys.executable] if os.name == "nt" else []) + [str(exe)])\n',
-        'the osascript form through a forwarding helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
-        'the PowerShell form through a forwarding helper outside `notify_argv`': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
+        'the osascript form through a forwarding helper in the tool': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["osascript", "-e", f"return {value}"])\n',
+        'the PowerShell form through a forwarding helper in the tool': src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_notice(value):\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=["powershell", "-Command", f"Write-Output {value}"])\n',
         "the deriver's form through a forwarding helper outside `run_deriver`": src_ + '\n\ndef _injected_helper(**k):\n    return subprocess.run(**k)\n\n\ndef _injected_deriver():\n    exe = TRACKER_DIR / "derive"\n    _injected_helper(args=["true"], executable="/bin/true")\n    return _injected_helper(args=([sys.executable] if os.name == "nt" else []) + [str(exe)])\n',
     }
     ends45_ = {}
@@ -3203,12 +3305,11 @@ with tempfile.TemporaryDirectory() as d:
         ends45_[what_] = text_ != src_ and not (not unclassified_(f_) and not u_ and as_named_(x_))
     f_, u_, _o, x_ = _git_starts(helper45_(1))
     once45_ = helper45_(1) != src_ and not unclassified_(f_) and not u_ and as_named_(x_)
-    check(f"FM-045 · the Owner's one exception, the deriver's, matched by its site and met once, and the notice's fixed code, word for word, admit nothing else: code "
-          f"handed to osascript inside `notify_argv` in place of its fixed code, added to it or after it, a branch there handing code to PowerShell, literal or not, code handed to "
-          f"either outside `notify_argv` directly, through `__call__` or through a helper, a forwarding one too, another program's code inside it, a second branch handing code to "
-          f"osascript, Python code that defines its own "
-          f"`notify_argv`, the deriver's form outside `run_deriver`, directly or through a helper, a third start inside it, its form a second time and a forwarding helper "
-          f"inside it invoked twice each fail the check; that helper invoked once is admitted (saw {ends45_}; once {once45_})", len(fixed45_) == 1 and all(ends45_.values()) and once45_)
+    check(f"FM-045 · the Owner's one exception, the deriver's, matched by its site and met once, admits nothing else, and no start of osascript or PowerShell is "
+          f"read — the notice's fixed code went with `--notify` (R9): that code word for word, code handed to osascript or PowerShell in the tool directly, through `__call__` or through a helper, "
+          f"a forwarding one too, Python code that starts osascript, the deriver's form outside `run_deriver`, directly or through a helper, a third start inside it, its "
+          f"form a second time and a forwarding helper inside it invoked twice each fail the check; that helper invoked once is admitted (saw {ends45_}; once {once45_})",
+          all(ends45_.values()) and once45_)
     held45_ = _held_by(HERE / "test_shoalmark.py")
     check(f"FM-045 · Check A releases what it holds as its reading returns: one reading of the tool leaves under 5,000 tracked objects behind, the collector paused — its "
           f"parsed tree and per-call tables are gone (saw {held45_})", held45_ is not None and held45_ < 5_000)
@@ -3220,8 +3321,8 @@ with tempfile.TemporaryDirectory() as d:
               held45_ is not None and held45_ > 50_000)
     else:
         _skipped("FM-045 · Check A releases what it holds · the control", 1, "this clone does not hold ceb21b8")
-    del (src_, never_, unclassified_, as_named_, notice45_, injected_, caught_, program_, read_, closed45_, shut45_, fixed45_, ns45_, der45_, run45_, helper45_, copies45_,
-         ends45_, once45_, held45_, found_, unread_, others_, excepted_, what_, copy_, ind45_, tail45_, text_, f_, u_, _o, x_, code_, want_, _x)     # released as the block ends
+    del (src_, never_, unclassified_, as_named_, injected_, caught_, program_, read_, closed45_, shut45_, der45_, run45_, helper45_, copies45_,
+         ends45_, once45_, held45_, found_, unread_, others_, excepted_, what_, copy_, ind45_, text_, f_, u_, _o, x_, code_, want_, _x)     # released as the block ends
 
 
 def _signers_repo(base):
@@ -4462,7 +4563,8 @@ else:
 fm.configure(HERE)
 
 # --- the calendar files under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--standup FILE.ics`
-# and `--invite <id>` write a file of the tree only as a regular file inside the repository, never through a symlink, and their lines end in CRLF
+# and `--invite <id>` wrote a file of the tree only as a regular file inside the repository, never through a symlink. R9 removed both: each now writes nothing
+# at all — through a symlink or at a regular place — says so in one line and exits 2; the control, a tool from before, still writes the regular file
 def _cal(rev=None):
     """`--standup FILE.ics` at a calendar file that is a symlink, and `--invite <id>` where the evidence folder is a symlink; then each at a regular place."""
     with tempfile.TemporaryDirectory() as d:
@@ -4474,26 +4576,24 @@ def _cal(rev=None):
         c_, o_, e_ = _tool_run(tool_, root, "--standup", "cal.ics")
         g_["standup"] = dict(code=c_, err=e_.strip(), same=target_.read_text(encoding="utf-8") == "UNCHANGED\n")
         c_, o_, e_ = _tool_run(tool_, root, "--standup", "plain.ics")
-        g_["standup"]["plain"] = (root / "plain.ics").read_bytes() if c_ == 0 and (root / "plain.ics").is_file() else b""
+        g_["standup"]["plain"] = (root / "plain.ics").read_bytes() if (root / "plain.ics").is_file() else b""      # whatever the exit, a file there is a write
         ev_ = root / "docs/work-tracker/evidence"; shutil.rmtree(ev_, ignore_errors=True); away_ = marks / "evidence"; away_.mkdir(); os.symlink(away_, ev_, target_is_directory=True)
         c_, o_, e_ = _tool_run(tool_, root, "--invite", "MSR-002")
         g_["invite"] = dict(code=c_, err=e_.strip(), same=sorted(os.listdir(away_)) == [])
         os.unlink(ev_)
         c_, o_, e_ = _tool_run(tool_, root, "--invite", "MSR-002"); ics_ = ev_ / "MSR-002" / "MSR-002-act.ics"
-        g_["invite"]["plain"] = ics_.read_bytes() if c_ == 0 and ics_.is_file() else b""
+        g_["invite"]["plain"] = ics_.read_bytes() if ics_.is_file() else b""
         rm_git(root)
     return g_
-def _cal_crlf(b):
-    return b.startswith(b"BEGIN:VCALENDAR\r\n") and b.endswith(b"END:VCALENDAR\r\n") and b.count(b"\n") == b.count(b"\r\n")
 def _cal_ok(g, key, rel):
-    return g[key]["code"] == fm.EXIT_LINT and g[key]["err"] == f"shoalmark: {rel} {_WR_SAYS}" and g[key]["same"] and _cal_crlf(g[key]["plain"])
+    return g[key]["code"] == 2 and g[key]["err"] == getattr(fm, "R9_REMOVED", {}).get(key) and g[key]["same"] and g[key]["plain"] == b""
 _CAL_CASES = (("standup", "cal.ics", "`--standup FILE.ics` at a calendar file that is a symlink"),
               ("invite", "docs/work-tracker/evidence/MSR-002/MSR-002-act.ics", "`--invite <id>` where the evidence folder is a symlink"))
 if _SYMLINKS:
     g_ = _cal()
     for key_, rel_, what_ in _CAL_CASES:
-        check(f"FM-006 · a private security report · the write rule · {what_}: refused in one line naming the file, exit 4, nothing written through it; at a regular "
-              f"place the file is written, its lines ending in CRLF (saw {g_[key_]['err'][-120:]!r})", _cal_ok(g_, key_, rel_))
+        check(f"FM-006 · a private security report · the write rule · R9 · {what_}: R9's one line, exit 2, nothing written through it; at a regular "
+              f"place nothing is written either (saw {g_[key_]['err'][-120:]!r})", _cal_ok(g_, key_, rel_))
     if _HAVE_RR:
         c_ = _cal(_RR_REV)
         for key_, rel_, what_ in _CAL_CASES:
@@ -5206,9 +5306,9 @@ else:
 fm.configure(HERE)
 
 # --- destinations a person names (the Owner's ruling filed in FM-006, *The fix round after the critical review*, with RV-2316, and RV-2317): `--vendor DIR`,
-# `--brand DIR --from`, `--brand DIR` and `--standup FILE.ics` resolve the destination once, where it is named, and the write rule judges every file under the
+# `--brand DIR --from` and `--brand DIR` resolve the destination once, where it is named, and the write rule judges every file under the
 # folder it resolves to — named through a folder outside the repository that resolves inside it, a file under it that is a symlink is refused in one line, and
-# the file it points to is unchanged
+# the file it points to is unchanged. `--standup FILE.ics` was among them until R9 removed it: there it now writes nothing and says so, exit 2
 def _nd(rev=None):
     """Each command at a destination named through `marks/door-*`, a symlink to a folder inside the repository that holds one symlink: `--vendor` meets
     `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand --from` and `--brand DIR` meet `theme.css`, a
@@ -5232,12 +5332,13 @@ def _nd(rev=None):
         rm_git(root)
     return g_
 def _nd_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand", "brand-starter", "standup"))
+    return (all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand", "brand-starter"))
+            and g["standup"]["code"] == 2 and g["standup"]["err"] == getattr(fm, "R9_REMOVED", {}).get("standup") and g["standup"]["same"] and g["standup"]["only"])
 if _SYMLINKS:
     g_ = _nd()
-    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR --from`, `--brand DIR` and `--standup FILE.ics`, named through a folder "
+    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR --from` and `--brand DIR`, named through a folder "
           f"outside the repository that resolves inside it, meet a file under it that is a symlink: each is refused in one line naming it, exit 4, the file it points "
-          f"to unchanged and nothing written (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
+          f"to unchanged and nothing written; `--standup FILE.ics` there says R9 removed it, exit 2, and writes nothing (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
     if _HAVE_SAME:
         c_ = _nd(_SAME_REV)
         check(f"FM-006 · a private security report · destinations a person names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _nd_ok(c_))
@@ -5909,6 +6010,35 @@ viewer.from_move: aus dem Schritt
 viewer.true_now: was jetzt gilt
 viewer.no_move: ohne benannten Schritt
 viewer.none_in_progress: nichts in Arbeit
+day.standup.title: Standup
+day.standup.row: "ein Prompt, der eine Sitzung bittet, Ihren Standup nach der Tagesordnung oben zu halten, einen Punkt nach dem anderen"
+day.standup.button: Standup-Prompt
+day.standup.spoken: den Standup-Prompt kopieren
+day.closeout.title: Tagesabschluss
+day.closeout.row: "ein Prompt, der eine Sitzung bittet, den Tag aus dem Verlauf vorzulesen und nichts zu ändern"
+day.closeout.button: Abschluss-Prompt
+day.closeout.spoken: den Abschluss-Prompt kopieren
+day.standup.dialog: Der Standup-Prompt
+day.closeout.dialog: Der Abschluss-Prompt
+day.paste: "Fügen Sie ihn in die Sitzung ein, die Sie für dieses Repository nutzen — Claude Code, Codex oder eine andere —, auf dem Rechner, auf dem das Repository liegt."
+day.asks: Worum er bittet
+day.standup.asks: "Er bittet die Sitzung, einen Punkt nach dem anderen zu nehmen und auf Ihr Wort zu warten. Ein Prompt bittet; er kann keine Sitzung zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Ihre Entscheidung hält der Befehl fest, den Sie in Ihrem eigenen Terminal ausführen."
+day.closeout.asks: "Er bittet die Sitzung, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Sitzung über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält Ihre Zahl getragener Nachrichten aus den Händen der Sitzung. Eine Nachricht ist nie eine Antwort."
+day.runs: Was die Sitzung ausführen soll
+day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
+day.closeout.runs: "{0} und {1}, und ein git log des Standardzweigs. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
+day.not: Was der Knopf nicht tut
+day.not.text: "Er kopiert Text. Er führt nichts aus, plant nichts und sendet nichts; wann Sie sich setzen, entscheiden Sie."
+day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standardzweigs füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
+day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
+day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
+day.refused.long: "ist länger als {0} Zeichen"
+day.refused.none: ist hier nicht bekannt
+day.refused.split: "nennt das Werkzeug über einen Pfad mit Leerzeichen, den der kopierte Befehl in zwei Wörter teilen würde; ein in SHOALMARK_CMD gesetzter Befehl gilt, wie er geschrieben ist"
+day.value.name: der Ordnername des Repositorys
+day.value.path: sein Pfad
+day.value.cmd: der Befehl des Werkzeugs
+day.value.branch: der Name des Standardzweigs
 """
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
 # a wordmark as a person draws one: the mark stroked, the name filled, both in the page's ink; an id the page also uses
@@ -6519,11 +6649,10 @@ with tempfile.TemporaryDirectory() as tmp:
     check("--standup is the agenda of one sitting: rulings first, then the Owner's hands, then buttons — inside a kind what frees the most comes first — and what was sent back is named after, never as an item",
           code == 0 and out3.startswith("STANDUP") and out3.index("RULINGS") < out3.index("YOUR HANDS") < out3.index("BUTTONS") and "[frees AP-037, AP-041]" in out3
           and out3.index("BUTTONS") < out3.index("SENT BACK") and "AP-020" in out3.split("SENT BACK")[1])
-    code, _, err = run(root, "--standup", str(root / "s.ics"))
     (root / "shoalmark.toml").write_text('name = "q"\nstandup = "09:00"\nstandup_minutes = 20\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    code2, _, _ = run(root, "--standup", str(root / "s.ics")); ics = (root / "s.ics").read_bytes() if (root / "s.ics").exists() else b""
-    check("--standup FILE.ics writes the recurring invite — weekdays, the configured time and length, CRLF as a calendar file must — and refuses until a time is configured",
-          code == fm.EXIT_LINT and "standup = " in err and code2 == 0 and b"RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\r\n" in ics and b"T090000\r\n" in ics and b"T092000\r\n" in ics and ics.count(b"\n") == ics.count(b"\r\n"))
+    code, _, err = run(root, "--standup", str(root / "s.ics"))
+    check("R9 · `--standup FILE.ics` writes no invite: one line saying R9 removed it, exit 2, and no file, though a time is configured",
+          code == 2 and err.strip() == fm.R9_REMOVED["standup"] and not (root / "s.ics").exists())
     for p_ in (root / "docs/work-tracker").glob("AP-0[23]0-*.md"):
         p_.unlink()                                      # AP-030 has been shown; AP-020 is malformed, and the gate refuses it — the answer checks below want a green ledger
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
@@ -6758,7 +6887,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     tracker(root, "AP-090", extra=f'next: owner\nask: "Welches Format?"\nask-kind: ruling\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
     run(root); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
-    two_ = page.split("const sign=")[1].split('d.querySelector(".copy")')[0]
+    two_ = page.split("const sign=")[1].split("clip(d,line)")[0]          # the second screen, up to its copy through the shared clipboard path (FM-030)
     menus_ = re.findall(r"<menu>(.*?)</menu>", two_)
     check("FM-013 · the built board carries the second screen: its words in the labels, the branch the board was built from, and exactly one button in its menu — Done",
           '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
@@ -10858,318 +10987,10 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# --- FM-030, 0.18.4 D: an invite and a notification per act — his word, *invites + notifications*. `--invite <id>` is an
-#     RFC 5545 file beside the tracker's evidence; `--notify` posts once per act per state, remembered outside the repository
-with tempfile.TemporaryDirectory() as tmp:
-    base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
-    (root / "shoalmark.toml").write_text('name = "d"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    now_ = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
-    at_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).isoformat()
-    utc_ = lambda minutes: (now_ + datetime.timedelta(minutes=minutes)).astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    since_ = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
-    long_ = "the read of production, with a comma; and a semicolon — long enough to fold across the seventy-five octets RFC 5545 allows a line"
-    tracker(root, "AP-430", extra=f"next: run\ndue: {at_(10)}\nwindow: 45\n", title=long_)
-    tracker(root, "AP-431", extra=f"next: run\ndue: {at_(-10)}\n", title="overdue")
-    tracker(root, "AP-432", extra=f"next: run\ndue: {at_(-120)}\nwindow: 30\n", title="missed")
-    tracker(root, "AP-433", extra=f"next: run\ndue: {at_(300)}\n", title="later", body="## What is true now\n\n**One thing is left.**\n\n## Acts\n\n"
-            f"**{since_}** · scheduled — due {at_(200)} · later · holgo\n\n**{since_}** · rescheduled — was due {at_(200)}, now due {at_(300)} · later · holgo\n\n## Done when\n\nit is.\n")
-    tracker(root, "AP-434", extra=f'next: owner\nask: "Will you set up the key?"\nask-kind: action\nask-since: {since_}\nask-proposal: "yes"\n'
-                                  f'answer: "accepted - after the scoring"\nanswered: {since_}\nanswered-by: holgo\n', title="no date yet")
-    tracker(root, "AP-435", extra=f'next: run\ndue: {at_(-10)}\ndone: "{at_(-5)} · evidence/AP-435/read.md"\n', title="done")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts", "--author=holgo <h@x>")
-    code_, out_, err_ = run(root, "--invite", "ap-430")
-    ics_ = root / "docs/work-tracker/evidence/AP-430/AP-430-act.ics"
-    raw_ = ics_.read_bytes() if ics_.exists() else b""
-    lines_ = raw_.decode("utf-8").replace("\r\n ", "").split("\r\n")
-    code2_, _o, _e = run(root, "--invite", "AP-430")
-    check(f"FM-030 · D · `--invite <id>` writes one RFC 5545 file beside the tracker's evidence and prints its path: the act's time in UTC, a DURATION of its window, an alarm 30 minutes before, CRLF, every line at most 75 octets, its text escaped — and the same bytes on a second run (saw {out_.strip()!r} · {err_.strip()[-120:]!r})",
-          code_ == code2_ == 0 and out_.startswith("wrote docs/work-tracker/evidence/AP-430/AP-430-act.ics — AP-430 due ")
-          and lines_[:4] == ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shoalmark//act//EN", "BEGIN:VEVENT"] and lines_[-3:] == ["END:VEVENT", "END:VCALENDAR", ""]
-          and f"DTSTART:{utc_(10)}" in lines_ and "DURATION:PT45M" in lines_ and "SEQUENCE:0" in lines_
-          and lines_[lines_.index("BEGIN:VALARM"):lines_.index("END:VALARM") + 1] == ["BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + fm.ics_text("AP-430: " + long_), "TRIGGER:-PT30M", "END:VALARM"]
-          and "SUMMARY:d — AP-430: the read of production\\, with a comma\\; and a semicolon — long enough to fold across the seventy-five octets RFC 5545 allows a line" in lines_
-          and b"\n" not in raw_.replace(b"\r\n", b"") and all(len(l_) <= 75 for l_ in raw_.split(b"\r\n")) and b"\r\n " in raw_
-          and next(l_ for l_ in lines_ if l_.startswith("UID:")).startswith("UID:act-ap-430-") and ics_.read_bytes() == raw_)
-    run(root, "--invite", "AP-433")
-    seq_ = (root / "docs/work-tracker/evidence/AP-433/AP-433-act.ics").read_bytes().decode("utf-8")
-    code_n, _o, err_n = run(root, "--invite", "AP-434")
-    code_d, _o, err_d = run(root, "--invite", "AP-435")
-    check(f"FM-030 · D · a moved act's invite carries a higher SEQUENCE — its records under `## Acts` — so importing it again replaces the event; an act with no `due:` yet and one that is done have none (saw {err_n.strip()!r})",
-          "SEQUENCE:2\r\n" in seq_ and f"DTSTART:{utc_(300)}\r\n" in seq_ and code_n == code_d == fm.EXIT_LINT
-          and "AP-434's act has no `due:` yet — an invite needs a time" in err_n and ("--due 'AP-434' <time>" if _WIN_ARGS else "--due AP-434 <time>") in err_n
-          and "AP-435 owes the Owner no act" in err_d)
-    check("FM-030 · D · the notifier is the system's own, each where present: macOS `osascript`, Linux `notify-send` — none on Windows, and none where there is none",
-          [(fm.notify_argv("t", "b", p_, lambda n: "/usr/bin/" + n) or [None])[0] for p_ in ("darwin", "linux", "win32")] == ["osascript", "notify-send", None]
-          and fm.notify_argv("t", "b", "darwin", lambda n: None) is None and fm.notify_argv("t", "b", "sunos5", lambda n: "/x") is None)
-    posted_, real_post_, state_was_ = [], fm.post_notice, os.environ.get("XDG_STATE_HOME")
-    fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
-    os.environ["XDG_STATE_HOME"] = str(base / "state")
-    windows_ = sys.platform == "win32"             # Windows: each notice is printed, and nothing is posted — the notice's path is never taken
-    on_win_ = lambda out: bool([l_ for l_ in out.splitlines()[1:] if l_.startswith("  AP-")]) and all(l_.endswith(" — printed — no notice is posted on Windows")
-                                                                                                    for l_ in out.splitlines()[1:] if l_.startswith("  AP-"))
-    try:
-        code_1, out_1, _e = run(root, "--notify")
-        first_ = [t_ for t_, _b in posted_]
-        stored_ = json.loads((base / "state/shoalmark/notified.json").read_text(encoding="utf-8"))
-        code_2, out_2, _e = run(root, "--notify")
-        second_ = len(posted_)
-        clean_ = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--", "docs/work-tracker/*.md", "shoalmark.toml"], capture_output=True, text=True, env=_ENV).stdout
-        check(f"FM-030 · D · `--notify` posts one notification for each act due within 30 minutes, overdue or missed — not a later one, not one with no date, not a done one — and says what it posted and where it remembers it"
-              f"{' — on Windows each is printed, and nothing is posted' if windows_ else ''} (saw {out_1.strip()!r} · {first_})",
-              (code_1 == 0 and not posted_ and on_win_(out_1) and [l_.split(" — ")[0].strip() for l_ in out_1.splitlines()[1:]] == ["AP-430", "AP-431", "AP-432"]
-               and out_1.startswith(f"--notify: 3 printed · 0 printed before · 1 not yet within 30 minutes — remembered in {base / 'state/shoalmark/notified.json'}")
-               and "  AP-431 — overdue · overdue · overdue — due " in out_1
-               and sorted(stored_[str(root)]) == sorted([f"AP-430 {at_(10)} due", f"AP-431 {at_(-10)} overdue", f"AP-432 {at_(-120)} missed"])) if windows_ else
-              code_1 == 0 and [t_.split(" — ")[0] for t_ in first_] == ["d · AP-430", "d · AP-431", "d · AP-432"]
-              and first_[0].startswith("d · AP-430 — due in ") and first_[1] == "d · AP-431 — overdue" and first_[2] == "d · AP-432 — missed"
-              and posted_[2][1] == f"missed · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result"
-              and out_1.startswith(f"--notify: 3 posted · 0 posted before · 1 not yet within 30 minutes — remembered in {base / 'state/shoalmark/notified.json'}")
-              and "  AP-431 — overdue · overdue · overdue — due " in out_1 and sorted(stored_[str(root)]) == sorted([f"AP-430 {at_(10)} due", f"AP-431 {at_(-10)} overdue", f"AP-432 {at_(-120)} missed"]))
-        check(f"FM-030 · D · …and ONE per act per state: a second run posts nothing, and nothing in the repository is written — the memory is the tool's own, outside it"
-              f"{' — on Windows it prints nothing again' if windows_ else ''} (saw {out_2.strip()!r})",
-              code_2 == 0 and second_ == (0 if windows_ else 3) and clean_ == "" and not (root / ".shoalmark").exists()
-              and out_2.strip() == f"--notify: 0 {'printed' if windows_ else 'posted'} · 3 {'printed' if windows_ else 'posted'} before · 1 not yet within 30 minutes — remembered in "
-                                   f"{base / 'state/shoalmark/notified.json'}")
-        t431_ = root / "docs/work-tracker/AP-431-x.md"
-        t431_.write_text(t431_.read_text(encoding="utf-8").replace(f"due: {at_(-10)}", f"due: {at_(20)}"), encoding="utf-8")
-        tracker(root, "AP-436", extra=f"next: run\ndue: {at_(-5)}\n", title="a notifier that fails")
-        fm.post_notice = lambda title, body: (posted_.append((title, body)), "NOT posted — no display" if "AP-436" in title else "posted")[1]
-        code_3, out_3, _e = run(root, "--notify")
-        fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
-        code_4, out_4, _e = run(root, "--notify")
-        check(f"FM-030 · D · an act moved by a new `due:` is a new notification; one that could not be posted is not remembered, and the next run posts it"
-              f"{' — on Windows nothing is posted, so each is printed and remembered' if windows_ else ''} (saw {out_3.strip()!r} · {out_4.strip()!r})",
-              (code_3 == code_4 == 0 and not posted_ and on_win_(out_3) and "2 printed · 2 printed before · 1 not yet within 30 minutes — remembered in " in out_3
-               and "  AP-431 — due in 20 min · " in out_3 and "  AP-436 — overdue · a notifier that fails · " in out_3
-               and "0 printed · 4 printed before · 1 not yet within 30 minutes — remembered in " in out_4) if windows_ else
-              code_3 == 1 and code_4 == 0 and [t_ for t_, _b in posted_[3:5]] == ["d · AP-431 — due in 20 min", "d · AP-436 — overdue"]
-              and "1 posted · 2 posted before · 1 not yet within 30 minutes · 1 NOT posted" in out_3 and "AP-436 — overdue · a notifier that fails" in out_3 and out_3.rstrip().endswith("NOT posted — no display")
-              and [t_ for t_, _b in posted_[5:]] == ["d · AP-436 — overdue"] and "1 posted · 3 posted before" in out_4)
-        os.environ["XDG_STATE_HOME"] = str(base / "state-none")
-        fm.post_notice = lambda title, body: "NOT posted — no display"
-        code_5, out_5, _e = run(root, "--notify")
-        check(f"FM-030 · D · R6 · a notifier that posts nothing: `--notify` exits 1 and says nothing is remembered — a schedule's log shows the failure"
-              f"{' — on Windows no notifier is started: each notice is printed and remembered, exit 0' if windows_ else ''} (saw {out_5.splitlines()[0]!r})",
-              (code_5 == 0 and not posted_ and on_win_(out_5) and out_5.startswith("--notify: 4 printed · 0 printed before · 1 not yet within 30 minutes — remembered in ")
-               and len(json.loads((base / "state-none/shoalmark/notified.json").read_text(encoding="utf-8")).get(str(root), [])) == 4) if windows_ else
-              code_5 == 1 and out_5.startswith("--notify: 0 posted · 0 posted before · 1 not yet within 30 minutes · 4 NOT posted — nothing remembered — ")
-              and json.loads((base / "state-none/shoalmark/notified.json").read_text(encoding="utf-8")) == {})
-    finally:
-        fm.post_notice = real_post_
-        if state_was_ is None:
-            os.environ.pop("XDG_STATE_HOME", None)
-        else:
-            os.environ["XDG_STATE_HOME"] = state_was_
-    rm_git(root)
-fm.configure(HERE)
-
-# --- FM-030: the notice's code is a fixed literal, and its title and body travel as data — on macOS in the environment, which that code reads; on Linux as
-#     `notify-send`'s own arguments, after `--`. On Windows `--notify` starts no program: each notice is printed. Each platform's check holds `notify_argv`
-#     to its words for every vector below, and its control runs the same check beside ceb21b8's `notify_argv`. Where macOS's program is here, a real run of the
-#     fixed code's own reading of the environment shows each vector's text arrive whole
-_NOTICE_QUOTES = "'\"`\u00b4\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u2039\u203a\u00ab\u00bb\u300c\u300d\u301d\u301e\uff02\uff07"
-_NOTICE_VECTORS = [(f'd · AP-1 — {q_}; Write-Output NOTICE-RAN; {q_} & (do shell script "echo NOTICE-RAN") & {q_}', f"{q_}{q_} the promise {q_}\\{q_}") for q_ in _NOTICE_QUOTES] + [
-    ("d · AP-1 — due in 5 min", "the promise · due 10:00\nthe question?"), ('back\\slash \\\\ \\" end \\', "\\ the body \\\\"), ("-e", "--help"),
-    ("line\nbreak\r\nand\rcarriage", "sep\u2028line\u2029para \u00ac not"), ("nul\0in the title\0", "\0nul in the body"),
-    ("x \U0001f600 \u200b $(echo NOTICE-RAN) `echo NOTICE-RAN` ${NOTICE} %PATH%", "L" * 5000 + " end")]
-_NOTICE_REAL = [("".join(t_ for t_, _b in _NOTICE_VECTORS[:len(_NOTICE_QUOTES)]) + " \\ \0 \U0001f600", "line\nbreak\r\nand\rcarriage \u2028 \u2029 \u00ac " + "L" * 5000),
-                ("-e", "$(echo NOTICE-RAN) `echo NOTICE-RAN` %PATH% \\")]
-_NOTICE_REV = "ceb21b8"
-_NOTICE_WATCH = []          # while a check watches a `--notify` run in this process: [the starts it saw, [whether a notice is being posted]]
-
-
-def _watch_notice(event, args):
-    """The audit hook of the notice's checks: each process start a watched run asks for — its kind, whether a notice was being posted, its argv."""
-    if _NOTICE_WATCH and event in ("subprocess.Popen", "os.system", "os.exec", "os.spawn", "os.posix_spawn", "os.startfile"):
-        argv_ = ([str(a_) for a_ in args[1]] if event == "subprocess.Popen" and isinstance(args[1], (list, tuple))       # an argv, as POSIX reports it
-                 else fm.split_cmdline(args[1]) if event == "subprocess.Popen" and isinstance(args[1], str) else repr(args[:2]))     # Windows: (None, its command line)
-        _NOTICE_WATCH[0].append((event, _NOTICE_WATCH[1][0], argv_))
-
-
-sys.addaudithook(_watch_notice)
-
-
-def _notice_held(platform, notify_argv, notify_env):
-    """The vectors `notify_argv` and `notify_env` (None where the tool has none) do not hold on `platform`, each as (title, body, the argv's last word),
-    every program found where looked for: on macOS the argv is the fixed argv word for word, its code holds neither the title nor the body, and the
-    environment carries both, byte for byte, as `SM_TITLE` and `SM_BODY`, a NUL as U+FFFD, the rest of it this process's; on Linux it is `notify-send
-    --app-name=shoalmark --`, then the title and the body, each its own argument, a NUL as U+FFFD; on Windows there is none."""
-    as_, bad_ = lambda v: v.replace("\0", "\ufffd"), []
-    rest_ = lambda e: {k_: v_ for k_, v_ in e.items() if k_ not in ("SM_TITLE", "SM_BODY")}
-    for t_, b_ in _NOTICE_VECTORS:
-        a_ = notify_argv(t_, b_, platform, lambda n: "/usr/bin/" + n)
-        if platform == "win32":
-            ok_ = a_ is None
-        elif platform == "linux":
-            ok_ = a_ == ["notify-send", "--app-name=shoalmark", "--", as_(t_), as_(b_)]
-        else:
-            a_, e_ = a_ or [None], notify_env(t_, b_) if notify_env else {}
-            ok_ = (a_ == _NOTICE_ARGV["osascript"] and as_(t_) not in a_[-1] and as_(b_) not in a_[-1]
-                   and e_.get("SM_TITLE") == as_(t_) and e_.get("SM_BODY") == as_(b_) and rest_(e_) == rest_(os.environ))
-        if not ok_:
-            bad_.append((t_[:20], b_[:20], str((a_ or [None])[-1])[:60]))
-    return bad_
-
-
-def _notice_mac_reading(argv):
-    """macOS's fixed code with its last line, the notice, replaced by the code points of what that line reads — the title, a line feed, the body — as
-    osascript returns them: the code's own reading of the environment, run. None where the code's last line is not `display notification (…) with title (…)`."""
-    lines_ = (argv or [""])[-1].split("\n")
-    m_ = re.fullmatch(r"display notification \((.+)\) with title \((.+)\)", lines_[-1])
-    return [*argv[:-1], "\n".join(lines_[:-1] + [f"return id of (({m_.group(2)}) & linefeed & ({m_.group(1)}))"])] if m_ else None
-
-
-with tempfile.TemporaryDirectory() as tmp:
-    held_ = {p_: _notice_held(p_, fm.notify_argv, getattr(fm, "notify_env", None)) for p_ in ("darwin", "win32", "linux")}
-    check(f"FM-030 · the notice on macOS: `osascript -e` is handed the fixed code, word for word, for every vector — quote characters of every kind, backslashes, raw "
-          f"line breaks, U+2028 and U+2029, NUL, a leading dash, long text — that code holds neither the title nor the body, and the environment carries both, byte for "
-          f"byte, as SM_TITLE and SM_BODY, a NUL as U+FFFD (saw {held_['darwin'][:2]})", not held_["darwin"])
-    check(f"FM-030 · the notice on Windows: `notify_argv` names no program for any vector, whatever programs are found there — `--notify` starts none "
-          f"(saw {held_['win32'][:2]})", not held_["win32"])
-    check(f"FM-030 · the notice on Linux: `notify-send --app-name=shoalmark --`, then the title and the body, each its own argument, for every vector, a NUL as U+FFFD "
-          f"(saw {held_['linux'][:2]})", not held_["linux"])
-    if _has_rev(_NOTICE_REV):
-        old_ = subprocess.run(["git", "-C", str(HERE), "show", f"{_NOTICE_REV}:shoalmark.py"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
-        ns_ = {"sys": sys, "shutil": shutil, "os": os}
-        exec(ast.get_source_segment(old_, next(n_ for n_ in ast.parse(old_).body if isinstance(n_, ast.FunctionDef) and n_.name == "notify_argv")), ns_)
-        old_held_ = {p_: len(_notice_held(p_, ns_["notify_argv"], getattr(fm, "notify_env", None))) for p_ in ("darwin", "win32", "linux")}
-        check(f"FM-030 · the notice · …the control: beside {_NOTICE_REV}'s `notify_argv` the macOS, Windows and Linux checks each FAIL (saw {old_held_} of "
-              f"{len(_NOTICE_VECTORS)} vectors not held)", all(old_held_.values()))
-        del old_, ns_
-    else:
-        _skipped("FM-030 · the notice · the control", 1, f"this clone does not hold {_NOTICE_REV}")
-    as_ = lambda v: v.replace("\0", "\ufffd")
-    if sys.platform == "darwin" and shutil.which("osascript"):
-        ran_ = []
-        for t_, b_ in _NOTICE_REAL:
-            r_ = _notice_mac_reading(fm.notify_argv(t_, b_))
-            r_ = r_ and subprocess.run(r_, env=getattr(fm, "notify_env", lambda t, b: None)(t_, b_), capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                       timeout=120)
-            ran_.append(bool(r_) and r_.returncode == 0 and [int(x_) for x_ in re.findall(r"\d+", r_.stdout)] == [ord(c_) for c_ in as_(t_ + "\n" + b_)])
-        check(f"FM-030 · the notice on macOS, run: osascript runs the fixed code's own reading of SM_TITLE and SM_BODY, and each arrives whole, as data — quote "
-              f"characters of every kind, backslashes, raw line breaks, U+2028 and U+2029, a NUL as U+FFFD, a leading dash, long text (saw {ran_})", ran_ == [True, True])
-    else:
-        _skipped("FM-030 · the notice on macOS, run", 1, "no osascript here, macOS's")
-    out_, real_argv_ = Path(tmp) / "env.json", fm.notify_argv
-    writer_ = [sys.executable, "-c", "import json, os, sys; open(sys.argv[1], 'w', encoding='utf-8').write(json.dumps([os.environ.get('SM_TITLE'), os.environ.get('SM_BODY')]))", str(out_)]
-    fm.notify_argv = lambda title, body, platform=None, which=None: writer_
-    try:
-        got_ = []
-        for t_, b_ in _NOTICE_VECTORS:
-            if out_.exists():
-                out_.unlink()
-            got_.append((fm.post_notice(t_, b_), json.loads(out_.read_text(encoding="utf-8")) if out_.exists() else None) == ("posted", [as_(t_), as_(b_)]))
-    finally:
-        fm.notify_argv = real_argv_
-    check(f"FM-030 · `post_notice` starts the notice's command in the environment `notify_env` builds: for every vector the process it starts reads the title as SM_TITLE "
-          f"and the body as SM_BODY, byte for byte, a NUL as U+FFFD, and the notice is posted (saw {got_.count(True)} of {len(got_)})", all(got_))
-    root = Path(tmp).resolve() / "wc"; root.mkdir()
-    subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
-    (root / "shoalmark.toml").write_text('name = "d"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    past_ = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=10)).astimezone().replace(microsecond=0).isoformat()
-    for tid_ in ("AP-1", "AP-2", "AP-3"):
-        tracker(root, tid_, extra=f"next: run\ndue: {past_}\n", title=f"the act of {tid_}")
-    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the acts", "--author=holgo <h@x>")
-    state_was_, posted_ = os.environ.get("XDG_STATE_HOME"), []
-    os.environ["XDG_STATE_HOME"] = str(Path(tmp) / "state")
-    fm.notify_argv = lambda title, body, platform=None, which=None: (posted_.append(title), ["no\0such program"] if "AP-2" in title else writer_)[1]
-    try:
-        code_n, out_n, err_n = run(root, "--notify")
-    except Exception as e_:                 # a run that stops fails the check below
-        code_n, out_n, err_n = None, "", f"{type(e_).__name__}: {e_}"
-    finally:
-        fm.notify_argv = real_argv_
-        if state_was_ is None:
-            os.environ.pop("XDG_STATE_HOME", None)
-        else:
-            os.environ["XDG_STATE_HOME"] = state_was_
-    lines_ = {l_.split(" — ")[0].strip(): l_ for l_ in out_n.splitlines()[1:]}
-    check(f"FM-030 · a notice whose command cannot be started is NOT posted, and its line says why; `--notify` goes on with every other act's notice and exits 1 — one tracker "
-          f"never stops another's notice{' — on Windows no command is started: each notice is printed, exit 0' if sys.platform == 'win32' else ''} "
-          f"(saw exit {code_n}, {out_n.splitlines()[:1]} · {err_n[-120:]!r})",
-          (code_n == 0 and not posted_ and out_n.startswith("--notify: 3 printed · 0 printed before · 0 not yet within 30 minutes — remembered in ")
-           and all(lines_.get(t_, "").endswith(" — printed — no notice is posted on Windows") for t_ in ("AP-1", "AP-2", "AP-3"))) if sys.platform == "win32" else
-          code_n == 1 and len(posted_) == 3 and out_n.startswith("--notify: 2 posted · 0 posted before · 0 not yet within 30 minutes · 1 NOT posted — remembered in ")
-          and lines_.get("AP-2", "").endswith(" — NOT posted — ValueError") and lines_.get("AP-1", "").endswith(" — posted") and lines_.get("AP-3", "").endswith(" — posted"))
-    # on Windows, run here with `sys.platform` set to win32 and a PowerShell found where one is looked for: three acts due, one whose text is hostile
-    win_ = Path(tmp).resolve() / "win"; win_.mkdir()
-    subprocess.run(["git", "init", "-q", str(win_)], check=True, env=_ENV)
-    (win_ / "shoalmark.toml").write_text('name = "d"\nanswerers = ["holgo"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
-    for tid_, title_ in (("AP-1", "the act of AP-1"), ("AP-2", 'a notice \u2019; Write-Output NOTICE-RAN; \u2018 " & (do shell script "echo NOTICE-RAN") & " \\ \0 $(echo NOTICE-RAN)'),
-                         ("AP-3", "the act of AP-3")):
-        tracker(win_, tid_, extra=f"next: run\ndue: {past_}\n", title=title_)
-    state_was_, seen_, posting_ = os.environ.get("XDG_STATE_HOME"), [], [False, 0]          # [a notice is being posted, how many were]
-    real_post_, real_which_, real_platform_ = fm.post_notice, shutil.which, sys.platform
-
-    def watched_post_(title, body):
-        posting_[0], posting_[1] = True, posting_[1] + 1
-        try:
-            return real_post_(title, body)
-        finally:
-            posting_[0] = False
-    os.environ["XDG_STATE_HOME"] = str(Path(tmp) / "state-win")
-    fm.post_notice = watched_post_
-    shutil.which = lambda n, *a, **k: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" if n == "powershell" else real_which_(n, *a, **k)
-    sys.platform, _NOTICE_WATCH[:] = "win32", [seen_, posting_]
-    try:
-        code_w, out_w, err_w = run(win_, "--notify")
-        again_w = run(win_, "--notify")     # the second run: each notice printed before
-    except Exception as e_:                 # a run that stops fails the checks below
-        code_w, out_w, err_w, again_w = None, "", f"{type(e_).__name__}: {e_}", (None, "", "")
-    finally:
-        _NOTICE_WATCH[:] = []
-        sys.platform, shutil.which, fm.post_notice = real_platform_, real_which_, real_post_
-        if state_was_ is None:
-            os.environ.pop("XDG_STATE_HOME", None)
-        else:
-            os.environ["XDG_STATE_HOME"] = state_was_
-    win_lines_ = {l_.split(" — ")[0].strip(): l_ for l_ in out_w.splitlines()[1:]}
-    check(f"FM-030 · on Windows `--notify` starts no program for a notice — it posts none, a PowerShell found where looked for — and the only program its run starts "
-          f"is `git rev-parse`, read from each start as POSIX reports it, an argv, or as Windows does, a command line (saw exit {code_w}, {posting_[1]} posted; "
-          f"{[x_[2][:3] if isinstance(x_[2], list) else x_[2] for x_ in seen_][:4]} · {err_w[-100:]!r})",
-          code_w == 0 and posting_[1] == 0 and not [x_ for x_ in seen_ if x_[1]]
-          and all(x_[0] == "subprocess.Popen" and isinstance(x_[2], list) and _git_command(x_[2]) == "rev-parse" and fm.read_only_git(x_[2]) for x_ in seen_))
-    check(f"FM-030 · on Windows `--notify` prints each act's notice, its line ending *printed — no notice is posted on Windows* (saw {out_w.splitlines()[1:]})",
-          sorted(win_lines_) == ["AP-1", "AP-2", "AP-3"] and all(l_.endswith(" — printed — no notice is posted on Windows") for l_ in win_lines_.values()))
-    sums_w = [o_.splitlines()[0] if o_.strip() else "" for o_ in (out_w, again_w[1])]
-    check(f"FM-030 · on Windows the `--notify` summary counts what it printed — *3 printed · 0 printed before*, and on a second run *0 printed · 3 printed before* — "
-          f"and never says posted (saw {sums_w})",
-          sums_w[0].startswith("--notify: 3 printed · 0 printed before · 0 not yet within 30 minutes — remembered in ")
-          and sums_w[1].startswith("--notify: 0 printed · 3 printed before · 0 not yet within 30 minutes — remembered in ")
-          and again_w[0] == 0 and not any("posted" in x_ for x_ in sums_w))
-    check(f"FM-030 · on Windows a run with one notice of hostile text — a NUL, quotes, code of each notifier's language — prints that notice and every other one, and "
-          f"exits 0 (saw exit {code_w}, {win_lines_.get('AP-2', '')[-110:]!r})",
-          code_w == 0 and "NOTICE-RAN" in win_lines_.get("AP-2", "") and all(win_lines_.get(t_, "").endswith(" — printed — no notice is posted on Windows")
-                                                                             for t_ in ("AP-1", "AP-2", "AP-3")))
-    rm_git(root)
-fm.configure(HERE)
-
-# --- FM-030, the pass's R7 — its case, the cold review of the 0.18.4 cut's R2: the README's cron line makes the log's folder
-#     first. The shell opens `>>` before the tool runs, and on a fresh home only the tool made that folder, so `--notify` never
-#     ran. Run as cron runs it, `/bin/sh -c` with an empty HOME, the tool a stub that says it was reached; and without its `mkdir -p`
-import shlex
-_cron = next(l_ for l_ in (HERE / "README.md").read_text().splitlines() if l_.startswith("*/5 ") and "--notify" in l_)
-_cmd = _cron.split(None, 5)[5]                                         # cron's five time fields off: what cron hands /bin/sh
-_mk = 'mkdir -p "%s" && ' % re.search(r'>> "([^"]+)"', _cmd).group(1).rsplit("/", 1)[0]
-_ran = None                                                            # no /bin/sh — Windows, which has no cron — reads the line only
-if os.path.exists("/bin/sh"):
-    with tempfile.TemporaryDirectory() as tmp:
-        base = Path(tmp).resolve(); (base / "bin").mkdir(); (base / "repo").mkdir()
-        (base / "bin/python3").write_text('#!/bin/sh\necho "reached: $*"\n'); os.chmod(base / "bin/python3", 0o755)
-
-        def _cron_run(cmd, home):
-            home.mkdir()
-            r_ = subprocess.run(["/bin/sh", "-c", cmd.replace("/path/to/repo", shlex.quote(str(base / "repo")))], capture_output=True,
-                                text=True, encoding="utf-8", errors="replace", env={"HOME": str(home), "PATH": f"{base / 'bin'}:/usr/bin:/bin"})
-            log_ = home / ".local/state/shoalmark/notify.log"
-            return r_.returncode, log_.read_text() if log_.exists() else None
-        _ran = (_cron_run(_cmd, base / "home"), _cron_run(_cmd.replace(_mk, "", 1), base / "home-bare"))
-check("FM-030 · the pass's R7 · the README's cron line makes the log's folder before the shell opens the log — `%s` leads it; " % _mk.strip(" &")
-      + ("run by /bin/sh with an empty HOME it writes notify.log and reaches `--notify`, and the same line without it — the line before 4efa5a0 — "
-         "fails before the tool runs" if _ran else "read, not run: no /bin/sh here, cron's shell") + f" (saw {_ran})",
-      _cmd.startswith(_mk) and (_ran is None or (_ran[0] == (0, "reached: shoalmark.py --notify\n") and _ran[1][0] != 0 and _ran[1][1] is None)))
-
+# --- FM-030, 0.18.4 D — an invite and a notification per act, the notice's fixed code on each platform, and the README's cron line for it — went
+#     with R9 (signed 2026-10-12). What stands in their place is R9's class test, `test_r9_removals.py`, run at this suite's end: each removed flag
+#     says so in one line and exits 2, and what they left — a calendar file, `notified.json`, a scheduler's log, the launchd agent — is named by
+#     `--standup` and `--owner` and left byte for byte as it was
 # --- FM-030, 0.18.4 E: `--standup` and `--owner` list the acts after the asks — due, overdue, missed, no date yet — each
 #     with its `due:` and what it is (FM-030's first line; FM-007's key, promised after the scoring, is *no date yet*)
 with tempfile.TemporaryDirectory() as tmp:
@@ -11212,8 +11033,8 @@ fm.configure(HERE)
 # --- FM-030, 0.18.6 — the Owner's word of 2026-09-27 13:38:30 (his screenshot 13:35:40), on *done* for FM-024: the dialog repeated the ask's
 #     question — *who verifies 0.18.3 — a cold Reviewer session you start, this session's own sub-agent, or nobody …?* — so
 #     *where is the result?* pointed at three options, not at the one he took. An act that is a promise is shown as what he
-#     promised, with the question below it, as context: on the board, in its dialogs, in `--owner`, `--standup`, `--notify`
-#     and the invite. A `due:` beside a question he has not answered keeps its own line (the pass's R1 on 52cfcc7)
+#     promised, with the question below it, as context: on the board, in its dialogs, in `--owner` and `--standup` (the notice and
+#     the invite went with R9). A `due:` beside a question he has not answered keeps its own line (the pass's R1 on 52cfcc7)
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = base / "wc"; root.mkdir()
     subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
@@ -11252,30 +11073,6 @@ with tempfile.TemporaryDirectory() as tmp:
           code_s == code_o == 0 and line_ in out_s and line_ in out_o and f"  AP-450 — {q_}" not in out_s + out_o
           and f"  AP-451 — {promise_} · due {at_(10).replace('T', ' ')} · promised {since_}\n       asked: {q451_}" in out_o
           and f"  AP-452 — a read beside an open ruling · due {at_(24 * 60).replace('T', ' ')}\n" in out_o + "\n" and "Does the launcher ship before the site?" in out_o)
-    code_i, _o, _e = run(root, "--invite", "AP-451")
-    ics_ = (root / "docs/work-tracker/evidence/AP-451/AP-451-act.ics").read_bytes().decode("utf-8").replace("\r\n ", "").split("\r\n") if code_i == 0 else []
-    desc_ = next((l_ for l_ in ics_ if l_.startswith("DESCRIPTION:")), "")
-    check(f"FM-030 · 0.18.6 · the invite leads with the promise: its SUMMARY and its alarm name what he promised, and its DESCRIPTION opens with it, the question on the next line (saw {desc_[:200]!r})",
-          code_i == 0 and f"SUMMARY:p — AP-451: {fm.ics_text(promise_)}" in ics_ and f"DESCRIPTION:AP-451: {fm.ics_text(promise_)}" in ics_
-          and desc_.startswith("DESCRIPTION:" + fm.ics_text(f"{promise_}\nAsked: {q451_}\nPromised {since_}: accepted. Owed to you, due {at_(10)}")))
-    posted_, real_post_, state_was_ = [], fm.post_notice, os.environ.get("XDG_STATE_HOME")
-    fm.post_notice = lambda title, body: (posted_.append((title, body)), "posted")[1]
-    os.environ["XDG_STATE_HOME"] = str(base / "state")
-    try:
-        code_n, out_n, _e = run(root, "--notify")
-    finally:
-        fm.post_notice = real_post_
-        if state_was_ is None:
-            os.environ.pop("XDG_STATE_HOME", None)
-        else:
-            os.environ["XDG_STATE_HOME"] = state_was_
-    check(f"FM-030 · 0.18.6 · `--notify` posts the promise and its time, the question below it"
-          f"{' — on Windows it prints the promise and its time, and posts nothing' if sys.platform == 'win32' else ''} (saw {posted_} · {out_n.splitlines()[1:2]})",
-          (code_n == 0 and not posted_ and any(l_.startswith("  AP-451 — due in ") and f" · {promise_} · due {at_(10).replace('T', ' ')}" in l_
-                                               and l_.endswith(" — printed — no notice is posted on Windows") for l_ in out_n.splitlines()))
-          if sys.platform == "win32" else
-          code_n == 0 and len(posted_) == 1 and posted_[0][0].startswith("p · AP-451 — due in ")
-          and posted_[0][1] == f"{promise_} · due {at_(10).replace('T', ' ')}\nasked: {q451_}")
     if _browser("promise"):
         try:
             def _dlg(tid, kind):
@@ -15444,6 +15241,37 @@ for _label, _ok, _detail in test_tracker_text.run_checks(fm):
 
 import test_owner_exemption
 check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_exemption.run_checks())
+
+# R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
+import test_r9_removals
+for _label, _ok, _detail in test_r9_removals.run_checks():
+    if _ok is None:
+        _skipped(_label, 1, _detail)
+    else:
+        check(_label, _ok)
+        if not _ok and _detail:
+            print(f"        {_detail}")
+
+# FM-030, R9's two quick wins: the stand-up and close-out prompts, copied from the board — their class test, a program of its own for its mutants
+import test_day_prompts
+for _label, _ok, _detail in test_day_prompts.run_checks():
+    if _ok is None:
+        _skipped(_label, 1, _detail)
+    else:
+        check(_label, _ok)
+        if not _ok and _detail:
+            print(f"        {_detail}")
+
+# Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
+import test_standup_repos
+for _label, _ok, _detail in test_standup_repos.run_checks():
+    if _ok is None:
+        _skipped(_label, 1, _detail)
+    else:
+        check(_label, _ok)
+        if not _ok and _detail:
+            print(f"        {_detail}")
+fm.configure(HERE)
 
 # FM-044 bounded local-stage runtime controls. Component-only AST assertions
 # remain with their immutable standalone reviews; core retains the unchanged
