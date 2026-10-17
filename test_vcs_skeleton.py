@@ -127,7 +127,7 @@ PROCESS_APIS = {
 }
 PROCESS_METHODS = set().union(*PROCESS_APIS.values()) - {"get", "open"}     # ordinary mapping/file methods; webbrowser's resolved APIs are still checked
 LAUNCH_CEILING_SHA256 = "1eabbea359cde1c65db4a688c3ff609d6acda0a33e38bc0b84021f9fde9bf6a0"
-BOUNDARY_SHA256 = "86d6d728c50b5803dfd53a3f6aa2a4948e104db716d3a7684fb43598237c6602"
+BOUNDARY_SHA256 = "b1a5334b2d5e3d34028f287dd897b1795ed4c9ecf61231fd68af3c9d7925cb05"
 ALLOWLIST_PATH = "test_vcs_launch_allowlist.json"
 CEILING_PATH = "test_vcs_launch_ceiling.json"
 

@@ -6715,6 +6715,10 @@ def vcs_process(program, *args, cwd=None, source=False, **options):
         # Exactly the existing source-provenance reads, also used by the separate archive's source check during integration.
         source_reads = (("rev-parse", "--show-toplevel"), ("rev-parse", "HEAD"), ("tag", "--points-at", "HEAD"),
                         ("status", "--porcelain", "--untracked-files=all"))
+        # The hooks' copy compares only its payload's blobs at the full source commit, relative to HERE.
+        source_blob = (len(args) == 2 and args[0] == "show" and isinstance(args[1], str)
+                       and re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64}):\./.+", args[1])
+                       and args[1].split(":./", 1)[1] in copy_files())
         source_home = HERE
         try:
             resolved = pathlib.Path(cwd).resolve(strict=True) if cwd is not None else None
@@ -6724,7 +6728,7 @@ def vcs_process(program, *args, cwd=None, source=False, **options):
         source_env = nested_git_env()
         safe_options = {"capture_output": (True, False), "text": (True, False), "encoding": ("utf-8",), "errors": ("replace",)}
         safe = all((value == source_env if key == "env" else key in safe_options and value in safe_options[key]) for key, value in options.items())
-        if program != "git" or not same_source or args not in source_reads or not safe:
+        if program != "git" or not same_source or not (args in source_reads or source_blob) or not safe:
             print("shoalmark: source provenance accepts only its fixed Git reads in the tool's source folder — nothing is started", file=sys.stderr)
             raise SystemExit(EXIT_LINT)
         cwd = source_home                               # launch canonical HERE, never a checked alias's original spelling
@@ -10382,7 +10386,19 @@ def install_copy():
     if not pin.exists():
         lines.append(f"this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool, {HERE}")
     here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"
-    sha = (git_out("rev-parse", "--short", "HEAD") or "").strip() or "no commit yet"
+    if pin.exists():
+        manifest, _ = pin_manifest(pin.read_text(encoding="utf-8"), __version__)
+        sha = manifest.get("commit") or manifest.get("untagged", "").removesuffix(" (dirty)") or "not recorded"
+        compared = ""
+    else:
+        sha = (git_out("rev-parse", "HEAD", cwd=HERE, source=True) or "").strip() or "no commit yet"
+        equal = bool(re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha))
+        for rel, data in files.items():
+            if not equal:
+                break
+            blob = vcs_process("git", "show", f"{sha}:./{rel}", cwd=HERE, source=True, capture_output=True)
+            equal = blob.returncode == 0 and data.replace(b"\r\n", b"\n") == blob.stdout.replace(b"\r\n", b"\n")
+        compared = f"files: {'equal' if equal else 'changed'}\n"
     branch = (git_out("branch", "--show-current") or "").strip()
     default = default_branch()
     stage = target.with_name(COPY_DIR + ".new")
@@ -10392,7 +10408,7 @@ def install_copy():
         (stage / rel).write_bytes(data)
     put(stage / "COPY", "# the hooks' copy of the tool — written by --install-hook, run by every hook it writes, and by nothing else\n"
         f"version: {__version__}\ntool: {'' if here_rel == '.' else here_rel}\nsource: {'pinned copy' if pin.exists() else 'working tree'}\ncommit: {sha}\nbranch: {branch or '(detached HEAD)'}\n"
-        f"cmd: {CMD_OWN}\n")
+        + compared + f"cmd: {CMD_OWN}\n")
     if target.is_symlink():
         target.unlink()
     shutil.rmtree(target, ignore_errors=True)
@@ -10423,6 +10439,27 @@ def copy_record():
             made = {}
         _COPY_RECORD = {k: v for k, v in made.items() if isinstance(v, str) and len(v) < 400 and v.isprintable()}
     return _COPY_RECORD
+
+
+def copy_provenance():
+    """The COPY's commit and file comparison as recorded, with an incomplete reason; never resolve a recorded prefix in the adopter's history."""
+    if not (HERE / "COPY").is_file():
+        return {}
+    record = copy_record()
+    commit, files = record.get("commit", ""), record.get("files", "")
+    why = []
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+        why.append("commit is short" if re.fullmatch(r"[0-9a-f]{4,39}", commit) else "full commit is not recorded")
+    if record.get("source") != "pinned copy" and files not in ("equal", "changed"):
+        why.append("files were not compared with HEAD")
+    return {"commit": commit, "files": files, "incomplete": "; ".join(why)}
+
+
+def copy_provenance_notice():
+    """An older COPY is still usable; name its incomplete provenance and the command that records it whole."""
+    provenance = copy_provenance()
+    why = provenance.get("incomplete")
+    return f"the hooks' COPY record is incomplete ({why}): run --install-hook to record it whole" if why else ""
 
 
 def tree_tool_dir():
@@ -11154,6 +11191,10 @@ def main(argv=None, *, _notice=True):
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
     args = parse_args(argv)
+    if HOOK_RUN:
+        notice = copy_provenance_notice()
+        if notice:
+            print(notice, file=sys.stderr)
     for flag, needs, alone, like in (("--tags", "--new", args.tags is not None and not args.new, '`--new KIND "the title" --tags bug`'),
                                      ("--supersede", "--answer", args.supersede and not args.answer, '`--answer <id> accept|reject "<option>" --supersede`'),
                                      ("--from", "--brand DIR", args.theme is not None and not args.brand, f"`--brand DIR --from {'|'.join(shipped_themes()) or 'THEME'}`")):

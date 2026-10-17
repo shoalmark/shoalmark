@@ -3583,6 +3583,10 @@ def _hook_scenario(base, payload, control=None, steps=None):
         _old_tree(tool, _OLD_REV)
     else:
         subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(tool), "--allow-untagged"], cwd=str(base), capture_output=True, env=_ENV, check=True)
+        # These hook-isolation rows use complete provenance; the older PIN's prefix is exercised by FM-059's own rows.
+        pin_ = tool / "PIN"
+        head_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV, check=True).stdout.strip()
+        pin_.write_text(re.sub(r"(?<=untagged )[0-9a-f]{7,40}(?= (?:\(dirty\) )?·)", head_, pin_.read_text(encoding="utf-8"), count=1), encoding="utf-8")
     git(root, "add", "-A"); git(root, "commit", "-qm", "base")
     trunk = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     inst = _tool_run(tool / "shoalmark.py", root, "--install-hook")
@@ -3760,7 +3764,7 @@ with tempfile.TemporaryDirectory() as d:
 # the default branch: `--install-hook` names the commit and the branch it took the copy from, and warns — still installing — where that is not the default branch, or where that cannot be told
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
-    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "--short", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
     c0_, o0_, e0_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
     git(root, "update-ref", "refs/remotes/origin/main", "HEAD"); git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
     git(root, "switch", "-q", "-c", "feature"); shutil.rmtree(root / ".git/shoalmark-trusted")
@@ -3798,6 +3802,10 @@ with tempfile.TemporaryDirectory() as d:
           and not any((f_ / n_).exists() for f_ in (hp_, root / ".git/hooks") for n_ in ("post-checkout", "post-merge", "post-rewrite"))
           and sw_ == (0, "") and not (root / "docs/work-tracker/index.html").exists() and cm_[0] == 0)
     rm_git(root)
+
+# --- FM-059: the hooks' COPY records provenance, with the prerequisite's rows and mutants ----------------------------
+from test_copy_provenance import run_copy_provenance_controls
+run_copy_provenance_controls(check)
 
 # --- R11, the Owner's ruling of 12 October (FM-057): no hook refreshes the board. On its next run `--install-hook` removes each refresh hook an earlier version
 #     wrote, with a line each, keeps a person's own byte for byte and names it, and writes none; after it a checkout and a merge rebuild no board. The former hooks
