@@ -15,17 +15,22 @@ Wartezeit und dem, was sie aufhält. Nach den Fragen kommen **Ihre Handlungen, m
 überfällige zuerst, dann was fällig wird, dann was noch keinen Termin hat — und zuletzt, was Sie beantwortet oder getan
 haben und was **unterwegs** zu Ihrem Merge ist.
 
-## Die Einladung
+## Wann
 
 ```
 standup = "09:00"          # in shoalmark.toml — Ortszeit
 standup_minutes = 15
-python3 tools/shoalmark/shoalmark.py --standup standup.ics
 ```
 
-Die Datei in den Kalender importieren: werktags, zu dieser Uhrzeit. **Mehrere Repositories?** Jedes bekommt einen
-eigenen Termin, und sie dürfen sich nicht überschneiden. Nur Ihr Kalender sieht alle zugleich, deshalb kommt die
-Einladung als Kalenderdatei.
+Die erste Zeile der Tagesordnung trägt diese Uhrzeit und Dauer. Den Termin in Ihrem Kalender legen Sie selbst an: das
+Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Jedes bekommt
+einen eigenen Termin, und sie dürfen sich nicht überschneiden.
+
+Auf der Tafel trägt der Kasten mit dem, was auf Sie wartet, zwei Knöpfe: **Standup-Prompt** vor den Sitzungen des letzten Tages
+und **Abschluss-Prompt** an seinem Ende. Jeder kopiert einen festen Prompt für die Sitzung, die Sie nutzen — Claude Code, Codex
+oder eine andere: der eine bittet sie, Ihren Standup nach dieser Tagesordnung zu halten, einen Punkt nach dem anderen; der andere,
+den Tag aus dem Verlauf vorzulesen und nichts zu ändern. Keiner führt etwas aus, und eine Nachricht ist nie eine Antwort: Ihre
+Entscheidung hält der Befehl fest, den Sie selbst ausführen. Die Prompts sind englisch.
 
 ## Was die Agenten damit tun
 
@@ -68,10 +73,9 @@ einen neuen signierten Commit darauf, auf demselben Zweig, nie ein Überschreibe
 noch einmal zu verschieben, führen Sie `--due` auf ihrem Zweig aus. Nach Ihrem Merge liest jede wieder vom
 Standardzweig; ein anderer Rechner zeigt nach einem Fetch dieselben Zeilen.
 
-Zwei Erinnerungen, wenn Sie wollen. `--invite AP-007` schreibt die Handlung als Kalenderdatei — ihre Zeit, ihr
-Fenster, eine Erinnerung 30 Minuten vorher — neben die Belege des Arbeitspakets; importieren Sie sie. `--notify`
-zeigt eine Systembenachrichtigung für jede Handlung, die in 30 Minuten fällig, überfällig oder versäumt ist, jede
-einmal; planen Sie den Aufruf selbst ein (das README hat eine cron- und eine launchd-Zeile).
+Einladungen und Benachrichtigungen gibt es nicht mehr (R9): `--invite`, `--notify` und `--standup DATEI.ics` sagen das
+in einer Zeile. Wo eine frühere Version eine Kalenderdatei, einen Zeitplan oder seinen Zustand auf Ihrem Rechner
+hinterlassen hat, nennen `--standup` und `--owner` jedes Stück, bis Sie es entfernen, und das README sagt, wie.
 
 ## Welches Review unabhängig war
 
