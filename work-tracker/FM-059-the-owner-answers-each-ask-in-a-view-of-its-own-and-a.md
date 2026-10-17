@@ -5,14 +5,6 @@ considered: FM-050, FM-007, FM-054, FM-058
 tags: process
 next: build
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
-ask: "Which release builds the guided answer view: the Board view that holds only one ask's dialog, opened by a prepared run that signs what you chose?"
-ask-kind: ruling
-ask-since: 2026-10-16
-ask-options: "v0.20.1 | the first release after v0.20.1 | a later release, which I name in my answer"
-ask-proposal: "v0.20.1"
-answer: "accepted - v0.20.1"
-answered: 2026-10-16
-answered-by: holgo99
 ---
 
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
@@ -29,11 +21,11 @@ first release after v0.20.1, is withdrawn (its record is under `## Asks`), and t
   chose, push it, and go on to the next ask.
 - **Until it ships:** a run sheet prepares and stops before any answer, and the Owner answers from the Board.
 - **Two requirements for its design, recorded privately.** They go into its design brief.
-- **Designed 2026-10-16** (`## The design`, below), by the Builder seat. Reviewed in round 1, not ready (`8ba48f6`):
-  its six findings are fixed below, and round 2 follows. Nothing is built. The design holds
+- **Designed 2026-10-16** (`## The design`, below), by the Builder seat. Reviewed in round 1, not ready (`8ba48f6`),
+  and in round 2 READY (`394ad4d`): its six findings are fixed below. Nothing is built. The design holds
   for either answer to the release ask. Its own ruling ask is drafted for the Planner, who puts it once the release ask
   is answered: a tracker holds one open ask.
-- **The ask** asks only which release builds it; proposed, v0.20.1, on the Owner's word.
+- **The release ask is answered:** *accepted - v0.20.1*, the Owner's signed answer (`99b1708`), recorded under `## Asks`.
 - **What it needs first:** R4's ask ids (FM-050), and FM-058's fix, so that a command a person runs has no time bound;
   FM-058 moves into v0.20.1 with it. The seat's confidence, *because* and *then* are new record data and stay outside it:
   without them the view shows the proposal and the options alone.
@@ -543,6 +535,11 @@ Reviewer privately. This text does not state them.
 **2026-10-16** · Which release builds the dedicated answer view: the Board view that holds only one ask's dialog, opened by a prepared run that signs what you chose?
 **withdrawn** — no answer was given
 
+**2026-10-16** · Which release builds the guided answer view: the Board view that holds only one ask's dialog, opened by a prepared run that signs what you chose?
+**answered** — accepted - v0.20.1 · holgo99
+**relation** — accepted the proposal
+**signed** — 99b1708 · G
+
 ## Ship log
 
 | Date | Event |
@@ -555,3 +552,4 @@ Reviewer privately. This text does not state them.
 | 2026-10-16 | The Owner's rulings on the commits folded in (relayed by the Auditor), by the Builder seat: the view names the tool's commit and links the commits as ruled; a release's commit links to the public repository, and a working-tree tool's commit links as the repository's commits do, only if pushed. Records only. |
 | 2026-10-16 | RV-3328 and RV-3333 (recorded privately) fixed in the design, by the Builder seat. Records only. |
 | 2026-10-16 | RV-3329 to RV-3332 fixed in the design, by the Builder seat: the tool's files compared with each CRLF read as LF; the PIN and the hooks' copy record full commits, and older records are named incomplete (R26); an author-only identity is refused before any view; the fetch's metadata is named as the one write before a pick, and the class row's baseline is taken after it. Records only. |
+| 2026-10-17 | Main joined (`6336355`), and the release ask's exchange recorded under `## Asks`: accepted - v0.20.1, signed `99b1708`. By the Planner seat. Records only. |
