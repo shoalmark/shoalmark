@@ -2419,8 +2419,11 @@ def _git_starts(src):
     Followed: a literal `["git", …]` argv, and one bound to a name apart from its call (`args = [...] if … else [...]`, `for cmd in ([...], …)`), kept as it
     was bound; every callable that hands its own `*a` to git where the command goes — `git_out`, a local `git = lambda *a: …`, a lambda or a name handed to
     a function whose parameter then starts git (`default_trunk(git)`) — and every call of one; each call of a forwarding helper read as its own start, with that caller's own keywords; git's own options before
-    the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`,
-    any case. A word of any other program that names git is not read."""
+    the command (`-c <v>`, `-C <dir>`, `--git-dir=…`, `*signers_args()`); a row of a table the source spells out where the command goes
+    (`*STANDUP_GIT[0]`, `table_row`); and the stand-up's options, `**standup_program("git")` or `("svn")`, read as the
+    two calls they stand for — no `executable`, and `executable` that program — only where `standup_program`, `STANDUP_PROGRAMS` and `standup_programs`
+    are as the tool writes them (`standup_form_exact`). The program is git as `read_only_git` reads argv[0]: any path, `git` or `git.exe`, any case. A word
+    of any other program that names git is not read."""
     tree = ast.parse(src)
     # FM-044: classify callers of the transparent process boundary as the starts they request. The process boundary is exercised separately by core controls.
     # Keep the existing Git command classification and forwarding-helper analysis: git_out still forwards the caller's own command/keywords.
@@ -2434,6 +2437,67 @@ def _git_starts(src):
     defs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
     scopes, comps = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda), (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
     bound = {}
+
+    def standup_form_exact():
+        """Whether the stand-up's absolute-path form is the tool's as written (FM-031, Q7): `standup_program(program)` returns
+        `{"executable": STANDUP_PROGRAMS[program]}` where `STANDUP_PROGRAMS.get(program)`, else `{}`; `STANDUP_PROGRAMS`, bound once at the top to `{}`,
+        is only cleared, read, or updated with `standup_programs(…)`; and `standup_programs` gives each program only a path of its own name — `candidate`,
+        bound once to `os.path.join(entry, program + ".exe" if os.name == "nt" else program)`, under `for program in ("git", "svn")`, and `found`, bound
+        once to `{}`, written only `found[program] = ""` or `= candidate` and returned."""
+        same = lambda node, code: ast.unparse(node) == ast.unparse(ast.parse(code).body[0])
+        fn, finder = defs.get("standup_program"), defs.get("standup_programs")
+        if fn is None or finder is None:
+            return False
+        a_ = fn.args
+        body = [st for st in fn.body if not (isinstance(st, ast.Expr) and isinstance(st.value, ast.Constant) and isinstance(st.value.value, str))]
+        if ([x.arg for x in a_.args] != ["program"] or a_.vararg or a_.kwarg or a_.kwonlyargs or a_.defaults or a_.posonlyargs or len(body) != 1
+                or not isinstance(body[0], ast.Return) or body[0].value is None
+                or not same(body[0].value, '{"executable": STANDUP_PROGRAMS[program]} if STANDUP_PROGRAMS.get(program) else {}')):
+            return False
+        top = [n for n in tree.body if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign)) and "STANDUP_PROGRAMS" in
+               {t.id for t in ast.walk(n) if isinstance(t, ast.Name) and not isinstance(t.ctx, ast.Load)}]
+        if len(top) != 1 or not (isinstance(top[0], ast.Assign) and len(top[0].targets) == 1 and isinstance(top[0].targets[0], ast.Name)
+                                 and isinstance(top[0].value, ast.Dict) and not top[0].value.keys):
+            return False
+        for n in every:
+            if isinstance(n, ast.Global) and "STANDUP_PROGRAMS" in n.names:
+                return False
+            if not (isinstance(n, ast.Name) and n.id == "STANDUP_PROGRAMS") or n is top[0].targets[0]:
+                continue
+            up = parent.get(n)
+            if not isinstance(n.ctx, ast.Load):
+                return False
+            if isinstance(up, ast.Subscript) and up.value is n and isinstance(up.ctx, ast.Load):
+                continue                                    # a read of one program's path
+            call = parent.get(up)
+            if not (isinstance(up, ast.Attribute) and up.value is n and isinstance(call, ast.Call) and call.func is up):
+                return False                                # handed on, aliased or reached another way
+            if up.attr in ("clear", "get") or (up.attr == "update" and len(call.args) == 1 and not call.keywords and isinstance(call.args[0], ast.Call)
+                                               and isinstance(call.args[0].func, ast.Name) and call.args[0].func.id == "standup_programs"):
+                continue
+            return False
+        inner = list(ast.walk(finder))
+        loops = [n for n in inner if isinstance(n, ast.For) and isinstance(n.target, ast.Name) and n.target.id == "program"]
+        cands = [n for n in inner if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "candidate" for t in n.targets)]
+        founds = [n for n in inner if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "found" for t in n.targets)]
+        stores = [n for n in inner if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load) and n.id in ("program", "candidate", "found")]
+        if (len(loops) != 1 or not same(loops[0].iter, '("git", "svn")') or len(cands) != 1 or len(cands[0].targets) != 1
+                or not same(cands[0].value, 'os.path.join(entry, program + ".exe" if os.name == "nt" else program)') or cands[0] not in ast.walk(loops[0])
+                or len(founds) != 1 or len(founds[0].targets) != 1 or not (isinstance(founds[0].value, ast.Dict) and not founds[0].value.keys)
+                or len(stores) != 3 or any(isinstance(n, (ast.Global, ast.Nonlocal)) for n in inner)):
+            return False
+        for n in inner:
+            if isinstance(n, ast.Name) and n.id == "found" and isinstance(n.ctx, ast.Load):
+                up = parent.get(n)
+                if isinstance(up, ast.Return) and up.value is n:
+                    continue
+                if not (isinstance(up, ast.Subscript) and up.value is n and isinstance(up.ctx, ast.Store) and same(up.slice, "program")
+                        and isinstance(parent.get(up), ast.Assign) and len(parent[up].targets) == 1
+                        and (same(parent[up].value, '""') or same(parent[up].value, "candidate"))):
+                    return False
+        return True
+
+    standup_exact = standup_form_exact()
 
     def scope_of(node):
         while node in parent:
@@ -2718,6 +2782,11 @@ def _git_starts(src):
                              else f"a call at line {n.lineno} whose keywords the reading cannot see: {ast.unparse(parent[n])[:80]}", (id(parent[n]),)) for n in refs]
             elif dict_of(v) is not None:
                 alts = [(dict_of(v), ())]
+            elif (isinstance(v, ast.Call) and isinstance(v.func, ast.Name) and v.func.id == "standup_program" and len(v.args) == 1 and not v.keywords
+                  and isinstance(v.args[0], ast.Constant) and v.args[0].value in ("git", "svn") and standup_exact
+                  and [b[1] for b in bindings(v.func)] == [defs["standup_program"]]):
+                # the stand-up's options: none on every other run, and on the stand-up's path `executable` the program found for it (`standup_form_exact`)
+                alts = [({}, ()), ({"executable": ast.copy_location(ast.Constant(value=v.args[0].value), v)}, ())]
             if alts is None:
                 return None
             out = [(base if isinstance(base, str) else alt if isinstance(alt, str) else f"a keyword given twice: {sorted(set(base) & set(alt))}"
@@ -2805,6 +2874,24 @@ def _git_starts(src):
 
     found, unread, others, fixed, excepted = collections.defaultdict(set), [], [], [], collections.defaultdict(set)
 
+    def table_row(expr):
+        """The words of `NAME[i]`, a row of a table the source spells out (FM-031, Q7's `STANDUP_GIT`): `NAME` bound once, at the top, to a tuple of
+        tuples of literal strings, and nowhere else bound, changed or declared global; `i` a literal index it holds. None: not read."""
+        if not (isinstance(expr, ast.Subscript) and isinstance(expr.value, ast.Name) and isinstance(expr.ctx, ast.Load)
+                and isinstance(expr.slice, ast.Constant) and type(expr.slice.value) is int):
+            return None
+        name, bs = expr.value.id, bindings(expr.value)
+        if len(bs) != 1 or bs[0][0] != "value" or names_bound(tree).get(name) != bs:
+            return None
+        table = bs[0][1]
+        if not (isinstance(table, ast.Tuple) and all(isinstance(row, ast.Tuple) and all(isinstance(w, ast.Constant) and isinstance(w.value, str) for w in row.elts)
+                                                     for row in table.elts) and 0 <= expr.slice.value < len(table.elts)):
+            return None
+        if any((isinstance(n, ast.Name) and n.id == name and not isinstance(n.ctx, ast.Load) and not (isinstance(parent.get(n), ast.Assign) and parent[n].value is table))
+               or (isinstance(n, (ast.Global, ast.Nonlocal)) and name in n.names) for n in every):
+            return None
+        return list(table.elts[expr.slice.value].elts)
+
     def command(elts, line, scope):
         """The command of git's argv words after `git` (or of a call of a starter): git's own options skipped; a constant names it; the scope's own `*a`
         there makes the scope a starter; a name bound apart is read through; anything else is not read."""
@@ -2839,6 +2926,9 @@ def _git_starts(src):
                 for alt in (x for a in alts for x in a):
                     command(list(alt) + elts[i + 1:], line, scope)
                 return
+        if isinstance(e, ast.Starred) and table_row(e.value) is not None:      # a row of a table the source spells out
+            command(table_row(e.value) + elts[i + 1:], line, scope)
+            return
         unread.append((line, f"git started with {ast.unparse(e)} where its command goes"))
 
     def module_of(expr):
@@ -3022,6 +3112,38 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-045 · the classification's control: a source line starting a git command the table does not hold fails it, in each form the reading follows — a literal argv, "
           f"`git_out`, after `*signers_args()`, a local wrapper, a wrapper handed to a function, an argv built apart, in a loop or bound whole to a name, a program named by "
           f"`executable=` — and a start in a form it does not follow is named (saw {caught_})", all(caught_.values()))
+    standup_ = {        # FM-031, Q7: the stand-up's starts — a row of a table where git's command goes, and the stand-up's options — followed exactly
+        'a row of a table the source spells out': ('_INJ_ROWS = (("gc",), ("log",))\n\n\ndef _injected():\n    return git_out(*_INJ_ROWS[0])\n', 'gc'),
+        "the stand-up's options for git": ('def _injected():\n    return vcs_process("git", "gc", capture_output=True, **standup_program("git"))\n', 'gc'),
+        'not followed: a row at an index not spelled out': ('_INJ_ROWS = (("gc",),)\n\n\ndef _injected(i):\n    return git_out(*_INJ_ROWS[i])\n', None),
+        'not followed: a table bound again elsewhere': ('_INJ_ROWS = (("log",),)\n\n\ndef _inj_change():\n    global _INJ_ROWS\n    _INJ_ROWS = (("gc",),)\n\n\n'
+                                                       'def _injected():\n    return git_out(*_INJ_ROWS[0])\n', None),
+        'not followed: a row that is not literal': ('_INJ_WORD = "gc"\n_INJ_ROWS = ((_INJ_WORD,),)\n\n\ndef _injected():\n    return git_out(*_INJ_ROWS[0])\n', None),
+        "not followed: the stand-up's options for a program it does not name": ('def _injected():\n    return vcs_process("git", "gc", **standup_program("ssh"))\n', None),
+        "not followed: the stand-up's options for a program not spelled out": ('def _injected(p):\n    return vcs_process("git", "gc", **standup_program(p))\n', None),
+        "not followed: another function's options": ('def _inj_program(p):\n    return {"executable": "/bin/sh"}\n\n\ndef _injected():\n    return vcs_process("git", "gc", **_inj_program("git"))\n', None),
+        "not followed: a local `standup_program`": ('def _injected():\n    standup_program = lambda p: {"executable": "/bin/sh"}\n    return vcs_process("git", "gc", **standup_program("git"))\n', None),
+        "not followed: `STANDUP_PROGRAMS` written elsewhere": ('def _injected():\n    STANDUP_PROGRAMS["git"] = "/bin/sh"\n', None),
+        "not followed: `STANDUP_PROGRAMS` updated with another table": ('def _injected():\n    STANDUP_PROGRAMS.update({"git": "/bin/sh"})\n', None),
+    }
+    edited_ = {         # …and the tool's own definitions changed: its own starts of git and svn on the stand-up's path are then not read
+        "`standup_program` returning another program": ('    return {"executable": STANDUP_PROGRAMS[program]} if STANDUP_PROGRAMS.get(program) else {}\n', '    return {"executable": "/bin/sh"}\n'),
+        "`standup_programs` naming a candidate after something else": ('            candidate = os.path.join(entry, program + ".exe" if os.name == "nt" else program)\n',
+                                                                       '            candidate = os.path.join(entry, "sh")\n'),
+        "`standup_programs` finding a path it did not name": ('            found[program] = candidate\n', '            found[program] = "/bin/sh"\n'),
+    }
+    seen_ = {}
+    for what_, (code_, want_) in standup_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        seen_[what_] = unclassified_(f_) == [want_] if want_ else len(u_) > len(unread_)
+    for what_, (old_, new_) in edited_.items():
+        seen_[what_] = src_.count(old_) == 1 and len(_git_starts(src_.replace(old_, new_))[1]) >= 3 + len(unread_)
+    check(f"FM-045 · FM-031 · the reading follows the stand-up's starts exactly — a row of a table the source spells out where git's command goes, and the stand-up's "
+          f"options for git or svn, read as no `executable` and as that program — and names as not read a row at an index not spelled out, a table bound again or not "
+          f"literal, the options for a program it does not name or does not spell out, another function's options, a local `standup_program`, `STANDUP_PROGRAMS` "
+          f"written elsewhere or updated with another table, and the tool's own starts once `standup_program` returns another program or `standup_programs` names or "
+          f"finds a path other than the program's (saw {seen_})", all(seen_.values()))
     program_ = {        # the program as `read_only_git` reads it; a start through a wrapper; what the reading cannot resolve
         'git by its absolute path': ('def _injected():\n    return subprocess.run(["/usr/bin/git", "gc"])\n', ('unclassified', 'gc')),
         'git as `git.exe`': ('def _injected():\n    return subprocess.run(["git.exe", "prune"])\n', ('unclassified', 'prune')),
