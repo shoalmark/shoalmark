@@ -16,6 +16,7 @@ tool: how its mutants run (the check skipped; a value unescaped; one prompt word
 test_shoalmark.py runs it at its end.
 """
 
+import contextlib
 import html
 import importlib.util
 import json
@@ -26,6 +27,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+
+from test_vcs_shared import fixture_saw
 
 
 HERE = Path(__file__).resolve().parent
@@ -138,6 +141,15 @@ def day_data(page):
     return json.loads(m.group(1)) if m else None
 
 
+@contextlib.contextmanager
+def board_step(add, label):
+    """A failed fixture gives one diagnostic and leaves the next independent fixture runnable."""
+    try:
+        yield
+    except Exception as error:
+        add(f"day · board fixture {label}: a fixture step failed", False, fixture_saw(error))
+
+
 def run_checks():
     """[(label, ok, detail)] — ok None where a part cannot run here, with why."""
     tool, results = tool_path(), []
@@ -180,63 +192,72 @@ def run_checks():
     env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0", SHOALMARK_CMD=SAMPLE["cmd"], PYTHONIOENCODING="utf-8")
     with tempfile.TemporaryDirectory(prefix="shoalmark-day-") as tmp:
         area = Path(tmp).resolve()
-        page, code, err = board(tool, area / "plain", "notes-app", env)
-        rows = {k: template(page, "day-row-" + k) for k in HOLDS}
-        dialogs = {k: template(page, "day-" + k) for k in HOLDS}
-        data = day_data(page)
-        L = fm.LABELS
-        add(f"day · board: the stand-up's and the close-out's rows each carry a button with its label and its spoken name, from the label table (saw exit {code}, {err.strip()[:120]!r})",
-            code == 0 and all(f'onclick="DAYOPEN(\'{k}\')"' in rows[k] and f'aria-label="{html.escape(L["day." + k + ".spoken"])}"' in rows[k]
-                              and f'>{html.escape(L["day." + k + ".button"])}</button>' in rows[k] for k in HOLDS))
-        pre = {k: (re.search(r'<pre class="cmd">(.*?)</pre>', dialogs[k], re.S) or [None, None])[1] for k in HOLDS}
-        add("day · board: each dialog holds its prompt, as the design wrote it with this repository's values, a copy button with its spoken name, and the "
-            "page's data copies the same bytes",
-            all(pre[k] is not None and html.unescape(pre[k]) == expected(k, SAMPLE) and 'class="copy"' in dialogs[k]
-                and f'aria-label="{html.escape(L["day." + k + ".spoken"])}"' in dialogs[k] for k in HOLDS)
-            and data == {k: expected(k, SAMPLE) for k in HOLDS}, f"pre {pre} · data {data}"[:400])
-        say = text_of(dialogs["standup"])
-        add("day · board: the stand-up's dialog names what `--standup` still runs — the deriver, and where gh can read the forge, the fetch of origin and gh's queue",
-            "deriver" in say and "docs/work-tracker/derive" in say and "fetches origin" in say and "gh" in say)
-        words = " ".join(L[k] for k in L if k.startswith("day."))
-        add("day · honesty: the dialogs say a prompt asks and cannot make a session obey, and that a message is never an answer; no word of the day says "
-            "signed, promises obedience or names a cadence",
-            "cannot make a session obey" in words and "A message is never an answer" in L["day.standup.asks"] and "A message is never an answer" in L["day.closeout.asks"]
-            and not re.search(r"\bsigned\b|\bwill obey|\bdaily\b|every (?:day|morning)|each (?:day|morning)|\breminder", words, re.I))
+        with board_step(add, "plain"):
+            page, code, err = board(tool, area / "plain", "notes-app", env)
+            rows = {k: template(page, "day-row-" + k) for k in HOLDS}
+            dialogs = {k: template(page, "day-" + k) for k in HOLDS}
+            data = day_data(page)
+            L = fm.LABELS
+            add(f"day · board: the stand-up's and the close-out's rows each carry a button with its label and its spoken name, from the label table (saw exit {code}, {err.strip()[:120]!r})",
+                code == 0 and all(f'onclick="DAYOPEN(\'{k}\')"' in rows[k] and f'aria-label="{html.escape(L["day." + k + ".spoken"])}"' in rows[k]
+                                  and f'>{html.escape(L["day." + k + ".button"])}</button>' in rows[k] for k in HOLDS))
+            pre = {k: (re.search(r'<pre class="cmd">(.*?)</pre>', dialogs[k], re.S) or [None, None])[1] for k in HOLDS}
+            add("day · board: each dialog holds its prompt, as the design wrote it with this repository's values, a copy button with its spoken name, and the "
+                "page's data copies the same bytes",
+                all(pre[k] is not None and html.unescape(pre[k]) == expected(k, SAMPLE) and 'class="copy"' in dialogs[k]
+                    and f'aria-label="{html.escape(L["day." + k + ".spoken"])}"' in dialogs[k] for k in HOLDS)
+                and data == {k: expected(k, SAMPLE) for k in HOLDS}, f"pre {pre} · data {data}"[:400])
+            say = text_of(dialogs["standup"])
+            add("day · board: the stand-up's dialog names what `--standup` still runs — the deriver, and where gh can read the forge, the fetch of origin and gh's queue",
+                "deriver" in say and "docs/work-tracker/derive" in say and "fetches origin" in say and "gh" in say)
+            words = " ".join(L[k] for k in L if k.startswith("day."))
+            add("day · honesty: the dialogs say a prompt asks and cannot make a session obey, and that a message is never an answer; no word of the day says "
+                "signed, promises obedience or names a cadence",
+                "cannot make a session obey" in words and "A message is never an answer" in L["day.standup.asks"] and "A message is never an answer" in L["day.closeout.asks"]
+                and not re.search(r"\bsigned\b|\bwill obey|\bdaily\b|every (?:day|morning)|each (?:day|morning)|\breminder", words, re.I))
 
-        hostile = "x'$(id)<b>y"
-        page, code, err = board(tool, area / "branch", "notes-app", env, branch=hostile)
-        closeout, standup, data = template(page, "day-closeout"), template(page, "day-standup"), day_data(page)
-        refusal = re.findall(r'<p class="dp hot">(.*?)</p>', closeout, re.S)
-        add("day · board: a default branch named with a quote, `$(` and markup fills no close-out prompt — the dialog names the value it could not put in, "
-            "escaped, and offers no prompt and nothing to copy; the stand-up, which does not hold it, is still built "
-            f"(saw {refusal})",
-            code == 0 and len(refusal) == 1 and html.escape(fm.LABELS["day.value.branch"], quote=False) in refusal[0].replace("&#x27;", "'")
-            and "<code>x'$(id)&lt;b&gt;y</code>" in refusal[0] and "<pre" not in closeout and 'class="copy"' not in closeout
-            and data is not None and data["closeout"] == "" and data["standup"] == expected("standup", SAMPLE) and "<pre" in standup)
-        add("day · board: the hostile value appears nowhere in the page unescaped", hostile not in page and "<b>y" not in page)
+        branches = ("x'$(id)&y",) if os.name == "nt" else ("x'$(id)<b>y", "x'$(id)&y")
+        for number, hostile in enumerate(branches):
+            with board_step(add, f"default branch {hostile!r}"):
+                page, code, err = board(tool, area / f"branch-{number}", "notes-app", env, branch=hostile)
+                closeout, standup, data = template(page, "day-closeout"), template(page, "day-standup"), day_data(page)
+                refusal = re.findall(r'<p class="dp hot">(.*?)</p>', closeout, re.S)
+                add(f"day · board: default branch {hostile!r} fills no close-out prompt — the dialog names the value it could not put in, "
+                    "escaped, and offers no prompt and nothing to copy; the stand-up, which does not hold it, is still built "
+                    f"(saw {refusal})",
+                    code == 0 and len(refusal) == 1 and html.escape(fm.LABELS["day.value.branch"], quote=False) in refusal[0].replace("&#x27;", "'")
+                    and f"<code>{html.escape(hostile, quote=False)}</code>" in refusal[0] and "<pre" not in closeout and 'class="copy"' not in closeout
+                    and data is not None and data["closeout"] == "" and data["standup"] == expected("standup", SAMPLE) and "<pre" in standup)
+                add(f"day · board: default branch {hostile!r} appears nowhere in the page unescaped",
+                    hostile not in page and ("<b>y" not in page if "<b>" in hostile else "&y" not in page))
 
-        page, code, err = board(tool, area / "cmd", "notes-app", dict(env, SHOALMARK_CMD="python3 shoalmark.py\n`touch x`"))
-        refused = [re.findall(r'<p class="dp hot">(.*?)</p>', template(page, "day-" + k), re.S) for k in HOLDS]
-        add(f"day · board: a command holding a line break and a backtick fills neither prompt; each dialog names the tool's command, its line break shown as \\n (saw {refused})",
-            code == 0 and all(len(r) == 1 and "<code>python3 shoalmark.py\\n`touch x`</code>" in r[0] for r in refused) and day_data(page) == {"standup": "", "closeout": ""})
+        with board_step(add, "command with a line break"):
+            page, code, err = board(tool, area / "cmd", "notes-app", dict(env, SHOALMARK_CMD="python3 shoalmark.py\n`touch x`"))
+            refused = [re.findall(r'<p class="dp hot">(.*?)</p>', template(page, "day-" + k), re.S) for k in HOLDS]
+            add(f"day · board: a command holding a line break and a backtick fills neither prompt; each dialog names the tool's command, its line break shown as \\n (saw {refused})",
+                code == 0 and all(len(r) == 1 and "<code>python3 shoalmark.py\\n`touch x`</code>" in r[0] for r in refused) and day_data(page) == {"standup": "", "closeout": ""})
 
         bare = {k: v for k, v in env.items() if k != "SHOALMARK_CMD"}
-        page, code, err = board(tool, area / "spaced", "notes-app", bare, install="tool space")
-        refused = [re.findall(r'<p class="dp hot">(.*?)</p>', template(page, "day-" + k), re.S) for k in HOLDS]
-        split = html.escape(fm.LABELS.get("day.refused.split", "\0no such label"), quote=False).replace("_", "&#95;")
-        add(f"day · board: a real installation in a folder named with a space, without SHOALMARK_CMD, fills neither prompt — each dialog names the "
-            f"tool's command and says the copied command would split its path (saw exit {code}, {refused})",
-            code == 0 and all(len(r) == 1 and html.escape(fm.LABELS["day.value.cmd"], quote=False) in r[0].replace("&#x27;", "'")
-                              and "<code>" + fm.PY + " tool space/shoalmark.py</code>" in r[0] and split in r[0] for r in refused)
-            and day_data(page) == {"standup": "", "closeout": ""})
+        with board_step(add, "installed tool path with a space"):
+            page, code, err = board(tool, area / "spaced", "notes-app", bare, install="tool space")
+            refused = [re.findall(r'<p class="dp hot">(.*?)</p>', template(page, "day-" + k), re.S) for k in HOLDS]
+            split = html.escape(fm.LABELS.get("day.refused.split", "\0no such label"), quote=False).replace("_", "&#95;")
+            add(f"day · board: a real installation in a folder named with a space, without SHOALMARK_CMD, fills neither prompt — each dialog names the "
+                f"tool's command and says the copied command would split its path (saw exit {code}, {refused})",
+                code == 0 and all(len(r) == 1 and html.escape(fm.LABELS["day.value.cmd"], quote=False) in r[0].replace("&#x27;", "'")
+                                  and "<code>" + fm.PY + " tool space/shoalmark.py</code>" in r[0] and split in r[0] for r in refused)
+                and day_data(page) == {"standup": "", "closeout": ""})
+
         de = HERE / "examples/de/labels.yaml"
         if de.is_file():
-            page, code, err = board(tool, area / "de", "notes-app", env, labels=de)
-            german = fm.read_flat(de.read_text(encoding="utf-8"))
-            row, dialog = template(page, "day-row-standup"), template(page, "day-standup")
-            add("day · board: a German board's rows, buttons and dialogs are German, from its label table; the prompt it copies stays English",
-                code == 0 and html.escape(german["day.standup.button"], quote=False) in row and html.escape(german["day.standup.dialog"], quote=False) in dialog
-                and html.unescape((re.search(r'<pre class="cmd">(.*?)</pre>', dialog, re.S) or [None, ""])[1]) == expected("standup", SAMPLE))
+            with board_step(add, "German labels"):
+                page, code, err = board(tool, area / "de", "notes-app", env, labels=de)
+                german = fm.read_flat(de.read_text(encoding="utf-8"))
+                row, dialog = template(page, "day-row-standup"), template(page, "day-standup")
+                add("day · board: a German board's rows, buttons and dialogs are German, from its label table; the prompt it copies stays English",
+                    code == 0 and html.escape(german["day.standup.button"], quote=False) in row and html.escape(german["day.standup.dialog"], quote=False) in dialog
+                    and html.unescape((re.search(r'<pre class="cmd">(.*?)</pre>', dialog, re.S) or [None, ""])[1]) == expected("standup", SAMPLE))
+
         else:
             add("day · a German board", None, "examples/de/labels.yaml is not here")
     return results
