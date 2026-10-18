@@ -66,7 +66,7 @@ geschrieben hat.
 
 ## Was ein Tag Sie kostet
 
-- **Ein Standup, fünfzehn Minuten**, zu der Uhrzeit, die Sie wählen. Die Einladung kommt als Kalenderdatei.
+- **Ein Standup, fünfzehn Minuten**, zu der Uhrzeit, die Sie wählen.
 - **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt die Antwort, signiert sie mit Ihrem Schlüssel und
   pusht sie.
 - **Der Rest kommt zu Ihnen:** Die letzte Nachricht jeder Session endet mit dem, was auf Sie wartet. Sie müssen nichts

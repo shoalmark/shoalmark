@@ -74,7 +74,7 @@ what comes first. Agents read both before every judgement. Leave everything else
 
 `docs/work-tracker/index.html` — it is git-ignored and rebuilt when the tool runs, on a commit that changes a work item, and
 right after each of your answers and acts; on Subversion, on a commit through TortoiseSVN or when the tool runs. Nothing
-rebuilds it after a checkout, a merge or an update: `--html-only` does. Its first line is what needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
+rebuilds it after a checkout, a merge or an update: `--html-only` does. Its first line is what needs you. Set `standup = "09:00"` in `shoalmark.toml` for the time of your one sitting: see
 [The standup](standup.md).
 
 That is all. The agents file the work; you answer what only you can.

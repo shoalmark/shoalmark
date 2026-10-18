@@ -14,16 +14,39 @@ then **buttons**. Each item is one question, with how long it has waited and wha
 **your acts, with their time** — missed and overdue first, then what falls due, then what has no date yet — and last
 what you answered or did that is **on its way** to your merge.
 
-## The invite
+## When
 
 ```
 standup = "09:00"          # in shoalmark.toml — local time
 standup_minutes = 15
-python3 tools/shoalmark/shoalmark.py --standup standup.ics
 ```
 
-Import the file into your calendar: weekdays, at that time. **Several repositories?** One slot each, and they must not
-overlap — your calendar is the only place that sees all of them, which is why the invite is a calendar file.
+The agenda's first line carries that time and length. The slot in your calendar is yours to make: the tool writes no
+calendar file and posts no notification (R9). **Several repositories?** One sitting can hold them: the next section.
+
+## Several repositories, one sitting
+
+```
+python3 tools/shoalmark/shoalmark.py --standup ~/code/notes-app ~/work/client-site ~/code/side-project
+```
+
+One agenda, by kind, across the repositories you name — each item with its repository. Each is read as it stands: a
+git repository with its branch and its commit, a Subversion working copy with its revision, a plain folder as it is. A
+folder it cannot read is named with why and counted in nothing. Every count is a repository's own, then added: FM-001 in
+two repositories is two items.
+
+It runs nothing of theirs — no repository's own tool, deriver, hook or configured program, and no fetch — and writes
+nothing, in a repository or anywhere else. It starts git and svn from PATH's absolute entries outside the repositories you
+name; where none holds one, the folders that need it are named with why. It says what that leaves unread: whether a git working tree has changes,
+which `git status` there tells; and what each repository's own `--standup` reads by those means — what you answered or
+did that is on its way on an answer branch (an ask you answered shows until your merge), the pull-request queue, and,
+where a repository has `[seats]`, who asked. You answer in each repository, as ever, and its own `--standup` there tells
+the rest.
+
+On the board, the box of what waits for you carries two buttons: **stand-up prompt**, before the sessions of the last day, and
+**close-out prompt**, at its end. Each copies a fixed prompt for the session you use — Claude Code, Codex or another: one asks it
+to hold your sitting from this agenda, one item at a time; the other, to read the day back from the record and change nothing.
+Neither runs anything, and a message is never an answer: what records your decision is the command you run yourself.
 
 ## What agents do with it
 
@@ -62,9 +85,9 @@ it asks why and gives you `python3 tools/shoalmark/shoalmark.py --revoke AP-007 
 it, on the same branch, never an overwrite. A reschedule carries none; to move it again, run `--due` on its branch. After
 your merge each reads from the default branch again; another machine shows the same rows after a fetch.
 
-Two reminders, if you want them. `--invite AP-007` writes the act as a calendar file — its time, its window, a reminder
-30 minutes before — beside the work item's evidence; import it. `--notify` posts a system notification for every act
-due within 30 minutes, overdue or missed, once each; schedule it yourself (the README has a cron and a launchd line).
+Invites and notifications are gone (R9): `--invite`, `--notify` and `--standup FILE.ics` print one line saying so. Where
+an earlier version left a calendar file, a schedule or its state on your machine, `--standup` and `--owner` name each
+piece until you remove it, and the README says how.
 
 ## Which review was independent
 

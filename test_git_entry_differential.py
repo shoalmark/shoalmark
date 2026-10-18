@@ -31,7 +31,46 @@ POISON_KEYS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_
 # bare `>` line. The one difference the consumer's snapshots may show; CI run 38744072206 failed the two default cases on it.
 INDEX_PATH = "work-tracker/INDEX.md"
 R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
-
+# FM-030, R9's two quick wins (exact text, RV-3296): what the candidate's board page may add beside the baseline's, specified here
+# and matched exactly, each once — the ten lines of script the day adds, as written; four inert templates after the dialog, whose
+# markup is fixed and whose text and label-valued attributes (the board's words, the four values) may vary; the prompts they copy,
+# `,DAY={"standup": …, "closeout": …}` before `BRANCH=`; and the twenty-nine `day.*` words in the label table, by key. The answer's
+# second screen copies through the day's clipboard helper: one line in place of its own three. Taken out, with FM-057's page
+# (`fm057_page_dropped`), the page is the baseline's.
+DAY_SCRIPT = tuple(("\n" + line).encode("utf-8") for line in (
+    "// FM-030 day: the one clipboard path — the answer's second screen (FM-013), the stand-up's and the close-out's dialog: *Copied* only when the clipboard",
+    "// FM-030 day: said so, else the line that says to select the text and copy it (a board opened from a file often has no clipboard)",
+    'clip=(d,text)=>{const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(text):Promise.reject())   // FM-030 day',
+    '  .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);d.querySelector(".copy").onclick=copy;copy()},   // FM-030 day',
+    "// FM-030 day: R9's two quick wins — the stand-up's and the close-out's dialog, rendered by the generator with its values checked (`day_html`). It",
+    "// FM-030 day: copies the prompt as the answer's second screen copies its command; where a value failed it holds the line that names it, and nothing to copy",
+    'function DAYOPEN(k){const d=$("dlg");d.innerHTML=$("day-"+k).innerHTML;if(DAY[k])clip(d,DAY[k]);d.showModal();d.querySelector(".go").focus()}   // FM-030 day',
+    "    // FM-030 day: the stand-up opens the day, before the sessions of the last day; the close-out ends the box, below (rows `day_html` renders)",
+    '    +"\\n\\n"+$("day-row-standup").innerHTML   // FM-030 day',
+    '  if(gname=="board"&&!q)$("p").insertAdjacentHTML("beforeend","\\n\\n"+$("day-row-closeout").innerHTML);   // FM-030 day: the close-out ends the box',
+))
+_T, _A = rb"[^<>]*", rb'[^"<>]*'                    # text, and an attribute's value: what may vary, never markup
+_C = rb"(?:[^<>]|<code>[^<>]*</code>)*"              # text with code spans: a command, a path, a value shown
+_REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb"</p><h4>" + _T + rb"</h4><p>" + _T + rb'</p><p class="ddim">' + _T
+         + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
+DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
+    rb'\n<template id="day-row-' + k + rb'"><b>' + _T + rb'</b><span class="m">' + _T + rb'</span> <button class="act" type="button" onclick="DAYOPEN\(\''
+    + k + rb'\'\)" aria-label="' + _A + rb'">' + _T + rb"</button></template>",
+    rb'\n<template id="day-' + k + rb'"><form method="dialog" class="sign"><h3>' + _T + rb"</h3>(?:"
+    + rb'<p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _T
+    + rb'</button><span class="said" aria-live="polite"></span></p>' + rb'|(?:<p class="dp hot">' + _C + rb"</p>)+)" + _REST))
+_J = rb'"(?:[^"\\]|\\.)*"'                           # a JSON string
+DAY_DATA = re.compile(rb',DAY=\{"standup": ' + _J + rb', "closeout": ' + _J + rb"\}(?=,BRANCH=)")
+DAY_KEYS = ("day.standup.title", "day.standup.row", "day.standup.button", "day.standup.spoken", "day.closeout.title", "day.closeout.row",
+            "day.closeout.button", "day.closeout.spoken", "day.standup.dialog", "day.closeout.dialog", "day.paste", "day.asks", "day.standup.asks",
+            "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.not", "day.not.text", "day.fixed", "day.refused",
+            "day.refused.chars", "day.refused.long", "day.refused.none", "day.refused.split", "day.value.name", "day.value.path", "day.value.cmd",
+            "day.value.branch")
+DAY_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in DAY_KEYS)
+DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
+            b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
+            b'        .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);\n'
+            b'      d.querySelector(".copy").onclick=copy;copy();d.querySelector(".go").focus()};\n')
 
 # R13 (FM-032): `--since` and `--until` are named as R13's, where the 615fb1d baseline said they go with `--ratio`. The one
 # difference the two ratio-window cases may show: that line in stderr, as each version prints it, and nothing else.
@@ -172,31 +211,112 @@ def with_board(observed, path, data):
                 board_after=dict(observed.get("board_after") or {}, **{path: serial(data)}))
 
 
+# FM-057's page (R11's read-at line, as reviewed): what the candidate's board page holds beside the baseline's, specified here and
+# matched exactly, each once — the read-at line's style; the read-at line, whose commit, count of changed paths and time vary and
+# nothing else does; the three lines of script that copy its rebuild command; the reload's comment, its first two lines rewritten;
+# and the twenty-three `read.*` and `link.*` words in the label table, by key. Taken out, the page is the baseline's.
+FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
+    '#ra{color:var(--mute);font-size:12px;margin:-8px 0 12px;line-height:1.7}#ra code{font:12px "Berkeley Mono",ui-monospace,monospace;color:var(--dim)}#ra .said{margin-left:6px}',
+    "// FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so",
+    '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())',
+    '  .then(()=>$("rs").textContent=L["read.copied"],()=>$("rs").textContent=L["answer.sign.nocopy"]);',
+))
+FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m">read from main at ').encode() + rb"[0-9a-f]{7}"
+                           + re.escape(" (no forge named in the configuration, so not linked) · ").encode()
+                           + rb"(?:1 path changed and not committed|[0-9]+ paths changed and not committed|nothing changed and not committed|what is changed and not committed is not read here)"
+                           + re.escape(" · built ").encode() + rb"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [+-][0-9]{2}:[0-9]{2}"
+                           + re.escape(' · it reads its file again when you come back to it; nothing polls · rebuild it: <code id="rc">shoalmark --html-only</code>'
+                                       '<button type="button" id="rb" class="act">copy</button><span id="rs" class="said" aria-live="polite"></span></p>').encode() + rb"(?=\n)")
+FM057_RELOAD = ("// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so a board rebuilt meanwhile — by an\n"
+                "// explicit run, a commit or an act; no hook rebuilds it — is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field\n").encode("utf-8"), \
+               ("// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull\n"
+                "// changed is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field\n").encode("utf-8")
+FM057_KEYS_SHOWN = ("read.git.branch", "read.git.detached", "read.git.unborn", "read.git.clean", "read.git.changed", "read.git.changed.one", "read.git.unread",
+                    "read.svn", "read.svn.unread", "read.svn.new", "read.none", "read.none.why", "read.at", "read.self", "read.rebuild", "read.copy",
+                    "read.unlinked", "link.unpushed", "link.noforge", "link.unknown", "link.noviewer", "link.nocommit", "read.copied")
+FM057_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in FM057_KEYS_SHOWN)
+
+
+def fm057_page_dropped(data):
+    """The candidate's board page without FM-057's page, each part taken out exactly once as specified above — the style line, the read-at line,
+    the three script lines, the twenty-three words — and the reload's comment put back as the baseline's. None where any part is not there exactly
+    once as written."""
+    if data is None:
+        return None
+    for line in FM057_PAGE_LINES:
+        if data.count(line + b"\n") != 1:
+            return None
+        data = data.replace(line + b"\n", b"\n", 1)
+    for pattern in (FM057_READ_AT,) + FM057_LABELS:
+        data, n = pattern.subn(b"", data)
+        if n != 1:
+            return None
+    if data.count(FM057_RELOAD[0]) != 1:
+        return None
+    return data.replace(*FM057_RELOAD)
+
+
+def day_dropped(data):
+    """The candidate's board page without FM-030's day, each part taken out exactly once as specified above — the ten script lines, the
+    four templates, the prompts' data, the twenty-nine words — and the answer's second screen's own three clipboard lines put back for
+    the shared helper's call. None where any part is not there exactly once as written, so a line with anything more is no part."""
+    for line in DAY_SCRIPT:
+        if data.count(line + b"\n") != 1:
+            return None
+        data = data.replace(line + b"\n", b"\n", 1)
+    for pattern in DAY_TEMPLATES + (DAY_DATA,) + DAY_LABELS:
+        data, n = pattern.subn(b"", data)
+        if n != 1:
+            return None
+    if data.count(DAY_SIGN[0]) != 1:
+        return None
+    return data.replace(*DAY_SIGN)
+
+def differs_only_by(baseline, candidate, path, key, rule):
+    """Whether `path` after the run is the same file in both, or a file in both whose bytes, recorded under `key`, `rule(old, new)` allows."""
+    old_hash, new_hash = baseline["after"].get(path), candidate["after"].get(path)
+    if old_hash == new_hash:
+        return True
+    old_bytes, new_bytes = (base64.b64decode(row[key]["bytes_base64"]) if isinstance(row.get(key), dict) else None for row in (baseline, candidate))
+    return (isinstance(old_hash, str) and isinstance(new_hash, str) and old_bytes is not None and new_bytes is not None
+            and hashlib.sha256(old_bytes).hexdigest() == old_hash and hashlib.sha256(new_bytes).hexdigest() == new_hash and rule(old_bytes, new_bytes))
+
+
+def board_matches(baseline, candidate):
+    """The board's page and `view/built.json` after the run, each read back from the bytes the run left, its hash checked: the same in both; or the
+    candidate's page with FM-030's day taken out (`day_dropped`), then FM-057's page (`fm057_page_dropped`), is the baseline's page, every byte, and
+    the record is as `fm057_board` holds it."""
+    if all(baseline["after"].get(path) == candidate["after"].get(path) for path in (PAGE_PATH, BUILT_PATH)):
+        return True
+    def page(observed):
+        held = (observed.get("board_after") or {}).get(PAGE_PATH)
+        data = base64.b64decode(held["bytes_base64"]) if isinstance(held, dict) else None
+        return data if data is not None and hashlib.sha256(data).hexdigest() == observed["after"].get(PAGE_PATH) else None
+    old_page, new_page = page(baseline), page(candidate)
+    if old_page is None or new_page is None:
+        return False
+    if old_page != new_page:
+        if fm057_page_dropped(day_dropped(new_page)) != old_page:
+            return False
+        candidate = with_board(candidate, PAGE_PATH, old_page)
+    return fm057_board(baseline, candidate)
+
+
 def snapshots_match(baseline, candidate):
     """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
-    entry and hook — but for R21's difference: INDEX.md after the run may differ where the baseline's, its header line
-    dropped (`r21_dropped`), is the candidate's bytes; and for FM-057's: the page and `view/built.json` may differ as
-    `fm057_board` holds them to."""
+    entry and hook — but for three named differences: INDEX.md after the run may differ where the baseline's, its header line
+    dropped (`r21_dropped`, R21), is the candidate's bytes; the board page where the candidate's, FM-030's day and then FM-057's page
+    taken out (`day_dropped`, `fm057_page_dropped`), is the baseline's bytes; and `view/built.json` as `fm057_board` holds it
+    (`board_matches`)."""
     if baseline["before"] != candidate["before"]:
         return False
     if baseline["after"] == candidate["after"]:
         return True
     old, new = dict(baseline["after"]), dict(candidate["after"])
-    if any(old.get(path) != new.get(path) for path in (PAGE_PATH, BUILT_PATH)):
-        if not fm057_board(baseline, candidate):
-            return False
-        for path in (PAGE_PATH, BUILT_PATH):
-            old.pop(path, None); new.pop(path, None)
-        if old == new:
-            return True
-    if not (isinstance(old.pop(INDEX_PATH, None), str) and isinstance(new.pop(INDEX_PATH, None), str)) or old != new:
-        return False
-    old_bytes, new_bytes = (base64.b64decode(row["index_after"]["bytes_base64"]) if isinstance(row.get("index_after"), dict) else None
-                            for row in (baseline, candidate))
-    return (old_bytes is not None and new_bytes is not None
-            and hashlib.sha256(old_bytes).hexdigest() == baseline["after"][INDEX_PATH]
-            and hashlib.sha256(new_bytes).hexdigest() == candidate["after"][INDEX_PATH]
-            and r21_dropped(old_bytes) == new_bytes)
+    for path in (INDEX_PATH, PAGE_PATH, BUILT_PATH):
+        old.pop(path, None), new.pop(path, None)
+    return (old == new and differs_only_by(baseline, candidate, INDEX_PATH, "index_after", lambda o, n: r21_dropped(o) == n)
+            and board_matches(baseline, candidate))
 
 
 def with_index(observed, data, path=INDEX_PATH):
@@ -585,6 +705,43 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and not snapshots_match(old, with_board(new, BUILT_PATH, json.dumps(dict(built, trackers="0" * 64)).encode()))
                        and not snapshots_match(old, with_board(new, BUILT_PATH, json.dumps({k: v for k, v in built.items() if k != "changes"}).encode()))
                        and not snapshots_match(old, with_board(new, BUILT_PATH, json.dumps(dict(built, live=True)).encode())))
+        # FM-030's allowance, held the same way: the page differs by the day's exact parts alone, beside FM-057's page, and no variant below matches (RV-3296).
+        old_page, new_page = (base64.b64decode(row["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((row.get("board_after") or {}).get(PAGE_PATH), dict)
+                              else b"" for row in (old, new))
+        day = "Git entry FM-030 day allowance: "
+        assert_control(day + "the default run's board page differs from the baseline's by the stand-up's and the close-out's exact script lines, "
+                       "templates, prompts and words, and by FM-057's page, alone, and equal snapshots still match",
+                       bool(old_page) and old_page != new_page and fm057_page_dropped(day_dropped(new_page)) == old_page and snapshots_match(old, new)
+                       and snapshots_match(new, new))
+        opener = b'd.querySelector(".go").focus()}   // FM-030 day'
+        variants = {
+            "one byte outside the day": new_page.replace(b'<dialog id="dlg"></dialog>', b'<dialog id="dlg" open></dialog>', 1),
+            "a fifth template": new_page.replace(b'\n<template id="day-standup">', b'\n<template id="day-closeout"></template>\n<template id="day-standup">', 1),
+            "one line's mark dropped": new_page.replace(b"   // FM-030 day\n", b"\n", 1),
+            "an unrelated statement appended to a permitted line": new_page.replace(opener, b'd.querySelector(".go").focus();document.title="Unrelated title"}   // FM-030 day', 1),
+            "markup inside a template's text": new_page.replace(b'<template id="day-row-standup"><b>', b'<template id="day-row-standup"><b><img src=x onerror=alert(1)>', 1),
+            "an attribute added to a template's button": new_page.replace(b'onclick="DAYOPEN(\'standup\')"', b'onclick="DAYOPEN(\'standup\')" onfocus="alert(1)"', 1),
+        }
+        changed = {name: page != new_page for name, page in variants.items()}
+        assert_control(day + "a candidate page that also changes one byte outside the day, carries a fifth template, drops one line's mark, appends an "
+                       f"unrelated statement to a permitted line, or adds markup or an attribute to a template does not match (each variant made: {changed})",
+                       all(changed.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants.values()))
+        # FM-057's page, held the same way beside the day: each of its parts taken out exactly once, and nothing else differs
+        page057, read_at = "Git entry FM-057 page allowance: ", FM057_READ_AT.search(new_page)
+        assert_control(page057 + "the default run's page, FM-030's day and then FM-057's page taken out, is the baseline's, every byte; the baseline's "
+                       "page holds neither", bool(read_at) and fm057_page_dropped(day_dropped(new_page)) == old_page
+                       and day_dropped(old_page) is None and fm057_page_dropped(old_page) is None)
+        at = read_at.group(0) if read_at else b"\n"
+        variants057 = {
+            "one byte more in the read-at line": new_page.replace(at, at.replace(b"nothing polls", b"nothing polls!"), 1),
+            "the read-at line twice": new_page.replace(at, at * 2, 1),
+            "the read-at line's style gone": new_page.replace(FM057_PAGE_LINES[0] + b"\n", b"\n", 1),
+            "a word FM-057 does not name, beside its own": new_page.replace(b'"read.copy": "copy"', b'"read.copy": "copy", "read.more": "more"', 1),
+        }
+        made057 = {name: page != new_page for name, page in variants057.items()}
+        assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
+                       f"does not name does not match (each variant made: {made057})",
+                       all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),

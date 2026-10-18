@@ -77,7 +77,7 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 
 `docs/work-tracker/index.html` — sie ist git-ignoriert und wird neu gebaut, wenn das Werkzeug läuft, bei einem Commit, der ein
 Arbeitspaket ändert, und gleich nach jeder Ihrer Antworten und Handlungen; unter Subversion bei einem Commit über TortoiseSVN oder
-wenn das Werkzeug läuft. Nach einem Checkout, einem Merge oder einem Update baut sie nichts neu: das tut `--html-only`. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
+wenn das Werkzeug läuft. Nach einem Checkout, einem Merge oder einem Update baut sie nichts neu: das tut `--html-only`. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml` setzt die Uhrzeit Ihres Standups.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 
