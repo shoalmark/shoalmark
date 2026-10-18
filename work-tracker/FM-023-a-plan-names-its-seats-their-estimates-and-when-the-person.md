@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you allocate v0.20.2 as the table of 2026-10-18 sets out: /find-drift and the second skill in one Claude plugin; the prune of shoalmark.py's prose, proven prose-only; the comment ratchet; FM-037's guard on agents and skills; five conversions; the text fixes; the suite's Chrome keychain flag?"
-ask-kind: ruling
-ask-since: 2026-10-18
-ask-options: "yes | yes, with the changes I name | no: what follows v0.20.1 stays as allocated on 15 October"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-18
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -304,6 +296,11 @@ arc has run on it with its estimate–actual gap in the record.
 **answered** — accepted - yes but it is eleven quick wins to my count including guided-answer · holgo99
 **relation** — accepted with a change
 **signed** — 8a13e8c · G
+
+**2026-10-18** · Do you allocate v0.20.2 as the table of 2026-10-18 sets out: /find-drift and the second skill in one Claude plugin; the prune of shoalmark.py's prose, proven prose-only; the comment ratchet; FM-037's guard on agents and skills; five conversions; the text fixes; the suite's Chrome keychain flag?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 88bf707 · G
 
 ## Ship log
 
