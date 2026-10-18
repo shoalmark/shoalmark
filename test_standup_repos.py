@@ -514,7 +514,7 @@ def run_checks(*, results=None):
                     or launcher(named["alpha"] / "svn.exe", marker)
                 if made:
                     add("Q7 · RV-3303: recorded privately · on Windows, a git.exe and an svn.exe in a listed repository and in the run's own folder never run",
-                        None, made)
+                        False, made)
                 else:
                     here = os.getcwd()
                     was = os.environ.pop("NoDefaultCurrentDirectoryInExePath", None)
