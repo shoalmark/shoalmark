@@ -4,7 +4,7 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: owner
+next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
@@ -13,6 +13,9 @@ ask-kind: ruling
 ask-since: 2026-10-18
 ask-options: "yes | yes, with the changes I name | no: what follows v0.20.1 stays as allocated on 15 October"
 ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-18
+answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
