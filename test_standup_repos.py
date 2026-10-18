@@ -304,9 +304,10 @@ def bindings(module):
                 else set(space[n]) if isinstance(space[n], set) else None) for n in module.configure.__code__.co_names if n in space}
 
 
-def run_checks():
+def run_checks(*, results=None):
     """[(label, ok, detail)] — ok None where a part cannot run here, with why."""
-    tool, results = tool_path(), []
+    tool = tool_path()
+    results = [] if results is None else results
     add = lambda label, ok, detail="": results.append((label, ok, detail))
     with tempfile.TemporaryDirectory(prefix="shoalmark-q7-") as tmp:
         area = Path(tmp).resolve()

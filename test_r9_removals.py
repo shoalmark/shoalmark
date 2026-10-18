@@ -189,9 +189,10 @@ def leftovers(root, home, xdg, away, base=None, env=None):
     return shown, linked, wrote
 
 
-def run_checks():
+def run_checks(*, results=None):
     """[(label, ok, detail)] — ok None where a part cannot run here, with why."""
-    tool, results = tool_path(), []
+    tool = tool_path()
+    results = [] if results is None else results
     add = lambda label, ok, detail="": results.append((label, ok, detail))
     now = datetime.datetime.now(datetime.timezone.utc).astimezone().replace(microsecond=0)
     clock = ((datetime.date.today() - datetime.timedelta(days=1)).isoformat(), lambda minutes: (now + datetime.timedelta(minutes=minutes)).isoformat())

@@ -15288,46 +15288,81 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root); rm_git(plain_)
 fm.configure(HERE)
 
+def _module_guard(module, check, *args, skip_count=1, details=True, single_label=None, skipped=None):
+    """Keep checks made before an exception, report the failure, and restore the suite's tool for the next block."""
+    import traceback
+    from test_vcs_shared import fixture_saw
+    results, failure = [], None
+    try:
+        if single_label is None:
+            module.run_checks(*args, results=results)
+        else:
+            results.append((single_label, module.run_checks(*args), ""))
+    except Exception as error:
+        failure = error
+    finally:
+        fm.configure(HERE)
+    for label, ok, detail in results:
+        if ok is None:
+            (skipped or _skipped)(label, skip_count, detail)
+        else:
+            check(label, ok)
+            if details and not ok and detail:
+                print(f"        {detail}")
+    if failure is not None:
+        check(f"{module.__name__}: a fixture step failed ({fixture_saw(failure)})", False)
+        traceback.print_exception(type(failure), failure, failure.__traceback__, file=sys.stdout)
+
+
+def _module_guard_controls(check):
+    """Use a private check sink: intentional failures never enter the suite's FAILS."""
+    from types import SimpleNamespace
+    def before_raise(*, results):
+        results.append(("stand-in checked one thing", True, ""))
+        fm.ROOT = HERE / "stand-in"
+        raise subprocess.CalledProcessError(1, ["git", "stand-in"], stderr="fatal: stand-in")
+    def key_error():
+        raise KeyError("stand-in key")
+    for name, run_checks, single_label in (("stand_in_process", before_raise, None), ("stand_in_key", key_error, "one check")):
+        rows, output, raised = [], io.StringIO(), None
+        try:
+            with redirect_stdout(output):
+                _module_guard(SimpleNamespace(__name__=name, run_checks=run_checks),
+                              lambda label, ok: rows.append((label, ok)), single_label=single_label)
+        except Exception as error:
+            raised = error
+        said = output.getvalue()
+        failures = [label for label, ok in rows if not ok]
+        ok = raised is None and len(failures) == 1 and name in failures[0] and "Traceback (most recent call last)" in said and fm.ROOT == HERE
+        if single_label is None:
+            ok = ok and rows[:1] == [("stand-in checked one thing", True)] and len(rows) == 2
+            ok = ok and all(word in failures[0] for word in ("git stand-in", "exited 1", "fatal: stand-in"))
+            check("module guard · a check before CalledProcessError survives, then one FAIL names the module, command, exit and stderr; the tool is restored",
+                  ok)
+        else:
+            check("module guard · KeyError gives one FAIL naming its module and a traceback, then returns",
+                  ok and len(rows) == 1 and "KeyError" in failures[0])
+
+
+_module_guard_controls(check)
+
 import test_tracker_text
-for _label, _ok, _detail in test_tracker_text.run_checks(fm):
-    if _ok is None:
-        _skipped(_label, 11, _detail)
-    else:
-        check(_label, _ok)
+_module_guard(test_tracker_text, check, fm, skip_count=11, details=False)
 
 import test_owner_exemption
-check("FM-033 R14 · Owner authors, signatures, histories and CI", test_owner_exemption.run_checks())
+_module_guard(test_owner_exemption, check, single_label="FM-033 R14 · Owner authors, signatures, histories and CI")
 
 # R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
 import test_r9_removals
-for _label, _ok, _detail in test_r9_removals.run_checks():
-    if _ok is None:
-        _skipped(_label, 1, _detail)
-    else:
-        check(_label, _ok)
-        if not _ok and _detail:
-            print(f"        {_detail}")
+_module_guard(test_r9_removals, check)
 
 # FM-030, R9's two quick wins: the stand-up and close-out prompts, copied from the board — their class test, a program of its own for its mutants
 import test_day_prompts
-for _label, _ok, _detail in test_day_prompts.run_checks():
-    if _ok is None:
-        _skipped(_label, 1, _detail)
-    else:
-        check(_label, _ok)
-        if not _ok and _detail:
-            print(f"        {_detail}")
+_module_guard(test_day_prompts, check)
 
 # Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
 import test_standup_repos
-for _label, _ok, _detail in test_standup_repos.run_checks():
-    if _ok is None:
-        _skipped(_label, 1, _detail)
-    else:
-        check(_label, _ok)
-        if not _ok and _detail:
-            print(f"        {_detail}")
-fm.configure(HERE)
+_module_guard(test_standup_repos, check)
 
 # FM-044 bounded local-stage runtime controls. Component-only AST assertions
 # remain with their immutable standalone reviews; core retains the unchanged

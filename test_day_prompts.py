@@ -150,9 +150,10 @@ def board_step(add, label):
         add(f"day · board fixture {label}: a fixture step failed", False, fixture_saw(error))
 
 
-def run_checks():
+def run_checks(*, results=None):
     """[(label, ok, detail)] — ok None where a part cannot run here, with why."""
-    tool, results = tool_path(), []
+    tool = tool_path()
+    results = [] if results is None else results
     add = lambda label, ok, detail="": results.append((label, bool(ok) if ok is not None else None, detail))
     fm = load(tool)
 
