@@ -319,6 +319,16 @@ def stamped(text):
     return re.sub(r" · read \d{4}-\d{2}-\d{2} \d{2}:\d{2}", " · read <TIME>", text)
 
 
+def first_difference(clean, actual):
+    left, right = clean.splitlines(keepends=True), actual.splitlines(keepends=True)
+    for n in range(max(len(left), len(right))):
+        a = left[n] if n < len(left) else None
+        b = right[n] if n < len(right) else None
+        if a != b:
+            return f"line {n + 1}: clean {a!r}; actual {b!r}"
+    return ""
+
+
 def section(out, title):
     """The lines under a title of the output, up to the next blank line."""
     at = out.find("\n" + title)
@@ -559,17 +569,27 @@ def run_checks(*, results=None):
                         marker.unlink()
                     outs = [stamped(run(tool, own, env, "--standup", *listed)[1]), stamped(run(tool, named["alpha"], env, "--standup", *listed)[1])]
                     buffer = io.StringIO()
+                    saved_env = dict(os.environ)
                     try:
                         os.chdir(str(own))
+                        os.environ.clear()
+                        os.environ.update(env)
+                        module.configure()
                         with contextlib.redirect_stdout(buffer):
                             module.standup_across(listed)
                     finally:
+                        os.environ.clear()
+                        os.environ.update(saved_env)
                         os.chdir(here)
+                    env_restored = dict(os.environ) == saved_env
                     outs.append(stamped(buffer.getvalue()))
+                    detail = "\n".join(f"{label}: {first_difference(clean, output)}" for label, output in
+                                       zip(("CLI from the run folder", "CLI from alpha", "in-process"), outs) if output != clean)
                     add(f"Q7 · RV-3303: recorded privately · on Windows, a git.exe and an svn.exe in a listed repository and in the run's own folder never "
                         f"run, through the CLI and through `standup_across`, and the output is as without them; the control — the planted git.exe, started "
                         f"by its bare name from its folder, runs — holds (control {live}, ran after {marker.is_file()}, outputs as without them "
-                        f"{[o_ == clean for o_ in outs]})", live and not marker.is_file() and all(o_ == clean for o_ in outs))
+                        f"{[o_ == clean for o_ in outs]}, environment restored {env_restored})",
+                        live and not marker.is_file() and all(o_ == clean for o_ in outs) and env_restored, detail)
 
             # 6. the refusals beside it
             code_r, out_r, err_r = run(tool, cwd, run_env, "--root", str(named["alpha"]), "--standup", str(named["beta"]))
