@@ -5,7 +5,6 @@ considered: FM-003
 tags: bug
 next: build
 triaged: 2026-10-13
-rank: 3
 tier: P1
 hook: "A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped with a traceback before it wrote anything."
 ---
