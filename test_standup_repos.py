@@ -34,6 +34,7 @@ import io
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -96,7 +97,13 @@ def ask(question, kind, since, proposal="yes"):
 
 def canary(path, log):
     """A program that records that it ran, by its name and arguments, in `log` — a filter's or a text conversion's passes its input on."""
-    write(path, f'#!/bin/sh\necho "$(basename "$0") $*" >> "{log}"\ncase "$1" in clean|smudge) cat ;; textconv) cat "$2" ;; esac\nexit 0\n')
+    write(path, f'#!/bin/sh\necho "$(basename "$0") $*" >> {shlex.quote(log.as_posix())}\ncase "$1" in clean|smudge) cat ;; textconv) cat "$2" ;; esac\nexit 0\n')
+    path.chmod(0o755)
+
+
+def deriver_canary(path, log):
+    """Windows runs a deriver with Python; the same Python source is executable on POSIX."""
+    write(path, f'#!/usr/bin/env python3\nwith open({str(log)!r}, "a") as f:\n    f.write("derive ran\\n")\nprint("{{}}")\n')
     path.chmod(0o755)
 
 
@@ -111,6 +118,7 @@ def plant_git(root, prog, log, env):
     external diff, the signature programs, the pager, the editor, a credential helper, ssh — set after the fixture's commits."""
     for name in HOOKS:
         canary(root / ".git" / "hooks" / name, log)
+    prog = shlex.quote(prog.as_posix())                 # Git's shell, including Git for Windows, must receive one path without backslash escapes
     for key, value in (("core.fsmonitor", f"{prog} fsmonitor"), ("filter.canary.clean", f"{prog} clean"), ("filter.canary.smudge", f"{prog} smudge"),
                        ("filter.canary.process", f"{prog} process"), ("diff.canary.textconv", f"{prog} textconv"), ("diff.canary.command", f"{prog} diffcmd"),
                        ("diff.external", f"{prog} external"), ("gpg.program", f"{prog} gpg"), ("gpg.ssh.program", f"{prog} ssh-program"),
@@ -140,7 +148,7 @@ def fixture(area, env, log, prog):
     tracker(d, "FM-002", ask("Will you read alpha's production log?", "action", ago(2)) + f'answer: "accepted - tonight"\nanswered: {ago(1)}\nanswered-by: owner\ndue: {due}\n',
             "alpha's act")
     tracker(d, "FM-004", "next: build\nblocked-by: FM-001\n", "waits on the ruling")
-    canary(d / "derive", log)
+    deriver_canary(d / "derive", log)
     own_tool(alpha, log)
     git(alpha, "add", "-A")
     git(alpha, "commit", "-qm", "alpha's trackers")
@@ -159,7 +167,7 @@ def fixture(area, env, log, prog):
     tracker(d, "FM-001", ask("May beta drop the old importer?", "ruling", ago(1)), "beta's ruling")
     tracker(d, "BB-003", ask("Merge beta's bench change?", "ceremony", ago(0)), "beta's button")
     tracker(d, "BB-005", ask("Is beta's sent-back ask a question?", "ruling", ago(0), proposal=""), "beta's ask without a proposal")
-    canary(d / "derive", log)
+    deriver_canary(d / "derive", log)
     own_tool(beta, log)
     write(beta / "README.md", "beta\n")
     git(beta, "add", "-A")
@@ -182,7 +190,7 @@ def fixture(area, env, log, prog):
         sh(gamma, "svn", "add", "-q", "shoalmark.toml", "docs", env=env)
         sh(gamma, "svn", "commit", "-q", "-m", "gamma's trackers", env=env)
         sh(gamma, "svn", "update", "-q", env=env)
-        canary(gamma / "docs" / "work-tracker" / "derive", log)
+        deriver_canary(gamma / "docs" / "work-tracker" / "derive", log)
         own_tool(gamma, log)
         config = Path(env["HOME"]) / ".subversion" / "config"           # the user's own: every helper a canary, which a local status names none of
         write(config, f"[helpers]\ndiff-cmd = {prog}\ndiff3-cmd = {prog}\neditor-cmd = {prog} editor\nmerge-tool-cmd = {prog}\n")
@@ -192,7 +200,7 @@ def fixture(area, env, log, prog):
     delta = area / "delta-plain"
     write(delta / "shoalmark.toml", '[kinds]\nPL = "Work"\n')
     tracker(delta / "docs" / "work-tracker", "PL-001", ask("Will you rotate delta's key?", "action", ago(1)), "delta's hands")
-    canary(delta / "docs" / "work-tracker" / "derive", log)
+    deriver_canary(delta / "docs" / "work-tracker" / "derive", log)
     own_tool(delta, log)
     out["delta-plain"] = delta
 
@@ -319,6 +327,12 @@ def run_checks(*, results=None):
         env = environment(home)
         order, named, with_svn = fixture(area, env, log, prog)
         try:
+            # Prove both kinds of canary can record a run before measuring silence; Git starts its helper through its own shell.
+            sh(named["alpha"], "git", "-c", f"alias.canary=!{shlex.quote(prog.as_posix())} control", "canary", env=env)
+            sh(named["alpha"], sys.executable, str(named["alpha"] / "docs" / "work-tracker" / "derive"), env=env)
+            live = log.read_text(encoding="utf-8")
+            add(f"Q7 · the fixture's shell helper and Python deriver canaries both record a deliberate start (saw {live!r})",
+                "canary control\n" in live and "derive ran\n" in live)
             write(log, "")
             locked_ok = os.name != "nt" and not os.access(str(named["locked"]), os.R_OK)
             watch = os.name != "nt"
