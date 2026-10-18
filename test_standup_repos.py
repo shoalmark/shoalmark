@@ -64,10 +64,36 @@ def tool_path():
     return Path(os.environ.get("SHOALMARK_Q7_TOOL") or HERE / "shoalmark.py").resolve()
 
 
+def guard_value(env, *, fold=False):
+    name = "NoDefaultCurrentDirectoryInExePath"
+    if not fold:
+        return env.get(name, "unset")
+    # Windows upper-cases os.environ's keys; a plain dict can also hold conflicting spellings.
+    matches = [(k, v) for k, v in env.items() if k.upper() == name.upper()]
+    if len(matches) > 1:
+        return f"multiple keys: {matches!r}"
+    return matches[0][1] if matches else "unset"
+
+
+def guard_value_controls():
+    upper = {"NODEFAULTCURRENTDIRECTORYINEXEPATH": "1"}
+    duplicate = dict(upper, NoDefaultCurrentDirectoryInExePath="1")
+    return [
+        ("Q7 · the environment lookup reads the upper-case guard with case folding", guard_value(upper, fold=True) == "1", ""),
+        ("Q7 · the environment lookup keeps exact case without folding", guard_value(upper, fold=False) == "unset", ""),
+        ("Q7 · the environment lookup rejects two spellings of the guard", guard_value(duplicate, fold=True) != "1", guard_value(duplicate, fold=True)),
+    ]
+
+
 def environment(home, path=None):
     """A run's environment: this process's, without git's own variables and `NoDefaultCurrentDirectoryInExePath`, with `home` as every system's home
     and no global or system git configuration."""
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "SHOALMARK_")) and k not in ("XDG_STATE_HOME", "NoDefaultCurrentDirectoryInExePath")}
+    env = {}
+    guard = "NODEFAULTCURRENTDIRECTORYINEXEPATH" if os.name == "nt" else "NoDefaultCurrentDirectoryInExePath"
+    for k, v in os.environ.items():
+        name = k.upper() if os.name == "nt" else k
+        if not name.startswith(("GIT_", "SHOALMARK_")) and name not in ("XDG_STATE_HOME", guard):
+            env[k] = v
     env.update(HOME=str(home), USERPROFILE=str(home), GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0",
                SHOALMARK_CMD="shoalmark", PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1")
     if os.name == "nt":
@@ -328,6 +354,7 @@ def run_checks(*, results=None):
     tool = tool_path()
     results = [] if results is None else results
     add = lambda label, ok, detail="": results.append((label, ok, detail))
+    results.extend(guard_value_controls())
     with tempfile.TemporaryDirectory(prefix="shoalmark-q7-") as tmp:
         area = Path(tmp).resolve()
         home, cwd, logs = area / "home", area / "cwd", area / "logs"
@@ -476,7 +503,7 @@ def run_checks(*, results=None):
             guard_seen, guard_on = [], [False]
             def guard_watch(event, a):
                 if guard_on[0] and event == "subprocess.Popen" and isinstance(a[3], dict):
-                    guard_seen.append(a[3].get("NoDefaultCurrentDirectoryInExePath", "unset"))
+                    guard_seen.append(guard_value(a[3], fold=os.name == "nt"))
             sys.addaudithook(guard_watch)
             was = os.environ.get("NoDefaultCurrentDirectoryInExePath")
             after_ = []
