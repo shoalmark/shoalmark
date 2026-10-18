@@ -4,18 +4,15 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: build
+next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you allocate v0.20.1 and the releases after it as this tracker's table of 2026-10-15 sets out: v0.20.1 complete, with B1, the board's design, the probe's final prompt and the ten quick wins beside their deletions?"
+ask: "Do you allocate v0.20.2 as the table of 2026-10-18 sets out: /find-drift and the second skill in one Claude plugin; the prune of shoalmark.py's prose, proven prose-only; the comment ratchet; FM-037's guard on agents and skills; five conversions; the text fixes; the suite's Chrome keychain flag?"
 ask-kind: ruling
-ask-since: 2026-10-15
-ask-options: "yes | no: the allocation of 12 October stands"
+ask-since: 2026-10-18
+ask-options: "yes | yes, with the changes I name | no: what follows v0.20.1 stays as allocated on 15 October"
 ask-proposal: "yes"
-answer: "accepted - yes but it is eleven quick wins to my count including guided-answer"
-answered: 2026-10-17
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -25,8 +22,32 @@ is designed or built.
 
 ## What is true now
 
+**2026-10-18 — v0.20.2: shoalmark's first two skills, in one Claude plugin, for the Owner's ruling.** These are the
+Owner's rulings of 18 October. `/find-drift` is the first skill. The second builds on it, and its name is the Owner's
+to give. Both ship in v0.20.2 as a Claude plugin. This table builds nothing.
+
+| Release | Work | Deletion beside it | Depends on |
+|---|---|---|---|
+| v0.20.2 | `/find-drift`, shoalmark's first skill. It finds where an agent could drift off track, and ranks what can become a check. It looks for three things: a rule held only as prose, two sources that disagree, and obsolete text that still reads as live. It reads, and it changes nothing but its report. Its spec is corrected by a second run, on a codebase shoalmark did not shape. | — | Its first run, on shoalmark at `5dcdcc5` (recorded privately) |
+| v0.20.2 | The second skill, built on `/find-drift`. It reads the newest report, and runs `/find-drift` first where no report is fresh. It moves history to the record and rules to checks; only an external quirk stays as prose. | — | `/find-drift` |
+| v0.20.2 | The prune of `shoalmark.py`'s prose, proven prose-only, made on v0.20.1's tagged head. Beside it goes the ratchet that holds code comments to external quirks. | A comment that holds a tracker id, a review id, a date or a ruling: its reason is in the commit log and the trackers. | v0.20.1's tag |
+| v0.20.2 | FM-037's guard over the seat definitions (`.claude/agents/`) and the skills folder: a change to either must be the Owner's signed commit. | — | A design round first |
+| v0.20.2 | Five small conversions, each a rule made a check: the ship log only grows; triage rows only grow; no line of a commit message begins with `---`; the allowed test runner; no home folder's path in public text. | The prose each one replaces | v0.20.1's tag |
+| v0.20.2 | The text fixes `/find-drift`'s first run found, in the rule files: sources that disagree, and obsolete text. The seat definitions are the Owner's to type. | The obsolete text | The second skill |
+| v0.20.2 | The suite's Chrome keychain flag: on macOS, the suite starts Chrome with `--use-mock-keychain`. | — | v0.20.1's head |
+| After v0.20.2 | R5; defects 1, 3 and 4; the four larger conversions; the broader R24 boundary work. | — | The Owner's allocation |
+
+- **When:** the work may start now.
+  - It lands only after v0.20.0 and v0.20.1 are merged, and it merges cleanly onto v0.20.1's head.
+  - It never takes a review slot from v0.20.1.
+  - A branch that no longer merges cleanly is built again from that head.
+- **This row replaces:** the harness plugin of the 15 October table's row *After v0.20.1*. The rest of that row moves
+  to *After v0.20.2*.
+- **Sizes and seats:** S or M each, on seats of v0.20.2's own, on either harness.
+- **Confidence:** 60 % that v0.20.2 is tagged within a week after v0.20.1's tag.
+
 **2026-10-15 — v0.20.1 ships complete, for the Owner's ruling: B1, the board's design, the probe's final prompt, the
-ten quick wins beside the deletions that can ship with them, and R13, R15, R17 and R22.** This is the Owner's direction
+eleven quick wins beside the deletions that can ship with them, and R13, R15, R17 and R22.** This is the Owner's direction
 of 15 October (recorded privately), set out here for their signed answer. It replaces the allocation of 12 October for
 the releases after v0.20.0. The current path's line 5 (`fd44d86`) pairs each deletion with the quick win that takes its
 place, and within a release deleting comes first. This table builds nothing, and the planning feature this tracker
@@ -276,10 +297,16 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted with a change
 **signed** — adaec88 · G
 
+**2026-10-17** · Do you allocate v0.20.1 and the releases after it as this tracker's table of 2026-10-15 sets out: v0.20.1 complete, with B1, the board's design, the probe's final prompt and the ten quick wins beside their deletions?
+**answered** — accepted - yes but it is eleven quick wins to my count including guided-answer · holgo99
+**relation** — accepted with a change
+**signed** — 8a13e8c · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-18 | v0.20.2's allocation ask filed: shoalmark's first two skills in one Claude plugin, on the Owner's rulings of 18 October. The answer of 17 October recorded under the asks, and v0.20.1's count of quick wins made the Owner's eleven, the guided answer among them. |
 | 2026-10-15 | The allocation ask filed: v0.20.1 complete, on the Owner's direction of 15 October (recorded privately). |
 | 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
