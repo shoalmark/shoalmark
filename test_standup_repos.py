@@ -70,6 +70,8 @@ def environment(home, path=None):
     env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "SHOALMARK_")) and k not in ("XDG_STATE_HOME", "NoDefaultCurrentDirectoryInExePath")}
     env.update(HOME=str(home), USERPROFILE=str(home), GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0",
                SHOALMARK_CMD="shoalmark", PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1")
+    if os.name == "nt":
+        env.update(APPDATA=str(home / "AppData" / "Roaming"), LOCALAPPDATA=str(home / "AppData" / "Local"))
     if path:
         env["PATH"] = path
     return env
@@ -192,8 +194,17 @@ def fixture(area, env, log, prog):
         sh(gamma, "svn", "update", "-q", env=env)
         deriver_canary(gamma / "docs" / "work-tracker" / "derive", log)
         own_tool(gamma, log)
-        config = Path(env["HOME"]) / ".subversion" / "config"           # the user's own: every helper a canary, which a local status names none of
-        write(config, f"[helpers]\ndiff-cmd = {prog}\ndiff3-cmd = {prog}\neditor-cmd = {prog} editor\nmerge-tool-cmd = {prog}\n")
+        config_home = Path(env["APPDATA"]) / "Subversion" if os.name == "nt" else Path(env["HOME"]) / ".subversion"
+        config = config_home / "config"                       # the fixture user's own configuration, under the home that the snapshot covers
+        helper = prog
+        if os.name == "nt":                                 # Subversion's native helpers cannot execute a shell script's shebang
+            helper = prog.with_name("svn-helper.exe")
+            problem = launcher(helper, log)
+            assert not problem, problem
+            sh(area, str(helper), env=env)
+            assert "ran\n" in log.read_text(encoding="utf-8"), "the native Subversion helper did not record its control start"
+        editor = subprocess.list2cmdline([str(helper), "editor"]) if os.name == "nt" else shlex.quote(str(helper)) + " editor"
+        write(config, f"[helpers]\ndiff-cmd = {helper}\ndiff3-cmd = {helper}\neditor-cmd = {editor}\nmerge-tool-cmd = {helper}\n")
         out["gamma"] = gamma
 
     # delta: a plain folder, no version control, no name of its own — the folder's
