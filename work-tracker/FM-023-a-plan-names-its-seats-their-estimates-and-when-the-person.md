@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you allocate v0.20.1 and the releases after it as this tracker's table of 2026-10-15 sets out: v0.20.1 complete, with B1, the board's design, the probe's final prompt and the ten quick wins beside their deletions?"
-ask-kind: ruling
-ask-since: 2026-10-15
-ask-options: "yes | no: the allocation of 12 October stands"
-ask-proposal: "yes"
-answer: "accepted - yes but it is eleven quick wins to my count including guided-answer"
-answered: 2026-10-17
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -275,6 +267,11 @@ arc has run on it with its estimate–actual gap in the record.
 **answered** — accepted - with a change: B1, the landing, ships with v0.20.1, so that the probe starts from the published site; v0.20.1 carries B1, the probe's final prompt and what its first outside run needs; rows that put its date at risk move to v0.20.2 · holgo99
 **relation** — accepted with a change
 **signed** — adaec88 · G
+
+**2026-10-17** · Do you allocate v0.20.1 and the releases after it as this tracker's table of 2026-10-15 sets out: v0.20.1 complete, with B1, the board's design, the probe's final prompt and the ten quick wins beside their deletions?
+**answered** — accepted - yes but it is eleven quick wins to my count including guided-answer · holgo99
+**relation** — accepted with a change
+**signed** — 8a13e8c · G
 
 ## Ship log
 
