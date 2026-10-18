@@ -11,7 +11,8 @@ hook: "an agent drifts off track where a rule is held only as prose, two sources
 
 ## What is true now
 
-**Filed 2026-10-18; nothing is built.** Its work is v0.20.2's allocation, which FM-023 puts to the Owner (`6e29a6a`).
+**Filed 2026-10-18; nothing is built.** Its work is v0.20.2's allocation, which the Owner accepted in FM-023 (`88bf707`).
+The second skill is named `/prune-drift`, the Owner's word of 18 October (recorded privately).
 
 - **The problem:** a rule an agent should keep is often held only as prose: in `AGENTS.md`, the contributing guide, the
   triage rules, a seat definition or a brief. An agent may never read it, or may read it and go the other way. Two
@@ -20,7 +21,7 @@ hook: "an agent drifts off track where a rule is held only as prose, two sources
   - **`/find-drift`,** a read-only skill. It finds these three kinds of drift point, grades each rule on five layers,
     and ranks what can become a check. The layers are: impossible to break; the build fails; a rule or a review; a
     skill; a style guide.
-  - **A second skill,** built on it, that moves history to the record and rules to checks.
+  - **`/prune-drift`,** the second skill, built on it, that moves history to the record and rules to checks.
   - Both skills ship in one Claude plugin.
 - **Its first run,** on shoalmark at `5dcdcc5`, is recorded privately.
 
@@ -31,7 +32,7 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 ## Done when
 
-- `/find-drift` and the second skill ship in v0.20.2's Claude plugin, each reviewed like code.
+- `/find-drift` and `/prune-drift` ship in v0.20.2's Claude plugin, each reviewed like code.
 - A second run, on a codebase shoalmark did not shape, has corrected `/find-drift`'s spec.
 - shoalmark's own report is in the record.
 
@@ -39,4 +40,5 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 | Date | Event |
 |---|---|
+| 2026-10-18 | The second skill named `/prune-drift`, the Owner's word of 18 October (recorded privately); v0.20.2's allocation accepted (`88bf707`). |
 | 2026-10-18 | Filed, with v0.20.2's allocation ask on FM-023. |
