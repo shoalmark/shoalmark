@@ -7,6 +7,7 @@ in-process with an argv list, so a non-zero exit is observable without a subproc
 import ast
 import collections
 import hashlib
+import html
 import importlib.util
 import io
 import itertools
@@ -6040,6 +6041,56 @@ day.value.path: sein Pfad
 day.value.cmd: der Befehl des Werkzeugs
 day.value.branch: der Name des Standardzweigs
 """
+def _c4_english(shown):
+    return sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
+                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
+                   if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
+
+
+def _c4_cut_prompts(dumps, prompts, text):
+    """Cut only built DAY prompts in Chrome's text-node spelling; count each against its templates in each view."""
+    if not isinstance(prompts, dict) or set(prompts) != {"standup", "closeout"}:
+        return "", False, "DAY data missing or incomplete"
+    built = {kind: re.sub(r"\s+", " ", html.escape(prompt, quote=False)) for kind, prompt in prompts.items() if prompt}
+    counts, texts = {kind: [] for kind in built}, []
+    for dump in dumps:
+        shown = text(dump)
+        for kind, prompt in built.items():
+            expected = dump.count(f'<template id="day-{kind}">')
+            counts[kind].append((shown.count(prompt), expected))
+            shown = shown.replace(prompt, "")
+        texts.append(shown)
+    valid = all(sum(expected for _, expected in pairs) > 0 and all(found == expected for found, expected in pairs)
+                for pairs in counts.values())
+    return " ".join(texts), valid, f"built {list(built)}; counts (found, templates) {counts}"
+
+
+def _c4_prompt_controls(check):
+    """The same cut without a browser: exact counts, text-node escaping, and labels beside a prompt."""
+    text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
+    prompts = {"standup": "Read & <x> 'my_repo'\ntrackers", "closeout": "Read the asks\n  still open"}
+    templates = {kind: f'<template id="day-{kind}"><pre class="cmd">{html.escape(prompt, quote=False)}</pre></template>'
+                 for kind, prompt in prompts.items()}
+    both = "".join(templates.values())
+    shown, ok, counts = _c4_cut_prompts([both, both], prompts, text)
+    check(f"C4 · without a browser, both built prompts are cut once in each text ({counts})", ok and not shown.strip())
+    missing = both.replace(html.escape(prompts["closeout"], quote=False), "")
+    _, ok, counts = _c4_cut_prompts([missing, both], prompts, text)
+    check(f"C4 · a built prompt missing from one text fails the cut ({counts})", not ok)
+    twice = both.replace('</pre>', '</pre><pre>' + html.escape(prompts["standup"], quote=False) + '</pre>', 1)
+    _, ok, counts = _c4_cut_prompts([both, twice], prompts, text)
+    check(f"C4 · a built prompt present twice in one template fails the cut ({counts})", not ok)
+    labelled = both.replace('<pre class="cmd">', '<p>open</p><pre class="cmd">', 1)
+    shown, ok, counts = _c4_cut_prompts([labelled, both], prompts, text)
+    check("C4 · an English dialog label beside a prompt is still found after the cut", ok and _c4_english(shown) == ["open"])
+    refused = dict(prompts, closeout="")
+    shown, ok, counts = _c4_cut_prompts([templates["standup"], ""], refused, text)
+    check(f"C4 · an unbuilt prompt cuts nothing; a built one must occur at least once across the texts ({counts})",
+          ok and not shown.strip() and not _c4_cut_prompts(["", ""], refused, text)[1])
+
+
+_c4_prompt_controls(check)
+
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
 # a wordmark as a person draws one: the mark stroked, the name filled, both in the page's ink; an id the page also uses
 _WORDMARK = ('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
@@ -6104,11 +6155,16 @@ with tempfile.TemporaryDirectory() as d:
                 dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag]).stdout
                 text = lambda d_: re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", d_))
                 chrome = lambda d_: d_[:d_.find('<div class="md">')] if '<div class="md">' in d_ else d_        # a tracker's own text is the repository's, not the board's
-                shown = text(dom("")) + " " + text(chrome(dom("#=MSR-001")))
-                english = sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
-                                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
-                                  if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
-                check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english})", not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
+                from test_day_prompts import day_data
+                shown, cut_ok, counts = _c4_cut_prompts([dom(""), chrome(dom("#=MSR-001"))], day_data(de_page), text)
+                english = _c4_english(shown)
+                check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english}; {counts})",
+                      cut_ok and not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
+                _, labelled_page, _, _, _ = board_with(repo_labels_yaml=GERMAN + "\nday.asks: open\n")
+                shown, cut_ok, counts = _c4_cut_prompts([dom(""), chrome(dom("#=MSR-001"))], day_data(labelled_page), text)
+                english = _c4_english(shown)
+                check(f"C4 · an English dialog label outside the prompt is found in the German board (found: {english}; {counts})",
+                      cut_ok and english == ["open"])
                 _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
                 ldom = dom("")
                 check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
