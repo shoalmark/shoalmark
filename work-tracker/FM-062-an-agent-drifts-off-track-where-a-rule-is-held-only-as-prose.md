@@ -13,7 +13,7 @@ hook: "an agent drifts off track where a rule is held only as prose, two sources
 
 ## What is true now
 
-**Filed 2026-10-18. Judged In Progress, P2, on 2026-10-19, before the first build commit; nothing is built.** Its work
+**Filed 2026-10-18. Judged In Progress, P2, on 2026-10-19, before the first build commit; `/find-drift`'s spec and the plugin are built, review next.** Its work
 is v0.20.2's allocation, which the Owner accepted in FM-023 (`88bf707`). Work on v0.20.2 starts on branches, on the
 Owner's ruling of 19 October, and lands after v0.20.1. `/find-drift`'s spec and the plugin come first.
 The second skill is named `/prune-drift`, the Owner's word of 18 October (recorded privately).
@@ -47,3 +47,4 @@ only prose are where an agent drifts. Finding them is the first step to making t
 | 2026-10-19 | Judged In Progress, P2, by the Planner, before the first build commit: `/find-drift`'s spec and the plugin, on `fm/062-find-drift`. |
 | 2026-10-18 | The second skill named `/prune-drift`, the Owner's word of 18 October (recorded privately); v0.20.2's allocation accepted (`88bf707`). |
 | 2026-10-18 | Filed, with v0.20.2's allocation ask on FM-023. |
+| 2026-10-19 12:38:39 CEST | `/find-drift`'s spec and the plugin built in `818eb0c` and `0289061`; the standalone structure test passes on Python 3.15 and 3.9.6, with all four mutants refused on both. Review next; suite registration and `drift_sources` reader support follow on the integration lane. |
