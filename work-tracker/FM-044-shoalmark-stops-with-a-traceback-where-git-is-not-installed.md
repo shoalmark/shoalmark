@@ -1,25 +1,22 @@
 ---
 id: FM-044
-status: In Progress
+status: Shipped
 considered: FM-003
 tags: bug
 next: build
 triaged: 2026-10-13
-rank: 3
 tier: P1
 hook: "A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped with a traceback before it wrote anything."
-ask: "Which disposition should the B readers take after RV-3092–RV-3094 exhausted their review rounds?"
-ask-kind: ruling
-ask-since: 2026-10-13
-ask-proposal: "Keep the readers held; prepare structural XML validation for Owner disposition without a third review, while local components continue."
-answer: "accepted - Take the prepared structural XML validation and the five reader changes into production now, as their own change, with one bounded verification: the diff is the prepared fix, its checks pass, nothing else changes; no new finding below P1. RV-3092-RV-3094 get no third round."
-answered: 2026-10-15
-answered-by: holgo99
 ---
 
 # FM-044 — shoalmark stops with a traceback where git is not installed, on Subversion too
 
 ## What is true now
+
+**2026-10-18 — Shipped: Subversion without git, released in v0.20.0.** #173 (`484e274`) and the B readers with
+their structural XML validation, #182 (`9218885`), are on main, and v0.20.0's release PR carries this record. The
+release archive that fetches the tool without git is FM-004's (#184). The plain folder stays held under D3, and the
+choice of platforms under D4. The release PR's dry run of `release.yml` is the archive's last check before the tag.
 
 **2026-10-15 — the Owner's FM-044 answer is carried on `fm/044-readers-into-production`, not pushed:** merge `9fd5302` brings the B guard and history readers (`99968f2`) onto main `5f792d6` as git's own result, the launch allowlist cut to the five keys the merged tool starts, and `8b9ea77` adds the prepared fix of 13 October, recorded privately (`svn_xml_proof` and the five readers), with 50 of the 293 B controls failing at the merge and all 293 passing at `8b9ea77`; protected Subversion acceptance stays held, nothing claims an authenticated author or a signature on Subversion, RV-3092–RV-3094 get no third round, and one bounded Reviewer verification, then the Owner's push for one full CI run, is next.
 
@@ -184,10 +181,18 @@ the older plain-folder and all-five-platform proof acceptance has been supersede
   manifest. The pending scoped archive re-review, stage-1 integration, release-script change and dry run remain due.
 - **README and ADOPT** explain the supported Git/Subversion paths and the held plain-folder scope.
 
+## Asks
+
+**2026-10-15** · Which disposition should the B readers take after RV-3092–RV-3094 exhausted their review rounds?
+**answered** — accepted - Take the prepared structural XML validation and the five reader changes into production now, as their own change, with one bounded verification: the diff is the prepared fix, its checks pass, nothing else changes; no new finding below P1. RV-3092-RV-3094 get no third round. · holgo99
+**relation** — accepted with a change
+**signed** — da46de3 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-18 | Shipped: #173 (`484e274`) and #182 (`9218885`) on main, released in v0.20.0. The answered ask cleared (`da46de3` · G). |
 | 2026-10-15 18:58 CEST | The Owner's answer of 15 October, carried: merge `9fd5302` takes the B readers (`99968f2`) onto main `5f792d6` as git's three-way result; the launch allowlist is main's 28 keys less the 23 the B branch removed, five, exactly the merged tool's starts, with the ceiling and its pin unchanged. `8b9ea77` applies the prepared fix of 13 October, recorded privately, with offsets only: the five readers, `svn_xml_proof` and `run_binding_controls` are its bytes, and every other definition keeps the merge's AST. The 293 B controls: 243 at the merge, the prepared 50 failing, and 293 at `8b9ea77`. One bounded Reviewer verification, then the Owner's push for one full CI run, remain due. |
 | 2026-10-15 08:11 CEST | Owner PR #173 CI run `38614474342` at `3932e7f`: Linux and macOS green; on Windows 3.12 `test_core.py` failed the launch ceiling under a CRLF checkout and ended in a traceback, and Windows 3.9's FM-039 board render timed out — and cost the Owner a CI run. Third fix round, Owner-approved: `-text` for the two pinned launch files (RV-3250); RV-3088's history checks catch `RatchetHistoryError` alone, on their own line (RV-3251). A macOS CRLF clone reproduces CI's six FAIL lines and the traceback at `3932e7f` and is all green corrected; RV-3252 stays the Owner's. The Reviewer's critical pass, then one Owner CI run, remain due. |
 | 2026-10-14 19:02 CEST | Owner PR #173 CI run `38589202689` at `46f8732`: Linux and macOS green, `test_core.py` included; both Windows jobs ran the suite to its end with 5 FAIL and skipped `test_core.py` — and cost the Owner a CI run. Second fix round, Owner-approved: A1's board link and reconfigure checks compare as the product spells paths (RV-3230, RV-3231); `svn_local_properties` returns `svn:` values with LF as stored, which Windows' `proplist --xml` prints with CRLF (RV-3232, the one product change); the POSIX-shell CLI test skips by name on Windows (RV-3233); the differential clears Git's read-only bit before removing (RV-3234). Each control fails on `46f8732` and passes corrected; the stage tail gives 619/619. The Reviewer's critical pass, then one Owner CI run, remain due. |

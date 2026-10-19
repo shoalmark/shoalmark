@@ -8,19 +8,15 @@ triaged: 2026-10-13
 tier: P1
 rank: 2
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
-ask: "The carried archive fails 11 of its checks on main: #173 prints a Subversion notice before each refusal those checks pin to one line. Which way do you take it?"
-ask-kind: ruling
-ask-since: 2026-10-15
-ask-options: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do | a: the 11 checks accept the notice line before the refusal line, a test change only | c: --vendor prints no Subversion notice | hold: the carry waits, and FM-004 leaves v0.20.0"
-ask-proposal: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do"
-answer: "accepted - b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do"
-answered: 2026-10-16
-answered-by: holgo99
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
 
 ## What is true now
+
+**2026-10-18 — the release archive ships in v0.20.0, and FM-004 stays open.** Its answered ask is cleared, signed
+`25dc9db`. Its *Done when* names the three outside reports, which v0.20.1's outside run is to give; the archive is not
+that.
 
 **2026-10-15 — how the carry meets #173's notice line is the Owner's to rule (the ask above).** On this branch,
 `258cc3c` follows the carry as option (b): `--vendor`'s four refusals fold the notice into their one line, as
@@ -107,10 +103,16 @@ the limits are said: three runs, one model family, an invented project.
 **relation** — accepted with a change
 **signed** — fcff753 · G
 
+**2026-10-16** · The carried archive fails 11 of its checks on main: #173 prints a Subversion notice before each refusal those checks pin to one line. Which way do you take it?
+**answered** — accepted - b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do · holgo99
+**relation** — accepted the proposal
+**signed** — 25dc9db · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-18 | The answered ask cleared (`25dc9db` · G). The archive (#184, `1148114`) ships in v0.20.0; FM-004 stays open for its three outside reports. |
 | 2026-10-15 | Ask filed: how the carried archive meets #173's Subversion notice line; option (b), `258cc3c`, on this branch after the carry. |
 | 2026-10-15 19:50 CEST | FM-004 carried as answered: merge `9bed976` (integration `284a4e8`, verdict `eabee22`) and `9d735ab` (`archive_source()` from the prepared fix of 13 October, recorded privately). Core 321, release.yml 33, the other `--vendor` blocks, `--check` and reproducible builds pass on 3.15 and 3.9.6; 11 of 35 archive checks fail on #173's Subversion notice line, a finding for the Owner. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
