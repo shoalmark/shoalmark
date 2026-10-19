@@ -218,6 +218,8 @@ day.closeout.spoken: den Abschluss-Prompt kopieren
 day.standup.dialog: Der Standup-Prompt
 day.closeout.dialog: Der Abschluss-Prompt
 day.paste: "Fügen Sie ihn in die Sitzung ein, die Sie für dieses Repository nutzen — Claude Code, Codex oder eine andere —, auf dem Rechner, auf dem das Repository liegt."
+# day.copy: a draft — the native read is the go-to-market seat's
+day.copy: Prompt
 day.asks: Worum er bittet
 day.standup.asks: "Er bittet die Sitzung, einen Punkt nach dem anderen zu nehmen und auf Ihr Wort zu warten. Ein Prompt bittet; er kann keine Sitzung zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Ihre Entscheidung hält der Befehl fest, den Sie in Ihrem eigenen Terminal ausführen."
 day.closeout.asks: "Er bittet die Sitzung, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Sitzung über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält Ihre Zahl getragener Nachrichten aus den Händen der Sitzung. Eine Nachricht ist nie eine Antwort."

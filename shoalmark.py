@@ -3897,7 +3897,7 @@ h2.sh:before{content:"##";content:"##" / "";display:inline-block;min-width:2ch;c
 h3.sh:before{content:"###";content:"###" / "";display:inline-block;min-width:3ch;color:var(--mute);font-weight:400}
 details>summary{list-style:none;cursor:pointer}details>summary::-webkit-details-marker{display:none}
 details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>summary .sh:before{content:"v";content:"v" / ""}
-.day{margin:6px 0 0}.dr{flex-wrap:wrap;margin:8px 0 4px}.dr .c{color:var(--dim);font-weight:400;flex:1 1 20ch}.dr .act{margin-left:auto;font-weight:400}
+.day{margin:6px 0 0}.dr{flex-wrap:wrap;margin:8px 0 4px}.dr .c{color:var(--dim);font-weight:400;flex:1 1 20ch}.dr .act{margin-left:auto;font-weight:400}.dr .why{flex:1 1 100%;font-weight:400}
 /* the row: what it is · TYPE · state … its actions, boxed, last; rows 3px apart, a rule between them. Rows line up (G4): the id in a column
    of its own, 10ch; the question or title, and the state line under it, start on one column after it */
 .row{padding:3px 0;border-top:1px solid var(--line)}.sh+.row,.sub+.row,summary+.row{border-top:0}
@@ -4394,6 +4394,7 @@ LABELS = {
     "day.closeout.button": "close-out prompt", "day.closeout.spoken": "copy the close-out prompt",
     "day.standup.dialog": "The stand-up prompt", "day.closeout.dialog": "The close-out prompt",
     "day.paste": "Paste it into the session you use for this repository — Claude Code, Codex or another — on the machine where the repository is.",
+    "day.copy": "prompt",
     "day.asks": "What it asks",
     "day.standup.asks": "It asks the session to take one item at a time and wait for your word. A prompt asks; it cannot make a session obey. A message is never an answer: "
                         "what records your decision is the command you run in your own terminal.",
@@ -4885,12 +4886,13 @@ def day_html(labels, prompts=None):
     shown = lambda v: json.dumps(v, ensure_ascii=False)[1:-1][:80] + ("…" if len(v) > 80 else "")     # a line break or a quote shown as written; `c` escapes it once
     rows, dialogs = [], []
     for kind, (text, failed) in prompts.items():
-        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span><span class="c">· {e("day." + kind + ".row")}</span>'
-                    f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day." + kind + ".button")}</button></template>')
-        body = (f'<p class="dp">{e("day.paste")}</p><pre class="cmd">{html_escape(text)}</pre>'
-                f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("answer.sign.copy")}</button>'
-                f'<span class="said" aria-live="polite"></span></p>' if text else
-                "".join(f'<p class="dp hot">{e("day.refused", e("day.value." + k), " " + c(shown(v)) if v else "", e("day.refused." + why, DAY_CAP))}</p>' for k, v, why in failed))
+        reasons = [e("day.refused", e("day.value." + k), " " + c(shown(v)) if v else "", e("day.refused." + why, DAY_CAP)) for k, v, why in failed]
+        act = (f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day." + kind + ".button")}</button>'
+               if text else "".join(f'<span class="why hot">{r}</span>' for r in reasons))
+        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span><span class="c">· {e("day." + kind + ".row")}</span>{act}</template>')
+        body = (f'<p class="said" aria-live="polite"></p><p class="dp">{e("day.paste")}</p><pre class="cmd">{html_escape(text)}</pre>'
+                f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day.copy")}</button></p>' if text else
+                "".join(f'<p class="dp hot">{r}</p>' for r in reasons))
         runs = e("day." + kind + ".runs", c(CMD + (" --standup" if kind == "standup" else " --owner")), c(CMD + " --answered"), c(os.path.relpath(TRACKER_DIR / "derive", ROOT).replace(os.sep, "/")))
         dialogs.append(f'<template id="day-{kind}"><form method="dialog" class="sign"><h3>{e("day." + kind + ".dialog")}</h3>{body}'
                        f'<h4>{e("day.asks")}</h4><p>{e("day." + kind + ".asks")}</p><h4>{e("day.runs")}</h4><p>{runs}</p>'

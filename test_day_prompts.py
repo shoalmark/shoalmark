@@ -229,6 +229,10 @@ def run_checks(*, results=None):
                     code == 0 and len(refusal) == 1 and html.escape(fm.LABELS["day.value.branch"], quote=False) in refusal[0].replace("&#x27;", "'")
                     and f"<code>{html.escape(hostile, quote=False)}</code>" in refusal[0] and "<pre" not in closeout and 'class="copy"' not in closeout
                     and data is not None and data["closeout"] == "" and data["standup"] == expected("standup", SAMPLE) and "<pre" in standup)
+                row = template(page, "day-row-closeout")
+                add(f"day · board: default branch {hostile!r} gives the close-out's row no button, and the dialog's reason as its line in coral "
+                    f"(saw {row!r})"[:400], len(refusal) == 1 and "DAYOPEN" not in row and f'<span class="why hot">{refusal[0]}</span>' in row
+                    and 'onclick="DAYOPEN(\'standup\')"' in template(page, "day-row-standup"))
                 add(f"day · board: default branch {hostile!r} appears nowhere in the page unescaped",
                     hostile not in page and ("<b>y" not in page if "<b>" in hostile else "&y" not in page))
 

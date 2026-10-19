@@ -34,7 +34,7 @@ R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\
 # FM-030, R9's two quick wins (exact text, RV-3296): what the candidate's board page may add beside the baseline's, specified here
 # and matched exactly, each once — the ten lines of script the day adds, as written; four inert templates after the dialog, whose
 # markup is fixed and whose text and label-valued attributes (the board's words, the four values) may vary; the prompts they copy,
-# `,DAY={"standup": …, "closeout": …}` before `BRANCH=`; and the thirty-one `day.*` words in the label table, by key. The answer's
+# `,DAY={"standup": …, "closeout": …}` before `BRANCH=`; and the thirty-two `day.*` words in the label table, by key. The answer's
 # second screen copies through the day's clipboard helper: one line in place of its own three. Taken out, with FM-057's page
 # (`fm057_page_dropped`), the page is the baseline's.
 DAY_SCRIPT = tuple(("\n" + line).encode("utf-8") for line in (
@@ -55,18 +55,18 @@ _ICO = re.escape('<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fi
 _REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb"</p><h4>" + _T + rb"</h4><p>" + _T + rb'</p><p class="ddim">' + _T
          + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
 DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
-    rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span><span class="c">' + _T + rb'</span><button class="act" type="button" onclick="DAYOPEN\(\''
-    + k + rb'\'\)" aria-label="' + _A + rb'">' + _ICO + _T + rb"</button></template>",
+    rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span><span class="c">' + _T + rb'</span>(?:<button class="act" type="button" onclick="DAYOPEN\(\''
+    + k + rb'\'\)" aria-label="' + _A + rb'">' + _ICO + _T + rb'</button>|(?:<span class="why hot">' + _C + rb"</span>)+)</template>",
     rb'\n<template id="day-' + k + rb'"><form method="dialog" class="sign"><h3>' + _T + rb"</h3>(?:"
-    + rb'<p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _ICO + _T
-    + rb'</button><span class="said" aria-live="polite"></span></p>' + rb'|(?:<p class="dp hot">' + _C + rb"</p>)+)" + _REST))
+    + rb'<p class="said" aria-live="polite"></p><p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _ICO + _T
+    + rb'</button></p>' + rb'|(?:<p class="dp hot">' + _C + rb"</p>)+)" + _REST))
 _J = rb'"(?:[^"\\]|\\.)*"'                           # a JSON string
 DAY_DATA = re.compile(rb',DAY=\{"standup": ' + _J + rb', "closeout": ' + _J + rb"\}(?=,BRANCH=)")
 DAY_KEYS = ("day.standup.title", "day.standup.row", "day.standup.button", "day.standup.spoken", "day.closeout.title", "day.closeout.row",
             "day.closeout.button", "day.closeout.spoken", "day.standup.dialog", "day.closeout.dialog", "day.paste", "day.asks", "day.standup.asks",
             "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.not", "day.not.text", "day.fixed", "day.refused",
             "day.refused.chars", "day.refused.long", "day.refused.none", "day.refused.split", "day.value.name", "day.value.path", "day.value.cmd",
-            "day.value.branch", "day.copied", "day.nocopy")
+            "day.value.branch", "day.copied", "day.nocopy", "day.copy")
 DAY_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in DAY_KEYS)
 DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
             b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
@@ -1045,7 +1045,7 @@ FM054_ON_A2_EDITS = (
      '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n'),
 )
 PR_C_JOIN_EDITS = (
-    ('.day{margin:6px 0 0}\n', '.day{margin:6px 0 0}.dr{flex-wrap:wrap;margin:8px 0 4px}.dr .c{color:var(--dim);font-weight:400;flex:1 1 20ch}.dr .act{margin-left:auto;font-weight:400}\n'),
+    ('.day{margin:6px 0 0}\n', '.day{margin:6px 0 0}.dr{flex-wrap:wrap;margin:8px 0 4px}.dr .c{color:var(--dim);font-weight:400;flex:1 1 20ch}.dr .act{margin-left:auto;font-weight:400}.dr .why{flex:1 1 100%;font-weight:400}\n'),
     ('  // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop\n'
      '  if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));\n'
      '    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`\n'
