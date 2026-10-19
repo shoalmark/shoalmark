@@ -17,6 +17,10 @@ is designed or built.
 
 ## What is true now
 
+**2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately): the
+hooks that rebuild the board after a checkout, a merge and a rebase. v0.20.0 ships as built, with R11's upgrade note.
+The 15 October table below has a v0.20.1 row for it, and FM-057 holds the case it must cover.
+
 **2026-10-18 — v0.20.0 is cut from main as it stands.** This is the Owner's ruling of 18 October (recorded privately).
 Beside the 12 October allocation and R21, v0.20.0 holds what #189 and #193 merged:
 - **#189:** R22, R15, R13, and R11 with what the board read;
@@ -72,6 +76,7 @@ proposes stays parked. The rows that read v0.20.0 moved there on 18 October, by 
 | v0.20.1 | The session list with copy-to-resume (M), the same list in `--sessions` (S), and who asked (S–M), after the fixes of defects 6 and 7 (FM-056, FM-024). | R10's places half: the logo and the labels become settings, the organisation's brand place goes, and `--vendor` stops copying `brand/`. | R6's look, 20 October, for the harness and resume columns; without it they read *not known* and the rest stands |
 | v0.20.1 | Receipts, read from git (M): counts the record holds, each with its definition, never a total in a heading. | — (R13 went ahead, in v0.20.0) | R4; FM-055's definitions |
 | v0.20.1 | R17: partial and untagged vendoring go. Defect 5's class fix. | — | — |
+| v0.20.1 | R11's hook half comes back: the hooks that rebuild the board after a checkout, a merge and a rebase (FM-057), on the Owner's word of 19 October (recorded privately). | — | v0.20.0's tag |
 | After v0.20.1 | R5; defects 1, 3 and 4; the harness plugin; broader R24 boundary work. | — | As on 12 October |
 | v0.21.x | Research and complex work, each from a round the Owner allocates, as line 6 says. | — | The Owner's allocation |
 | Unchanged | The held rows R6, R7, R8, R16, R20, D3 and D4, looked at on 20 October; R25–R27 kept; #154's prerequisite wording as replaced by the Owner's signed answer of 12 October in adaec88 (#168). | — | As on 12 October |
@@ -317,6 +322,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-19 | R11's hook half comes back in v0.20.1, on the Owner's word of 19 October (recorded privately): one v0.20.1 row; v0.20.0 unchanged. |
 | 2026-10-18 | v0.20.0 cut from main as it stands, on the Owner's ruling of 18 October (recorded privately): R22, R15, R13, R11, R9 and the stand-up across repositories move from v0.20.1, with the two prompts, what the board read and FM-045's fix. The second skill is named `/prune-drift`, the Owner's word of 18 October. |
 | 2026-10-18 | v0.20.2's allocation ask filed: shoalmark's first two skills in one Claude plugin, on the Owner's rulings of 18 October. The answer of 17 October recorded under the asks, and v0.20.1's count of quick wins made the Owner's eleven, the guided answer among them. |
 | 2026-10-15 | The allocation ask filed: v0.20.1 complete, on the Owner's direction of 15 October (recorded privately). |
