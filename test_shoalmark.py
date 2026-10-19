@@ -5928,7 +5928,7 @@ answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zwei
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
-answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — ein Hardware-Schlüssel wartet auf Ihre Berührung"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel"
 answer.sign.step.push: pusht den Zweig
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
 answer.sign.success: Wenn es geklappt hat
@@ -5938,6 +5938,21 @@ answer.sign.fail: Wenn es scheitert
 answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
 answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
 answer.sign.url: "https://shoalmark.github.io/shoalmark/de/signing.html"
+answer.give.title: Ihre Antwort geben
+act.give.title: Ihre Handlung festhalten
+answer.give.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht ins Repository schreiben — Ihr Terminal tut es, unter Ihrem Namen. Diesen Befehl ausführen:"
+answer.give.step.commit: "committet sie unter Ihrem Namen: dieses Repository verlangt keine Signatur, also belegt der Commit nur den Autor"
+answer.give.step.commit.login: "Autor des Commits ist Ihre Server-Anmeldung, wie Subversion sie festhält — ohne Signatur"
+answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"
+answer.give.check.text: "{0} gibt Ihren Namen aus — den Autor, den git meldet, eine Zeichenkette, die jeder eintippen kann."
+answer.give.fail.text: "Er meldet, was ihn abgewiesen hat, und nimmt zurück, was er geschrieben hat; Ihre Worte werden erneut ausgegeben, mit dem Befehl, der sie wieder gibt."
+proof.here: "Ihre Antworten hier: {0}"
+proof.dialog: "Ihre Antwort hier: {0}"
+proof.signed: signiert
+proof.author: nur der Autor
+proof.login: Server-Anmeldung
+proof.none: kein Autor
+proof.author.why: "eine Antwort hier belegt nur den Autor: jede Sitzung, die hier committen kann, kann eine in Ihrem Namen schreiben"
 answer.done: Fertig
 col.id: Id
 col.tier: Stufe
@@ -6942,7 +6957,9 @@ fm.configure(HERE)
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve()
     subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV); git(root, "checkout", "-q", "-b", "fix/ap-090")
-    (root / "shoalmark.toml").write_text('name = "q"\n[kinds]\nAP = "Work"\n', encoding="utf-8")
+    # the second screen says how the commit is proved as the gate reads it (FM-054, test_proof.py): here an answerer marked `signed` —
+    # `answerers`, so no `[seats]` rule judges the ask this clone has not committed — and no default branch, so this checkout's reading
+    (root / "shoalmark.toml").write_text('name = "q"\nanswerers = ["h@x signed"]\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     tracker(root, "AP-090", extra=f'next: owner\nask: "Welches Format?"\nask-kind: ruling\nask-since: {old}\nask-options: "a | b | c"\nask-proposal: "b"\n', title="three choices")
     run(root); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
     two_ = page.split("const sign=")[1].split("clip(d,line)")[0]          # the second screen, up to its copy through the shared clipboard path (FM-030)
@@ -15401,6 +15418,7 @@ import test_vcs_cli as _stage_cli
 import test_vcs_entry as _stage_entry
 import test_git_entry_differential as _stage_git_entry
 import test_tsvn_source_binding as _stage_binding
+import test_proof as _stage_proof
 
 # Each block below runs guarded: a fixture step that fails in it — a setup command `check=True` refuses, a program that does not start, a
 # fixture's precondition — is a named FAIL with what it saw, and the next block runs (PR #173's run 38539381661: A1's traceback ended Windows' suite)
@@ -15446,6 +15464,10 @@ if all(shutil.which(_name) for _name in ("git", "svn", "svnadmin")):
     _stage_guard("FM-044 Tortoise source binding", check, _stage_binding.run_source_binding_controls, fm.__file__, check, payload=HERE)
 else:
     _skipped("FM-044 Tortoise source binding", 92, "Git fixture setup or svn/svnadmin unavailable")
+fm.configure(HERE)
+# FM-054's class table (test_proof.py): how the Owner's answer is proved, said as the gate reads it — every mode by every surface,
+# and its two mutants, a surface that reads this checkout's configuration and `-S` decided from it, each failing the table
+_stage_guard("FM-054 the proof table", check, _stage_proof.run_proof_controls, fm, check)
 fm.configure(HERE)
 
 print()

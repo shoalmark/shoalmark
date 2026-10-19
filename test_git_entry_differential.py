@@ -272,6 +272,72 @@ def day_dropped(data):
         return None
     return data.replace(*DAY_SIGN)
 
+# FM-054 and FM-007 (v0.20.1): the board's page carries how an answer is proved, read as the gate reads it from the default branch's
+# configuration (`PROOF`, `proof_reading`), and says it before *accept*. The page the 615fb1d baseline writes holds neither, and the
+# board's run of the candidate reads that configuration: the second difference the consumer's snapshots may show, and the one in
+# what is started — every start and `subprocess.run` call the candidate makes inside `proof_reading`, each a read (FM054_READS).
+# The page is held to its difference byte for byte (RV-3308): FM054_PAGE_EDITS, applied in order to the baseline's page, each
+# where it occurs exactly once, must give every byte of the candidate's, once FM-030's day and FM-057's page are taken out of it
+# (`board_matches`) — and nothing else may differ. The starts and calls inside `proof_reading` are set aside before FM-057's rule
+# reads them (`fm054_own`).
+PROOF_MARK = b',PROOF={"state": '
+FM054_READS = (("symbolic-ref",), ("rev-parse",), ("config", "--get"), ("cat-file", "--batch"), ("ls-tree",))
+# FM-054's and FM-007's changes to the page of this fixture, as reviewed — (the baseline's text, the candidate's), each anchored on text
+# the two share: the proof CSS; the signed commit step without the touch; the new labels (`answer.give.*`, `act.give.title`,
+# `proof.*`); the page's PROOF (this fixture: no seat may answer, so *author only*); the dialog's comment and its proof line; the
+# second screen read from PROOF; and the heading of *waiting for you* with the proof line
+FM054_PAGE_EDITS = (
+    ('#p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}\n',
+     '#p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}\n/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */\n#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--coral)}#p .cq{display:inline-block;padding-left:2ch}#dlg .cq{margin:0 0 8px}\n'),
+    ('"answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch"',
+     '"answer.sign.step.commit": "commits them, signed with your key"'),
+    ('"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.done": ',
+     '"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.give.title": "Give your answer", "act.give.title": "Record your act", "answer.give.intro": "Your decision is made. A browser cannot write it into the repository — your terminal does, as you. Run this command:", "answer.give.step.commit": "commits them as you: this repository asks for no signature, so the commit proves the author only", "answer.give.step.commit.login": "the commit\'s author is your server login, as Subversion records it — with no signature", "answer.give.step.commit.none": "with no version control, nothing records who wrote them", "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.", "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.", "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}", "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author", "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name", "answer.done": '),
+    ('"viewer.none_in_progress": "none in progress"},BRANCH=',
+     '"viewer.none_in_progress": "none in progress"},PROOF={"state": "author", "keys": {"title": "answer.give.title", "act": "act.give.title", "intro": "answer.give.intro", "commit": "answer.give.step.commit", "check": "answer.give.check.text", "fail": "answer.give.fail.text"}, "said": "author only", "format": "%an", "word": "proof.author", "why": "proof.author.why"},BRANCH='),
+    ('    // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.\n',
+     "    // three lines, commits — signed where the default branch's configuration asks for it (FM-054) — and pushes. A browser cannot\n    // commit; the dialog decides, the terminal commits.\n"),
+    ('        <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n',
+     '        <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n        <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}\n'),
+    ('    // decision back. The decision is made; the terminal signs it. This screen says what to run, where, what it does step\n    // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done\n',
+     '    // decision back. The decision is made; the terminal commits it. This screen says what to run, where, what it does step\n    // by step, what the end looks like, how to check it and where to go when it fails — and has ONE way out, Done\n'),
+    ('    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;\n      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>\n        <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre',
+     '    // FM-054: every line that says how the commit is proved is PROOF\'s — the default branch\'s configuration, as the gate and\n    // `--answer` read it (`proof_page`): *signed* only where it asks for a signature; the end previews the terminal\'s own word\n    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>\n        <p class="dp">${l(P.intro)}</p><pre class="cmd">${esc(line)}</pre'),
+    ('        <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  signed, on \\`${br}\\`, pushed`)}</pre>\n        <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>\n        <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" targ',
+     '        <li>${l(P.commit)}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n        ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, on \\`${br}\\`, pushed`)}</pre>`:""}\n        ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}\n        <h4>${l("answer.sign.fail")}</h4><p>${lh(P.fail,`<a href="${l("answer.sign.url")}" targ'),
+    ('    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>5?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\\n"+w.slice(0,14).map(t=>\n',
+     '    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>5?" · "+l("waiting.bottleneck",w.length,held.length):"")\n      // FM-007: how an answer here is proved — the same for every ask on one repository\'s board, so said once, here, before *accept*:\n      // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour\'s (PROOF, `proof_page`)\n      +" · "+lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)+(PROOF.why?`\\n<span class="cq">${l(PROOF.why)}</span>`:"")+"\\n"+w.slice(0,14).map(t=>\n'),
+)
+
+
+def fm054_own(rows):
+    """The starts, or `subprocess.run` calls, the candidate makes outside FM-054's reading: what the other rules compare."""
+    return [row for row in rows if "proof_reading" not in (row.get("product_stack") or [])]
+
+
+def fm054_reads(rows):
+    """The starts, or `subprocess.run` calls, FM-054's reading makes: those with `proof_reading` on the tool's own stack."""
+    return [row for row in rows if "proof_reading" in (row.get("product_stack") or [])]
+
+
+def fm054_read(argv):
+    """Whether one argv is a read FM-054's reading of the default branch's configuration may start: git, and one of FM054_READS."""
+    argv = [str(a) for a in argv] if isinstance(argv, list) else []
+    return (len(argv) > 1 and Path(argv[0]).name.lower() in ("git", "git.exe")
+            and any(tuple(argv[1:1 + len(form)]) == form for form in FM054_READS))
+
+
+def fm054_transform(page):
+    """The baseline's page as FM-054 and FM-007 change it: FM054_PAGE_EDITS applied in order, each to text that occurs exactly once
+    — else None: a page those edits do not fit is no page the allowance explains."""
+    text = page.decode("utf-8")
+    for old, new in FM054_PAGE_EDITS:
+        if text.count(old) != 1:
+            return None
+        text = text.replace(old, new)
+    return text.encode("utf-8")
+
+
 def differs_only_by(baseline, candidate, path, key, rule):
     """Whether `path` after the run is the same file in both, or a file in both whose bytes, recorded under `key`, `rule(old, new)` allows."""
     old_hash, new_hash = baseline["after"].get(path), candidate["after"].get(path)
@@ -284,8 +350,8 @@ def differs_only_by(baseline, candidate, path, key, rule):
 
 def board_matches(baseline, candidate):
     """The board's page and `view/built.json` after the run, each read back from the bytes the run left, its hash checked: the same in both; or the
-    candidate's page with FM-030's day taken out (`day_dropped`), then FM-057's page (`fm057_page_dropped`), is the baseline's page, every byte, and
-    the record is as `fm057_board` holds it."""
+    candidate's page with FM-030's day taken out (`day_dropped`), then FM-057's page (`fm057_page_dropped`), is the baseline's page with FM-054's
+    edits applied (`fm054_transform`), every byte — the baseline's holding no PROOF — and the record is as `fm057_board` holds it."""
     if all(baseline["after"].get(path) == candidate["after"].get(path) for path in (PAGE_PATH, BUILT_PATH)):
         return True
     def page(observed):
@@ -296,7 +362,7 @@ def board_matches(baseline, candidate):
     if old_page is None or new_page is None:
         return False
     if old_page != new_page:
-        if fm057_page_dropped(day_dropped(new_page)) != old_page:
+        if PROOF_MARK in old_page or fm057_page_dropped(day_dropped(new_page)) != fm054_transform(old_page):
             return False
         candidate = with_board(candidate, PAGE_PATH, old_page)
     return fm057_board(baseline, candidate)
@@ -306,8 +372,8 @@ def snapshots_match(baseline, candidate):
     """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
     entry and hook — but for three named differences: INDEX.md after the run may differ where the baseline's, its header line
     dropped (`r21_dropped`, R21), is the candidate's bytes; the board page where the candidate's, FM-030's day and then FM-057's page
-    taken out (`day_dropped`, `fm057_page_dropped`), is the baseline's bytes; and `view/built.json` as `fm057_board` holds it
-    (`board_matches`)."""
+    taken out (`day_dropped`, `fm057_page_dropped`), is the baseline's bytes with FM-054's edits (`fm054_transform`); and
+    `view/built.json` as `fm057_board` holds it (`board_matches`)."""
     if baseline["before"] != candidate["before"]:
         return False
     if baseline["after"] == candidate["after"]:
@@ -604,8 +670,13 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                                (before["status"], before["stdout"], before["stderr"]) == said)
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
-            assert_control(label_prefix + "all actual process argv/effective cwd/env match, but for FM-057's reads", rows_match(before["starts"], after["starts"], counted))
-            assert_control(label_prefix + "run options and actual process results match, but for FM-057's reads", rows_match(before["run_calls"], after["run_calls"], counted))
+            assert_control(label_prefix + "all actual process argv/effective cwd/env match, but for FM-057's reads, and FM-054's reads of the default branch's "
+                           "configuration set aside, each a read",
+                           rows_match(before["starts"], fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
+                           and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"])))
+            assert_control(label_prefix + "run options and actual process results match, but for FM-057's reads, and FM-054's reads set aside, each a read",
+                           rows_match(before["run_calls"], fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
+                           and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"])))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
             assert_control(label_prefix + "actual main state/result and selected origin policy match", before["main_returns"] == after["main_returns"]
                            and bool(after["main_returns"]) and after["main_returns"][-1]["ASK_ORIGIN"] is ask)
@@ -683,21 +754,22 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         # FM-057's allowance, held to its one difference on the same pair: the starts and calls by its reads alone, the page by its moment, the record by its four
         # fields — and no variant below matches.
         allowance = "Git entry FM-057 allowance: "
+        new_starts, new_calls = fm054_own(new["starts"]), fm054_own(new["run_calls"])      # FM-054's reads set aside, as the rule sets them
         page, record = (base64.b64decode(new["board_after"][path]["bytes_base64"]) for path in (PAGE_PATH, BUILT_PATH))
         assert_control(allowance + "the default run's starts and calls differ by FM-057's reads alone, its page and record by what it read, and equal runs still match",
-                       old["starts"] != new["starts"] and fm057_rows(old["starts"], new["starts"]) and fm057_rows(old["run_calls"], new["run_calls"])
-                       and fm057_board(old, new) and rows_match(new["starts"], new["starts"]) and snapshots_match(new, new))
-        extra = dict(new["starts"][0], argv=new["starts"][0]["argv"][:1] + ["status", "--porcelain"])
-        at = next(i for i, row in enumerate(new["starts"]) if git_words(row) == FM057_READS[2])
+                       old["starts"] != new_starts and fm057_rows(old["starts"], new_starts) and fm057_rows(old["run_calls"], new_calls)
+                       and fm057_board(old, new) and rows_match(new_starts, new_starts) and snapshots_match(new, new))
+        extra = dict(new_starts[0], argv=new_starts[0]["argv"][:1] + ["status", "--porcelain"])
+        at = next(i for i, row in enumerate(new_starts) if git_words(row) == FM057_READS[2])
         assert_control(allowance + "one start more, or FM-057's reads apart or with one missing, does not match",
-                       not rows_match(old["starts"], new["starts"] + [extra])
-                       and not rows_match(old["starts"], new["starts"][:at] + [extra] + new["starts"][at:])
-                       and not rows_match(old["starts"], new["starts"][:at] + new["starts"][at + 1:]))
-        bare = [row for row in new["starts"] if git_words(row) not in FM057_READS[2:]]      # the same run, as the board's own run reads: no changed path
+                       not rows_match(old["starts"], new_starts + [extra])
+                       and not rows_match(old["starts"], new_starts[:at] + [extra] + new_starts[at:])
+                       and not rows_match(old["starts"], new_starts[:at] + new_starts[at + 1:]))
+        bare = [row for row in new_starts if git_words(row) not in FM057_READS[2:]]      # the same run, as the board's own run reads: no changed path
         assert_control(allowance + "a run that reads no changed path, as the board's own run (`--html-only`) does, differs by the two moved reads alone; the "
                        "changed-path reads where none are read, or none where a run counts them, do not match",
-                       len(bare) == len(new["starts"]) - 2 and fm057_rows(old["starts"], bare, counted=False)
-                       and not fm057_rows(old["starts"], new["starts"], counted=False) and not fm057_rows(old["starts"], bare, counted=True))
+                       len(bare) == len(new_starts) - 2 and fm057_rows(old["starts"], bare, counted=False)
+                       and not fm057_rows(old["starts"], new_starts, counted=False) and not fm057_rows(old["starts"], bare, counted=True))
         row = PAGE_ROWS.search(page).group(1).split(b"\n")[0]
         built = json.loads(record)
         assert_control(allowance + "a page whose rows differ, or a record with a basis value changed, a field missing or a fifth field added, does not match",
@@ -710,8 +782,8 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                               else b"" for row in (old, new))
         day = "Git entry FM-030 day allowance: "
         assert_control(day + "the default run's board page differs from the baseline's by the stand-up's and the close-out's exact script lines, "
-                       "templates, prompts and words, and by FM-057's page, alone, and equal snapshots still match",
-                       bool(old_page) and old_page != new_page and fm057_page_dropped(day_dropped(new_page)) == old_page and snapshots_match(old, new)
+                       "templates, prompts and words, and by FM-057's page and FM-054's edits, alone, and equal snapshots still match",
+                       bool(old_page) and old_page != new_page and fm057_page_dropped(day_dropped(new_page)) == fm054_transform(old_page) and snapshots_match(old, new)
                        and snapshots_match(new, new))
         opener = b'd.querySelector(".go").focus()}   // FM-030 day'
         variants = {
@@ -728,8 +800,8 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        all(changed.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants.values()))
         # FM-057's page, held the same way beside the day: each of its parts taken out exactly once, and nothing else differs
         page057, read_at = "Git entry FM-057 page allowance: ", FM057_READ_AT.search(new_page)
-        assert_control(page057 + "the default run's page, FM-030's day and then FM-057's page taken out, is the baseline's, every byte; the baseline's "
-                       "page holds neither", bool(read_at) and fm057_page_dropped(day_dropped(new_page)) == old_page
+        assert_control(page057 + "the default run's page, FM-030's day and then FM-057's page taken out, is the baseline's with FM-054's edits, every "
+                       "byte; the baseline's page holds neither", bool(read_at) and fm057_page_dropped(day_dropped(new_page)) == fm054_transform(old_page)
                        and day_dropped(old_page) is None and fm057_page_dropped(old_page) is None)
         at = read_at.group(0) if read_at else b"\n"
         variants057 = {
@@ -742,6 +814,36 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
                        f"does not name does not match (each variant made: {made057})",
                        all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
+        # FM-054's allowance is held to its difference on the same pair: the page carries PROOF, and only `proof_reading`'s reads are new
+        fm054 = "Git entry FM-054 allowance: "
+        reads = fm054_reads(new["starts"])
+        assert_control(fm054 + "the default run's board reads the default branch's configuration — starts inside `proof_reading`, each a read, which the baseline never makes",
+                       bool(reads) and all(fm054_read(row["argv"]) for row in reads) and not fm054_reads(old["starts"]))
+        unstacked = [dict(row, product_stack=[s for s in row["product_stack"] if s != "proof_reading"]) for row in new["starts"]]
+        strip = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
+        assert_control(fm054 + "the same reads made outside `proof_reading` are not set aside, and do not match the baseline's starts",
+                       not rows_match(old["starts"], fm054_own(unstacked)) and rows_match(old["starts"], fm054_own(new["starts"])))
+        writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
+        assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
+                       bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))
+        page = base64.b64decode(new["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((new.get("board_after") or {}).get(PAGE_PATH), dict) else b""
+        unproved = page.replace(PROOF_MARK, b',PRUEF={"state": ')
+        as_page = lambda data: with_board(new, PAGE_PATH, data)
+        unread = dict(new, board_after={k: v for k, v in (new.get("board_after") or {}).items() if k != PAGE_PATH})
+        assert_control(fm054 + "the candidate's page carries PROOF, and a page that differs from the baseline's without it, or one not read back, does not match",
+                       PROOF_MARK in page and snapshots_match(old, new) and not snapshots_match(old, as_page(unproved)) and not snapshots_match(old, unread))
+        # RV-3308: the page is held byte for byte — the baseline's page with FM-054's edits is the candidate's; and two candidates that
+        # keep PROOF_MARK, one without an unrelated section, one whose tracker row says something else, do not match
+        section, row = b"#p summary{cursor:pointer}\n", b'"entry origin selection"'
+        before_page = base64.b64decode(old["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((old.get("board_after") or {}).get(PAGE_PATH), dict) else b""
+        assert_control(fm054 + "the candidate's page, FM-030's day and FM-057's page taken out, is the baseline's with FM054_PAGE_EDITS applied, every byte",
+                       fm057_page_dropped(day_dropped(page)) == fm054_transform(before_page) and fm054_transform(page) is None)
+        cut = page.replace(section, b"")
+        assert_control(fm054 + "a page that keeps PROOF but deletes an unrelated section (`#p summary`'s rule) does not match",
+                       page.count(section) == 1 and PROOF_MARK in cut and not snapshots_match(old, as_page(cut)))
+        moved = page.replace(row, b'"entry origin, changed"')
+        assert_control(fm054 + "a page that keeps PROOF but changes a tracker row (WORK-001's hook) does not match",
+                       page.count(row) == 1 and PROOF_MARK in moved and not snapshots_match(old, as_page(moved)))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),

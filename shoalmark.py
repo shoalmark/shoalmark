@@ -3093,7 +3093,7 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
         flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write, onto=bool(onto),
         subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
         again=f'{CMD} --answer {printed_arg(tid)} {verdict}' + (f' {printed_arg(text)}' if text else "") + (" --supersede" if supersede else ""),
-        said=lambda branch, pushed: (f"{tid} answered: {answer}\n  signed, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
+        said=lambda branch, pushed, proof: (f"{tid} answered: {answer}\n  {proof}, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
                                      + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
                                      + seed_said(tid, seed))))
 
@@ -3262,15 +3262,88 @@ def say_r9_leftovers():
         print(f"\n{R9_TITLE}\n" + "\n".join(f"  {where} — {what}" for where, what in found))
 
 
+# HOW AN ANSWER IS PROVED HERE (FM-054; FM-007, *a signature proves the key, not the hand*, from the other side): ONE reading, the gate's —
+# the default branch's configuration through `owners_at`, the reading `owner_policy` refuses an Owner's unsigned commit by — for every line
+# that says how the Owner's answer, `done:` or `due:` is proved, and for whether `--answer` passes `-S`. Never this checkout's
+# configuration where the default branch's can be read: a branch never names its own Owner, and never its own proof. `signed` only where
+# that reading marks the identity signed; elsewhere `author`, the author only; on Subversion `login`, the server's account; with no
+# version control `none`. The page's second screen says each state in its own words (`PROOF_KEYS`); the terminal's line after the act
+# says `PROOF_SAID`'s, and the screen previews that line as the terminal prints it.
+PROOF_KEYS = {
+    "signed": {"title": "answer.sign.title", "act": "act.sign.title", "intro": "answer.sign.intro", "commit": "answer.sign.step.commit",
+               "check": "answer.sign.check.text", "fail": "answer.sign.fail.text"},
+    "author": {"title": "answer.give.title", "act": "act.give.title", "intro": "answer.give.intro", "commit": "answer.give.step.commit",
+               "check": "answer.give.check.text", "fail": "answer.give.fail.text"},
+    "login": {"title": "answer.give.title", "act": "act.give.title", "intro": "answer.give.intro", "commit": "answer.give.step.commit.login",
+              "check": "", "fail": "answer.give.fail.text"},
+    "none": {"title": "answer.give.title", "act": "act.give.title", "intro": "answer.give.intro", "commit": "answer.give.step.commit.none",
+             "check": "", "fail": "answer.give.fail.text"},
+}
+PROOF_SAID = {"signed": "signed", "author": "author only"}       # the terminal's word after `--answer`, `--done`, `--due` and `--revoke` — git only
+PROOF_FORMAT = {"signed": "%G?", "author": "%an"}                # what the second screen's check asks git for: the signature, or the author
+
+
+def proof_reading():
+    """(who may answer, the Owner's identities, the default branch, why its configuration cannot be read) — each `{identity: "signed" | ""}`
+    — as the gate reads them: `owners_at` on the default branch, the answerers and the Owner its configuration names (`owner_policy`'s
+    reading). Where there is no default branch here, or it carries no configuration, `owners_at` reads this checkout's answerers, as the
+    gate then does, and no Owner of the default branch's; where this tool refuses the default branch's configuration, `owner_policy`
+    refuses nothing, and the gate that judges an answer is `lint`'s, which reads this checkout's — so does this, and `why` says so. Git only."""
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk, why = default_trunk(git), []
+    answerers = owners_at(trunk, why)
+    owner = owners_at(trunk, [], owner_only=True) if not why else {}
+    if why:
+        answerers = may_answer()
+    return answerers, owner, trunk, (why[0] if why else "")
+
+
+def answer_proof():
+    """How an answer given here is proved, as the gate reads it — "signed", "author", "login" or "none" (FM-054, FM-007). `signed` only where
+    the reading of `proof_reading` marks EVERY identity the Owner answers under signed: an answer forged in their name takes the one that is
+    not. Which identities are the Owner's: the default branch's `owner`, else this checkout's; where neither names one who may answer, every
+    identity that may. The marks are always the reading's. Subversion and no version control start nothing."""
+    if vcs() == "svn":
+        return "login"
+    if vcs() != "git":
+        return "none"
+    answerers, owner, _trunk, _why = proof_reading()
+    theirs = {w: m for w, m in answerers.items() if w in (owner or dict(SEATS.get("owner") or []))} or answerers
+    return "signed" if theirs and all(m == "signed" for m in theirs.values()) else "author"
+
+
+def answer_signing(name, email):
+    """(signed, the identity a signature must name, the default branch, why its configuration cannot be read) for the author git will
+    write — the gate's reading (`proof_reading`): signed where an identity it marks signed is that author's email or name, among those who
+    may answer or among the Owner's (`owner_policy` refuses any commit of a signed Owner identity that does not verify). `--answer`,
+    `--done`, `--due` and `--revoke` pass `-S` exactly there."""
+    answerers, owner, trunk, why = proof_reading()
+    marks = {**answerers, **{w: m for w, m in owner.items() if m == "signed"}}
+    hit = next((w for w, m in marks.items() if m == "signed" and w and w in (email, name)), None)
+    return hit is not None, hit, trunk, why
+
+
+def proof_page():
+    """What the board's page carries of `answer_proof` (`PROOF`): the state, the label of each line of the second screen that says how the
+    commit is proved (`PROOF_KEYS`), the terminal's word it previews, and what its check asks git for — "" where it previews or checks nothing;
+    and for the proof line said before *accept* (FM-007, the quick-wins design of 15 October), in the heading of *waiting for you* and in the
+    answer dialog: the state's word (`proof.<state>`) and, under *author only*, its consequence (`proof.author.why`), else ""."""
+    state = answer_proof()
+    return {"state": state, "keys": PROOF_KEYS[state], "said": PROOF_SAID.get(state, ""), "format": PROOF_FORMAT.get(state, ""),
+            "word": f"proof.{state}", "why": "proof.author.why" if state == "author" else ""}
+
+
 def owner_change(tid, t, how):
     """THE OWNER'S OWN CHANGE ON A TRACKER, the one flow `--answer`, `--done` and `--due` share: who may make it — the
     seats that hold `answer`, or `answerers` — is asked first; then `answer/<id>` is cut from the branch that carries the
     tracker (a spent one deleted and cut fresh, an unmerged one refused), `how["write"]` writes the lines, and the commit
-    is made SIGNED where their seat is `signed`, verified, pushed, and they are put back on the branch they started on. A failure
+    is made SIGNED where the default branch's configuration marks them `signed` — the gate's reading, `answer_signing` (FM-054) —,
+    verified, pushed, and they are put back on the branch they started on. A failure
     after anything was written undoes all of it and prints what they gave with the command that gives it again (FM-017).
     `how`: flag · verb (the steps' word) · noun · right (why it is an `answer` change) · check() → why not, before anything
     is touched · write(lines, me, branch) → (lines, why not) · subject · kept (its name, its text) · again · said(branch,
-    ", pushed" or why not) → what it prints · onto (FM-030, `--revoke`): `answer/<id>` is not merged — their act on its way — and
+    ", pushed" or why not, how the commit is proved — `PROOF_SAID`'s word) → what it prints · onto (FM-030, `--revoke`):
+    `answer/<id>` is not merged — their act on its way — and
     the change commits on top of it there, one branch per exchange, where every other flow refuses it."""
     refused = cli_git_refusal(how["flag"][2:])
     if refused is not None:
@@ -3291,15 +3364,32 @@ def owner_change(tid, t, how):
     if not SEATS and me not in allowed:
         print(f"{flag}: `{me}` is not in `answerers` ({', '.join(allowed) or 'nobody'}) — {CONFIG_NAME} says who may answer", file=sys.stderr)
         return EXIT_LINT
-    signed = (seat_mode(seat, pend_name or me, pend_email) if SEATS else allowed.get(me)) == "signed"
+    # FM-054: `-S` is passed as the gate reads the default branch's configuration (`answer_signing`) — never as this checkout's says, which
+    # a branch can change. Where the default branch asks for a signature this checkout does not, one line says so; where this checkout
+    # asks for one the default branch does not, the change is refused — both before anything is touched
+    here_signed = (seat_mode(seat, pend_name or me, pend_email) if SEATS else allowed.get(me)) == "signed"
+    signed, claimed, trunk, unread = answer_signing(pend_name or me, pend_email)
+    proof = PROOF_SAID["signed" if signed else "author"]
+    if trunk and not unread and here_signed and not signed:
+        # FM-054, RV-3309: this checkout asks for a signature its default branch does not. Unsigned, as the default branch reads it,
+        # the change fails this branch's own gate (`lint` reads this checkout); signed, it is said where the default branch asks
+        # for nothing. Refused here, in the preflight every flow shares — before any branch is cut or switched and before any write
+        print(f"{flag}: this checkout's `{CONFIG_NAME}` asks for a signed {noun}, and {ref_name(trunk)}'s does not — the signing configuration "
+              f"must reach {ref_name(trunk)} first: merge the change that asks for it there, then run this again. Nothing was changed", file=sys.stderr)
+        return EXIT_LINT
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     dirty = changed_paths(git)
     if dirty:
         print(dirty_refusal(git, dirty), file=sys.stderr)
         return EXIT_LINT
     if signed and not git("config", "user.signingkey").stdout.strip():
-        print(f'{flag}: `{("owner" if at_top(seat) else "[seats]") if SEATS else "answerers"}` asks for a signed {noun} and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
+        asker = f'`{("owner" if at_top(seat) else "[seats]") if SEATS else "answerers"}`' if here_signed else f"{ref_name(trunk)}'s `{CONFIG_NAME}`"
+        print(f'{flag}: {asker} asks for a signed {noun} and no `user.signingkey` is set — see the signing page, {SIGNING_PAGE}', file=sys.stderr)
         return EXIT_LINT
+    if unread:
+        print(f"  {ref_name(trunk)}'s `{CONFIG_NAME}` cannot be read here — {unread}; the commit is made as this checkout's reads it: {proof}", file=sys.stderr)
+    elif trunk and signed and not here_signed:
+        print(f"  {ref_name(trunk)}'s `{CONFIG_NAME}` asks for a signed {noun}, and this checkout's does not — {proof}, as the gate reads {ref_name(trunk)}", file=sys.stderr)
     # `answered-by:` is `user.name`, but the commit's author is whatever git will actually write — `GIT_AUTHOR_NAME` in
     # the environment overrides the configuration. The gate reads the author, so the two disagreeing is an answer filed
     # from an account that did not give it. Asked before anything is touched.
@@ -3420,7 +3510,7 @@ def owner_change(tid, t, how):
         # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
         said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
         return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
-    if signed and not verified_as("HEAD", signed_identity(seat, pend_name or me, pend_email) if SEATS else me):
+    if signed and not verified_as("HEAD", claimed):
         # the gate's own test, `verified_as`, asked here so the change is never pushed under one the gate will refuse: a good
         # signature under a key the DEFAULT branch's signers file trusts, for the author's email (FM-037's cold re-review, R1:
         # this read the clone's own file, so mid key rotation it said *pushed*, and the gate refused the answer after)
@@ -3429,7 +3519,7 @@ def owner_change(tid, t, how):
         return EXIT_LINT
     step(4, "pushing to `origin`")
     r = git("push", "-u", "origin", branch)
-    print(how["said"](branch, ", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}"))
+    print(how["said"](branch, ", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}", proof))
     if r.returncode != 0:
         return EXIT_LINT
     stamp = board_stamp()                                   # the board as the push left it: whatever writes it from here on, it is read below
@@ -3806,6 +3896,8 @@ tr.c td:first-child{padding-left:20px}
 button.act{border:1px solid var(--line);padding:2px 7px;margin-left:6px;font-size:11px;text-transform:none;letter-spacing:0}button.act:hover{border-color:var(--ink);color:var(--ink)}
 /* an act that is a promise: what they promised is its line, the question it answered below it, smaller — context, not the act (FM-030) */
 #p .aq{display:inline-block;padding-left:2ch;font-size:12px;color:var(--mute)}
+/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */
+#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--coral)}#p .cq{display:inline-block;padding-left:2ch}#dlg .cq{margin:0 0 8px}
 #p summary{cursor:pointer}
 #dlg{border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:640px;width:calc(100% - 32px);padding:18px 20px}#dlg::backdrop{background:rgba(0,0,0,.45)}
 #dlg h3{margin:0 0 10px;font-size:14px;font-weight:600}#dlg .dq{font-size:16px;font-weight:500;margin:0 0 8px;display:block}#dlg .dp{margin:0 0 8px;color:var(--dim)}#dlg .ddim{color:var(--mute);font-size:12px}
@@ -3846,7 +3938,7 @@ __DAY__
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
 //        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
 //        and ONLY where their act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone · due, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, their promise or their answer, the question, the done:, answer: or due: as written, 1 where the tip carries an answer main lacks, 1 where the act stays on their list, the due: on its way, what follows the label]]
-const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -3936,7 +4028,8 @@ function draw(){
     // no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
     // Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
     // abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
-    // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.
+    // three lines, commits — signed where the default branch's configuration asks for it (FM-054) — and pushes. A browser cannot
+    // commit; the dialog decides, the terminal commits.
     // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
     const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
     const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
@@ -3950,6 +4043,7 @@ function draw(){
         +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
       d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
         <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
+        <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}
         ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
         :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
         <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
@@ -3962,19 +4056,21 @@ function draw(){
         sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
       d.showModal()};
     // THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
-    // decision back. The decision is made; the terminal signs it. This screen says what to run, where, what it does step
-    // by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, Done
+    // decision back. The decision is made; the terminal commits it. This screen says what to run, where, what it does step
+    // by step, what the end looks like, how to check it and where to go when it fails — and has ONE way out, Done
     // (Esc too: it is the dialog's own). It says *Copied* only when the clipboard said so: from a file there may be none.
-    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;
-      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>
-        <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>
+    // FM-054: every line that says how the commit is proved is PROOF's — the default branch's configuration, as the gate and
+    // `--answer` read it (`proof_page`): *signed* only where it asks for a signature; the end previews the terminal's own word
+    const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;
+      d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>
+        <p class="dp">${l(P.intro)}</p><pre class="cmd">${esc(line)}</pre>
         <p class="m ddim"><button type="button" class="copy">${l("answer.sign.copy")}</button><span class="said" aria-live="polite"></span></p>
         <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
         <h4>${l("answer.sign.does")}</h4><ol><li>${kind.startsWith("revoke")?lh("way.sign.step.on",c(br)):lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind.replace("revoke.","")+":"),c("## __ACTS_HEAD__"))}</li>
-        <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
-        <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  signed, on \`${br}\`, pushed`)}</pre>
-        <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>
-        <h4>${l("answer.sign.fail")}</h4><p>${lh("answer.sign.fail.text",`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}</a>`)}</p>
+        <li>${l(P.commit)}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
+        ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  ${PROOF.said}, on \`${br}\`, pushed`)}</pre>`:""}
+        ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}
+        <h4>${l("answer.sign.fail")}</h4><p>${lh(P.fail,`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}</a>`)}</p>
         <menu><button value="done" class="go">${l("answer.done")}</button></menu></form>`;
       clip(d,line);d.querySelector(".go").focus()};
     window.ACT=act;
@@ -4006,7 +4102,10 @@ function draw(){
         sign(d,id,`${cmd} --revoke ${id} ${sq(why)}`,w[0]=="done"?`done revoked: ${why}`:`answered: revoked - ${why}`,w[0]=="done"?"revoke.done":"revoke.answer")};
       d.showModal()};
     window.REV=rev;
-    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")+"\n"+w.slice(0,14).map(t=>
+    return `<b class="${w.length?"hot":""}">${l("waiting.title")}: ${w.length}</b>`+(w.length?(old>=0?" · "+l("waiting.oldest",old):"")+(held.length?" · "+l("waiting.holds",held.length):"")+(w.length>__BOTTLE__?" · "+l("waiting.bottleneck",w.length,held.length):"")
+      // FM-007: how an answer here is proved — the same for every ask on one repository's board, so said once, here, before *accept*:
+      // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour's (PROOF, `proof_page`)
+      +" · "+lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)+(PROOF.why?`\n<span class="cq">${l(PROOF.why)}</span>`:"")+"\n"+w.slice(0,14).map(t=>
       `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`)+`<span class="m"> ·`+(t[29][1]?" "+l("ask."+t[29][1])+" ·":"")+(days(t)!=null?" "+l("waiting.days",days(t))+" ·":"")+(t[29][3].length?" "+l("waiting.holds.ids",t[29][3].join(", ")):"")+`</span>`+(t[29][0]?` <button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'accept')">${l("answer.accept")}</button><button class="act" onclick="ACT(T.find(x=>x[0]=='${t[0]}'),'reject')">${l("answer.reject")}</button>`:"")).join("\n").replace(/ ·<\/span>/g,"</span>")+(w.length>14?"\n…":""):"")
       +(sent.length?"\n\n<b>"+l("waiting.malformed",sent.length)+"</b>\n"+sent.map(t=>
         `<a href="#=${t[0]}">${t[0]}</a> `+(t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`)+`<span class="m"> — ${esc(t[29][7][0])}</span>`).join("\n"):"")})(T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])))
@@ -4202,13 +4301,25 @@ LABELS = {
     "answer.sign.where": "Where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
     "answer.sign.does": "What it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
-    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch",
+    "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key",
     "answer.sign.step.push": "pushes the branch",
     "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
     "answer.sign.success": "When it worked", "answer.sign.check": "To check",
     "answer.sign.check.text": "{0} prints {1} — a good signature, under a key this repository trusts.",
     "answer.sign.fail": "If it fails", "answer.sign.fail.text": "No signing key is set, or the signature does not verify: set up your key once — {0}.",
     "answer.sign.page": "the signing page", "answer.sign.url": SIGNING_PAGE,
+    # the second screen where the default branch's configuration asks for no signature (FM-054, `PROOF_KEYS`): the same steps, the proof said
+    "answer.give.title": "Give your answer", "act.give.title": "Record your act",
+    "answer.give.intro": "Your decision is made. A browser cannot write it into the repository — your terminal does, as you. Run this command:",
+    "answer.give.step.commit": "commits them as you: this repository asks for no signature, so the commit proves the author only",
+    "answer.give.step.commit.login": "the commit's author is your server login, as Subversion records it — with no signature",
+    "answer.give.step.commit.none": "with no version control, nothing records who wrote them",
+    "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.",
+    "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.",
+    # how an answer here is proved, said before *accept* (FM-007): a state, never *proves: signed* — a signature proves the key, not the hand
+    "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}",
+    "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author",
+    "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name",
     "answer.done": "Done",
     "ask.ruling": "a ruling", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "a button",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.shipped": "shipped", "story.closed": "closed", "story.open": "open", "story.parked": "parked",
@@ -5173,7 +5284,7 @@ def render_html(trackers, read=None):
     home = {k: plain(v) for k, v in triage_home().items()}
     page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
-            .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]))
+            .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]).replace("__PROOF__", script_json(proof_page())))     # before any text of the repository's is in the page
     themes, logo, labels, _src, warnings, wordmark = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
@@ -9404,7 +9515,7 @@ def done_cmd(words, trackers):
                                                     f"**{today}** · done — {where}" + (f" ({facts})" if facts else "") + f" · {what}"
                                                     + (f" · due {due}" if due else "") + f" · {me}"), ""),
         subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {printed_arg(tid)} {printed_arg(where)}',
-        said=lambda branch, pushed: f"{tid} done: {where}\n  signed, on `{branch}`{pushed}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
+        said=lambda branch, pushed, proof: f"{tid} done: {where}\n  {proof}, on `{branch}`{pushed}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
                                      + (f" — with what the repository says of it: {facts}" if facts else "")
                                      + ("\n  next: build — the seat's move follows" if "next" in fields else "")))
 
@@ -9439,7 +9550,7 @@ def due_cmd(words, trackers):
                                                     f"**{today}** · " + (f"rescheduled — was due {old}, now due {when}" if old else f"scheduled — due {when}{before}")
                                                     + f" · {what} · {me}"), ""),
         subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {printed_arg(tid)} {printed_arg(when)}",
-        said=lambda branch, pushed: f"{tid} due: {when}\n  signed, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
+        said=lambda branch, pushed, proof: f"{tid} due: {when}\n  {proof}, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
 
 
 def revoke_cmd(words, trackers):
@@ -9483,7 +9594,7 @@ def revoke_cmd(words, trackers):
         flag="--revoke", verb="revoking", noun="revocation", right="taking back the Owner's act is an `answer` change", check=lambda: "", onto=bool(onto),
         write=lambda lines, me, branch_: (act_record(lines, fields, f"**{today}** · done revoked — {why} · it was done {was} · {where} · {what} · {me}"), ""),
         subject=REVOKE_DONE_SUBJECT.format(tid) + why[:50], kept=("your revocation", why), again=f'{CMD} --revoke {printed_arg(tid)} {printed_arg(why)}',
-        said=lambda branch_, pushed: f"{tid} done revoked: {why}\n  signed, on `{branch_}`{pushed}\n  the act is owed again — it is back on your list; "
+        said=lambda branch_, pushed, proof: f"{tid} done revoked: {why}\n  {proof}, on `{branch_}`{pushed}\n  the act is owed again — it is back on your list; "
                                      f"the revocation is under `## {HEAD['acts']}`" + ("\n  next: owner — the act is yours again" if "next" in fields else "")))
 
 
@@ -9772,10 +9883,11 @@ CLI_GIT_ONLY = {
     "commit_msg": ("--commit-msg: the Git-hook commit-message capability is unavailable under Subversion", EXIT_LINT),
     "sessions": ("--sessions: the registry is read from git's commit trailers — this is no git repository", EXIT_LINT),
     "queue": ("--queue: not a git repository — the queue is read from GitHub with `gh`", EXIT_NO_FORGE),
-    "answer": ("--answer: signed answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "done": ("--done: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "due": ("--due: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "revoke": ("--revoke: signed answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    # FM-054, RV-3310: an answer branch is signed only where the default branch asks for it — so the capability is said, never *signed*
+    "answer": ("--answer: answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "done": ("--done: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "due": ("--due: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "revoke": ("--revoke: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
 }
 
 
