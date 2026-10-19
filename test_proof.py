@@ -94,8 +94,8 @@ def page_proof(fm, root):
     """(the board's `PROOF`, as its run wrote it into the page, the run's exit status and stderr)."""
     code, _out, err = run(fm, root, "--html-only")
     page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
-    m = re.search(r",PROOF=(.*?),BRANCH=", page)
-    return (json.loads(m.group(1)) if m else None), code, err
+    at = page.find(",PROOF=")
+    return (json.JSONDecoder().raw_decode(page, at + len(",PROOF="))[0] if at >= 0 else None), code, err
 
 
 def screen_lines(fm, proof, german):
@@ -324,7 +324,7 @@ def unread_row(fm):
 def template_reads_proof(fm):
     """The second screen takes each line that says how the commit is proved from PROOF, and none from a literal: no
     `signed, on`, no fixed `answer.sign.*` key for those lines, no touch. Returns every mismatch."""
-    two = fm.HTML_PAGE.split("const sign=")[1].split('d.querySelector(".copy")')[0]
+    two = re.split(r'd\.querySelector\("\.copy"\)|clip\(d,line\)', fm.HTML_PAGE.split("const sign=")[1])[0]
     bad = [f"the second screen still names {w!r}" for w in ('"answer.sign.title"', '"act.sign.title"', '"answer.sign.intro"', '"answer.sign.step.commit"',
                                                             '"answer.sign.check.text"', '"answer.sign.fail.text"', "signed, on", "%G?", "touch") if w in two]
     bad += [f"the second screen does not read {w}" for w in ("P.title", "P.act", "P.intro", "P.commit", "P.check", "P.fail", "PROOF.said", "PROOF.format") if w not in two]
