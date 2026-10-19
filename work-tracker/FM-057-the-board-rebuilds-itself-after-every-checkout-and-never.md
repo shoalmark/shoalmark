@@ -13,6 +13,8 @@ hook: "The board rebuilds itself after every checkout, merge and rebase, and nev
 
 ## What is true now
 
+**2026-10-19 — Built on `fm/057-refresh-hooks-back`:** `2e5ddb7` restores the three refresh hooks and their checks; `d855a1f` names the hooks and the fetch-only limit in English and German. Verification is incomplete; the critical-tier review is next.
+
 **2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately). The
 hooks that rebuild the board after a checkout, a merge and a rebase are what make the board convenient to use, and
 removing them left its users a worse experience.
@@ -52,6 +54,7 @@ table of 2026-10-15).
 
 | Date | Event |
 |---|---|
+| 2026-10-19 | Refresh hooks restored on `fm/057-refresh-hooks-back` (`2e5ddb7`), with the setup words in both languages (`d855a1f`). Verification is incomplete; check limits recorded privately. Next: the critical-tier review. |
 | 2026-10-19 | R11's hook half comes back in v0.20.1, on the Owner's word of 19 October (recorded privately). v0.20.0 ships as built, with R11's upgrade note; the read-at half stays. *Done when* restated for the hooks' return. |
 | 2026-10-15 | Filed and judged: In Progress, P2, for v0.20.1, on `fm/045-r11-read-at`. |
 | 2026-10-15 | Built by `27f31560/builder-10` on `fm/045-r11-read-at`: `b417b3c` — R11, the board-refresh hooks go and the explicit refresh stays; `4344147` — the board says what it read, and when. Next: the critical-tier review. |
