@@ -45,6 +45,15 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 BASE = "ac8899d"                    # the commit Q7 was built on: R9's deletion
+FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
+
+
+def as_named(text):
+    """A base run's stdout with the agenda's headings as the board names them, each where it stands once."""
+    for old, new in FM053_AGENDA:
+        if text.count(old) == 1:
+            text = text.replace(old, new)
+    return text
 STANDUP_GIT = ("rev-parse --verify -q HEAD", "branch --show-current", "rev-parse --absolute-git-dir --git-common-dir")
 SVN_STATUS = "status --verbose --no-ignore --ignore-externals --depth infinity . --xml"
 HOOKS = ("applypatch-msg", "pre-applypatch", "post-applypatch", "pre-commit", "pre-merge-commit", "prepare-commit-msg", "commit-msg",
@@ -422,11 +431,11 @@ def run_checks(*, results=None):
                 and f"not read: the same repository as {named['alpha']}, read once — counted in nothing" in row("docs"))
 
             # 2. never joined by id; each repository's rows under its own configuration
-            rulings = section(out, "RULINGS")
+            rulings = section(out, "DECISIONS")
             add(f"Q7 · FM-001 in two repositories is two items, each under its repository with its own question — never joined by id (saw {rulings})",
                 any(re.match(r"  \d\. alpha +FM-001 — Shall alpha ship the launcher first\?  \[3 day\(s\)\]  \[frees FM-004\]$", l) for l in rulings)
                 and any(re.match(r"  \d\. beta +FM-001 — May beta drop the old importer\?  \[1 day\(s\)\]$", l) for l in rulings) and len(rulings) == 2)
-            rest = section(out, "BUTTONS") + section(out, "EVIDENCE COULD SETTLE") + section(out, "YOUR HANDS") + section(out, "ACTS")
+            rest = section(out, "ONE CLICK") + section(out, "EVIDENCE COULD SETTLE") + section(out, "YOUR HANDS") + section(out, "ACTS")
             sent = section(out, "1 ASK(S) SENT BACK")
             add(f"Q7 · each repository's rows are read under its own configuration — its name, id prefixes and tracker folder: beta's BB-003 button and its "
                 f"sent-back BB-005, {'gamma' + chr(39) + 's SV-001, ' if with_svn else ''}delta's PL-001 and alpha's act, each under its own name (saw {rest}, {sent})",
@@ -625,7 +634,8 @@ def run_checks(*, results=None):
             g("add", "-A")
             g("commit", "-qm", "the trackers")
             pair[name] = tuple(normal(x, base) if isinstance(x, str) else x for x in run(t, base, env, "--standup"))
-        add(f"Q7 · `--standup` alone prints what it printed at {BASE} — exit, both streams", pair["then"] == pair["now"],
+        pair["then"] = (pair["then"][0], as_named(pair["then"][1])) + tuple(pair["then"][2:])
+        add(f"Q7 · `--standup` alone prints what it printed at {BASE} — exit, both streams, its kinds as A2 names them", pair["then"] == pair["now"],
             "" if pair["then"] == pair["now"] else f"then {pair['then']!r}\nnow  {pair['now']!r}")
         add("Q7 · …and on that fixture `--standup` printed an agenda — the control that the comparison compared a run that worked",
             pair["now"][0] == 0 and "AP-001" in pair["now"][1] and "AP-004" in pair["now"][1], f"saw {pair['now']!r}"[:300])

@@ -342,7 +342,7 @@ def template_reads_proof(fm):
     if page.count("proof.here") != 1 or any(w in page for w in ("your answers here", "your answer here", '"author only', ">author only", "`author only")):
         bad.append("the proof line is said more than once on one repository's board, or as a literal, not a label")
     cq = re.findall(r"\.cq\{[^}]*\}", page)
-    if not cq or any("border" in c or "background" in c for c in cq) or ".cq{color:var(--coral)}" not in page:
+    if not cq or any("border" in c or "background" in c for c in cq) or ".cq{color:var(--amber)}" not in page:
         bad.append(f"the consequence is not a line in the warning colour (saw {cq})")
     return bad
 

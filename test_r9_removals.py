@@ -29,9 +29,17 @@ BASE = "36d4961"                    # the tool R9 joins in PR B: the d-batch's h
 FM054_SAID = ("\n  signed, on `answer/", "\n  author only, on `answer/")
 
 
+FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
+
+
 def as_proved(entry):
-    """A base run's (flag, exit, stdout, stderr) with its proof said as the tool says it now: for `--due` and `--done`, the one line naming how
-    the commit is proved, once; anything else as it was."""
+    """A base run's (flag, exit, stdout, stderr) as the joined tool says it: for `--due` and `--done`, the one line naming how the commit is
+    proved, once; for `--standup`, the two kinds the board renames; anything else as it was."""
+    if entry[0] == "--standup" and isinstance(entry[2], str):
+        out = entry[2]
+        for old, new in FM053_AGENDA:
+            out = out.replace(old, new) if out.count(old) == 1 else out
+        return entry[:2] + (out,) + entry[3:]
     if entry[0] not in ("--due", "--done") or not isinstance(entry[2], str) or entry[2].count(FM054_SAID[0]) != 1:
         return entry
     return entry[:2] + (entry[2].replace(*FM054_SAID),) + entry[3:]
@@ -269,7 +277,8 @@ def run_checks(*, results=None):
             pair[name] = got
         for a, b in zip(pair["then"], pair["now"]):
             a = as_proved(a)
-            add(f"R9 · {a[0]} prints what it printed at {BASE} — exit, both streams" + (", its proof as FM-054 says it" if a[0] in ("--due", "--done") else "")
+            add(f"R9 · {a[0]} prints what it printed at {BASE} — exit, both streams" + (", its proof as FM-054 says it" if a[0] in ("--due", "--done") else
+                                                                                         ", its kinds as A2 names them" if a[0] == "--standup" else "")
                 if a[0] != "records" else f"R9 · `--due` and `--done` write the record they wrote at {BASE}, on `answer/<id>`", a == b,
                 "" if a == b else f"then {a!r}\nnow  {b!r}")
         acted = pair["now"][3]
