@@ -11,6 +11,9 @@ ask: "Have you chosen and set up R24's minimum privately, and has the independen
 ask-kind: action
 ask-since: 2026-10-12
 ask-proposal: "Confirm completion and independent verification before the tag, without naming the private choice"
+answer: "accepted - Confirm completion and independent verification before the tag, without naming the private choice"
+answered: 2026-10-19
+answered-by: holgo99
 ---
 
 # FM-037 — a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through
