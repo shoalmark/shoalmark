@@ -883,20 +883,21 @@ FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
     '#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}',
     "// FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so",
     '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())',
-    '  .then(()=>$("rs").textContent=L["read.copied"],()=>$("rs").textContent=L["answer.sign.nocopy"]);',
+    '  .then(()=>$("rs").textContent=L["read.copied"],()=>{$("rc").hidden=false;$("rs").textContent=L["answer.sign.nocopy"]});',
 ))
 FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m"><span><span class="fact">read from main at ').encode() + rb"[0-9a-f]{7}"
                            + re.escape(' (no forge named in the configuration, so not linked)</span> · <span class="fact">').encode()
                            + rb"(?:1 path changed and not committed|[0-9]+ paths changed and not committed|nothing changed and not committed|what is changed and not committed is not read here)"
                            + re.escape('</span> · <span class="fact">built ').encode() + rb"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [+-][0-9]{2}:[0-9]{2}"
-                           + re.escape('</span> · <span class="fact">it reads its file again when you come back to it; nothing polls</span></span>rebuild it: <code id="rc">shoalmark --html-only</code>'
-                                       '<button type="button" id="rb" class="act">copy</button><span id="rs" class="said" aria-live="polite"></span></p>').encode() + rb"(?=\n)")
+                           + re.escape('</span> · <span class="fact">it reads its file again when you come back to it; nothing polls</span></span><code id="rc" hidden>shoalmark --html-only</code>'
+                                       '<button type="button" id="rb" class="act" aria-label="copy the rebuild command"><svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z"></path></svg>rebuild command</button>'
+                                       '<span id="rs" class="said" aria-live="polite"></span></p>').encode() + rb"(?=\n)")
 FM057_RELOAD = ("// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so a board rebuilt meanwhile — by an\n"
                 "// explicit run, a commit or an act; no hook rebuilds it — is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field\n").encode("utf-8"), \
                ("// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull\n"
                 "// changed is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field\n").encode("utf-8")
 FM057_KEYS_SHOWN = ("read.git.branch", "read.git.detached", "read.git.unborn", "read.git.clean", "read.git.changed", "read.git.changed.one", "read.git.unread",
-                    "read.svn", "read.svn.unread", "read.svn.new", "read.none", "read.none.why", "read.at", "read.self", "read.rebuild", "read.copy",
+                    "read.svn", "read.svn.unread", "read.svn.new", "read.none", "read.none.why", "read.at", "read.self", "read.copy", "read.copy.spoken",
                     "read.unlinked", "link.unpushed", "link.noforge", "link.unknown", "link.noviewer", "link.nocommit", "read.copied")
 FM057_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in FM057_KEYS_SHOWN)
 
@@ -1527,7 +1528,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             "one byte more in the read-at line": new_page.replace(at, at.replace(b"nothing polls", b"nothing polls!"), 1),
             "the read-at line twice": new_page.replace(at, at * 2, 1),
             "the read-at line's style gone": new_page.replace(FM057_PAGE_LINES[0] + b"\n", b"\n", 1),
-            "a word FM-057 does not name, beside its own": new_page.replace(b'"read.copy": "copy"', b'"read.copy": "copy", "read.more": "more"', 1),
+            "a word FM-057 does not name, beside its own": new_page.replace(b'"read.copy": "rebuild command"', b'"read.copy": "rebuild command", "read.more": "more"', 1),
         }
         made057 = {name: page != new_page for name, page in variants057.items()}
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "

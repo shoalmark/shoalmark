@@ -6335,8 +6335,8 @@ read.none: "gelesen aus dem Ordner {0}"
 read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
 read.at: "gebaut {0}"
 read.self: sie liest ihre Datei wieder, wenn Sie zu ihr zurückkehren; nichts fragt ständig nach
-read.rebuild: "neu bauen:"
-read.copy: kopieren
+read.copy: Neubau-Befehl
+read.copy.spoken: den Neubau-Befehl kopieren
 read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
 read.unlinked: "{0} ({1})"
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
@@ -12329,9 +12329,9 @@ def _q4_fixtures(base):
 def _q4_read(root):
     """What a board's run left: (the line's text, as a reader sees it; the rebuild command; whether its copy button is there and wired; `view/built.json`)."""
     t_ = root / "docs/work-tracker"; page_ = (t_ / "index.html").read_text(encoding="utf-8") if (t_ / "index.html").is_file() else ""
-    m_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S); c_ = re.search(r'<code id="rc">(.*?)</code>', page_)
+    m_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S); c_ = re.search(r'<code id="rc" hidden>(.*?)</code>', page_)
     line_ = _q4_html.unescape(re.sub(r"<[^>]+>", "", m_.group(1))).strip() if m_ else ""
-    wired_ = '<button type="button" id="rb" class="act">' in page_ and '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent)' in page_
+    wired_ = '<button type="button" id="rb" class="act" aria-label="copy the rebuild command"><svg class="ico"' in page_ and '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent)' in page_
     try:
         built_ = json.loads((t_ / "view/built.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):

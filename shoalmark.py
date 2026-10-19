@@ -4272,7 +4272,7 @@ $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElement
 for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
 // FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so
 $("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())
-  .then(()=>$("rs").textContent=L["read.copied"],()=>$("rs").textContent=L["answer.sign.nocopy"]);
+  .then(()=>$("rs").textContent=L["read.copied"],()=>{$("rc").hidden=false;$("rs").textContent=L["answer.sign.nocopy"]});
 // light or dark is the viewer's choice: auto follows the system; the other two switch the page's own
 // `prefers-color-scheme` rules on or off. Paper stays light.
 const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
@@ -4359,7 +4359,7 @@ LABELS = {
     "read.svn": "read from the working copy at {0}", "read.svn.unread": "read from the working copy: its revision is not read here",
     "read.svn.new": "read from the working copy, which has no revision yet",
     "read.none": "read from the folder {0}", "read.none.why": "no version control: no commit or revision to name",
-    "read.at": "built {0}", "read.self": "it reads its file again when you come back to it; nothing polls", "read.rebuild": "rebuild it:", "read.copy": "copy",
+    "read.at": "built {0}", "read.self": "it reads its file again when you come back to it; nothing polls", "read.copy": "rebuild command", "read.copy.spoken": "copy the rebuild command",
     "read.unlinked": "{0} ({1})",                # the commit, and why it is not a link
     "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
     "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
@@ -4991,8 +4991,9 @@ def read_at_html(read, labels):
     at = datetime.datetime.fromisoformat(read["built_at"])
     zone = at.strftime("%z")
     facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]
-    return ("<span>" + " · ".join(f'<span class="fact">{f}</span>' for f in facts) + f'</span>{esc(say("read.rebuild"))} <code id="rc">{esc(CMD + " --html-only")}</code>'
-            f'<button type="button" id="rb" class="act">{esc(say("read.copy"))}</button><span id="rs" class="said" aria-live="polite"></span>')
+    return ("<span>" + " · ".join(f'<span class="fact">{f}</span>' for f in facts) + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
+            f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{esc(say("read.copy"))}</button>'
+            '<span id="rs" class="said" aria-live="polite"></span>')
 
 
 def board_basis():
