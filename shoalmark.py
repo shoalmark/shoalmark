@@ -9725,8 +9725,8 @@ def parse_args(argv):
     add("--html-only", action="store_true",
         help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
-             "tracks; its board carries no derived columns. It stands alone, with --root. No hook shoalmark writes runs it: it is the explicit refresh")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg and commit-msg — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. No hook refreshes the board: a post-checkout, post-merge or post-rewrite an earlier version wrote is removed, with a line, and any other is kept and named; --html-only rebuilds the board. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+             "tracks; its board carries no derived columns. It stands alone, with --root. The checkout, merge and rewrite hooks run it from the hooks' copy; it can also be run explicitly")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, post-checkout, post-merge and post-rewrite — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. The checkout, merge and rewrite hooks rebuild the board as --html-only and always exit 0. An unchanged refresh hook an earlier version wrote is replaced; a changed hook or a person's own is kept and named. A bare git fetch has no hook: run --html-only or check out or merge before reading newly fetched answers on the board. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="*", metavar="DIR", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first; "
                                                      "then what invites and notifications left here, each named, never removed (R9). With DIR …: one agenda across the repositories named, each "
                                                      "read as it stands — its branch and commit, a Subversion working copy's revision, or the folder — running nothing of theirs and writing "
@@ -10502,15 +10502,11 @@ HOOKS = {
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"'}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
-# R11, the Owner's ruling of 12 October (FM-057): NO HOOK REFRESHES THE BOARD. `--install-hook` writes none after a checkout, a merge or a rewrite; the board is
-# rebuilt by an explicit run (the plain run, `--html-only`), by the commit's own hook where a tracker is staged, and by each act right after it (`board_after_act`).
-# The three an earlier version wrote are each removed on its next run, with a line — only where the file is, byte for byte but the interpreter or command it
-# names, what that version wrote: 0.3.0 to 0.19.0 (`FORMER_PLAIN`, `post-checkout` and `post-merge`, marked `# fathom-mark` until 0.6.0), and from the hooks' copy until R11
-# (`FORMER_COPY`, all three). Any other file of those names is a person's own: it is kept, byte for byte, and named.
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
+              "post-checkout": "--html-only", "post-merge": "--html-only", "post-rewrite": "--html-only"}
 REFRESH_HOOKS = {"post-checkout": "checkout", "post-merge": "merge", "post-rewrite": "rebase or an amend"}
 FORMER_PLAIN = "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n"
-FORMER_COPY = {
+COPY_HOOKS = {
     name: "#!/bin/sh\n{mark} — after a " + when + ": refresh the git-ignored board, from the copy of the tool kept in the git directory (`--install-hook` writes it). It reads the tree\n"
           "# and writes the board, and runs nothing a branch brings; it never blocks a " + when + " — it exits 0, with one line where the refresh failed.\n"
           + _COPY_FIND +
@@ -10522,16 +10518,13 @@ FORMER_COPY = {
 
 
 def former_refresh_hook(name, path):
-    """R11 — what the file `path`, the hook `name` (one of `REFRESH_HOOKS`), is: "former" where it is exactly a refresh hook an earlier version wrote, but the
-    interpreter or the command it names (one line each), read with `\\r\\n` as `\\n`; "changed" where its second line is the mark such a hook opens with and the
-    rest is not that hook's; "" for any other — a person's own, a symlink, a folder, a file that cannot be read as UTF-8."""
     if path.is_symlink() or not path.is_file():
         return ""
     try:
         text = path.read_bytes().decode("utf-8").replace("\r\n", "\n")
     except (OSError, UnicodeDecodeError):
         return ""
-    shapes = [FORMER_COPY[name].format(mark=HOOK_MARK, py="\0")] + [FORMER_PLAIN.format(mark=m, cmd="\0") for m in (HOOK_MARK, LEGACY_HOOK_MARK) if name != "post-rewrite"]
+    shapes = [COPY_HOOKS[name].format(mark=HOOK_MARK, py="\0")] + [FORMER_PLAIN.format(mark=m, cmd="\0") for m in (HOOK_MARK, LEGACY_HOOK_MARK) if name != "post-rewrite"]
     if any(re.fullmatch(r"[^\n\0]+".join(re.escape(part) for part in shape.split("\0")), text) for shape in shapes):
         return "former"
     return "changed" if text.split("\n")[1:2] and text.split("\n")[1] in {shape.split("\n")[1] for shape in shapes} else ""
@@ -11069,20 +11062,20 @@ def install_hook():
         put(path, text.format(py=PY, **fill))
         path.chmod(0o755)
         print(f"wrote {path}")
-    for name, when in REFRESH_HOOKS.items():                # R11: no hook refreshes the board — an earlier version's is removed, a person's own kept, each named
+    for name, text in (COPY_HOOKS if copy_code == EXIT_OK else {}).items():
         path = hooks / name
-        if not os.path.lexists(path):
-            continue
         kind = former_refresh_hook(name, path)
-        if kind == "former":
-            path.unlink()
-            print(f"removed {path} — an earlier shoalmark wrote it to rebuild the board after every {when}; no hook does now: "
-                  f"`{CMD} --html-only` rebuilds it, and each act rebuilds it right after itself")
-        elif kind == "changed":
-            print(f"kept {path} — an earlier shoalmark wrote it, and it was changed since: it is left as it is, and still rebuilds the board after every "
-                  f"{when} — remove it, or what of it is shoalmark's, where you no longer want that")
-        else:
-            print(f"kept {path} — not one shoalmark wrote; nothing shoalmark writes runs after a {when}")
+        if os.path.lexists(path) and kind != "former":
+            if kind == "changed":
+                print(f"kept {path} — an earlier shoalmark wrote it, and it was changed since: it is left as it is, and still rebuilds the board after every "
+                      f"{REFRESH_HOOKS[name]}")
+            else:
+                print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{PY} -I {COPY_AT} {HOOK_LINES[name]}`", file=sys.stderr)
+                code = EXIT_LINT
+            continue
+        put(path, text.format(py=PY, **fill))
+        path.chmod(0o755)
+        print(f"wrote {path}" + (" — replaced the refresh hook an earlier shoalmark wrote" if kind == "former" else ""))
     for line in copy_lines:
         print(line, file=sys.stderr if copy_code != EXIT_OK or line.startswith("warning:") else sys.stdout)
     return code or copy_code
