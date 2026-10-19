@@ -36,10 +36,10 @@ No merge to main from the PR's opening until the tag, including answer branches.
 ```sh
 git push -u origin release/v0.20.0
 MAIN_AT_OPEN="$(git rev-parse origin/main)"
-gh pr create --base main --head release/v0.20.0 --title '0.20.0 — Subversion without git and the release archive' --body-file - <<'BODY'
+gh pr create --base main --head release/v0.20.0 --title '0.20.0 — Subversion without git and the release archive' --body-file - <<BODY
 Prepares v0.20.0 for 21 October 2026. Upgrade, run --install-hook again in every committing clone, remove retired settings and schedules, then run --check.
 
-Changes and upgrade messages: [CHANGELOG.md, lines 5–40](CHANGELOG.md#0200--2026-10-21). Publication steps: [the Owner's run sheet](work-tracker/evidence/FM-006/release-v0-20-0-owner-run-sheet.md).
+Changes and upgrade messages: [CHANGELOG.md, lines 5–40](https://github.com/shoalmark/shoalmark/blob/$RELEASE_HEAD/CHANGELOG.md#L5-L40). Publication steps: [the Owner's run sheet](https://github.com/shoalmark/shoalmark/blob/$RELEASE_HEAD/work-tracker/evidence/FM-006/release-v0-20-0-owner-run-sheet.md).
 
 Sources at fixed commits: [Subversion entry](https://github.com/shoalmark/shoalmark/commit/484e27454e77f5a579ca26c0cb9bc27b2c29da2a), [history readers](https://github.com/shoalmark/shoalmark/commit/9218885a926e9fcddf383ff570d354765b25cbc9), [archive](https://github.com/shoalmark/shoalmark/commit/11481149010fcc091349104dbe1fa56a0f0eb845), [removals and board evidence](https://github.com/shoalmark/shoalmark/commit/01014bb53904f59dcfbf5fd30e91d1defe11531d), [agenda and prompts](https://github.com/shoalmark/shoalmark/commit/7acb42d6ea95ee1695ea2a3c77b5291c3eb03495).
 
