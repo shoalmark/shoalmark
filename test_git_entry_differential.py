@@ -781,8 +781,6 @@ def fm053_schema(stdout):
 
 
 def schema_matches(before, after):
-    """Whether a candidate's run of the schema case is the baseline's with A2's two exact edits applied to its stdout (`fm053_schema`,
-    RV-3345), then R15's two rows dropped and R13's two rewritten (`d_batch_schema_matches`) — nothing else."""
     staged = fm053_schema(before["stdout"])
     return staged is not None and d_batch_schema_matches(dict(before, stdout=staged), after)
 
@@ -922,11 +920,6 @@ def fm057_page_dropped(data):
 
 
 def day_dropped(data, script=DAY_SCRIPT, sign=DAY_SIGN):
-    """The candidate's board page without FM-030's day, each part taken out exactly once as specified above — the ten script lines, the
-    four templates, the prompts' data, the twenty-nine words — and the answer's second screen's own three clipboard lines put back for
-    the shared helper's call. None where any part is not there exactly once as written, so a line with anything more is no part. On the
-    joined page (`day_dropped_joined`) the day's two box lines and the screen's call are not there: A2 rewrote the box and the screen, and
-    the day's rows in A2's box are the join's own edits (PR_C_JOIN_EDITS), applied to the baseline like every other."""
     for line in script:
         if data.count(line + b"\n") != 1:
             return None
@@ -942,17 +935,9 @@ def day_dropped(data, script=DAY_SCRIPT, sign=DAY_SIGN):
     return data.replace(*sign)
 
 
-DAY_SCRIPT_JOINED = DAY_SCRIPT[:7]          # the clipboard helper and the dialog's opener; the box's two lines are A2's box's now
+DAY_SCRIPT_JOINED = DAY_SCRIPT[:7]
 day_dropped_joined = lambda data: day_dropped(data, DAY_SCRIPT_JOINED, None)
 
-# FM-054 and FM-007 (v0.20.1): the board's page carries how an answer is proved, read as the gate reads it from the default branch's
-# configuration (`PROOF`, `proof_reading`), and says it before *accept*. The page the 615fb1d baseline writes holds neither, and the
-# board's run of the candidate reads that configuration: the second difference the consumer's snapshots may show, and the one in
-# what is started — every start and `subprocess.run` call the candidate makes inside `proof_reading`, each a read (FM054_READS).
-# The page is held to its difference byte for byte (RV-3308): FM054_PAGE_EDITS, applied in order to the baseline's page, each
-# where it occurs exactly once, must give every byte of the candidate's, once FM-030's day and FM-057's page are taken out of it
-# (`board_matches`) — and nothing else may differ. The starts and calls inside `proof_reading` are set aside before FM-057's rule
-# reads them (`fm054_own`).
 PROOF_MARK = b',PROOF={"state": '
 FM054_READS = (("symbolic-ref",), ("rev-parse",), ("config", "--get"), ("cat-file", "--batch"), ("ls-tree",))
 # FM-054's and FM-007's changes to the page of this fixture, as reviewed — (the baseline's text, the candidate's), each anchored on text
@@ -984,7 +969,6 @@ FM054_PAGE_EDITS = (
 
 
 def fm054_own(rows):
-    """The starts, or `subprocess.run` calls, the candidate makes outside FM-054's reading: what the other rules compare."""
     return [row for row in rows if "proof_reading" not in (row.get("product_stack") or [])]
 
 
@@ -1011,47 +995,33 @@ def fm054_transform(page):
     return text.encode("utf-8")
 
 
-# PR C's join (A2 with defect 8, FM-057 and R9's day): the baseline's page, every edit explicit — A2's (FM053_PAGE_EDITS), then defect 8's
-# edits as they stand on A2's page (FM054_ON_A2_EDITS: its proof CSS, PROOF, the dialog's proof line, the second screen read from PROOF and
-# the heading of *waiting for you* with the proof line, each on A2's text; its signed step's touch is gone in A2's own words, B1), then the
-# join's own (PR_C_JOIN_EDITS: R9's stand-up and close-out rows in A2's day). FM-057's page and the day's other parts are taken out of the
-# candidate's page by their own rules (`fm057_page_dropped`, `day_dropped_joined`), and what is left is compared, every byte.
 FM054_ON_A2_EDITS = (
-    # defect 8's proof rules, in A2's rules (its edit 1, on A2's page; the consequence amber, a warning's colour)
     ('.dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}\n',
      '.dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}\n'
      '/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */\n'
      '#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}\n'),
-    # defect 8's second-screen and proof words, after `answer.sign.url`: its edit 3, as written (A2 changes only the value after them)
     FM054_PAGE_EDITS[2],
-    # defect 8's PROOF, after the labels and before A2's icons: its edit 4's PROOF, as written, where A2's page closes its labels
     ("},ICO={", "},PROOF=" + FM054_PAGE_EDITS[3][1].split("},PROOF=", 1)[1].rsplit(",BRANCH=", 1)[0] + ",ICO={"),
-    # the answer dialog's comment: the commit signed only where configuration asks (its edit 5, on A2's page)
     ("// an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —\n"
      '// no server, no token, and the seat that asked is nowhere in the path. The commit\'s author is the proof.\n'
      '// Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and\n'
      '// abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the\n'
      '// three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.\n',
      ''),
-    # the answer dialog's proof line, before OK (its edit 6, on A2's page)
     ('    <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n',
      '    <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n'
      '    <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}\n'),
-    # the second screen's comment: the terminal commits (its edit 7, on A2's page)
     ('// THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the\n'
      '// decision back. The decision is made; the terminal signs it. This screen says first whether the command is on the clipboard, then what to run,\n'
      '// where, what it does step by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, done\n'
      '// (Esc too: it is the dialog\'s own). It says the command is on the clipboard only when the clipboard said so: from a file there may be none.\n',
      ''),
-    # the second screen read from PROOF: its title and act (its edit 8, on A2's page)
     ('const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;\n'
      '  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>\n',
      'const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n'
      '  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>\n'),
-    # the second screen read from PROOF: its intro (its edit 8, on A2's page)
     ('    <p class="dp">${l("answer.sign.intro")}</p><pre class="cmd">${esc(line)}</pre>\n',
      '    <p class="dp">${l(P.intro)}</p><pre class="cmd">${esc(line)}</pre>\n'),
-    # the second screen read from PROOF: its commit step, the end, the check and the way out (its edit 9, on A2's page)
     ('    <li>${l("answer.sign.step.commit")}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n'
      '    <h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  signed, on \\`${br}\\`, pushed`)}</pre>\n'
      '    <h4>${l("answer.sign.check")}</h4><p>${lh("answer.sign.check.text",c(`git log -1 --format=%G? ${br}`),c("G"))}</p>\n'
@@ -1060,7 +1030,6 @@ FM054_ON_A2_EDITS = (
      '    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, on \\`${br}\\`, pushed`)}</pre>`:""}\n'
      '    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}\n'
      '    <h4>${l("answer.sign.fail")}</h4><p>${lh(P.fail,`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}${ICO.out}</a>`)}</p>\n'),
-    # the heading of *waiting for you* with the proof line, and its consequence beneath (its edit 10, on A2's page)
     ('      w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",w.length>5?l("waiting.bottleneck",w.length,held.length):""].filter(Boolean).map(s=>"· "+s).join(" "):""),\n'
      '    w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n',
      '      w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",w.length>5?l("waiting.bottleneck",w.length,held.length):"",\n'
@@ -1070,7 +1039,6 @@ FM054_ON_A2_EDITS = (
      '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n'),
 )
 PR_C_JOIN_EDITS = (
-    # R9's stand-up and close-out rows in A2's day: the day opens with the one and ends with the other, and never folds
     ('  // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop\n'
      '  if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));\n'
      '    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`\n'
@@ -1107,10 +1075,6 @@ def differs_only_by(baseline, candidate, path, key, rule):
 
 
 def board_matches(baseline, candidate):
-    """The board's page and `view/built.json` after the run, each read back from the bytes the run left, its hash checked: the same in both; or the
-    candidate's page with FM-030's day taken out (`day_dropped_joined`), then FM-057's page (`fm057_page_dropped`), is the baseline's page as the
-    join changes it (`joined_transform`), every byte — the baseline's holding neither PROOF nor the v2 band — and the record is as `fm057_board`
-    holds it."""
     if all(baseline["after"].get(path) == candidate["after"].get(path) for path in (PAGE_PATH, BUILT_PATH)):
         return True
     def page(observed):
@@ -1128,11 +1092,6 @@ def board_matches(baseline, candidate):
 
 
 def snapshots_match(baseline, candidate):
-    """The consumer's snapshots before the run are equal, and so are those after it — every path, byte, symlink, ref, config
-    entry and hook — but for three named differences: INDEX.md after the run may differ where the baseline's, its header line
-    dropped (`r21_dropped`, R21), is the candidate's bytes; the board page where the candidate's, FM-030's day and then FM-057's page
-    taken out (`day_dropped`, `fm057_page_dropped`), is the baseline's bytes with the join's explicit edits — A2's, FM-054's as they stand
-    on A2's page, and the join's own (`joined_transform`); and `view/built.json` as `fm057_board` holds it (`board_matches`)."""
     if baseline["before"] != candidate["before"]:
         return False
     if baseline["after"] == candidate["after"]:
@@ -1513,7 +1472,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         # FM-057's allowance, held to its one difference on the same pair: the starts and calls by its reads alone, the page by its moment, the record by its four
         # fields — and no variant below matches.
         allowance = "Git entry FM-057 allowance: "
-        new_starts, new_calls = fm054_own(new["starts"]), fm054_own(new["run_calls"])      # FM-054's reads set aside, as the rule sets them
+        new_starts, new_calls = fm054_own(new["starts"]), fm054_own(new["run_calls"])
         page, record = (base64.b64decode(new["board_after"][path]["bytes_base64"]) for path in (PAGE_PATH, BUILT_PATH))
         assert_control(allowance + "the default run's starts and calls differ by FM-057's reads alone, its page and record by what it read, and equal runs still match",
                        old["starts"] != new_starts and fm057_rows(old["starts"], new_starts) and fm057_rows(old["run_calls"], new_calls)
@@ -1524,7 +1483,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        not rows_match(old["starts"], new_starts + [extra])
                        and not rows_match(old["starts"], new_starts[:at] + [extra] + new_starts[at:])
                        and not rows_match(old["starts"], new_starts[:at] + new_starts[at + 1:]))
-        bare = [row for row in new_starts if git_words(row) not in FM057_READS[2:]]      # the same run, as the board's own run reads: no changed path
+        bare = [row for row in new_starts if git_words(row) not in FM057_READS[2:]]
         assert_control(allowance + "a run that reads no changed path, as the board's own run (`--html-only`) does, differs by the two moved reads alone; the "
                        "changed-path reads where none are read, or none where a run counts them, do not match",
                        len(bare) == len(new_starts) - 2 and fm057_rows(old["starts"], bare, counted=False)
@@ -1593,7 +1552,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        PROOF_MARK in page and snapshots_match(old, new) and not snapshots_match(old, as_page(unproved)) and not snapshots_match(old, unread))
         # RV-3308: the page is held byte for byte — the baseline's page with FM-054's edits is the candidate's; and two candidates that
         # keep PROOF_MARK, one without an unrelated section, one whose tracker row says something else, do not match
-        section, row = b"tr.t{cursor:pointer}", b'"entry origin selection"'          # an unrelated rule of A2's, and a tracker row
+        section, row = b"tr.t{cursor:pointer}", b'"entry origin selection"'
         before_page = base64.b64decode(old["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((old.get("board_after") or {}).get(PAGE_PATH), dict) else b""
         assert_control(fm054 + "the candidate's page, FM-030's day and FM-057's page taken out, is the baseline's with A2's edits and then FM054_ON_A2_EDITS — "
                        "defect 8's edits as they stand on A2's page — applied, every byte; defect 8's own edits of the baseline fit neither page",
@@ -1605,8 +1564,6 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         moved = page.replace(row, b'"entry origin, changed"')
         assert_control(fm054 + "a page that keeps PROOF but changes a tracker row (WORK-001's hook) does not match",
                        page.count(row) == 1 and PROOF_MARK in moved and not snapshots_match(old, as_page(moved)))
-        # FM-053's allowance (A2), held the same way on the joined page: the default pair's page is the baseline's with the join's edits, every
-        # byte, once the day and FM-057's page are taken out; the schema pair's stdout is the baseline's with A2's two edits, then the d-batch's
         v2 = "Git entry FM-053 allowance: "
         old_page, new_page = (base64.b64decode(row["board_after"][PAGE_PATH]["bytes_base64"]) for row in (old, new))
         joined = fm057_page_dropped(day_dropped_joined(new_page))
@@ -1617,8 +1574,6 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(v2 + "a candidate page without the v2 band, or a baseline page that has it, does not match",
                        not snapshots_match(old, with_board(new, PAGE_PATH, new_page.replace(V2_MARK, b"--band:")))
                        and not snapshots_match(with_board(old, PAGE_PATH, old_page + V2_MARK), new))
-        # RV-3344: four pages that keep the band — the marker-only rule took each (`marker_only`) — and none matches: the page reduced to the
-        # band alone, WORK-001 renamed WORK-999, an unrelated section deleted (the dialog's element), a tracker row changed (WORK-001's hook)
         marker_only = lambda page: V2_MARK in page and V2_MARK not in old_page
         section, hook = b'<dialog id="dlg"></dialog>', b'"entry origin selection"'
         variants = {"the page reduced to the band alone": b"<!-- --secbg: -->",
@@ -1640,8 +1595,6 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and not takes(schema_new.replace(palette, palette + "\n" + palette, 1)))
         assert_control(v2 + "--schema is every character of the baseline's with FM053_SCHEMA_EDITS applied, then R15's rows dropped and R13's rewritten; "
                        "A2's edits do not fit the candidate's", schema_matches(before_schema, after_schema) and fm053_schema(schema_new) is None)
-        # RV-3345: three that A2's rule before it took (`two_lines`: one palette row anywhere, one brand line by its opening — beside the
-        # d-batch's rows, as the candidate has them) and none matches now
         opening = "A brand place gives the board a logo and its labels"          # the v2 brand line's opening, all the rule before took
         brand = next((line for line in schema_new.split("\n") if line.startswith(opening)), "")
         lines = schema_new.split("\n")
@@ -1651,7 +1604,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         r13_rows = {row: next((line for line in lines if line.startswith(row)), "") for row in R13_SCHEMA_ROWS}
         d_batch_old = [next((r13_rows[row] for row in R13_SCHEMA_ROWS if line.startswith(row)), line)
                        for line in schema_old.split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
-        def two_lines(new):                 # fde28b7's rule, on the baseline as the d-batch changes it, kept here only to show each variant is one it took
+        def two_lines(new):
             n = new.split("\n")
             found = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]
             if len(found) != 1:
