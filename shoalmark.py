@@ -4884,9 +4884,9 @@ def day_html(labels, prompts=None):
     rows, dialogs = [], []
     for kind, (text, failed) in prompts.items():
         rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span><span class="c">· {e("day." + kind + ".row")}</span>'
-                    f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{e("day." + kind + ".button")}</button></template>')
+                    f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day." + kind + ".button")}</button></template>')
         body = (f'<p class="dp">{e("day.paste")}</p><pre class="cmd">{html_escape(text)}</pre>'
-                f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{e("answer.sign.copy")}</button>'
+                f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("answer.sign.copy")}</button>'
                 f'<span class="said" aria-live="polite"></span></p>' if text else
                 "".join(f'<p class="dp hot">{e("day.refused", e("day.value." + k), " " + c(shown(v)) if v else "", e("day.refused." + why, DAY_CAP))}</p>' for k, v, why in failed))
         runs = e("day." + kind + ".runs", c(CMD + (" --standup" if kind == "standup" else " --owner")), c(CMD + " --answered"), c(os.path.relpath(TRACKER_DIR / "derive", ROOT).replace(os.sep, "/")))

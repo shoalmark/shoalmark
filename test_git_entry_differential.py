@@ -50,14 +50,15 @@ DAY_SCRIPT = tuple(("\n" + line).encode("utf-8") for line in (
     '  if(gname=="board"&&!q)$("p").insertAdjacentHTML("beforeend","\\n\\n"+$("day-row-closeout").innerHTML);   // FM-030 day: the close-out ends the box',
 ))
 _T, _A = rb"[^<>]*", rb'[^"<>]*'                    # text, and an attribute's value: what may vary, never markup
-_C = rb"(?:[^<>]|<code>[^<>]*</code>)*"              # text with code spans: a command, a path, a value shown
+_C = rb"(?:[^<>]|<code>[^<>]*</code>)*"
+_ICO = re.escape('<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z"></path></svg>').encode()              # text with code spans: a command, a path, a value shown
 _REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb"</p><h4>" + _T + rb"</h4><p>" + _T + rb'</p><p class="ddim">' + _T
          + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
 DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
     rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span><span class="c">' + _T + rb'</span><button class="act" type="button" onclick="DAYOPEN\(\''
-    + k + rb'\'\)" aria-label="' + _A + rb'">' + _T + rb"</button></template>",
+    + k + rb'\'\)" aria-label="' + _A + rb'">' + _ICO + _T + rb"</button></template>",
     rb'\n<template id="day-' + k + rb'"><form method="dialog" class="sign"><h3>' + _T + rb"</h3>(?:"
-    + rb'<p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _T
+    + rb'<p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _ICO + _T
     + rb'</button><span class="said" aria-live="polite"></span></p>' + rb'|(?:<p class="dp hot">' + _C + rb"</p>)+)" + _REST))
 _J = rb'"(?:[^"\\]|\\.)*"'                           # a JSON string
 DAY_DATA = re.compile(rb',DAY=\{"standup": ' + _J + rb', "closeout": ' + _J + rb"\}(?=,BRANCH=)")
