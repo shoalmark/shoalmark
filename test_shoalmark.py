@@ -14359,7 +14359,7 @@ for _what, _rev, _read, _tags, _want in _pins_ctl:
 
 # RV-3003/RV-3004: recorded privately.
 _fixture_tool = b"# a prepared release tool\n"
-_fixture_version = "0.20.0"
+_fixture_version = "0.19.4"
 _fixture_sum = hashlib.sha256(_fixture_tool).hexdigest()
 _fixture_docs = {"VERSION": (_fixture_version + "\n").encode(), "shoalmark.py": _fixture_tool,
                  **{name: (chr(96) + "v" + _fixture_version + chr(96) + "\n" + _fixture_sum + "\n").encode()
