@@ -54,7 +54,7 @@ _C = rb"(?:[^<>]|<code>[^<>]*</code>)*"              # text with code spans: a c
 _REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb"</p><h4>" + _T + rb"</h4><p>" + _T + rb'</p><p class="ddim">' + _T
          + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
 DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
-    rb'\n<template id="day-row-' + k + rb'"><b>' + _T + rb'</b><span class="m">' + _T + rb'</span> <button class="act" type="button" onclick="DAYOPEN\(\''
+    rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span><span class="c">' + _T + rb'</span><button class="act" type="button" onclick="DAYOPEN\(\''
     + k + rb'\'\)" aria-label="' + _A + rb'">' + _T + rb"</button></template>",
     rb'\n<template id="day-' + k + rb'"><form method="dialog" class="sign"><h3>' + _T + rb"</h3>(?:"
     + rb'<p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _T
@@ -1044,14 +1044,15 @@ FM054_ON_A2_EDITS = (
      '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n'),
 )
 PR_C_JOIN_EDITS = (
+    ('.day{margin:6px 0 0}\n', '.day{margin:6px 0 0}.dr{flex-wrap:wrap;margin:8px 0 4px}.dr .c{color:var(--dim);font-weight:400;flex:1 1 20ch}.dr .act{margin-left:auto;font-weight:400}\n'),
     ('  // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop\n'
      '  if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));\n'
      '    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`\n'
      '      +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\\n")+"</details>").join(""),!PHONE)+"</div>"))}\n',
      '  {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];\n'
-     '    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><p class="dr">${$("day-row-standup").innerHTML}</p>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`\n'
+     '    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`\n'
      '      +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\\n")+"</details>").join(""),!PHONE):"")\n'
-     '      +`<p class="dr">${$("day-row-closeout").innerHTML}</p></div>`))}\n'),
+     '      +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}\n'),
 )
 
 
@@ -1514,7 +1515,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             "a fifth template": new_page.replace(b'\n<template id="day-standup">', b'\n<template id="day-closeout"></template>\n<template id="day-standup">', 1),
             "one line's mark dropped": new_page.replace(b"   // FM-030 day\n", b"\n", 1),
             "an unrelated statement appended to a permitted line": new_page.replace(opener, b'd.querySelector(".go").focus();document.title="Unrelated title"}   // FM-030 day', 1),
-            "markup inside a template's text": new_page.replace(b'<template id="day-row-standup"><b>', b'<template id="day-row-standup"><b><img src=x onerror=alert(1)>', 1),
+            "markup inside a template's text": new_page.replace(b'<template id="day-row-standup"><span>', b'<template id="day-row-standup"><span><img src=x onerror=alert(1)>', 1),
             "an attribute added to a template's button": new_page.replace(b'onclick="DAYOPEN(\'standup\')"', b'onclick="DAYOPEN(\'standup\')" onfocus="alert(1)"', 1),
         }
         changed = {name: page != new_page for name, page in variants.items()}

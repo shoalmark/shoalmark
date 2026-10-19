@@ -3897,7 +3897,7 @@ h2.sh:before{content:"##";content:"##" / "";display:inline-block;min-width:2ch;c
 h3.sh:before{content:"###";content:"###" / "";display:inline-block;min-width:3ch;color:var(--mute);font-weight:400}
 details>summary{list-style:none;cursor:pointer}details>summary::-webkit-details-marker{display:none}
 details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>summary .sh:before{content:"v";content:"v" / ""}
-.day{margin:6px 0 0}
+.day{margin:6px 0 0}.dr{flex-wrap:wrap;margin:8px 0 4px}.dr .c{color:var(--dim);font-weight:400;flex:1 1 20ch}.dr .act{margin-left:auto;font-weight:400}
 /* the row: what it is · TYPE · state … its actions, boxed, last; rows 3px apart, a rule between them. Rows line up (G4): the id in a column
    of its own, 10ch; the question or title, and the state line under it, start on one column after it */
 .row{padding:3px 0;border-top:1px solid var(--line)}.sh+.row,.sub+.row,summary+.row{border-top:0}
@@ -4175,9 +4175,9 @@ function box(){
       w[0]=="done"||w[0]=="answer"?btn("way.revoke",t[0],`REV(T.find(x=>x[0]=='${t[0]}'))`):"",
       w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));
   {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];
-    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><p class="dr">${$("day-row-standup").innerHTML}</p>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
+    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
-      +`<p class="dr">${$("day-row-closeout").innerHTML}</p></div>`))}
+      +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
   // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict
   // a verdict's branch (RV-3343): the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why —
   // in the row's own colour: nothing on a verdict's row is coloured but its word (G3, BF-10)
@@ -4883,7 +4883,7 @@ def day_html(labels, prompts=None):
     shown = lambda v: json.dumps(v, ensure_ascii=False)[1:-1][:80] + ("…" if len(v) > 80 else "")     # a line break or a quote shown as written; `c` escapes it once
     rows, dialogs = [], []
     for kind, (text, failed) in prompts.items():
-        rows.append(f'<template id="day-row-{kind}"><b>{e("day." + kind + ".title")}</b><span class="m"> · {e("day." + kind + ".row")}</span> '
+        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span><span class="c">· {e("day." + kind + ".row")}</span>'
                     f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{e("day." + kind + ".button")}</button></template>')
         body = (f'<p class="dp">{e("day.paste")}</p><pre class="cmd">{html_escape(text)}</pre>'
                 f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{e("answer.sign.copy")}</button>'
