@@ -32,6 +32,7 @@ import difflib
 import fnmatch
 import hashlib
 import collections
+import contextlib
 import io
 import itertools
 import json
@@ -9925,7 +9926,7 @@ def cli_preflight(args, backend):
     return CLI_GIT_ONLY[operation] if backend != "git" and operation in CLI_GIT_ONLY else (None, EXIT_OK)
 
 
-def parse_args(argv):
+def parse_args(argv, *, classification_only=False):
     parser = argparse.ArgumentParser(prog=os.environ.get("SHOALMARK_CMD") or "shoalmark", description="A work tracker that lives in the repository it tracks.")
     add = parser.add_argument
     add("--root", metavar="DIR", help="the repository to track; default: the nearest shoalmark.toml or git toplevel above the working directory")
@@ -11572,7 +11573,23 @@ def board_run(root):
 
 
 _AUDIT_HOOKED = [False]
-BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 35)      # how long the board's run, or any hook's run of the copy, may take: nothing waits longer for it
+BOARD_RUN_SECONDS = int(os.environ.get("SHOALMARK_BOARD_SECONDS") or 60)      # the board's run and a hook's run; explicit person commands have no watchdog
+
+
+def watchdog_mode(argv):
+    """Select the board/hook timeout from parsed argv for either tool, without changing COPY permissions or SAFE_READS.
+    Board and hook modes win in mixed commands. Explicit person commands are unbounded; ambiguous copy invocations stay bounded."""
+    try:
+        with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+            args = parse_args(argv, classification_only=True)
+    except SystemExit:
+        return "hook" if HOOK_RUN else None
+    if args.html_only:
+        return "board"
+    if (args.print_written or args.session_check or args.session_trailer is not None
+            or args.commit_msg is not None or args.tsvn_hook is not None):
+        return "hook"
+    return "hook" if HOOK_RUN and cli_operation(args) == "write" else None
 
 
 def board_watchdog(board=True):
@@ -12053,8 +12070,9 @@ if __name__ == "__main__":                                  # what is said while
         if hasattr(_stream, "reconfigure"):
             _stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
 SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
-if SAFE_READS or HOOK_RUN:
-    board_watchdog(board=SAFE_READS)                                        # the board's run, and every hook's run of the copy, is bounded
+WATCHDOG_MODE = watchdog_mode(sys.argv[1:]) if __name__ == "__main__" else None
+if WATCHDOG_MODE is not None:
+    board_watchdog(board=WATCHDOG_MODE == "board")                          # timeout selection is independent of the configuration's read rule
 configure()
 SAFE_READS = False
 
