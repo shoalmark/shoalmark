@@ -53,35 +53,38 @@ printf '%s\n' "$MAIN_AT_OPEN"
 
 **Paste back:** the PR URL, head SHA and `MAIN_AT_OPEN`.
 
-## 3. Before merge — both manual workflows
+## 3. Before merge — the archive dry run and local docs checks
 
-If the tag moves past 21 October, first change the CHANGELOG and landing dates together in one commit, get that head's CI and a one-line addendum review, and reset the head variables to that approved revision before either dispatch below.
+If the tag moves past 21 October, first change the CHANGELOG and landing dates together in one commit, get that head's CI and a one-line addendum review, and reset the head variables to that approved revision before the dry run and local docs checks below.
 
 ```sh
-test "$(git ls-remote origin refs/heads/release/v0.20.0 | cut -f1)" = "$RELEASE_HEAD"
-gh workflow run release.yml --ref release/v0.20.0 -f "ref=$RELEASE_HEAD"
-gh workflow run docs.yml --ref release/v0.20.0
-gh run list --workflow release.yml --commit "$RELEASE_HEAD" --event workflow_dispatch --limit 5 --json databaseId,headSha,status,conclusion,url
-gh run list --workflow docs.yml --commit "$RELEASE_HEAD" --event workflow_dispatch --limit 5 --json databaseId,headSha,status,conclusion,url
+test "$(git ls-remote origin refs/heads/release/v0.20.0 | cut -f1)" = "$RELEASE_HEAD" &&
+gh workflow run release.yml --ref release/v0.20.0 -f "ref=$RELEASE_HEAD" &&
+DOCS_DIR="$(mktemp -d)" &&
+mkdir "$DOCS_DIR/tree" &&
+git archive "$RELEASE_HEAD" | tar -x -C "$DOCS_DIR/tree" &&
+uv venv -q --python 3.12 "$DOCS_DIR/venv" &&
+uv pip install -q --python "$DOCS_DIR/venv/bin/python" -r "$DOCS_DIR/tree/requirements-docs.txt" &&
+(cd "$DOCS_DIR/tree" && "$DOCS_DIR/venv/bin/python" scripts/test_check_site.py && "$DOCS_DIR/venv/bin/zensical" build --clean && "$DOCS_DIR/venv/bin/python" scripts/llms_txt.py site && "$DOCS_DIR/venv/bin/python" scripts/check_site.py site) &&
+gh run list --workflow release.yml --commit "$RELEASE_HEAD" --event workflow_dispatch --limit 5 --json databaseId,headSha,status,conclusion,url &&
+printf '%s\n' 'OK: the dry run is dispatched, the four docs.yml steps pass locally, and nothing is deployed'
 ```
 
-**Expect:** `release.yml` receives the final 40-hex SHA as its `ref` input and keeps `release-archive` as the run's artifact, attaching nothing to a release. `docs.yml` uses its pinned requirements, builds and checks the site, and deploys it for the public repository. Both dispatch and tag runs of this workflow deploy; it has no build-only switch.
+**Expect:** `release.yml` receives the final 40-hex SHA as its `ref` input and keeps `release-archive` as the run's artifact, attaching nothing to a release. `docs.yml`'s four steps pass locally at `RELEASE_HEAD` with its pinned requirements, and nothing is deployed: the site deploys from the tag (step 10).
 
-**Paste back:** the two run URLs, their exact `headSha`, and their run ids for the next block.
+**Paste back:** the release run's URL, exact `headSha` and id, and the `OK:` line.
 
 ```sh
 DRY_RUN_ID='REPLACE_WITH_RELEASE_DRY_RUN_ID'
-DOCS_RUN_ID='REPLACE_WITH_DOCS_RUN_ID'
 gh run watch "$DRY_RUN_ID" --exit-status
-gh run watch "$DOCS_RUN_ID" --exit-status
 DRY_ARTIFACT_DIR="$(mktemp -d)"
 gh run download "$DRY_RUN_ID" --name release-archive --dir "$DRY_ARTIFACT_DIR"
 (cd "$DRY_ARTIFACT_DIR" && shasum -a 256 -c shoalmark-0.20.0.zip.sha256)
 ```
 
-**Expect:** both workflows succeed and the two archive files are kept and their checksum verifies. This dry run's `RELEASE` says `tag none`; compare its bytes only with another build of the same commit, not the later tag build.
+**Expect:** the dry run succeeds and the two archive files are kept and their checksum verifies. This dry run's `RELEASE` says `tag none`; compare its bytes only with another build of the same commit, not the later tag build.
 
-**Paste back:** both successful conclusions, the artifact link and checksum result.
+**Paste back:** the successful dry-run conclusion, the artifact link and checksum result.
 
 ## 4. Merge only on READY and every required check green
 
@@ -94,7 +97,7 @@ git show -s --format=full "$REVIEW_COMMIT" &&
 gh pr merge "$RELEASE_PR" --merge --match-head-commit "$RELEASE_HEAD"
 ```
 
-**Expect:** every required check is green, both manual workflows succeeded, and round 2 is READY on the final tree. Verify that verdict yourself before the merge command; never infer it from the board or CI. Main has not moved since the PR opened. GitHub makes the release PR's merge commit.
+**Expect:** every required check is green, the archive dry run and local docs checks succeeded, and round 2 is READY on the final tree. Verify that verdict yourself before the merge command; never infer it from the board or CI. Main has not moved since the PR opened. GitHub makes the release PR's merge commit.
 
 **Paste back:** the check results, the READY and `Reviewed:` lines, and the merged PR URL.
 
