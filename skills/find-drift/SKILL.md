@@ -45,11 +45,12 @@ Read the repository; write only the report and its hash, or the private suppleme
 10. Report: write `<tracker folder>/evidence/drift/<date>-<short snapshot sha>.md` (date as `YYYY-MM-DD`, sha from
     `git rev-parse --short HEAD`), or the agreed destination without a tracker folder. In order: snapshot sha and
     sources' hashes; table with a legend; breaks and references; top 10, rest and judgement rules; disagreements;
-    obsolete text; definitions and limits. For a scoped run, mark steps not run. Write its sha256 to
-    `<file>.sha256` beside it, never inside it. Never read private notes unless the person names their folder for
-    this run; then write only a supplement there, in their private records under version control. Use the existing
-    public report's snapshot sha and hash as its key: counts only for its existing rule ids, with private references;
-    it may rank again privately. Add no rule or sentence to the public report, and never quote the supplement in it.
+    obsolete text; definitions and limits. A scoped run takes step 1 in full, lists and hashes only the sources it
+    reads, and marks steps 8 and 9 not run. Write its sha256 to `<file>.sha256` beside it, never inside it. Never
+    read private notes unless the person names their folder for this run; then write only a supplement there, in
+    their private records under version control. Use the existing public report's snapshot sha and hash as its key:
+    counts only for its existing rule ids, with private references; it may rank again privately. Add no rule or
+    sentence to the public report, and never quote the supplement in it.
 
 Never run a test suite, a browser or the repository's own gates, use the network, print a secret, or rule on what you
 find. Open no record on a security subject; name the class left out as a limit, and stop on a secret or weakness met.
