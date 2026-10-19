@@ -35,6 +35,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | P2 | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | In Progress | progress | 2026-10-19 |
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
@@ -57,7 +58,6 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
-| [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | — | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | Proposed | triage | — |
 | [FM-060](FM-060-the-answer-s-refusal-record-is-committed-unsigned-under-the.md) | — | --answer's refusal record is committed unsigned under the Owner's name, and R14 then refuses every branch that carries… | Proposed | triage | — |
 | [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | — | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | Proposed | triage | — |
 | [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | — | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | Proposed | triage | — |
