@@ -879,16 +879,17 @@ def with_board(observed, path, data):
 # nothing else does; the three lines of script that copy its rebuild command; the reload's comment, its first two lines rewritten;
 # and the twenty-three `read.*` and `link.*` words in the label table, by key. Taken out, the page is the baseline's.
 FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
-    '#ra{color:var(--mute);font-size:12px;margin:-8px 0 12px;line-height:1.7}#ra code{font:12px "Berkeley Mono",ui-monospace,monospace;color:var(--dim)}#ra .said{margin-left:6px}',
+    '#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}'
+    '#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}',
     "// FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so",
     '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())',
     '  .then(()=>$("rs").textContent=L["read.copied"],()=>$("rs").textContent=L["answer.sign.nocopy"]);',
 ))
-FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m">read from main at ').encode() + rb"[0-9a-f]{7}"
-                           + re.escape(" (no forge named in the configuration, so not linked) · ").encode()
+FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m"><span><span class="fact">read from main at ').encode() + rb"[0-9a-f]{7}"
+                           + re.escape(' (no forge named in the configuration, so not linked)</span> · <span class="fact">').encode()
                            + rb"(?:1 path changed and not committed|[0-9]+ paths changed and not committed|nothing changed and not committed|what is changed and not committed is not read here)"
-                           + re.escape(" · built ").encode() + rb"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [+-][0-9]{2}:[0-9]{2}"
-                           + re.escape(' · it reads its file again when you come back to it; nothing polls · rebuild it: <code id="rc">shoalmark --html-only</code>'
+                           + re.escape('</span> · <span class="fact">built ').encode() + rb"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [+-][0-9]{2}:[0-9]{2}"
+                           + re.escape('</span> · <span class="fact">it reads its file again when you come back to it; nothing polls</span></span>rebuild it: <code id="rc">shoalmark --html-only</code>'
                                        '<button type="button" id="rb" class="act">copy</button><span id="rs" class="said" aria-live="polite"></span></p>').encode() + rb"(?=\n)")
 FM057_RELOAD = ("// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so a board rebuilt meanwhile — by an\n"
                 "// explicit run, a commit or an act; no hook rebuilds it — is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field\n").encode("utf-8"), \

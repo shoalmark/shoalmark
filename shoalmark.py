@@ -3973,7 +3973,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
 /* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */
 #p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}
-#ra{color:var(--mute);font-size:12px;margin:-8px 0 12px;line-height:1.7}#ra code{font:12px "Berkeley Mono",ui-monospace,monospace;color:var(--dim)}#ra .said{margin-left:6px}
+#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}
 /* the claim and the running line: the last line's one element `#F`; the claim shown with the board only, as when it stood in it */
 #f{color:var(--mute);margin:28px 0 0}#f:empty{display:none}#B[hidden]~#F #f{display:none}
 /* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
@@ -4991,7 +4991,7 @@ def read_at_html(read, labels):
     at = datetime.datetime.fromisoformat(read["built_at"])
     zone = at.strftime("%z")
     facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]
-    return (" · ".join(facts) + f' · {esc(say("read.rebuild"))} <code id="rc">{esc(CMD + " --html-only")}</code>'
+    return ("<span>" + " · ".join(f'<span class="fact">{f}</span>' for f in facts) + f'</span>{esc(say("read.rebuild"))} <code id="rc">{esc(CMD + " --html-only")}</code>'
             f'<button type="button" id="rb" class="act">{esc(say("read.copy"))}</button><span id="rs" class="said" aria-live="polite"></span>')
 
 
