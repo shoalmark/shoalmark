@@ -31,9 +31,10 @@ The second skill is named `/prune-drift`, the Owner's word of 18 October (record
   triage rules, a seat definition or a brief. An agent may never read it, or may read it and go the other way. Two
   sources can state one rule differently, and text that a later ruling revoked can still read as live.
 - **What v0.20.2 proposes,** in FM-023's table of 2026-10-18:
-  - **`/find-drift`,** a read-only skill. It finds these three kinds of drift point, grades each rule on five layers,
-    and ranks what can become a check. The layers are: impossible to break; the build fails; a rule or a review; a
-    skill; a style guide.
+  - **`/find-drift`,** a skill that reads the repository and writes only its report and the report's hash, or a
+    private supplement where the person names its folder. It commits nothing. It finds these three kinds of drift
+    point, grades each rule on five layers, and ranks what can become a check. The layers are: impossible to break;
+    the build fails; a rule or a review; a skill; a style guide.
   - **`/prune-drift`,** the second skill, built on it, that moves history to the record and rules to checks.
   - Both skills ship in one Claude plugin.
 - **Its first run,** on shoalmark at `5dcdcc5`, is recorded privately.
@@ -71,6 +72,7 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 | Date | Event |
 |---|---|
+| 2026-10-19 | *What is true now* corrected by the Planner: `/find-drift` reads the repository and writes only its report, its hash or a named private supplement; it is not read-only. |
 | 2026-10-19 | One ruling ask put by the Planner: whether a skill ranks above a rule a reviewer checks; the proposal keeps the order the Owner accepted. |
 | 2026-10-19 | Judged In Progress, P2, by the Planner, before the first build commit: `/find-drift`'s spec and the plugin, on `fm/062-find-drift`. |
 | 2026-10-18 | The second skill named `/prune-drift`, the Owner's word of 18 October (recorded privately); v0.20.2's allocation accepted (`88bf707`). |
