@@ -205,8 +205,8 @@ def run_mutants(source, check):
         ("hook treated as unbounded person", STARTUP, 'WATCHDOG_MODE = "board" if SAFE_READS else None'),
         ("default remains 35 s", 'os.environ.get("SHOALMARK_BOARD_SECONDS") or 60',
          'os.environ.get("SHOALMARK_BOARD_SECONDS") or 35'),
-        ("RV-3370 early theme discovery", "args = parse_args(argv, classification_only=True)",
-         "args = parse_args(argv, classification_only=False)"),
+        ("RV-3370 early theme discovery", 'add("--from", dest="theme", metavar="THEME", help=argparse.SUPPRESS)',
+         'add("--from", dest="theme", metavar="THEME", help=argparse.SUPPRESS if (HERE / "brand" / "themes").is_dir() else argparse.SUPPRESS)'),
     )
     for name, before, after in mutations:
         assert text.count(before) == 1, "each mutant must change exactly one decision"
