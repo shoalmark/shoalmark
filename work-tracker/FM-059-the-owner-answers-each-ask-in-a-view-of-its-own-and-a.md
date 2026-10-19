@@ -153,10 +153,12 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
     - `ask-because:` and `ask-then:`: one entry per option, in `ask-options:`'s order and separated by ` | ` as it is,
       each at most 120 characters. An empty entry reads *not stated*;
     - **the gate refuses:** a confidence that is not a whole number from 0 to 100; an entry list whose length is not the
-      options'; an entry over 120 characters or with a control character; any of the three on a tracker with no open
-      ask; and `ask-because:` or `ask-then:` without `ask-options:`;
-    - **they stay with the ask:** `--clear-ask` moves them under `## Asks` with the exchange. The board's dialog does
-      not show them in this build. With ask ids (FM-050), each entry's place is its option's while the ask stands;
+      options'; an entry over 120 characters or with a control character; any of the three on a tracker with no put
+      ask (`ask:`), open or answered; and `ask-because:` or `ask-then:` without `ask-options:`;
+    - **they live as long as the ask:** they stand beside the put ask through its answer, accepted or rejected, as every
+      `ask-` line does (FM-050 3a). An answer writes its lines below them and changes none of them, and `--clear-ask`
+      then moves them under `## Asks` with the exchange. The board's dialog does not show them in this build. With ask
+      ids (FM-050), each entry's place is its option's while the ask stands;
   - **what follows any answer** stands once, in the lines: the `next:` that `ANSWER_MOVE` gives the ask's kind
     (`:942`), the same for every answer, and who moves next: the seat that asked, or for an action the Owner's hands;
   - **the one help line** (G7): inside the window, under *your choice*, pending FM-053's signed answer. Without it,
@@ -481,6 +483,9 @@ Reviewer privately. This text does not state them.
     read *answered, on its way* on the board until the merge (FM-064);
   - **the seat's reasons:** an ask with all three fields shows them; an option whose *because* is empty reads *not
     stated*; an ask with none shows the fallback link and help line;
+  - **the reasons' lifetime** (S3's rows, built with S3): an answer to an ask with all three fields, accepted and
+    rejected, passes the gate with the fields unchanged; `--clear-ask` moves them under `## Asks`; a field on a
+    tracker with no `ask:` is refused;
   - **not brought:** an id two branches propose; an ask answered on a branch not yet merged; an ask before ids; a
     malformed ask. None is brought, and each is named on the first line;
   - **the ways out:** `later` typed, and *decide later* as a reply, accepted only with its code (each: nothing signed,
@@ -517,6 +522,7 @@ Reviewer privately. This text does not state them.
   - **the tool's commit read from the hooks' copy's record alone:** a copy installed from another commit names the
     wrong tool;
   - **a refused push's ask brought again:** a second run brings it while `guided/<ask-id>` exists;
+  - **the reasons allowed on an open ask only:** the answered ask with its fields is refused;
   - **a result view opened between asks:** the recorder gets two paths for one ask;
   - **the board reading `origin/answer/` only:** the pushed answer reads *waiting for you* (FM-064).
 - **What each backend can claim:**
