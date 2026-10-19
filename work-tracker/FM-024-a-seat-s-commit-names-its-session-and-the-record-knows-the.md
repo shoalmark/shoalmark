@@ -25,7 +25,7 @@ brings it back.
 
 **2026-10-15 — what is left of the answer of 28 September:** `--statusline` and its install, not built; they wait for R6, held to 20 October.
 
-**2026-10-15 — a worktree a seat adds carries the seat's whole identity; nothing is built.** It is fixed first on the session list's branch in v0.20.1 (FM-023's table of 2026-10-15).
+**2026-10-16 — a worktree a seat adds carries the seat's whole identity: built on `fm/024-sessions`; the Reviewer's NOT READY (`c8e28d7`) is fixed in round 1 (`1cd3c73`, `fe2695e`, `5590778`), for its re-check.** One documented step writes every identity key of a new seat's worktree and prints the list (README, *Sessions*; AGENTS.md); `--whoami` and the commit hook name every mixed identity a worktree is part of, in at most 34 git processes a scan at the cap of 32 worktrees, matching or not; `test_worktree_identity.py` holds all fourteen mixed identities named. The one named limit, which only the step closes: a full, unchanged copy.
 
 **Facts,** read at main `272e374` and probed with Git 2.50.1.
 - **What Git does:** with `extensions.worktreeConfig` set, `git worktree add` copies the current worktree's whole
@@ -461,6 +461,9 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 
 | Date | Event |
 |---|---|
+| 2026-10-16 | Round 1 on the Reviewer's NOT READY (`c8e28d7`): RV-3313, every mixed identity is named, within 34 git processes a scan at the cap (`1cd3c73`); RV-3314, a worktree folder holding a line break is one worktree (`fe2695e`); RV-3315, the bound stated and measured, matching and not (`5590778`). |
+| 2026-10-15 | Correcting the row below: `--schema` keeps its text (`d2165d9`). FM-044's Git entry differential holds `--schema`'s output to its immutable baseline, and its `schema-check-priority` control failed on `f09c579`; `--init`'s line still names every key. |
+| 2026-10-15 | Defect 7 built on `fm/024-sessions` (`f09c579`): the setup step in README and AGENTS.md, the report in `--whoami` and the hook, `--init`'s line and `--schema` naming every key, the class test with its mutants. Critical tier: the Reviewer's pass is next. |
 | 2026-10-15 | Judged In Progress for v0.20.1: defect 7 first, on `fm/024-sessions`. |
 | 2026-10-15 | Defect filed: `git worktree add` copies a seat's whole identity into the worktree it adds. Nothing is built. |
 | 2026-09-23 | R6: a parent is read from *convened by* only in the session-id form; the registry names the Principal session `8e509911` in every row. R7: *What is true now* says what shipped — 15 checks, *on trunk*, the landed-branch rule, the sessions the commits carry. |

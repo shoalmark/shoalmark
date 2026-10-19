@@ -9718,7 +9718,7 @@ with tempfile.TemporaryDirectory() as d:
              ["git", "config", "--get-all", "remote.origin.promisor"], ["git", "config", "--list"], ["git", "config", "-z", "--list"],
              ["git", "version", "--build-options"], ["git", "-c", "core.fsmonitor=x", "version"], ["git", "-c", "core.fsmonitor=x", "config", "-z", "--get-regexp", keys_]]
     check(f"FM-045 · the board's reads of the clone's configuration and of git's version are read-only git as the tool sends them — `config -z --get-regexp` "
-          f"with the promisor keys, the one form of `--get-regexp` the list admits, and `version` with nothing after it —; another pattern, a word after it, "
+          f"with the promisor keys, one of the two forms of `--get-regexp` the list admits (the other, a seat worktree's four identity keys, is test_worktree_identity.py's), and `version` with nothing after it —; another pattern, a word after it, "
           f"`--get-all`, `--list`, `version` with an option, or a foreign `-c` do not pass (saw {sent_})",
           [s_[1:] for s_ in sent_] == [["config", "-z", "--get-regexp", keys_], ["version"]] and all(fm.read_only_git(s_) for s_ in sent_)
           and not any(fm.read_only_git(b_) for b_ in bent_))
@@ -15383,6 +15383,13 @@ _module_guard(test_day_prompts, check)
 # Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
 import test_standup_repos
 _module_guard(test_standup_repos, check)
+
+import test_worktree_identity
+for _label, _ok, _detail in test_worktree_identity.run_checks(fm):
+    if _ok is None:
+        _skipped(_label, 1, _detail)
+    else:
+        check(_label + (f" — {_detail}" if _detail else ""), _ok)
 
 # FM-044 bounded local-stage runtime controls. Component-only AST assertions
 # remain with their immutable standalone reviews; core retains the unchanged

@@ -601,6 +601,9 @@ READ_ONLY_GIT_C = ("core.quotePath=", "gpg.ssh.allowedSignersFile=")        # th
 # `remote.<name>.promisor` is true, and from every remote with a `remote.<name>.partialclonefilter`. ONE read sees every one of them, in every scope and
 # include git reads: `git config -z --get-regexp` with this pattern (`promisor_remotes`).
 PROMISOR_KEYS = r"^(extensions\.partialclone|remote\..*\.(promisor|partialclonefilter))$"
+# A SEAT WORKTREE'S IDENTITY in ONE read (FM-024, defect 7): the four keys `shared_harness` compares, read for each worktree by `git -C <worktree> config -z
+# --get-regexp` with this pattern (`worktree_identity`), so that one scan starts at most `WORKTREE_READ_CAP` + 2 git processes, matching or not.
+SEAT_IDENTITY_KEYS = r"^(user\.(name|email)|seat\.(session|harness))$"
 LAZY_FETCH_SINCE = (2, 44)          # the first git that honours `GIT_NO_LAZY_FETCH`, its switch that keeps a read from fetching what a partial clone lacks
 # EVERY OTHER GIT COMMAND THE TOOL STARTS, and why the board's run never starts it (FM-045). With READ_ONLY_GIT it classifies every git command this file
 # can start: the suite reads the file's source and fails on a command in neither, and on one of these that a board's run of its own starts.
@@ -642,9 +645,10 @@ def read_only_git(argv):
     if sub == "worktree":
         return tail[:1] == ["list"]
     if sub == "config":
-        # A WIDENING of the read-only list: beside `--get` and `user.name`, ONE `--get-regexp` — `-z`, the promisor keys, exactly as `promisor_remotes`
-        # sends it, to tell a partial clone by its configuration alone. No other pattern, no `--get-all`, no `--list`
-        return "--get" in tail or tail == ["user.name"] or tail == ["-z", "--get-regexp", PROMISOR_KEYS]
+        # A WIDENING of the read-only list: beside `--get` and `user.name`, TWO `--get-regexp`s, each `-z` and each exactly as the tool sends it: the
+        # promisor keys (`promisor_remotes`), to tell a partial clone by its configuration alone; and a seat worktree's four identity keys
+        # (`worktree_identity`, FM-024 defect 7), one read a worktree. No other pattern, no `--get-all`, no `--list`
+        return "--get" in tail or tail == ["user.name"] or tail in (["-z", "--get-regexp", PROMISOR_KEYS], ["-z", "--get-regexp", SEAT_IDENTITY_KEYS])
     if sub == "version":
         return tail == []                                   # how the board learns git's version (`git_version`), in a partial clone only
     if sub == "symbolic-ref":
@@ -7774,13 +7778,114 @@ def harness_reading(hid):
     return found, (f"{logs[0]} names no {' and no '.join(gone)} in its newest {LOG_SCAN >> 20} MiB" if gone else "")
 
 
+# ONE HARNESS ID IS ONE SESSION (FM-024, defect 7). Under `extensions.worktreeConfig`, `git worktree add` copies the worktree it is run in — its whole
+# `config.worktree` — so a worktree a seat adds carries that seat's `user.name`, `user.email`, `seat.session`, `seat.harness` and signers path until each
+# is written again: the setup step (README, *Sessions*; AGENTS.md). Until then the new worktree commits as the seat it came from, with that seat's rights
+# and its `Session:`, `Model:` and `Effort:`. `--whoami` and the prepare-commit-msg hook name every MIXED IDENTITY this worktree is part of, one line
+# each (`shared_harness`): another worktree that carries this one's harness id or session while another of the four keys differs; another seat worktree
+# that carries this one's name under another seat; and this worktree itself where its session names a seat its address is not. A report, never a
+# refusal: the commit is made, and its trailers are what they were.
+# THE READS are the read-only list's: `git worktree list --porcelain -z`, then ONE `git -C <worktree> config -z --get-regexp SEAT_IDENTITY_KEYS` for this
+# worktree and for each other worktree — all four keys in one process (`worktree_identity`). A read that ends in 1 (none of the keys is set) or 128
+# (no such folder, no repository there) is NOT KNOWN, and so is a key the read does not name: it matches nothing, and a key not known is said so. One
+# scan reads at most `WORKTREE_READ_CAP` other worktrees, in the order `git worktree list` gives, and says how many it left unread: at most
+# WORKTREE_READ_CAP + 2 git processes, matching or not (measured at the cap on 2026-10-16: 1.0 to 1.4 s either way, README, *Sessions*). A commit with
+# no `seat.session` or no harness id reads none.
+# THE NAMED LIMIT: a full, unchanged copy carries the whole identity of the worktree it came from and reads as that seat's second worktree. Only the
+# setup step tells it from the seat's own.
+WORKTREE_READ_CAP = 32
+SEAT_IDENTITY = ("user.name", "user.email", "seat.session", "seat.harness")      # a seat worktree's identity: one read gives all four (`SEAT_IDENTITY_KEYS`)
+COMMAND_LINE_CONFIG = re.compile(r"GIT_CONFIG_(PARAMETERS|COUNT|KEY_\d+|VALUE_\d+)")     # git's `-c` scope, which it hands a hook from `git -c … commit`
+
+
+def worktree_identity(top):
+    """The four keys of `SEAT_IDENTITY` as the worktree at `top` holds them, in ONE git process — `git -C <top> config -z --get-regexp
+    SEAT_IDENTITY_KEYS`, the last value of a key winning as `--get` reads it — each None where it is not known: git ended in 1 (none of the four is
+    set), in 128 (no such folder, or no repository there) or in any other failure, or the read names no such key. Read without the `-c` scope of the
+    command that runs this (`COMMAND_LINE_CONFIG`): a `git -c user.email=… commit` names the commit's author, not a worktree's setting."""
+    env = {k: v for k, v in nested_git_env().items() if not COMMAND_LINE_CONFIG.fullmatch(k)}
+    r = vcs_process("git", "-C", top, "config", "-z", "--get-regexp", SEAT_IDENTITY_KEYS, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", env=env)
+    got = dict.fromkeys(SEAT_IDENTITY)
+    if r.returncode == 0:
+        for item in r.stdout.split("\0"):
+            key, newline, value = item.partition("\n")
+            if key.lower() in got:
+                got[key.lower()] = value.strip() if newline else ""
+    return got
+
+
+def shared_harness(hid, top):
+    """One harness id is one session (FM-024, defect 7): every mixed identity the worktree at `top` is part of, read in at most WORKTREE_READ_CAP + 2
+    git processes — the list, this worktree's identity, and one read of each other worktree's (`worktree_identity`):
+    - another worktree that carries this one's `seat.harness` or `seat.session` while another of the four keys differs;
+    - another seat worktree (one with a `seat.session`) that carries this one's `user.name` under another seat (`seat_of`; its address without `[seats]`);
+    - this worktree itself, where its `seat.session` names a seat (`<parent>/<seat>-<n>`) that is not its address's (`session_names`).
+    Returns (findings, unread, listed): each finding a dict — `folder` (None for this worktree), `shared` [(key, value)] and `differ`
+    [(key, its value, this one's value)], or for this worktree `session`, `email` and `seats` (the session's, the address's) —, how many other worktrees
+    went unread past the cap, and whether git listed them. A worktree with this one's whole identity is no finding: the same seat's second worktree,
+    or a full, unchanged copy (the named limit). Nothing is read without `hid`."""
+    if not hid:
+        return [], 0, True
+    listed = git_out("worktree", "list", "--porcelain", "-z")             # NUL-delimited: a folder whose name holds a line break is one folder
+    if not listed:
+        return [], 0, False
+    here = os.path.normcase(os.path.realpath(top))
+    others = [t for t in (f[len("worktree "):] for f in listed.split("\0") if f.startswith("worktree ")) if os.path.normcase(os.path.realpath(t)) != here]
+    mine = worktree_identity(top)
+    mine["seat.harness"] = mine["seat.harness"] or hid                      # Codex's thread id, where no `seat.harness` is set
+    seat = lambda ident: seat_of(ident["user.name"] or "", ident["user.email"] or "") or ident["user.email"]
+    findings = []
+    shape, own = SESSION_ID_RE.fullmatch(mine["seat.session"] or ""), seat_of(mine["user.name"] or "", mine["user.email"] or "")
+    if shape and shape[1] and own not in (None, "owner") and shape[1] not in session_names(own):
+        findings.append({"folder": None, "session": mine["seat.session"], "email": mine["user.email"], "seats": (shape[1], own)})
+    for other in others[:WORKTREE_READ_CAP]:
+        theirs = worktree_identity(other)
+        shared = [(k, mine[k]) for k in SEAT_IDENTITY if mine[k] and theirs[k] == mine[k]]
+        differ = [(k, theirs[k], mine[k]) for k in SEAT_IDENTITY if theirs[k] != mine[k]]
+        run = any(k in ("seat.session", "seat.harness") for k, _v in shared)
+        name = dict(shared).get("user.name") and mine["seat.session"] and theirs["seat.session"] and seat(theirs) != seat(mine)
+        if differ and (run or name):
+            findings.append({"folder": other, "shared": shared, "differ": differ})
+    return findings, max(0, len(others) - WORKTREE_READ_CAP), True
+
+
+def one_line(text):
+    """`text` on one line: a line break in a folder's name or in a value is written `\\n` (`\\r`), so each finding stays one line."""
+    return text.replace("\r", "\\r").replace("\n", "\\n")
+
+
+def shared_harness_lines(hid, top):
+    """What `--whoami` and the hook say of `shared_harness`: one line for each mixed identity it found, one where git listed no worktrees, and one for
+    the worktrees it left unread. A line break in a folder or a value is written `\\n` (`one_line`)."""
+    findings, unread, listed = shared_harness(hid, top)
+    said = lambda v: "not known" if v is None else one_line(v) or "''"
+    lines = []
+    for f in findings:
+        if f["folder"] is None:
+            lines.append(f"one harness id is one session — this worktree's seat.session {said(f['session'])} names the seat {f['seats'][0]}, and its user.email "
+                         f"{said(f['email'])} is the seat {f['seats'][1]}: write this worktree's own keys (README, *Sessions*)")
+        else:
+            lines.append(f"one harness id is one session — {one_line(f['folder'])} carries this worktree's " + ", ".join(f"{k} {said(v)}" for k, v in f["shared"])
+                         + " under another identity: " + "; ".join(f"{k} {said(t)} there, {said(m)} here" for k, t, m in f["differ"])
+                         + " — `git worktree add` copied one worktree's keys into the other: write each worktree's own (README, *Sessions*)")
+    if not listed:
+        lines.append("one harness id is one session: not known — git listed no worktrees of this repository")
+    if unread:
+        lines.append(f"one harness id is one session: not known for {unread} worktree{'' if unread == 1 else 's'} past the first {WORKTREE_READ_CAP} "
+                     "that `git worktree list` names (`WORKTREE_READ_CAP`)")
+    return lines
+
+
 def whoami():
     """`--whoami`: who this session is, as the line a seat's report opens with (AGENTS.md) —
     `From: <session> <seat> (<worktree>) · <model> · <effort>`; a message a person carries between sessions names its target
     by the same identity after `To:`. The session is from `seat.session`, the seat from `[seats]` by the
     worktree's `user.email`, the worktree's folder, and the model and effort from the harness's log by `seat.harness`
     (`—` where there is none). A second line names the log and the directory its session was launched in, for a person to
-    read. Exit 4 (the lint code) without a `seat.session`; exit 2 where two logs carry the id."""
+    read. Another worktree that carries this one's harness id under another identity is said on stderr, one line each
+    (`shared_harness_lines`) — a report: the `From:` line and the exit are what they were. Exit 4 (the lint code) without a
+    `seat.session`; exit 2 where two logs carry the id."""
     refused = cli_git_refusal('whoami')
     if refused is not None:
         return refused
@@ -7790,7 +7895,8 @@ def whoami():
         return EXIT_LINT
     email, name = (git_out("config", "--get", "user.email") or "").strip(), (git_out("config", "--get", "user.name") or "").strip()
     top = (git_out("rev-parse", "--show-toplevel") or "").strip()
-    reading, problem = harness_reading(harness_id())
+    hid = harness_id()
+    reading, problem = harness_reading(hid)
     if reading is None and problem.startswith("two logs"):
         print(f"--whoami: {problem}", file=sys.stderr)
         return 2
@@ -7800,6 +7906,8 @@ def whoami():
         print(f"    read from {reading['path']}" + (f" — its session was launched in {reading['cwd']}" if reading["cwd"] else ""))
     if problem:
         print(f"--whoami: {problem}", file=sys.stderr)
+    for line in shared_harness_lines(hid, top or str(ROOT)):
+        print(f"--whoami: {line}", file=sys.stderr)
     return EXIT_OK
 
 
@@ -7808,7 +7916,9 @@ def session_trailer(message_file):
     to the message being written — and `Model:` and `Effort:` where the harness's log, found by `seat.harness`, names them
     (`whoami`'s reading). Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's clone); a
     trailer the message carries already is left alone — an amend, a rebase, a seat that typed it. A log that cannot be
-    read, or two that carry the id, costs the commit its two trailers and a line on stderr — never the commit."""
+    read, or two that carry the id, costs the commit its two trailers and a line on stderr — never the commit. Another
+    worktree that carries this one's harness id under another identity costs a line on stderr each (`shared_harness_lines`),
+    and nothing else."""
     refused = cli_git_refusal('session_trailer')
     if refused is not None:
         return refused
@@ -7821,6 +7931,8 @@ def session_trailer(message_file):
     reading, problem = harness_reading(hid) if hid else (None, "")
     if problem:
         print(f"--session-trailer: {problem}" + (" — no Model: or Effort: on this commit" if reading is None else ""), file=sys.stderr)
+    for line in shared_harness_lines(hid, top or str(ROOT)):
+        print(f"--session-trailer: {line}", file=sys.stderr)
     trailers = [f"Session: {sid}", f"Worktree: {worktree}"] + [f"{key}: {reading[k]}" for key, k in (("Model", "model"), ("Effort", "effort")) if reading and reading[k]]
     r = vcs_process("git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", *itertools.chain.from_iterable(("--trailer", t) for t in trailers), message_file,
                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -11156,8 +11268,10 @@ def init(key=None):
     if svn:
         print(next_line + f"`{CMD} --install-hook` sets optional TortoiseSVN properties; SVN CLI runs no client hook: generate before committing and run `{CMD} --check` after the commit")
     else:
-        print(next_line + f"`{CMD} --install-hook` wires the commit gate; a seat's worktree carries two settings: "
-              f"`git config --worktree user.email <seat>` (who may) and `git config --worktree seat.session <id>` (which run — `{CMD} --session new` prints one); `seat.harness` (the id the harness gave the seat, for its `Model:` and `Effort:`) is `{CMD} --whoami`'s")
+        print(next_line + f"`{CMD} --install-hook` wires the commit gate; a seat's worktree carries its identity in `git config --worktree`: "
+              f"`user.name` and `user.email` (the seat — who may), `seat.session` (which run — `{CMD} --session new` prints one), `seat.harness` (the id the harness gave the seat, "
+              f"for its `Model:` and `Effort:` — `{CMD} --whoami`'s) and `gpg.ssh.allowedSignersFile` (the signers file); `git worktree add` copies every one of them "
+              f"from the worktree it is run in, so write each in a new seat's worktree and read them back with `git config --worktree --list` (README, *Sessions*)")
     return EXIT_OK
 
 
@@ -11603,9 +11717,9 @@ def main(argv=None, *, _notice=True):
         return init(args.key)
     if args.install_hook:
         return install_hook()
-    if args.session_trailer:                                # every commit runs this: it reads one git setting, never the trackers
+    if args.session_trailer:                                # every commit runs this: git's settings, the harness's log and the other worktrees' (bounded), never the trackers
         return session_trailer(args.session_trailer[0])
-    if args.whoami:                                         # who this session is: git's settings and the harness's own log, no tracker
+    if args.whoami:                                         # who this session is: git's settings, the other worktrees' (bounded) and the harness's own log, no tracker
         return whoami()
     if args.session_check:                                  # …and this: the session rule on a commit that stages no tracker (R4)
         return session_check()
