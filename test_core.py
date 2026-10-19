@@ -358,8 +358,11 @@ check("FM-020 · a whole id alone is that tracker — `~ID` keeps the neighbourh
       and '$("q").title=L["search.help"]' in _tri)
 check("FM-020 · the counter names an id searched alone — it is that tracker, open or not, never counted as `open`",
       '${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?' in _tri and '"count.id": "tracker · {0}"' in _tri)
-check("FM-024 S7, FM-032 S2 · the board carries the report — null where no commit names a session and no verdict was given — and its strip: the parents with a commit in the last day, each a line that opens on its sub-sessions, and the week's verdicts",
-      "REG=null," in _tri and '+(REG?(REG.groups.length?"\\n\\n<b>"+l("sessions.recent",REG.parents,REG.all)+"</b>\\n"' in _tri and "<details><summary>" in _tri and 'l("reviews.week",REG.reviews[0],REG.reviews[1])' in _tri)
+check("FM-024 S7, FM-032 S2, FM-053 · the board carries the report — null where no commit names a session and no verdict was given — and its strip: the day's one fold, "
+      "the parents with a commit in the last 24 hours, each a line that opens on its sub-sessions; and the week's verdicts, folded, a row each",
+      "REG=null," in _tri and 'if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));' in _tri
+      and 'fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>' in _tri and 'split(l("reviews.title"))' in _tri and 'l("reviews.counts",r[0],r[1])' in _tri
+      and "(REG.verdicts||[]).map(v=>row(" in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
       'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
       and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
@@ -499,9 +502,9 @@ _rk = gti.render_triage([dict(_live[0], rank=1, tier="P1", lines=900, provable=F
 _pg = gti.render_html([dict(_live[0], status="In Progress", rank=1, lines=900, provable=False, blocked_by=[], next="run", state="x", intent="", epic="—"), dict(_live[1], rank=0, lines=900, provable=False)])
 check("one model, two renderings: the ranked table and the page row say a ranked tracker's next move and what it needs",
       "| 1 | P1 | run | *complex* | sized, provable, intended | [" in _rk and '["sized", "provable", "intended"], "run", "", "", [], ' in _pg
-      and all(k in _pg for k in ('${l("waiting.title")}: ${w.length}</b>', '<b>${l("story.chapters")}</b> — ', 'L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k"', 'l("viewer.stale","7")',
+      and all(k in _pg for k in ('${l("waiting.title")}: <span class="${w.length?"owed":""}">${w.length}</span>', '<b>${l("story.chapters")}</b> — ', 'L["word.reads"]+" "+(t[25]/1000).toFixed(1)+"k"', 'l("viewer.stale","7")',
                                  '"waiting.title": "waiting for you"', '"viewer.stale": "stale — older than {0} days'))
-      and '<b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ' in _pg and '<b>${l("viewer.verdict")}</b> — ' in _pg and '"<i>"+l("word.missing")' in _pg and '${t[21]?" → "+esc(t[21]):""}' in _pg and "dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}}" in _pg and _pg.count("decodeURIComponent(") == 1)
+      and '<b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ' in _pg and '<b>${l("viewer.verdict")}</b> — ' in _pg and '"<i>"+l("word.missing")' in _pg and '${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}' in _pg and "dec=s=>{try{return decodeURIComponent(s)}catch(e){return s}}" in _pg and _pg.count("decodeURIComponent(") == 1)
 # `kind-of-problem:`, the second try: left by a seat with the tracker open, never judged by a pass; derived
 # from the move wherever the move already says it (rehearsal 13), so it is owed — a named gap — only on a `build`
 _bk = lambda **kw: [p for p in gti.lint([dict(_live[0], fm={"kind-of-problem": kw["problem"]} if kw else {})]) if "`kind-of-problem:`" in p]

@@ -322,7 +322,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads. Under its name one line says what it read, and when: the time it was built; on git the commit, the branch or a detached HEAD, and how many paths were changed and not committed — a plain run counts them; the board's own run, `--html-only`, says what is changed is not read —; on Subversion the working copy's revision; with none, the folder. The commit or the revision links to its page only where the configuration names the forge (`commit_url`, else `blob`) and, on git, only once origin holds it; else the line says why — never a link guessed from a remote's address — and that it reads its file again when you come back to it while nothing polls, with the command that rebuilds it, `--html-only`, and a button that copies it. It never calls itself current |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
 | `<tracker dir>/derive` | optional, executable — the repository's own axis (§7) |
-| `<tracker dir>/brand/` | optional — the repository's `theme.css`, `logo.svg`, `wordmark.svg`, `labels.yaml`, fonts (§9) |
+| `<tracker dir>/brand/` | optional — the repository's `logo.svg`, `labels.yaml` (§9) |
 
 ### What invites and notifications left
 
@@ -550,12 +550,18 @@ trunk — not a branch verdict** when the tip is on the trunk's own first-parent
 verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
 commit says one of them.
 
-**Seen:** the board's strip is one line per **parent** session with a commit in the last day, its sub-sessions folded
-into it — *sessions · 2 in the last day (9 with their sub-sessions)*, then *a9f3c2d1 planner (planner-a9) ·
+**Seen:** the board's strip, the one fold of *the day*, is one line per **parent** session with a commit in the last 24
+hours, its sub-sessions folded into it — *sessions · 2 with a commit in the last 24 hours (9 with their sub-sessions)*,
+then *a9f3c2d1 planner (planner-a9) ·
 builder 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line opens on each member's worktree, model and
 effort (`—` where its commits carried none). A parent that made no commit of its own still has its line, its seat and
 worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript. Under it,
-*reviews this week · independent n · same session m*. `--owner`, the digest, carries the same grouping — a header with
+*reviews · this week · n by another session · m by the same session · reports, not proofs*, folded, a row per verdict.
+A row names the verdict's commit, the commit it reviewed, and its branch: the branch that holds the verdict commit on
+its own first-parent line. A ref that only points at the reviewed commit, or reaches the verdict through a merge, is
+not its branch. Once the trunk holds the verdict, the merge that brought its line in names the branch, in its own
+message. Otherwise the row says *ambiguous*, with each branch that holds it, or *branch not known*, with why.
+`--owner`, the digest, carries the same grouping in the same words — a header with
 the two counts, then one line per parent — and ends with the queue where `gh` reads the forge (*what to merge*, above).
 Labels: `sessions.recent` (now with `{1}`, the count with sub-sessions) and `reviews.*` (§9).
 
@@ -611,27 +617,27 @@ Owner's signed answers of 2026-09-24, in [`AGENTS.md`](https://github.com/shoalm
 
 ## 9. Branding the board
 
-Four optional files, the same names in every place — the board is built from the places in order, **the later one
+Two optional files, the same names in every place — the board is built from the places in order, **the later one
 wins**: `tools/shoalmark/brand/`, the organisation's that set the repository up (`--vendor` copies and pins it) ·
 `<tracker dir>/brand/`, the repository's, never loose among the trackers · `~/.config/shoalmark/`, the person's, in
 every repository. Only the git-ignored board reads them: `INDEX.md` and the gate are the same whoever runs them.
 
 | File | Carries |
 |---|---|
-| `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work, **with paths written relative to the `theme.css` they are in** — a font goes in `brand/fonts/`. A theme whose import is missing is left out whole |
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
-| `wordmark.svg` | the mark and the name drawn as one, **inline** in the header in place of the logo and the name — the logo stays the tab's, the name the page's title and the wordmark's accessible name. At most 200 kB of UTF-8; shapes, text, gradients, masks and a `<use>` of its own ids, each attribute from a fixed list with a fixed grammar — colours `#hex`, `currentColor`, `none` or a plain name, numbers as `-?digits(.digits)?` with one space or comma between, every id once, never `style`. Anything else refuses it whole, with a warning |
 | `labels.yaml` | every word of the board — flat `key: value` lines, `tagline` and `footer` among them. A German board is this file |
 
-- **`--brand`** says which place gave the board its theme, logo, wordmark and labels; `--brand DIR` writes a commented
-  starter. The name is `name` in `shoalmark.toml`. A theme hard to read is a warning; status colours keep their meaning.
-- **Two themes ship as starters** in the tool's `brand/themes/`, `monochrome` and `shoalmark`, each a `theme.css` with
-  its fonts; `--vendor` copies and pins them, so a vendoring repository receives both. None is worn until
-  `--brand DIR --from <theme>` copies it into a place: a board that chooses none looks as it did. A theme styles three
-  hooks: the Owner's box's title `#p>.pt` (label `owner.title`), the last line `#F` (`#f`, `#r`), `tr.zebra`.
-- **Light and dark:** dark colours go under `@media (prefers-color-scheme:dark)`; `◐` (auto → light → dark) switches
-  that rule for any theme and remembers the choice in the browser; paper stays light. A wordmark in `currentColor`
-  takes the page's ink, at its `height`, else 22 px. Every page ends in the tool's line: its mark, name and version.
+- **The look is the board's own:** `monochrome`, in the system's monospace; no theme is read and no font ships. The
+  colours are `[palette]` in `shoalmark.toml`: `name = "shoalmark"` for the public pages' palette, or a few of
+  `bg` `ink` `fail` `ok` `warn` `owed` `help`, and the surfaces `secbg` `okbg` `warnbg` `failbg`, as `["#light", "#dark"]`.
+  Below 4.5:1 for any text, on the page, a band or a tint, it is refused in one line.
+- **No longer read, never a silent loss:** a place's `theme.css`, `fonts/` and `wordmark.svg` — and the `themes/` an
+  older copy shipped — are named, file by file, by every board build, by `--brand` and in one line of the board, with
+  what replaces each: `[palette]`, the system's monospace, the name. `--check` never fails on them; delete them.
+- **`--brand`** says which place gave the board its logo and labels; `--brand DIR` writes a commented `labels.yaml`.
+  The name is `name` in `shoalmark.toml`.
+- **Light and dark:** the board follows the system; its button *light or dark: auto* (→ light → dark) switches it by
+  hand and remembers the choice in the browser; paper stays light. Every page ends in the tool's line: its mark, name and version.
 - **Another language:** `labels.yaml` for the board's words; `[headings]` in `shoalmark.toml` for the gate's sections.
 
 ## Licence

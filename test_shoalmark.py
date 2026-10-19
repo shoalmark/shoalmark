@@ -526,20 +526,15 @@ with tempfile.TemporaryDirectory() as d:
           nopin.returncode == fm.EXIT_LINT and "tools/shoalmark/PIN is missing" in nopin.stderr and str(root) not in nopin.stderr)
     check("a vendored copy runs from where it sits — and one edited in place is refused by its own gate",
           ok.returncode == 0 and bad.returncode == fm.EXIT_LINT and "differs from its PIN" in bad.stderr)
-    # FM-002, 0.18.5: the themes the tool ships travel with the copy, pinned — and a repository that chooses none sees none
-    _shipped = fm.theme_files()
+    # R10's look half: the tool ships no theme and no font, so the copy carries none — and its board wears none
     _cpage = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
-    check(f"FM-002 · --vendor copies brand/themes/ — both starters, their fonts and the README — and pins each file by sha256; the copy's board, choosing none, wears none ({len(_shipped)} files)",
-          len(_shipped) == 11 and {"brand/themes/README.md", "brand/themes/monochrome/theme.css", "brand/themes/shoalmark/theme.css"} <= set(_shipped)
-          and all((dest / r).read_bytes() == (HERE / r).read_bytes() and f"{fm.digest(HERE / r)}  {r}" in pin for r in _shipped)
-          and "<style data-from" not in _cpage and "</html>" in _cpage)
-    _from = subprocess.run(tool + ["--brand", str(root / "docs/work-tracker/brand"), "--from", "monochrome"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
-    check("FM-002 · a vendoring repository starts from a theme its copy carries: `--brand DIR --from` copies it out of the pinned copy, which stays as pinned",
-          _from.returncode == 0 and (root / "docs/work-tracker/brand/theme.css").read_bytes() == (dest / "brand/themes/monochrome/theme.css").read_bytes()
-          and (lambda r_: r_.returncode == 0 and "PIN" not in r_.stderr)(subprocess.run(tool, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)))
+    check("R10 · --vendor copies no theme and no font — the tool ships none: nothing it copies or pins lies under brand/themes/; the copy's board wears none",
+          not (dest / "brand/themes").exists() and "brand/themes/" not in pin and "<style data-from" not in _cpage and "</html>" in _cpage)
     _r9 = (HERE / "README.md").read_text(encoding="utf-8"); _r9 = _r9[_r9.index("## 9. Branding the board"):]; _r9 = _r9[:_r9.index("\n## ", 3) + 1]
-    check(f"FM-002 · the README explains branding in one section of at most 25 lines (the tracker's Done-when) — the places, the starters, `--from`, what a vendoring repository receives ({len(_r9.splitlines())} lines)",
-          len(_r9.splitlines()) <= 25 and all(w in _r9 for w in ("`brand/themes/`", "`monochrome`", "`shoalmark`", "`--brand DIR --from <theme>`", "a vendoring repository receives both", "looks as it did")))
+    check(f"R10 · the README explains branding in one section of at most 25 lines — the places, the logo and the labels, `[palette]` for the colours, and "
+          f"each brand file the board no longer reads, named, never a silent loss ({len(_r9.splitlines())} lines)",
+          len(_r9.splitlines()) <= 25 and all(w in _r9 for w in ("`logo.svg`", "`labels.yaml`", "`[palette]`", "`theme.css`", "`fonts/`", "`wordmark.svg`",
+                                                                 "never a silent loss", "`--check` never fails on them")))
 
 # --- 0.3.0: what a second repository taught ---------------------------------------------------------------
 check("the configuration is read without a library — the subset --init writes, a refusal by line for anything else",
@@ -605,7 +600,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "progress": "FM-021 · the empty progress section, rendered",
     "cell": "the board's cell shows the display form, rendered",
     "german": "C4 · the German board, rendered",
-    "wordmark": "0.18.2 · the wordmark, rendered in a browser",
+    "running": "0.18.2 · the running line, rendered in a browser",
     "queue": "the Owner's queue, rendered — its first words, the asks sent back, the dialog's actions",
     "days": "FM-006 · v0.19.1 · the board's days, rendered in pinned zones — an ask's age, the fresh badge, a verdict's stale mark",
     "dialog": "the answer dialog, rendered — the choices' order, a list of one, Other alone, OK's one command",
@@ -615,7 +610,15 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "promise": "FM-030 · 0.18.6 · a promise on the board and in its dialogs, rendered — what he promised, the question below it",
     "way": "FM-030 · 0.18.6 · on their way, rendered — the box's counts, his act and his answers before his merge",
     "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
-    "hooks": "FM-002 · the three hooks, rendered — none seen without a theme, each styled by one",
+    "hooks": "FM-002 · the Owner's box's title, rendered in every view",
+    "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
+    "header": "FM-053, RV-3342, BF-2 · the header row at 375, 640, 880 and 1024 px, rendered — the field, its counter and the scheme's action in view",
+    "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
+    "owner": "FM-053, BF-3 · `next: owner`, rendered — *you* in the tier's cell, `owner` in code font on the handover line",
+    "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
+    "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
+    "names": "FM-053, BF-11 · a review row's branch names at 375 px, rendered — each one inline box",
+    "phone": "FM-053, BF-14 · the page at 390, 360 and 320 px, rendered — no sideways scroll, only the table scrolls, in its own box",
 }
 
 
@@ -847,7 +850,7 @@ with tempfile.TemporaryDirectory() as d:
     now_ = commit_as(root, "implementer@seat", "at work now\n\nSession: 5555eeee/implementer-2\nWorktree: wt-now")
     busy = run_safe(root, "--owner")[1]
     check(f"FM-032 S2 · the digest names the parents with a commit in the last day — a parent derived from its sub-session's id — none of the older ones (saw {quiet.strip()[-60:]!r} · {busy.strip()[-80:]!r})",
-          "SESSIONS" not in quiet and "SESSIONS IN THE LAST DAY · 1 (2 with their sub-sessions)\n  5555eeee — (—) · implementer 2" in busy and "1111aaaa" not in busy)
+          "SESSIONS" not in quiet and "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 1 (2 with their sub-sessions)\n  5555eeee — (—) · implementer 2" in busy and "1111aaaa" not in busy)
     opened, closed = run_safe(root, "--session", "open", "6666ffff", "principal", "the Owner", "x"), run_safe(root, "--session", "close", "1111aaaa")
     gone = "--session open/close are gone since 0.18.0: the registry is a report — run --sessions"
     check(f"FM-032 S2 · `--session open` and `--session close` are gone: one line, exit 2, nothing written (saw {opened[0]}, {closed[0]}, {opened[2].strip()!r})",
@@ -1386,14 +1389,204 @@ with tempfile.TemporaryDirectory() as d:
         try:
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<p id="p"[^>]*>([\s\S]*?)</p>', pdom) or [None, ""])[1]))
+            strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1]))
         except _ChromeFailed as e_:
             strip_ = None
             _hung("strip", e_)
-    check(f"FM-024 S7 + FM-024 build for 0.19.0 · the board's strip is one line per parent — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the digest groups the same way under the same header (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
-          "SESSIONS IN THE LAST DAY · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
-              "sessions · 2 in the last day (4 with their sub-sessions) a9 t@t (—) · implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
-              and "reviews this week · independent 2 · same session 1 · untraced 1" in strip_)))
+    check(f"FM-024 S7 + FM-024 build for 0.19.0 + FM-053 · the board's strip is one line per parent, in the day's one fold — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the week's verdicts, folded, a row each; the digest groups the same way under the same words (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
+          "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
+              "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
+              and "reviews · this week · 2 by another session · 1 by the same session · 1 untraced · reports, not proofs" in strip_
+              and "by the same session · its session a9/reviewer-1, the branch's a9 and 1 more" in strip_ and "independent" not in strip_
+              and strip_.count("· branch feat") == 4)))      # RV-3343: each row names its branch, the one its verdict was committed to
+# --- FM-053, RV-3343: a verdict's row names its branch — the one that holds the verdict commit on its own line, or the merge that brought that line
+#     in, by its message; ambiguous or not known, with why; never a ref that merely points at the reviewed commit. The class test, run on the tool
+#     and on two mutants, each of which it must fail
+def _branch_class(tool):
+    """The class test on `tool`, the tool as a module: one repository grown through each shape of a verdict's branch, each read by `verdict_reports`
+    with HEAD where the verdict is, as the board reads it. (ok, {shape: (want, saw)} where they differ)."""
+    with tempfile.TemporaryDirectory() as d_:
+        root_ = Path(d_).resolve()
+        out_ = lambda *a: subprocess.run(["git", "-C", str(root_), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+        commit_ = lambda subject: (git(root_, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+        verdict_ = lambda tip, sid: commit_(f"review: READY\n\nReviewed: {tip}\nSession: {sid}")
+        seen_ = {}
+
+        def read_(shape, verdict, want):
+            tool.configure(root_)
+            seen_[shape] = (want, next((v[6] for v in tool.verdict_reports() if v[0] == verdict), "no such verdict"))
+        git(root_, "init", "-q", "-b", "main"); run(root_, "--init", "--key", "msr"); tracker(root_, "MSR-001"); run(root_)
+        git(root_, "add", "-A"); git(root_, "commit", "-qm", "the trunk\n\nSession: t0")
+        git(root_, "checkout", "-q", "-b", "fm/a"); built_a = commit_("a, built\n\nSession: b1"); v_a = verdict_(built_a, "r1")
+        git(root_, "branch", "coincides", built_a)                  # a ref that points at the reviewed commit — now, and only that
+        read_("known: fm/a holds the verdict on its own line; a ref at the reviewed commit is not counted", v_a, ["line", "fm/a"])
+        git(root_, "checkout", "-q", "--detach", built_a); v_det = verdict_(built_a, "r2")
+        read_("not known: a verdict on a detached HEAD — never named from the ref at its reviewed commit", v_det, ["none"])
+        git(root_, "checkout", "-q", "-b", "fm/b", v_a); commit_("b, grown from a's verdict\n\nSession: b2")
+        read_("ambiguous: fm/a and fm/b each hold it on their own line", v_a, ["ambiguous", ["fm/a", "fm/b"]])
+        git(root_, "checkout", "-q", "-b", "fm/c", "main"); built_c = commit_("c, built\n\nSession: b3"); v_c = verdict_(built_c, "r3")
+        git(root_, "checkout", "-q", "-b", "release/x", "main"); git(root_, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/c' into release/x", "fm/c")
+        m_c = out_("rev-parse", "HEAD")
+        read_("known: a release branch that merged fm/c reaches its verdict through a merge — not its branch", v_c, ["line", "fm/c"])
+        git(root_, "checkout", "-q", "main"); git(root_, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/a'", "fm/a"); m_a = out_("rev-parse", "HEAD")
+        git(root_, "merge", "-q", "--no-ff", "-m", "Merge pull request #9 from org/release/x", "release/x")
+        git(root_, "branch", "-q", "-D", "fm/a", "fm/c", "release/x")
+        git(root_, "checkout", "-q", "-b", "fm/d"); built_d = commit_("d, built\n\nSession: b4"); v_d = verdict_(built_d, "r4")
+        git(root_, "checkout", "-q", "main"); git(root_, "merge", "-q", "--no-ff", "-m", "the Owner merges d", "fm/d"); m_d = out_("rev-parse", "HEAD")
+        git(root_, "branch", "-q", "-D", "fm/d"); git(root_, "checkout", "-q", "-b", "fm/later"); commit_("later work, from the trunk\n\nSession: b5")
+        git(root_, "checkout", "-q", "main"); v_t = verdict_(commit_("work on the trunk itself\n\nSession: b6"), "r6")
+        read_("known after the merge, its ref gone: the merge's message names fm/a; fm/b and a later branch are not asked", v_a, ["merge", "fm/a", m_a])
+        read_("known through a release: the inner merge names fm/c, not the release the trunk merged", v_c, ["merge", "fm/c", m_c])
+        read_("not known: the merge that brought it names no branch", v_d, ["unnamed", m_d])
+        read_("known: a verdict committed on the trunk's own line is the trunk's", v_t, ["line", "main"])
+        git(root_, "checkout", "-q", "-b", "fm/e"); v_e = verdict_(commit_("e, built\n\nSession: b7"), "r7")
+        git(root_, "update-ref", "refs/remotes/origin/fm/e", v_e); git(root_, "update-ref", "refs/remotes/origin/main", "main")
+        git(root_, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+        read_("known: fm/e and origin/fm/e are one branch; main, origin/main and origin's HEAD do not hold it", v_e, ["line", "fm/e"])
+        git(root_, "checkout", "-q", "--detach"); git(root_, "branch", "-q", "-D", "fm/e")
+        read_("known from the remote-tracking ref alone", v_e, ["line", "fm/e"])
+        rm_git(root_)
+    wrong_ = {k: v for k, v in seen_.items() if v[0] != v[1]}
+    return len(seen_) == 10 and not wrong_, wrong_
+
+
+def _tool_module(src, name):
+    """The tool's source `src` as a module of its own, beside this one — a mutant is loaded so, never written over the tool."""
+    import types as _types
+    m_ = _types.ModuleType(name); m_.__file__ = str(HERE / "shoalmark.py"); sys.modules[name] = m_
+    exec(compile(src, str(HERE / "shoalmark.py"), "exec"), m_.__dict__)
+    return m_
+
+
+_br_ok, _br_saw = _branch_class(fm)
+check(f"FM-053, RV-3343 · a review row's branch: the branch that holds the verdict on its own line — a ref at the reviewed commit not counted, one that reaches "
+      f"the verdict through a merge not its branch, a local branch and its remote-tracking copy one name; after the merge, the name its merge's message gives, "
+      f"through a release too; ambiguous where two hold it; not known where none does or the merge names none (saw {_br_saw})", _br_ok)
+_tool_src_br = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_BR_MUTANTS = {     # a ref at the reviewed commit counted as the verdict's branch · `git branch --contains`: any branch that reaches the verdict
+    "a ref at the reviewed commit counted": ("            if tip == verdict:\n", "            if tip == verdict or tip in history.parents.get(verdict, ()):\n"),
+    "every branch that reaches the verdict": ("if any(holds(t) for t in shas))", "if any(verdict in history.ancestors(t) for t in shas))")}
+_br_mut = {k: (_tool_src_br.count(a) == 1 and not _branch_class(_tool_module(_tool_src_br.replace(a, b), "fm_branch_mutant"))[0]) for k, (a, b) in _BR_MUTANTS.items()}
+check("FM-053, BF-10 · a verdict row's *ambiguous* is in the row's own colour — `brn` passes the label, never a coloured span (G3: nothing on a verdict's "
+      "row is coloured but its word)",
+      'lh("reviews.branch.ambiguous",l("reviews.ambiguous"),' in _tool_src_br and '<span class="warn">${l("reviews.ambiguous")}</span>' not in _tool_src_br)
+check(f"FM-053, RV-3343 · the class test FAILS on each mutant — a ref at the reviewed commit counted; every branch that reaches the verdict, through a merge too (saw {_br_mut})",
+      all(_br_mut.values()))
+sys.modules.pop("fm_branch_mutant", None); fm.configure(HERE)
+if _browser("branch"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+            git(root, "checkout", "-q", "-b", "fm/a"); built = commit_("a, built\n\nSession: b1"); v_amb = commit_(f"review: READY\n\nReviewed: {built}\nSession: r1")
+            git(root, "checkout", "-q", "-b", "fm/b"); commit_("b, grown from a's verdict\n\nSession: b2")
+            git(root, "checkout", "-q", "fm/a"); v_known = commit_(f"review: NOT READY\n\nReviewed: {built}\nSession: r2")
+            git(root, "checkout", "-q", "--detach"); v_none = commit_(f"review: READY WITH FINDINGS\n\nReviewed: {built}\nSession: r3")
+            run_safe(root, "--html-only")
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            what_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
+            said_ = {v: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", w_)) for v, w_ in what_.items()}
+            check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in the row's own colour (BF-10) with "
+                  f"each branch that holds it, and *not known* in italics with why (saw {said_})",
+                  said_[v_known] == f"on {built[:10]} · branch fm/a"
+                  and said_[v_amb] == f"on {built[:10]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
+                  and 'class="warn"' not in what_[v_amb] and "<span" not in what_[v_amb]      # BF-10: no colour on a verdict's row but its word
+                  and said_[v_none] == f"on {built[:10]} · branch not known — no branch here holds the verdict on its own line"
+                  and "<i>branch not known — no branch here holds the verdict on its own line</i>" in what_[v_none])
+    except _ChromeFailed as e_:
+        _hung("branch", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-6: a review row names the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id,
+#     none stays —. The range's sessions are sorted by name, so the oldest is carried in the data of its own; the class test fails on a mutant
+#     that takes the first by name
+def _oldest_class(tool):
+    """The class test on `tool`, a module: three branches, each reviewed — none, one and many sessions, the oldest of the many last by name —
+    merged into a fourth that HEAD stands on, read by `verdict_reports` and drawn by the board's data. (ok, {verdict: what differed})."""
+    with tempfile.TemporaryDirectory() as d_:
+        root_ = Path(d_).resolve()
+        out_ = lambda *a: subprocess.run(["git", "-C", str(root_), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+        commit_ = lambda subject: (git(root_, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+        git(root_, "init", "-q", "-b", "main"); run(root_, "--init", "--key", "msr"); tracker(root_, "MSR-001"); run(root_)
+        git(root_, "add", "-A"); git(root_, "commit", "-qm", "the trunk")
+        want_ = {}
+        for name_, sessions_, first_ in (("fm/none", (None, None), ""), ("fm/one", ("k1", "k1"), "k1"), ("fm/many", ("zz9", "aa1", "mm5"), "zz9")):
+            git(root_, "checkout", "-q", "-b", name_, "main")
+            for n_, s_ in enumerate(sessions_):
+                built_ = commit_(f"{name_}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
+            want_[commit_(f"review: READY\n\nReviewed: {built_}\nSession: r-{name_[3:]}")] = (sorted({s_ for s_ in sessions_ if s_}), first_)
+        git(root_, "checkout", "-q", "-b", "together", "main")
+        for name_ in ("fm/none", "fm/one", "fm/many"):
+            git(root_, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+        tool.configure(root_)
+        got_ = {v[0]: (v[3], v[7]) for v in tool.verdict_reports() if v[0] in want_}
+        data_ = {v[0]: (v[3], v[7]) for v in (tool.board_sessions() or {}).get("verdicts", []) if v[0] in want_}
+        rm_git(root_)
+    wrong_ = {k[:10]: (w_, got_.get(k), data_.get(k)) for k, w_ in want_.items() if got_.get(k) != w_ or data_.get(k) != (w_[0], w_[1])}
+    return len(want_) == 3 and not wrong_, wrong_
+
+
+_old_ok, _old_saw = _oldest_class(fm)
+check(f"FM-053, BF-6 · a review row's branch sessions: none, one and many — the oldest commit's session carried beside the sorted list, in the "
+      f"report and in the board's data, never the first by name (saw {_old_saw})", _old_ok)
+_tool_src_old = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_OLD_MUTANT = ('oldest_session(history, tip, own) if tip else ""))', 'sorted(ranged)[0] if ranged else ""))')
+check("FM-053, BF-6 · the class test FAILS on its mutant, the branch's first session taken by name",
+      _tool_src_old.count(_OLD_MUTANT[0]) == 1 and not _oldest_class(_tool_module(_tool_src_old.replace(*_OLD_MUTANT), "fm_oldest_mutant"))[0])
+sys.modules.pop("fm_oldest_mutant", None); fm.configure(HERE)
+_rv_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-6 · the row renders the branch's sessions as the oldest's id and *and n more*, one alone as its id, none as —, the verdict's own session as it was",
+      _rv_src.count('lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))') == 1
+      and fm.LABELS.get("reviews.sessions.more") == "{0} and {1} more" and 'v[3].join(", ")' not in _rv_src)
+if _browser("sessions"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
+            rows_ = {}
+            for name_, sessions_, want_ in (("fm/none", (None,), "its session r-none, the branch's —"), ("fm/one", ("k1", "k1"), "its session r-one, the branch's k1"),
+                                            ("fm/many", ("zz9", "aa1", "mm5"), "its session r-many, the branch's zz9 and 2 more")):
+                git(root, "checkout", "-q", "-b", name_, "main")
+                for n_, s_ in enumerate(sessions_):
+                    built_ = commit_(f"{name_}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
+                rows_[commit_(f"review: READY\n\nReviewed: {built_}\nSession: r-{name_[3:]}")] = want_
+            git(root, "checkout", "-q", "-b", "together", "main")
+            for name_ in ("fm/none", "fm/one", "fm/many"):
+                git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+            run_safe(root, "--html-only")
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            said_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
+            check(f"FM-053, BF-6 · rendered: none reads —, one its id, many the oldest's id and *and 2 more* (saw {list(said_.values())})",
+                  all(re.sub(r"<[^>]+>", "", said_[v]).endswith(w_) for v, w_ in rows_.items()))
+    except _ChromeFailed as e_:
+        _hung("sessions", e_)
+        fm.configure(HERE)
+# --- FM-053, BF-7: the reviews heading's counts put the number first, as its other counts do — in English and in the German table the tool ships
+_de_shipped = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{0}} ohne Spur* and *{{0}} auf dem Stamm* in the German table "
+      f"(saw {fm.LABELS.get('reviews.untraced')!r}, {fm.LABELS.get('reviews.trunk')!r}, {_de_shipped.get('reviews.untraced')!r}, {_de_shipped.get('reviews.trunk')!r})",
+      (fm.LABELS.get("reviews.untraced"), fm.LABELS.get("reviews.trunk"), _de_shipped.get("reviews.untraced"), _de_shipped.get("reviews.trunk"))
+      == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Stamm"))
+
+# --- FM-053, BF-8: the guide's §10 puts *ended* among the words never on a board — the last group's heading reads *shipped or closed*; its key
+#     and its description stay; the German table the tool ships says it in English until the native read, since *beendet* says *ended* too
+_ended_ = [k for k, v in fm.LABELS.items() if re.search(r"(?<![\w-])ended(?![\w-])", v)]      # a list made apart: 3.9 takes no backslash in an f-string's braces
+check(f"FM-053, BF-8 · no label says *ended*: the last group is *shipped or closed*, its key `section.ended` and `desc.ended` kept, and the shipped German "
+      f"table's value English until the native read (saw {_ended_})",
+      fm.LABELS.get("section.ended") == "shipped or closed" and fm.LABELS.get("desc.ended") == "" and not _ended_
+      and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("section.ended") == "shipped or closed")
+_end_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-13 · the last group says its name once — *// shipped or closed · 22*: `desc.ended` is empty, in English and in the German table "
+      "the tool ships, and a group's line adds its description only where there is one",
+      fm.LABELS.get("desc.ended") == "" and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("desc.ended") == ""
+      and _end_src.count('${gname=="board"?(BOARD[k]?" · "+BOARD[k]:""):BCOLS') == 1 and '${gname=="board"?" · "+BOARD[k]:' not in _end_src)
+
 # --- FM-024 (0.19.0): three parents with 25 sub-sessions are three lines — the strip's grouping, the header's counts, model and effort by trailer --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -1417,7 +1610,7 @@ with tempfile.TemporaryDirectory() as d:
     said = run_safe(root, "--owner")[1]
     lines = [l for l in said.splitlines() if l.startswith("  ") and re.match(r"  [0-9a-f]{8} ", l)]
     check(f"FM-024 (0.19.0) · 3 parents with 25 sub-sessions render 3 lines and the header's counts — the runs collapsed (`1–6`, `1–5, 7`, `41, 42, 45`), a parent with no commit of its own derived from its sub-sessions' ids, a session from a week ago not counted (saw {lines} · {said.strip()[-420:]!r})",
-          "SESSIONS IN THE LAST DAY · 3 (28 with their sub-sessions)" in said
+          "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 3 (28 with their sub-sessions)" in said
           and lines == [f"  {P1} principal (wt-p) · implementer 1–6 · reviewer 1–5, 7", f"  {P3} principal (wt-q) · reviewer 1–10", f"  {P2} — (—) · implementer 41, 42, 45"]
           and "4444dddd" not in said)
     fm.configure(root)
@@ -2174,10 +2367,10 @@ if _browser("board"):
             board_dom, view_dom = dom(""), dom("#=MSR-001")
             shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
             check("the board renders in a browser: five sections in order, the open tracker under `triage`, the shipped one folded away",
-                  re.search(r"progress.*?triage.*?triaged.*?backlog.*?ended", shown, re.S) is not None
+                  re.search(r"progress.*?triage.*?triaged.*?backlog.*?shipped or closed", shown, re.S) is not None
                   and "Stock is booked per warehouse" in shown and "A shipped one" not in shown and "2 trackers" in board_dom)
-            check("a tracker opens rendered in the page: its facts, its hand-over, its markdown as HTML",
-                  "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "hand-over" in view_dom)
+            check("a tracker opens rendered in the page: its facts, its handover, its markdown as HTML",
+                  "<h2" in view_dom and "What is true now" in view_dom and "One thing is left." in view_dom and "handover" in view_dom)
     except _ChromeFailed as e_:
         _hung("board", e_)
         fm.configure(HERE)
@@ -3555,10 +3748,16 @@ if _SYMLINKS and _has_rev("ae3c9e9"):
         view1_, view2_ = (tdir_ / "view/MSR-001.js").exists(), (tdir_ / "view/MSR-002.js").exists()
         (tdir_ / "index.html").unlink()
         c_old_, o_old_, e_old_ = _tool_run(_old_tool(out_dir_.parent / (out_dir_.name + "-old")), root, "--html-only"); page_old_ = (tdir_ / "index.html").read_text(encoding="utf-8")
-        check("FM-006 · a private security report · the board's run reads no symlink: a tracker, the Owner's page, a theme, the labels, a wordmark and a triage worksheet that are each a symlink to a file outside the repository "
-              f"are left unread — none of their words is in the board, one line names them, exit 0 — and the tool before it read every one (saw exit {c_new_}, left alone: {[l_ for l_ in e_new_.splitlines() if 'left alone' in l_][:1]})",
-              c_new_ == 0 and not any(m_ in page_new_ or m_ in views_new_ for m_ in markers_) and "board: left alone" in e_new_ and "MSR-002-x.md" in e_new_ and "brand/theme.css" in e_new_
-              and len(e_new_.strip().splitlines()) == 1 and view1_ and not view2_
+        left_ = [l_ for l_ in e_new_.strip().splitlines() if "left alone" in l_]
+        check("FM-006 · a private security report · the board's run reads no symlink: a tracker, the Owner's page, the labels and a triage worksheet that are each a symlink to a file outside the repository "
+              "are left unread, one line names them; a theme and a wordmark, symlinks too, are no longer read at all (R10) — each named as such, never followed; none of their words is in the board, exit 0 — "
+              f"and the tool before it read every one (saw exit {c_new_}, left alone: {left_[:1]})",
+              c_new_ == 0 and not any(m_ in page_new_ or m_ in views_new_ for m_ in markers_) and len(left_) == 1 and "board: left alone" in left_[0] and "MSR-002-x.md" in left_[0]
+              and "brand/labels.yaml" in left_[0] and "brand/theme.css" not in left_[0] and "brand/wordmark.svg" not in left_[0]
+              and sorted(l_.strip() for l_ in e_new_.strip().splitlines() if "left alone" not in l_) == [
+                  "brand: docs/work-tracker/brand/theme.css is no longer read — the board's colours are `[palette]` in shoalmark.toml",
+                  "brand: docs/work-tracker/brand/wordmark.svg is no longer read — the header shows the name"]
+              and view1_ and not view2_
               and all(m_ in page_old_ for m_ in markers_ if m_ != "OUTSIDE-WORDMARK") and _tree(out_dir_) == listing_)
         # the configuration: a symlink to a file outside — not read, so its `name` is not the board's
         (tdir_ / "index.html").unlink(); (root / "shoalmark.toml").rename(root / "shoalmark.keep"); os.symlink(out_dir_ / "config.toml", root / "shoalmark.toml")
@@ -3835,9 +4034,8 @@ def _steps_copy(g):
     root, tool, base = g["root"], g["tool"], g["base"]; common = root / ".git"; copy_ = common / "shoalmark-trusted"; x = {}
     # a re-run of `--install-hook` replaces the copy: tamper with it, run again
     (copy_ / "shoalmark.py").write_text((copy_ / "shoalmark.py").read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8"); (copy_ / "COPY").unlink()
-    gone_theme_ = next((p_ for p_ in (copy_ / "brand").rglob("*") if p_.is_file()), None); gone_theme_.unlink() if gone_theme_ else None
     x["rerun"] = _tool_run(tool / "shoalmark.py", root, "--install-hook")
-    x["replaced"] = ((copy_ / "shoalmark.py").read_bytes() == (tool / "shoalmark.py").read_bytes() and (copy_ / "COPY").is_file() and (not gone_theme_ or gone_theme_.is_file()) and "tampered" not in (copy_ / "shoalmark.py").read_text(encoding="utf-8"))
+    x["replaced"] = ((copy_ / "shoalmark.py").read_bytes() == (tool / "shoalmark.py").read_bytes() and (copy_ / "COPY").is_file() and not (copy_ / "brand").exists() and "tampered" not in (copy_ / "shoalmark.py").read_text(encoding="utf-8"))
     # two worktrees share the one copy: a second one, made with the hooks running, gets no board from a hook (R11) and its board from the copy by hand — and a stub
     # put in its place answers in both
     x["wt"] = _hooked(root, "worktree", "add", "-q", str(base / "wt2"), "-b", "other")
@@ -3852,7 +4050,7 @@ def _steps_copy(g):
     g["x"] = x
 with tempfile.TemporaryDirectory() as d:
     g_ = _hook_scenario(d, _pl_plain, steps=_steps_copy); x_ = g_["x"]
-    check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file, a missing marker and a missing theme file are as the pinned tool has them again", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
+    check("FM-006 · a private security report · a re-run of `--install-hook` replaces the copy — a changed file and a missing marker are as the pinned tool has them again, and the copy carries no theme (R10)", x_["rerun"][0] == 0 and x_["replaced"] and "wrote" in x_["rerun"][1])
     check(f"FM-006 · a private security report · two worktrees share one copy: the worktree made with the hooks running had no board from a hook (R11), and its board from the copy by hand; "
           f"its git directory is the first one's, there is one `shoalmark-trusted` in all, and a stub put in its place answered in both (saw {x_['copies']}, {x_['wt_common']!r})",
           x_["wt"][0] == 0 and not x_["wt_hooked"] and (x_["wt_hand"] or (1,))[0] == 0 and x_["wt_board"] and Path(x_["wt_common"]).resolve() == (g_["root"] / ".git").resolve()
@@ -4605,33 +4803,33 @@ else:
     _skipped("FM-006 · a private security report · the write rule · the calendar files", 4, "this system makes no symlink here")
 fm.configure(HERE)
 
-# --- the copies under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--brand DIR --from THEME`
-# and `--vendor DIR` judge every file they would write before the first folder or copy is made — into a folder of the tree that is a symlink, each is refused in one
-# line naming the first file, exit 4, and nothing is written
+# --- the copies under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--vendor DIR` judges
+# every file it would write before the first folder or copy is made — into a folder of the tree that is a symlink, it is refused in one line naming the first
+# file, exit 4, and nothing is written. (`--brand DIR --from THEME` was judged the same until R10's look half retired it with the themes.)
 def _cp(rev=None):
-    """`--brand DIR --from monochrome` and `--vendor DIR`, each where DIR is a folder of the tree that is a symlink to an empty folder beside the repository."""
+    """`--vendor DIR`, where DIR is a folder of the tree that is a symlink to an empty folder beside the repository."""
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
-        for key_, argv_ in (("brand", ("--brand", "brandx", "--from", "monochrome")), ("vendor", ("--vendor", "vend", "--partial", "--allow-untagged"))):
+        for key_, argv_ in (("vendor", ("--vendor", "vend", "--partial", "--allow-untagged")),):
             away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / argv_[1], target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
             g_[key_] = dict(code=c_, err=e_.strip(), out=o_.strip(), empty=sorted(os.listdir(away_)) == [])
         rm_git(root)
     return g_
-_CP_FIRST = {"brand": "brandx/" + next(r_ for r_ in fm.theme_files() if r_.startswith("brand/themes/monochrome/"))[len("brand/themes/monochrome/"):], "vendor": "vend/shoalmark.py"}
+_CP_FIRST = {"vendor": "vend/shoalmark.py"}
 def _cp_ok(g):
-    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == f"shoalmark: {_CP_FIRST[k_]} {_WR_SAYS}" and g[k_]["out"] == "" and g[k_]["empty"] for k_ in ("brand", "vendor"))
+    return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == f"shoalmark: {_CP_FIRST[k_]} {_WR_SAYS}" and g[k_]["out"] == "" and g[k_]["empty"] for k_ in ("vendor",))
 if _SYMLINKS:
     g_ = _cp()
-    check(f"FM-006 · a private security report · the write rule · `--brand DIR --from THEME` and `--vendor DIR` into a folder of the tree that is a symlink: each is refused in "
-          f"one line naming the first file, exit 4, and nothing is written (saw {g_['brand']['err'][:90]!r}, {g_['vendor']['err'][:70]!r})", _cp_ok(g_))
+    check(f"FM-006 · a private security report · the write rule · `--vendor DIR` into a folder of the tree that is a symlink: it is refused in "
+          f"one line naming the first file, exit 4, and nothing is written (saw {g_['vendor']['err'][:70]!r})", _cp_ok(g_))
     if _HAVE_RR:
         c_ = _cp(_RR_REV)
         check(f"FM-006 · a private security report · the write rule · the copies · …the control: beside {_RR_REV}'s tool this check FAILS", not _cp_ok(c_))
     else:
         _skipped("FM-006 · a private security report · the write rule · the copies' control", 1, f"this clone does not hold {_RR_REV}")
 else:
-    _skipped("FM-006 · a private security report · the write rule · the copies", 2, "this system makes no symlink here")
+    _skipped("FM-006 · a private security report · the write rule · the copies", 2, "this system makes no symlink here")   # the check and its control
 fm.configure(HERE)
 
 # --- the triage worksheet under the write rule (the Owner's ruling filed in FM-006, *The fix round after the critical review*, added to the round): `--triage` asks the
@@ -4862,7 +5060,7 @@ def _wf(rev=None):
     return g_
 def _wf_line(g, k):
     """The one line each is refused in: `--brand DIR` names the file, `--init` its tracker folder (the Owner's ruling of 2026-10-04, v0.19.1)."""
-    return (f"shoalmark: brandy/starter/theme.css {_WR_SAYS}" if k == "brand"
+    return (f"shoalmark: brandy/starter/labels.yaml {_WR_SAYS}" if k == "brand"
             else f"the tracker folder docs/work-tracker resolves outside the repository, to {os.path.join(g['init']['away'], 'work-tracker')} — nothing is written")
 def _wf_ok(g):
     return all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == _wf_line(g, k_) and g[k_]["empty"] and not g[k_]["config"] for k_ in ("brand", "init"))
@@ -5312,15 +5510,14 @@ fm.configure(HERE)
 # the file it points to is unchanged. `--standup FILE.ics` was among them until R9 removed it: there it now writes nothing and says so, exit 2
 def _nd(rev=None):
     """Each command at a destination named through `marks/door-*`, a symlink to a folder inside the repository that holds one symlink: `--vendor` meets
-    `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand --from` and `--brand DIR` meet `theme.css`, a
-    symlink to a file that is not there."""
+    `shoalmark.py` and `--standup` meets `cal.ics`, each a symlink to a file beside the repository; `--brand DIR` meets `labels.yaml`, a symlink to a file
+    that is not there."""
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
         conf_ = root / "shoalmark.toml"; conf_.write_text('standup = "09:00"\n' + conf_.read_text(encoding="utf-8"), encoding="utf-8")
         sums_ = lambda p_: hashlib.sha256(p_.read_bytes()).hexdigest() if p_.is_file() else None
         for key_, inner_, there_, argv_ in (("vendor", "shoalmark.py", True, lambda door_: ("--vendor", str(door_), "--partial", "--allow-untagged")),
-                                             ("brand", "theme.css", False, lambda door_: ("--brand", str(door_), "--from", "monochrome")),
-                                             ("brand-starter", "theme.css", False, lambda door_: ("--brand", str(door_))),
+                                             ("brand-starter", "labels.yaml", False, lambda door_: ("--brand", str(door_))),
                                              ("standup", "cal.ics", True, lambda door_: ("--standup", str(door_ / "cal.ics")))):
             folder_ = root / "dest" / key_; folder_.mkdir(parents=True); target_ = marks / f"target-{key_}"
             if there_:
@@ -5333,13 +5530,13 @@ def _nd(rev=None):
         rm_git(root)
     return g_
 def _nd_ok(g):
-    return (all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand", "brand-starter"))
+    return (all(g[k_]["code"] == fm.EXIT_LINT and g[k_]["err"] == g[k_]["line"] and g[k_]["same"] and g[k_]["only"] for k_ in ("vendor", "brand-starter"))
             and g["standup"]["code"] == 2 and g["standup"]["err"] == getattr(fm, "R9_REMOVED", {}).get("standup") and g["standup"]["same"] and g["standup"]["only"])
 if _SYMLINKS:
     g_ = _nd()
-    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR`, `--brand DIR --from` and `--brand DIR`, named through a folder "
+    check(f"FM-006 · a private security report · destinations a person names · `--vendor DIR` and `--brand DIR`, named through a folder "
           f"outside the repository that resolves inside it, meet a file under it that is a symlink: each is refused in one line naming it, exit 4, the file it points "
-          f"to unchanged and nothing written; `--standup FILE.ics` there says R9 removed it, exit 2, and writes nothing (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
+          f"to unchanged and nothing written; `--standup FILE.ics` there says R9 removed it, exit 2, and writes nothing (saw {[g_[k_]['err'][:40] for k_ in ('vendor', 'brand-starter', 'standup')]!r})", _nd_ok(g_))
     if _HAVE_SAME:
         c_ = _nd(_SAME_REV)
         check(f"FM-006 · a private security report · destinations a person names · …the control: beside {_SAME_REV}'s tool this check FAILS", not _nd_ok(c_))
@@ -5639,6 +5836,245 @@ if _browser("search"):
         _hung("search", e_)
         fm.configure(HERE)
 
+# --- FM-053, RV-3342: the header row reflows on a phone — at 375, 640, 880 and 1024 px (BF-2), on an empty board and a populated one, the search
+#     field, its counter and the scheme's action stay in view, inside the page's width, the field at its 200 px at least, the counter clear of
+#     the scheme's button, and neither the header nor the search box runs wider than it stands. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be
+#     narrower than Chrome may allow it); the rules before the fix, put back, must fail it ----------------------------------------------------
+_HDR_WIDTHS = (375, 640, 880, 1024)
+_HDR_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getElementById(i),de=document.documentElement,'
+              'box=i=>{const e=g(i),r=e.getBoundingClientRect(),c=getComputedStyle(e),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);'
+              'return{l:r.left,r:r.right,t:r.top,b:r.bottom,w:r.width,h:r.height,shown:c.display!="none"&&c.visibility=="visible"&&!!h&&(h==e||e.contains(h))}};'
+              'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,H:[g("H").scrollWidth,g("H").clientWidth],sb:[g("sb").scrollWidth,g("sb").clientWidth],'
+              'q:box("q"),n:box("n"),s:box("s"),box:box("sb"),text:g("n").textContent}),"*")})</script>')
+_HDR_BEFORE = (("#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;", "#sb{flex:1;display:flex;align-items:center;gap:1ch;"),
+               ("#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}", "#n{color:var(--dim);white-space:nowrap}"), ("\n#sb{flex-basis:100%}#s{margin-left:auto}}", "}"))
+
+
+def _header_at(where, page, width, probe=_HDR_PROBE):
+    """The board `page` (its HTML), drawn in a frame `width` px wide inside a page of its own: what the frame's probe reports — the header's,
+    or `probe`'s."""
+    import html as _html
+    (where / "hdr.html").write_text(page.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
+    (where / "hdr-frame.html").write_text('<!doctype html><meta charset="utf-8"><body style="margin:0"><script>onmessage=e=>{document.body.dataset.probe=e.data}</script>'
+                                          f'<iframe src="hdr.html" style="display:block;border:0;width:{width}px;height:560px"></iframe>', encoding="utf-8")
+    dom_ = _chrome_run(["--window-size=1100,700", "--virtual-time-budget=4000", "--dump-dom", (where / "hdr-frame.html").as_uri()]).stdout
+    return json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', dom_) or [None, ""])[1]) or "null")
+
+
+def _header_faults(rep, width):
+    """What is wrong with one frame's header — [] where the field, the counter and the scheme's action are shown, not covered, inside the page's
+    width, the counter inside the search box and clear of the scheme's button (BF-2), the field at least 200 px wide, and neither the header nor
+    the box wider than it stands."""
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    out_ = [f"{k} {rep[k]}" for k in ("q", "n", "s") if not (rep[k]["shown"] and rep[k]["w"] > 0 and rep[k]["h"] > 0 and rep[k]["l"] >= -0.5 and rep[k]["r"] <= rep["cw"] + 0.5)]
+    out_ += [f"the field {rep['q']['w']:.0f} px"] if rep["q"]["w"] < 199.5 else []
+    out_ += [f"{k} {rep[k][0]} px wide in {rep[k][1]}" for k in ("H", "sb") if rep[k][0] > rep[k][1] + 1]
+    out_ += [] if rep["box"]["l"] - 0.5 <= rep["n"]["l"] and rep["n"]["r"] <= rep["box"]["r"] + 0.5 else ["the counter outside its box"]
+    n_, s_ = rep["n"], rep["s"]
+    out_ += ["the counter under the scheme's button"] if n_["l"] < s_["r"] - 0.5 and s_["l"] < n_["r"] - 0.5 and n_["t"] < s_["b"] - 0.5 and s_["t"] < n_["b"] - 0.5 else []
+    return out_ + ([] if rep["text"].strip() else ["no counter"])
+
+
+_hdr_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, RV-3342, BF-2 · the header's rules reflow: the search box wraps, its counter is no longer held to one line and stands at the field's "
+      "right edge, the field keeps its 200 px, and on a phone the search takes a header row of its own — the rules before the fix are each gone",
+      all(_hdr_src.count(new_) == 1 for new_, _old in _HDR_BEFORE) and _hdr_src.count("#q{flex:1;min-width:200px;") == 1
+      and not any(old_ in _hdr_src for _new, old_ in _HDR_BEFORE[:2]))
+if _browser("header"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d).resolve(); seen_, before_ = {}, {}
+            for kind in ("empty", "populated"):
+                root = base / kind; root.mkdir(); run(root, "--init", "--key", "msr")
+                if kind == "populated":
+                    tracker(root, "MSR-001", extra="tier: P0\ntriaged: 2026-09-20\n", title="Stock is booked per warehouse, with a title long enough to wrap twice on a phone")
+                    tracker(root, "MSR-002", extra="tier: P1\nblocked-by: MSR-001\n", title="Stock is counted per shelf")
+                    tracker(root, "MSR-003", status="Proposed", title="An untriaged one"); tracker(root, "MSR-004", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n")
+                    tracker(root, "MSR-005", extra="tier: P2\ntriaged: 2026-09-20\n"); tracker(root, "MSR-006", status="Blocked", extra="tier: P1\n")
+                run(root)
+                page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+                old_page_ = page_
+                for new_, old_ in _HDR_BEFORE:
+                    old_page_ = old_page_.replace(new_, old_)
+                for w_ in _HDR_WIDTHS:
+                    rep_ = _header_at(root / "docs/work-tracker", page_, w_); seen_[(kind, w_)] = (_header_faults(rep_, w_), (rep_ or {}).get("text"))
+                before_[kind] = _header_faults(_header_at(root / "docs/work-tracker", old_page_, 375), 375)
+            check(f"FM-053, RV-3342, BF-2 · at 375, 640, 880 and 1024 px, on an empty and a populated board, the search field, its counter and the scheme's action "
+                  f"stay in view inside the page's width — the field at 200 px at least, the counter inside its box and clear of the scheme's button, nothing "
+                  f"wider than it stands (saw {seen_})",
+                  len(seen_) == 8 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
+            check(f"FM-053, RV-3342 · the check's control: the header's rules before the fix, put back, fail it at 375 px on both boards (saw {before_})",
+                  all(before_.get(k_) and "no report" not in before_[k_][0] for k_ in ("empty", "populated")))
+    except _ChromeFailed as e_:
+        _hung("header", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-1: the work table's group line wraps inside the frame — `td.m`'s nowrap is the cells' alone. At 1024, 880 and 640 px the page
+#     runs no wider than its frame and the table fits it. Measured in Chrome, each width the board in a frame of that width; the rule taken
+#     back out must fail it ------------------------------------------------------------------------------------------------------------------
+_TBL_WIDTHS, _TBL_RULE = (1024, 880, 640), ("cursor:pointer;white-space:normal}", "cursor:pointer}")
+_TBL_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,b=document.body,c=getComputedStyle(b),f=b.getBoundingClientRect(),'
+              't=document.querySelector("#B table").getBoundingClientRect();parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,'
+              'tl:t.left,tr:t.right,fl:f.left+parseFloat(c.paddingLeft),fr:f.right-parseFloat(c.paddingRight),groups:document.querySelectorAll("#b tr.g").length}),"*")})</script>')
+
+
+def _table_faults(rep, width):
+    """What is wrong with one frame's work table — [] where the page is no wider than its frame and the table stands inside the body's frame."""
+    if not rep or rep.get("w") != width or not rep.get("groups"):
+        return [f"no report, or no group row, from the {width} px frame (saw {rep})"]
+    return ([f"the page {rep['sw']} px wide in {rep['cw']}"] if rep["sw"] > rep["cw"] + 1 else []) + \
+        ([f"the table {rep['tl']:.0f}–{rep['tr']:.0f} px in the frame {rep['fl']:.0f}–{rep['fr']:.0f}"] if rep["tl"] < rep["fl"] - 0.5 or rep["tr"] > rep["fr"] + 0.5 else [])
+
+
+_tbl_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-1 · a group row's line wraps: `.g td` sets `white-space:normal` after `td.m`'s nowrap, which stays the cells' alone",
+      _tbl_src.count(".g td{border:0;padding:14px 0 2px;color:var(--dim);cursor:pointer;white-space:normal}") == 1
+      and _tbl_src.index("td.m{white-space:nowrap;") < _tbl_src.index(".g td{border:0;"))
+if _browser("table"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock is booked per warehouse"); tracker(root, "MSR-002", status="Proposed", title="An untriaged one")
+            tracker(root, "MSR-003", status="Shipped", title="A shipped one"); run(root)
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _table_faults(_header_at(wt_, page_, w_, _TBL_PROBE), w_) for w_ in _TBL_WIDTHS}
+            before_ = _table_faults(_header_at(wt_, page_.replace(*_TBL_RULE), 1024, _TBL_PROBE), 1024)
+            check(f"FM-053, BF-1 · at 1024, 880 and 640 px the page is no wider than its frame and the work table fits it, its group lines wrapped (saw {seen_})",
+                  page_.count(_TBL_RULE[0]) == 1 and not any(seen_.values()))
+            check(f"FM-053, BF-1 · the check's control: the group line held to one line again runs the page past its frame at 1024 px (saw {before_})",
+                  bool(before_) and "no report" not in before_[0])
+    except _ChromeFailed as e_:
+        _hung("table", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-11: a branch name in a review row moves to the next line whole — `.row code` is an inline block — and breaks only where it is
+#     longer than a line. Measured in Chrome at 375 px, the review rows opened: each name one box --------------------------------------------
+_NAME_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("details").forEach(d=>d.open=true);'
+               'const c=[...document.querySelectorAll("#p .row .what code")];parent.postMessage(JSON.stringify({w:innerWidth,names:c.map(e=>({t:e.textContent,'
+               'd:getComputedStyle(e).display,n:e.getClientRects().length,w:e.getBoundingClientRect().width,row:e.closest(".what").getBoundingClientRect().width}))}),"*")})</script>')
+_nm_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-11 · `.row code{display:inline-block}` follows `code{font:inherit}`: a name in a row moves to the next line whole",
+      _nm_src.count("code{font:inherit}\n/* a name in a row moves to the next line whole, and breaks only where it is longer than a line (BF-11) */\n.row code{display:inline-block}\n") == 1)
+if _browser("names"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+            git(root, "checkout", "-q", "-b", "fm/053-board-v2-the-review-branch"); built = commit_("built\n\nSession: b1")
+            commit_(f"review: READY\n\nReviewed: {built}\nSession: r1")
+            git(root, "checkout", "-q", "-b", "fm/053-board-v2-its-follow-up"); commit_("grown from the verdict\n\nSession: b2")
+            run_safe(root, "--html-only")
+            rep_ = _header_at(root / "docs/work-tracker", (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"), 375, _NAME_PROBE) or {}
+            names_ = rep_.get("names", [])
+            check(f"FM-053, BF-11 · rendered at 375 px, each name in a review row is one inline box — none broken at its hyphens where it fits a line (saw {names_})",
+                  rep_.get("w") == 375 and len(names_) >= 3 and all(n_["d"] == "inline-block" and (n_["n"] == 1 or n_["w"] > n_["row"]) for n_ in names_)
+                  and any(n_["t"].startswith("fm/053-board-v2-") for n_ in names_))
+    except _ChromeFailed as e_:
+        _hung("names", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-14: on a phone the page never scrolls sideways — only the work table does, its columns as they are, in its own box; the header,
+#     the box and the toolbar stay put. Measured in Chrome at 390, 360 and 320 px on a board whose table cannot fit a phone; the rule taken out
+#     must let the page scroll ----------------------------------------------------------------------------------------------------------------
+_PH_RULE = "@media(max-width:640px){#B>table{display:block;overflow-x:auto}}\n"
+_PH_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,b=document.getElementById("B");'
+             't=document.querySelector("#B>table");parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,bc:b.clientWidth,'
+             'bs:b.scrollWidth,tc:t.clientWidth,ts:t.scrollWidth}),"*")})</script>')
+_ph14_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-14 · at 640 px and narrower only the work table scrolls what is wider than the page, in its own box: `#B>table{display:block;overflow-x:auto}` "
+      "in its own phone rule — never the whole board", _ph14_src.count(_PH_RULE) == 1 and "#B{display:block;overflow-x:auto}" not in _ph14_src)
+if _browser("phone"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock-is-booked-per-warehouse-and-counted-per-shelf-in-one-pass-every-night")
+            tracker(root, "MSR-002", status="Proposed", title="An untriaged one"); run(root)
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _header_at(wt_, page_, w_, _PH_PROBE) or {} for w_ in (390, 360, 320)}
+            before_ = _header_at(wt_, page_.replace(_PH_RULE, ""), 360, _PH_PROBE) or {}
+            check(f"FM-053, BF-14 · at 390, 360 and 320 px the page is no wider than the screen, the board does not scroll, and only the table does, in its own "
+                  f"box (saw {seen_})",
+                  page_.count(_PH_RULE) == 1 and all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["bs"] <= r_["bc"] + 1 and r_["ts"] > r_["tc"]
+                                                     for w_, r_ in seen_.items()))
+            check(f"FM-053, BF-14 · the check's control: the rule taken out, the page scrolls sideways at 360 px (saw {before_})",
+                  before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
+            with tempfile.TemporaryDirectory() as d2:
+                plain_ = Path(d2).resolve(); run(plain_, "--init", "--key", "msr")
+                tracker(plain_, "MSR-001", extra="tier: P1\n", title="Stock is booked per warehouse"); tracker(plain_, "MSR-002", status="Proposed", title="An untriaged one")
+                run(plain_)
+                wide_ = {w_: _header_at(plain_ / "docs/work-tracker", (plain_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"), w_, _PH_PROBE) or {}
+                         for w_ in (640, 1024)}
+            check(f"FM-053, BF-14 · nothing changes at 640 and 1024 px: on a board whose table fits, the page is the screen's width and the table does not "
+                  f"scroll (saw {wide_})",
+                  all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["ts"] <= r_["tc"] + 1 for w_, r_ in wide_.items()))
+    except _ChromeFailed as e_:
+        _hung("phone", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-3: on the board the Owner is *you* (the guide, §10) — `next: owner` reads *→ you* in the tier's cell, and the viewer's handover
+#     line, which shows the record's own field, gives `owner` in code font, as a setting; neither shows a bare *owner* -----------------------
+_own_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-3 · both templates: the tier's cell renders `next: owner` through `next.owner` (*you*), every other value as it is; the handover "
+      "line gives `owner` in code font",
+      _own_src.count('${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}') == 1
+      and _own_src.count('${l("viewer.next")}: ${t[21]?(t[21]=="owner"?"<code>owner</code>":esc(t[21])):') == 1
+      and fm.LABELS.get("next.owner") == "you" and '" → "+esc(t[21])' not in _own_src)
+check("FM-053, BF-12 · a story's chapter line gives the move `owner` in code font, as the handover line does — the view shows the record's own field",
+      _own_src.count('`${k=="owner"?"<code>owner</code>":esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`') == 1
+      and '`${esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`' not in _own_src)
+if _browser("owner"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="rank: 1\ntier: P1\nnext: owner\n", title="Stock is booked per warehouse")
+            tracker(root, "MSR-002", extra="rank: 2\ntier: P2\nnext: build\n", title="Stock is counted per shelf"); run_safe(root)
+            dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
+            board_, view_ = dom(""), dom("#=MSR-001")
+            cell_ = {i_: (re.search(rf'<a href="#={i_}">{i_}</a></td><td class="m[^"]*">([^<]*)</td>', board_) or [None, None])[1] for i_ in ("MSR-001", "MSR-002")}
+            line_ = (re.search(r"<b>handover</b>([\s\S]*?)</(?:p|div)>", view_) or [None, ""])[1]
+            check(f"FM-053, BF-3 · rendered: the tier's cell reads *#1 P1 → you* for `next: owner` and *→ build* for another value; the handover line gives "
+                  f"`owner` in code font; neither shows a bare *owner* (saw {cell_}, {line_[:120]!r})",
+                  cell_["MSR-001"] == "#1 P1 → you" and cell_["MSR-002"] == "#2 P2 → build"
+                  and line_.startswith(" — next: <code>owner</code>") and "owner" not in line_.replace("<code>owner</code>", ""))
+    except _ChromeFailed as e_:
+        _hung("owner", e_)
+        fm.configure(HERE)
+
+# --- FM-053, BF-5: on a phone a heading's marker keeps its space — `.sh` is a block there, so the flex gap that spaced `##` from its title is gone
+_ph_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_ph_at = _ph_src.index("@media(max-width:640px){button.act")
+_ph_media = _ph_src[_ph_at:_ph_src.index("}}", _ph_at) + 2]            # the phone's rules, to the media block's end
+check(f"FM-053, BF-5 · at 640 px and narrower a heading's marker keeps its space: `.sh:before{{margin-right:1ch}}` in the phone's rules, beside `.sh{{display:block}}` "
+      f"(saw {_ph_media!r})", ".sh{display:block}.sh:before{margin-right:1ch}" in _ph_media)
+
+# --- FM-053, BF-9: past 14 asks the box counts what it does not show — the asks are sorted oldest first, so the 14 shown are the oldest — in
+#     words, never a row holding a bare … -------------------------------------------------------------------------------------------------
+_more_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-9 · past 14 asks the box says *and n more: the oldest are above* through `waiting.more`; the row holding only … is gone",
+      '<div class="row">…</div>' not in _more_src and _more_src.count('+(w.length>14?`<p class="sub">${l("waiting.more",w.length-14)}</p>`:"")') == 1
+      and _more_src.count("w.slice(0,14)") == 1 and fm.LABELS.get("waiting.more") == "and {0} more: the oldest are above")
+if _browser("more"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            for n_ in range(1, 17):
+                tracker(root, f"MSR-{n_:03d}", extra=f'tier: P2\nnext: owner\nask: "Shall we do the {n_} thing?"\nask-kind: ruling\nask-since: 2026-09-{n_:02d}\n'
+                        f'ask-proposal: "yes"\n', title=f"the {n_} thing")
+            run_safe(root)
+            pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
+            box_ = (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1]
+            shown_ = re.findall(r'MSR-0(\d\d)', box_)
+            check(f"FM-053, BF-9 · rendered with 16 asks: the 14 oldest shown, then *and 2 more: the oldest are above*, no bare … (saw {sorted(set(shown_))}, "
+                  f"{'and 2 more: the oldest are above' in box_})",
+                  "and 2 more: the oldest are above" in box_ and ">…<" not in box_ and sorted(set(shown_)) == [f"{n_:02d}" for n_ in range(1, 15)])
+    except _ChromeFailed as e_:
+        _hung("more", e_)
+        fm.configure(HERE)
+
 # --- FM-021: the progress section says why it is empty, while no pass has run — and only then --------------------
 if _browser("progress"):
     try:
@@ -5652,8 +6088,8 @@ if _browser("progress"):
                 d_ = _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
                                      (root / "docs/work-tracker/index.html").as_uri()]).stdout
                 shown = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", d_[d_.find("<tbody"):d_.find("</tbody>")]))
-                progress_line.triaged = (re.search(r"[▾▸] triaged · \d+ · (.*?) [▾▸] backlog", shown) or [None, ""])[1].strip()
-                return (re.search(r"▾ progress · 0 · ([^▾▸]*?) ▾ triage", shown) or [None, ""])[1].strip()
+                progress_line.triaged = (re.search(r" triaged · \d+ · (.*?) backlog · \d+ · ", shown) or [None, ""])[1].strip()
+                return (re.search(r" progress · 0 · (.*?) triage · \d+ · ", shown) or [None, ""])[1].strip()
             before = progress_line()
             tracker(root, "MSR-003", status="Parked", extra="triaged: 2026-09-20\ntier: P3\n", title="A parked one")
             after = progress_line()
@@ -5807,8 +6243,10 @@ with tempfile.TemporaryDirectory() as d:
     check("a deriver has no side effects: the files it wants are written, staged and drift-checked by the core",
           wrote_ok and drift == fm.EXIT_DRIFT and rel.read_text() == "# Releases\n\n1.2.0\n")
     exe.write_text(PORT_DERIVER)
-    check("a repository's own look is a convention, not a setting: `brand/theme.css` beside the trackers becomes a stylesheet of its own, after the tool's",
-          '<style data-from="repository">:root{--bg:#123456}</style>' in page and page.index('data-from="repository"') > page.index("@media print"))
+    check("R10 · a repository's `brand/theme.css` is no longer worn — no stylesheet of its own; the build and the page name it, with `[palette]` in its place",
+          "--bg:#123456" not in page and "<style data-from" not in page
+          and "docs/work-tracker/brand/theme.css is no longer read — the board's colours are `[palette]` in shoalmark.toml" in err
+          and "no longer read: docs/work-tracker/brand/theme.css → [palette] in shoalmark.toml" in page)
     os.environ["SHOALMARK_CMD"] = "python3 scripts/tracker.py"
     try:
         fm.configure(root); (root / "docs/work-tracker/INDEX.md").write_text("stale"); code, _, err = run(root, "--check")
@@ -5825,7 +6263,7 @@ with tempfile.TemporaryDirectory() as d:
             _hung("cell", e_)
 fm.configure(HERE)
 
-# --- FM-002: a board anyone can brand — three files, four places, the nearest to the viewer wins -------------
+# --- FM-002: a board anyone can brand — a logo and its labels, three places, the nearest to the viewer wins --------
 GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
 search: Suche — Id, Stufe, Status, Wörter
@@ -5901,9 +6339,10 @@ link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
 link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
 link.noviewer: "kein Subversion-Betrachter konfiguriert (`commit_url`), darum nicht verlinkt"
 link.nocommit: kein Commit zu verlinken
-reviews.week: Prüfungen dieser Woche · unabhängig {0} · gleiche Sitzung {1}
-reviews.untraced: ohne Spur {0}
-reviews.trunk: auf dem Stamm {0}
+reviews.title: reviews · this week
+reviews.counts: {0} by another session · {1} by the same session
+reviews.untraced: {0} ohne Spur
+reviews.trunk: {0} auf dem Stamm
 ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
@@ -5928,7 +6367,7 @@ answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zwei
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
-answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel"
+answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
 answer.sign.step.push: pusht den Zweig
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
 answer.sign.success: Wenn es geklappt hat
@@ -6057,10 +6496,47 @@ day.value.name: der Ordnername des Repositorys
 day.value.path: sein Pfad
 day.value.cmd: der Befehl des Werkzeugs
 day.value.branch: der Name des Standardzweigs
+brand.gone: no longer read: {0}
+brand.gone.theme: [palette] in shoalmark.toml
+brand.gone.fonts: the system's monospace
+brand.gone.wordmark: the name
+brand.gone.themes: [palette], by name
+scheme.button: light or dark: {0}
+path.lines: {0} lines
+path.line: 1 line
+day.title: the day
+day.span: the last 24 hours
+reviews.reports: reports, not proofs
+reviews.on: on {0}
+reviews.notready: {0} not ready
+reviews.findings: {0} with findings
+reviews.branch: branch {0}
+reviews.branch.merged: branch {0}, as its merge {1} names it
+reviews.branch.ambiguous: branch {0}: {1} each hold the verdict on their own line
+reviews.ambiguous: ambiguous
+reviews.branch.unknown: branch not known — {0}
+reviews.branch.none: no branch here holds the verdict on its own line
+reviews.branch.unnamed: its merge {0} names no branch
+verdict.READY: ready
+verdict.READY WITH FINDINGS: ready with findings
+verdict.READY TO TAG: ready to tag
+verdict.NOT READY: not ready
+next.owner: you
+waiting.more: and {0} more: the oldest are above
+reviews.sessions: its session {0}, the branch's {1}
+reviews.sessions.more: {0} and {1} more
+reviews.word.another: by another session
+reviews.word.same: by the same session
+reviews.word.untraced: untraced
+reviews.word.trunk: on trunk — not a branch verdict
+type.act: act
+type.answer: answer
+type.verdict: verdict
+answer.sign.copy.name: copy the command
 """
 def _c4_english(shown):
     return sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
-                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
+                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "handover", "untriaged", "waiting", "kept")
                    if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
 
 
@@ -6109,25 +6585,22 @@ def _c4_prompt_controls(check):
 _c4_prompt_controls(check)
 
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
-# a wordmark as a person draws one: the mark stroked, the name filled, both in the page's ink; an id the page also uses
-_WORDMARK = ('<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
-             'viewBox="0 0 40 16" height="16" fill="currentColor"><defs><path id="b" d="M0 0h4v4h-4Z"/></defs>'
-             '<path d="M2 2v12" stroke="currentColor" stroke-width="2" fill="none"/><use xlink:href="#b" x="8"/><text x="14" y="13">Repo __ROWS__</text></svg>')
+_GONE_NAMES = ("theme.css", "wordmark.svg")       # the two files R10's look half stopped reading, which a check below writes and removes again
 with tempfile.TemporaryDirectory() as d:
     base = Path(d).resolve(); root = base / "repo"; home = base / "home" / "shoalmark"; org = HERE / "brand"; _org_was = org.is_dir()
-    # the tool's own brand/ is the organisation's place — and, since 0.18.5, where the themes the tool ships are committed
-    # (brand/themes/): a check writes its brand files there and removes those files alone, never the folder
-    _org_clear = lambda: [(org / n_).unlink(missing_ok=True) for n_ in fm.BRAND_FILES]
+    # the tool's own brand/ is the organisation's place — where this repository keeps its design guide, its icons and its seats: a check writes its
+    # brand files there and removes those files alone, never the folder
+    _org_clear = lambda: [(org / n_).unlink(missing_ok=True) for n_ in fm.BRAND_FILES + _GONE_NAMES]
     root.mkdir(); home.mkdir(parents=True)
     git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     tracker(root, "MSR-001", title="Bestand je Lager"); tracker(root, "MSR-002", status="Shipped", title="Erledigtes")
     wt = root / "docs/work-tracker"
     _xdg = os.environ.get("XDG_CONFIG_HOME")
     def board_with(**files):
-        """files: place_file=text — place is org | repo | me. Returns (INDEX.md bytes, page, --brand report)."""
+        """files: place_file=text — place is org | repo | me | loose. Returns (INDEX.md bytes, page, --brand report, the build's stderr, its exit)."""
         shutil.rmtree(home, ignore_errors=True); _org_clear()
         shutil.rmtree(wt / "brand", ignore_errors=True)
-        for f in fm.BRAND_FILES:
+        for f in fm.BRAND_FILES + _GONE_NAMES:
             (wt / f).unlink(missing_ok=True)
         for key, text in files.items():
             place, _, name = key.partition("_")
@@ -6142,16 +6615,19 @@ with tempfile.TemporaryDirectory() as d:
         plain_index, plain_page, _, _, _ = board_with()
         hostile = dict(me_theme_css=":root{--bg:#ff0000}", me_labels_yaml="status.Shipped: LIVE\nstatus.Parked: GONE\n", me_logo_svg=_SVG,
                        org_theme_css=":root{--ink:#00ff00}", org_labels_yaml="status.Proposed: MAYBE\n")
-        h_index, h_page, h_report, _, h_code = board_with(**hostile)
+        h_index, h_page, h_report, h_err, h_code = board_with(**hostile)
         check("C1 · committed output ignores every brand layer: with a hostile person and a hostile organisation present, INDEX.md is byte-identical and the gate's verdict unchanged",
               h_index == plain_index and h_code == 0 and run(root, "--check")[0] == 0 and run(root, "--print-written")[1].strip() == "docs/work-tracker/INDEX.md")
-        i_org, i_repo, i_me = (h_page.find(f'<style data-from="{w}">') for w in ("organisation", "repository", "person"))
-        check("C2 · one rule — every place's theme is its own stylesheet, in order, the person's last; labels merge key by key; the last logo found wins; --brand says the same",
-              0 < i_org < i_me and i_repo == -1 and '"status.Shipped": "LIVE"' in h_page and '"status.Proposed": "MAYBE"' in h_page and '"status.Closed": "Closed"' in h_page
-              and "theme.css     organisation → person" in h_report and "logo          person" in h_report and "labels changed: 3 of" in h_report)
-        _, p2, r2, _, _ = board_with(org_theme_css="a{}", repo_theme_css="b{}", repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nfooter: set up by X\n")
+        _said = [f"{fm.shown_path(p_)} is no longer read — the board's colours are `[palette]` in shoalmark.toml" for p_ in (org / "theme.css", home / "theme.css")]
+        check("C2 · one rule — labels merge key by key, the person's last; the last logo found wins; no place's theme.css is read, and each is named, in the "
+              "places' order, as no longer read — --brand says the same",
+              '"status.Shipped": "LIVE"' in h_page and '"status.Proposed": "MAYBE"' in h_page and '"status.Closed": "Closed"' in h_page
+              and "#ff0000" not in h_page and "#00ff00" not in h_page and "<style data-from" not in h_page
+              and "logo          person" in h_report and "labels.yaml   organisation → person" in h_report and "labels changed: 3 of" in h_report
+              and 0 <= h_err.find(_said[0]) < h_err.find(_said[1]) and all(f"no longer read: {s_.replace(' is no longer read — ', ' — ')}" in h_report for s_ in _said))
+        _, p2, r2, _, _ = board_with(repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nfooter: set up by X\n")
         check("C2 · the repository beats the organisation, key by key — and what only the organisation says survives",
-              '"tagline": "from the repo"' in p2 and '"footer": "set up by X"' in p2 and "theme.css     organisation → repository" in r2)
+              '"tagline": "from the repo"' in p2 and '"footer": "set up by X"' in p2 and "labels.yaml   organisation → repository" in r2)
         board_with()                                          # every place emptied
         del os.environ["XDG_CONFIG_HOME"]; _h = os.environ.pop("HOME", None)
         try:
@@ -6159,8 +6635,8 @@ with tempfile.TemporaryDirectory() as d:
         finally:
             if _h is not None:
                 os.environ["HOME"] = _h
-        check("C3 · nothing present, no HOME at all — a hook, CI, an agent — and the board still renders, with no theme, no logo and the English words",
-              nohome == 0 and "<style data-from" not in no_page and "<img" not in no_page.split("<script>")[0] and '"status.Shipped": "Shipped"' in no_page)
+        check("C3 · nothing present, no HOME at all — a hook, CI, an agent — and the board still renders, with no logo, no line of what it no longer reads, and the English words",
+              nohome == 0 and "<style data-from" not in no_page and "<img" not in no_page.split("<script>")[0] and 'id="w"' not in no_page and '"status.Shipped": "Shipped"' in no_page)
         _, de_page, _, de_err, _ = board_with(repo_labels_yaml=GERMAN)
         check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
               set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
@@ -6185,151 +6661,38 @@ with tempfile.TemporaryDirectory() as d:
                 _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
                 ldom = dom("")
                 check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
-                # the scheme button: clicked for real, three times round — whatever the machine's own setting is
-                (wt / "brand/theme.css").write_text(":root{--bg:#010203}\n@media screen and (prefers-color-scheme:dark){:root{--bg:#040506}}\n", encoding="utf-8"); run(root)
+                # the scheme button: clicked for real, three times round — whatever the machine's own setting is — on the page's own grounds
                 probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
                 (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
                 pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
                 seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-                check(f"the scheme button switches any theme's light and dark by hand — a brand needs to know nothing about it (saw: {seen})",
-                      "light=rgb(1, 2, 3)" in seen and "dark=rgb(4, 5, 6)" in seen and seen.count("auto=") == 1)
-                (wt / "probe.html").unlink(); (wt / "brand/theme.css").unlink()
+                check(f"the scheme button switches the page's own light and dark by hand (saw: {seen})",
+                      "light=rgb(247, 247, 245)" in seen and "dark=rgb(14, 14, 14)" in seen and seen.count("auto=") == 1)
+                (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
                 _hung("german", e_)
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
         code, _, err = run(root)
         check("C5 · a logo past the size cap is skipped with a warning, never inlined", code == 0 and "not shown" in err and "data:image/png" not in (wt / "index.html").read_text(encoding="utf-8"))
-        # --- 0.18.2 (FM-006): a fourth brand file, wordmark.svg — the mark and the name as one drawing, inline in the header
-        head = lambda page: page[page.index('<div id="H">'):page.index('<button id="s">')]
-        _, w_page, w_report, w_err, w_code = board_with(repo_wordmark_svg=_WORDMARK, repo_logo_svg=_SVG.replace("<script>document.title=\"PWNED\"</script>", ""))
-        w_head = head(w_page)
-        check("0.18.2 · a wordmark is inlined in the header in place of the logo and the name; the name stays the page's title and the wordmark's accessible name; the logo stays the tab's",
-              w_code == 0 and w_head.startswith('<div id="H"><b class="wm" role="img" aria-label="repo"><svg viewBox="0 0 40 16" height="16" fill="currentColor">')
-              and "<img" not in w_head and "<b>repo</b>" not in w_page and "<title>repo — work tracker</title>" in w_page and '<link rel="icon" href="data:image/svg+xml;base64,' in w_page)
-        check("0.18.2 · the wordmark keeps currentColor, fill and stroke — it takes the page's ink — and is written out again from what was read: its ids and their references prefixed, no placeholder of the page's spelled in it",
-              '<path d="M2 2v12" stroke="currentColor" stroke-width="2" fill="none"></path>' in w_head and '<path id="wm-b" d="M0 0h4v4h-4Z"></path>' in w_head
-              and '<use xlink:href="#wm-b" x="8"></use>' in w_head and "Repo &#95;&#95;ROWS&#95;&#95;</text>" in w_head and w_page.count('id="b"') == 1 and "<?xml" not in w_page)
-        check("0.18.2 · --brand lists the wordmark's place like the other files", "wordmark      repository" in w_report and "logo          repository" in w_report)
-        _, n_page, n_report, _, _ = board_with(repo_logo_svg=_SVG)
-        check("0.18.2 · without a wordmark nothing changes: the logo, then the name", head(n_page).startswith('<div id="H"><img alt="" src="data:image/svg+xml;base64,') and head(n_page).endswith('"><b>repo</b><span data-l="tagline"></span>')
-              and "wordmark      built in" in n_report)
-        refused = {why: board_with(repo_wordmark_svg=svg, repo_logo_svg=_SVG) for why, svg in (
-            ("it holds <script>", _SVG), ("it holds onload= on <svg>, which a wordmark may not carry", _WORDMARK.replace('height="16"', 'height="16" onload="document.title=1"')),
-            ('its href="https://example.org/w.svg#b" on <use> is not what href takes', _WORDMARK.replace('xlink:href="#b"', 'xlink:href="https://example.org/w.svg#b"')),
-            ("it holds <style>", _WORDMARK.replace("<defs>", "<style>body{display:none}</style><defs>")),
-            ("it holds <foreignObject>", _WORDMARK.replace("<defs>", '<foreignObject><p xmlns="http://www.w3.org/1999/xhtml">x</p></foreignObject><defs>')))}
-        check("0.18.2 · a wordmark holding a script, a handler, an outside reference, a <style> or a foreignObject is refused whole, with a warning that says why — the header keeps the logo and the name",
-              all(code_ == 0 and f"repository's wordmark.svg is not shown: {why}" in err_ and "the header keeps the logo and the name" in err_ and 'class="wm"' not in page_
-                  and "<b>repo</b>" in page_ and "PWNED" not in page_ for why, (_, page_, _, err_, code_) in refused.items()))
-        _, c_page, _, c_err, c_code = board_with(repo_wordmark_svg=_WORDMARK.replace("</svg>", "<desc>" + "x" * fm.LOGO_MAX + "</desc></svg>"))
-        check("0.18.2 · a wordmark past the size cap is skipped with a warning that names its bytes, never inlined",
-              c_code == 0 and f"wordmark.svg is not shown: it is {len(_WORDMARK) + 13 + fm.LOGO_MAX:,} bytes — over 200,000" in c_err and 'class="wm"' not in c_page)
-        # FM-035: the same file checked out with Windows line ends (`core.autocrlf`) is the same file — the cap counts it as
-        # committed, `\r\n` as `\n`; the Windows runner wrote it one byte longer and the count above failed there
-        with open(wt / "brand" / "wordmark.svg", "w", encoding="utf-8", newline="\r\n") as f_:
-            f_.write(_WORDMARK.replace("</svg>", "<desc>" + "x" * fm.LOGO_MAX + "</desc></svg>"))
-        crlf_code, _o, crlf_err = run(root); crlf_page = (wt / "index.html").read_text(encoding="utf-8")
-        with open(wt / "brand" / "wordmark.svg", "w", encoding="utf-8", newline="\r\n") as f_:
-            f_.write(_WORDMARK)
-        run(root); crlf_shown = (wt / "index.html").read_text(encoding="utf-8")
-        _, lf_shown, _, _, _ = board_with(repo_wordmark_svg=_WORDMARK)
-        check("FM-035 · a wordmark with Windows line ends is counted as committed: the same bytes named past the cap, and under it inlined exactly as the LF file is",
-              crlf_code == 0 and f"wordmark.svg is not shown: it is {len(_WORDMARK) + 13 + fm.LOGO_MAX:,} bytes — over 200,000" in crlf_err and 'class="wm"' not in crlf_page
-              and head(crlf_shown) == head(lf_shown) and 'class="wm"' in crlf_shown and "\r" not in head(crlf_shown))
-        _, o_page, o_report, o_err, _ = board_with(org_wordmark_svg=_WORDMARK, repo_wordmark_svg=_SVG)
-        check("0.18.2 · a later place's wordmark wins, and one that is refused leaves the earlier one standing",
-              "wordmark      organisation" in o_report and 'aria-label="repo"><svg viewBox="0 0 40 16"' in o_page and "the header keeps the wordmark before it" in o_err)
-        # --- 0.18.2, the Reviewer's R1–R5: a wordmark is held to a grammar — one check per refusal, each case the Reviewer's
-        _W = lambda body, root="": (f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"{root}>'
-                                    f'{body}</svg>').encode("utf-8")
-        _fan = ('<defs><g id="l0"><path d="M0 0h1v1h-1Z"/></g>' + "".join(f'<g id="l{i}">' + f'<use href="#l{i - 1}"/>' * 10 + "</g>" for i in range(1, 7))
-                + '</defs><use href="#l6"/>')                  # 1.3 kB, a million instances
-        _chain = '<defs><path id="l0" d="M0 0h1v1h-1Z"/>' + "".join(f'<g id="l{i}"><use href="#l{i - 1}"/></g>' for i in range(1, 6)) + '</defs><use href="#l5"/>'
-        _decoy = ('<defs><g id="l0"><path d="M0 0h1v1h-1Z"/></g><g id="l0"/>'
-                  + "".join(f'<g id="l{i}">' + f'<use href="#l{i - 1}"/>' * 10 + f'</g><g id="l{i}"/>' for i in range(1, 7)) + '</defs><use href="#l6"/>')
-        _masks = lambda el, attr: (f'<defs><{el} id="m0"><rect width="1" height="1" fill="white"/></{el}>'
-                                   + "".join(f'<{el} id="m{k}">' + f'<rect width="1" height="1" fill="white" {attr}="url(#m{k - 1})"/>' * 10 + f'</{el}>' for k in range(1, 8))
-                                   + f'</defs><rect width="10" height="10" {attr}="url(#m7)"/>')
-        _mask_used = lambda n: '<defs><mask id="m">' + '<rect width="1" height="1" fill="white"/>' * 100 + '</mask></defs>' + '<rect width="1" height="1" mask="url(#m)"/>' * n
-        _laughs = ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE svg [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>'
-                   '<svg xmlns="http://www.w3.org/2000/svg"><text>&b;</text></svg>')
-        for case, svg, why in (
-                ("a CSS escape \\72 in fill", _W('<path d="M0 0" fill="u\\72l(http://127.0.0.1:8765/a)"/>'), 'its fill="u\\72l(http://127.0.0.1:8765/a)" on <path> is not what fill takes'),
-                ("a CSS escape \\r in fill", _W('<path d="M0 0" fill="u\\rl(//127.0.0.1:8765/a)"/>'), 'its fill="u\\rl(//127.0.0.1:8765/a)" on <path> is not what fill takes'),
-                ("a CSS escape \\0072 in stroke", _W('<path d="M0 0" stroke="u\\0072l(//127.0.0.1:8765/a)"/>'), 'its stroke="u\\0072l(//127.0.0.1:8765/a)" on <path> is not what stroke takes'),
-                ("a CSS escape \\u in mask", _W('<path d="M0 0" mask="\\u0075rl(//127.0.0.1:8765/a)"/>'), 'its mask="\\u0075rl(//127.0.0.1:8765/a)" on <path> is not what mask takes'),
-                ("the escape's backslash as &#92;", _W('<path d="M0 0" fill="u&#92;72l(//127.0.0.1:8765/a)"/>'), 'its fill="u\\72l(//127.0.0.1:8765/a)" on <path> is not what fill takes'),
-                ("a style attribute", _W('<path d="M0 0"/>', ' style="background-image:u\\72l(http://127.0.0.1:8765/a)"'), "it holds style= on <svg>, which a wordmark may not carry"),
-                ("an unknown attribute", _W('<path d="M0 0"/>', ' autofocus="" tabindex="0"'), "it holds autofocus= on <svg>, which a wordmark may not carry"),
-                ("a class", _W('<path class="m" d="M0 0"/>'), "it holds class= on <path>, which a wordmark may not carry"),
-                ("xml:base", _W('<path d="M0 0"/>', ' xml:base="http://e.x/"'), "it holds xml:base= on <svg>, which a wordmark may not carry"),
-                ("a UTF-16 file with a DOCTYPE and entities", _laughs.encode("utf-16"), "it is not UTF-8 without a byte-order mark"),
-                ("the same UTF-16, no byte-order mark", _laughs.encode("utf-16-le"), "it holds a control character"),
-                ("a UTF-8 byte-order mark", b"\xef\xbb\xbf" + _W('<path d="M0 0"/>'), "it is not UTF-8 without a byte-order mark"),
-                ("another encoding declared", b'<?xml version="1.0" encoding="ISO-8859-1"?>' + _W('<path d="M0 0"/>'), "its <?xml?> names the encoding ISO-8859-1, not UTF-8"),
-                ("the Reviewer's 1.3 kB <use> fan-out", _W(_fan), "its references nest deeper than 3"),
-                ("a <use> chain five deep", _W(_chain), "its references nest deeper than 3"),
-                ("a <use> cycle", _W('<g id="a"><use href="#a"/></g>'), "its references form a cycle"),
-                ("a <use> of an id it does not have", _W('<use href="#nope"/>'), "it refers to #nope, which the file does not have"),
-                ("1,000 nested <g>", _W("<g>" * 1000 + '<path d="M0 0"/>' + "</g>" * 1000), "it nests deeper than 32"),
-                # the second pass: R7 — the graph the browser draws; R9 — the rule's letter; R8's grammar, stricter
-                ("R7 · the fan-out with every id defined twice, a decoy after each", _W(_decoy), "the id l0 is defined twice"),
-                ("R7 · masks nested 7 deep, ten a level", _W(_masks("mask", "mask")), "its references nest deeper than 3"),
-                ("R7 · clip-paths nested 7 deep, ten a level", _W(_masks("clipPath", "clip-path")), "its references nest deeper than 3"),
-                ("R7 · a mask of 100 used 30 times — it paints 30 times", _W(_mask_used(30)), "it paints over 2,000 elements once its references are followed"),
-                ("R9 · url(#id) of an id it does not have", _W('<path d="M0 0" fill="url(#nope)"/>'), "it refers to #nope, which the file does not have"),
-                ("R9 · Unicode digits", _W('<rect width="\u0661\u0662"/>'), 'its width="\u0661\u0662" on <rect> is not what width takes'),
-                ("R9 · a full-width digit", _W('<rect x="\uff11"/>'), 'its x="\uff11" on <rect> is not what x takes'),
-                ("R9 · DEL", _W("<text>a\x7fb</text>"), "it holds a control character"),
-                ("R9 · a C1 control", _W("<text>a\x85b</text>"), "it holds a control character"),
-                ("R8 · two numbers in a path without a separator", _W('<path d="M1-2"/>'), 'its d="M1-2" on <path> is not what d takes'),
-                ("R8 · a number with no digit before its point", _W('<rect width=".5"/>'), 'its width=".5" on <rect> is not what width takes'),
-                ("R8 · an exponent", _W('<rect width="1e3"/>'), 'its width="1e3" on <rect> is not what width takes'),
-                ("R8 · two separators in a transform's list", _W('<path d="M0 0" transform="translate(1, 2)"/>'), 'its transform="translate(1, 2)" on <path> is not what transform takes')):
-            check(f"0.18.2 · R1–R5 · {case} is refused: {why}", fm.inline_svg(svg) == ("", why))
-        _ok = fm.inline_svg(_W('<defs><linearGradient id="g" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#123456"/></linearGradient></defs>'
-                               '<path d="M0 0h1v1h-1Z" fill="url(#g)" transform="translate(1,2) scale(2)"/><path d="M1 1" stroke="navy" stroke-width="1.5px"/>'
-                               '<text x="1 2.5px,3%" y="4" transform="translate(1,2)scale(2)">a</text>'))[0]
-        check("0.18.2 · what a drawing needs still passes: a gradient by url(#id) of its own, a transform, a named colour, a list of lengths — and a mask of 100 used 10 times",
-              'fill="url(#wm-g)" transform="translate(1,2) scale(2)"' in _ok and '<linearGradient id="wm-g" gradientUnits="userSpaceOnUse">' in _ok and 'stroke="navy"' in _ok
-              and '<text x="1 2.5px,3%" y="4" transform="translate(1,2)scale(2)">a</text>' in _ok and fm.inline_svg(_W(_mask_used(10)))[1] == "")
-        # R8: one pass of a scanner, never a regex — the Reviewer's backtracking cases at 10 kB, timed; R9: the count stops early
-        import time as _time
-        _slow = (("the Reviewer's `x=\"111 111 … !\"`", _W('<text x="' + "111 " * 2500 + '!">a</text>'), 0.05),
-                 ("a transform of 1,100 functions and a `!`", _W('<path d="M0 0" transform="' + "scale(1) " * 1100 + '!"/>'), 0.05),
-                 ("the same with two spaces between", _W('<path d="M0 0" transform="' + "scale(1)  " * 1000 + '!"/>'), 0.05),
-                 ("a width of 20,000 digits and a `!`", _W('<rect width="' + "1" * 20000 + '!"/>'), 0.05),
-                 ("800 paths drawn by 10,000 <use>s, 179 kB — refused by the count as it goes", _W('<defs><g id="a">' + '<path d="M0 0h1v1h-1Z"/>' * 800 + '</g></defs>' + '<use href="#a"/>' * 10000), 1.0))
-        for case, svg, limit in _slow:
-            _t0 = _time.thread_time(); _why = fm.inline_svg(svg)[1]; _ms = (_time.thread_time() - _t0) * 1000     # this thread's CPU time, not the wall clock other work on the machine stretches
-            check(f"0.18.2 · R8/R9 · {case} ({len(svg):,} bytes) is refused in under {limit * 1000:.0f} ms of this thread's CPU time (took {_ms:.1f} ms): {_why}", _why and _ms < limit * 1000)
-        _, x_page, _, x_err, x_code = board_with(repo_wordmark_svg=_W('<text x="' + "111 " * 30 + '!">a</text>').decode(), repo_logo_svg=_SVG)
-        check("0.18.2 · R8 · the Reviewer's 246-byte wordmark that hung the build is a warning: the build and --print-written exit 0",
-              x_code == 0 and "wordmark.svg is not shown: its x=" in x_err and "<b>repo</b>" in x_page and run(root, "--print-written")[0] == 0)
-        _, d_page, _, d_err, d_code = board_with(repo_wordmark_svg="<svg xmlns=\"http://www.w3.org/2000/svg\">" + "<g>" * 1000 + "</g>" * 1000 + "</svg>", repo_logo_svg=_SVG)
-        check("0.18.2 · R4 · a wordmark nested 1,000 deep is a warning, not a traceback: the build and --print-written exit 0",
-              d_code == 0 and "wordmark.svg is not shown: it nests deeper than 32" in d_err and "<b>repo</b>" in d_page and run(root, "--print-written")[0] == 0)
+        head = lambda page: page[page.index('<div id="H">'):page.index('<label id="sb">')]
+        _, n_page, n_report, _, _ = board_with(repo_logo_svg=_SVG, repo_wordmark_svg=_SVG.replace("<script>document.title=\"PWNED\"</script>", ""))
+        check("R10 · the header is the logo, then the name: a wordmark.svg is never inlined — it is named as no longer read, and the header shows the name",
+              head(n_page).startswith('<div id="H"><img alt="" src="data:image/svg+xml;base64,') and head(n_page).endswith('"><b>repo</b><span data-l="tagline"></span>')
+              and "#0a7" not in n_page and "no longer read: docs/work-tracker/brand/wordmark.svg — the header shows the name" in n_report)
         # --- 0.18.2: the running line — the tool's mark, name and version, on every page, whatever the brand
         _ver = (HERE / "VERSION").read_text(encoding="utf-8").strip()
         _run = lambda page: (re.search(r'</article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n(<p id="r" class="m">.*?</p>)</footer>\n<dialog', page) or [None, ""])[1]
         _links = lambda line: re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener" aria-label="([^"]+)">', line)
-        check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a wordmark, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
+        check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
               all(_links(_run(pg)) == [("https://github.com/shoalmark/shoalmark", "shoalmark on GitHub"), (f"https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
-                  and _run(pg).endswith(f'shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
-                  for pg in (plain_page, h_page, de_page, w_page, n_page)))
-        check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark",
-              f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark</a>' in _run(plain_page)
+                  and _run(pg).endswith(f'shoalmark{fm.icon("out")}</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}" target="_blank" rel="noopener" aria-label="release v{_ver}">v{_ver}</a></p>')
+                  for pg in (plain_page, h_page, de_page, n_page)))
+        check("0.18.2 · the running line's mark is the Pricke inline, in currentColor, at 16 px — its own grid, so sharp — inside the first link, and it is the site's mark; the link leaves the board, so the out icon follows its text (FM-053)",
+              f'aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="{fm.PRICKE}"></path></svg>shoalmark{fm.icon("out")}</a>' in _run(plain_page)
               and fm.PRICKE == re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1))
-        if _browser("wordmark"):
+        if _browser("running"):
             try:
-                board_with(repo_wordmark_svg=_WORDMARK, repo_theme_css=":root{--ink:#010203}\n@media (prefers-color-scheme:dark){:root{--ink:#fdfcfb}}\n")
-                probe = ('<script>{const o=[],p=document.querySelector("#H .wm svg path[stroke]");for(let i=0;i<3;i++){$("s").click();'
-                         'o.push($("s").dataset.scheme+"="+getComputedStyle(p).stroke+"/"+getComputedStyle(document.querySelector("#H .wm svg")).height)}document.body.dataset.probe=o.join("|")}</script>')
-                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
-                seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-                check(f"0.18.2 · in a browser the wordmark's stroke is the theme's ink, light and dark, through the ◐ switch, at the height it declares (saw: {seen})",
-                      "light=rgb(1, 2, 3)/16px" in seen and "dark=rgb(253, 252, 251)/16px" in seen)
+                board_with()
                 shown = []
                 for frag in ("", "#=MSR-001"):                   # the board, then a tracker's view: every screen a viewer can be on
                     probe = '<script>document.body.dataset.probe=[$("B").hidden,$("v").hidden,$("r").offsetHeight>0,$("r").textContent].join("|")</script>'
@@ -6340,39 +6703,29 @@ with tempfile.TemporaryDirectory() as d:
                       shown == [f"false|true|true|shoalmark · v{_ver}", f"true|false|true|shoalmark · v{_ver}"])
                 (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
-                _hung("wordmark", e_)
-        _, _, _, c_err, c_code = board_with(me_theme_css=":root{--bg:#777777;--ink:#888888}")
-        check("C6 · an unreadable theme is a warning that names the two colours and whose file it is — never a failure", c_code == 0 and "person's theme.css: text #888888 on ground #777777" in c_err and "below 4.5:1" in c_err)
+                _hung("running", e_)
         check("C6 · contrast is the WCAG ratio", round(fm.contrast("#000000", "#ffffff")) == 21 and fm.contrast("#777777", "#888888") < 1.5)
-        _, i_page, _, i_err, i_code = board_with(repo_theme_css='@import url("../../gone/tokens.css");\n:root{--bg:var(--x)}', repo_labels_yaml="tagline: still here\n", me_theme_css=":root{--mute:#123123}")
-        check("C10 · a theme whose import is missing is left out whole — the board keeps its colours, says so once, and the other places still apply",
-              i_code == 0 and "imports ../../gone/tokens.css, which is not there" in i_err and "var(--x)" not in i_page and "--mute:#123123" in i_page and '"tagline": "still here"' in i_page)
-        (wt / "brand/fonts").mkdir(parents=True, exist_ok=True); (wt / "brand/fonts/mine.woff2").write_bytes(b"x"); (home / "tokens.css").parent.mkdir(parents=True, exist_ok=True)
-        _, u_page, _, u_err, _ = board_with(repo_theme_css='@font-face{font-family:"Mine";src:url("fonts/mine.woff2")}\na{background:url(https://example.org/x.png)}',
-                                            me_theme_css='@import url("tokens.css");\n:root{--mute:#abcabc}', me_tokens_css=":root{--x:1}")
-        (wt / "brand/fonts").mkdir(parents=True, exist_ok=True); (wt / "brand/fonts/mine.woff2").write_bytes(b"x"); run(root)
-        u_page = (wt / "index.html").read_text(encoding="utf-8")
-        check("a path in a theme is written relative to the file it is in, and re-based onto the page — so a font beside the theme, and an import in the person's own folder, both resolve; an absolute URL is left alone",
-              'src:url("brand/fonts/mine.woff2")' in u_page and "url(https://example.org/x.png)" in u_page
-              and re.search(r'@import url\("(\.\./)+.*home/shoalmark/tokens\.css"\)', u_page) is not None and "is not there" not in u_err)
-        _, l_page, _, l_err, l_code = board_with(loose_theme_css=":root{--bg:#010203}", loose_labels_yaml="tagline: old place\n")
-        check("brand files left loose beside the trackers are not read — and the warning says where they belong",
-              l_code == 0 and "--bg:#010203" not in l_page and "old place" not in l_page and "theme.css, labels.yaml beside the trackers are not read" in l_err and "docs/work-tracker/brand/" in l_err)
+        _, l_page, _, l_err, l_code = board_with(loose_logo_svg=_SVG, loose_labels_yaml="tagline: old place\n", loose_theme_css=":root{--bg:#010203}")
+        check("brand files left loose beside the trackers are not read — the warning says where a logo and the labels belong, and a theme.css there is named as no longer read",
+              l_code == 0 and "--bg:#010203" not in l_page and "old place" not in l_page and "<img" not in l_page.split("<script>")[0]
+              and "logo.svg, labels.yaml beside the trackers are not read" in l_err and "docs/work-tracker/brand/" in l_err
+              and "docs/work-tracker/theme.css is no longer read — the board's colours are `[palette]` in shoalmark.toml" in l_err)
         _, t_page, _, t_err, t_code = board_with(repo_labels_yaml="tagine: a typo\nstatus.Shipped: Live\n")
         check("a mistyped label is named in a warning and never reaches the page — the rest of the file still applies",
               t_code == 0 and "labels.yaml: tagine is not a label" in t_err and '"tagine"' not in t_page and '"status.Shipped": "Live"' in t_page)
-        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n")
+        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n", org_logo_svg=_SVG)
         dest = base / "client" / "tools" / "shoalmark"
         with redirect_stdout(io.StringIO()):
             fm.vendor(dest, allow_untagged=True)
-        check("C7 · the organisation's brand travels with --vendor and is pinned like the rest of the copy",
-              (dest / "brand/theme.css").read_text() == ":root{--blue:#123456}" and "brand/theme.css" in (dest / "PIN").read_text() and "brand/labels.yaml" in (dest / "PIN").read_text())
+        check("C7 · the organisation's logo and labels travel with --vendor and are pinned like the rest of the copy — its theme.css, read by no board, does not",
+              (dest / "brand/labels.yaml").read_text() == "footer: set up by X with shoalmark\n" and "brand/labels.yaml" in (dest / "PIN").read_text()
+              and "brand/logo.svg" in (dest / "PIN").read_text() and not (dest / "brand/theme.css").exists() and "theme.css" not in (dest / "PIN").read_text())
         (base / "client/docs/work-tracker").mkdir(parents=True)
         (base / "client/docs/work-tracker/MSR-001-x.md").write_text('---\nid: MSR-001\nstatus: Proposed\nconsidered: none\nhook: "h"\n---\n\n# MSR-001 — x\n')
         (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("footer: ours\n")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
-        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" in cpage)
+        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" not in cpage)
         (dest / "VERSION").write_text("0.0.1-vendored\n", encoding="utf-8")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client"), "--html-only"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         check("0.18.2 · a vendored copy's running line names the version IT runs — its own VERSION, its own release page",
@@ -6381,11 +6734,8 @@ with tempfile.TemporaryDirectory() as d:
         with redirect_stdout(io.StringIO()):
             fm.brand_report(str(base / "starter"))
         starter = fm.read_flat((base / "starter/labels.yaml").read_text(encoding="utf-8"))
-        check("--brand DIR writes a starter a person can edit: every label in English, and a theme that names the nine variables",
-              starter == {k: v for k, v in fm.LABELS.items()} and all(v in (base / "starter/theme.css").read_text() for v in ("--bg", "--ink", "--dim", "--mute", "--line", "--teal", "--coral", "--blue", "--yellow")))
-        check("0.18.2 · the starter's theme states the whole drawing rule in a comment — viewBox and height, currentColor, the name as paths or <text>, the pixel grid, shapes only, never style, the logo stays the tab's (R6)",
-              all(w in (base / "starter/theme.css").read_text() for w in ("wordmark.svg", 'fill="currentColor"', "the browser tab", "viewBox", "the name as paths",
-                                                                           "whole multiple of its grid", 'never style="…"', "refuses it whole")))
+        check("--brand DIR writes a labels.yaml a person can edit: every label in English — and no theme.css, which no board reads",
+              starter == {k: v for k, v in fm.LABELS.items()} and sorted(p_.name for p_ in (base / "starter").iterdir()) == ["labels.yaml"])
     finally:
         _org_clear()
         if not _org_was and org.is_dir() and not any(org.iterdir()):
@@ -6396,9 +6746,7 @@ with tempfile.TemporaryDirectory() as d:
             os.environ["XDG_CONFIG_HOME"] = _xdg
 fm.configure(HERE)
 
-# --- FM-002, 0.18.5: the three hooks a theme styles — the Owner's box's title, the last line's one element, the striped rows.
-# The mocks worked around each in CSS (FM-006's evidence): the title an English word in `content:`, which labels.yaml cannot
-# reach; the running line lifted onto the claim's line; `nth-child(even)`, which counts a group's head and the hidden rows.
+# --- FM-002, 0.18.5: the Owner's box carries its title, and the last line is one element — the claim and the running line ------------------
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     for n_ in (1, 2, 3):
@@ -6408,48 +6756,20 @@ with tempfile.TemporaryDirectory() as d:
     _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
     try:
         run(root); page = (wt / "index.html").read_text(encoding="utf-8")
-        check("FM-002 · the board carries three hooks a theme styles: the Owner's box's title, the label `owner.title`; the claim and the running line in one footer element, after the viewer; `zebra` on every other row of a group — the default CSS hides the title, and the claim in the viewer, where it stood hidden in the board before",
+        check("FM-002, FM-053 · the board carries the Owner's box's title, the label `owner.title` — *yours*, set into the box's one titled frame — and the claim "
+              "and the running line in one footer element, after the viewer, the claim hidden in the viewer; no row carries the stripe a theme once drew",
               '</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n<p id="r" class="m">' in page
-              and page.count("<footer") == 1 and ".pt{display:none}#B[hidden]~#F #f{display:none}" in page
-              and '`<span class="pt">${l("owner.title")}</span>`+' in page and '${i%2?" zebra":""}' in page and '"owner.title": "owed to the owner"' in page)
+              and page.count("<footer") == 1 and "#p>.pt{position:absolute;top:-11px;" in page and "#B[hidden]~#F #f{display:none}" in page and ".pt{display:none}" not in page
+              and '`<span class="pt">${l("owner.title")}</span>`+' in page and "zebra" not in page and '"owner.title": "yours"' in page)
         if _browser("hooks"):
             try:
                 import html as _html
-                # the page as it was before the hooks: the claim at the board's end, no footer element, no title, no stripes
-                undo = (('</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n',
-                         '</tbody></table>\n<p id="f" class="m" data-l="footer"></p></div>\n<article id="v" hidden></article>\n'),
-                        ("</p></footer>\n<dialog", "</p>\n<dialog"), ('`<span class="pt">${l("owner.title")}</span>`+', ""), ('${i%2?" zebra":""}', ""))
-                before = page
-                for a_, b_ in undo:
-                    before = before.replace(a_, b_) if before.count(a_) == 1 else ""
-                # what is seen: each part's box — none where it is not rendered — its ink and its ground, and every cell's ground
-                probe = ('<script>{const r=s=>{const e=document.querySelector(s),b=e.getBoundingClientRect(),c=getComputedStyle(e);'
-                         'return s+"="+(e.getClientRects().length?[b.x,b.y,b.width,b.height].map(Math.round):"none")+"/"+c.color+"/"+c.backgroundColor};'
-                         'document.body.dataset.probe=["#H","header","#l","#p","table","#f","#r"].map(r).join(" ")+" cells="+[...document.querySelectorAll("tr.t td")].map(x=>getComputedStyle(x).backgroundColor).join(";")}</script>')
-                seen_ = {}
-                for name_, html_ in (("before", before), ("after", page)):
-                    for frag in ("", "#=MSR-001"):
-                        (wt / "probe.html").write_text(html_.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                        pdom = _chrome_run(["--window-size=1300,900", "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri() + frag]).stdout
-                        seen_[name_ + frag] = _html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1])
                 probe = ('<script>{const o=[],s=()=>o.push(($("p").querySelector(".pt")||{}).textContent||"-");s();$("q").value="row";draw();s();'
                          '$("q").value="";$("g").click();s();document.body.dataset.probe=o.join("|")}</script>')
                 (wt / "probe.html").write_text(page.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
                 views_ = _html.unescape((re.search(r'data-probe="([^"]*)"', _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout) or [None, ""])[1])
-                check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view — so a theme titles the box wherever it stands (saw {views_!r})",
-                      views_ == "owed to the owner|owed to the owner|owed to the owner")
-                check(f"FM-002 · with no theme the hooks carry no visible change: the board and a tracker's view render as the page without them — every part's box, ink and ground, every cell's ground; the claim shown on the board, not in the view (saw {seen_})",
-                      before and seen_["before"] == seen_["after"] and seen_["before#=MSR-001"] == seen_["after#=MSR-001"]
-                      and "#f=none" not in seen_["after"] and "#f=none" in seen_["after#=MSR-001"] and "#r=none" not in seen_["after#=MSR-001"] and seen_["after"].count("rgba(0, 0, 0, 0)") >= 12)
-                (wt / "brand/theme.css").write_text("#p>.pt{display:block}tr.zebra td{background:#010203}#F{display:flex;align-items:baseline}#F #f{flex:1;margin:0}#F #r{margin:0}\n", encoding="utf-8")
-                run(root)
-                probe = ('<script>{const p=document.querySelector("#p>.pt"),f=$("f").getBoundingClientRect(),r=$("r").getBoundingClientRect();'
-                         'document.body.dataset.probe=[p.getClientRects().length>0,p.textContent,[...document.querySelectorAll("tr.t")].map(x=>getComputedStyle(x.cells[0]).backgroundColor).join(";"),f.top<r.bottom&&r.top<f.bottom&&f.right<=r.left].join("|")}</script>')
-                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                pdom = _chrome_run(["--window-size=1300,900", "--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
-                themed_ = _html.unescape((re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1])
-                check(f"FM-002 · a theme styles each hook with no workaround: the box's title shows its label, every other row of a group takes the stripe, the claim and the running line stand on one line (saw {themed_!r})",
-                      themed_ == "true|owed to the owner|rgba(0, 0, 0, 0);rgb(1, 2, 3);rgba(0, 0, 0, 0)|true")
+                check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view (saw {views_!r})",
+                      views_ == "yours|yours|yours")
                 (wt / "probe.html").unlink()
             except _ChromeFailed as e_:
                 _hung("hooks", e_)
@@ -6457,175 +6777,371 @@ with tempfile.TemporaryDirectory() as d:
         os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
 fm.configure(HERE)
 
-# --- FM-002, 0.18.5: the tool ships two themes as starters — brand/themes/monochrome/ and brand/themes/shoalmark/ (the
-# Owner's signed answer, 4e00f85: the tool ships monochrome and shoalmark as starters), cut from FM-006's mocks (9467b83)
-_th = HERE / "brand/themes"
-_THEMES = ("monochrome", "shoalmark")
-_FONTS = {"IBMPlexMono-Regular-Latin1.woff2": "10d3c7fa7eaf48e78db24f317b64f008a75e00f63a68bb3c2afc6ef51e58674f",       # @ibm/plex-mono 1.1.0,
-          "IBMPlexMono-SemiBold-Latin1.woff2": "1ce95cff1c5056cb0fed049c2912823293b158b816e193a6f937f2d92b1e0f39",      # fonts/split/woff2/
-          "IBMPlexMono-Italic-Latin1.woff2": "08c4566f535253ee314ea35e4d75384a7bb151b4ed8345353698d95b33516d3b"}
-_readme = (_th / "README.md").read_text(encoding="utf-8") if (_th / "README.md").is_file() else ""
-_css = {n: (_th / n / "theme.css").read_text(encoding="utf-8") if (_th / n / "theme.css").is_file() else "" for n in _THEMES}
-check("FM-002 · the tool ships two themes in brand/themes/ — monochrome and shoalmark, each a theme.css with the three Plex Mono cuts it loads and their licence; the README names each in one line and lists the fonts by name and sha256, and each file is that hash",
-      sorted(p.name for p in _th.iterdir() if p.is_dir()) == list(_THEMES) and all(_css.values())
-      and all(sorted(p.name for p in (_th / n / "fonts").iterdir()) == sorted([*_FONTS, "LICENSE.txt"]) for n in _THEMES)
-      and all(fm.digest(_th / n / "fonts" / k) == v and f"`fonts/{k}` | `{v}`" in _readme for n in _THEMES for k, v in _FONTS.items())
-      and all(len(re.findall(rf"^- `{n}` — [^\n]+\.$", _readme, re.M)) == 1 for n in _THEMES)
-      and all((_th / n / "fonts/LICENSE.txt").read_bytes() == (HERE / "work-tracker/brand/fonts/LICENSE.txt").read_bytes() for n in _THEMES)
-      and (_th / "monochrome/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes() == (HERE / "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2").read_bytes())
-# every edit a starter makes to FM-006's mocks (evidence/FM-006/themes/, 9467b83), the mock's text -> the starter's: the font
-# urls and the Regular, the placeholder's ink (contrast, slice A's measure), hooks 1 and 2 in place of the two workarounds,
-# and hook 3 left unused, the mock's stripes kept — each marked SLICE B where it stands. Nothing else may differ: the
-# Owner took the mocks as they are.
-_EDITS = {
-    "monochrome.css": [
-        ('@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("brand/fonts/',
-         '/* SLICE B: the font urls relative to this file, as a brand place reads them (the mock\'s were the page\'s, brand/fonts/…),\n'
-         '   and the Regular declared beside the two cuts — the mock\'s page had it from the repository\'s own theme; a board with no\n'
-         '   brand of its own would set every word in the SemiBold */\n'
-         '@font-face{font-family:"IBM Plex Mono";font-weight:400;src:url("fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2")}\n'
-         '@font-face{font-family:"IBM Plex Mono";font-weight:600;src:url("fonts/'),
-        ('font-weight:400;src:url("brand/fonts/IBMPlexMono-Italic', 'font-weight:400;src:url("fonts/IBMPlexMono-Italic'),
-        ('header button[aria-pressed=true]{color:var(--ink);font-weight:600}\n',
-         'header button[aria-pressed=true]{color:var(--ink);font-weight:600}\n'
-         '/* SLICE B, not the mock\'s — the built board\'s measure (slice A, 70fedd3): the browser\'s own placeholder ink, #757575, reads\n'
-         '   4.30:1 by day and 4.19:1 by night on this theme\'s grounds; --mute reads 4.75:1 and 5.97:1 */\n'
-         '::placeholder{color:var(--mute);opacity:1}\n'),
-        ('each section a markdown heading */\n',
-         'each section a markdown heading.\n'
-         '   SLICE B, hook 1 of 3: the title is the board\'s label owner.title, the element #p>.pt — the mock\'s #p::before set it as\n'
-         '   CSS content, English, which labels.yaml cannot reach */\n'),
-        ('#p::before{content:"owed to the owner";position:absolute;', '#p>.pt{display:block;position:absolute;'),
-        ('/* over the last line\'s own rules below; the lifted #r keeps its -21px */',
-         '/* over the last line\'s own rules below (SLICE B: nothing is lifted — hook 2) */'),
-        ('\n#f{margin:28px 0 0;padding-right:26ch;line-height:21px}\n',
-         '\n/* SLICE B, hook 2 of 3: the claim and the running line stand in one element, the footer #F — the mock lifted the running\n'
-         '   line onto the claim\'s line, #B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}. While the board shows, the two\n'
-         '   share one cell, the running line at its foot, so it stands on the claim\'s last line; the claim is painted over the\n'
-         '   band the running line draws. In the viewer the footer is a block: the running line alone, as the mock\'s */\n'
-         '#f{margin:28px 0 0;padding-right:26ch;line-height:21px}\n'),
-        ('#B:not([hidden]):has(#f:not(:empty)) ~ #r{margin-top:-21px}\n',
-         '#B:not([hidden])~#F{display:grid}#F>#f,#F>#r{grid-area:1/1}#F>#r{align-self:end}#F>#f{position:relative}\n')],
-    "shoalmark.css": [
-        ('#p::before{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}',
-         '#p>.pt{background:var(--magenta);color:var(--magink);padding:0 1ch;left:2ch}   /* SLICE B: hook 1 of 3 */'),
-        ('tr.t:nth-child(even) td{background:var(--zebra)}',
-         '/* SLICE B, hook 3 of 3, not used here: the board writes the class zebra on every other row of a group, and a true\n'
-         '   alternate-row stripe is one line — tr.zebra td{background:var(--zebra)} in place of the nth-child rule below. Not made:\n'
-         '   the Owner took the mock as it is (2026-09-26), and the mock\'s tr.t:nth-child(even), which counts a group\'s head and its\n'
-         '   hidden rows, tints every row of a group or none — as the renders he approved show */\n'
-         'tr.t:nth-child(even) td{background:var(--zebra)}')]}
+# --- R10's look half (FM-053's answer): never a silent loss. Each brand file the board no longer reads — theme.css, fonts/ and wordmark.svg in every
+# place, the two files beside the trackers, and the themes/ an older copy shipped in the tool's own brand/ — is named, file by file, with what replaces
+# it: by the build's output, on the page (one line) and by `--brand`; `--check` never fails on one; with them removed, no line remains.
+# The class test, run on the tool and on two mutants — one place dropped, one file not named — each of which it must fail
+_GONE_SAYS = {"theme.css": ("the board's colours are `[palette]` in shoalmark.toml", "[palette] in shoalmark.toml"),
+              "fonts/": ("the board is set in the system's monospace", "the system's monospace"),
+              "wordmark.svg": ("the header shows the name", "the name"),
+              "themes/": ("no theme is copied: the board's colours are `[palette]` in shoalmark.toml, by name — monochrome or shoalmark", "[palette], by name")}
+_GONE_WHERE = {"organisation": ("theme.css", "fonts/", "wordmark.svg", "themes/"), "repository": ("theme.css", "fonts/", "wordmark.svg"),
+               "person": ("theme.css", "fonts/", "wordmark.svg"), "beside the trackers": ("theme.css", "wordmark.svg")}
 
 
-def _cut(name):
-    """The mock `name` with its SLICE B edits — "" when an edit's text is not in it exactly once."""
-    text = (HERE / "work-tracker/evidence/FM-006/themes" / name).read_text(encoding="utf-8")
-    for a_, b_ in _EDITS[name]:
-        if text.count(a_) != 1:
-            return ""
-        text = text.replace(a_, b_)
-    return text
+def _gone_class(source):
+    """The class test on a tool whose source is `source`: a copy of it outside the repository (its brand/ the organisation's place), a person's
+    `~/.config/shoalmark/` under a temporary HOME, a leftover of every name in every place it can stand — then each removed. (ok, what was missed)."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_, home_ = base_ / "tool", base_ / "repo", base_ / "home"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir(); home_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        env_ = {k: v for k, v in _ENV.items() if k != "XDG_CONFIG_HOME"}; env_.update(HOME=str(home_), USERPROFILE=str(home_))    # Windows reads USERPROFILE
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=env_)
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr"); tracker(root_, "MSR-001")
+        places_ = {"organisation": tool_ / "brand", "repository": root_ / "docs/work-tracker/brand", "person": home_ / ".config/shoalmark",
+                   "beside the trackers": root_ / "docs/work-tracker"}
+        shown_ = lambda where, name: {"organisation": (tool_ / "brand").as_posix() + "/", "repository": "docs/work-tracker/brand/",
+                                      "person": "~/.config/shoalmark/", "beside the trackers": "docs/work-tracker/"}[where] + name
+        made_ = []
+        for where, names in _GONE_WHERE.items():
+            for name in names:
+                p_ = places_[where] / name.rstrip("/"); made_.append((where, name, p_))
+                if name.endswith("/"):
+                    p_.mkdir(parents=True); (p_ / "a-file").write_text("x", encoding="utf-8")
+                else:
+                    p_.parent.mkdir(parents=True, exist_ok=True); p_.write_text("x", encoding="utf-8")
+        c_, _o, e_ = tr_(); page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        _c, rep_, _e = tr_("--brand"); chk_ = tr_("--check")[0]
+        line_ = re.findall(r'<p id="w" class="m">([^<]*)</p>', page_)
+        missed_ = [f"{where} {name}: " + ",".join(k_ for k_, ok_ in (
+            ("output", f"  brand: {shown_(where, name)} is no longer read — {_GONE_SAYS[name][0]}\n" in e_),
+            ("page", len(line_) == 1 and f"{_html_esc(shown_(where, name))} → {_html_esc(_GONE_SAYS[name][1])}" in line_[0]),
+            ("--brand", f"  no longer read: {shown_(where, name)} — {_GONE_SAYS[name][0]}\n" in rep_)) if not ok_)
+                   for where, name, _p in made_]
+        missed_ = [m_ for m_ in missed_ if not m_.endswith(": ")]
+        for _w, name, p_ in made_:
+            shutil.rmtree(p_) if name.endswith("/") else p_.unlink()
+        c2_, _o2, e2_ = tr_(); page2_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"); rep2_ = tr_("--brand")[1]
+        rm_git(root_)
+        ok_ = (c_ == 0 and chk_ == 0 and not missed_ and line_ and line_[0].startswith("no longer read: ") and line_[0].count(" → ") == len(made_)
+               and c2_ == 0 and "no longer read" not in e2_ + rep2_ and 'id="w"' not in page2_)
+        return ok_, dict(exit=c_, check=chk_, missed=missed_, after=[l_ for l_ in (e2_ + rep2_).splitlines() if "no longer read" in l_])
 
 
-_head = lambda css: css[:css.index("*/\n") + 3] if css.startswith("/* THE STARTER") else "\0"
-check("FM-002 · each starter is FM-006's mocks as the Owner took them — monochrome, and monochrome then shoalmark as build-mocks.py stacks them — under a header of its own, every rule verbatim but the SLICE B edits, each marked where it stands: the font urls and the Regular, the placeholder's ink, the box's title and the last line on hooks 1 and 2, the mock's stripes kept and hook 3's one line named",
-      _cut("monochrome.css") and _cut("shoalmark.css") and _css["monochrome"] == _head(_css["monochrome"]) + _cut("monochrome.css")
-      and _css["shoalmark"] == _head(_css["shoalmark"]) + _cut("monochrome.css") + "\n" + _cut("shoalmark.css")
-      and _css["monochrome"].count("SLICE B") == 6 and _css["shoalmark"].count("SLICE B") == 8)
-check("FM-002 · each starter styles the box's title and the last line through hooks 1 and 2, the two workarounds gone as rules, and keeps the mock's stripes; every url() it names is a file beside it; every drawn marker and figure has empty alt text (AU-16)",
-      all(re.findall(r'url\("([^"]+)"\)', c) and all((_th / n / u).is_file() for u in re.findall(r'url\("([^"]+)"\)', c)) for n, c in _css.items())
-      and all("\n#p>.pt{display:block;" in c and "\n#B:not([hidden])~#F{display:grid}" in c and "\n#p::before" not in c and "\n#B:not([hidden]):has(" not in c
-              and 'url("brand/fonts/' not in c and all(f'content:"{x}" / ""' in c for x in re.findall(r'content:"([^"]+)"', c)) for c in _css.values())
-      and "\ntr.t:nth-child(even) td{background:var(--zebra)}" in _css["shoalmark"] and "\ntr.zebra" not in _css["shoalmark"])
-with tempfile.TemporaryDirectory() as d:
-    root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
-    tracker(root, "MSR-001"); wt = root / "docs/work-tracker"
-    _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
-    try:
-        # the default look of a repository that chooses nothing: the tool's brand/ holding the themes changes no byte of the board
-        code0, _, err0 = run(root, "--html-only"); page0 = (wt / "index.html").read_text(encoding="utf-8")
-        _here = fm.HERE
-        try:
-            fm.HERE = Path(d) / "a-copy-with-no-brand"; run(root, "--html-only"); bare = (wt / "index.html").read_text(encoding="utf-8")
-        finally:
-            fm.HERE = _here
-        check("FM-002 · a repository that chooses no theme sees no change: with the themes in the tool's brand/ its board is byte for byte the board of a copy that has no brand/ at all, "
-              "but the time each was built (FM-057) — no theme, no warning",
-              _th.is_dir() and code0 == 0 and _sans_moment(page0) == _sans_moment(bare) and "<style data-from" not in page0 and "brand:" not in err0)
-        _, rep_, _ = run(root, "--brand")
-        check(f"FM-002 R3 · `--brand` marks the tool's brand/ as a place with no brand file, its themes starters no board wears — and every source still reads built in (saw {rep_.splitlines()[1:2]})",
-              f"organisation  {HERE / 'brand'}  — no brand file here: its themes/ are starters, worn only once --from copies one" in rep_
-              and all(f"{k:<13} built in" in rep_ for k in ("theme.css", "logo", "wordmark", "labels.yaml")))
-        worn = {}
-        for n in _THEMES:
-            shutil.rmtree(wt / "brand", ignore_errors=True); shutil.copytree(_th / n, wt / "brand")
-            code_, _, err_ = run(root, "--html-only"); page_ = (wt / "index.html").read_text(encoding="utf-8")
-            worn[n] = (code_, err_.strip(), re.findall(r'url\("([^"]+)"\)', page_.split('<style data-from="repository">')[1].split("</style>")[0]) if '<style data-from="repository">' in page_ else None)
-        check(f"FM-002 · each theme, worn from the repository's place, loads with no warning, and every font it names resolves from the page (saw {worn})",
-              all(c_ == 0 and "brand:" not in e_ and u_ and all((wt / u).is_file() and u.startswith("brand/fonts/") for u in u_) for c_, e_, u_ in worn.values()))
-    finally:
-        os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
-fm.configure(HERE)
+_html_esc = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+_tool_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_gone_ok, _gone_saw = _gone_class(_tool_src)
+check(f"R10 · never a silent loss: every brand file the board no longer reads, in every place it can stand — the organisation's, the repository's, a "
+      f"person's under a temporary HOME, beside the trackers — is named, file by file, with what replaces it, by the build's output, on the page in one "
+      f"line, and by `--brand`; `--check` exits 0 beside them; with them removed, no line remains (saw {_gone_saw})", _gone_ok)
+_GONE_MUTANTS = {
+    "one place dropped — the person's": ('    places = [(d, BRAND_GONE + (BRAND_GONE_TOOL if who == "organisation" else ())) for who, d in brand_places()]',
+                                          '    places = [(d, BRAND_GONE + (BRAND_GONE_TOOL if who == "organisation" else ())) for who, d in brand_places() if who != "person"]'),
+    "one file not named — wordmark.svg": ('            for d, gone in places for name, instead, key in gone if os.path.lexists(d / name.rstrip("/"))]',
+                                          '            for d, gone in places for name, instead, key in gone if os.path.lexists(d / name.rstrip("/")) and name != "wordmark.svg"]')}
+for _what, (_a, _b) in _GONE_MUTANTS.items():
+    check(f"R10 · the class test's mutant, {_what}: the class test FAILS on it", _tool_src.count(_a) == 1 and not _gone_class(_tool_src.replace(_a, _b))[0])
 
-# --- FM-002, 0.18.5: `--brand DIR --from <theme>` writes a starter from a theme the tool ships ----------------------------
+# --- R10's look half: `--from`, which copied a theme the tool shipped, is retired — named, with what replaces it, and refused, nothing written --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     tracker(root, "MSR-001"); wt = root / "docs/work-tracker"; dest = wt / "brand"
-    _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
-    try:
-        code_, out_, err_ = run(root, "--brand", str(dest), "--from", "shoalmark")
-        _want = sorted(p.relative_to(_th / "shoalmark").as_posix() for p in (_th / "shoalmark").rglob("*") if p.is_file())
-        _got = sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file())
-        check(f"FM-002 · `--brand DIR --from shoalmark` copies the theme's files into DIR byte for byte — its theme.css and its fonts — and names the theme (saw {out_.splitlines()[:2]})",
-              code_ == 0 and _got == _want and all((dest / r).read_bytes() == (_th / "shoalmark" / r).read_bytes() for r in _want)
-              and out_.startswith("the shoalmark theme") and all(f"wrote {dest / r}" in out_ for r in _want))
-        code_b, _, err_b = run(root, "--html-only"); page_ = (wt / "index.html").read_text(encoding="utf-8")
-        check("FM-002 · the board wears the starter from the repository's place: its stylesheet, no warning, every font resolving",
-              code_b == 0 and "brand:" not in err_b and '<style data-from="repository">' in page_ and "\n#p>.pt{display:block;" in page_
-              and all((wt / u).is_file() for u in re.findall(r'url\("(brand/fonts/[^"]+)"\)', page_)) and len(re.findall(r'url\("(brand/fonts/[^"]+)"\)', page_)) == 3)
-        (dest / "theme.css").write_text("/* mine */\n", encoding="utf-8")
-        code_k, out_k, _ = run(root, "--brand", str(dest), "--from", "monochrome")
-        check("FM-002 · a second `--from` never overwrites: a file that is there is kept, and said so, and the theme named",
-              code_k == 0 and (dest / "theme.css").read_text(encoding="utf-8") == "/* mine */\n" and f"kept {dest / 'theme.css'}" in out_k and out_k.startswith("the monochrome theme"))
-        code_u, out_u, err_u = run(root, "--brand", str(root / "nowhere"), "--from", "catkin")
-        code_a, _, err_a = run(root, "--from", "shoalmark")
-        code_n, _, err_n = run(root, "--brand", "--from", "shoalmark")
-        check(f"FM-002 · an unknown theme is refused with the two the tool ships, nothing written; `--from` without `--brand DIR` is refused (saw {err_u.strip()!r}, {err_a.strip()!r})",
-              code_u == 2 and "monochrome or shoalmark" in err_u and "nothing was written" in err_u and not (root / "nowhere").exists()
-              and code_a == 2 == code_n and "--from goes with --brand DIR" in err_a and "--from goes with --brand DIR" in err_n)
-        _help = io.StringIO()
-        with redirect_stdout(_help):
-            _try(lambda: fm.parse_args(["--help"]))
-        check("FM-002 · `--schema` and `--help` say it: no key chooses the look, `--brand DIR --from` and the two themes",
-              "`--brand DIR --from THEME`" in fm.render_schema() and "`monochrome` · `shoalmark`" in fm.render_schema() and "No key chooses the board's look" in fm.render_schema()
-              and "--from THEME" in _help.getvalue() and "monochrome or shoalmark" in re.sub(r"\s+", " ", _help.getvalue()))
-    finally:
-        os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
+    code_, out_, err_ = run(root, "--brand", str(dest), "--from", "shoalmark")
+    code_a, _, err_a = run(root, "--from", "monochrome")
+    check(f"R10 · `--brand DIR --from THEME` and `--from` alone are refused — the themes are gone, `[palette]` named in their place, nothing written (saw {err_.strip()!r})",
+          code_ == 2 == code_a and not dest.exists() and out_ == ""
+          and all(e_.strip() == "--from: the tool ships no theme any more — the board's colours are `[palette]` in shoalmark.toml, by name (monochrome or shoalmark) "
+                  "or by a few colours; nothing was written" for e_ in (err_, err_a)))
+    _help = io.StringIO()
+    with redirect_stdout(_help):
+        _try(lambda: fm.parse_args(["--help"]))
+    check("R10 · `--schema` and `--help` say it: no theme is read or shipped, and `--brand` names the files the board no longer reads; `--from` is in neither",
+          "No theme is read or shipped" in fm.render_schema() and "`--brand DIR --from" not in fm.render_schema() and "--from" not in _help.getvalue()
+          and "each brand file it no longer reads" in re.sub(r"\s+", " ", _help.getvalue()))
 fm.configure(HERE)
 
-# --- 0.18.2 (FM-006): this repository's own board wears the site's brand — its brand files, held to their sources ------
+# --- R10's look half: the documentation keeps its look — every file the docs load stays, and the docs' chart is drawn by their own stylesheet ------
+
+
+def _docs_refs():
+    """Every file the documentation site loads or includes, as its sources name it: zensical.toml's extra_css and favicon, its custom_dir and the logo
+    icon in it; each url() of a docs stylesheet; each `--8<--` include and each relative link of a docs page; each `{{ '…' | url }}` of the overrides."""
+    conf_ = (HERE / "zensical.toml").read_text(encoding="utf-8")
+    docs_ = HERE / re.search(r'^docs_dir\s*=\s*"([^"]+)"', conf_, re.M).group(1)
+    refs_ = [docs_ / c_ for c_ in re.findall(r'"([^"]+)"', re.search(r"^extra_css\s*=\s*\[([^\]]*)\]", conf_, re.M).group(1))]
+    refs_.append(docs_ / re.search(r'^favicon\s*=\s*"([^"]+)"', conf_, re.M).group(1))
+    custom_ = HERE / re.search(r'^custom_dir\s*=\s*"([^"]+)"', conf_, re.M).group(1)
+    refs_ += [custom_, custom_ / ".icons" / (re.search(r'^logo\s*=\s*"([^"]+)"', conf_, re.M).group(1) + ".svg")]
+    for css_ in sorted((docs_ / "stylesheets").glob("*.css")):
+        refs_ += [(css_.parent / u_.strip("'\"")).resolve() for u_ in re.findall(r"url\(([^)]+)\)", css_.read_text(encoding="utf-8"))
+                  if not re.match(r"['\"]?(data:|https?:|#)", u_)]
+    for md_ in sorted(docs_.rglob("*.md")):
+        t_ = md_.read_text(encoding="utf-8")
+        refs_ += [HERE / s_ for s_ in re.findall(r'^--8<-- "([^"]+)"', t_, re.M)]
+        refs_ += [(md_.parent / l_.split("#")[0]).resolve() for l_ in re.findall(r"\]\(([^)\s]+)\)", t_) if not re.match(r"(https?:|mailto:|#)", l_)]
+    for tpl_ in sorted(custom_.rglob("*.html")):
+        refs_ += [docs_ / u_ for u_ in re.findall(r"\{\{\s*'([^']+)'\s*\|\s*url\s*\}\}", tpl_.read_text(encoding="utf-8"))]
+    return sorted(set(refs_))
+
+
+_dref = _docs_refs()
+_dgone = [p_.relative_to(HERE).as_posix() if HERE in p_.parents else str(p_) for p_ in _dref if not p_.exists()]
+check(f"R10 · the docs keep their look: every file the documentation loads or includes is there — its stylesheets, its self-hosted fonts, its icons, "
+      f"its includes and its pages ({len(_dref)} files; missing: {_dgone})",
+      not _dgone and len(_dref) >= 30 and HERE / "docs/stylesheets/shoalmark.css" in _dref and HERE / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2" in _dref
+      and HERE / "README.md" in _dref)
+_dcss = (HERE / "docs/stylesheets/shoalmark.css").read_text(encoding="utf-8")
+check("R10 · the docs draw their own chart: their stylesheet holds the chart's frame, its graticule and its figures, and loads no board file",
+      "body::before" in _dcss and "repeating-linear-gradient(var(--chart)" in _dcss and "53°57'N" in _dcss and "8°24'E" in _dcss
+      and "work-tracker/brand" not in _dcss and "brand/themes" not in _dcss)
+
+# --- this repository's own board: its brand files, held to their sources — a logo and the labels; its theme, fonts and wordmark gone with R10 -------
 _rb, _xdg = HERE / "work-tracker/brand", os.environ.get("XDG_CONFIG_HOME")
 with tempfile.TemporaryDirectory() as _nowhere:
     os.environ["XDG_CONFIG_HOME"] = _nowhere                 # the person's own place stays out of it
     try:
-        fm.configure(HERE); _themes, _logo, _labels, _src, _warn, _wm = fm.brand()
+        fm.configure(HERE); _logo, _labels, _src, _warn, _gone = fm.brand()
     finally:
         os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
-_given, _css = fm.read_flat((_rb / "labels.yaml").read_text(encoding="utf-8")), (_rb / "theme.css").read_text(encoding="utf-8")
+_given = fm.read_flat((_rb / "labels.yaml").read_text(encoding="utf-8"))
 check("0.18.2 · this repository's labels.yaml is valid — every key a label — with no tagline (the claim speaks to agents; the Owner, 2026-09-24) and the English footer he ruled",
       set(_given) <= set(fm.LABELS) and "tagline" not in _given and _given.get("footer") == "A Pricke on the Wadden flats keeps the fleet in the channel." and _labels["footer"] == _given["footer"])
-check("0.18.2 · this repository's theme.css loads as its own stylesheet with no warning — ink on ground set for light and dark and readable in both — and every font it names is on disk, with its licence",
-      _src["theme.css"] == ["repository"] and not _warn and len(re.findall(r"--bg\s*:\s*#[0-9a-f]{6}", _css)) == len(re.findall(r"--ink\s*:\s*#[0-9a-f]{6}", _css)) == 2
-      and "prefers-color-scheme:dark" in _css and all((_rb / u).is_file() for u in re.findall(r'url\("([^"]+)"\)', _css)) and "SIL Open Font License" in (_rb / "fonts/LICENSE.txt").read_text(encoding="utf-8"))
-_wsrc = (_rb / "wordmark.svg").read_text(encoding="utf-8")
-check("0.18.2 · this repository's wordmark is the site's mark at the ruled 16 px beside the name, in one ink: inlined, drawn in currentColor only, the mark's path the site's own",
-      _src["wordmark"] == ["repository"] and _wm and 'height="16"' in _wm[1] and 'fill="currentColor"' in _wm[1] and not re.search(r'(?:fill|stroke)="(?!currentColor|none)', _wsrc)
-      and re.search(r' d="([^"]+)"', (HERE / "overrides/.icons/shoalmark/pricke.svg").read_text(encoding="utf-8")).group(1) in _wsrc)
-check("0.18.2 · R1–R5 · this repository's own wordmark.svg passes the grammar, as the file is", fm.inline_svg((_rb / "wordmark.svg").read_bytes())[1] == "" and _wm and _wm[1] == fm.inline_svg((_rb / "wordmark.svg").read_bytes())[0])
-check("FM-002 R1 · this repository's theme is re-cut on the board's hooks: the box's title is #p>.pt, the claim and the running line share the footer #F, nothing is lifted onto the claim's line, and the stripes stay the mock's nth-child rule the Owner approved",
-      all(w in _css for w in ("\n#p>.pt{display:block;", "\n#B:not([hidden])~#F{display:grid}", "\ntr.t:nth-child(even) td{background:var(--zebra)}"))
-      and not any(w in _css for w in ("\n#p::before", "\n#B:not([hidden]):has(", "\ntr.zebra")))
 check("0.18.2 · this repository's logo — the tab's — is the site's tab icon, byte for byte", _src["logo"] == ["repository"] and (_rb / "logo.svg").read_bytes() == (HERE / "docs/assets/favicon.svg").read_bytes())
+check(f"R10 · this repository holds no brand file the board no longer reads — its theme.css, fonts/ and wordmark.svg are gone, and the tool's own brand/ "
+      f"ships no themes/ — so its board names none, and warns of nothing (saw {_gone}, {_warn})",
+      sorted(p_.name for p_ in _rb.iterdir()) == ["labels.yaml", "logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
+
+# --- FM-053's answer, and the guide's amendment G1–G2: the board's colours are `[palette]` — a palette by name or a few tokens in three meanings, `ok`,
+# `warn` and `fail`, refused below the set contrast on every ground its text stands on, ignored by an older copy. The class test, run on the tool and on
+# its mutant, the refusal turned back into a warning, which it must fail
+_PAL_CASES = (   # (what, the table, refused?, what the page or the one line must hold)
+    ("no table", "", False, ("--bg:#f7f7f5;", "--coral:#b3402f;", "--bg:#0e0e0e;", "--mute:#6a6a6a;", "--teal:#187953;", "--amber:#8a5600;", "--owed:#8a5600;",
+                             "--secbg:#efefeb;", "--okbg:#e1f0e7;", "--warnbg:#fbf0d6;", "--failbg:#faeae6;", "--secbg:#18191c;", "--amber:#f0b44c;")),
+    ("monochrome by name", '[palette]\nname = "monochrome"\n', False, ("--bg:#f7f7f5;", "--owed:#8a5600;", "--help:#7b3fbf;")),
+    ("shoalmark by name", '[palette]\nname = "shoalmark"\n', False, ("--bg:#fbfbf7;", "--owed:#a0156e;", "--amber:#7d5000;", "--warnbg:#f8eed6;", "--help:#1f5ca8;",
+                                                                      "--head:#526214;", "--bg:#0d1720;", "--box:#8eb1cc;", "--amber:#f1c26a;", "--warnbg:#2b2414;")),
+    ("tokens above the contrast, every text on every surface, the surfaces monochrome's", '[palette]\nink = ["#000000", "#ffffff"]   # light, dark\nfail = ["#c03a2a", "#ff8a70"]\nwarn = ["#8a5600", "#f0b44c"]\n', False,
+     ("--ink:#000000;", "--ink:#ffffff;", "--coral:#c03a2a;", "--amber:#8a5600;", "--owed:#8a5600;", "--dim:#", "--line:rgba(0,0,0,0.14)", "--secbg:#efefeb;", "--failbg:#faeae6;", "--warnbg:#fbf0d6;")),
+    # DF-4: a palette may name its surfaces; where it names none, it takes the palette's own and they are checked against its page and accents
+    ("a named tint", '[palette]\nokbg = ["#e6f2ea", "#10271d"]\n', False, ("--okbg:#e6f2ea;", "--okbg:#10271d;")),
+    ("a taken tint, checked against the palette's accent", '[palette]\nfail = ["#b3402f", "#f45050"]\n', False, ("--coral:#f45050;", "--failbg:#2c1612;", "--okbg:#10271d;")),
+    ("a named tint too dark for its text", '[palette]\nokbg = ["#d9ece0", "#123020"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — mute #6a6a6a on okbg #d9ece0 is 4.38:1 in light, below 4.5:1",)),
+    ("a taken tint the palette's accent cannot stand on", '[palette]\nfail = ["#b3402f", "#ec5050"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — fail #ec5050 on okbg (taken) #10271d is 4.38:1 in dark, below 4.5:1",)),
+    ("a token at the contrast, 4.51:1 on raise", '[palette]\nfail = ["#6b6b6b", "#ff7b66"]\n', False, ("--coral:#6b6b6b;",)),
+    ("a token below the contrast, 4.44:1 on raise", '[palette]\nfail = ["#6c6c6c", "#ff7b66"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — fail #6c6c6c on raise #ececea is 4.44:1 in light, below 4.5:1",)),
+    ("a page too close to the ink, in dark: the derived dim", '[palette]\nbg = ["#f7f7f5", "#555555"]\n', True,
+     ("shoalmark.toml: `[palette]` is refused — dim (derived) #", "on bg #555555 is", "in dark, below 4.5:1")),
+    ("an unknown name", '[palette]\nname = "neon"\n', True, ('shoalmark.toml: `[palette]` is refused — `name = "neon"` is no palette: monochrome or shoalmark',)),
+    # RV-3340: a name that is not a string — an empty list, a list naming a palette — is refused in the same one line, never a traceback
+    ("a name that is an empty list", '[palette]\nname = []\n', True, ('shoalmark.toml: `[palette]` is refused — `name = []` is no palette: monochrome or shoalmark',)),
+    ("a name that is a list naming a palette", '[palette]\nname = ["monochrome"]\n', True,
+     ('shoalmark.toml: `[palette]` is refused — `name = ["monochrome"]` is no palette: monochrome or shoalmark',)),
+    ("a key it does not take", '[palette]\nblue = ["#000000", "#ffffff"]\n', True, ("it takes `name` and `bg`, `ink`, `fail`, `ok`, `warn`, `owed`, `help`, `secbg`, `okbg`, `warnbg`, `failbg` — not `blue`",)),
+    ("heed, a key the guide's first draft named, never shipped", '[palette]\nheed = ["#b3402f", "#ff7b66"]\n', True, ("— not `heed`",)),
+    ("a token that is not two colours", '[palette]\nfail = ["#b3402f"]\n', True, ("`fail` is two colours, light then dark, each #rrggbb",)))
+
+
+def _palette_class(source):
+    """The class test on a tool whose source is `source`, a copy of it run as a program: each case's table in shoalmark.toml, the board built, `--check`
+    run. Worn: exit 0 and the page's tokens. Refused: the board's run and `--check` exit 1 with the one line naming the pair, and the page left as it was.
+    (ok, what differed)."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr"); tracker(root_, "MSR-001")
+        conf_ = (root_ / "shoalmark.toml").read_text(encoding="utf-8"); page_path = root_ / "docs/work-tracker/index.html"
+        tr_(); pages_, wrong_ = {}, []
+        for what, table, refused, want in _PAL_CASES:
+            (root_ / "shoalmark.toml").write_text(conf_ + "\n" + table, encoding="utf-8")
+            before_ = page_path.read_text(encoding="utf-8")
+            c_, _o, e_ = tr_(); chk_, _o2, e2_ = tr_("--check"); page_ = page_path.read_text(encoding="utf-8")
+            pages_[what] = page_
+            if refused:
+                ok_ = (c_ == 1 and chk_ == 1 and page_ == before_ and len(e_.strip().splitlines()) == 1 and all(w in e_ for w in want) and all(w in e2_ for w in want))
+            else:
+                ok_ = c_ == 0 and chk_ == 0 and all(w in page_ for w in want) and "is refused" not in e_ + e2_ and "--band" not in page_    # the section band is --secbg
+            if not ok_:
+                wrong_.append(f"{what}: exit {c_}/{chk_} · {e_.strip()[:160]!r}")
+        if pages_["no table"] != pages_["monochrome by name"]:
+            wrong_.append("monochrome by name is not the board with no table, byte for byte")
+        rm_git(root_)
+        return not wrong_, wrong_
+
+
+_pal_ok, _pal_saw = _palette_class(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"))
+check(f"FM-053, G1–G2, DF-4 · `[palette]`: monochrome with no table and by name, byte for byte, its three meanings, its section band `--secbg` (never `--band`) and its tints the amendment's; shoalmark "
+      f"by name, its own amber and tint; tokens above and at 4.5:1 worn, in light and in dark, every text on every surface; a named tint worn, a taken one checked against the "
+      f"palette's accents, and each refused where a text cannot stand on it; one below, a page and an "
+      f"ink too close, an unknown name, a name that is a list (empty, or naming a palette), a key it does not take — `heed` among them — and a token that is not two colours each refused in one line naming "
+      f"it, by the board's run and by `--check`, exit 1, the page left as it was (saw {_pal_saw})", _pal_ok)
+_PAL_MUTANT = ('''                    refuse(f"{named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1")''',
+               '''                    print(f"warning: {named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1", file=sys.stderr)''')
+check("FM-053 · the `[palette]` class test's mutant, the refusal below the contrast turned back into a warning: the class test FAILS on it",
+      _tool_src.count(_PAL_MUTANT[0]) == 1 and not _palette_class(_tool_src.replace(*_PAL_MUTANT))[0])
+_PAL_OLD = "1281a75"            # FM-053's signed answer, the release branch's tool before this one
+if _has_rev(_PAL_OLD):
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8") + '\n[palette]\nname = "shoalmark"\nfail = ["#6c6c6c", "#ff7b66"]\n', encoding="utf-8")
+        c_old, _o, e_old = _tool_run(_old_tool(base / "old", _PAL_OLD), root, "--html-only")
+        old_page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
+        c_new, _o, e_new = _tool_run(HERE / "shoalmark.py", root, "--html-only")
+        check(f"FM-053 · an older copy of the tool ({_PAL_OLD}) reads a `[palette]` table and ignores it — its board is built, in its own colours, no line said; "
+              f"this copy refuses the same table (saw exit {c_old} {e_old.strip()[:80]!r}, then {c_new})",
+              c_old == 0 and "</html>" in old_page and "#6c6c6c" not in old_page and "palette" not in e_old and c_new == 1 and "is refused" in e_new)
+        rm_git(root)
+else:
+    _skipped(f"FM-053 · an older copy ignores `[palette]`", 1, f"this clone does not hold {_PAL_OLD}")
+fm.configure(HERE)
+
+# --- FM-053: the design guide's §11 acceptance tests, as the guide's amendment G1–G5 reads them — test 2 is *the meanings* — each a class test over the
+# rendered HTML: the page a copy of the tool writes, its stylesheet, its script and its words, read without a browser. A board with asks of each kind
+# and an act. Test 2 runs on two mutants too, each of which it must fail: a READY coloured coral, and a confidence on a tint
+
+
+def _css_rules(css):
+    """A stylesheet's rules as (the media it sits under, or "", its selector, {property: value}) — comments dropped, one level of @media."""
+    css, out, media = re.sub(r"/\*[\s\S]*?\*/", "", css), [], ""
+    for m in re.finditer(r"(@media[^{]+)\{|([^{}]+)\{([^{}]*)\}|\}", css):
+        if m.group(1):
+            media = m.group(1).strip()
+        elif m.group(2) is not None:
+            decls = dict((k.strip(), v.strip()) for k, _, v in (d.partition(":") for d in m.group(3).split(";")) if k.strip())
+            out += [(media, s.strip(), decls) for s in m.group(2).split(",")]
+        else:
+            media = ""
+    return out
+
+
+def _accept(source):
+    """The page a copy of the tool whose source is `source` renders for the fixture board, judged by the guide's §11, as amended: {test: (ok, what it saw)}."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+        since_ = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+        for n_, kind_ in ((1, "ruling"), (2, "action"), (3, "determination"), (4, "ceremony")):
+            tracker(root_, f"MSR-00{n_}", extra=f'next: owner\nask: "Question {n_}?"\nask-kind: {kind_}\nask-since: {since_}\nask-proposal: "yes"\n', title=f"asks {n_}")
+        tracker(root_, "MSR-005", extra=f"due: {(datetime.datetime.now().astimezone() + datetime.timedelta(hours=3)).replace(microsecond=0).isoformat()}\n", title="an act")
+        tr_("--html-only"); page = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        rm_git(root_)
+    css = page.split("<style>")[1].split("</style>")[0]; rules = _css_rules(css); script = page.split("<script>")[2]
+    box_src = script[script.index("function box(){"):script.index("let all=false")]
+    labels = json.loads(re.search(r",L=(\{.*?\}),ICO=", script, re.S).group(1))
+    plain = [(s, d_) for m, s, d_ in rules if not m]
+    uses = lambda token: sorted({s for s, d_ in plain if f"var(--{token})" in " ".join(d_.values())})
+    tokens = fm.PALETTES["monochrome"]
+    out = {}
+    # 1 · the five-second test: with the icons and every colour gone, each row still says what it is, its type, its state and its actions, in that order
+    row_tpl = ('<div class="row${cls?" "+cls:""}"><div class="what">${id}<span>${what}</span></div><div class="how">${ty?`<span class="ty">${ty}</span> `:""}'
+               '${st?`<span class="st">${st}</span> `:""}${acts?`<span class="acts">${acts}</span>`:""}</div>')
+    types_ = [e_ for e_ in ('t[29][1]?l("ask."+t[29][1]):""', 'l("type.act")', 'l(w[0]=="answer"||w[0]=="revoked"?"type.answer":"type.act")', 'v[5]?l("verdict."+v[5]):l("type.verdict")')
+              if box_src.count(e_) == 1]
+    buttons_ = re.findall(r"<button[^>]*>([^<]*?)</button>", script)
+    out[1] = (row_tpl in script and box_src.count("row(") == 5 and len(types_) == 4
+              and all(labels[k] for k in ("ask.ruling", "ask.action", "ask.determination", "ask.ceremony", "type.act", "type.answer", "type.verdict", "verdict.READY", "verdict.NOT READY"))
+              and all(b_.strip() for b_ in buttons_) and '${ICO.copy}${l("answer.sign.copy")}</button>' in script and labels["answer.sign.copy.name"].startswith("copy ")
+              and labels["answer.sign.copy.name"].endswith(labels["answer.sign.copy"])
+              and ("", ".help", {"color": "var(--help)", "border-left": "2px dashed var(--help)", "padding": "0 0 0 1ch", "margin": "2px 0 6px"}) in rules,
+              f"{len(types_)} rows' types, {len(buttons_)} buttons")
+    # 2 · the meanings: teal only for done or success, amber only for a warning, coral only for a failure, each beside its word, as text or as a tint;
+    #     violet only on help; no tint on a confidence, a handover's prose, a total or a live state. READY and READY WITH FINDINGS never read as coral
+    verdict_ = json.loads(re.search(r"VERDICT=(\{[^}]*\})", script).group(1))
+    tinted = {k: uses(k) for k in ("okbg", "warnbg", "failbg")}
+    colours = {k: uses(k) for k in ("teal", "amber", "coral", "owed", "help")}
+    out[2] = (tinted == {"okbg": ["#dlg .said.ok", ".dfl.add", ".row.vok"], "warnbg": ["#p>.sec.wait>.sh", ".row.vwarn"], "failbg": [".dfl.del", ".row.vfail"]}
+              and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#w", ".vwarn .ty", ".warn"],
+                              "coral": [".dfl.del .s", ".hot", ".q.r", ".vfail .ty"], "owed": [".owed"], "help": [".help"]}
+              and verdict_ == {"READY": "vok", "READY TO TAG": "vok", "READY WITH FINDINGS": "vwarn", "NOT READY": "vfail"}
+              and box_src.count("VERDICT[v[5]]") == 1 and 'class="q' not in box_src and tokens["owed"] == tokens["amber"]
+              and all(d_.get("font-weight") == "600" for s, d_ in plain if s in (".vok .ty", ".vwarn .ty", ".vfail .ty"))
+              and any(s == "#dlg pre.cmd" and d_.get("border-left") == "1ch solid var(--teal)" for s, d_ in plain),
+              f"tints {tinted}, colours {colours}, verdicts {verdict_}")
+    # 3 · nothing framed but actions: a box only on what is clickable and on the search field, one titled frame, the dialog's window
+    framed = sorted({s for s, d_ in plain if any(k == "border" and not v.startswith(("0", "none")) for k, v in d_.items())})
+    phone = {s for m, s, d_ in rules if "max-width:640px" in m and d_.get("min-height") == "24px"}
+    out[3] = (framed == sorted({"button.act", "#s", "#vt button", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
+              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", "#s", "#vt button", "#dlg button"))
+              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", "#s", "#vt button", "#dlg button"} <= phone
+              and not any(k == "border" for s, d_ in plain if s.startswith(("#p>.sec", ".row.v")) for k in d_), f"{framed}")    # a band's top rule (G8) is no frame
+    # 4 · said, not implied: no word from the guide's *never* list, no line that promises what a session will do; what is not known is in italics with its reason
+    never = re.compile(r"\b(live|running|active|up to date|all your projects|every agent|all sessions|proves|independent|less work|faster|touch)\b", re.I)
+    board_words = {k: v for k, v in labels.items() if not k.startswith(("section.", "desc.", "view.", "count.", "status.", "col.", "search", "group."))}
+    out[4] = (not [k for k, v in board_words.items() if never.search(v)] and not re.search(r"\bcurrent\b", " ".join(v for k, v in board_words.items() if k != "path.title"))
+              and not re.search(r"\bthe session (reads|runs|will)\b", " ".join(board_words.values())) and '`<i>${l("waiting.unasked")}</i>' in box_src,
+              f"{[k for k, v in board_words.items() if never.search(v)]}")
+    # 5 · answer first: the first thing under the header is what waits for you — the box, its first section; on a phone nothing comes before it
+    body_ = page.split("</style>")[1]
+    out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
+              and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css)
+              and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
+    # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
+    out[6] = (all(box_src.count(f'l("{k}"') == 1 for k in ("waiting.title", "waiting.oldest", "waiting.holds", "acts.title", "way.title", "day.title", "sessions.recent",
+                                                           "reviews.title", "reviews.counts", "reviews.notready", "reviews.findings", "path.title"))
+              and box_src.count('l("waiting.holds.ids"') == 1 and box_src.count('l("ask."+t[29][1])') == 1, "")
+    # 7 · the first screen: the box holds one fold open on a desktop — the day's sessions — and every other part that can wait folded
+    out[7] = (box_src.count("fold(") == 3 and ",!PHONE)" in box_src and box_src.count(",false))") == 2, "")
+    # 8 · you, never the owner: no screen says *owner* outside code font or a record's excerpt
+    owned = sorted(k for k, v in labels.items() if re.search(r"\bowner\b", re.sub(r"`[^`]*`", "", v), re.I))
+    out[8] = (not owned and labels["owner.title"] == "yours" and labels["viewer.answer"] == "your answer", f"{owned}")
+    # the divider (G8): each band's top edge a 1px --box rule — every band of the box but the first, which the box's frame stands right above
+    ruled = sorted(s for s, d_ in plain if d_.get("border-top") == "1px solid var(--box)")
+    first = [s for s, d_ in plain if s in ("#p>.sec>.sh", "#p>.sec>summary>.sh")]
+    out["divider"] = (ruled == ["#p>.sec+.sec>.sh", "#p>.sec+.sec>summary>.sh"] and first == ["#p>.sec>.sh", "#p>.sec>summary>.sh"]
+                      and not any("border" in k for s, d_ in plain if s in first for k in d_), f"ruled {ruled}")
+    return out
+
+
+_S11 = {1: "the five-second test: every row of the box reads what it is, then its type, its state, its actions — in the markup's order, not by colour; each "
+           "type is a word — an ask's kind, an act, an answer, a verdict's own word (the asks sent back, not for you, carry none); no button is an icon "
+           "alone, the copy button's noun and its spoken verb stand beside its icon; help is told apart by its dashed rule, not its colour",
+        2: "the meanings: teal only for done or success and the 1ch rule beside a command (DF-3), amber only for a warning, coral only for a failure, each beside its word as text or as a tint — "
+           "the tints only on *waiting for you*'s band while asks wait, a verdict's row, *copied* and a diff's lines; READY and READY WITH FINDINGS never "
+           "coral, each verdict's word at weight 600 (DF-2); violet only on help; no status colour in the box",
+        3: "nothing framed but actions: a whole frame stands only on the buttons, the search field, the dialog's fields, the Owner's box and the dialog's "
+           "window — and the work table's 5 px status square, a mark of data outside the box; a band and a tint have no frame; every action's frame is "
+           "--mute, at least 3:1 against the page by day and by night; every button at least 24 px high on a phone",
+        4: "said, not implied (the read-at line is Q4's, and joins this check where it lands): no word of the guide's never list in the box's, the dialogs' "
+           "or the viewer's labels — *your current path* is the guide's own title — and none promises what a session will do",
+        5: "answer first: under the header line (and its line of brand files no longer read) the box comes first, and *waiting for you* is its first "
+           "section; no rule reorders it or hides it on a phone",
+        6: "no duplicates: each section's heading and its counts are said once — the oldest ask's age and what all hold up only in the heading, each "
+           "ask's own on its row; the ask's kind is its type, not said again in its state",
+        7: "the first screen (counted from the markup, no layout here): the box holds one fold open on a desktop — the day's sessions — and every other "
+           "part that can wait folded: the reviews and your current path",
+        8: "you, never the owner: no label of the board says *owner* outside code font — the box is *yours*, the path *your current path*, the answer "
+           "*your answer*"}
+_S11["divider"] = ("the band is the divider (G8): each section's band but the first opens on a 1px --box rule from frame to frame, and the first, under the "
+                    "box's own frame, has none")
+_acc = _accept(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"))
+for n_, what_ in _S11.items():
+    check(f"FM-053 · §11 · {n_} · {what_} (saw {_acc[n_][1]})", _acc[n_][0])
+_DIVIDER_MUTANTS = {
+    "a rule above the first band too": ("#p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}", "#p>.sec>.sh,#p>.sec>summary>.sh{border-top:1px solid var(--box)}"),
+    "no rule at all": ("#p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}", "")}
+for what_, (a_, b_) in _DIVIDER_MUTANTS.items():
+    check(f"FM-053 · G8 · the divider · its mutant, {what_}: the class row FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))["divider"][0])
+_S11_MUTANTS = {
+    "a READY coloured coral": ('VERDICT={"READY":"vok",', 'VERDICT={"READY":"vfail",'),
+    "a confidence on a tint — the seat's proposal on teal's": ('#dlg .dp{margin:0 0 8px;color:var(--dim)}', '#dlg .dp{margin:0 0 8px;color:var(--dim);background:var(--okbg)}'),
+    "teal on a row's state, beside no command (DF-3)": ('.st{color:var(--dim)}', '.st{color:var(--teal)}')}
+for what_, (a_, b_) in _S11_MUTANTS.items():
+    check(f"FM-053 · §11 · 2 · the meanings · its mutant, {what_}: test 2 FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))[2][0])
+fm.configure(HERE)
 
 # --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
 with tempfile.TemporaryDirectory() as tmp:
@@ -6719,9 +7235,9 @@ with tempfile.TemporaryDirectory() as tmp:
     check("--next ends with the same digest — a cold session is told what its Owner owes before it starts", code == 0 and "2 NEED THE OWNER" in out2)
     tracker(root, "AP-030", extra=f'next: owner\nask: "Shall I open the pull request?"\nask-kind: ceremony\nask-since: {new_}\nask-proposal: "open it"\n', title="button")
     code, out3, _ = run(root, "--standup")
-    check("--standup is the agenda of one sitting: rulings first, then the Owner's hands, then buttons — inside a kind what frees the most comes first — and what was sent back is named after, never as an item",
-          code == 0 and out3.startswith("STANDUP") and out3.index("RULINGS") < out3.index("YOUR HANDS") < out3.index("BUTTONS") and "[frees AP-037, AP-041]" in out3
-          and out3.index("BUTTONS") < out3.index("SENT BACK") and "AP-020" in out3.split("SENT BACK")[1])
+    check("--standup is the agenda of one sitting: decisions first, then the Owner's hands, then one click — the board's words (FM-053) — inside a kind what frees the most comes first — and what was sent back is named after, never as an item",
+          code == 0 and out3.startswith("STANDUP") and out3.index("DECISIONS") < out3.index("YOUR HANDS") < out3.index("ONE CLICK") and "[frees AP-037, AP-041]" in out3
+          and out3.index("ONE CLICK") < out3.index("SENT BACK") and "AP-020" in out3.split("SENT BACK")[1] and "RULINGS" not in out3 and "BUTTONS" not in out3)
     (root / "shoalmark.toml").write_text('name = "q"\nstandup = "09:00"\nstandup_minutes = 20\n[kinds]\nAP = "Work"\n', encoding="utf-8")
     code, _, err = run(root, "--standup", str(root / "s.ics"))
     check("R9 · `--standup FILE.ics` writes no invite: one line saying R9 removed it, exit 2, and no file, though a time is configured",
@@ -6777,7 +7293,7 @@ with tempfile.TemporaryDirectory() as tmp:
             shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
             check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
                   "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
-                  and "a ruling" in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
+                  and "decision" in shown and "a ruling" not in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
             check("what is not a question he can answer is shown apart — `N asks sent back — not for you`, with the reason, after the queue and never as a question",
                   "1 asks sent back — not for you" in shown and shown.index("AP-022 ") < shown.index("asks sent back") < shown.index("AP-020")
                   and "write `ask:` in AP-020-x.md" in shown)
@@ -6931,13 +7447,13 @@ with tempfile.TemporaryDirectory() as tmp:
                 return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m)).strip() for m in re.findall(r'<label class="dl">(.*?)</label>', body, re.S)], body
             r80, _b80 = _rows("AP-080")
             check("the choices are radios in the order given, except the recommended one — it is offered FIRST and marked — and Other comes last",
-                  r80 == ["b — recommended", "a", "c", "Other:"])
+                  r80 == ["b — recommended", "a", "c", "other:"])
             r81, _b81 = _rows("AP-081")
-            check("a proposal with no options named is a list of one: the recommendation, then Other", r81 == ["count one week first — recommended", "Other:"])
+            check("a proposal with no options named is a list of one: the recommendation, then Other", r81 == ["count one week first — recommended", "other:"])
             r82, b82 = _rows("AP-082")
             other_, box_ = re.search(r'<input [^>]*value="other"[^>]*>', b82).group(0), re.search(r"<textarea[^>]*>", b82).group(0)
             check("an ask that offers nothing shows only Other, checked, and its box is the answer — required, not disabled",
-                  r82 == ["Other:"] and "checked" in other_ and "required" in box_ and "disabled" not in box_)
+                  r82 == ["other:"] and "checked" in other_ and "required" in box_ and "disabled" not in box_)
             # OK yields ONE command, and what the Owner picked is what the tracker will record — the option's own words
             _pick = 'const D=document.getElementById("dlg"),R=D.querySelectorAll("[name=how]")[2];R.checked=true;R.dispatchEvent(new Event("change"));D.querySelector("button.go").click();'
             _, b83 = _rows("AP-080", _pick)
@@ -6965,7 +7481,7 @@ with tempfile.TemporaryDirectory() as tmp:
     two_ = page.split("const sign=")[1].split("clip(d,line)")[0]          # the second screen, up to its copy through the shared clipboard path (FM-030)
     menus_ = re.findall(r"<menu>(.*?)</menu>", two_)
     check("FM-013 · the built board carries the second screen: its words in the labels, the branch the board was built from, and exactly one button in its menu — Done",
-          '"answer.sign.title": "Sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
+          '"answer.sign.title": "sign your answer"' in page and 'BRANCH="fix/ap-090",T=[' in page and len(menus_) == 1 and menus_[0].count("<button") == 1
           and 'value="done"' in menus_[0] and 'l("answer.done")' in menus_[0] and all(f'"{k}"' in page for k in fm.LABELS if k.startswith("answer.sign.")))
     check("FM-013 · what the second screen replaced is gone — no disabled OK, no `answer.run` line that said Copied before anything was",
           '"answer.run"' not in page and ".disabled=true" not in page and "answer.run" not in fm.LABELS)
@@ -6987,17 +7503,19 @@ with tempfile.TemporaryDirectory() as tmp:
                 return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body)), body, said
             s2_, b2_, yes_ = _sign("yes")
             check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
-                  "Sign your answer" in s2_ and re.search(r"<pre class=\"cmd\">[^<]*--answer AP-090 accept 'b'</pre>", b2_) is not None and "Copy again" in s2_
+                  "sign your answer" in s2_ and re.search(r"<pre class=\"cmd\">[^<]*--answer AP-090 accept 'b'</pre>", b2_) is not None
+                  and re.search(r'<button type="button" class="copy" aria-label="copy the command"><svg class="ico"[^>]*><path d="[^"]+"></path></svg>command</button>', b2_) is not None
+                  and b2_.index('class="said"') < b2_.index('<pre class="cmd">')
                   and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
                   and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
-                  and "commits them, signed with your key" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
+                  and "commits them, signed with your key — it may ask you to confirm" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
                   and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
                   and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
-            check(f"FM-013 · …with ONE way out — Done, the only button in its menu, closes the dialog; the only other control is Copy again (saw: {yes_})",
-                  yes_["menu"] == "Done" and yes_["buttons"] == "2" and yes_["open"] == "false")
+            check(f"FM-013 · …with ONE way out — done, the only button in its menu, closes the dialog; the only other control is the copy button, *command* (saw: {yes_})",
+                  yes_["menu"] == "done" and yes_["buttons"] == "2" and yes_["open"] == "false")
             _n0, _n1, none_ = _sign("none")
-            check("FM-013 · it says Copied only when the clipboard said so — with no clipboard (a board opened from a file), it says to select and copy instead",
-                  yes_["said"] == "Copied." and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "Copied" not in none_["said"])
+            check("FM-013 · it says the command is on the clipboard only when the clipboard said so — with no clipboard (a board opened from a file), that copying did not work, and to select and copy instead",
+                  yes_["said"] == "the command is on your clipboard" and none_["said"] == fm.LABELS["answer.sign.nocopy"] and "clipboard" in none_["said"] and "is on your clipboard" not in none_["said"])
         except _ChromeFailed as e_:
             _hung("second", e_)
     rm_git(root)
@@ -7208,7 +7726,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out, _ = run(root, "--owner"); page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
     check("7 · past five asks the first line says whose problem the queue is — `you are the bottleneck`, with the asks and the trackers held up, in --owner and on the board",
           code == 0 and out.startswith("6 NEED THE OWNER") and "you are the bottleneck — 6 asks, 1 trackers held up" in out
-          and 'w.length>5?" · "+l("waiting.bottleneck",w.length,held.length)' in page and '"waiting.bottleneck": "you are the bottleneck' in page)
+          and 'w.length>5?l("waiting.bottleneck",w.length,held.length):""' in page and '"waiting.bottleneck": "you are the bottleneck' in page)
 fm.configure(HERE)
 
 # --- FM-008: seats — who may make which change, read from the version control system --------------------------------
@@ -10895,9 +11413,9 @@ with tempfile.TemporaryDirectory() as tmp:
             shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
             acts_shown_ = shown_[shown_.find("your acts"):shown_.find(" id tier status ")]
             check(f"FM-030 · B · rendered, his board lists his acts after the questions: no date yet, due, overdue, missed — each by the clock, each with its time (saw {shown_[shown_.find('your acts'):][:420]!r})",
-                  "your acts, with their time: 4" in shown_ and "AP-410 after the scoring · promised " + since_ + " · no date yet done reschedule asked: Will you set up the key this week?" in shown_
-                  and f"AP-411 a read tomorrow · due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago · overdue — due {at_(-10).replace('T', ' ')}" in shown_
-                  and f"AP-413 a read two hours ago · missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
+                  "your acts, with their time: 4" in shown_ and "AP-410 after the scoring act promised " + since_ + " · no date yet done reschedule asked: Will you set up the key this week?" in shown_
+                  and f"AP-411 a read tomorrow act due {at_(24 * 60).replace('T', ' ')}" in shown_ and f"AP-412 a read ten minutes ago act overdue — due {at_(-10).replace('T', ' ')}" in shown_
+                  and f"AP-413 a read two hours ago act missed — due {at_(-120).replace('T', ' ')}, and 30 minutes passed with no result" in shown_
                   and "AP-414" not in acts_shown_ and "AP-415" not in acts_shown_ and "AP-416" not in acts_shown_ and "AP-417" not in acts_shown_)
         except _ChromeFailed as e_:
             _hung("acts", e_)
@@ -11046,17 +11564,17 @@ with tempfile.TemporaryDirectory() as tmp:
             when_ = datetime.datetime(2026, 10, 2, 8, 15).astimezone().isoformat()        # the browser's zone is this machine's
             _d, due_ = _owe("AP-421", "due", 'F.when.value="2026-10-02T08:15";')
             _d, odd_ = _owe("AP-421", "done", 'F.text.value="it\'s the report in `docs/x.md`, cost $HOME";')
-            odd_cmd_ = re.search(r"--done AP-421 ('.*')\s+Copy", odd_)
+            odd_cmd_ = re.search(r"--done AP-421 ('.*')\s+command", odd_)
             said_ = (subprocess.run(["bash", "-c", "printf %s " + odd_cmd_.group(1)], capture_output=True, text=True).stdout
                      if odd_cmd_ and shutil.which("bash") and os.name != "nt" else "it's the report in `docs/x.md`, cost $HOME")
             check(f"FM-030 · C · R4 · the copied line single-quotes what he typed — a `'` as `'\\''` — so a backtick or a `$` reaches the tool as typed, never run by the shell (saw {odd_cmd_.group(1) if odd_cmd_ else odd_[:200]!r} → {said_!r})",
                   odd_cmd_ is not None and odd_cmd_.group(1) == "'it'\\''s the report in `docs/x.md`, cost $HOME'" and said_ == "it's the report in `docs/x.md`, cost $HOME")
             check(f"FM-030 · C · rendered, each act has two buttons — done · reschedule — and OK gives ONE command on the second screen: `--done <id> \"<where>\"`, and `--due <id> <time>` carrying the browser's zone (saw {done_[:240]!r} · {due_[:240]!r})",
-                  "your acts, with their time: 2 AP-420 at seven" in rows_ and f"AP-421 this week · promised {since_} · no date yet done reschedule asked: Will you set up the key?" in rows_
+                  "your acts, with their time: 2 AP-420 at seven" in rows_ and f"AP-421 this week act promised {since_} · no date yet done reschedule asked: Will you set up the key?" in rows_
                   and "--done AP-421 'evidence/AP-421/key.md'" in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
                   and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
                   and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
-                  and "Sign your act · AP-421" in done_ and "Sign your act · AP-421" in due_ and "Sign your answer" not in done_ + due_)
+                  and "sign your act · AP-421" in done_ and "sign your act · AP-421" in due_ and "sign your answer" not in done_ + due_)
         except _ChromeFailed as e_:
             _hung("owe", e_)
     rm_git(root)
@@ -11093,7 +11611,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code_o, out_o, _e = run(root, "--owner")
     block_ = lambda out: next((b_.strip("\n").split("\n") for b_ in out.split("\n\n") if b_.startswith("ACTS —")), [])
     check(f"FM-030 · E · `--standup` lists the acts after the asks: missed and overdue first, then what falls due, then what has no date yet — FM-007's key, promised after the scoring — each with its `due:` and what it is; a done act is not there (saw {out_s!r})",
-          code_s == 0 and "· 1 item(s) · 4 act(s)" in out_s.split("\n")[0] and out_s.index("RULINGS") < out_s.index("ACTS — yours") and block_(out_s) == want_ and "AP-445" not in out_s)
+          code_s == 0 and "· 1 item(s) · 4 act(s)" in out_s.split("\n")[0] and out_s.index("DECISIONS") < out_s.index("ACTS — yours") and block_(out_s) == want_ and "AP-445" not in out_s)
     check(f"FM-030 · E · `--owner` says the same after its asks (saw {out_o!r})",
           code_o == 0 and out_o.startswith("1 NEED THE OWNER") and out_o.index("Shall the launcher ship first?") < out_o.index("ACTS — yours") and block_(out_o) == want_)
     ruling_.unlink()
@@ -11139,7 +11657,7 @@ with tempfile.TemporaryDirectory() as tmp:
     act450_ = json.dumps([promise_, f"accepted - {promise_}", since_, "", 60, q_], ensure_ascii=False)
     check("FM-030 · 0.18.6 · the board's HTML for FM-024's shape carries the promise first and the question second, and its dialogs show the question below the promise with a hint that names it — in the labels, English built in, German in the table the tool ships",
           act450_ + "]" in page_ and '`<p class="ddim">${l("acts.asked",a[5])}</p>`' in page_ and 'l(a[5]?"act.done.hint.promise":"act.done.hint")' in page_
-          and '`\\n<span class="aq">${l("acts.asked",a[5])}</span>`' in page_ and '"act.done.hint.promise": "the path to the result of this promise, or where it is"' in page_
+          and 'a[5]?`<span class="aq">${l("acts.asked",a[5])}</span>`:""' in page_ and '"act.done.hint.promise": "the path to the result of this promise, or where it is"' in page_
           and all(k in fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")) for k in ("acts.asked", "act.done.hint.promise")))
     code_s, out_s, _e = run(root, "--standup")
     code_o, out_o, _e = run(root, "--owner")
@@ -11163,10 +11681,10 @@ with tempfile.TemporaryDirectory() as tmp:
             _d, done_html_, done_ = _dlg("AP-450", "done")
             _d, due_html_, due_ = _dlg("AP-452", "due")
             check(f"FM-030 · 0.18.6 · rendered, his board lists the act as his promise and the question below it; its *done* dialog shows the promise, the question under it, smaller, and asks for the result of this promise; a `due:` beside an open question shows its own line and no question (saw {done_[:260]!r} · {due_[:160]!r})",
-                  f"AP-450 {promise_} · promised {since_} · no date yet done reschedule asked: {q_}" in rows_
-                  and done_.strip().startswith(f"Done — where is the result? · AP-450 {promise_} asked: {q_} no date yet")
+                  f"AP-450 {promise_} act promised {since_} · no date yet done reschedule asked: {q_}" in rows_
+                  and done_.strip().startswith(f"done — where is the result? · AP-450 {promise_} asked: {q_} no date yet")
                   and 'placeholder="the path to the result of this promise, or where it is"' in done_html_ and 'class="ddim">asked: ' in done_html_
-                  and due_.strip().startswith(f"Reschedule — to when? · AP-452 a read beside an open ruling due {at_(24 * 60).replace('T', ' ')}")
+                  and due_.strip().startswith(f"reschedule — to when? · AP-452 a read beside an open ruling due {at_(24 * 60).replace('T', ' ')}")
                   and "asked:" not in due_)
         except _ChromeFailed as e_:
             _hung("promise", e_)
@@ -11586,9 +12104,9 @@ with tempfile.TemporaryDirectory() as tmp:
             box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
             check(f"FM-030 · 0.18.6 · rendered, the box counts *waiting for you* without the asks answered on their way and lists them, with the act done on its way, under *on their way* — no *done* and no *reschedule* there (saw {box_[:700]!r})",
                   "waiting for you: 1 · oldest 1 days AP-505 Does the report ship first?" in box_ and "your acts, with their time" not in box_
-                  and f"on their way: 3 AP-501 at seven tomorrow · answered, on its way · {at_('AP-501')} · signed · your merge is next revoke asked: Will you read production at seven?" in box_
-                  and f"AP-502 rejected - not before the audit · answered, on its way · {at_('AP-502')} · signed · your merge is next" in box_
-                  and f"AP-503 this week · done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next revoke asked: Will you set up the key?" in box_
+                  and f"on their way: 3 AP-501 at seven tomorrow answer answered, on its way · {at_('AP-501')} · signed · your merge is next revoke asked: Will you read production at seven?" in box_
+                  and f"AP-502 rejected - not before the audit answer answered, on its way · {at_('AP-502')} · signed · your merge is next" in box_
+                  and f"AP-503 this week act done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next revoke asked: Will you set up the key?" in box_
                   and "reschedule" not in box_ and "accept reject" not in box_.split("on their way")[1])
         except _ChromeFailed as e_:
             _hung("way", e_)
@@ -11652,7 +12170,7 @@ def _bj(root):
         v_ = None
     return v_ if isinstance(v_, dict) else None
 def _bj_rev(root, ref="HEAD"):
-    """A ref's full sha, as git prints it (`_head` is a theme's reader by the time these blocks run)."""
+    """A ref's full sha, as git prints it."""
     return subprocess.run(["git", "-C", str(root), "rev-parse", ref], capture_output=True, text=True, env=_ENV).stdout.strip()
 def _bj_says(root):
     """What `--owner` and `--standup` say of what the board was built from: (both exits, the lines of `--owner`, the lines of `--standup`)."""
@@ -12063,7 +12581,7 @@ with tempfile.TemporaryDirectory() as tmp:
             _r, ans_ = _rev("AP-502", 'F.text.value="asked the wrong question";')
             check(f"FM-030 · 0.18.6 · rendered, each row on its way has one button, *revoke*, where *done* and *reschedule* or *accept* and *reject* were; OK gives ONE command, `--revoke <id> \"<why>\"`, on the second screen, which says it commits on that branch (saw {done_[:400]!r} · {ans_[:300]!r})",
                   "your merge is next revoke" in rows_ and "reschedule" not in rows_[rows_.find("on their way"):rows_.find(" id tier status ")]
-                  and "--revoke AP-503 'the wrong file'" in done_ and "Sign your act · AP-503" in done_ and "commits on answer/ap-503, where it is on its way — one branch per exchange" in done_
+                  and "--revoke AP-503 'the wrong file'" in done_ and "sign your act · AP-503" in done_ and "commits on answer/ap-503, where it is on its way — one branch per exchange" in done_
                   and "removes done: and records the revocation under ## Acts — the act is owed again" in done_ and "AP-503 done revoked: the wrong file signed, on `answer/ap-503`, pushed" in done_
                   and "--revoke AP-502 'asked the wrong question'" in ans_ and "writes answer: as revoked — the answer it takes back goes into the ship log" in ans_
                   and "AP-502 answered: revoked - asked the wrong question signed, on `answer/ap-502`, pushed" in ans_)
@@ -12152,8 +12670,8 @@ with tempfile.TemporaryDirectory() as tmp:
             box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
             ways_ = box_[box_.find("on their way: 3"):]
             check(f"FM-030 · 0.18.6 · RV-730 · rendered, *on their way* reads the two reschedules with their time and no button, and the revocation once; *your acts* is empty until the merge (saw {box_[:900]!r})",
-                  f"AP-501 at seven tomorrow · rescheduled, on its way — due {sp_(two_)} · answer/ap-501 @ " in ways_
-                  and f"AP-503 this week · rescheduled, on its way — due {sp_(three_)} · answer/ap-503 @ " in ways_ and ways_.count("done revoked, on its way") == 1
+                  f"AP-501 at seven tomorrow act rescheduled, on its way — due {sp_(two_)} · answer/ap-501 @ " in ways_
+                  and f"AP-503 this week act rescheduled, on its way — due {sp_(three_)} · answer/ap-503 @ " in ways_ and ways_.count("done revoked, on its way") == 1
                   and "your acts, with their time" not in box_ and "revoke" not in ways_.split("AP-503")[1].split("AP-504")[0])
         except _ChromeFailed as e_:
             _hung("rescheduled", e_)
@@ -15081,7 +15599,6 @@ def _ci_wf_regressions(text, root, shapes):
              ("the folder's whole top counts as records", lambda t: t.replace('                "$dir"/*.md) ;;\n', '                "$dir"/*) ;;\n', 1)),
              ("anything under the folder counts as records", lambda t: t.replace('"$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;', '"$dir"/*/*) ;;', 1)),
              ("the landing mock is not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/landing/index.html) records=false ;;\n', "", 1)),
-             ("the themes are not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;\n', "", 1)),
              ("FM-007's entry is not among what the suites read", lambda t: t.replace('                "$dir"/FM-007-*.md) records=false ;;\n', "", 1)))
     out = []
     for what, change in rows:
