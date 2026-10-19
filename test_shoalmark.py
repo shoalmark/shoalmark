@@ -3775,8 +3775,7 @@ for key_, what_, pl_, ok_, needs_link_ in _CASE_TABLE:
         _skipped(f"FM-006 · a private security report · case {key_}, {what_}", 2, "this system makes no symlink here"); continue
     with tempfile.TemporaryDirectory() as d:
         g_ = _hook_scenario(d, pl_); _SEEN[key_] = dict(ok=ok_(g_), saw=_saw(g_), out=g_["sw"][1][:160])
-        check(f"FM-006 · a private security report · case {key_}: {what_} — checked out, left, and merged with the copy's hooks in place, none of which refreshes the board, and refreshed by "
-              f"hand from the copy after each, it runs nothing, writes nothing outside the tracker folder, and the board inside it is refreshed where it can be (saw {_saw(g_)}; the refresh said {g_['sw'][1][:120]!r})", _SEEN[key_]["ok"])
+        check(f"FM-006 · a private security report · case {key_}: {what_} — checked out, left, and merged with the copy's hooks rebuilding the board after each, it runs nothing, writes nothing outside the tracker folder, and the board inside it is refreshed where it can be (saw {_saw(g_)}; the refresh said {g_['sw'][1][:120]!r})", _SEEN[key_]["ok"])
         rm_git(g_["root"])
     if not _HAVE_OLD:
         continue
@@ -3796,7 +3795,7 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(c_["root"])
 
 
-# a copy that hangs — here its main thread waits, as it did on a lock — is stopped by its own bound, with one line; the checkout before it ran no refresh and waited on nothing
+# The fixture makes the copy wait 25 s; the checkout hook stops it at the bound and leaves the checkout successful.
 with tempfile.TemporaryDirectory() as d:
     def _steps_hang(g):
         copy_ = g["root"] / ".git/shoalmark-trusted/shoalmark.py"; txt_ = copy_.read_text(encoding="utf-8")
@@ -3808,9 +3807,9 @@ with tempfile.TemporaryDirectory() as d:
         g["hung_at"] = subprocess.run(["git", "-C", str(g["root"]), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
         t0_ = time.monotonic(); g["hung"] = _hand(g["root"], env=env_); g["hung_s"] = time.monotonic() - t0_
     g_ = _hook_scenario(d, _pl_plain, steps=_steps_hang)
-    check(f"FM-006 · a private security report · a copy that hangs is bounded: the checkout runs no refresh and succeeds on the branch asked for in {g_['moved_s']:.0f} s; the copy's refresh by hand, "
-          f"whose main thread waits 25 s, is stopped by its own bound (2 s here, 35 s by default) in {g_['hung_s']:.0f} s, exit 4, with one line (saw {g_['moved'][1]!r} · {g_['hung']!r})",
-          g_["moved"] == (0, "") and g_["hung_at"] == "payload" and g_["moved_s"] < 15 and g_["hung_s"] < 15
+    check(f"FM-006 · a private security report · a copy that hangs is bounded: the checkout hook stops the refresh with one line and succeeds on the branch asked for in {g_['moved_s']:.0f} s; the copy's refresh by hand, "
+          f"whose main thread waits 25 s, is stopped by its own bound (2 s here, {fm.BOARD_RUN_SECONDS} s by default) in {g_['hung_s']:.0f} s, exit 4, with one line (saw {g_['moved'][1]!r} · {g_['hung']!r})",
+          g_["moved"] == (0, "shoalmark: the board is not refreshed (exit 4): the board's run took longer than 2 s and was stopped") and g_["hung_at"] == "payload" and g_["moved_s"] < 15 and g_["hung_s"] < 15
           and g_["hung"] == (fm.EXIT_LINT, "the board's run took longer than 2 s and was stopped"))
     rm_git(g_["root"])
 # …and what the copy and its hooks do beside the cases: a version drift, a re-run, two worktrees, a copy that fails, a missing copy, the default branch, a pin that fails, `core.hooksPath`
@@ -5450,7 +5449,7 @@ check("FM-006 · a private security report · the README and `--help` name the c
       and "COPY of the tool this keeps in the git directory (shoalmark-" in _help_ and "run it on your default branch, and again after upgrading" in _help_)
 check("FM-006 · a private security report · RV-2300 · the README's hooks section and `--help` say every hook runs the copy — the commit's hooks too, failing closed — that no hook runs the deriver and a hooks "
       "folder inside the working tree is refused (No deriver in hooks), and that developing the tool means installing the branch's copy deliberately; neither says a commit's hook runs the working tree's tool",
-      "every one runs **a copy of the tool kept in the git directory**" in _readme_ and "it fails closed" in _readme_
+      "Every one runs **a copy of the tool kept in the git directory**" in _readme_ and "it fails closed" in _readme_
       and "No hook runs the repository's deriver" in _readme_ and "`--install-hook` refuses a hooks folder inside the working tree" in _readme_ and "(`SHOALMARK_BOARD_SECONDS` gives it longer)" in _readme_
       and "last accepted it" not in _readme_ and "Developing the tool itself means installing the branch's copy deliberately" in _readme_
       and "which run the tool in the working tree" not in _readme_
@@ -9147,11 +9146,6 @@ else:
 
 
 # --- FM-045 · the board matrix — the Owner's rule of 2026-10-08: a failed board refresh is a product failure, so the checks cover the class, not this case alone ------------
-# refresh, `--html-only` by hand, and an `--answer` with its rebuild right after the act (`board_after_act`), in each shape the Owner named; on Subversion `svn update`
-# and `svn switch` are followed by the board's run itself, `--html-only`, as the README says. Each event asserts: the board's file changed and shows what the event
-# brought — what the board before it could not show —; git (or the run) and every hook it started exit 0 — each hook's own exit, read from the trace2 events git writes
-# —, and none of them is one that refreshed the board; every git its board's runs start is a read `read_only_git` admits; no line says "stopped" or "not refreshed";
-# no traceback. Synthetic data only: every repository, its origin and its signing key are made here.
 # Nothing here is POSIX-only: Git for Windows runs every hook, the runner's too, through its own `sh`. The signers shape fails beside v0.19.1 (211ce0b), whose board's
 # run stops on `git ls-tree`. Each shape prints its seconds, and the matrix its total after the last, with the git starts it watched.
 # THE WATCH — every board's run of the matrix, through git's own trace: `GIT_TRACE2_EVENT`, set in the environment the event's git or command starts with, is
@@ -9795,15 +9789,20 @@ else:
         stub_ = base_ / "stub"; stub_.mkdir(); (stub_ / "git").write_bytes(_BW_STUB.replace("{git}", shutil.which("git")).encode("utf-8")); (stub_ / "git").chmod(0o755)
         path_ = f"{stub_}{os.pathsep}{os.environ.get('PATH', '')}"
         _h, common_ = _bw_paths(part_); board_ = _bm_board(part_)
+        log_ = _bw_wrap(base_, part_, stub=stub_)
         moved_ = _bm_fire(part_, base_ / "trace-old.json", "switch", "-q", "side"); hooks_ = _bm_trace(base_ / "trace-old.json")
+        hook_board_ = _bm_board(part_); hook_watch_ = _bw_watch(base_ / "trace-old.json", log_)
+        hook_line_ = [l_ for l_ in moved_[1].splitlines() if l_.startswith("board: not refreshed — this is a partial clone")]
         code_, o_, e_, w_ = _bw_program(base_, part_, "old-board", "--html-only", path=path_); said_ = o_ + e_
         line_ = [l_ for l_ in said_.splitlines() if l_.startswith("board: not refreshed — this is a partial clone")]
         check(f"FM-045 · where git is older than 2.44 — a stub that says 2.43 and, as such a git, does not know the switch — in a blobless clone that lacks what "
               f"the board reads: `git switch` succeeds and its hook says in one line that it is not refreshed "
               f"here, and why — a partial clone, and a git that cannot keep a read from fetching —, leaves the board as it was, and reads nothing that could fetch: "
-              f"{_BW_ASSERT} (saw exits {moved_[0]} and {code_}, hooks {hooks_}, {line_[:1]}, board unchanged {_bm_board(part_) == board_}, {_bw_saw(w_)}, commands {w_['commands']})",
-              moved_[0] == 0 and not set(hooks_) & set(_BM_HOOKS) and code_ == 0 and len(line_) == 1 and "git 2.43 " in line_[0] and _bm_board(part_) == board_ and _bw_ok(w_)
-              and set(w_["commands"]) <= {"rev-parse", "config"} and "Traceback" not in said_)
+              f"{_BW_ASSERT} (saw exits {moved_[0]} and {code_}, hooks {hooks_}, hook {hook_line_[:1]}, {line_[:1]}, board unchanged {hook_board_ == board_ == _bm_board(part_)}, hook {_bw_saw(hook_watch_)}, {_bw_saw(w_)}, commands {w_['commands']})",
+              moved_[0] == 0 and hooks_ == {"post-checkout": [0]} and len(hook_line_) == 1 and "git 2.43 " in hook_line_[0]
+              and hook_board_ == board_ and _bw_ok(hook_watch_) and set(hook_watch_["commands"]) <= {"rev-parse", "config"}
+              and code_ == 0 and len(line_) == 1 and "git 2.43 " in line_[0] and _bm_board(part_) == board_ and _bw_ok(w_)
+              and set(w_["commands"]) <= {"rev-parse", "config"} and "Traceback" not in said_ + moved_[1])
         said2_ = {}
         for a_ in ("--owner", "--standup"):
             c2_, o2_, e2_, w2_ = _bw_program(base_, part_, a_.strip("-"), a_, path=path_)
@@ -10439,7 +10438,6 @@ if _BM_SECONDS:                                             # the matrix's total
     print(f"  time  FM-045 · the board matrix: {sum(_BM_SECONDS.values()):.1f} s in all, {len(_BM_SECONDS)} shapes · git starts watched through git's trace, by run: "
           + ", ".join(f"{k_} {v_}" for k_, v_ in _BM_STARTS.items() if k_ != "ls-tree") + f" — {_BM_STARTS.get('ls-tree', 0)} of them `ls-tree`")
 
-# …its control: the board's own hook taken out while each event fires — the matrix's judgement must fail, so its "the board changed" is no check that always passes
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
     control_ = _refresh_tool(base_ / "control", rev=_REFRESH_CLEANED)
@@ -10462,13 +10460,15 @@ with tempfile.TemporaryDirectory() as d:
           all(_bm_ok(seen_[ev_]) and seen_[ev_]["starts"] and "for-each-ref" in named_[ev_] for ev_ in ("answer", "switch"))
           and any(k_ == "--answer · board_after_act" and n_ for k_, n_ in runs_["answer"]) and any(k_ == "post-checkout" and n_ for k_, n_ in runs_["switch"]))
     nothing_ = {**seen_["switch"], **_bm_watched([], None)}
+    before_ = _bm_board(root_)
     back_ = subprocess.run(["git", "-C", str(root_), "switch", "-q", "main"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_BM_ENV)
-    before_ = _bm_board(root_); hand_ = _hand(root_, env=_BM_ENV)
+    rebuilt_ = _bm_board(root_) != before_
+    hand_ = _hand(root_, env=_BM_ENV)
     blind_ = _bm_watch(base_ / "trace-blind.json")
     check(f"FM-045 · the board matrix · the watch's control · a watch that recorded nothing fails: the same switch judged with no git start recorded FAILS, and a run "
-          f"by hand after the switch back, with `GIT_TRACE2_EVENT` unset — the board rewritten — records none (saw {_bm_saw(nothing_)}; the switch back exit {back_.returncode}, "
-          f"the run {hand_ and hand_[0]}, board rewritten {_bm_board(root_) != before_}, recorded {blind_})",
-          _bm_ok(seen_["switch"]) and not _bm_ok(nothing_) and back_.returncode == 0 and (hand_ or (1,))[0] == 0 and _bm_board(root_) != before_ and blind_ == [])
+          f"of the switch back, with `GIT_TRACE2_EVENT` unset — the board rewritten — and the following run by hand record none (saw {_bm_saw(nothing_)}; the switch back exit {back_.returncode}, "
+          f"the run {hand_ and hand_[0]}, board rewritten {rebuilt_}, recorded {blind_})",
+          _bm_ok(seen_["switch"]) and not _bm_ok(nothing_) and back_.returncode == 0 and (hand_ or (1,))[0] == 0 and rebuilt_ and blind_ == [])
     rm_git(root_)
 fm.configure(HERE)
 
@@ -11945,7 +11945,7 @@ with tempfile.TemporaryDirectory() as d:
         _skipped("FM-057 · Q4 · the record read by the tool before it", 1, f"this clone does not hold {_Q4_REV}")
     for what_, *change_ in _Q4_MUTANTS:
         with tempfile.TemporaryDirectory() as m_:
-            tool_ = _r11_tool(Path(m_).resolve(), change_)
+            tool_ = _refresh_tool(Path(m_).resolve(), change_)
             gs_ = [_q4_case(k_, r_, tool_) for k_, r_ in fix_.items()] if tool_ else []
             check(f"FM-057 · Q4 · …the mutant, {what_}: this tool with that one change FAILS the same check (saw {_q4_saw([g_ for g_ in gs_ if not _q4_ok(g_)][:2]) if tool_ else 'the change is not there to make'})",
                   tool_ is not None and not all(_q4_ok(g_) for g_ in gs_))
@@ -12043,7 +12043,7 @@ with tempfile.TemporaryDirectory() as d:
           and fm.commit_link("not a commit", tool=True) == (None, "link.nocommit"))
     for what_, *change_ in _LN_MUTANTS:
         with tempfile.TemporaryDirectory() as m_:
-            tool_ = _r11_tool(Path(m_).resolve(), change_)
+            tool_ = _refresh_tool(Path(m_).resolve(), change_)
             mok_, mseen_ = _ln_ok(rows_, tool_) if tool_ else (True, [])
             check(f"FM-057 · the read-at line's head · …the mutant, {what_}: this tool with that one change FAILS the rows "
                   f"(saw {[(w_, h_) for w_, o_, h_, _l in mseen_ if not o_][:2] if tool_ else 'the change is not there to make'})", tool_ is not None and not mok_)
@@ -12091,7 +12091,7 @@ with tempfile.TemporaryDirectory() as d:
     g_ = _cn_case(real_, HERE / "shoalmark.py")
     check(f"FM-057 · the board's own run · `--html-only` reads no changed path: the read-at line says what is changed and not committed is not read, beside "
           f"the time, the branch and the commit; `view/built.json` records no count (saw {_cn_saw(g_)})", _cn_ok(g_))
-    tool_ = _r11_tool(m_, _CN_MUTANT[1:])
+    tool_ = _refresh_tool(m_, _CN_MUTANT[1:])
     c_ = _cn_case(m_ / "case", tool_) if tool_ else None
     check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row, its folder not empty "
           f"(saw {_cn_saw(c_) if c_ else 'the change is not there to make'})", c_ is not None and not _cn_ok(c_) and c_["marker"])
