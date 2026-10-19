@@ -29,15 +29,6 @@
 |---|------|------|------|-------|----|------|--------|
 | 1 | P1 | build | — | intended, kind | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress |
 | 2 | P1 | build | — | intended, kind | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress |
-| 3 | P1 | build | — | intended, kind | [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress |
-
-### Acts owed to the Owner — with their time
-
-> Due, overdue or missed is the board's to say: it has a clock, and this file has none. `done:` takes an act off.
-
-| ID | Act | Promised | Due | Window |
-|----|-----|----------|-----|--------|
-| [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | Confirm completion and independent verification before the tag, without naming the private choice | 2026-10-19: accepted - Confirm completion and independent verification before the tag, without naming the private choice | no date yet | 60 min |
 
 
 ## Work
@@ -46,7 +37,6 @@
 |----|------|------|--------|-------|---------|
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |
-| [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | P1 | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress | progress | 2026-10-13 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
 | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | P1 | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress | progress | 2026-09-25 |
 | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | P2 | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress | progress | 2026-10-13 |
@@ -82,6 +72,7 @@
 | [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
 | [FM-046](FM-046-a-committed-tracker-s-front-matter-is-parsed-only-for-lf.md) | P1 | A committed tracker's front matter is parsed only for LF line endings and not through one normalisation, so the same tr… | Shipped | ended | 2026-10-12 |
 | [FM-045](FM-045-the-board-s-refresh-stops-on-git-ls-tree-which-its-read-only.md) | P0 | Where an answer waits on an answer branch and the signers file lies in the working tree, the board's refresh stops and… | Shipped | ended | 2026-10-08 |
+| [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | P1 | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | Shipped | ended | 2026-10-13 |
 | [FM-040](FM-040-the-hook-s-board-regeneration-takes-26-s-on-shoalmark-and-15.md) | P2 | the hook's board regeneration takes 26 s on shoalmark and 15 s on PortDive — every checkout and commit waits for it | Shipped | ended | 2026-09-28 |
 | [FM-036](FM-036-a-worksheet-with-two-filled-rows-for-one-tracker-applies.md) | P2 | On 2026-09-25 the day's worksheet held two filled rows for FM-030 — the morning pass's `keep P1 #3 build` and the same-… | Shipped | ended | 2026-09-25 |
 | [FM-035](FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) | P2 | The tag v0.18.3 ran CI (actions run 36121290371, 2026-09-25 09:57–10:03 UTC): ubuntu 3.9 and 3.12 green; windows 3.9 an… | Shipped | ended | 2026-09-25 |
