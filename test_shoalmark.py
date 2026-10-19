@@ -2215,7 +2215,8 @@ with tempfile.TemporaryDirectory() as d:
           and "warning" not in said_.stdout)
     mutations_ = {"a changed byte": (lambda u: (u / "README.md").write_bytes((u / "README.md").read_bytes() + b"\n"), "changed: README.md"),
                   "a missing file": (lambda u: (u / "NOTICE").unlink(), "missing NOTICE"),
-                  "an extra file in the set": (lambda u: (u / "brand/themes/shoalmark/extra.css").write_bytes(b"a{}\n"), "not in its RELEASE: brand/themes/shoalmark/extra.css"),
+                  "an extra file in the set": (lambda u: (u / "brand").mkdir(exist_ok=True) or (u / "brand/logo.svg").write_bytes(b"<svg/>\n"),
+                                               "not in its RELEASE: brand/logo.svg"),
                   "another VERSION": (lambda u: (u / "VERSION").write_bytes(b"9.9.9\n"), f"its RELEASE names {ver}, and its VERSION says 9.9.9")}
     seen_ = {}
     for n_, (what_, (change_, says_)) in enumerate(mutations_.items()):
@@ -2246,16 +2247,17 @@ with tempfile.TemporaryDirectory() as d:
         (u / "RELEASE").write_bytes(("\n".join(kept_) + "\n").encode("utf-8"))
     renderer_ = next(r_ for r_ in fm.TOOL_FILES if r_.startswith("vendor/"))
     whole_ = {}
-    for n_, rel_ in enumerate(("LICENSE-MIT", renderer_, "brand/themes/shoalmark/theme.css")):
+    for n_, rel_ in enumerate(("LICENSE-MIT", renderer_, "CHANGELOG.md")):
         u_ = _unpack(base / f"short-{n_}") if zipped.is_file() else base / f"short-{n_}"
         if u_.is_dir():
             _drop(u_, rel_)
         p_ = _project(f"short-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
         whole_[rel_] = (r_[0], r_[2].strip()[-110:], not (p_ / "tools").exists(), f"missing {rel_}" in r_[2] and len(r_[2].strip().splitlines()) == 1)
-    check(f"FM-004 · RV-3020 · from an unpacked zip, a file of the vendored set gone together with its RELEASE line — a licence, the renderer, a theme's file — is refused in one line naming it, exit 4, nothing written: the archive is vendored only whole (saw {whole_})",
+    check(f"FM-004 · RV-3020 · from an unpacked zip, a file of the vendored set gone together with its RELEASE line — a licence, the renderer, the changelog — is refused in one line naming it, exit 4, nothing written: the archive is vendored only whole (saw {whole_})",
           len(whole_) == 3 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in whole_.values()))
-    check(f"FM-004 · RV-3020 · THEME_FILES names every file of the themes the tool ships, as brand/themes/ holds them, and no other (saw {len(getattr(fm, 'THEME_FILES', ()))} · {len(fm.theme_files())})",
-          tuple(sorted(getattr(fm, "THEME_FILES", ()))) == tuple(sorted(fm.theme_files())) and len(fm.theme_files()) > 0)
+    check(f"FM-004 · RV-3020 · R10 · the tool ships no theme: THEME_FILES is empty, brand/themes/ is gone, and the release archive holds the tool's set alone "
+          f"(saw {len(getattr(fm, 'THEME_FILES', ()))} · {(HERE / 'brand/themes').exists()})",
+          tuple(getattr(fm, "THEME_FILES", ("?",))) == () and not (HERE / "brand/themes").exists() and not hasattr(fm, "theme_files"))
     # Acquisition alone into a real local SVN working copy: its metadata must remain valid when Git/server tools are unavailable.
     no_path_ = base / "empty-path"; no_path_.mkdir(); no_git_env_ = dict(_ENV, PATH=str(no_path_))
     local_svn_ = shutil.which("svn") and shutil.which("svnadmin")
@@ -2288,7 +2290,7 @@ with tempfile.TemporaryDirectory() as d:
           len(malformed_) == 3 and all(c_ == fm.EXIT_LINT and none_ and one_ for c_, none_, one_ in malformed_.values()))
     symlink_cases_ = {}
     try:
-        for n_, rel_ in enumerate(("NOTICE", "RELEASE", "brand/themes/shoalmark")):
+        for n_, rel_ in enumerate(("NOTICE", "RELEASE", "vendor")):
             u_ = _unpack(base / f"unsafe-{n_}"); target_ = base / f"link-outside-{n_}"
             shutil.move(str(u_ / rel_), str(target_))
             (u_ / rel_).symlink_to(target_, target_is_directory=target_.is_dir())
@@ -2298,7 +2300,7 @@ with tempfile.TemporaryDirectory() as d:
     except (OSError, NotImplementedError) as e:
         _skipped("FM-004 · unsafe archive symlinks", 1, str(e))
     else:
-        check(f"FM-004 · a source file, RELEASE or a theme directory reached through a symlink refuses before writing (saw {symlink_cases_})",
+        check(f"FM-004 · a source file, RELEASE or a folder of the set (the renderer's) reached through a symlink refuses before writing (saw {symlink_cases_})",
               len(symlink_cases_) == 3 and all(c_ == fm.EXIT_LINT and none_ and one_ and named_ for c_, none_, one_, named_ in symlink_cases_.values()))
     # The shared discovery change retains Git's own/common directories and the on-disk .git exclusion under the existing guard.
     linked_ = base / "linked-worktree"; git(src, "worktree", "add", "--detach", str(linked_), "HEAD")

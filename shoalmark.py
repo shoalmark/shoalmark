@@ -10137,13 +10137,9 @@ def load_trackers():
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
-# The themes the tool ships (FM-002), every file of them: with TOOL_FILES, the whole of what an unpacked release archive must hold and its RELEASE name
-# (FM-004, `archive_check`). The suite holds it equal to `brand/themes/` as it stands.
-THEME_FILES = ("brand/themes/README.md",
-               "brand/themes/monochrome/fonts/IBMPlexMono-Italic-Latin1.woff2", "brand/themes/monochrome/fonts/IBMPlexMono-Regular-Latin1.woff2",
-               "brand/themes/monochrome/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/monochrome/fonts/LICENSE.txt", "brand/themes/monochrome/theme.css",
-               "brand/themes/shoalmark/fonts/IBMPlexMono-Italic-Latin1.woff2", "brand/themes/shoalmark/fonts/IBMPlexMono-Regular-Latin1.woff2",
-               "brand/themes/shoalmark/fonts/IBMPlexMono-SemiBold-Latin1.woff2", "brand/themes/shoalmark/fonts/LICENSE.txt", "brand/themes/shoalmark/theme.css")
+# The themes the tool ships: none since R10's look half (FM-053), which retired them — with TOOL_FILES, the whole of what an unpacked release archive
+# must hold and its RELEASE name (FM-004, `archive_check`). Kept, empty, so an archive that names a theme file is one that holds more than the set.
+THEME_FILES = ()
 # What the release archive carries beside the tool's set, at their repository paths — the files the probe's draft 2 reads (the Owner's word of
 # 2026-10-11). `--vendor` checks them against the archive's RELEASE, and copies none of them (FM-004, `archive_check`).
 ARCHIVE_FILES = ("examples/de/shoalmark.toml", "examples/de/TEMPLATE.md", "examples/de/TRIAGE.md", "examples/de/labels.yaml", "requirements/README.md")
