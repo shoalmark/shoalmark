@@ -4071,12 +4071,6 @@ split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)
 idl=id=>`<a href="#=${id}">${id}</a>`,
 days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
-// an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —
-// no server, no token, and the seat that asked is nowhere in the path. The commit's author is the proof.
-// Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and
-// abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the
-// three lines, commits — signed where the default branch's configuration asks for it (FM-054) — and pushes. A browser cannot
-// commit; the dialog decides, the terminal commits.
 // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
 const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
 const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
@@ -4102,12 +4096,6 @@ const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29
     const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;
     sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
   d.showModal()};
-// THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the
-// decision back. The decision is made; the terminal commits it. This screen says first whether the command is on the clipboard, then what to run,
-// where, what it does step by step, what the end looks like, how to check it and where to go when it fails — and has ONE way out, done
-// (Esc too: it is the dialog's own). It says the command is on the clipboard only when the clipboard said so: from a file there may be none.
-// FM-054: every line that says how the commit is proved is PROOF's — the default branch's configuration, as the gate and
-// `--answer` read it (`proof_page`): *signed* only where it asks for a signature; the end previews the terminal's own word
 const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;
   d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>
     <p class="said" aria-live="polite"></p>
@@ -4186,8 +4174,6 @@ function box(){
         +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?`<b class="go">${l("way.signed")}</b>`:`<span class="hot">${l("way.unverified",w[6].replace(/^wait: /,""))}</span>`} · ${w[14]?l("way.held",w[14].replace(/^wait: /,"")):l("way.merge")}`,
       w[0]=="done"||w[0]=="answer"?btn("way.revoke",t[0],`REV(T.find(x=>x[0]=='${t[0]}'))`):"",
       w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));
-  // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop;
-  // FM-030: the stand-up opens the day and the close-out ends it, a row each with its button (`day_html`): the day never folds, as it holds both
   {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];
     S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><p class="dr">${$("day-row-standup").innerHTML}</p>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
@@ -10138,8 +10124,6 @@ def load_trackers():
 
 
 TOOL_FILES = ("shoalmark.py", "vendor/marked-18.0.13.umd.js", "VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md")   # the README is written for the agent that uses the copy
-# The themes the tool ships: none since R10's look half (FM-053), which retired them — with TOOL_FILES, the whole of what an unpacked release archive
-# must hold and its RELEASE name (FM-004, `archive_check`). Kept, empty, so an archive that names a theme file is one that holds more than the set.
 THEME_FILES = ()
 # What the release archive carries beside the tool's set, at their repository paths — the files the probe's draft 2 reads (the Owner's word of
 # 2026-10-11). `--vendor` checks them against the archive's RELEASE, and copies none of them (FM-004, `archive_check`).
@@ -10481,7 +10465,7 @@ def pin_report():
 
 def vendor_files():
     """What `--vendor` copies, relative to the tool: the whole tool (`TOOL_FILES`) and the brand's own files beside it — each one that is a file
-    here. It ships no theme (R10's look half)."""
+    here. It ships no theme."""
     return [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) if (HERE / rel).is_file()]
 
 

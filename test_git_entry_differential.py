@@ -1027,23 +1027,25 @@ FM054_ON_A2_EDITS = (
     # defect 8's PROOF, after the labels and before A2's icons: its edit 4's PROOF, as written, where A2's page closes its labels
     ("},ICO={", "},PROOF=" + FM054_PAGE_EDITS[3][1].split("},PROOF=", 1)[1].rsplit(",BRANCH=", 1)[0] + ",ICO={"),
     # the answer dialog's comment: the commit signed only where configuration asks (its edit 5, on A2's page)
-    ('// three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.\n',
-     "// three lines, commits — signed where the default branch's configuration asks for it (FM-054) — and pushes. A browser cannot\n"
-     '// commit; the dialog decides, the terminal commits.\n'),
+    ("// an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —\n"
+     '// no server, no token, and the seat that asked is nowhere in the path. The commit\'s author is the proof.\n'
+     '// Two buttons — accept · reject — open a dialog that shows the whole ask with its context, so the Owner can look and\n'
+     '// abort. OK yields ONE command: `--answer <id> accept|reject "text"` — the tool cuts the answer branch, writes the\n'
+     '// three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.\n',
+     ''),
     # the answer dialog's proof line, before OK (its edit 6, on A2's page)
     ('    <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n',
      '    <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n'
      '    <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}\n'),
     # the second screen's comment: the terminal commits (its edit 7, on A2's page)
-    ('// decision back. The decision is made; the terminal signs it. This screen says first whether the command is on the clipboard, then what to run,\n'
-     '// where, what it does step by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, done\n',
-     '// decision back. The decision is made; the terminal commits it. This screen says first whether the command is on the clipboard, then what to run,\n'
-     '// where, what it does step by step, what the end looks like, how to check it and where to go when it fails — and has ONE way out, done\n'),
+    ('// THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the\n'
+     '// decision back. The decision is made; the terminal signs it. This screen says first whether the command is on the clipboard, then what to run,\n'
+     '// where, what it does step by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, done\n'
+     '// (Esc too: it is the dialog\'s own). It says the command is on the clipboard only when the clipboard said so: from a file there may be none.\n',
+     ''),
     # the second screen read from PROOF: its title and act (its edit 8, on A2's page)
     ('const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`;\n'
      '  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?"answer.sign.title":"act.sign.title")} · <a href="#=${id}">${id}</a></h3>\n',
-     "// FM-054: every line that says how the commit is proved is PROOF's — the default branch's configuration, as the gate and\n"
-     "// `--answer` read it (`proof_page`): *signed* only where it asks for a signature; the end previews the terminal's own word\n"
      'const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n'
      '  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>\n'),
     # the second screen read from PROOF: its intro (its edit 8, on A2's page)
@@ -1073,8 +1075,6 @@ PR_C_JOIN_EDITS = (
      '  if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));\n'
      '    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day">`+fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`\n'
      '      +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\\n")+"</details>").join(""),!PHONE)+"</div>"))}\n',
-     '  // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop;\n'
-     '  // FM-030: the stand-up opens the day and the close-out ends it, a row each with its button (`day_html`): the day never folds, as it holds both\n'
      '  {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];\n'
      '    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><p class="dr">${$("day-row-standup").innerHTML}</p>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`\n'
      '      +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\\n")+"</details>").join(""),!PHONE):"")\n'
