@@ -360,7 +360,7 @@ check("FM-020 · the counter names an id searched alone — it is that tracker, 
       '${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?' in _tri and '"count.id": "tracker · {0}"' in _tri)
 check("FM-024 S7, FM-032 S2, FM-053 · the board carries the report — null where no commit names a session and no verdict was given — and its strip: the day's one fold, "
       "the parents with a commit in the last 24 hours, each a line that opens on its sub-sessions; and the week's verdicts, folded, a row each",
-      "REG=null," in _tri and 'if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));' in _tri
+      "REG=null," in _tri and '{const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];' in _tri
       and 'fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>' in _tri and 'split(l("reviews.title"))' in _tri and 'l("reviews.counts",r[0],r[1])' in _tri
       and "(REG.verdicts||[]).map(v=>row(" in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
