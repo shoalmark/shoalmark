@@ -496,6 +496,9 @@ Reviewer privately. This text does not state them.
       pushed commit has the kept one in its ancestry;
     - a second run does not bring the first ask;
     - the end reads *signed, not pushed* for the first and *answered, on its way* for the second;
+  - **the view's read-at contract:** each view's file and the result's carry their own read-at words. Neither carries
+    the board's reload line, its reload-on-return script, or *this page does not update itself*. The view's script
+    holds no reload, timer or return handler, so a pick and its typed text stay while the run waits;
   - **the seat's reasons:** an ask with all three fields shows them; an option whose *because* is empty reads *not
     stated*; an ask with none shows the fallback link and help line;
   - **the reasons' lifetime** (S3's rows, built with S3): an answer to an ask with all three fields, accepted and
@@ -538,6 +541,7 @@ Reviewer privately. This text does not state them.
     wrong tool;
   - **a refused push's ask brought again:** a second run brings it while `guided/<ask-id>` exists;
   - **the reasons allowed on an open ask only:** the answered ask with its fields is refused;
+  - **the board's reload restored in the view:** its reload-on-return script, or its line, in the view's file;
   - **the recovery command aimed at the home:** a kept answer to an ask on `main` names `refs/heads/main`;
   - **a kept commit in a later push's ancestry:** the second answer's push carries the first;
   - **a result view opened between asks:** the recorder gets two paths for one ask;
