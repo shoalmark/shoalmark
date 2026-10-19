@@ -4154,7 +4154,7 @@ function box(){
       [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):""].filter(Boolean).join(" · "),
       t[29][0]?btn("answer.accept",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'accept')`)+btn("answer.reject",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'reject')`):"")).join("")
     +(w.length>14?`<p class="sub">${l("waiting.more",w.length-14)}</p>`:"")
-    +(sent.length?`<p class="sub">${l("waiting.malformed",sent.length)}</p>`+sent.map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`,"",esc(t[29][7][0]),"")).join(""):""),w.length?"wait":""));
+    +(sent.length?`<p class="sub">${sent.length==1?l("waiting.malformed.one"):l("waiting.malformed",sent.length)}</p>`+sent.map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`,"",esc(t[29][7][0]).replace(/`([^`]+)`/g,"<code>$1</code>"),"")).join(""):""),w.length?"wait":""));
   // FM-030: what they owe, with its time — an accepted action ask, or any `due:` — each with its state by the clock above
   const acts=T.filter(t=>t[30].length&&!(t[31]&&!t[31][11]));
   if(acts.length)S.push(sec(hd("h2",`${l("acts.title")}: <span class="owed">${acts.length}</span>`,""),acts.map(t=>{
@@ -4330,7 +4330,7 @@ LABELS = {
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
     "waiting.unasked": "not yet stated as a question",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
-    "waiting.malformed": "{0} asks sent back — not for you",
+    "waiting.malformed": "{0} asks sent back — not for you", "waiting.malformed.one": "1 ask sent back — not for you",
     # past 14 asks (BF-9): the asks are sorted oldest first, so the 14 shown are the oldest — what is not shown is counted, never a bare …
     "waiting.more": "and {0} more: the oldest are above",
     # an act that is a promise (FM-030, the Owner's word of 2026-09-27 13:38:30): its line is what they promised, `acts.promised`

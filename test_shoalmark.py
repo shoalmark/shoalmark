@@ -6290,6 +6290,7 @@ waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
+waiting.malformed.one: 1 Frage zurückgegeben — nicht für Sie
 acts.title: Ihre Handlungen, mit ihrer Zeit
 acts.promised: zugesagt {0}
 acts.asked: "gefragt: {0}"
@@ -7308,8 +7309,8 @@ with tempfile.TemporaryDirectory() as tmp:
                   "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
                   and "decision" in shown and "a ruling" not in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
             check("what is not a question he can answer is shown apart — `N asks sent back — not for you`, with the reason, after the queue and never as a question",
-                  "1 asks sent back — not for you" in shown and shown.index("AP-022 ") < shown.index("asks sent back") < shown.index("AP-020")
-                  and "write `ask:` in AP-020-x.md" in shown)
+                  "1 ask sent back — not for you" in shown and shown.index("AP-022 ") < shown.index("ask sent back") < shown.index("AP-020")
+                  and "write ask: in AP-020-x.md" in shown)
             check("each stated ask carries two actions — accept · reject — and a dialog that shows the ask, its proposal and its context before anything is decided; an unstated one carries none",
                   dom.count('>accept</button>') == 2 and dom.count('>reject</button>') == 2 and "ACT(T.find(x=>x[0]=='AP-020')" not in dom and '<dialog id="dlg">' in dom and 'name="how" value="${i}" required' in page and 'value="other" required' in page and '--answer ${id} ${kind}' in page)
             # the dialog's head is one line of ` · `-separated parts: the id ran straight into its first mark ("AP-022 a ruling"),
