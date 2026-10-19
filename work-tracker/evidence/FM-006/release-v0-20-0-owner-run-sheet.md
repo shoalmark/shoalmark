@@ -31,7 +31,7 @@ printf '%s\n' 'OK: the final head holds main, the signers change and the records
 
 ## 2. Push and open the release PR — freeze main
 
-No merge to main from the PR's opening until the tag, including answer branches. v0.20.1 and v0.20.2 continue on their own branches. PR C merges after this tag.
+No merge to main from the PR's opening until the tag, including answer branches. v0.20.1 and v0.20.2 continue on their own branches.
 
 ```sh
 git push -u origin release/v0.20.0
