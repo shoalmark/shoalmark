@@ -1006,7 +1006,8 @@ FM054_ON_A2_EDITS = (
      '.dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}\n'
      '/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */\n'
      '#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}\n'),
-    FM054_PAGE_EDITS[2],
+    (FM054_PAGE_EDITS[2][0], FM054_PAGE_EDITS[2][1].replace('"answer.give.title": "Give your answer", "act.give.title": "Record your act"',
+                                                       '"answer.give.title": "give your answer", "act.give.title": "record your act"')),
     ("},ICO={", "},PROOF=" + FM054_PAGE_EDITS[3][1].split("},PROOF=", 1)[1].rsplit(",BRANCH=", 1)[0] + ",ICO={"),
     ("// an answer is the Owner's own commit: the button copies the three lines and opens the file on the forge under their login —\n"
      '// no server, no token, and the seat that asked is nowhere in the path. The commit\'s author is the proof.\n'
