@@ -22,6 +22,10 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-19 03:29:39 CEST — v0.20.0 integrated for final release review:** main `b36527c` and records `624b415` are merged on `release/v0.20.0`; RV-3465–RV-3469 are fixed in `cfda9ce`, `20b2ac9`, `aec80fa`, `f09ccee` and `d153cb7`, and the release footer is shortened in `3f1787b`. The tool and both LF adoption pins are unchanged from B1; the real-history test verifies against `0d60d55`'s signers file and confirms the old key's refusal against `9409d3b`'s. The required local docs check found a relative README link resolving below `agents/docs/`; it now uses the stand-up page's published URL. Final-head check receipts belong to the Builder's hand-back; the independent critical round 2, then the Owner's CI, merge and signed tag, remain.
+
+**2026-10-18 19:41:52 CEST — v0.20.0 prepared on `release/v0.20.0` from `7de7762`:** the retired `freeze_at` line is removed (`4364eb5`); VERSION, CHANGELOG, both ADOPT pins, both setup tags and the landing name the release (`0962c83`); [the Owner's run sheet](evidence/FM-006/release-v0-20-0-owner-run-sheet.md) holds publication and the checked tag block (`0ef22d7`). B1's independent release review and the landing check remain; B2 will merge main and the records branch, recheck the final pins and run the full non-browser suite once. The Owner's CI, merge and signed tag follow READY.
+
 **2026-10-14 — the truth pass on B1's words, and the signing page.**
 
 Every line below is in B1's landing partials (EN `overrides/partials/landing/en.html`, DE `…/de.html`). Each change
@@ -1127,6 +1131,8 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-19 03:22:51 CEST | **v0.20.0 B2 integrated** on `release/v0.20.0`: main `b36527c` and records `624b415` merged; RV-3465–RV-3469 fixed (`cfda9ce`, `20b2ac9`, `aec80fa`, `f09ccee`, `d153cb7`); footer shortened (`3f1787b`). The tool and adoption pins are unchanged. Final-head checks are recorded in the Builder's hand-back; independent critical round 2 and the Owner's release steps remain. |
+| 2026-10-18 19:41:52 CEST | **v0.20.0 prepared** on `release/v0.20.0`, base `7de7762`: `4364eb5` removes the retired configuration line; `0962c83` prepares the release texts, pins and their checks; `0ef22d7` adds [the Owner's run sheet](evidence/FM-006/release-v0-20-0-owner-run-sheet.md). Independent critical review, B2's merges and final checks, then the Owner's CI, merge and tag remain. |
 | 2026-10-13 | **v0.19.4 release prepared** on `fm/046-text-boundary`, on the READY `51f333f`: VERSION, CHANGELOG (GHSA-xh54-c5jg-j4fp), both ADOPT pins, both setup pages and the landing. The tool keeps the reviewed bytes. Browser-free release checks, core and compilation pass; the full suite is left to CI. Independent critical release review and the Owner's merge and tag are next. |
 | 2026-10-11 | **The pin check, as it holds since `c29cfee`:** on every run, ADOPT.md and ADOPT.de.md name the one release VERSION names and the SHA-256 of that tag's `shoalmark.py`, git's blob, where the tag is in the clone; the head's before the tag. Six controls: `3432566` fails with its tag and without it; v0.19.0, v0.19.1 and v0.19.2 pass; a head that changes `shoalmark.py` alone passes. This row holds over the next one's "the head's tool". |
 | 2026-10-11 | **P2 filed, public:** v0.19.3's ADOPT pins named the release commit's tool (`4a617ee4…b467`, `0bb1b3b`), not the one the tag ships (`42ec6aa1…0b31`); the cause, a code change after the release commit and no check of the pins after it. Fixed by `f7de965` on `fm/032-ci-tiers-and-time-zones`: both pins, and a suite check of the pins against VERSION and the head's tool on every run. |
