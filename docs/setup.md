@@ -73,9 +73,16 @@ what comes first. Agents read both before every judgement. Leave everything else
 ## 6. Open the board
 
 `docs/work-tracker/index.html` — it is git-ignored and rebuilt when the tool runs, on a commit that changes a work item, and
-right after each of your answers and acts; on Subversion, on a commit through TortoiseSVN or when the tool runs. Nothing
-rebuilds it after a checkout, a merge or an update: `--html-only` does. Its first line is what needs you. Set `standup = "09:00"` in `shoalmark.toml` for the time of your one sitting: see
-[The standup](standup.md).
+right after each of your answers and acts. On git, `post-checkout`, `post-merge` and `post-rewrite` also rebuild it after a
+checkout or switch, a merge (including a fast-forward pull), or a rebase, from the hooks' copy as `--html-only`. Run
+`--install-hook` again to restore hooks removed by v0.20.0. The board says what it read, and when. Its first line is what
+needs you. On Subversion it rebuilds on a commit through TortoiseSVN or when the tool runs; after `svn update`, run
+`--html-only`.
+
+**Limit:** git has no hook after a bare `git fetch`. An answer branch arriving by fetch alone leaves what the board says
+is *on its way* as it was, until a checkout, a merge or `--html-only`.
+
+Set `standup = "09:00"` in `shoalmark.toml` for the time of your one sitting: see [The standup](standup.md).
 
 That is all. The agents file the work; you answer what only you can.
 
