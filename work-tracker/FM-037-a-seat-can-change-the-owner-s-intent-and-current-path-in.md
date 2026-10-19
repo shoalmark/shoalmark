@@ -6,6 +6,7 @@ tags: bug
 triaged: 2026-09-25
 next: wait
 tier: P1
+done: "2026-10-19T02:39:25+02:00 · recorded privately"
 hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through"
 ---
 
@@ -72,6 +73,10 @@ sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as en
 **answered** — accepted - Confirm completion and independent verification before the tag, without naming the private choice · holgo99
 **relation** — accepted the proposal
 **signed** — b91ebd1 · G
+
+## Acts
+
+**2026-10-19** · done — recorded privately · Confirm completion and independent verification before the tag, without naming the private choice · holgo99
 
 ## Ship log
 
