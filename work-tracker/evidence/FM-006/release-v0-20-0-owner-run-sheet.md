@@ -9,24 +9,25 @@ Sources: [the release's upgrade notes](../../../CHANGELOG.md#0200--2026-10-21), 
 B2 has merged main, including the signers change, and the records branch at the Auditor's named commit. Round 2 has approved that final tree; any review commit on top has an identical tree. No content changes follow its READY. Keep the required check results and the Reviewer's verdict commit beside the four full SHAs below.
 
 ```sh
-RELEASE_HEAD='REPLACE_WITH_FINAL_40_HEX_BRANCH_HEAD'
-REVIEWED_HEAD='REPLACE_WITH_40_HEX_COMMIT_ROUND_2_REVIEWS'
-REVIEW_COMMIT='REPLACE_WITH_40_HEX_READY_VERDICT_COMMIT'
-RECORDS_HEAD='REPLACE_WITH_40_HEX_RECORDS_COMMIT_FROM_ADDENDUM'
-git fetch origin --tags
-test "$(git rev-parse release/v0.20.0)" = "$RELEASE_HEAD"
-git merge-base --is-ancestor origin/main "$RELEASE_HEAD"
-git merge-base --is-ancestor 9409d3bd1a17a13bfc03829732c902be7fbf37d2 "$RELEASE_HEAD"
-git merge-base --is-ancestor "$RECORDS_HEAD" "$RELEASE_HEAD"
-git show -s --format=full "$REVIEW_COMMIT"
-git diff --exit-code "$REVIEWED_HEAD" "$RELEASE_HEAD"
-git diff --exit-code "$REVIEW_COMMIT" "$RELEASE_HEAD"
-python3 shoalmark.py --check
+RELEASE_HEAD='REPLACE_WITH_FINAL_40_HEX_BRANCH_HEAD' &&
+REVIEWED_HEAD='REPLACE_WITH_40_HEX_COMMIT_ROUND_2_REVIEWS' &&
+REVIEW_COMMIT='REPLACE_WITH_40_HEX_READY_VERDICT_COMMIT' &&
+RECORDS_HEAD='REPLACE_WITH_40_HEX_RECORDS_COMMIT_FROM_ADDENDUM' &&
+git fetch origin --tags &&
+test "$(git rev-parse release/v0.20.0)" = "$RELEASE_HEAD" &&
+git merge-base --is-ancestor origin/main "$RELEASE_HEAD" &&
+git merge-base --is-ancestor 9409d3bd1a17a13bfc03829732c902be7fbf37d2 "$RELEASE_HEAD" &&
+git merge-base --is-ancestor "$RECORDS_HEAD" "$RELEASE_HEAD" &&
+git show -s --format=full "$REVIEW_COMMIT" &&
+git diff --exit-code "$REVIEWED_HEAD" "$RELEASE_HEAD" &&
+git diff --exit-code "$REVIEW_COMMIT" "$RELEASE_HEAD" &&
+python3 shoalmark.py --check &&
+printf '%s\n' 'OK: the final head holds main, the signers change and the records commit, and both trees are equal'
 ```
 
 **Expect:** the final head holds main and the specified records commit; round 2's READY names its reviewed commit, base, critical tier and checks in `Reviewed:`. Both tree comparisons are empty; `--check` exits 0. The one full non-browser run belongs to this final tree and reports 0 FAIL with every skip named. The board alone is never permission to merge.
 
-**Paste back:** the four full SHAs, the READY subject and `Reviewed:` line, and the final `--check` result.
+**Paste back:** the four full SHAs, the READY subject and `Reviewed:` line, the final `--check` result, and the `OK:` line.
 
 ## 2. Push and open the release PR — freeze main
 
@@ -162,7 +163,7 @@ printf '%s\n' "$TAG_SHA"
 ## 8. Check ADOPT's pin and prepare the notes from the tag
 
 ```sh
-python3 - "$VERIFY_DIR/clone" "$VERIFY_DIR/release-notes.md" <<'PYTHON'
+python3 - "$VERIFY_DIR/clone" "$VERIFY_DIR/release-notes.md" <<'PYTHON' &&
 import hashlib, pathlib, re, subprocess, sys
 repo, output = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 def blob(name):
@@ -181,12 +182,13 @@ output.write_text(section[0].rstrip() + '\n\n### Pins\n\n- Tag: `v0.20.0`\n- `sh
 print('both ADOPT pins:', pin)
 print(output.read_text())
 PYTHON
-gh release edit v0.20.0 --notes-file "$VERIFY_DIR/release-notes.md"
+gh release edit v0.20.0 --notes-file "$VERIFY_DIR/release-notes.md" &&
+printf '%s\n' 'OK: both ADOPT pins match the tag, and the draft notes are updated'
 ```
 
 **Expect:** both ADOPT pins equal the tag's `shoalmark.py`. The notes contain exactly CHANGELOG's `0.20.0` section plus the tag, tool and archive pins. Read the printed notes before publishing.
 
-**Paste back:** the tool pin and the draft notes.
+**Paste back:** the tool pin, the draft notes, and the `OK:` line.
 
 ## 9. Publish the draft, then the Auditor checks the published assets
 
