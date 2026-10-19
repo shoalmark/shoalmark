@@ -3,18 +3,27 @@ id: FM-059
 status: Proposed
 considered: FM-050, FM-007, FM-054, FM-058
 tags: process
-next: owner
+next: review
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
-ask: "Do you adopt the guided answer design and its seven proposals as FM-059's body states them in the commit that last filed this ask?"
-ask-kind: ruling
-ask-since: 2026-10-17
-ask-options: "yes | yes, with the changes I name | no: run sheets stop before each answer until it is designed again"
-ask-proposal: "yes"
 ---
 
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
 
 ## What is true now
+
+**2026-10-19 — the design amended, and its ask withdrawn until the amended sections are re-checked.** The Owner
+spot-checked the design with the Designer on 17 October (screen 14, `179bfc2c…`), and gave their position on open
+question 3 on 19 October. The design now carries:
+- *decide later* in the view (§2, §3, §5, §6);
+- the view's own read-at words (§2, §6), with the one sentence G6 gains;
+- no result hidden behind the next view (§2, §4);
+- the seat's reasons from new record fields, with a fallback (§2);
+- one verb, *pick* (§6);
+- the Owner's positions on the open questions.
+
+A signed answer the run pushes is out of the board's sight. That is filed as FM-064, and its fix lands with this build
+(§4). The ask put on 2026-10-17 is withdrawn, and its record is under `## Asks`. It is filed again once a records
+re-check finds the amended sections READY.
 
 **Filed 2026-10-16 on the Owner's direction, with its ask. Its design started the same day, the Owner with the Designer;
 nothing is built.** On the Owner's word of the same day it is quick win 11, in v0.20.1: the ask's first proposal, the
@@ -32,8 +41,8 @@ first release after v0.20.1, is withdrawn (its record is under `## Asks`), and t
   its seven proposals, the *Proposed* lines of its open questions.
 - **The release ask is answered:** *accepted - v0.20.1*, the Owner's signed answer (`99b1708`), recorded under `## Asks`.
 - **What it needs first:** R4's ask ids (FM-050), and FM-058's fix, so that a command a person runs has no time bound;
-  FM-058 moves into v0.20.1 with it. The seat's confidence, *because* and *then* are new record data and stay outside it:
-  without them the view shows the proposal and the options alone.
+  FM-058 moves into v0.20.1 with it. The seat's confidence, *because* and *then* come from new record fields: quick
+  win 11's S3, which stays in v0.20.1 (§2). An ask without them takes the fallback.
 
 ## The design
 
@@ -93,8 +102,9 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
     not (one `git merge-base` per such branch);
   - **else the default branch,** where its copy holds the ask (item 4 says where that answer goes);
   - **not brought,** each named on the first line with its reason: an id that two branches propose; an id that some
-    branch holds answered (an answer on its way); an id the default branch holds with another put ask; an ask before
-    ids, answered from the board as today (FM-050 §2).
+    branch holds answered (an answer on its way); an id with a local `guided/<id>` branch, signed and not pushed
+    (item 4); an id the default branch holds with another put ask; an ask before ids, answered from the board as today
+    (FM-050 §2).
 - **The order:** the ids as named. Else the oldest `ask-since:` first, then the tracker id, as `--owner` lists them.
 - **Before a pick, never:** a signature, a commit, a worktree, a push, a written answer, or a write in any working
   tree. The one exception is the clone's git metadata, which item 5's fetch writes: objects, `FETCH_HEAD`, and
@@ -115,17 +125,38 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
   Where no browser opens, the terminal prints the path.
 - **What it holds,** as G6 draws it:
   - **the header:** the name, and why it opened (*your answer is needed · 2 of 3 in the run you started*, the first
-    words amber); the read-at line, with the home, its commit and the time, and the tool's commit (both linked, below);
-    the limits, folded: the ask as filed at that commit, and nothing else of the board; whether the run still waits is
-    not known here;
+    words amber); the read-at line, *written once, for this ask: it does not change while you answer*, with the home,
+    its commit and the time, and the tool's commit (both linked, below); the limits, folded: the ask as filed at that
+    commit, and nothing else of the board; whether the run still waits is not known here;
+  - **the view never reloads:** a reload would lose the pick and the typed text while the Owner pastes in the terminal.
+    So the view carries neither the board's line (*it reads its file again when you come back to it*) nor *this page
+    does not update itself*. G6 gains one sentence: *a view's read-at line is not the board's: a view is written once,
+    for one ask, and never reloads*;
+  - **before this,** in the header from a run's second ask on: how the ask before it ended, as *before this: 1 of 2 ·
+    <ask id> · signed <sha> · verified · pushed*;
   - **one window,** titled *your answer · <ask-id>*: the question, then its state: its kind, who put it, how long it
     has waited, what it holds up (`held_up_by`), and its tracker;
   - **`## your choice`,** on a `--secbg` band: one row per choice, with a radio, a letter and the words. **A** is the
     proposal, labelled PROPOSED. The other options follow in their filed order, as the board's dialog orders them
     (`act`, `:3711`). Then *in your own words* and *reject the question*, each with its typed box, three lines high.
-    Nothing is picked;
-  - **the seat's confidence, *because* and *then*** are new record data, outside this build: the rows show the proposal
-    and the options alone;
+    Under *or, not now:*, one more choice, *decide later*, signs nothing (item 5). Nothing is picked;
+  - **the seat's reasons,** from the record's new fields (A32), which quick win 11's S3 builds in v0.20.1:
+    - on the proposal, its confidence: a number for how sure the seat is;
+    - under each option, its *because* (the rationale) and its *then* (what follows if it is picked);
+    - where an option lacks one, that line reads *not stated*.
+
+    **An ask with none at all** shows the choices alone. Its line links the tracker at the commit it was read from,
+    through R11's link helper, which says why where there is no link, and the help line says the reasons are there;
+  - **the record's new fields** (A32; the Planner's, at 70 %). They sit in the front matter beside the ask, so that the
+    gate reads them as it reads the ask:
+    - `ask-confidence:` a whole number from 0 to 100, the seat's percent for its proposal;
+    - `ask-because:` and `ask-then:`: one entry per option, in `ask-options:`'s order and separated by ` | ` as it is,
+      each at most 120 characters. An empty entry reads *not stated*;
+    - **the gate refuses:** a confidence that is not a whole number from 0 to 100; an entry list whose length is not the
+      options'; an entry over 120 characters or with a control character; any of the three on a tracker with no open
+      ask; and `ask-because:` or `ask-then:` without `ask-options:`;
+    - **they stay with the ask:** `--clear-ask` moves them under `## Asks` with the exchange. The board's dialog does
+      not show them in this build. With ask ids (FM-050), each entry's place is its option's while the ask stands;
   - **what follows any answer** stands once, in the lines: the `next:` that `ANSWER_MOVE` gives the ask's kind
     (`:942`), the same for every answer, and who moves next: the seat that asked, or for an action the Owner's hands;
   - **the one help line** (G7): inside the window, under *your choice*, pending FM-053's signed answer. Without it,
@@ -162,8 +193,10 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
   writes them into the page. The script only shows the ones picked. For *in your own words* and *reject*, the page
   holds the lines with the text left out, and the script puts the typed text in, normalised as `answer_norm`
   normalises it (`:1723`). The run computes them again from the reply (item 3).
-- **The result view** is a new file, written after the push, or after a check that stops the run. It shows the change
-  as signed, then COMMIT (its sha, the home, pushed or not), SIGNER (the key's fingerprint, as the signers file lists
+- **The result view** is a new file. It opens only on a failure that ends the run (a check that stops it) and at the
+  run's end, with the whole run under `## this run`: one row per ask, as it ended. Between asks no result view opens,
+  and the next ask's header says how the last one ended (*before this*, above). Its read-at line reads *written once, at
+  the run's end: it does not change*. For each answer it shows the change as signed, then COMMIT (its sha, the home, pushed or not), SIGNER (the key's fingerprint, as the signers file lists
   it), SIGNATURE (*verified*, with its meaning, on `--okbg`, or *not verified*, with git's letter, on `--failbg`) and
   TOOL (the tool's commit, and the hooks' copy's where it ran the commit's hooks), each commit linked as above. Where
   nothing was pushed, the result says the ask still waits, and what happened.
@@ -182,11 +215,12 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
 **The reply** is one line: `<ask-id> <choice> [<text>] run:<code>`. For example:
 - `FM-059-Q1 A run:e3b71f`;
 - `FM-059-Q1 D 'a later release: v0.21.0' run:e3b71f`;
-- `FM-059-Q1 reject 'ask again once FM-058 has shipped' run:e3b71f`.
+- `FM-059-Q1 reject 'ask again once FM-058 has shipped' run:e3b71f`;
+- `FM-059-Q1 later run:e3b71f`.
 
 **Its parts:**
 - **the choice:** a letter as the view letters it (A, the proposal; the other options after it; *in your own words*
-  the next letter), or `reject`;
+  the next letter), or `reject`, or `later` (the view's *decide later*), which takes no text;
 - **the text,** for *in your own words* and `reject` only: the box's words as `answer_norm` leaves them (`:1723`:
   trimmed, every run of whitespace one space, `"` written as `'`), single-quoted as the board quotes a command today
   (`sq`, `:3705`);
@@ -195,8 +229,8 @@ and no `answer:`. *Its home* is the branch its answer is committed on (item 1). 
 **The code:**
 - six lowercase hex characters (`secrets.token_hex(3)`), one per ask in each run. It is written into that ask's view
   and kept in the run's memory;
-- it is good for that ask's wait in this run. It is spent when the run takes a reply for that ask, when the Owner
-  leaves the ask (`later`), and when the run ends. No clock bounds it (FM-058).
+- it is good for that ask's wait in this run. It is spent when the run takes a reply for that ask, a `later` reply
+  among them, when the Owner types `later`, and when the run ends. No clock bounds it (FM-058).
 
 **What the run accepts.** The run reads the line from its terminal itself, never through a shell, and splits it into
 words as a POSIX shell would (`shlex`). It accepts the reply only when all of these hold:
@@ -291,20 +325,37 @@ Anything else signs nothing, and the run waits again.
     request per sitting, which `--queue` reads `merge: yours — signed` (FM-050 3c). It lands by a merge or a
     fast-forward, never a squash (FM-050 3b). Here, seats never push to `main`, and the Owner merges pull requests
     (AGENTS.md). Open question 2.
-  - **A refused push** (the home moved, a protected branch, the forge down): nothing is forced and nothing retried. The
-    run writes the result view (committed, not pushed), names the commit, says the ask is still open, and ends.
-    `--guided <ask-id>` answers it again from the home's new tip. Open question 3.
-- **Then the next ask:** only after git reports the push done, the run removes the worktree, opens the result view,
-  prints the ask's line (signed, verified, pushed to its home) and goes on.
-- **The end:** how many were answered; each ask left, with why (left for later, moved, not brought); the run's own
-  branch, if it has one, with the pull request to open; and that the board shows an answer once its branch lands on the
-  default branch (FM-050 3c). The run does not rebuild the checkout's board: the checkout did not change.
+  - **A refused push** (the home moved, a protected branch, the forge down): nothing is forced and nothing retried.
+    This is the Owner's position of 19 October, open question 3.
+    - **The signed commit is kept** on a local branch of the run's own, `guided/<ask-id>`.
+    - **The run goes on** to the next ask, but not as `later` leaves one: this ask is signed, and not pushed.
+    - **Its end names the ask so,** with its branch and the one command that pushes it,
+      `git push origin guided/<ask-id>:refs/heads/<home>`, fast-forward only.
+    - **No run brings that ask again** while that branch exists.
+    - **Where the home moved,** that push is refused too. Deleting the branch lets the next run bring the ask again,
+      from the home's new tip.
+- **Then the next ask:** only after git reports the push done, or after a refused push's commit is kept (above), the
+  run removes the worktree and prints the ask's line: signed, verified, and pushed to its home or not pushed. Then it
+  opens the next ask's view, whose header says how this one ended. No result view opens between asks.
+- **The end:** it says, in the terminal and in the result view, which holds the whole run:
+  - how many were answered;
+  - each ask left, with why: left for later, moved, or not brought;
+  - each ask signed and not pushed, with its branch and the one command that pushes it;
+  - the run's own branch, if it has one, with the pull request to open;
+  - how the board shows each answer: *answered, on its way* until its branch lands on the default branch, then
+    answered (FM-050 3c). That holds only with FM-064's fix, which lands with this build.
+
+  The run does not rebuild the checkout's board: the checkout did not change.
 
 ### 5. The ways out
 
-- **Not now: decided, in the terminal.** At the prompt, `later` leaves the ask: nothing is signed, its code is spent,
-  the run goes on, and the last line names the ask. It is typed where the run waits, not offered in the view: it signs
-  nothing, so it needs no reply, and the view keeps its one act (G6).
+- **Not now: decided, in the view and in the terminal.** The Owner approved it on 17 October.
+  - **In the view:** *decide later* stands under *or, not now:* as one more choice. Picked, *where you sign* says
+    *nothing is signed: you leave <ask id> for later*, with two steps, and its reply (`<ask-id> later run:<code>`) is
+    accepted like the others.
+  - **At the prompt:** `later` typed does the same.
+  - **Either way,** nothing is signed, the ask's code is spent, the run goes on, and the last line names the ask. The
+    view keeps one act, the reply button (G6).
 - **A view closed before a pick: decided.** The run does not see a tab close, and waits. `open` at the prompt opens the
   same view again, with nothing picked. The waiting line also prints its path.
 - **Reject** is a choice like the others, with its reason. It writes `rejected - <reason>` and the same `next:` as any
@@ -331,16 +382,24 @@ it, handed to it with this design. The German comes after the native read, throu
     the server names the author*, and the terminal *committing under your server login: nothing is signed*.
 - **From the guide** (G6, and the guide's rows for copy feedback and the page's limits): the header, the window's
   title, `## your choice`, *not signed yet*, *in your own words*, *reject the question*, `## where you sign`, *reply*,
-  COMMIT, SIGNER and SIGNATURE, *this page does not update itself*, and *the key asks you to confirm, and only if it
-  asks*.
-- **Drafts, one per place.** Each is this seat's, for the go-to-market seat to keep, change or replace:
+  COMMIT, SIGNER and SIGNATURE, and *the key asks you to confirm, and only if it asks*. The view leaves out *this page
+  does not update itself*, which is retired, and the board's reload line (§2).
+- **Drafts, one per place.** Each is this seat's, for the go-to-market seat to keep, change or replace. The verb is
+  *pick* throughout: the view says *pick*, and so do these drafts and the terminal.
 
   | Where | Draft |
   |---|---|
-  | `## your choice`, its state | *choose one · none is chosen for you* |
+  | `## your choice`, its state | *pick one · none is picked for you* |
+| `## your choice`, the way out | *or, not now:* · *decide later* |
   | the reject row | *your reason goes into the record with it; to ask again, the seat puts a new ask* |
-  | the help line (G7) | *each choice's words are the ask's, as filed · a choice shows its lines under where you sign* |
-  | `## where you sign`, empty | *no choice yet: there is nothing to sign* |
+  | the help line (G7) | *each choice's words are the ask's, as filed · a pick shows its lines under where you sign* |
+| the help line, no reasons filed | *the seat's reasons are in its tracker, linked above* |
+| a reason not filed | *not stated* |
+  | `## where you sign`, empty | *nothing picked yet: there is nothing to sign* |
+| `## where you sign`, decide later | *nothing is signed: you leave {ask id} for later* |
+| the header, read-at | *written once, for this ask: it does not change while you answer* |
+| the header, before this | *before this: {i} of {n} · {ask id} · signed {sha} · verified · pushed* |
+| the result, read-at | *written once, at the run's end: it does not change* |
   | above the diff | *one commit, on {home}, changes {ITEM}'s tracker:* |
   | below the diff | *and `INDEX.md`, which the commit's hook writes from these lines* |
   | *how you sign*, step 1 | *copy the reply, with the button below* |
@@ -357,9 +416,11 @@ it, handed to it with this design. The German comes after the native read, throu
   | waiting | *{ask id} · {i} of {n} · waiting for your answer · its view: {path}* |
   | the prompt | *paste the reply here · later: leave this ask · open: its view again* |
   | a refused reply | *refused: a reply from {id}'s view* · *from another run* · *{ask id} offers no choice {x}* · *cut: its code is missing*; each then *· nothing was signed* |
-  | the lines again | *you chose {choice}: this commit goes on {home}:*, the lines, and the subject |
+  | the lines again | *you picked {choice}: this commit goes on {home}:*, the lines, and the subject |
   | the lines changed | *these lines are not the view's: {why} · type yes to sign them; anything else signs nothing* |
   | the end | *{k} of {n} answered · left: {each id, with why}*, and the run's own branch, with *open its pull request* |
+| the end, not pushed | *{ask id} · signed {sha}, verified · not pushed: {why} · to push it: {command}* |
+| the end, the board | *each answer reads answered, on its way on the board until its branch is merged* |
   | the header, the tool's commit | *run by shoalmark {version} @ {sha}* |
   | the result, TOOL | *shoalmark {version} @ {sha}: {the PIN's release v{version} / this repository's commit, its files unchanged} · the hooks ran the same files, installed from {sha}* |
   | no link: not pushed | *no link: not pushed yet* |
@@ -407,13 +468,23 @@ Reviewer privately. This text does not state them.
   - **a hook that changes the prepared commit:** a fixture hook that stages one more file, and one that adds a line to
     the message. Each is refused before the key: zero calls to the signing program, no commit made, nothing pushed;
   - **a refused push:** the home moves on `origin` after the `ls-remote`, and a pre-receive hook on the bare `origin`
-    refuses. Nothing is forced, `origin` holds only what the other side pushed, and the run ends, naming the commit;
-  - **the next ask:** after a push, the next view opens. The branch with two asks takes the second answer on top of
-    the first. The ask on `main` lands on the run's own branch, and a second such ask lands on top of it;
+    refuses. Each time:
+    - nothing is forced, and `origin` holds only what the other side pushed;
+    - the signed commit is on `guided/<ask-id>`, and the run goes on to the next ask;
+    - its end names the ask, its branch and the push command;
+    - a second run does not bring that ask while the branch exists;
+  - **the next ask:** after a push, the next view opens, and no result view opens between them. The next view's header
+    says how the last ask ended, and the end's result view holds every ask. The branch with two asks takes the second
+    answer on top of the first. The ask on `main` lands on the run's own branch, and a second such ask lands on top of
+    it;
+  - **the board after a push:** an answer pushed to a seat's branch, and one pushed to `answers/<date>-<code>`, each
+    read *answered, on its way* on the board until the merge (FM-064);
+  - **the seat's reasons:** an ask with all three fields shows them; an option whose *because* is empty reads *not
+    stated*; an ask with none shows the fallback link and help line;
   - **not brought:** an id two branches propose; an ask answered on a branch not yet merged; an ask before ids; a
     malformed ask. None is brought, and each is named on the first line;
-  - **the ways out:** `later` (nothing signed, the next ask, named at the end); `open` (the recorder gets the same path
-    again); an interrupt at the prompt, and between the commit and the push (nothing pushed, no worktree left);
+  - **the ways out:** `later` typed, and *decide later* as a reply, accepted only with its code (each: nothing signed,
+    the code spent, the next ask, named at the end); `open` (the recorder gets the same path again); an interrupt at the prompt, and between the commit and the push (nothing pushed, no worktree left);
   - **where it runs:** Subversion and a plain folder, refused before anything is read; no terminal; the hooks' copy;
     an author-only identity, refused before any view is written, naming the signing page; a checkout on a seat's
     branch, behind `origin`, or with a change; a hooks' copy that is not the checkout's tool. Each is refused before an
@@ -444,7 +515,10 @@ Reviewer privately. This text does not state them.
   - **a link derived from `origin`'s URL with `blob` empty:** a link appears;
   - **an unpushed commit linked:** the stopped commit links;
   - **the tool's commit read from the hooks' copy's record alone:** a copy installed from another commit names the
-    wrong tool.
+    wrong tool;
+  - **a refused push's ask brought again:** a second run brings it while `guided/<ask-id>` exists;
+  - **a result view opened between asks:** the recorder gets two paths for one ask;
+  - **the board reading `origin/answer/` only:** the pushed answer reads *waiting for you* (FM-064).
 - **What each backend can claim:**
   - **git:** the commit holds the lines the view showed for the choice; its signature verifies against a key the
     default branch's signers file lists; it is bound to the put ask it answers (FM-050 3b); and it is pushed,
@@ -457,8 +531,9 @@ Reviewer privately. This text does not state them.
 
 - **What it needs first:** R4 and the ask ids, built (FM-050's build: the answer commit, `--answer <ask-id>`,
   `put_ask`, `answer_commit` and C5's reading); FM-058's fix, with the hooks' copy's record below; R11's link helper
-  (FM-057), which the view reuses; and FM-053's signed answer for G5, G6 and G7. Without that answer, the help line
-  stands above the window and the diff carries no tints.
+  (FM-057), which the view reuses; FM-053's signed answer for G5, G6 and G7; and S3's record fields (A32). Without
+  FM-053's answer, the help line stands above the window and the diff carries no tints. FM-064's fix lands on this
+  branch, and this build's Reviewer checks it.
 - **The prerequisite: the PIN and the hooks' copy record the tool's full commit.** It is critical, and built with
   FM-058, before the view.
   - **Today:** `--vendor` writes an untagged source's commit as ten characters (`:9247`), and `pin_manifest` returns
@@ -488,15 +563,17 @@ Reviewer privately. This text does not state them.
   2. **`--guided`'s start and its reading:** the checks, the fetch, the refs, the asks and their homes, and the first
      line. Here the run stops before any view: a stopping point a run sheet can use alone;
   3. **the view:** `render_guided`, its script, its labels in English (German after the native read) and the opener;
-     the commits in the header, linked through R11's helper; the prompt, the code and the reply's checks; `later` and
-     `open`;
+     the commits in the header, linked through R11's helper; *before this*; the seat's reasons and their fallback; the
+     prompt, the code and the reply's checks; *decide later*, `later` and `open`;
   4. **the signing:** the worktree, the prepared commit and its comparison, `git commit-tree -S`, the five checks
-     after it, the push, the run's own branch, the result view with its TOOL row, and the end. The browser is the
+     after it, the push, a refused push's kept branch, the run's own branch, the result view with its TOOL row, and the
+     end. The browser is the
      run's one new process start: a new entry in
      `test_vcs_launch_ceiling.json`, with its hash in `test_vcs_skeleton.py` (`:129`);
   5. **`test_guided_answer.py`'s mutants,** and its wiring into `test_shoalmark.py`;
-  6. **docs:** the README's row, `docs/signing.md` and `docs/index.md` with their German pages, the run sheet's answer
-     step, the command's help, and the CHANGELOG.
+  6. **FM-064's fix:** the board reads an answer the run pushes (FM-064);
+  7. **docs:** the README's row, `docs/signing.md` and `docs/index.md` with their German pages, the run sheet's answer
+     step, the command's help, G6's one sentence after the Owner's signed answer, and the CHANGELOG.
 - **The size, a guess at 70 % confidence: M–L.** About 520 lines join `shoalmark.py` (the reading 120, the view and its
   script 180, the commits and their links 40, the reply 60, the prepared commit, the signing and the push 120), and
   about 30 change. About 680 lines join the class test. The commits are an S addition on R11's helper; without that
@@ -508,27 +585,38 @@ Reviewer privately. This text does not state them.
 1. **A checkout that is behind `origin`.**
    - **Proposed:** the run refuses, and names `git pull --ff-only`.
    - **The alternative:** the run fast-forwards the checkout itself, when the checkout has no change.
+   - **The Owner's position, 17 October: as proposed.** The run refuses, with one line that gives the command to run.
+     Round 2 settled that nothing is written to the checkout before a pick (RV-3332). A fast-forward would break that,
+     and need review again.
 2. **The answer to an ask the default branch holds.**
    - **Proposed:** one branch of the run's own, `answers/<date>-<code>`: one pull request per sitting.
    - **The alternative:** a push to the default branch itself, refused wherever the default branch is protected.
+   - **The Owner's position, 17 October: as proposed,** with FM-064: the board must read the run's branch (item 4).
 3. **A refused push.**
    - **Proposed:** the run ends.
    - **The alternative:** the ask is left, as `later` leaves it, and the run goes on to asks on other branches.
+   - **The Owner's position, 19 October: the alternative, but not as `later`.** The run goes on to the next ask. Its
+     end names the ask as signed and not pushed, with its branch and the one command that pushes it, and no run brings
+     that ask again while that branch exists (item 4).
 4. **Subversion.**
    - **Proposed:** refused in this build.
    - **The alternative:** a run there, committing under the server login, with the go-to-market seat's Subversion
      words. It needs an answer command on Subversion, which R4 does not build.
+   - **Outside the Owner's check of 17 October,** which was the view's: the proposal stands for the ruling.
 5. **The lines changed during the wait** (a turned date, or an action's `due:` read from typed words).
    - **Proposed:** the Owner types `yes` under the new lines.
    - **The alternative:** the run writes a new view, with a new code.
+   - **The Owner's position, 17 October: as proposed.**
 6. **`INDEX.md` in the signed commit.**
    - **Proposed:** the view names it and does not show its lines; the terminal prints them before the key, and the
      prepared commit may change no other path.
    - **The alternative:** the view shows its changed rows too, as the hook will write them.
+   - **The Owner's position, 17 October: as proposed.**
 7. **A hooks' copy taken from another commit, with equal files.**
    - **Proposed:** the TOOL row names the run's tool commit, and says that the hooks ran the same files, installed from
      the commit the copy records.
    - **The alternative:** the run refuses unless the copy's recorded commit is the run's own.
+   - **Outside the Owner's check of 17 October:** the proposal stands for the ruling.
 
 ## Done when
 
@@ -536,6 +624,9 @@ Reviewer privately. This text does not state them.
 - Built in that release, and reviewed.
 
 ## Asks
+
+**2026-10-17** · Do you adopt the guided answer design and its seven proposals as FM-059's body states them in the commit that last filed this ask?
+**withdrawn** — no answer was given; the design is amended first, on the Owner's positions of 17 and 19 October
 
 **2026-10-16** · Which release builds the dedicated answer view: the Board view that holds only one ask's dialog, opened by a prepared run that signs what you chose?
 **withdrawn** — no answer was given
@@ -559,3 +650,4 @@ Reviewer privately. This text does not state them.
 | 2026-10-16 | RV-3329 to RV-3332 fixed in the design, by the Builder seat: the tool's files compared with each CRLF read as LF; the PIN and the hooks' copy record full commits, and older records are named incomplete (R26); an author-only identity is refused before any view; the fetch's metadata is named as the one write before a pick, and the class row's baseline is taken after it. Records only. |
 | 2026-10-17 | Main joined (`6336355`), and the release ask's exchange recorded under `## Asks`: accepted - v0.20.1, signed `99b1708`. By the Planner seat. Records only. |
 | 2026-10-17 | Its design's own ruling ask put, by the Planner seat, as the Builder seat drafted it: whether the Owner adopts the design and its seven proposals. Records only. |
+| 2026-10-19 | The design amended by the Planner seat, on the Owner's positions of 17 October (through the Designer) and of 19 October on open question 3 (through the Auditor): *decide later* in the view, the view's read-at words, no result between asks, the seat's reasons with their fallback and the record's new fields, one verb. FM-064 filed. The ask withdrawn until a records re-check. Records only. |
