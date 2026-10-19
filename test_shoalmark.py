@@ -2474,8 +2474,10 @@ _has_rev = lambda rev: subprocess.run(["git", "-C", str(HERE), "cat-file", "-e",
 
 
 def _sans_moment(page):
-    """A board's page but its line of what it read, and when (FM-057) — the one part two runs of the same trackers write differently: the time it was built."""
-    return re.sub(r'<p id="ra" class="m">.*?</p>', '<p id="ra" class="m"></p>', page, count=1, flags=re.S)
+    """A board's page but its line of what it read, and when, and the fold beneath it — the one part two runs of the same trackers write differently:
+    the time it was built."""
+    page = re.sub(r'<p id="ra" class="m">.*?</p>', '<p id="ra" class="m"></p>', page, count=1, flags=re.S)
+    return re.sub(r'(<details class="about"><summary>[^<]*</summary><p class="help">).*?(</p></details>)', r"\1\2", page, count=1, flags=re.S)
 def _old_tool(into, rev="ae3c9e9"):
     """The tool as it was before the board's run was read-only, beside its vendored `marked` — a control that must fail on it."""
     into = Path(into); (into / "vendor").mkdir(parents=True, exist_ok=True)
@@ -6321,24 +6323,26 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
-read.git.branch: "gelesen von {0} bei {1}"
-read.git.detached: "gelesen von einem losgelösten HEAD bei {0}"
-read.git.unborn: "gelesen von {0}, noch ohne Commit"
+read.git.branch: "gelesen von {0} @ {1} um {2}"
+read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
+read.git.unborn: "gelesen von {0}, noch ohne Commit, um {1}"
 read.git.clean: nichts geändert und nicht committet
 read.git.changed: "{0} Pfade geändert und nicht committet"
 read.git.changed.one: 1 Pfad geändert und nicht committet
 read.git.unread: was geändert und nicht committet ist, wird hier nicht gelesen
-read.svn: "gelesen von der Arbeitskopie bei {0}"
-read.svn.unread: "gelesen von der Arbeitskopie: ihre Revision wird hier nicht gelesen"
-read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
-read.none: "gelesen aus dem Ordner {0}"
+read.svn: "gelesen von der Arbeitskopie @ {0} um {1}"
+read.svn.unread: "gelesen von der Arbeitskopie um {0}: ihre Revision wird hier nicht gelesen"
+read.svn.new: "gelesen von der Arbeitskopie, noch ohne Revision, um {0}"
+read.none: "gelesen aus dem Ordner {0} um {1}"
 read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
-read.at: "gebaut {0}"
 read.self: sie liest ihre Datei wieder, wenn Sie zu ihr zurückkehren; nichts fragt ständig nach
 read.copy: Neubau-Befehl
 read.copy.spoken: den Neubau-Befehl kopieren
+read.about: "was diese Seite liest, und was sie nicht sehen kann"
+read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
+read.about.svn: "gelesen von der Arbeitskopie um {0}"
+read.about.none: "gelesen aus dem Ordner um {0}"
 read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
-read.unlinked: "{0} ({1})"
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
 link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
 link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
@@ -7092,7 +7096,7 @@ def _accept(source):
               f"{[k for k, v in board_words.items() if never.search(v)]}")
     # 5 · answer first: the first thing under the header is what waits for you — the box, its first section; on a phone nothing comes before it
     body_ = page.split("</style>")[1]
-    out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n(?:<p id="ra" class="m">[^\n]*</p>\n)?<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
+    out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n(?:<p id="ra" class="m">[^\n]*</p>\n<details class="about">[^\n]*</details>\n)?<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
               and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css)
               and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
     # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
@@ -12300,8 +12304,8 @@ _Q4_BAD = re.compile(r"\b(current|currently|live|up[ -]to[ -]date)\b", re.I)
 _Q4_MUTANTS = (
     ("the changes flag ignored", 'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")',
      'sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), 0'),
-    ("the time missing", 'facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]',
-     'facts += [esc(say("read.self"))]'),
+    ("the time missing", 'when, full = at.strftime("%m-%d %H:%M"), at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else "")',
+     'when, full = "", ""'),
     ("the word current", '"read.self": "it reads its file again when you come back to it; nothing polls"', '"read.self": "it reads its file again when you come back to it; nothing polls — it is current"'),
 )
 def _q4_fixtures(base):
@@ -12327,34 +12331,38 @@ def _q4_fixtures(base):
     fm.configure(HERE)
     return out_
 def _q4_read(root):
-    """What a board's run left: (the line's text, as a reader sees it; the rebuild command; whether its copy button is there and wired; `view/built.json`)."""
+    """What a board's run left: (the line's text, as a reader sees it; the rebuild command; whether its copy button is there and wired; `view/built.json`;
+    the fold beneath the line: its summary and its text)."""
     t_ = root / "docs/work-tracker"; page_ = (t_ / "index.html").read_text(encoding="utf-8") if (t_ / "index.html").is_file() else ""
     m_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S); c_ = re.search(r'<code id="rc" hidden>(.*?)</code>', page_)
     line_ = _q4_html.unescape(re.sub(r"<[^>]+>", "", m_.group(1))).strip() if m_ else ""
+    f_ = re.search(r'</p>\n<details class="about"><summary>([^<]*)</summary><p class="help">(.*?)</p></details>', page_, re.S)
+    fold_ = (_q4_html.unescape(f_.group(1)), _q4_html.unescape(re.sub(r"<[^>]+>", "", f_.group(2))).strip()) if f_ else ("", "")
     wired_ = '<button type="button" id="rb" class="act" aria-label="copy the rebuild command"><svg class="ico"' in page_ and '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent)' in page_
     try:
         built_ = json.loads((t_ / "view/built.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         built_ = None
-    return line_, _q4_html.unescape(c_.group(1)) if c_ else "", wired_, built_
+    return line_, _q4_html.unescape(c_.group(1)) if c_ else "", wired_, built_, fold_
 def _q4_case(shape, root, tool):
     """One shape's board's run, by `tool` as a program, and what the page and `view/built.json` say against what the shape holds."""
     t0_ = datetime.datetime.now().astimezone().replace(microsecond=0)
     code_, o_, e_ = _tool_run(tool, root, *(() if shape.endswith("plain run") else ("--html-only",)))
     t1_ = datetime.datetime.now().astimezone()
-    line_, cmd_, wired_, built_ = _q4_read(root)
+    line_, cmd_, wired_, built_, fold_ = _q4_read(root)
     rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
     if shape.startswith("git"):
         sha_, branch_ = rp_("rev-parse", "HEAD"), rp_("branch", "--show-current")
-        want_ = (["read from a detached HEAD at " + sha_[:7]] if shape == "git detached" else [f"read from {branch_} at {sha_[:7]}"]) \
-            + (["3 paths changed and not committed"] if shape.endswith("plain run") else ["what is changed and not committed is not read here"])
+        want_ = ["read from a detached HEAD @ " + sha_[:7]] if shape == "git detached" else [f"read from {branch_} @ {sha_[:7]}"]
+        about_ = [f"read from {branch_ or 'HEAD'}'s history at", "3 paths changed and not committed" if shape.endswith("plain run") else "what is changed and not committed is not read here"]
         record_ = dict(vcs="git", commit=sha_, branch=branch_ or None, changes=3 if shape.endswith("plain run") else None)
         keys_ = {"commit", "trackers", "configuration", "answers", "built_at", "vcs", "branch", "changes"}
     elif shape == "svn":
         rev_ = subprocess.run(["svn", "info", "--show-item", "revision", str(root)], capture_output=True, text=True).stdout.strip()
-        want_, record_, keys_ = [f"read from the working copy at r{rev_}"], dict(vcs="svn", revision=rev_), {"built_at", "vcs", "revision"}
+        want_, record_, keys_ = [f"read from the working copy @ r{rev_}"], dict(vcs="svn", revision=rev_), {"built_at", "vcs", "revision"}
+        about_ = ["read from the working copy at"]
     else:
-        want_ = [f"read from the folder {root}", "no version control: no commit or revision to name"]
+        want_, about_ = [f"read from the folder {root}"], ["read from the folder at", "no version control: no commit or revision to name"]
         record_, keys_ = dict(vcs="none", folder=str(root)), {"built_at", "vcs", "folder"}
     at_ = None
     try:
@@ -12362,18 +12370,20 @@ def _q4_case(shape, root, tool):
     except (TypeError, ValueError):
         pass
     shown_ = at_.strftime("%Y-%m-%d %H:%M ") + at_.strftime("%z")[:3] + ":" + at_.strftime("%z")[3:] if at_ and at_.tzinfo else None
-    return dict(shape=shape, code=code_, line=line_, cmd=cmd_, wired=wired_, built=built_, want=want_, record=record_, keys=keys_, shown=shown_,
+    return dict(shape=shape, code=code_, line=line_, cmd=cmd_, wired=wired_, built=built_, want=want_ + about_, line_want=want_, about=about_, fold=fold_,
+                short=at_.strftime("%m-%d %H:%M") if at_ else None, record=record_, keys=keys_, shown=shown_,
                 timely=bool(at_ and at_.tzinfo and t0_ <= at_ <= t1_), said=(o_ + e_).strip()[-200:])
 def _q4_ok(g):
     """The page's line holds each fact the shape holds, the time it was built as `view/built.json` records it — read within the run —, the words that the
     page reads its file again when one comes back to it and that nothing polls (the Owner's ruling, in its own words), and the rebuild command, `--html-only`, with its copy button on the clipboard's path; none of *current*, *live*, *up to
     date*; and `view/built.json` holds exactly the shape's fields, with the same values."""
     b_ = g["built"] or {}
-    return (g["code"] == 0 and all(w_ in g["line"] for w_ in g["want"]) and g["shown"] is not None and g["timely"] and f"built {g['shown']}" in g["line"]
+    return (g["code"] == 0 and all(w_ in g["line"] for w_ in g["line_want"]) and g["shown"] is not None and g["timely"] and f" at {g['short']}" in g["line"]
+            and g["fold"][0] == "what this page reads, and what it cannot see" and all(w_ in g["fold"][1] for w_ in g["about"]) and f" at {g['shown']}" in g["fold"][1]
             and "it reads its file again when you come back to it; nothing polls" in g["line"] and g["cmd"].endswith(" --html-only") and g["cmd"] in g["line"] and g["wired"]
-            and not _Q4_BAD.search(g["line"]) and set(b_) == g["keys"] and all(b_.get(k_) == v_ for k_, v_ in g["record"].items()))
+            and not _Q4_BAD.search(g["line"] + " " + " ".join(g["fold"])) and set(b_) == g["keys"] and all(b_.get(k_) == v_ for k_, v_ in g["record"].items()))
 def _q4_saw(gs):
-    return "; ".join(f"{g_['shape']}: exit {g_['code']}, {g_['line'][:150]!r}, built.json {sorted(g_['built'] or {})}" for g_ in gs)
+    return "; ".join(f"{g_['shape']}: exit {g_['code']}, {g_['line'][:150]!r}, {g_['fold'][1][:150]!r}, built.json {sorted(g_['built'] or {})}" for g_ in gs)
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); fix_ = _q4_fixtures(base_)
     if "svn" not in fix_:
@@ -12464,20 +12474,23 @@ def _ln_rows(base):
         rows_.append(("Subversion with a viewer in `commit_url`", sk_[0], f"https://svn.example.org/viewvc?view=revision&revision={sk_[1]}", ""))
     return rows_
 def _ln_saw(root, tool):
-    """The board's run by `tool`, as a program, and its read-at line's head: (exit, the link's address or None, the line as a reader sees it)."""
+    """The board's run by `tool`, as a program, and its read-at line's head: (exit, the link's address or None, the line as a reader sees it, the fold beneath
+    it as a reader sees it)."""
     code_, _o, _e = _tool_run(tool, root, "--html-only")
     page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8") if (root / "docs/work-tracker/index.html").is_file() else ""
     line_ = re.search(r'<p id="ra" class="m">(.*?)</p>', page_, re.S)
     href_ = re.search(r'<a id="rh" href="([^"]*)"', line_.group(1)) if line_ else None
-    return code_, _q4_html.unescape(href_.group(1)) if href_ else None, _q4_html.unescape(re.sub(r"<[^>]+>", "", line_.group(1))) if line_ else ""
+    fold_ = re.search(r'</p>\n<details class="about"><summary>[^<]*</summary><p class="help">(.*?)</p></details>', page_, re.S)
+    return (code_, _q4_html.unescape(href_.group(1)) if href_ else None, _q4_html.unescape(re.sub(r"<[^>]+>", "", line_.group(1))) if line_ else "",
+            _q4_html.unescape(re.sub(r"<[^>]+>", "", fold_.group(1))) if fold_ else "")
 def _ln_ok(rows, tool):
-    """Every row as asserted: exit 0; its link, exactly, where it must make one — and then no reason; else no link at all, and the line's head carries the
-    reason's own words. (all held, what was seen)"""
+    """Every row as asserted: exit 0; its link, exactly, where it must make one — and then no reason; else no link at all, and the fold beneath the line
+    carries the reason's own words. No other reason anywhere in the line or the fold. (all held, what was seen)"""
     seen_ = []
     for what_, root_, want_, why_ in rows:
-        code_, href_, line_ = _ln_saw(root_, tool)
-        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or fm.LABELS[why_] in line_) and not any(fm.LABELS[k_] in line_ for k_ in fm.LINK_WHY if k_ != why_)
-        seen_.append((what_, ok_, href_, line_[:120]))
+        code_, href_, line_, fold_ = _ln_saw(root_, tool)
+        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or fm.LABELS[why_] in fold_) and not any(fm.LABELS[k_] in line_ + " " + fold_ for k_ in fm.LINK_WHY if k_ != why_)
+        seen_.append((what_, ok_, href_, fold_[:160]))
     return all(o_ for _w, o_, _h, _l in seen_), seen_
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); rows_ = _ln_rows(base_)
@@ -12485,7 +12498,7 @@ with tempfile.TemporaryDirectory() as d:
         _skipped("FM-057 · the read-at head's link on Subversion", 2, "svn or svnadmin is not installed here")
     ok_, seen_ = _ln_ok(rows_, HERE / "shoalmark.py")
     for what_, o_, h_, l_ in seen_:
-        check(f"FM-057 · the read-at line's head · {what_}: " + (f"it links to {h_}" if h_ else f"no link, and the line says why ({l_[:110]!r})"), o_)
+        check(f"FM-057 · the read-at line's head · {what_}: " + (f"it links to {h_}" if h_ else f"no link, and the fold beneath the line says why ({l_[:150]!r})"), o_)
     fm.configure(HERE); sha_ = "0" * 40
     check(f"FM-057 · the read-at line's head · the one helper, for the guided answer view too: the tool's own commit links to TOOL_PAGE's repository "
           f"(saw {fm.commit_link(sha_, tool=True)})", fm.commit_link(sha_, tool=True) == (f"{fm.TOOL_PAGE}/commit/{sha_}", "")

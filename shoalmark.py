@@ -3989,7 +3989,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 @media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
 </style>
 <div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><label id="sb"><input id="q" autofocus><span id="n"></span></label><button id="s"></button></div>__GONE__
-<p id="ra" class="m">__READAT__</p>
+__READAT__
 <div id="p" class="box"></div>
 <div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button>
 <p id="l"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p></div>
@@ -4353,14 +4353,16 @@ LABELS = {
     "day.title": "the day", "day.span": "the last 24 hours",
     "sessions.recent": "sessions · {0} with a commit in the last 24 hours ({1} with their sub-sessions)",
     # FM-057: what the board read, and when — the page's own moment, never *current*, *live* or *up to date*
-    "read.git.branch": "read from {0} at {1}", "read.git.detached": "read from a detached HEAD at {0}", "read.git.unborn": "read from {0}, which has no commit yet",
+    "read.git.branch": "read from {0} @ {1} at {2}", "read.git.detached": "read from a detached HEAD @ {0} at {1}",
+    "read.git.unborn": "read from {0}, which has no commit yet, at {1}",
     "read.git.clean": "nothing changed and not committed", "read.git.changed": "{0} paths changed and not committed",
     "read.git.changed.one": "1 path changed and not committed", "read.git.unread": "what is changed and not committed is not read here",
-    "read.svn": "read from the working copy at {0}", "read.svn.unread": "read from the working copy: its revision is not read here",
-    "read.svn.new": "read from the working copy, which has no revision yet",
-    "read.none": "read from the folder {0}", "read.none.why": "no version control: no commit or revision to name",
-    "read.at": "built {0}", "read.self": "it reads its file again when you come back to it; nothing polls", "read.copy": "rebuild command", "read.copy.spoken": "copy the rebuild command",
-    "read.unlinked": "{0} ({1})",                # the commit, and why it is not a link
+    "read.svn": "read from the working copy @ {0} at {1}", "read.svn.unread": "read from the working copy at {0}: its revision is not read here",
+    "read.svn.new": "read from the working copy, which has no revision yet, at {0}",
+    "read.none": "read from the folder {0} at {1}", "read.none.why": "no version control: no commit or revision to name",
+    "read.self": "it reads its file again when you come back to it; nothing polls", "read.copy": "rebuild command", "read.copy.spoken": "copy the rebuild command",
+    "read.about": "what this page reads, and what it cannot see", "read.about.git": "read from {0}'s history at {1}",
+    "read.about.svn": "read from the working copy at {0}", "read.about.none": "read from the folder at {0}",
     "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
     "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
     "link.noviewer": "no Subversion viewer configured (`commit_url`), so not linked", "link.nocommit": "no commit to link",
@@ -4965,35 +4967,43 @@ def svn_revision():
 
 
 def read_at_html(read, labels):
-    """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it: each part escaped, the
-    rebuild command in a `<code>`, and its copy button. Every `_` is written as a character reference, so no placeholder of the page can match inside it. Each
-    part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
+    """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it, and the fold beneath it
+    that says the rest: the line names where the board was read and when, that the page reads its file again, and the rebuild command's copy button, the
+    command itself hidden behind it; the fold names the history or the folder it was read from at the full time, why the commit is not a link, and what
+    is changed and not committed. Each part escaped; every `_` is written as a character reference, so no placeholder of the page can match inside it.
+    Each part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
     def say(key, *args):
         return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
     esc = lambda text: html_escape(text).replace("_", "&#95;")
     def head(shown, commit):
-        """The commit as the line shows it: a link to its page on the forge (`commit_link`), or the commit and why it is not one."""
+        """The commit as the line shows it — a link to its page on the forge (`commit_link`), or the commit alone — and the label of why it is no link."""
         url, why = commit_link(commit)
-        return (f'<a id="rh" href="{esc(url)}" target="_blank" rel="noopener">{esc(shown)}</a>' if url
-                else esc(say("read.unlinked", shown, say(why))))
+        return (f'<a id="rh" href="{esc(url)}" target="_blank" rel="noopener">{esc(shown)}</a>' if url else esc(shown)), why
     held = "\0"                                            # where a commit's own markup goes, once the label around it is escaped
-    if read.get("vcs") == "git":
-        sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")
-        where = say("read.git.unborn", branch or "HEAD") if not sha else say("read.git.detached", held) if branch is None else say("read.git.branch", branch, held)
-        facts = [esc(where).replace(held, head(sha, read.get("commit"))) if sha else esc(where),
-                 esc(say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n))]
-    elif read.get("vcs") == "svn":
-        revision = read.get("revision")
-        facts = [esc(say("read.svn.unread")) if revision is None else esc(say("read.svn.new")) if not revision
-                 else esc(say("read.svn", held)).replace(held, head("r" + revision, revision))]
-    else:
-        facts = [esc(say("read.none", read.get("folder", ""))), esc(say("read.none.why"))]
     at = datetime.datetime.fromisoformat(read["built_at"])
     zone = at.strftime("%z")
-    facts += [esc(say("read.at", at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else ""))), esc(say("read.self"))]
-    return ("<span>" + " · ".join(f'<span class="fact">{f}</span>' for f in facts) + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
+    when, full = at.strftime("%m-%d %H:%M"), at.strftime("%Y-%m-%d %H:%M") + (f" {zone[:3]}:{zone[3:]}" if zone else "")
+    if read.get("vcs") == "git":
+        sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")
+        shown, why = head(sha, read.get("commit")) if sha else ("", "")
+        where = say("read.git.unborn", branch or "HEAD", when) if not sha else say("read.git.detached", held, when) if branch is None else say("read.git.branch", branch, held, when)
+        line = esc(where).replace(held, shown)
+        about = [say("read.about.git", branch or "HEAD", full), say(why) if why else "",
+                 say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n)]
+    elif read.get("vcs") == "svn":
+        revision = read.get("revision")
+        shown, why = head("r" + revision, revision) if revision else ("", "")
+        line = (esc(say("read.svn.unread", when)) if revision is None else esc(say("read.svn.new", when)) if not revision
+                else esc(say("read.svn", held, when)).replace(held, shown))
+        about = [say("read.about.svn", full), say(why) if why else ""]
+    else:
+        line = esc(say("read.none", read.get("folder", ""), when))
+        about = [say("read.about.none", full), say("read.none.why")]
+    facts = [line, esc(say("read.self"))]
+    return ('<p id="ra" class="m"><span>' + " · ".join(f'<span class="fact">{f}</span>' for f in facts) + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
             f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{esc(say("read.copy"))}</button>'
-            '<span id="rs" class="said" aria-live="polite"></span>')
+            '<span id="rs" class="said" aria-live="polite"></span></p>\n'
+            f'<details class="about"><summary>{esc(say("read.about"))}</summary><p class="help">{" · ".join(esc(f) for f in about if f)}</p></details>')
 
 
 def board_basis():

@@ -124,26 +124,29 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: "Sitzungen · {0} am letzten Tag ({1} mit ihren Untersitzungen)"
-read.git.branch: "gelesen von {0} bei {1}"
-read.git.detached: "gelesen von einem losgelösten HEAD bei {0}"
-read.git.unborn: "gelesen von {0}, noch ohne Commit"
+read.git.branch: "gelesen von {0} @ {1} um {2}"
+read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
+read.git.unborn: "gelesen von {0}, noch ohne Commit, um {1}"
 read.git.clean: nichts geändert und nicht committet
 read.git.changed: "{0} Pfade geändert und nicht committet"
 read.git.changed.one: 1 Pfad geändert und nicht committet
 read.git.unread: was geändert und nicht committet ist, wird hier nicht gelesen
-read.svn: "gelesen von der Arbeitskopie bei {0}"
-read.svn.unread: "gelesen von der Arbeitskopie: ihre Revision wird hier nicht gelesen"
-read.svn.new: gelesen von der Arbeitskopie, noch ohne Revision
-read.none: "gelesen aus dem Ordner {0}"
+read.svn: "gelesen von der Arbeitskopie @ {0} um {1}"
+read.svn.unread: "gelesen von der Arbeitskopie um {0}: ihre Revision wird hier nicht gelesen"
+read.svn.new: "gelesen von der Arbeitskopie, noch ohne Revision, um {0}"
+read.none: "gelesen aus dem Ordner {0} um {1}"
 read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
-read.at: "gebaut {0}"
 # read.self: a draft — the native read is the go-to-market seat's
 read.self: sie liest ihre Datei wieder, wenn Sie zu ihr zurückkehren; nichts fragt ständig nach
 # read.copy, read.copy.spoken: drafts — the native read is the go-to-market seat's
 read.copy: Neubau-Befehl
 read.copy.spoken: den Neubau-Befehl kopieren
+# read.git.branch and its siblings, read.about and its three: drafts — the native read is the go-to-market seat's
+read.about: "was diese Seite liest, und was sie nicht sehen kann"
+read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
+read.about.svn: "gelesen von der Arbeitskopie um {0}"
+read.about.none: "gelesen aus dem Ordner um {0}"
 read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
-read.unlinked: "{0} ({1})"
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
 link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
 link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"

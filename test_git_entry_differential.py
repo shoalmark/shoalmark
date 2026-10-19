@@ -875,9 +875,9 @@ def with_board(observed, path, data):
 
 
 # FM-057's page (R11's read-at line, as reviewed): what the candidate's board page holds beside the baseline's, specified here and
-# matched exactly, each once — the read-at line's style; the read-at line, whose commit, count of changed paths and time vary and
+# matched exactly, each once — the read-at line's style; the read-at line and its fold, whose commit, count of changed paths and time vary and
 # nothing else does; the three lines of script that copy its rebuild command; the reload's comment, its first two lines rewritten;
-# and the twenty-three `read.*` and `link.*` words in the label table, by key. Taken out, the page is the baseline's.
+# and the twenty-five `read.*` and `link.*` words in the label table, by key. Taken out, the page is the baseline's.
 FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
     '#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}'
     '#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}',
@@ -885,27 +885,30 @@ FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
     '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())',
     '  .then(()=>$("rs").textContent=L["read.copied"],()=>{$("rc").hidden=false;$("rs").textContent=L["answer.sign.nocopy"]});',
 ))
-FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m"><span><span class="fact">read from main at ').encode() + rb"[0-9a-f]{7}"
-                           + re.escape(' (no forge named in the configuration, so not linked)</span> · <span class="fact">').encode()
-                           + rb"(?:1 path changed and not committed|[0-9]+ paths changed and not committed|nothing changed and not committed|what is changed and not committed is not read here)"
-                           + re.escape('</span> · <span class="fact">built ').encode() + rb"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [+-][0-9]{2}:[0-9]{2}"
+FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m"><span><span class="fact">read from main @ ').encode() + rb"[0-9a-f]{7}"
+                           + re.escape(" at ").encode() + rb"[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}"
                            + re.escape('</span> · <span class="fact">it reads its file again when you come back to it; nothing polls</span></span><code id="rc" hidden>shoalmark --html-only</code>'
                                        '<button type="button" id="rb" class="act" aria-label="copy the rebuild command"><svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z"></path></svg>rebuild command</button>'
-                                       '<span id="rs" class="said" aria-live="polite"></span></p>').encode() + rb"(?=\n)")
+                                       '<span id="rs" class="said" aria-live="polite"></span></p>\n<details class="about"><summary>what this page reads, and what it cannot see</summary>'
+                                       "<p class=\"help\">read from main's history at ").encode() + rb"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [+-][0-9]{2}:[0-9]{2}"
+                           + re.escape(" · no forge named in the configuration, so not linked · ").encode()
+                           + rb"(?:1 path changed and not committed|[0-9]+ paths changed and not committed|nothing changed and not committed|what is changed and not committed is not read here)"
+                           + re.escape("</p></details>").encode() + rb"(?=\n)")
 FM057_RELOAD = ("// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so a board rebuilt meanwhile — by an\n"
                 "// explicit run, a commit or an act; no hook rebuilds it — is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field\n").encode("utf-8"), \
                ("// reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so what a checkout, a merge or a pull\n"
                 "// changed is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field\n").encode("utf-8")
 FM057_KEYS_SHOWN = ("read.git.branch", "read.git.detached", "read.git.unborn", "read.git.clean", "read.git.changed", "read.git.changed.one", "read.git.unread",
-                    "read.svn", "read.svn.unread", "read.svn.new", "read.none", "read.none.why", "read.at", "read.self", "read.copy", "read.copy.spoken",
-                    "read.unlinked", "link.unpushed", "link.noforge", "link.unknown", "link.noviewer", "link.nocommit", "read.copied")
+                    "read.svn", "read.svn.unread", "read.svn.new", "read.none", "read.none.why", "read.self", "read.copy", "read.copy.spoken",
+                    "read.about", "read.about.git", "read.about.svn", "read.about.none", "link.unpushed", "link.noforge", "link.unknown", "link.noviewer",
+                    "link.nocommit", "read.copied")
 FM057_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in FM057_KEYS_SHOWN)
 
 
 def fm057_page_dropped(data):
-    """The candidate's board page without FM-057's page, each part taken out exactly once as specified above — the style line, the read-at line,
-    the three script lines, the twenty-three words — and the reload's comment put back as the baseline's. None where any part is not there exactly
-    once as written."""
+    """The candidate's board page without the read-at line's parts, each taken out exactly once as specified above — the style line, the read-at
+    line and its fold, the three script lines, the twenty-five words — and the reload's comment put back as the baseline's. None where any part is
+    not there exactly once as written."""
     if data is None:
         return None
     for line in FM057_PAGE_LINES:
