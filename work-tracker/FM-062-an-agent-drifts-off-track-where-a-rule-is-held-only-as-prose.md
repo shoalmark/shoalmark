@@ -18,6 +18,8 @@ ask-proposal: "yes, the order stays"
 
 ## What is true now
 
+**2026-10-19 17:22:20 CEST — `/prune-drift`'s spec and proof are built in `7983283` and `8f22b12`; nine fixtures and six mutants pass on Python 3.15.0 and 3.9.6, review next.**
+
 **2026-10-19 — one ask, on the layer order.** `/find-drift`'s spec keeps the five layers in the order the Owner
 accepted. Whether a skill should rank above a rule a reviewer checks is put to the Owner, under *The layer order, for
 the Owner* below. The build goes on meanwhile.
@@ -72,6 +74,7 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 | Date | Event |
 |---|---|
+| 2026-10-19 17:22:20 CEST | `/prune-drift`'s spec and proof built on `/find-drift`'s READY head: the sort, record-before-delete steps, reader and directive safeguards, and nine-fixture class test are in `7983283` and `8f22b12`; all six scratch mutants are caught on both interpreters. Review next; suite registration waits for v0.20.2's integration branch. |
 | 2026-10-19 13:12:55 CEST | Round 1's RV-3491, RV-3492 and RV-3493 fixed: the description names the report destination, the tracker folder's fallback is explicit, and scoped runs retain the snapshot and source hashes; round 2 next. |
 | 2026-10-19 12:38:39 CEST | `/find-drift`'s spec and the plugin built in `818eb0c` and `0289061`; the standalone structure test passes on Python 3.15 and 3.9.6, with all four mutants refused on both. Review next; suite registration and `drift_sources` reader support follow on the integration lane. |
 | 2026-10-19 | *What is true now* corrected by the Planner: `/find-drift` reads the repository and writes only its report, its hash or a named private supplement; it is not read-only. |
