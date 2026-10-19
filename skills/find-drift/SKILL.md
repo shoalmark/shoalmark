@@ -7,11 +7,11 @@ description: "Find every place in this repository where an agent could drift off
 
 Read the repository; write only the report and its hash, or the private supplement below. Commit nothing.
 
-1. Snapshot: print `git rev-parse HEAD`, `date`, `git status --porcelain --untracked-files=all` and
-   `git submodule status`. Stop if the tree is not clean, except for untracked reports and their hash files in
-   `<tracker folder>/evidence/drift/`; ignore nothing else. Read `tracker_dir` where set in `shoalmark.toml`, or use
-   the repository's named tracker folder. Without one, ask where to write; never write into the repository unasked.
-   Name every part not checked out: it bounds steps 2 to 8.
+1. Snapshot: print `git rev-parse HEAD`, `date`, `git status --porcelain --untracked-files=all` and `git submodule
+   status`. Stop if the tree is not clean, except for untracked reports and their hash files in `<tracker
+   folder>/evidence/drift/`; ignore nothing else. The tracker folder is `tracker_dir` in `shoalmark.toml`, or
+   `docs/work-tracker` where the file sets none. Without `shoalmark.toml`, ask where to write; never write into the
+   repository unasked. Name every part not checked out: it bounds steps 2 to 8.
 2. Sources: list the files whose text binds an agent — the agents' document and every file it names as binding,
    contributing and security guides, triage rules, seat definitions, skills, CI workflows, hooks with the scripts
    and configuration they run. Leave lookup-only files out; name them and why. Read `drift_sources` where set in
