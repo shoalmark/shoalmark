@@ -34,14 +34,14 @@ R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\
 # FM-030, R9's two quick wins (exact text, RV-3296): what the candidate's board page may add beside the baseline's, specified here
 # and matched exactly, each once — the ten lines of script the day adds, as written; four inert templates after the dialog, whose
 # markup is fixed and whose text and label-valued attributes (the board's words, the four values) may vary; the prompts they copy,
-# `,DAY={"standup": …, "closeout": …}` before `BRANCH=`; and the twenty-nine `day.*` words in the label table, by key. The answer's
+# `,DAY={"standup": …, "closeout": …}` before `BRANCH=`; and the thirty-one `day.*` words in the label table, by key. The answer's
 # second screen copies through the day's clipboard helper: one line in place of its own three. Taken out, with FM-057's page
 # (`fm057_page_dropped`), the page is the baseline's.
 DAY_SCRIPT = tuple(("\n" + line).encode("utf-8") for line in (
     "// FM-030 day: the one clipboard path — the answer's second screen (FM-013), the stand-up's and the close-out's dialog: *Copied* only when the clipboard",
     "// FM-030 day: said so, else the line that says to select the text and copy it (a board opened from a file often has no clipboard)",
     'clip=(d,text)=>{const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(text):Promise.reject())   // FM-030 day',
-    '  .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);d.querySelector(".copy").onclick=copy;copy()},   // FM-030 day',
+    '  .then(()=>{out.className="said ok";out.innerHTML=`<span class="go">${ICO.check}${l("day.copied")}</span>`},()=>{out.className="said";out.innerHTML=`<span class="hot">${ICO.cross}${l("day.nocopy")}</span>`});d.querySelector(".copy").onclick=copy;copy()},',
     "// FM-030 day: R9's two quick wins — the stand-up's and the close-out's dialog, rendered by the generator with its values checked (`day_html`). It",
     "// FM-030 day: copies the prompt as the answer's second screen copies its command; where a value failed it holds the line that names it, and nothing to copy",
     'function DAYOPEN(k){const d=$("dlg");d.innerHTML=$("day-"+k).innerHTML;if(DAY[k])clip(d,DAY[k]);d.showModal();d.querySelector(".go").focus()}   // FM-030 day',
@@ -66,7 +66,7 @@ DAY_KEYS = ("day.standup.title", "day.standup.row", "day.standup.button", "day.s
             "day.closeout.button", "day.closeout.spoken", "day.standup.dialog", "day.closeout.dialog", "day.paste", "day.asks", "day.standup.asks",
             "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.not", "day.not.text", "day.fixed", "day.refused",
             "day.refused.chars", "day.refused.long", "day.refused.none", "day.refused.split", "day.value.name", "day.value.path", "day.value.cmd",
-            "day.value.branch")
+            "day.value.branch", "day.copied", "day.nocopy")
 DAY_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in DAY_KEYS)
 DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
             b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
@@ -881,10 +881,10 @@ def with_board(observed, path, data):
 # and the twenty-five `read.*` and `link.*` words in the label table, by key. Taken out, the page is the baseline's.
 FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
     '#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}'
-    '#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}',
+    '#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}',
     "// FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so",
     '$("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())',
-    '  .then(()=>$("rs").textContent=L["read.copied"],()=>{$("rc").hidden=false;$("rs").textContent=L["answer.sign.nocopy"]});',
+    '  .then(()=>{$("rs").className="said ok";$("rs").innerHTML=`<span class="go">${ICO.check}${lh("read.copied",`<code>${esc($("rc").textContent)}</code>`)}</span>`},()=>{$("rc").hidden=false;$("rs").className="said";$("rs").innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`});',
 ))
 FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m"><span><span class="fact">read from main @ ').encode() + rb"[0-9a-f]{7}"
                            + re.escape(" at ").encode() + rb"[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}"

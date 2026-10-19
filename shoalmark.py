@@ -3973,7 +3973,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
 /* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */
 #p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}
-#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}
+#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}
 /* the claim and the running line: the last line's one element `#F`; the claim shown with the board only, as when it stood in it */
 #f{color:var(--mute);margin:28px 0 0}#f:empty{display:none}#B[hidden]~#F #f{display:none}
 /* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
@@ -4022,7 +4022,7 @@ lh=(k,...a)=>esc(L[k]??k).replace(/\{(\d)\}/g,(m,i)=>a[i]??""),
 // FM-030 day: the one clipboard path — the answer's second screen (FM-013), the stand-up's and the close-out's dialog: *Copied* only when the clipboard
 // FM-030 day: said so, else the line that says to select the text and copy it (a board opened from a file often has no clipboard)
 clip=(d,text)=>{const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(text):Promise.reject())   // FM-030 day
-  .then(()=>out.textContent=L["answer.sign.copied"],()=>out.textContent=L["answer.sign.nocopy"]);d.querySelector(".copy").onclick=copy;copy()},   // FM-030 day
+  .then(()=>{out.className="said ok";out.innerHTML=`<span class="go">${ICO.check}${l("day.copied")}</span>`},()=>{out.className="said";out.innerHTML=`<span class="hot">${ICO.cross}${l("day.nocopy")}</span>`});d.querySelector(".copy").onclick=copy;copy()},
 byId=new Map(T.map(t=>[t[0],t])),inb=new Map();
 for(const t of T)for(const l of t[12])inb.set(l,[...(inb.get(l)||[]),t[0]]);
 EPICS=new Set(T.map(t=>t[13])),
@@ -4272,7 +4272,7 @@ $("v").onclick=e=>{const s=e.target.closest("[data-s]");if(s)document.getElement
 for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l]||"";$("q").placeholder=L["search"];$("q").title=L["search.help"];
 // FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so
 $("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())
-  .then(()=>$("rs").textContent=L["read.copied"],()=>{$("rc").hidden=false;$("rs").textContent=L["answer.sign.nocopy"]});
+  .then(()=>{$("rs").className="said ok";$("rs").innerHTML=`<span class="go">${ICO.check}${lh("read.copied",`<code>${esc($("rc").textContent)}</code>`)}</span>`},()=>{$("rc").hidden=false;$("rs").className="said";$("rs").innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`});
 // light or dark is the viewer's choice: auto follows the system; the other two switch the page's own
 // `prefers-color-scheme` rules on or off. Paper stays light.
 const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
@@ -4366,7 +4366,7 @@ LABELS = {
     "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
     "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
     "link.noviewer": "no Subversion viewer configured (`commit_url`), so not linked", "link.nocommit": "no commit to link",
-    "read.copied": "Copied — run it in the repository's folder, then reload this page.",
+    "read.copied": "copied: {0} · run it in the repository's folder, then come back to this page",
     # the week's verdicts and who gave them: by another session than the branch's, or by the same — reports, not proofs
     # the heading, led by what failed and what warns where there is any, then who gave the verdicts (the guide, §1)
     "reviews.title": "reviews · this week", "reviews.counts": "{0} by another session · {1} by the same session",
@@ -4417,6 +4417,8 @@ LABELS = {
     "answer.sign.intro": "Your decision is made. A browser cannot sign it — your terminal does, with your key. Run this command:",
     "answer.sign.copy": "command", "answer.sign.copy.name": "copy the command", "answer.sign.copied": "the command is on your clipboard",
     "answer.sign.nocopy": "copying did not work — this page has no clipboard here (a board opened from a file often has none): select the command and copy it",
+    "day.copied": "the prompt is on your clipboard",
+    "day.nocopy": "copying did not work — this page has no clipboard here (a board opened from a file often has none): select the prompt and copy it",
     "answer.sign.where": "where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
     "answer.sign.does": "what it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",

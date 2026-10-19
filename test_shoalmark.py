@@ -6342,7 +6342,9 @@ read.about: "was diese Seite liest, und was sie nicht sehen kann"
 read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
 read.about.svn: "gelesen von der Arbeitskopie um {0}"
 read.about.none: "gelesen aus dem Ordner um {0}"
-read.copied: Kopiert — im Ordner des Repositorys ausführen, dann diese Seite neu laden.
+read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
+day.copied: der Prompt ist in Ihrer Zwischenablage
+day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (eine aus einer Datei geöffnete Tafel hat oft keine). Den Prompt markieren und kopieren."
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
 link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
 link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
@@ -7072,7 +7074,7 @@ def _accept(source):
     verdict_ = json.loads(re.search(r"VERDICT=(\{[^}]*\})", script).group(1))
     tinted = {k: uses(k) for k in ("okbg", "warnbg", "failbg")}
     colours = {k: uses(k) for k in ("teal", "amber", "coral", "owed", "help")}
-    out[2] = (tinted == {"okbg": ["#dlg .said.ok", ".dfl.add", ".row.vok"], "warnbg": ["#p>.sec.wait>.sh", ".row.vwarn"], "failbg": [".dfl.del", ".row.vfail"]}
+    out[2] = (tinted == {"okbg": ["#dlg .said.ok", "#ra .said.ok", ".dfl.add", ".row.vok"], "warnbg": ["#p>.sec.wait>.sh", ".row.vwarn"], "failbg": [".dfl.del", ".row.vfail"]}
               and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#w", ".cq", ".vwarn .ty", ".warn"],
                               "coral": [".dfl.del .s", ".hot", ".q.r", ".vfail .ty"], "owed": [".owed"], "help": [".help"]}
               and verdict_ == {"READY": "vok", "READY TO TAG": "vok", "READY WITH FINDINGS": "vwarn", "NOT READY": "vfail"}
