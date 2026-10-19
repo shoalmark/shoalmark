@@ -12,7 +12,7 @@ hook: "The Owner answers each ask in a Board view that holds only its dialog; a 
 ## What is true now
 
 **2026-10-19 — the design amended, and its ask withdrawn until the amended sections are re-checked.** The Owner
-spot-checked the design with the Designer on 17 October (screen 14, `179bfc2c…`), and gave their position on open
+spot-checked the design with the Designer on 17 October (recorded privately), and gave their position on open
 question 3 on 19 October. The design now carries:
 - *decide later* in the view (§2, §3, §5, §6);
 - the view's own read-at words (§2, §6), with the one sentence G6 gains;
@@ -678,3 +678,4 @@ Reviewer privately. This text does not state them.
 | 2026-10-17 | Main joined (`6336355`), and the release ask's exchange recorded under `## Asks`: accepted - v0.20.1, signed `99b1708`. By the Planner seat. Records only. |
 | 2026-10-17 | Its design's own ruling ask put, by the Planner seat, as the Builder seat drafted it: whether the Owner adopts the design and its seven proposals. Records only. |
 | 2026-10-19 | The design amended by the Planner seat, on the Owner's positions of 17 October (through the Designer) and of 19 October on open question 3 (through the Auditor): *decide later* in the view, the view's read-at words, no result between asks, the seat's reasons with their fallback and the record's new fields, one verb. FM-064 filed. The ask withdrawn until a records re-check. Records only. |
+| 2026-10-19 | The records re-check's four findings fixed by the Planner seat: the reasons live as long as the ask (RV-3496); a kept answer names its push destination and stays out of later pushes (RV-3497); a row and a mutant for the view's read-at contract (RV-3498); RV-3499: recorded privately. Records only. |
