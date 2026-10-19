@@ -1046,6 +1046,8 @@ FM054_ON_A2_EDITS = (
      '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n'),
 )
 PR_C_JOIN_EDITS = (
+    ('#dlg pre{font:inherit;margin:6px 0;padding:0 0 0 2ch;border-left:2px solid var(--line);white-space:pre-wrap;word-break:break-all}\n',
+     '#dlg pre{font:inherit;margin:6px 0;padding:0 0 0 2ch;border-left:2px solid var(--line);white-space:pre-wrap;overflow-wrap:anywhere}\n'),
     ('.day{margin:6px 0 0}\n', '.day{margin:6px 0 0}.dr{flex-wrap:wrap;margin:8px 0 4px}.dr .c{color:var(--dim);font-weight:400;flex:1 1 20ch}.dr .act{margin-left:auto;font-weight:400}.dr .why{flex:1 1 100%;font-weight:400}\n'),
     ('  // the registry, a report of the trailers (FM-024, FM-032): the day — who committed in the last 24 hours, where — one fold, open on a desktop\n'
      '  if(REG&&REG.groups.length){const [t0,st]=split(l("sessions.recent",REG.parents,REG.all));\n'

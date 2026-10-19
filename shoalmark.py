@@ -3963,7 +3963,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 #dlg menu{display:flex;justify-content:flex-end;gap:1ch;margin:14px 0 0;padding:0}#dlg menu button{margin:0}#dlg button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 #dlg h4{font:inherit;color:var(--dim);margin:14px 0 2px}#dlg h4:before{content:"## ";content:"## " / "";color:var(--mute)}
 #dlg ol{margin:2px 0;padding-left:4ch}#dlg li{margin:0}#dlg p{margin:0 0 4px}
-#dlg pre{font:inherit;margin:6px 0;padding:0 0 0 2ch;border-left:2px solid var(--line);white-space:pre-wrap;word-break:break-all}
+#dlg pre{font:inherit;margin:6px 0;padding:0 0 0 2ch;border-left:2px solid var(--line);white-space:pre-wrap;overflow-wrap:anywhere}
 #dlg pre.cmd{border-left:1ch solid var(--teal);padding-left:1ch;user-select:all}
 #dlg .said{margin:0 0 8px}#dlg .said:empty{display:none}#dlg .said.ok{background:var(--okbg);margin:0 -2ch 8px;padding:2px 2ch}
 /* a diff (G5): the change a command commits — its path and +n −m on a band, the old and new line numbers, an added line on teal's tint behind a
