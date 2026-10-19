@@ -3,13 +3,22 @@ id: FM-059
 status: Proposed
 considered: FM-050, FM-007, FM-054, FM-058
 tags: process
-next: review
+next: owner
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
+ask: "Do you adopt FM-059's guided answer design, with its open questions as your positions settle them and the one sentence G6 gains, as its body states them under *The design* in the commit that last filed this ask?"
+ask-kind: ruling
+ask-since: 2026-10-19
+ask-options: "yes | yes, with the changes I name | no: run sheets stop before each answer until it is designed again"
+ask-proposal: "yes"
 ---
 
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
 
 ## What is true now
+
+**2026-10-19 — its ruling ask filed again.** In its second round, the records re-check found the amended sections
+READY WITH FINDINGS (`e61c054`). Its one finding is fixed in this commit's message. The ask is the design's, as
+amended, with the Owner's positions on the open questions and the one sentence G6 gains.
 
 **2026-10-19 — the design amended, and its ask withdrawn until the amended sections are re-checked.** The Owner
 spot-checked the design with the Designer on 17 October (recorded privately), and gave their position on open
@@ -679,3 +688,4 @@ Reviewer privately. This text does not state them.
 | 2026-10-17 | Its design's own ruling ask put, by the Planner seat, as the Builder seat drafted it: whether the Owner adopts the design and its seven proposals. Records only. |
 | 2026-10-19 | The design amended by the Planner seat, on the Owner's positions of 17 October (through the Designer) and of 19 October on open question 3 (through the Auditor): *decide later* in the view, the view's read-at words, no result between asks, the seat's reasons with their fallback and the record's new fields, one verb. FM-064 filed. The ask withdrawn until a records re-check. Records only. |
 | 2026-10-19 | The records re-check's four findings fixed by the Planner seat: the reasons live as long as the ask (RV-3496); a kept answer names its push destination and stays out of later pushes (RV-3497); a row and a mutant for the view's read-at contract (RV-3498); RV-3499: recorded privately. Records only. |
+| 2026-10-19 | Its ruling ask filed again by the Planner seat, after the records re-check's second round (`e61c054`): whether the Owner adopts the design as amended. Records only. |
