@@ -327,25 +327,32 @@ Anything else signs nothing, and the run waits again.
     request per sitting, which `--queue` reads `merge: yours — signed` (FM-050 3c). It lands by a merge or a
     fast-forward, never a squash (FM-050 3b). Here, seats never push to `main`, and the Owner merges pull requests
     (AGENTS.md). Open question 2.
+    - **Its destination** is that branch, not the home. Each later answer goes on top of the last one pushed there, and
+      a commit a refused push kept (below) is never in a later push's ancestry. Where the branch's first push was
+      refused, the next such answer is cut again from the default branch's tip.
   - **A refused push** (the home moved, a protected branch, the forge down): nothing is forced and nothing retried.
     This is the Owner's position of 19 October, open question 3.
     - **The signed commit is kept** on a local branch of the run's own, `guided/<ask-id>`.
     - **The run goes on** to the next ask, but not as `later` leaves one: this ask is signed, and not pushed.
     - **Its end names the ask so,** with its branch and the one command that pushes it,
-      `git push origin guided/<ask-id>:refs/heads/<home>`, fast-forward only.
+      `git push origin guided/<ask-id>:refs/heads/<destination>`, fast-forward only. The destination is the ask's
+      home, or the run's own `answers/<date>-<code>` for an ask the default branch holds.
+    - **The next answer** to the same destination goes on top of the last commit pushed there, never on the kept one.
     - **No run brings that ask again** while that branch exists.
-    - **Where the home moved,** that push is refused too. Deleting the branch lets the next run bring the ask again,
-      from the home's new tip.
+    - **Where the destination moved,** that push is refused too. Deleting the branch lets the next run bring the ask
+      again, from the new tip.
 - **Then the next ask:** only after git reports the push done, or after a refused push's commit is kept (above), the
-  run removes the worktree and prints the ask's line: signed, verified, and pushed to its home or not pushed. Then it
+  run removes the worktree and prints the ask's line: signed, verified, and pushed to its destination or not pushed. Then it
   opens the next ask's view, whose header says how this one ended. No result view opens between asks.
 - **The end:** it says, in the terminal and in the result view, which holds the whole run:
   - how many were answered;
   - each ask left, with why: left for later, moved, or not brought;
   - each ask signed and not pushed, with its branch and the one command that pushes it;
   - the run's own branch, if it has one, with the pull request to open;
-  - how the board shows each answer: *answered, on its way* until its branch lands on the default branch, then
-    answered (FM-050 3c). That holds only with FM-064's fix, which lands with this build.
+  - how the board shows each pushed answer: *answered, on its way* until its branch lands on the default branch, then
+    answered (FM-050 3c). That holds only with FM-064's fix, which lands with this build. An answer kept unpushed reads
+    *signed, not pushed*, with its branch and its command, and the board still shows its ask as waiting. An ask left
+    for later reads *nothing signed*.
 
   The run does not rebuild the checkout's board: the checkout did not change.
 
@@ -392,16 +399,16 @@ it, handed to it with this design. The German comes after the native read, throu
   | Where | Draft |
   |---|---|
   | `## your choice`, its state | *pick one · none is picked for you* |
-| `## your choice`, the way out | *or, not now:* · *decide later* |
+  | `## your choice`, the way out | *or, not now:* · *decide later* |
   | the reject row | *your reason goes into the record with it; to ask again, the seat puts a new ask* |
   | the help line (G7) | *each choice's words are the ask's, as filed · a pick shows its lines under where you sign* |
-| the help line, no reasons filed | *the seat's reasons are in its tracker, linked above* |
-| a reason not filed | *not stated* |
+  | the help line, no reasons filed | *the seat's reasons are in its tracker, linked above* |
+  | a reason not filed | *not stated* |
   | `## where you sign`, empty | *nothing picked yet: there is nothing to sign* |
-| `## where you sign`, decide later | *nothing is signed: you leave {ask id} for later* |
-| the header, read-at | *written once, for this ask: it does not change while you answer* |
-| the header, before this | *before this: {i} of {n} · {ask id} · signed {sha} · verified · pushed* |
-| the result, read-at | *written once, at the run's end: it does not change* |
+  | `## where you sign`, decide later | *nothing is signed: you leave {ask id} for later* |
+  | the header, read-at | *written once, for this ask: it does not change while you answer* |
+  | the header, before this | *before this: {i} of {n} · {ask id} · signed {sha} · verified · pushed* |
+  | the result, read-at | *written once, at the run's end: it does not change* |
   | above the diff | *one commit, on {home}, changes {ITEM}'s tracker:* |
   | below the diff | *and `INDEX.md`, which the commit's hook writes from these lines* |
   | *how you sign*, step 1 | *copy the reply, with the button below* |
@@ -421,8 +428,9 @@ it, handed to it with this design. The German comes after the native read, throu
   | the lines again | *you picked {choice}: this commit goes on {home}:*, the lines, and the subject |
   | the lines changed | *these lines are not the view's: {why} · type yes to sign them; anything else signs nothing* |
   | the end | *{k} of {n} answered · left: {each id, with why}*, and the run's own branch, with *open its pull request* |
-| the end, not pushed | *{ask id} · signed {sha}, verified · not pushed: {why} · to push it: {command}* |
-| the end, the board | *each answer reads answered, on its way on the board until its branch is merged* |
+  | the end, not pushed | *{ask id} · signed {sha}, verified · not pushed: {why} · kept on {branch} · to push it: {command} · the board shows it waiting until then* |
+  | the end, left for later | *{ask id} · nothing signed: left for later* |
+  | the end, the board | *each pushed answer reads answered, on its way on the board until its branch is merged* |
   | the header, the tool's commit | *run by shoalmark {version} @ {sha}* |
   | the result, TOOL | *shoalmark {version} @ {sha}: {the PIN's release v{version} / this repository's commit, its files unchanged} · the hooks ran the same files, installed from {sha}* |
   | no link: not pushed | *no link: not pushed yet* |
@@ -481,6 +489,13 @@ Reviewer privately. This text does not state them.
     it;
   - **the board after a push:** an answer pushed to a seat's branch, and one pushed to `answers/<date>-<code>`, each
     read *answered, on its way* on the board until the merge (FM-064);
+  - **a refused push to the run's own branch, then another answer:** the first answer to an ask on `main` is refused
+    at its push, and a second such answer follows. Each time:
+    - the kept commit's command names `answers/<date>-<code>`, never `main`;
+    - the second answer is cut from the default branch's tip, or from the last commit pushed to that branch, and no
+      pushed commit has the kept one in its ancestry;
+    - a second run does not bring the first ask;
+    - the end reads *signed, not pushed* for the first and *answered, on its way* for the second;
   - **the seat's reasons:** an ask with all three fields shows them; an option whose *because* is empty reads *not
     stated*; an ask with none shows the fallback link and help line;
   - **the reasons' lifetime** (S3's rows, built with S3): an answer to an ask with all three fields, accepted and
@@ -523,6 +538,8 @@ Reviewer privately. This text does not state them.
     wrong tool;
   - **a refused push's ask brought again:** a second run brings it while `guided/<ask-id>` exists;
   - **the reasons allowed on an open ask only:** the answered ask with its fields is refused;
+  - **the recovery command aimed at the home:** a kept answer to an ask on `main` names `refs/heads/main`;
+  - **a kept commit in a later push's ancestry:** the second answer's push carries the first;
   - **a result view opened between asks:** the recorder gets two paths for one ask;
   - **the board reading `origin/answer/` only:** the pushed answer reads *waiting for you* (FM-064).
 - **What each backend can claim:**
