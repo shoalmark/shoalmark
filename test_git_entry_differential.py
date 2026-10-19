@@ -1004,8 +1004,7 @@ def fm054_transform(page):
 FM054_ON_A2_EDITS = (
     ('.dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}\n',
      '.dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}\n'
-     '/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */\n'
-     '#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}\n'),
+     '#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}#p .pw.au,#dlg .pw.au{color:var(--amber)}\n'),
     (FM054_PAGE_EDITS[2][0], FM054_PAGE_EDITS[2][1].replace('"answer.give.title": "Give your answer", "act.give.title": "Record your act"',
                                                        '"answer.give.title": "give your answer", "act.give.title": "record your act"')),
     ("},ICO={", "},PROOF=" + FM054_PAGE_EDITS[3][1].split("},PROOF=", 1)[1].rsplit(",BRANCH=", 1)[0] + ",ICO={"),
@@ -1017,7 +1016,7 @@ FM054_ON_A2_EDITS = (
      ''),
     ('    <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n',
      '    <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>\n'
-     '    <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}\n'),
+     '    <p class="dp proof">${lh("proof.dialog",`<b class=\"pw${PROOF.state==\"author\"?\" au\":\"\"}\">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}\n'),
     ('// THE SECOND SCREEN (FM-013). OK used to disable itself and leave one button — abort — which read as taking the\n'
      '// decision back. The decision is made; the terminal signs it. This screen says first whether the command is on the clipboard, then what to run,\n'
      '// where, what it does step by step, what the end looks like, how to check it and where to go when signing fails — and has ONE way out, done\n'
@@ -1042,7 +1041,7 @@ FM054_ON_A2_EDITS = (
      '      w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",w.length>5?l("waiting.bottleneck",w.length,held.length):"",\n'
      "      // FM-007: how an answer here is proved — the same for every ask on one repository's board, so said once, here, before *accept*:\n"
      "      // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour's (PROOF, `proof_page`)\n"
-     '      lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join(" "):""),\n'
+     '      lh("proof.here",`<b class=\"pw${PROOF.state==\"author\"?\" au\":\"\"}\">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join(" "):""),\n'
      '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n'),
 )
 PR_C_JOIN_EDITS = (

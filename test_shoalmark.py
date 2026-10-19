@@ -7076,7 +7076,7 @@ def _accept(source):
     tinted = {k: uses(k) for k in ("okbg", "warnbg", "failbg")}
     colours = {k: uses(k) for k in ("teal", "amber", "coral", "owed", "help")}
     out[2] = (tinted == {"okbg": ["#dlg .said.ok", "#ra .said.ok", ".dfl.add", ".row.vok"], "warnbg": ["#p>.sec.wait>.sh", ".row.vwarn"], "failbg": [".dfl.del", ".row.vfail"]}
-              and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#w", ".cq", ".vwarn .ty", ".warn"],
+              and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#dlg .pw.au", "#p .pw.au", "#w", ".cq", ".vwarn .ty", ".warn"],
                               "coral": [".dfl.del .s", ".hot", ".q.r", ".vfail .ty"], "owed": [".owed"], "help": [".help"]}
               and verdict_ == {"READY": "vok", "READY TO TAG": "vok", "READY WITH FINDINGS": "vwarn", "NOT READY": "vfail"}
               and box_src.count("VERDICT[v[5]]") == 1 and 'class="q' not in box_src and tokens["owed"] == tokens["amber"]

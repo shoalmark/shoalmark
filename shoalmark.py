@@ -3971,8 +3971,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .diff{margin:6px 0 8px;border-bottom:1px solid var(--line)}.diff .dfh{display:flex;gap:1ch;padding:2px 1ch;background:var(--secbg)}.diff .dfh .dfn{margin-left:auto}
 .dfl{display:grid;grid-template-columns:3ch 3ch 1ch 1fr;gap:0 1ch;padding:0 1ch;white-space:pre-wrap;word-break:break-word}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
-/* the proof, a state (FM-007): its deciding word in ink, never framed; its consequence the line beneath, in the warning colour, never a box */
-#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}
+#p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}#p .pw.au,#dlg .pw.au{color:var(--amber)}
 #ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}
 /* the claim and the running line: the last line's one element `#F`; the claim shown with the board only, as when it stood in it */
 #f{color:var(--mute);margin:28px 0 0}#f:empty{display:none}#B[hidden]~#F #f{display:none}
@@ -4084,7 +4083,7 @@ const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29
     +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
   d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
     <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
-    <p class="dp proof">${lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}
+    <p class="dp proof">${lh("proof.dialog",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}
     ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
     :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
     <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
@@ -4150,7 +4149,7 @@ function box(){
       w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",w.length>__BOTTLE__?l("waiting.bottleneck",w.length,held.length):"",
       // FM-007: how an answer here is proved — the same for every ask on one repository's board, so said once, here, before *accept*:
       // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour's (PROOF, `proof_page`)
-      lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join(" "):""),
+      lh("proof.here",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join(" "):""),
     (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",
       [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):""].filter(Boolean).join(" · "),
       t[29][0]?btn("answer.accept",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'accept')`)+btn("answer.reject",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'reject')`):"")).join("")

@@ -334,9 +334,9 @@ def template_reads_proof(fm):
     # from PROOF and its labels, a state in ink, its consequence the line beneath in the warning colour, never a box
     page = fm.HTML_PAGE
     heading, dialog = page.split('l("waiting.title")}: ${w.length}</b>`')[-1].split("w.slice(0,14)")[0], page.split("const act=")[1].split("const sign=")[0]
-    if 'lh("proof.here",`<b class="pw">${l(PROOF.word)}</b>`)' not in heading or "l(PROOF.why)" not in heading or 'class="cq"' not in heading:
+    if 'lh("proof.here",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)' not in heading or "l(PROOF.why)" not in heading or 'class="cq"' not in heading:
         bad.append("the heading of *waiting for you* does not say the proof from PROOF")
-    if dialog.find('lh("proof.dialog",`<b class="pw">${l(PROOF.word)}</b>`)') < 0 or not -1 < dialog.find("proof.dialog") < dialog.find('l("answer.ok")') \
+    if dialog.find('lh("proof.dialog",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)') < 0 or not -1 < dialog.find("proof.dialog") < dialog.find('l("answer.ok")') \
             or "l(PROOF.why)" not in dialog:
         bad.append("the answer dialog does not say the proof before OK")
     if page.count("proof.here") != 1 or any(w in page for w in ("your answers here", "your answer here", '"author only', ">author only", "`author only")):
