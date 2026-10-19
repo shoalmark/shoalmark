@@ -31,14 +31,6 @@
 | 2 | P1 | build | — | intended, kind | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress |
 | 3 | P1 | build | — | intended, kind | [FM-044](FM-044-shoalmark-stops-with-a-traceback-where-git-is-not-installed.md) | A Subversion team without git could not run the reviewed copy: every command but --session-check and --queue stopped wi… | In Progress |
 
-### Acts owed to the Owner — with their time
-
-> Due, overdue or missed is the board's to say: it has a clock, and this file has none. `done:` takes an act off.
-
-| ID | Act | Promised | Due | Window |
-|----|-----|----------|-----|--------|
-| [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | Confirm completion and independent verification before the tag, without naming the private choice | 2026-10-19: accepted - Confirm completion and independent verification before the tag, without naming the private choice | no date yet | 60 min |
-
 
 ## Work
 

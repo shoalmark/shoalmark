@@ -4,8 +4,9 @@ status: In Progress
 considered: FM-008, FM-033, FM-007, FM-019, FM-022, FM-014
 tags: bug
 triaged: 2026-09-25
-next: owner
+next: build
 tier: P1
+done: "2026-10-19T02:39:25+02:00 · recorded privately"
 hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through"
 ask: "Have you chosen and set up R24's minimum privately, and has the independent Auditor verified it?"
 ask-kind: action
@@ -70,6 +71,9 @@ The seven clauses of the Owner's word above, as written, each with its synthetic
 **Tier: the gate — critical under path line 3; the Owner's cold session reviews it; the Auditor seat verifies after, against its plan
 sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as enforced by the tool, with its tier-0 limit stated.
 
+## Acts
+
+**2026-10-19** · done — recorded privately · Confirm completion and independent verification before the tag, without naming the private choice · holgo99
 ## Ship log
 
 | Date | Event |
