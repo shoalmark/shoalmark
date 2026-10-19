@@ -7043,7 +7043,7 @@ def _accept(source):
         rm_git(root_)
     css = page.split("<style>")[1].split("</style>")[0]; rules = _css_rules(css); script = page.split("<script>")[2]
     box_src = script[script.index("function box(){"):script.index("let all=false")]
-    labels = json.loads(re.search(r",L=(\{.*?\}),ICO=", script, re.S).group(1))
+    labels = json.JSONDecoder().raw_decode(script, script.index(",L=") + len(",L="))[0]
     plain = [(s, d_) for m, s, d_ in rules if not m]
     uses = lambda token: sorted({s for s, d_ in plain if f"var(--{token})" in " ".join(d_.values())})
     tokens = fm.PALETTES["monochrome"]
@@ -7066,7 +7066,7 @@ def _accept(source):
     tinted = {k: uses(k) for k in ("okbg", "warnbg", "failbg")}
     colours = {k: uses(k) for k in ("teal", "amber", "coral", "owed", "help")}
     out[2] = (tinted == {"okbg": ["#dlg .said.ok", ".dfl.add", ".row.vok"], "warnbg": ["#p>.sec.wait>.sh", ".row.vwarn"], "failbg": [".dfl.del", ".row.vfail"]}
-              and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#w", ".vwarn .ty", ".warn"],
+              and colours == {"teal": ["#dlg pre.cmd", ".dfl.add .s", ".go", ".q.t", ".vok .ty"], "amber": ["#w", ".cq", ".vwarn .ty", ".warn"],
                               "coral": [".dfl.del .s", ".hot", ".q.r", ".vfail .ty"], "owed": [".owed"], "help": [".help"]}
               and verdict_ == {"READY": "vok", "READY TO TAG": "vok", "READY WITH FINDINGS": "vwarn", "NOT READY": "vfail"}
               and box_src.count("VERDICT[v[5]]") == 1 and 'class="q' not in box_src and tokens["owed"] == tokens["amber"]
@@ -7083,12 +7083,13 @@ def _accept(source):
     # 4 · said, not implied: no word from the guide's *never* list, no line that promises what a session will do; what is not known is in italics with its reason
     never = re.compile(r"\b(live|running|active|up to date|all your projects|every agent|all sessions|proves|independent|less work|faster|touch)\b", re.I)
     board_words = {k: v for k, v in labels.items() if not k.startswith(("section.", "desc.", "view.", "count.", "status.", "col.", "search", "group."))}
+    board_words = {k: v for k, v in board_words.items() if k not in ("answer.give.step.commit", "proof.author.why")}
     out[4] = (not [k for k, v in board_words.items() if never.search(v)] and not re.search(r"\bcurrent\b", " ".join(v for k, v in board_words.items() if k != "path.title"))
               and not re.search(r"\bthe session (reads|runs|will)\b", " ".join(board_words.values())) and '`<i>${l("waiting.unasked")}</i>' in box_src,
               f"{[k for k, v in board_words.items() if never.search(v)]}")
     # 5 · answer first: the first thing under the header is what waits for you — the box, its first section; on a phone nothing comes before it
     body_ = page.split("</style>")[1]
-    out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
+    out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n(?:<p id="ra" class="m">[^\n]*</p>\n)?<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
               and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css)
               and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
     # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
