@@ -30,9 +30,9 @@ die gelesenen Dateien und Schritte: (a) Wo steht Arbeitspaket 37? (b) Was ist de
 (c) Was wartet gerade auf den Owner? (d) Was ist blockiert, und wodurch? (e) Woran erkennt man, dass Paket 12
 fertig ist?
 
-**2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.19.4` in einen Ordner **außerhalb** eurer
+**2. Prüfen, was ihr ausführt.** Holt das Repository am Tag `v0.20.0` in einen Ordner **außerhalb** eurer
 Arbeitskopie. Die Datei `shoalmark.py` hat — mit `\n`-Zeilenenden — den SHA-256
-`cce2974ae5293d83f0c6b477fd2dc8dcf3f3e36d9bdf726aae71abad65d9a7eb`. Es ist eine Datei; lest sie, bevor ihr sie startet.
+`06b9ca6960782f845cf87d37ff98ad9d6aeaeefda55ff406169cd0491139b6c5`. Es ist eine Datei; lest sie, bevor ihr sie startet.
 
 **3. Aufsetzen.** In einem leeren Wegwerf-Ordner `probe/` (auf Windows `python`, sonst `python3`):
 

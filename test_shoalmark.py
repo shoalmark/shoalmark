@@ -5448,12 +5448,14 @@ _help_ = subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--help"], 
 _help_ = re.sub(r"\s+", " ", _help_)
 _readme_ = re.sub(r"\s+", " ", _rd("README.md"))
 _NO_BOARD_LINE = "On git and on Subversion alike, after a checkout, a pull or `svn update`, run `--html-only` to rebuild the board."
+_release_head = re.search(rf"^## {re.escape(fm.__version__)} — (\d{{4}}-\d{{2}}-\d{{2}})$", _rd("CHANGELOG.md"), re.M)
 check("FM-006 · a private security report · the CHANGELOG's line — every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver "
-      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the Owner's words for it (13 October 2026, 0.19.4's), and the player stats keep theirs; the top bar and the footer's link name the release VERSION names",
+      "included, and a hooks folder inside the working tree refused (RV-2300, No deriver in hooks); run `--install-hook` on your default branch again after upgrading — and the section is dated 2026-10-02; the landing's footer names the newest release's day and the release's sentence (21 October 2026, 0.20.0's), and the player stats keep theirs; the top bar and the footer's link name the release VERSION names",
       "- Every hook `--install-hook` writes runs a copy of the tool kept in the git directory, which runs nothing a branch brings, no deriver included, and `--install-hook` refuses a hooks "
       "folder inside the working tree; run `--install-hook` on your default branch again after upgrading.\n" in _rd("CHANGELOG.md") and "last accepted it" not in _rd("CHANGELOG.md") and "The checkout and merge hooks run a copy" not in _rd("CHANGELOG.md")
       and "## 0.19.0 — 2026-10-02\n" in _rd("CHANGELOG.md") and "## 0.19.0 — 2026-10-01" not in _rd("CHANGELOG.md") and "no longer run anything after a checkout" not in _rd("CHANGELOG.md")
-      and 'v0.19.4, released 13 October 2026 — a security release: upgrade, run <code>--install-hook</code> again on your default branch, then <code>--check</code> once. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
+      and 'v0.20.0, released 21 October 2026 — Subversion without git, and a release archive. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board\'s excerpt: read on 1 October 2026, 12:47 CEST.' in _rd("overrides/landing.html") and "released 1 October 2026" not in _rd("overrides/landing.html")
+      and _release_head is not None and ("released " + str(datetime.date.fromisoformat(_release_head[1]).day) + datetime.date.fromisoformat(_release_head[1]).strftime(" %B %Y") + " — ") in _rd("overrides/landing.html")
       and "Counted on 1 October 2026 with <code>gh</code>" in _rd("overrides/landing.html")
       and f'release<b>v{fm.__version__}</b>' in _rd("overrides/landing.html") and f'releases/tag/v{fm.__version__}" style="color:#b4c3d1">v{fm.__version__}</a>' in _rd("overrides/landing.html"))
 check("FM-006 · R11 · the setup pages say what rebuilds the board — the tool, a commit that changes a work item, each answer and act, and on Subversion a commit through TortoiseSVN — and that "
@@ -13457,32 +13459,50 @@ else:
           _lb_other[0] == fm.EXIT_LINT and _lb_self[0] == fm.EXIT_LINT and _lb_line in _lb_other[1] and _lb_line in _lb_self[1]
           and "AP-2: in `" in _lb_other[1] and "this change is a `close` — `implementer@seat` is the seat `implementer`, which does not hold `close`" in _lb_other[1])
 
-# FM-037 · clause 7 · the real history: this repository's main as the guard's build merged it (0d60d55, PR 79), EVERY commit
-# walked as `--check` walks a branch — merges read against each parent, each commit under its own shoalmark.toml — and judged
-# against the Owner main's `[seats]` names, verified with the repository's own signers file whatever this clone's setting
 _main37, _g37 = "0d60d552b3c6322cc463d5caf427a7df1fea9a00", ["45198d5", "c755d31", "8d14b6b", "7dd6ba6", "fe36cc0", "ad9bf67"]
-_have37 = subprocess.run(["git", "-C", str(HERE), "cat-file", "--batch-check"], input="".join(f"{c_}^{{commit}}\n" for c_ in [_main37, "ae1f05e", "a680fdf", *_g37]).encode("utf-8"),
+_removed37 = "9409d3bd1a17a13bfc03829732c902be7fbf37d2"
+_objects37 = [f"{c_}^{{commit}}" for c_ in [_main37, _removed37, "ae1f05e", "a680fdf", *_g37]] + [f"{c_}:work-tracker/allowed_signers" for c_ in (_main37, _removed37)]
+_have37 = subprocess.run(["git", "-C", str(HERE), "cat-file", "--batch-check"], input="".join(f"{c_}\n" for c_ in _objects37).encode("utf-8"),
                          capture_output=True, env=_ENV)
 _have37 = subprocess.CompletedProcess(_have37.args, _have37.returncode, _have37.stdout.decode("utf-8", "replace"), _have37.stderr.decode("utf-8", "replace"))
-if _have37.returncode != 0 or "missing" in _have37.stdout or not (HERE / "work-tracker/allowed_signers").is_file():
-    SKIPS.append(("FM-037 · the real history", 1, "this clone does not hold main's history to 0d60d55 (a shallow or partial clone)"))
-    print(f"  skip  FM-037 · the real history — this clone does not hold main's history to 0d60d55; 1 check(s) did not run")
+if _have37.returncode != 0 or "missing" in _have37.stdout:
+    SKIPS.append(("FM-037 · the real history", 2, "this clone does not hold main's history to 0d60d55 (a shallow or partial clone)"))
+    print(f"  skip  FM-037 · the real history — this clone does not hold main's history to 0d60d55; 2 check(s) did not run")
 else:
-    def _real37():
-        os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="gpg.ssh.allowedSignersFile", GIT_CONFIG_VALUE_0=str(HERE / "work-tracker/allowed_signers"))
+    def _real37(signers):
+        saved = {k_: os.environ.get(k_) for k_ in ("GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0")}
+        os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="gpg.ssh.allowedSignersFile", GIT_CONFIG_VALUE_0=str(signers))
         try:
             n_, changed_ = fm.guard_walk(_main37)
             return n_, changed_, fm.guard_verdicts(changed_, fm.owners_at(_main37))
         finally:
-            for k_ in ("GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"):
-                os.environ.pop(k_, None)
-    fm.configure(HERE)
-    _n37, _changed37, _v37 = _no_git_env(_real37)
-    _by37 = {c_[:7]: (v_, w_) for c_, _s, _h, _w, v_, w_ in _v37}
-    _all37 = subprocess.run(["git", "-C", str(HERE), "rev-list", _main37], capture_output=True, text=True, env=_ENV).stdout.split()
-    check(f"FM-037 · clause 7 · the real history: walked commit by commit, main to 0d60d55 changes the two sections in exactly the six signed commits 45198d5 … ad9bf67, each accepted as the Owner's (`%G?` G, the signer his email); ae1f05e, the tracker moved with its key, changes nothing, and the root a680fdf wrote 0.1.0's bare scaffold — a scaffold where there was none (AU-20) (saw {_n37} commits, {_by37})",
-          _n37 == len(_all37) and any(c_.startswith("ae1f05e") for c_ in _all37) and any(c_.startswith("a680fdf") for c_ in _all37)
-          and all(_by37.get(c_) == ("signed", "") for c_ in _g37) and set(_by37) == set(_g37))
+            for k_, value in saved.items():
+                if value is None:
+                    os.environ.pop(k_, None)
+                else:
+                    os.environ[k_] = value
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            _signers37 = {}
+            for _ref37 in (_main37, _removed37):
+                _signers37[_ref37] = Path(tmp).resolve() / (_ref37 + ".signers")
+                _signers37[_ref37].write_bytes(subprocess.run(["git", "-C", str(HERE), "cat-file", "blob", f"{_ref37}:work-tracker/allowed_signers"],
+                                                             check=True, capture_output=True, env=_ENV).stdout)
+            _all37 = subprocess.run(["git", "-C", str(HERE), "rev-list", _main37], capture_output=True, text=True, env=_ENV).stdout.split()
+            fm.configure(HERE)
+            _n37, _changed37, _v37 = _no_git_env(lambda: _real37(_signers37[_main37]))
+            _by37 = {c_[:7]: (v_, w_) for c_, _s, _h, _w, v_, w_ in _v37}
+            check(f"FM-037 · clause 7 · the real history: walked commit by commit, main to 0d60d55 changes the two sections in exactly the six signed commits 45198d5 … ad9bf67, each accepted as the Owner's (`%G?` G, the signer his email) against the signers file as committed at 0d60d55; ae1f05e, the tracker moved with its key, changes nothing, and the root a680fdf wrote 0.1.0's bare scaffold — a scaffold where there was none (AU-20) (saw {_n37} commits, {_by37})",
+                  _n37 == len(_all37) and any(c_.startswith("ae1f05e") for c_ in _all37) and any(c_.startswith("a680fdf") for c_ in _all37)
+                  and all(_by37.get(c_) == ("signed", "") for c_ in _g37) and set(_by37) == set(_g37))
+            fm.configure(HERE)
+            _nremoved37, _changedremoved37, _vremoved37 = _no_git_env(lambda: _real37(_signers37[_removed37]))
+            _byremoved37 = {c_[:7]: (v_, w_) for c_, _s, _h, _w, v_, w_ in _vremoved37}
+            check(f"FM-037 · clause 7 · the real history, the removal holds: against the signers file as committed at 9409d3b, the same six commits are all refused with `%G?` U and none is accepted (saw {_nremoved37} commits, {_byremoved37})",
+                  _nremoved37 == len(_all37) and set(_byremoved37) == set(_g37)
+                  and all(v_ == "refused" and "`%G?` U" in w_ for v_, w_ in _byremoved37.values()))
+    finally:
+        fm.configure(HERE)
 fm.configure(HERE)
 
 # --- FM-031 · an `answer/*` pull request is the Owner's signed answer, not a Reviewer's; RV: a signed commit this clone
@@ -14345,7 +14365,7 @@ check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VE
 _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
 _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
              ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
-             *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2")),
+             *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2", "v0.19.4")),
              ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
 for _what, _rev, _read, _tags, _want in _pins_ctl:
     if not _held(_rev):
