@@ -31,7 +31,7 @@ class FontSources(unittest.TestCase):
                 self.assertIn("site check:", result.stderr)
 
     def test_local_sources(self):
-        for source in ('url(font)', 'url("font.woff2")', 'local("Example"), url(font?revision=1)', 'url(/shoalmark/font)'):
+        for source in ('url(font)', 'url("font.woff2")', 'local("Example"), url(font?revision=1)', 'url(/font)'):
             with self.subTest(source=source):
                 self.check('@font-face {font-family: Example; src:' + source + ';}', True)
 
@@ -58,7 +58,7 @@ class FontSources(unittest.TestCase):
 
 class LinkPreview(unittest.TestCase):
     def test_preview_image_is_a_file_of_the_site(self):
-        meta = '<meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">'
+        meta = '<meta property="og:image" content="https://shoalmark.tools/assets/preview.png">'
         for present in (True, False):
             with self.subTest(present=present), tempfile.TemporaryDirectory() as tmp:
                 site = Path(tmp)
