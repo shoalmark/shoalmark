@@ -31,12 +31,6 @@ POISON_KEYS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_
 # bare `>` line. The one difference the consumer's snapshots may show; CI run 38744072206 failed the two default cases on it.
 INDEX_PATH = "work-tracker/INDEX.md"
 R21_LINE = re.compile(r"\n>\n> Generated \d{4}-\d{2}-\d{2} · \d+ trackers \([^\n]*\)\.(?=\n|\Z)".encode("utf-8"))
-# FM-030, R9's two quick wins (exact text, RV-3296): what the candidate's board page may add beside the baseline's, specified here
-# and matched exactly, each once — the ten lines of script the day adds, as written; four inert templates after the dialog, whose
-# markup is fixed and whose text and label-valued attributes (the board's words, the four values) may vary; the prompts they copy,
-# `,DAY={"standup": …, "closeout": …}` before `BRANCH=`; and the thirty-two `day.*` words in the label table, by key. The answer's
-# second screen copies through the day's clipboard helper: one line in place of its own three. Taken out, with FM-057's page
-# (`fm057_page_dropped`), the page is the baseline's.
 DAY_SCRIPT = tuple(("\n" + line).encode("utf-8") for line in (
     "// FM-030 day: the one clipboard path — the answer's second screen (FM-013), the stand-up's and the close-out's dialog: *Copied* only when the clipboard",
     "// FM-030 day: said so, else the line that says to select the text and copy it (a board opened from a file often has no clipboard)",
@@ -51,7 +45,7 @@ DAY_SCRIPT = tuple(("\n" + line).encode("utf-8") for line in (
 ))
 _T, _A = rb"[^<>]*", rb'[^"<>]*'                    # text, and an attribute's value: what may vary, never markup
 _C = rb"(?:[^<>]|<code>[^<>]*</code>)*"
-_ICO = re.escape('<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z"></path></svg>').encode()              # text with code spans: a command, a path, a value shown
+_ICO = re.escape('<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z"></path></svg>').encode()
 _REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb"</p><h4>" + _T + rb"</h4><p>" + _T + rb'</p><p class="ddim">' + _T
          + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
 DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
@@ -875,10 +869,6 @@ def with_board(observed, path, data):
                 board_after=dict(observed.get("board_after") or {}, **{path: serial(data)}))
 
 
-# FM-057's page (R11's read-at line, as reviewed): what the candidate's board page holds beside the baseline's, specified here and
-# matched exactly, each once — the read-at line's style; the read-at line and its fold, whose commit, count of changed paths and time vary and
-# nothing else does; the three lines of script that copy its rebuild command; the reload's comment, its first two lines rewritten;
-# and the twenty-five `read.*` and `link.*` words in the label table, by key. Taken out, the page is the baseline's.
 FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
     '#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block}'
     '#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}',
