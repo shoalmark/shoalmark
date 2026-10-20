@@ -204,6 +204,7 @@ section.band{padding-block:72px 40px}
 .hs{margin:0;padding:12px 14px;background:#040a10;border-left:3px solid var(--watt);font:13px/1.7 var(--mono);color:var(--ink);overflow-x:auto}
 .hs .c{color:var(--mute)}.hs .p{color:var(--watt)}
 .small{font-size:13px;color:var(--mute);margin:0}
+#agents>p.small{margin-top:24px}
 .peek{margin:0}
 .peek-box{position:relative;border:1px solid var(--magenta);background:#0a1520;padding:18px 14px 12px;font-size:13px}
 .peek-t{position:absolute;top:-.8em;left:12px;background:var(--magenta);color:var(--landink);padding:0 8px;font-weight:600;font-size:12px}
@@ -273,6 +274,7 @@ section.band{padding-block:72px 40px}
 .foot-band{background:var(--band);border-top:2px solid var(--drying)}
 .foot-band .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;padding-block:26px 30px}
 .foot-band .claim{margin:0;font-style:normal;color:#b4c3d1;font-size:14px}
+.foot-band .claim a{color:var(--drying)}
 .foot-band .mk{display:flex;align-items:center;gap:8px;font-size:12px;color:#b4c3d1}
 .foot-band .mk a{color:var(--drying);text-decoration:none;display:flex;align-items:center;gap:6px}
 .foot-band .mk svg{width:16px;height:16px}
@@ -299,12 +301,12 @@ section.band{padding-block:72px 40px}
   .inc-head{grid-template-columns:1fr}.facts{grid-template-columns:repeat(2,auto)}
   .score{gap:14px}.score .mid{display:none}
   .title{min-height:calc(100vh - 56px - 125px);min-height:calc(100svh - 56px - 125px);display:flex;flex-direction:column;justify-content:center;padding-bottom:28px}
-  .title .claim{margin-bottom:36px}
+  .title .claim{margin-bottom:36px;text-wrap:balance}
   h1{font-size:24px}
   .lede{margin-bottom:30px;font-size:16px}
   .cta .btn{flex:1;justify-content:center;padding:16px 18px}
 }{# FM-006 v0.19.0 first screen: on a phone the title holds the first screen below the HUD (56px) but its last 125px, so the H1, the job line and the one action carry it and the chart's top edge shows at the foot, hinting at what follows (the Owner's judgment of the render: in the last 100–150px) — the stack centred in the title, the wordmark and its claim set apart from the H1, the H1 at 24px in four balanced lines, the job line at 16px, the action the row's width; the fleet's tiles one to a row, each badge beside its words #}
-@media (max-width:400px){.hud .wrap{gap:12px;padding-inline:14px}}{# FM-006 v0.19.0 first screen: RV-2189, the Owner's ruling filed in FM-006 (27d5160) — at 400px and less the HUD's gaps and its side padding narrow, so the page does not scroll sideways at 360, 375 or 390px (the HUD's Docs link ended at 390px) #}
+@media (max-width:400px){.hud .wrap{gap:10px;padding-inline:14px}}{# FM-006 v0.19.0 first screen: RV-2189, the Owner's ruling filed in FM-006 (27d5160) — at 400px and less the HUD's gaps and its side padding narrow, so the page does not scroll sideways at 360, 375 or 390px (the HUD's Docs link ended at 390px) #}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
