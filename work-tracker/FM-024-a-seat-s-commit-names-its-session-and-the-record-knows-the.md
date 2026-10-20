@@ -19,6 +19,14 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+PR C - RV-3485 (3b8922f): the answer is recorded by the Owner's own
+terminal commit, signed only where the default branch requires it. The
+second screen gives clipboard status, the command, steps, result, check
+and failure route. The stand-up and close-out keep the day unfolded.
+THEME_FILES = () remains so an archive containing a theme file is outside
+the released set. Integration history was removed from code comments
+under the comment rule; exact page comparisons stay in place.
+
 **2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
 `--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
 brings it back.
