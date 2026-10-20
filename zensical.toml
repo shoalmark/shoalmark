@@ -1,7 +1,7 @@
 # The documentation site — Zensical (https://zensical.org), the same TOML shape as shoalmark.toml.
 # Two audiences, one source: human pages live here; the agents' document is README.md, rendered, never copied.
 [project]
-site_url = "https://shoalmark.github.io/shoalmark/"
+site_url = "https://shoalmark.tools/"
 site_name = "shoalmark"
 site_description = "A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first."
 repo_url = "https://github.com/shoalmark/shoalmark"
@@ -35,7 +35,7 @@ nav = [
 font = false
 language = "en"
 custom_dir = "overrides"   # .icons/shoalmark/pricke.svg: the logo inlined, so it takes the scheme's colour
-favicon = "assets/favicon.svg"
+favicon = "favicon.ico"
 features = ["content.code.copy", "content.action.edit", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "toc.follow"]
 
 [project.theme.icon]

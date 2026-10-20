@@ -29,14 +29,12 @@ class Links(HTMLParser):
                 if not target.is_file():
                     raise SystemExit(f"site check: broken repository link in {self.page}: {value}")
                 continue
-            if url.netloc == "shoalmark.github.io" and url.path.startswith("/shoalmark/"):
-                target = site / unquote(url.path[len("/shoalmark/"):])
+            if url.netloc == "shoalmark.tools":
+                target = site / unquote(url.path.lstrip("/"))
             elif not url.scheme and not url.netloc and url.path:
                 path = unquote(url.path)
-                if path.startswith("/shoalmark/"):
-                    target = site / path[len("/shoalmark/"):]
-                elif path.startswith("/"):
-                    raise SystemExit(f"site check: link outside project in {self.page}: {value}")
+                if path.startswith("/"):
+                    target = site / path.lstrip("/")
                 else:
                     target = (site / self.page).parent / path
             else:
@@ -59,8 +57,8 @@ class PreviewImage(HTMLParser):
         if tag != "meta" or attrs.get("property") != "og:image":
             return
         url = urlsplit(attrs.get("content") or "")
-        if url.netloc != "shoalmark.github.io" or not url.path.startswith("/shoalmark/") \
-                or not (site / unquote(url.path[len("/shoalmark/"):])).is_file():
+        if url.netloc != "shoalmark.tools" or not url.path.startswith("/") \
+                or not (site / unquote(url.path.lstrip("/"))).is_file():
             raise SystemExit(f"site check: link preview image not in the site, in {self.page}: {attrs.get('content')}")
 
 
@@ -73,10 +71,8 @@ def asset_target(page, value, kind):
     if url.scheme or url.netloc:
         raise SystemExit(f"site check: external {kind} in {page}: {value}")
     path = unquote(url.path)
-    if path.startswith("/shoalmark/"):
-        target = site / path[len("/shoalmark/"):]
-    elif path.startswith("/"):
-        raise SystemExit(f"site check: {kind} outside project in {page}: {value}")
+    if path.startswith("/"):
+        target = site / path.lstrip("/")
     else:
         target = page.parent / path
     if not target.resolve().is_relative_to(site.resolve()) or not target.is_file():

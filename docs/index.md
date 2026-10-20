@@ -7,7 +7,7 @@ template: landing.html
 
 # shoalmark
 
-*A Pricke on the Wadden flats keeps the fleet in the channel.*
+*A workbench for your agents. Your decisions on record.*
 
 ## The agents keep the work; the person keeps the word.
 
@@ -21,6 +21,8 @@ sentence per question, once a day, and make their answer one command.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
 questions and puts them to you once a day.
+
+[Why shoalmark?](why-shoalmark.md)
 
 **Your agents move on your word — and only your signed word counts.** In the record, an answer counts only as a commit
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as

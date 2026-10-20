@@ -5,7 +5,7 @@ description: "Ein Arbeits-Tracker in Ihrem Repository, für Ihre Agenten: Nichts
 
 # shoalmark
 
-*Eine Pricke im Watt – sie hält die Flotte im Fahrwasser.*
+*Eine Werkbank für Ihre Agenten. Ihre Entscheidungen sind dokumentiert.*
 
 **Die Startseite, auf Englisch:** [eine Seekarte des Wattenmeers](../index.md), auf der jeder Fehler aus shoalmarks eigenem Tracker als Wrack liegt.
 
@@ -20,6 +20,8 @@ kann – ein Satz pro Frage, einmal am Tag –, und macht aus ihrer Antwort eine
 
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
 shoalmark sammelt diese Fragen und legt sie Ihnen einmal am Tag vor.
+
+[Warum shoalmark?](warum-shoalmark.md)
 
 **Ihre Agenten handeln auf Ihr Wort hin — und es gilt nur Ihr signiertes Wort.** Im Beleg zählt eine Antwort nur als
 Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihre
