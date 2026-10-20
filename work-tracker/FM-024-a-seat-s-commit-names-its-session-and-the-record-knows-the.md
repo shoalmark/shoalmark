@@ -27,6 +27,15 @@ THEME_FILES = () remains so an archive containing a theme file is outside
 the released set. Integration history was removed from code comments
 under the comment rule; exact page comparisons stay in place.
 
+PR C - RV-3486 (93497fc): the joined page is checked byte for byte by
+A2's exact edits, proof edits as composed on A2, and the join's exact
+edits, after the day and read-at additions are removed. Proof reads
+remain checked separately before the remaining process comparison;
+schema checks retain A2's exact edits and the d-batch row changes. All
+negative controls and immutable baseline data remain in place. Review
+history was removed from comments and docstrings; executable code was
+unchanged.
+
 **2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
 `--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
 brings it back.
