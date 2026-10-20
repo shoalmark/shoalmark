@@ -11,7 +11,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>shoalmark — the agents keep the work; the person keeps the word</title>{# FM-006 v0.19.0 first screen: A1, the title #}
-<meta name="description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">{# FM-006 v0.19.0 first screen: A1, the one description #}
+<meta name="description" content="{{ config.site_description | e }}">{# FM-006: use the workbench descriptor for page and link previews. #}
 {# FM-006 v0.19.0 first screen: the link previews, in the landing's own head — the image is docs/assets/preview.png, a render of this page's chart with its wordmark #}
 <link rel="canonical" href="{{ config.site_url }}">
 <meta property="og:type" content="website">
@@ -19,7 +19,7 @@
 <meta property="og:locale" content="en_GB">
 <meta property="og:url" content="{{ config.site_url }}">
 <meta property="og:title" content="The agents keep the work; the person keeps the word.">
-<meta property="og:description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">
+<meta property="og:description" content="{{ config.site_description | e }}">
 <meta property="og:image" content="{{ config.site_url }}assets/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -354,7 +354,7 @@ section.band{padding-block:72px 40px}
     <svg class="wm" viewBox="0 0 130 16" role="img" aria-label="shoalmark"><path class="pricke" shape-rendering="crispEdges" d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"/><path d="M41.42 14.22Q39.91 14.22 38.82 13.73Q37.73 13.24 37.06 12.43L38.27 11.35Q38.88 12.02 39.64 12.37Q40.41 12.72 41.45 12.72Q42.41 12.72 42.99 12.4Q43.58 12.07 43.58 11.39Q43.58 11.1 43.47 10.9Q43.36 10.71 43.16 10.58Q42.97 10.45 42.7 10.38Q42.44 10.31 42.16 10.27L40.68 10.04Q40.14 9.97 39.58 9.81Q39.02 9.64 38.58 9.35Q38.14 9.05 37.86 8.58Q37.58 8.11 37.58 7.39Q37.58 5.97 38.67 5.23Q39.76 4.5 41.54 4.5Q42.84 4.5 43.78 4.88Q44.73 5.27 45.36 5.95L44.26 7.11Q43.9 6.69 43.24 6.34Q42.57 5.99 41.47 5.99Q39.51 5.99 39.51 7.23Q39.51 7.83 39.93 8.05Q40.36 8.28 40.93 8.35L42.41 8.58Q42.97 8.67 43.52 8.82Q44.06 8.96 44.5 9.26Q44.95 9.55 45.22 10.02Q45.5 10.49 45.5 11.21Q45.5 12.61 44.41 13.41Q43.33 14.22 41.42 14.22ZM47.86 0.68H49.82V6.3H49.91Q50.06 5.94 50.28 5.6Q50.51 5.27 50.83 5.03Q51.16 4.78 51.59 4.64Q52.02 4.5 52.6 4.5Q54 4.5 54.86 5.41Q55.73 6.33 55.73 8.02V14H53.77V8.31Q53.77 6.1 51.84 6.1Q51.46 6.1 51.1 6.2Q50.74 6.3 50.45 6.49Q50.17 6.69 50 7Q49.82 7.3 49.82 7.7V14H47.86ZM62.1 14.22Q61.07 14.22 60.26 13.87Q59.44 13.53 58.87 12.9Q58.3 12.27 58 11.37Q57.69 10.47 57.69 9.36Q57.69 8.24 58 7.34Q58.3 6.44 58.87 5.81Q59.44 5.18 60.26 4.84Q61.07 4.5 62.1 4.5Q63.13 4.5 63.95 4.84Q64.76 5.18 65.33 5.81Q65.9 6.44 66.2 7.34Q66.51 8.24 66.51 9.36Q66.51 10.47 66.2 11.37Q65.9 12.27 65.33 12.9Q64.76 13.53 63.95 13.87Q63.13 14.22 62.1 14.22ZM62.1 12.67Q63.18 12.67 63.82 12.01Q64.46 11.35 64.46 10.06V8.65Q64.46 7.36 63.82 6.7Q63.18 6.04 62.1 6.04Q61.02 6.04 60.38 6.7Q59.74 7.36 59.74 8.65V10.06Q59.74 11.35 60.38 12.01Q61.02 12.67 62.1 12.67ZM75.91 14Q75.06 14 74.64 13.57Q74.21 13.14 74.12 12.43H74.03Q73.76 13.28 73.05 13.75Q72.34 14.22 71.24 14.22Q69.82 14.22 68.98 13.47Q68.13 12.72 68.13 11.41Q68.13 10.06 69.13 9.35Q70.13 8.64 72.2 8.64H73.98V7.92Q73.98 6.03 71.98 6.03Q71.08 6.03 70.52 6.38Q69.97 6.73 69.59 7.3L68.42 6.35Q68.81 5.59 69.75 5.05Q70.69 4.5 72.16 4.5Q73.93 4.5 74.93 5.34Q75.94 6.19 75.94 7.79V12.45H77.11V14ZM71.8 12.78Q72.76 12.78 73.37 12.34Q73.98 11.91 73.98 11.23V9.88H72.23Q70.11 9.88 70.11 11.16V11.52Q70.11 12.15 70.56 12.46Q71.01 12.78 71.8 12.78ZM78.75 12.42H81.83V2.26H78.75V0.68H83.79V12.42H86.87V14H78.75ZM88.54 14V4.71H90.22V5.92H90.31Q90.52 5.32 90.93 4.91Q91.33 4.5 92.09 4.5Q92.83 4.5 93.23 4.9Q93.64 5.31 93.74 6.01H93.82Q94.07 5.38 94.52 4.94Q94.97 4.5 95.81 4.5Q96.89 4.5 97.32 5.25Q97.74 6.01 97.74 7.47V14H96.07V7.72Q96.07 6.75 95.83 6.38Q95.6 6.01 95.08 6.01Q94.61 6.01 94.29 6.32Q93.98 6.64 93.98 7.27V14H92.3V7.72Q92.3 6.75 92.08 6.38Q91.85 6.01 91.33 6.01Q90.85 6.01 90.53 6.32Q90.22 6.64 90.22 7.27V14ZM106.96 14Q106.11 14 105.69 13.57Q105.26 13.14 105.17 12.43H105.08Q104.81 13.28 104.1 13.75Q103.39 14.22 102.29 14.22Q100.87 14.22 100.03 13.47Q99.18 12.72 99.18 11.41Q99.18 10.06 100.18 9.35Q101.18 8.64 103.25 8.64H105.03V7.92Q105.03 6.03 103.03 6.03Q102.13 6.03 101.57 6.38Q101.02 6.73 100.64 7.3L99.47 6.35Q99.86 5.59 100.8 5.05Q101.74 4.5 103.21 4.5Q104.98 4.5 105.98 5.34Q106.99 6.19 106.99 7.79V12.45H108.16V14ZM102.85 12.78Q103.81 12.78 104.42 12.34Q105.03 11.91 105.03 11.23V9.88H103.28Q101.16 9.88 101.16 11.16V11.52Q101.16 12.15 101.61 12.46Q102.06 12.78 102.85 12.78ZM109.82 12.42H112.28V6.3H109.82V4.71H114.25V7.18H114.35Q114.48 6.69 114.71 6.24Q114.95 5.79 115.31 5.46Q115.67 5.13 116.19 4.92Q116.71 4.71 117.41 4.71H118.53V6.58H116.69Q115.61 6.58 114.93 7.22Q114.25 7.86 114.25 8.94V12.42H117.61V14H109.82ZM120.38 0.68H122.35V8.73H122.44L123.89 7.23L126.5 4.71H128.83L125.06 8.37L129.24 14H126.88L123.64 9.48L122.35 10.69V14H120.38Z"/></svg>
     <p class="claim">A workbench for your agents. Your decisions on record.</p>
     <h1>The agents keep the work; the person keeps the word.</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
-    <p class="lede">Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your repository, no <em>done</em> gets through without a commit behind it, and what waits for your word comes first.</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
+    <p class="lede">See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.</p>{# FM-006 Q1: product state, continuity and the person's own decision commits. #}
     <div class="cta">
       <a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>
     </div>{# FM-006 v0.19.0 first screen: A1, the one action, to the English note; the three anchors (1P for agents, 2P for people, press start) left the page — the HUD's nav keeps their destinations where it shows them #}
@@ -419,12 +419,12 @@ section.band{padding-block:72px 40px}
     <article class="box player p1" aria-labelledby="h-p1">
       <h3 class="t">1P · for agents</h3>
       <div class="who"><svg viewBox="0 0 12 12" aria-hidden="true"><use href="#ship"/></svg>
-        <div><h3 id="h-p1">For agents</h3>{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the agents' card is headed For agents; The fleet is the new section's #}<p>State that outlives a session, one source of truth, a gate that refuses a <em>done</em> without a commit behind it. The contract is written for the agent that has to use it.</p></div></div>
+        <div><h3 id="h-p1">For agents</h3>{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the agents' card is headed For agents; The fleet is the new section's #}<p>State that outlives a session, one source of truth, and checks for the evidence behind shipped work. The contract is written for the agent that has to use it.</p></div></div>
       <dl class="moves" aria-label="Moves">
         <div><dt>--next</dt><dd>A cold start in one command: what to work on, and what is true now.</dd></div>
         <div><dt>--new "…"</dt><dd>Look before you file: the closest trackers come first. The default is a slice of one that exists.</dd></div>
         <div><dt>--triage</dt><dd>The seat judges, the command applies — tier, rank and park are written from the worksheet, never by hand.</dd></div>
-        <div><dt>--check</dt><dd>The gate on every commit refuses what contradicts itself.</dd></div>
+        <div><dt>--check</dt><dd>Checks the work record and returns a non-zero status for violations.</dd></div>
       </dl>
       <ol class="rules" aria-label="House rules">
         <li><span><b>The tracker is canonical.</b> Never a side plan, a chat or a TODO comment.</span></li>
@@ -440,7 +440,7 @@ section.band{padding-block:72px 40px}
     <article class="box player p2" id="people" aria-labelledby="h-p2">
       <h3 class="t">2P · for people</h3>
       <div class="who"><svg viewBox="0 0 16 16" fill="#e8d4a0" aria-hidden="true"><use href="#pricke"/></svg>
-        <div><h3 id="h-p2">The Owner</h3><p>Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those questions and puts them to you once a day.</p></div></div>
+        <div><h3 id="h-p2">The Owner</h3><p>Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those questions for a sitting at the time you choose.</p></div></div>
       <dl class="moves" aria-label="Moves">
         <div><dt>the board</dt><dd>What waits for you, how long, and what it blocks — first, above everything else.</dd></div>
         <div><dt>--standup</dt><dd>One sitting, fifteen minutes, at the time you choose.</dd></div>
@@ -459,6 +459,13 @@ section.band{padding-block:72px 40px}
     </article>
   </div>
   <p class="small"><a href="{{ 'why-shoalmark.html' | url }}">Why shoalmark?</a></p>
+</section>
+
+<section class="band wrap" id="issue-tracker" aria-labelledby="h-issue-tracker">
+  <div class="sec-h"><h2 id="h-issue-tracker">Why not my issue tracker?</h2></div>
+  <p>Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work record lives in the repository they work in, and your answers are your own commits there.</p>
+
+  <p>If your current tracker already handles the handovers and decisions you need, that may be enough. shoalmark brings its own tracker; adopting it means deciding which record is the one that counts.</p>
 </section>
 
 <section class="band wrap" id="scores" aria-labelledby="h-scores">
@@ -497,9 +504,9 @@ section.band{padding-block:72px 40px}
   <div class="loses beta"><b>In this beta:</b><ul>
     <li>Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.</li>
     <li>For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.</li>
-    <li>Not proof that work is right. The gate refuses a <em>done</em> without a commit behind it. Whether that commit did the job is what a review is for.</li>
+    <li><em>Not proof that work is right.</em> In Git or Subversion changes being checked, a move to <code>Shipped</code> must name in its ship log a commit already in that change's history that changes something outside the records (on Subversion, a revision). This evidence rule does not cover <code>Closed</code>. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing <code>--check</code> on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.</li>
     <li>Made and tested on <code>git</code> with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need <code>git</code>, and the pull-request queue <code>git</code> and GitHub.</li>{# FM-006 v0.19.0, In this beta: the fourth line, the Owner's ruling filed in FM-006's release section (d7712b5), word for word #}
-  </ul></div>{# FM-006 v0.19.0, In this beta: the Owner's ruling filed in FM-006's release section — In this beta: and its three English lines, word for word, in place of the line that called FM-026's path coming (FM-026 is Parked) #}
+  </ul></div>{# FM-006 Q1: evidence scope and enforcement limits; the other beta limits remain. #}
   <ol class="stages">
     <li>They fetch shoalmark at a release tag and put a pinned copy in the repository, every file with its checksum (<code>--vendor</code>).</li>
     <li><code>--init</code> writes the configuration, the triage file and the agents' contract.</li>
@@ -519,8 +526,8 @@ section.band{padding-block:72px 40px}
 </section>
 
 <div class="ticker" aria-label="What it is not"><div>
-  <span>needs no server and no account <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> a gate on every commit <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b></span>
-  <span aria-hidden="true">needs no server and no account <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> a gate on every commit <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b></span>
+  <span>needs no server and no account <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> checks with <code>--check</code> <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b></span>
+  <span aria-hidden="true">needs no server and no account <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> checks with <code>--check</code> <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b></span>
 </div></div>
 </main>
 
