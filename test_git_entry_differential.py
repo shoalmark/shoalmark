@@ -46,7 +46,7 @@ DAY_SCRIPT = tuple(("\n" + line).encode("utf-8") for line in (
 _T, _A = rb"[^<>]*", rb'[^"<>]*'                    # text, and an attribute's value: what may vary, never markup
 _C = rb"(?:[^<>]|<code>[^<>]*</code>)*"
 _ICO = re.escape('<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z"></path></svg>').encode()
-_REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb"</p><h4>" + _T + rb"</h4><p>" + _T + rb'</p><p class="ddim">' + _T
+_REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb'</p><p class="ddim">' + _T
          + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
 DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
     rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span><span class="c">' + _T + rb'</span>(?:<button class="act" type="button" onclick="DAYOPEN\(\''
@@ -58,7 +58,7 @@ _J = rb'"(?:[^"\\]|\\.)*"'                           # a JSON string
 DAY_DATA = re.compile(rb',DAY=\{"standup": ' + _J + rb', "closeout": ' + _J + rb"\}(?=,BRANCH=)")
 DAY_KEYS = ("day.standup.title", "day.standup.row", "day.standup.button", "day.standup.spoken", "day.closeout.title", "day.closeout.row",
             "day.closeout.button", "day.closeout.spoken", "day.standup.dialog", "day.closeout.dialog", "day.paste", "day.asks", "day.standup.asks",
-            "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.not", "day.not.text", "day.fixed", "day.refused",
+            "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.fixed", "day.refused",
             "day.refused.chars", "day.refused.long", "day.refused.none", "day.refused.split", "day.value.name", "day.value.path", "day.value.cmd",
             "day.value.branch", "day.copied", "day.nocopy", "day.copy")
 DAY_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in DAY_KEYS)

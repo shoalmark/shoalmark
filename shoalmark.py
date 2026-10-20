@@ -4402,7 +4402,6 @@ LABELS = {
     "day.runs": "what it asks the session to run",
     "day.standup.runs": "{0}. It reads the trackers; it runs this repository's deriver, {2}, where there is one; and where gh can read the forge, it fetches origin and asks gh for the pull requests.",
     "day.closeout.runs": "{0} and {1}, and one git log of the default branch. {0} runs the deriver, {2}, where there is one, and where gh can read the forge, it fetches origin and asks gh for the pull requests.",
-    "day.not": "what the button does not do", "day.not.text": "It copies text. It runs, schedules and sends nothing; when you sit is yours.",
     "day.fixed": "The prompt is fixed, and in English. Only the folder name, its path, the tool's command and, for the close-out, the default branch's name fill it — none written by an agent, each checked against a plain set first.",
     "day.refused": "Nothing to copy: {0}{1} {2}, so this prompt is not built here.",
     "day.refused.chars": "holds a character outside the plain set — ASCII letters and digits, the space, . _ / ~ : - and the backslash",
@@ -4895,7 +4894,7 @@ def day_html(labels, prompts=None):
         runs = e("day." + kind + ".runs", c(CMD + (" --standup" if kind == "standup" else " --owner")), c(CMD + " --answered"), c(os.path.relpath(TRACKER_DIR / "derive", ROOT).replace(os.sep, "/")))
         dialogs.append(f'<template id="day-{kind}"><form method="dialog" class="sign"><h3>{e("day." + kind + ".dialog")}</h3>{body}'
                        f'<h4>{e("day.asks")}</h4><p>{e("day." + kind + ".asks")}</p><h4>{e("day.runs")}</h4><p>{runs}</p>'
-                       f'<h4>{e("day.not")}</h4><p>{e("day.not.text")}</p><p class="ddim">{e("day.fixed")}</p>'
+                       f'<p class="ddim">{e("day.fixed")}</p>'
                        f'<menu><button value="done" class="go">{e("answer.done")}</button></menu></form></template>')
     return "\n".join(rows + dialogs), {kind: text for kind, (text, _f) in prompts.items()}
 

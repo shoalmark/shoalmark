@@ -6497,8 +6497,6 @@ day.closeout.asks: "Er bittet die Sitzung, den Tag aus dem Verlauf vorzulesen, j
 day.runs: Was die Sitzung ausführen soll
 day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
 day.closeout.runs: "{0} und {1}, und ein git log des Standardzweigs. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
-day.not: Was der Knopf nicht tut
-day.not.text: "Er kopiert Text. Er führt nichts aus, plant nichts und sendet nichts; wann Sie sich setzen, entscheiden Sie."
 day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standardzweigs füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
 day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
 day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
