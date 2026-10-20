@@ -1215,6 +1215,13 @@ def nested_git_env():
 # that never wrote the tracker's line; `GIT_GLOB_PATHSPECS` and `GIT_NOGLOB_PATHSPECS` change a path that holds a wildcard. The tool's own pathspecs are each
 # a path the repository holds, or that magic, and need none of the four: they are dropped for every git the tool starts (`nested_git_env`).
 PATHSPEC_VARIABLES = ("GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS")
+# EVERY READ OF THE TOOL'S OWN SOURCE SEES GIT'S OWN OBJECTS (RV-3365: recorded privately): its provenance and its tag's tree and blobs are read with no
+# replacement object and no graft, whatever the environment or the source's configuration says — set last, over every other, by the source boundary
+# (`vcs_process`, `source=True`).
+SOURCE_GIT_ENV = {"GIT_NO_REPLACE_OBJECTS": "1", "GIT_GRAFT_FILE": os.devnull}
+# …and `core.useReplaceRefs` false, as the last of `GIT_CONFIG_PARAMETERS`, quoted as `board_settings` quotes: read after every configuration file, and
+# after every parameter the environment holds, which stay as they are (RV-3369: recorded privately)
+SOURCE_GIT_PARAMETER = "'core.useReplaceRefs=false'"
 
 
 # THE SETTINGS THE BOARD'S READS RUN WITH, fixed in the same place as the switch, whatever the repository, the user or the environment configures: no read of
@@ -6574,9 +6581,12 @@ def vcs_process(program, *args, cwd=None, source=False, **options):
     if program not in ("git", "svn"):
         raise ValueError("the VCS process boundary accepts git or svn")
     if source:
-        # Exactly the existing source-provenance reads, also used by the separate archive's source check during integration.
+        # Exactly the existing source-provenance reads, also used by the separate archive's source check during integration — and the release
+        # commit's tree and each of its blobs, each named by the object id git gave (`tag_files`): `--vendor` copies the tag's own bytes.
         source_reads = (("rev-parse", "--show-toplevel"), ("rev-parse", "HEAD"), ("tag", "--points-at", "HEAD"),
                         ("status", "--porcelain", "--untracked-files=all"))
+        if args[:-1] in (("ls-tree", "-r", "-z"), ("cat-file", "blob")) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(args[-1])):
+            source_reads += (args,)
         source_home = HERE
         try:
             resolved = pathlib.Path(cwd).resolve(strict=True) if cwd is not None else None
@@ -6590,7 +6600,8 @@ def vcs_process(program, *args, cwd=None, source=False, **options):
             print("shoalmark: source provenance accepts only its fixed Git reads in the tool's source folder — nothing is started", file=sys.stderr)
             raise SystemExit(EXIT_LINT)
         cwd = source_home                               # launch canonical HERE, never a checked alias's original spelling
-        options["env"] = source_env                     # no direct caller can inherit or supply another repository's context
+        inherited = source_env.get("GIT_CONFIG_PARAMETERS", "")   # the caller's environment was judged as given; the launch is hardened after that
+        options["env"] = dict(source_env, GIT_CONFIG_PARAMETERS=inherited + (" " if inherited else "") + SOURCE_GIT_PARAMETER, **SOURCE_GIT_ENV)
     elif program == "git" and vcs() == "svn":
         print("shoalmark: this Git operation requires a Git working copy; the configured target is Subversion — nothing is started", file=sys.stderr)
         raise SystemExit(EXIT_LINT)
@@ -9245,7 +9256,8 @@ def cli_preflight(args, backend):
     return CLI_GIT_ONLY[operation] if backend != "git" and operation in CLI_GIT_ONLY else (None, EXIT_OK)
 
 
-def parse_args(argv):
+def cli_parser():
+    """The command line, as `parse_args` reads it and as `r17_given` reads its option names."""
     parser = argparse.ArgumentParser(prog=os.environ.get("SHOALMARK_CMD") or "shoalmark", description="A work tracker that lives in the repository it tracks.")
     add = parser.add_argument
     add("--root", metavar="DIR", help="the repository to track; default: the nearest shoalmark.toml or git toplevel above the working directory")
@@ -9345,14 +9357,18 @@ def parse_args(argv):
              "its fonts copied into DIR, never over a file there, and yours to change. No setting chooses a theme: a board wears the one in its places")
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word, cut to five characters")
-    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR — its themes included — with a PIN of sha256 hashes. From a release: "
-                                            "a clean Git checkout at its VERSION tag, or an already-unpacked release archive holding RELEASE. Unzip first; a ZIP path is not a source argument. "
+    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR — its themes included — with a PIN of sha256 hashes. From a release only (R17): "
+                                            "a clean Git checkout of the whole tool at its VERSION tag, or an already-unpacked release archive whose RELEASE names its tag. Unzip first; a ZIP path is not a source argument. "
                                             "An archive's complete inventory and exact raw bytes are validated before copying the tool files; its manifest verifies internal bytes, not external origin. "
                                             "The PIN names the source; `--check` in the consumer reads it")
-    add("--partial", action="store_true", help="with --vendor: copy what a Git source has although files are missing, and name them in the PIN; never bypass an archive's required manifest, inventory or safe paths")
-    add("--allow-untagged", action="store_true", help="with --vendor: permit a Git working copy not at its release tag or not clean, or a fully validated tag-none archive dry run; the PIN records the untagged source. Never bypass archive validation")
+    for flag in R17_FLAGS:                                  # R17 removed them: kept only to be named — one line, exit 2 (`r17_removed`)
+        add(flag, action="store_true", help=argparse.SUPPRESS)
     add("--version", action="version", version=__version__)
-    return parser.parse_args(argv)
+    return parser
+
+
+def parse_args(argv):
+    return cli_parser().parse_args(argv)
 
 
 DERIVED_COLUMNS = []          # the columns a deriver contributed on this run, in the order it named them
@@ -9525,6 +9541,66 @@ def source_provenance():
     why = "; ".join(([f"HEAD {sha[:10]} is not at the tag {want}" + (f" (it carries {', '.join(tags)})" if tags else "")] if want not in tags else [])
                     + ([f"the tree has changes: {', '.join(dirty[:8])}" + (" …" if len(dirty) > 8 else "")] if dirty else []))
     return (want if want in tags else ""), sha, dirty, why
+
+
+# The bytes git counts as neither printable nor a line end, as its own checkout counts them (`crlf_checkout`): the controls below 32 but BS, TAB, ESC
+# and FF, and DEL; CR and LF are counted apart.
+NONPRINTABLE = bytes(sorted(set(range(32)) - {8, 9, 10, 12, 13, 27} | {127}))
+
+
+def crlf_checkout(blob):
+    """The bytes git's checkout writes for `blob` where `core.autocrlf` (text=auto) converts it — every LF made CRLF — or None where git writes the blob
+    as it is (RV-3366: recorded privately): one with no LF; one that holds a CR, alone or before an LF; and one git calls binary — a NUL, or fewer than 128
+    printable bytes for each byte that is not, a final Ctrl-Z not counted."""
+    cr, lf = blob.count(b"\r"), blob.count(b"\n")
+    nonprintable = len(blob) - len(blob.translate(None, NONPRINTABLE)) - (1 if blob.endswith(b"\x1a") else 0)
+    printable = len(blob) - cr - lf - nonprintable - (1 if blob.endswith(b"\x1a") else 0)
+    if lf == 0 or cr or b"\0" in blob or (printable >> 7) < nonprintable:
+        return None
+    return blob.replace(b"\n", b"\r\n")
+
+
+def tag_files(tag, sha):
+    """What `--vendor` copies from a Git source, read from the tree of its release commit `sha` at `tag` — the tag's own bytes, never the working copy's:
+    ({path: the tag's bytes}, [each file here beside the tool that the tag does not hold — never copied], "") — or ({}, [those files], what is wrong, naming
+    each file): a file of the tool the tag lacks; one that is no regular file in the tag, or none here; one whose bytes here are not the tag's as git checks
+    them out (the same bytes, or the bytes git's CRLF checkout writes for it, `crlf_checkout`). Each file here is compared with the tag's blob
+    (RV-3364: recorded privately)."""
+    def kept(rel):                                          # the paths `vendor_files` takes, read from the tag's tree
+        themes = rel[len("brand/themes/"):]
+        return rel in TOOL_FILES or rel in {f"brand/{n}" for n in BRAND_FILES} or (rel.startswith("brand/themes/") and not any(s.startswith(".") for s in themes.split("/")))
+    listing = vcs_process("git", "ls-tree", "-r", "-z", sha, cwd=HERE, source=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          env=nested_git_env())
+    if listing.returncode:
+        raise OSError(f"the tree of {sha[:10]} cannot be read")
+    held = {}
+    for entry in listing.stdout.split("\0"):
+        meta, _, rel = entry.partition("\t")
+        if rel and kept(rel):
+            held[rel] = meta.split(" ")                     # mode, type, object id
+    beside = sorted(set(vendor_files()) - set(held))
+    lacking = [rel for rel in TOOL_FILES if rel not in held]
+    if lacking:
+        return {}, beside, f"the tag {tag} does not hold {', '.join(lacking)} — it is not the whole tool"
+    odd = sorted(rel for rel, meta in held.items() if len(meta) != 3 or meta[1] != "blob" or meta[0] not in ("100644", "100755"))
+    if odd:
+        return {}, beside, f"{', '.join(odd)}: no regular file in the tag {tag}"
+    data, differ = {}, []
+    for rel, (_, _, oid) in sorted(held.items()):
+        blob = vcs_process("git", "cat-file", "blob", oid, cwd=HERE, source=True, capture_output=True, env=nested_git_env())
+        if blob.returncode or (hashlib.sha1 if len(oid) == 40 else hashlib.sha256)(b"blob %d\0" % len(blob.stdout) + blob.stdout).hexdigest() != oid:
+            raise OSError(f"the tag's object for {rel} cannot be read")
+        here = HERE / rel
+        if _norm(here) != os.path.normcase(os.path.realpath(here)) or not here.is_file():
+            differ.append(rel)                              # a symlink, a folder or nothing where the tag holds a file
+            continue
+        disk = here.read_bytes()
+        if disk != blob.stdout and disk != crlf_checkout(blob.stdout):
+            differ.append(rel)
+        data[rel] = blob.stdout
+    if differ:
+        return {}, beside, f"on disk, {', '.join(differ)} {'is' if len(differ) == 1 else 'are'} not the tag's own bytes"
+    return data, beside, ""
 
 
 # THE RELEASE ARCHIVE (FM-004, item 8; the Owner's D7 and their words of 2026-10-11): `shoalmark-<version>.zip`, built from a tag by
@@ -9742,6 +9818,49 @@ def archive_check():
     return ({}, {}, f"it is not what its {RELEASE_NAME} names — " + "; ".join(said)) if said else (data, m, "")
 
 
+# R17 (the Owner's ruling of 12 October, FM-061): `--vendor` takes only a tagged, verified, complete release, so no seat chooses a weaker trusted pin. Its
+# two bypasses are gone: each, given, is named in one line, exit 2, before anything is read or written (`r17_removed`). A copy pinned through one before
+# runs as pinned, and `--check` and `--vendor` name it with what to do (`bypass_lines`); neither refuses it for that alone.
+R17_FLAGS = ("--partial", "--allow-untagged")
+
+
+def r17_given(argv):
+    """The flags R17 removed that the words of `argv` name, each word read as argparse reads it — the flag, `--flag=…`, or an abbreviation that names it
+    and no other option — up to a bare `--`. Read before argparse, whose `--help` and `--version` end the run (RV-3367)."""
+    options = [name for action in cli_parser()._actions for name in action.option_strings if name.startswith("--")]
+    given = set()
+    for word in argv:
+        if word == "--":
+            break
+        name = word.partition("=")[0]
+        named = [name] if name in options else [option for option in options if option.startswith(name)] if name.startswith("--") else []
+        given.update(named if len(named) == 1 else ())
+    return [flag for flag in R17_FLAGS if flag in given]
+
+
+def r17_removed(given):
+    """The one line naming each flag R17 removed that is `given`, or "" where none is."""
+    them = "it" if len(given) == 1 else "them"
+    return (f"{' and '.join(given)}: R17 removed {them} — --vendor takes only a tagged, verified, complete release: run --vendor without {them}, from a "
+            f"clean clone at v{__version__} or from that release's unpacked archive; nothing was written") if given else ""
+
+
+def pin_bypasses(m):
+    """The flags R17 removed that a checked manifest (`pin_manifest`) says its copy was vendored through, each with what it let in: `--allow-untagged`
+    for a source with no release tag (a working copy, or an archive whose manifest names none), `--partial` for a source missing files. Since 0.17.8 only
+    those flags wrote these forms; they are read as ever (R26)."""
+    if not m:
+        return []
+    return ([("--allow-untagged", "an archive whose manifest names no release tag" if m["archive"] else f"a working copy, untagged {m['untagged']}")]
+            if not m["tag"] else []) + ([("--partial", f"a source missing {', '.join(m['missing'])}")] if m["partial"] else [])
+
+
+def bypass_lines(m, copy):
+    """R17: one line for each removed flag `copy` was vendored through (`pin_bypasses`), saying what to do — a report, never a refusal."""
+    return [f"{copy} was vendored through {flag}, from {what} — R17 removed that flag: the copy runs as pinned; vendor again from a tagged, verified, "
+            f"complete release to replace it" for flag, what in pin_bypasses(m)]
+
+
 # The manifest `--vendor` writes as a PIN's first line — the only form `--check` accepts (FM-011, R1): from a git checkout, its tag and commit or
 # `untagged`; from an unpacked release archive (FM-004), only what `--vendor` checked — the tag and commit its manifest names, every file matched
 MANIFEST_RE = re.compile(r"# shoalmark (?P<version>\d+\.\d+\.\d+) · (?:(?:tag v(?P<tag>\d+\.\d+\.\d+) · commit (?P<commit>[0-9a-f]{7,40})"
@@ -9782,8 +9901,8 @@ def pin_manifest(pin_text, pinned_version):
 
 
 def pin_report():
-    """What `--check` says of a vendored copy's PIN manifest: where it came from, only once checked — a warning when it
-    was no release or is partial, and one naming what is wrong when the manifest is not what `--vendor` wrote."""
+    """What `--check` says of a vendored copy's PIN manifest: where it came from, only once checked — a warning for each flag R17 removed that it was
+    vendored through (`bypass_lines`), and one naming what is wrong when the manifest is not what `--vendor` wrote. Reports, never refusals."""
     pin = HERE / "PIN"
     if ROOT not in HERE.parents or not board_isfile(pin):  # the reading rule: the running copy's PIN and VERSION are files of the tree, as in `pin_problems`
         return []
@@ -9797,13 +9916,8 @@ def pin_report():
         source = f"an archive whose manifest names {'v' + m['tag'] if m['tag'] else 'no tag'} (commit {m['commit'][:10]}), every file matched"
     else:
         source = f"tag v{m['tag']} (commit {m['commit'][:10]})" if m["tag"] else f"untagged {m['untagged']}"
-    lines = [f"pinned {m['version']} from {source}, vendored {m['vendored']}, {'partial' if m['partial'] else 'complete'}"]
-    if not m["tag"]:
-        lines.append("warning: this copy was vendored from an archive whose manifest names no release tag — vendor again from a release's archive" if m["archive"]
-                     else "warning: this copy was vendored from a working copy, not a release — vendor again from a clone at a tag")
-    if m["partial"]:
-        lines.append(f"warning: this copy is partial — missing {', '.join(m['missing'])}")
-    return lines
+    return [f"pinned {m['version']} from {source}, vendored {m['vendored']}, {'partial' if m['partial'] else 'complete'}"] \
+        + ["warning: " + line for line in bypass_lines(m, "this copy")]
 
 
 def vendor_files():
@@ -9812,13 +9926,21 @@ def vendor_files():
     return [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) + theme_files() if (HERE / rel).is_file()]
 
 
-def vendor(dest, partial=False, allow_untagged=False):
-    """Copy this tool into `dest` and pin every file (FM-011). Refused — exit 4, nothing written — when the source is
-    not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
-    (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
-    in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial. From an unpacked release archive
-    (FM-004, `archive_source`): refused unless every file it copies is the archive's `RELEASE` names, byte for byte, and its version is VERSION's; the PIN
-    then claims only that, beside the tag and commit the manifest names."""
+def clone_advice(tag):
+    """How a Git source `--vendor` refused can still be vendored: its release tag in a clean clone, or that release's unpacked archive
+    (RV-3376: recorded privately)."""
+    return f"Check out {tag} again in a clean clone and vendor from there, or vendor from that release's unpacked archive."
+
+
+def vendor(dest):
+    """Copy this tool into `dest` and pin every file (FM-011) — from a tagged, verified, complete release only (R17). Refused — exit 4, nothing written —
+    when the source is not the whole tool (`TOOL_FILES`), when it is no release (HEAD exactly at the tag of its `VERSION`, a clean tree), or when the copy
+    in `dest` was edited in place. From a Git source it copies the tag's own bytes, read from the tag's tree (`tag_files`): a file whose bytes on disk are
+    not the tag's is named and the run refused, nothing written; a file beside the tool that the tag does not hold is named and never copied. The PIN's
+    first line is the manifest: version, tag, commit, date, complete. From an unpacked release archive
+    (FM-004, `archive_source`): refused unless its `RELEASE` names a release tag, every file it copies is what that `RELEASE` names, byte for byte, and its
+    version is VERSION's; the PIN then claims only that, beside the tag and commit the manifest names. A copy in `dest` vendored through a flag R17
+    removed is named, one line for each (`bypass_lines`), by every run that reads its PIN — refused or not."""
     copied = vendor_files()                                 # the themes it ships travel, pinned (FM-002)
     named = pathlib.Path(dest).absolute()
     dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
@@ -9829,64 +9951,69 @@ def vendor(dest, partial=False, allow_untagged=False):
         write_rule(named / rel)                             # before anything is read or written
         write_rule(dest / rel)
     had = (board_text(dest / "VERSION") or "").strip()     # the reading rule
+    pinned = board_text(dest / "PIN") or ""
     # the file a PIN line names is read only where the copy would overwrite it — one of `copied` — and under the reading rule
-    edited = [l.partition("  ")[2] for l in (board_text(dest / "PIN") or "").splitlines()
+    edited = [l.partition("  ")[2] for l in pinned.splitlines()
               if not l.startswith("#") and l.partition("  ")[2] in copied and board_isfile(dest / l.partition("  ")[2])
               and digest(dest / l.partition("  ")[2]) != l.partition("  ")[0]]
+    for line in bypass_lines(pin_manifest(pinned, had)[0], f"the copy in {dest}"):     # R17: an earlier bypass is named, never a silent loss
+        print("note: " + line)
     if edited:
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
         return EXIT_LINT
     data, release = {}, None
-    if archive_source():                                    # FM-004: an unpacked release archive is judged whole, and never copied in part — `--partial` or not
+    if archive_source():                                    # FM-004: an unpacked release archive is judged whole, and never copied in part
         data, release, wrong = archive_check()
         if wrong:
             print(f"--vendor: {HERE} is an unpacked release archive, and {wrong}; nothing was written. Download the release's archive again and check its "
                   "SHA-256 against the pin published beside it.", file=sys.stderr)
             return EXIT_LINT
-        if not release["tag"] and not allow_untagged:
+        if not release["tag"]:                              # R17: a dry run's archive is no release, however whole
             print(f"--vendor: {HERE} is an unpacked release archive whose {RELEASE_NAME} names no release tag — a dry run's, not a release; nothing was "
-                  "written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
+                  "written. Vendor from a release's archive.", file=sys.stderr)
             return EXIT_LINT
-        missing = []
     else:
         missing = [rel for rel in TOOL_FILES if not (HERE / rel).is_file()]
-        if missing and not partial:
+        if missing:
             print(f"--vendor: {HERE} is not the whole tool — missing {', '.join(missing)}. Vendor from a clone at a release tag; "
-                  f"nothing was written. (`--partial` copies what there is and names the rest in the PIN.)", file=sys.stderr)
+                  "nothing was written.", file=sys.stderr)
             return EXIT_LINT
         try:
-            tag, sha, dirty, why = source_provenance()
+            tag, sha, _dirty, why = source_provenance()
         except OSError:
             print(f"--vendor: {HERE} holds no {RELEASE_NAME} manifest, and its Git provenance cannot be read; nothing was written. "
                   "Download the release's archive again and check its SHA-256 against the pin published beside it.", file=sys.stderr)
             return EXIT_LINT
-        if why and not allow_untagged:
-            print(f"--vendor: {why}. A consumer runs a release, never a working copy: check out v{__version__} in a clean clone "
-                  f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
+        if why:
+            print(f"--vendor: {why}. A consumer runs a release, never a working copy; nothing was written. {clone_advice(f'v{__version__}')}", file=sys.stderr)
             return EXIT_LINT
+        try:
+            data, beside, wrong = tag_files(tag, sha)       # the tag's own bytes, each file here compared with them
+        except OSError as e:
+            print(f"--vendor: {HERE} at {tag}: {e}; nothing was written. {clone_advice(tag)}", file=sys.stderr)
+            return EXIT_LINT
+        unheld = f"{', '.join(beside)} beside the tool, which the tag does not hold" if beside else ""
+        if wrong:
+            print(f"--vendor: {HERE} at {tag}: {wrong}" + (f"; and {unheld}" if unheld else "") + f" — nothing was written. {clone_advice(tag)}", file=sys.stderr)
+            return EXIT_LINT
+        if unheld:
+            print(f"--vendor: not copied — {unheld}; the copy holds the tag's files alone", file=sys.stderr)
+        copied = [rel for rel in copied if rel in data]     # the tag's paths alone, each from the tag's tree
     lines = []
     for rel in copied:
-        src = HERE / rel
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
-        if release is not None:
-            (dest / rel).write_bytes(data[rel])             # the bytes judged are the bytes copied
-        else:
-            shutil.copyfile(src, dest / rel)
-        pin_hash = hashlib.sha256(data[rel].replace(b"\r\n", b"\n")).hexdigest() if release is not None else digest(src)   # legacy PIN line-end normalization
-        lines.append(f"{pin_hash}  {rel}")
+        (dest / rel).write_bytes(data[rel])                 # the bytes judged are the bytes copied: the archive's, or the tag's
+        normalized = data[rel].replace(b"\r\n", b"\n")      # legacy PIN line-end normalization
+        lines.append(f"{hashlib.sha256(normalized).hexdigest()}  {rel}")
     today = datetime.date.today().isoformat()
     if release is not None:                                 # FM-004: the PIN claims only what `--vendor` checked
-        said = release["tag"] or "no tag"
-        head = [f"# shoalmark {__version__} · vendored from an archive whose manifest names {said}, commit {release['commit']}, every file matched · {today}"]
-        source = f"an archive whose manifest names {said}"
+        head = [f"# shoalmark {__version__} · vendored from an archive whose manifest names {release['tag']}, commit {release['commit']}, every file matched · {today}"]
+        source = f"an archive whose manifest names {release['tag']}"
     else:
-        head = [f"# shoalmark {__version__} · " + (f"tag {tag} · commit {sha}" if tag else f"untagged {sha[:10] or '(no git)'}" + (" (dirty)" if dirty else ""))
-                + f" · vendored {today} · {'partial' if missing else 'complete'}"]
-        head += [f"# missing: {', '.join(missing)}"] if missing else []
-        source = "tag " + tag if tag else "an untagged source, " + (sha[:10] or "no git")
+        head = [f"# shoalmark {__version__} · tag {tag} · commit {sha} · vendored {today} · complete"]
+        source = "tag " + tag
     put((dest / "PIN"), "\n".join(head + lines) + "\n")
-    print(f"vendored shoalmark {__version__} from {source} into {dest} — {len(lines)} files, pinned in PIN"
-          + (f" (was {had})" if had and had != __version__ else "") + (f" — PARTIAL: missing {', '.join(missing)}" if missing else ""))
+    print(f"vendored shoalmark {__version__} from {source} into {dest} — {len(lines)} files, pinned in PIN" + (f" (was {had})" if had and had != __version__ else ""))
     if had and had != __version__ and changes_since(had):
         print("\nWhat changes for this repository:\n\n" + changes_since(had))
     return EXIT_OK
@@ -11026,6 +11153,10 @@ def main(argv=None, *, _notice=True):
     for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+    removed = r17_removed(r17_given(sys.argv[1:] if argv is None else list(argv)))     # before argparse: its --help and --version end the run (RV-3367)
+    if removed:                                             # R17: a removed flag is named, never silently ignored — before anything is read or written
+        print(removed, file=sys.stderr)
+        return 2
     args = parse_args(argv)
     for flag, needs, alone, like in (("--tags", "--new", args.tags is not None and not args.new, '`--new KIND "the title" --tags bug`'),
                                      ("--supersede", "--answer", args.supersede and not args.answer, '`--answer <id> accept|reject "<option>" --supersede`'),
@@ -11078,14 +11209,14 @@ def main(argv=None, *, _notice=True):
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
         if not limitation:
-            return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+            return vendor(args.vendor)
         # FM-004: a --vendor refusal keeps its one line, the Subversion notice folded in (" — " + notice) as --tsvn-hook's and the
         # preflight's are, whichever function refuses, returning or raising; any other run of it says the notice once, on its own line
         import io
         said, code = io.StringIO(), None
         stderr, sys.stderr = sys.stderr, said
         try:
-            code = vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+            code = vendor(args.vendor)
         except SystemExit as stop:
             code = stop.code
             raise

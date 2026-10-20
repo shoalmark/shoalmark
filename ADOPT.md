@@ -30,8 +30,8 @@ on SVN, without proving uniqueness against a commit-trailer registry.
 An unpacked release archive can supply the tool without a Git source checkout: keep `RELEASE` and every required
 tool and probe file, then run that unpacked tool with `--root <project directory> --vendor <destination>`. It validates
 the complete inventory and exact raw bytes before copying the 19 tool files. The manifest establishes internal
-completeness; acquire the release from a source you trust. The existing `--allow-untagged` explicitly permits a
-fully validated tag-none dry run; `--partial` and `--allow-untagged` do not bypass archive validation. This acquisition
+completeness; acquire the release from a source you trust. A tag-none dry run's archive is refused, however complete:
+`--vendor` takes only a tagged, verified, complete release (R17), with no flag to bypass it. This acquisition
 path does not qualify all SVN gate, board, history, protection or installed-entry behavior. Those checks and native
 platform evidence remain necessary for the trial.
 

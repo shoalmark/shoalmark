@@ -36,8 +36,7 @@ def run_archive_integration_controls(fm, check, archive):
                     ('dir', None) if p.is_dir() else ('file', p.read_bytes()) for p in path.rglob('*')}
 
         def run(src, wc, destination, *, fault=None, environment=no_tools):
-            argv = [sys.executable, str(src / 'shoalmark.py'), '--root', str(wc), '--vendor', str(destination),
-                    '--partial', '--allow-untagged']
+            argv = [sys.executable, str(src / 'shoalmark.py'), '--root', str(wc), '--vendor', str(destination)]   # R17: no bypass flag
             if fault is not None:
                 wrapper = base / 'source fault.py'
                 wrapper.write_text('''import importlib.util,subprocess,sys
