@@ -13,7 +13,7 @@ hook: "The board rebuilds itself after every checkout, merge and rebase, and nev
 
 ## What is true now
 
-**2026-10-19 — Built on `fm/057-refresh-hooks-back`:** `2e5ddb7` restores the three refresh hooks and their checks; `d855a1f` names the hooks and the fetch-only limit in English and German. The helper's callers, three fixtures and the README assertion follow the restored hooks; verification is incomplete; the critical-tier review is next.
+**2026-10-19 — Built on `fm/057-refresh-hooks-back`:** `2e5ddb7` restores the three refresh hooks and their checks; `d855a1f` names the hooks and the fetch-only limit in English and German. The helper's callers, three fixtures and the README assertion follow the restored hooks; main at `be19828` is merged; the full non-browser run is clean; the critical-tier review is next.
 
 **2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately). The
 hooks that rebuild the board after a checkout, a merge and a rebase are what make the board convenient to use, and
