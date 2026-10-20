@@ -36,6 +36,10 @@ negative controls and immutable baseline data remain in place. Review
 history was removed from comments and docstrings; executable code was
 unchanged.
 
+PR C - RV-3487 (10e4d5e): the differential's last implementation comments
+went under the comment rule; no executable code or page bytes changed,
+and no allowance moved.
+
 **2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
 `--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
 brings it back.
