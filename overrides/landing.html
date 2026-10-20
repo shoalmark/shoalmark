@@ -13,19 +13,19 @@
 <title>shoalmark — the agents keep the work; the person keeps the word</title>{# FM-006 v0.19.0 first screen: A1, the title #}
 <meta name="description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">{# FM-006 v0.19.0 first screen: A1, the one description #}
 {# FM-006 v0.19.0 first screen: the link previews, in the landing's own head — the image is docs/assets/preview.png, a render of this page's chart with its wordmark #}
-<link rel="canonical" href="https://shoalmark.github.io/shoalmark/">
+<link rel="canonical" href="{{ config.site_url }}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="shoalmark">
 <meta property="og:locale" content="en_GB">
-<meta property="og:url" content="https://shoalmark.github.io/shoalmark/">
+<meta property="og:url" content="{{ config.site_url }}">
 <meta property="og:title" content="The agents keep the work; the person keeps the word.">
 <meta property="og:description" content="A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first.">
-<meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">
+<meta property="og:image" content="{{ config.site_url }}assets/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="A night chart of the German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="alternate" type="text/plain" title="llms.txt — for agents" href="https://shoalmark.github.io/shoalmark/llms.txt">
+<link rel="alternate" type="text/plain" title="llms.txt — for agents" href="{{ config.site_url }}llms.txt">
 <link rel="icon" href="{{ 'assets/favicon.svg' | url }}">{# FM-006 v0.19.0 first screen, the Owner's judgment of the render: the site's Pricke as the landing's icon — the file the theme names (zensical.toml favicon), so the browser asks for no /favicon.ico #}
 {# FM-006: same faces and weights, served from this site; no external font requests. #}
 <link rel="stylesheet" href="{{ 'stylesheets/fonts.css' | url }}">
@@ -330,7 +330,7 @@ section.band{padding-block:72px 40px}
     </div>
     <nav aria-label="Sections">
       <a href="#agents"><i>1P</i> agents</a><a href="#people"><i>2P</i> people</a><a href="#scores">scores</a><a href="#register">wrecks</a><a href="#start">start</a>
-    <a class="docs" href="https://shoalmark.github.io/shoalmark/setup.html">Docs</a>
+    <a class="docs" href="{{ config.site_url }}setup.html">Docs</a>
     </nav>
   </div>
 </header>
@@ -405,7 +405,7 @@ section.band{padding-block:72px 40px}
   </ul>
   <div class="fleet-foot">
     <p>A seat's <b>charter</b> — how it thinks, a bold Planner against a steady one — is <code>&lt;tracker dir&gt;/seats/&lt;name&gt;.md</code>, read by the agent at start, never by the gate.</p>
-    <a href="https://shoalmark.github.io/shoalmark/seats/">All seats <span aria-hidden="true">→</span></a>
+    <a href="{{ config.site_url }}seats/">All seats <span aria-hidden="true">→</span></a>
   </div>
 </section>
 
@@ -431,7 +431,7 @@ section.band{padding-block:72px 40px}
       </ol>
       <pre class="hs"><span class="c"># an agent at work — the contract is tools/shoalmark/README.md</span>
 <span class="p">$</span> python3 tools/shoalmark/shoalmark.py --next</pre>
-      <p class="small">Agent, sent here by your Owner? Read <a href="https://shoalmark.github.io/shoalmark/agents/index.html">the contract</a>; <a href="https://shoalmark.github.io/shoalmark/llms.txt">llms.txt</a> is at the site's root.</p>
+      <p class="small">Agent, sent here by your Owner? Read <a href="{{ config.site_url }}agents/index.html">the contract</a>; <a href="{{ config.site_url }}llms.txt">llms.txt</a> is at the site's root.</p>
     </article>
     <article class="box player p2" id="people" aria-labelledby="h-p2">
       <h3 class="t">2P · for people</h3>
@@ -507,9 +507,9 @@ section.band{padding-block:72px 40px}
     <p class="cost"><b>The rest comes to you</b>every session's last message ends with what waits for you. You open nothing.</p>
   </div>
   <div class="coins">
-    <div class="coin"><span class="go">▶ 2P</span><b>You, the Owner</b><span><a href="https://shoalmark.github.io/shoalmark/setup.html">Set up in ten minutes</a> · <a href="https://shoalmark.github.io/shoalmark/signing.html">Your answer is your commit</a> · <a href="https://shoalmark.github.io/shoalmark/standup.html">The standup</a></span></div>
+    <div class="coin"><span class="go">▶ 2P</span><b>You, the Owner</b><span><a href="{{ config.site_url }}setup.html">Set up in ten minutes</a> · <a href="{{ config.site_url }}signing.html">Your answer is your commit</a> · <a href="{{ config.site_url }}standup.html">The standup</a></span></div>
     <div class="coin"><span class="go">▶ 1P</span><b>Your project's agents</b><span>The <a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">note for trying it</a> (<a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md">Deutsch</a>): a measurement, not an instruction. They report to you at the end, and you decide.</span></div>{# FM-006 v0.19.0 first screen: B4, the English note, the German beside it #}
-    <div class="coin"><span class="go">▶ 1P</span><b>An agent at work</b><span>The contract is <code>tools/shoalmark/README.md</code> in your repository, <a href="https://shoalmark.github.io/shoalmark/agents/index.html">rendered here</a>. <code>llms.txt</code> is at the site's root.</span></div>
+    <div class="coin"><span class="go">▶ 1P</span><b>An agent at work</b><span>The contract is <code>tools/shoalmark/README.md</code> in your repository, <a href="{{ config.site_url }}agents/index.html">rendered here</a>. <code>llms.txt</code> is at the site's root.</span></div>
   </div>
 </section>
 
