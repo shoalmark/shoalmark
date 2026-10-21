@@ -5660,11 +5660,6 @@ check("FM-006 · B1 · the launch check is not blind: each of the switch on with
       f"(problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 8)
 
 
-# --- FM-006 · the taped coin slot: until the release that opens it, the button the probe will open is shown, taped over, and says why ------------------------
-# With the tape on and the probe switch off, the template draws that button as a button — aria-disabled, focusable, with no link and no handler — the tape across
-# it hidden from screen readers and its reason line, under the actions, named by aria-describedby. The dialog and its script stay under the switch alone, and
-# no script reads the taped button. landing_facts.py refuses the tape with the switch on, so the commit that turns the switch on removes the tape; its reader
-# reads the tape's one line before Python 3.11 too, and nothing else in the file stops it. Read from the sources, with controls.
 _TAPED_BUTTON = '<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">'
 
 
@@ -15259,8 +15254,6 @@ else:
               and read_.get("FM-097") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-097-a%22b.md"
               and len(read_) == 30 and not any("FM-096" in q or "FM-097" in q for q in quoted_))
 
-# FM-006: a parked wreck is filed and not fixed, so it is open — on the chart where the drawing placed it, counted in the top bar's open wrecks, and
-# labelled on hold in the incident box and the register, drawn hollow and still. The row parks three of the drawn wrecks at v0.19.2 and reads them
 if _lf_why:
     _skipped("FM-006 · a parked wreck is open, on the chart", 1, _lf_why)
 else:
@@ -15287,7 +15280,6 @@ else:
               and '"Parked": ["open held", T.status_parked]' in tpl_ and 'const ORDER = {"In Progress": 0, "Proposed": 1, "Parked": 1.5, "Shipped": 2, "Closed": 3};' in tpl_
               and '<symbol id="wo" viewBox="0 0 9 6">' in tpl_ and 'STATUS[w.status][0].startsWith("open")' in tpl_)
 
-# FM-006: the tape and the probe switch, read by landing_facts.py as a build reads them; the taped state's markup is checked with the landing's sources
 def _taped_state(lf, text):
     """landing_facts.py's launch state for a zensical.toml of `text`: (switch, taped), or the one line it stops with."""
     with tempfile.TemporaryDirectory() as d:
