@@ -5768,7 +5768,8 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
 # --- FM-006 · B1 · the hero's cue and the arcade labels' cabinet parts ------------------------------------------------------------------------------------
 # In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green; only its icon and
 # words blink, four blinks of a second each, then stay lit, and under reduced motion nothing blinks. The players label has a joystick and the start label a coin,
-# neither blinking; the other labels have no icon. Every icon is aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
+# neither blinking; the issue tracker's, the fleet's, the high scores' and the register's labels have a ticket, a ship, a screen and a wreck, none blinking. Every icon is
+# aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
 _CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
 _CUE_WORDS = {"en": {"cue": "— press start —", "players_n": "— select player —", "start_n": "— insert coin —", "scores_n": "— measured, not promised —", "reg_n": "— the wreck register —"},
               "de": {"cue": "— Start drücken —", "players_n": "— Spieler wählen —", "start_n": "— Münze einwerfen —", "scores_n": "— gemessen, nicht versprochen —", "reg_n": "— Wrackregister —"}}
@@ -5797,16 +5798,13 @@ def _cue_problems(src):
         bad.append("the cue's words and icon are not the only things of the cue and the labels that animate, blinking at most 5 s in all and then lit")
     if "*,*::before,*::after{animation:none!important" not in code:
         bad.append("the rule that ends every animation under reduced motion is not there")
-    # the icons: three, each aria-hidden and not focusable; the labels keep their words and take the icon after the first dash; the others take none
-    icons = re.findall(r'<svg class="cab cab-(dome|stick|coin)"([^>]*)>', code)
-    if sorted(n for n, _ in icons) != ["coin", "dome", "stick"] or not all('aria-hidden="true"' in a and 'focusable="false"' in a for _, a in icons):
-        bad.append("the three icons, dome, joystick and coin, are not each aria-hidden and not focusable")
-    for key, icon in (("players_n", "icon_stick"), ("start_n", "icon_coin")):
+    # the icons: seven, each aria-hidden and not focusable; every label keeps its words and takes its icon after the first dash
+    icons = re.findall(r'<svg class="cab cab-(dome|stick|coin|ticket|ship|screen|wreck)"([^>]*)>', code)
+    if sorted(n for n, _ in icons) != ["coin", "dome", "screen", "ship", "stick", "ticket", "wreck"] or not all('aria-hidden="true"' in a and 'focusable="false"' in a for _, a in icons):
+        bad.append("the seven icons, dome, joystick, coin, ticket, ship, screen and wreck, are not each aria-hidden and not focusable")
+    for key, icon in (("players_n", "icon_stick"), ("start_n", "icon_coin"), ("it_n", "icon_ticket"), ("fleet_n", "icon_ship"), ("scores_n", "icon_screen"), ("reg_n", "icon_wreck")):
         if f'<span class="n n-ic">{{{{ w.{key} | replace("— ", "— " ~ {icon} ~ " ") }}}}</span>' not in code:
             bad.append(f"the {key} label is not its words with the {icon} after the first dash")
-    for key in ("scores_n", "reg_n"):
-        if f'<span class="n">{{{{ w.{key} }}}}</span>' not in code:
-            bad.append(f"the {key} label is not its words alone")
     if "--gold:#e3b84c" not in code.replace(" ", ""):
         bad.append("the coin's gold is not the token --gold")
     return bad
@@ -5815,7 +5813,8 @@ def _cue_problems(src):
 _cs = _sources(_CUE_FILES)
 _cp = _cue_problems(_cs)
 check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue stands over the primary button in the probe state alone, in both languages' words; only its icon and words blink, "
-      "four seconds at most and then lit, and nothing blinks under reduced motion; the joystick and the coin stand on the players and start labels, the other labels have none, every icon is "
+      "four seconds at most and then lit, and nothing blinks under reduced motion; the joystick and the coin stand on the players and start labels, the ticket, the ship, the screen and the "
+      "wreck on the issue tracker's, the fleet's, the high scores' and the register's, every icon is "
       f"aria-hidden, and the labels keep their words (problems found: {_cp})", _cp == [])
 _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html", "{%- else %}\n      <a class=\"btn\" href=\"{{ urls.adopt }}\">", "{%- else %}\n      <span class=\"cue\" aria-hidden=\"true\">{{ w.cue }}</span><a class=\"btn\" href=\"{{ urls.adopt }}\">"),
          "the cue under the button": _with(_cs, "overrides/landing.html", '<div class="cta-main"><span class="cue" aria-hidden="true">', '<div class="cta-main"><a id="probe-open"></a><span class="cue" aria-hidden="true">'),
@@ -5827,13 +5826,13 @@ _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html"
          "a label blinking": _with(_cs, "overrides/landing.html", ".n-ic{display:inline-flex;align-items:center;gap:8px}", ".n-ic{display:inline-flex;align-items:center;gap:8px;animation:blink 1s steps(1) 4}"),
          "the reduced-motion rule gone": _with(_cs, "overrides/landing.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}"),
          "an icon read by screen readers": _with(_cs, "overrides/landing.html", '<svg class="cab cab-coin" viewBox="0 0 7 7" aria-hidden="true"', '<svg class="cab cab-coin" viewBox="0 0 7 7"'),
-         "an icon on the scores label": _with(_cs, "overrides/landing.html", '<span class="n">{{ w.scores_n }}</span>', '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_coin ~ " ") }}</span>'),
-         "an icon on the register label": _with(_cs, "overrides/landing.html", '<span class="n">{{ w.reg_n }}</span>', '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_stick ~ " ") }}</span>'),
+         "the scores label without its icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_screen ~ " ") }}</span>', '<span class="n">{{ w.scores_n }}</span>'),
+         "the register label with another icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_wreck ~ " ") }}</span>', '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_stick ~ " ") }}</span>'),
          "the players label reworded": _with(_cs, "overrides/partials/landing/en.html", '"players_n": "— select player —"', '"players_n": "— choose —"'),
          "the start label's German reworded": _with(_cs, "overrides/partials/landing/de.html", '"start_n": "— Münze einwerfen —"', '"start_n": "— Los —"')}
 _cctl_saw = {name: len(_cue_problems(src)) for name, src in _cctl.items()}
 check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s or "
-      "with its rules, a label blinking, the reduced-motion rule gone, an icon read by screen readers or on the scores or register label, and a label reworded leaves a problem "
+      "with its rules, a label blinking, the reduced-motion rule gone, an icon read by screen readers, the scores label without its icon, the register label with another, and a label reworded leaves a problem "
       f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 14)
 
 

@@ -18,10 +18,14 @@
 {#- a string that carries a placeholder: the build's figures and the language's addresses go in by name -#}
 {%- set probe_short = urls.probe_abs | replace("https://", "") | replace("/", "/<wbr>") -%}   {#- the short address as it is typed, from the value the link goes to, so that the two cannot differ; it may break after a slash -#}
 {%- macro T(s) -%}{{ s | replace("{tag}", F.release.tag) | replace("{probe_short}", probe_short) | replace("{date}", rdate) | replace("{contract}", urls.contract) | replace("{llms}", urls.llms) | replace("{setup}", urls.setup) | replace("{signing}", urls.signing) | replace("{standup}", urls.standup) | replace("{adopt}", urls.adopt) | replace("{adopt_other}", urls.adopt_other) | replace("{probe_abs}", urls.probe_abs) | replace("{discuss}", urls.discuss) | replace("{waiting}", F.excerpt.waiting | string) | replace("{acts}", F.excerpt.acts | string) | replace("{read_date}", F.read.date_de if de else F.read.date_en) | replace("{cohort_last}", F.cohort_last | string) | replace("{cohort_end}", F.cohort_end.de if de else F.cohort_end.en) | replace("{read_sha}", F.read.sha) }}{%- endmacro -%}
-{#- round 5: the arcade lines' cabinet parts, each a 7 × 7 grid at 2 CSS px a unit: a base colour with one light and one dark shade. `icon_dome` stands in the hero's cue (press start), `icon_stick` on the players label (select player), `icon_coin` on the start label (insert coin); the template puts one after the first dash of the line the words give. All three are aria-hidden. -#}
+{#- round 5: the arcade lines' cabinet parts, each a 7 × 7 grid at 2 CSS px a unit: a base colour with one light and one dark shade. `icon_dome` stands in the hero's cue (press start), `icon_stick` on the players label (select player), `icon_coin` on the start label (insert coin); the four leads without an arcade line take the same build: `icon_ticket` on the issue tracker's, `icon_ship` on the fleet's, `icon_screen` on the high scores' and `icon_wreck` on the register's. The template puts one after the first dash of the line the words give. All seven are aria-hidden. -#}
 {%- set icon_dome -%}<svg class="cab cab-dome" viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M2 1h3v1h-3ZM1 2h5v1h-5ZM1 3h5v1h-5ZM1 4h5v1h-5Z"/><path class="rg" d="M0 5h7v1h-7ZM0 6h7v1h-7Z"/><path class="hl" d="M2 2h1v1h-1Z"/></svg>{%- endset -%}
 {%- set icon_stick -%}<svg class="cab cab-stick" viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M2 0h3v1h-3ZM1 1h5v1h-5ZM2 2h3v1h-3ZM3 3h1v1h-1ZM3 4h1v1h-1Z"/><path class="rg" d="M1 5h5v1h-5ZM0 6h7v1h-7Z"/><path class="hl" d="M2 1h1v1h-1Z"/></svg>{%- endset -%}
 {%- set icon_coin -%}<svg class="cab cab-coin" viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M1 0h3v1h-3ZM0 1h5v1h-5ZM0 2h5v1h-5ZM0 3h5v1h-5ZM0 4h5v1h-5ZM0 5h5v1h-5ZM1 6h3v1h-3Z"/><path class="rg" d="M4 0h2v1h-2ZM5 1h2v1h-2ZM5 2h2v1h-2ZM5 3h2v1h-2ZM5 4h2v1h-2ZM5 5h2v1h-2ZM4 6h2v1h-2Z"/><path class="hl" d="M1 2h1v1h-1ZM1 3h1v1h-1Z"/></svg>{%- endset -%}
+{%- set icon_ticket -%}<svg class="cab cab-ticket" viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M0 1h4v1h-4ZM5 1h2v1h-2ZM0 2h7v1h-7ZM1 3h3v1h-3ZM5 3h1v1h-1ZM0 4h7v1h-7ZM0 5h4v1h-4ZM5 5h2v1h-2Z"/><path class="rg" d="M4 1h1v1h-1ZM4 3h1v1h-1ZM4 5h1v1h-1Z"/><path class="hl" d="M1 2h1v1h-1Z"/></svg>{%- endset -%}
+{%- set icon_ship -%}<svg class="cab cab-ship" viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M3 0h1v1h-1ZM2 1h3v1h-3ZM2 2h1v1h-1ZM4 2h1v1h-1ZM2 3h3v1h-3ZM2 4h3v1h-3ZM3 5h1v1h-1Z"/><path class="rg" d="M1 6h1v1h-1ZM5 6h1v1h-1Z"/><path class="hl" d="M2 3h1v1h-1Z"/></svg>{%- endset -%}
+{%- set icon_screen -%}<svg class="cab cab-screen" viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M0 0h7v1h-7ZM0 1h1v1h-1ZM6 1h1v1h-1ZM0 2h1v1h-1ZM2 2h3v1h-3ZM6 2h1v1h-1ZM0 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h2v1h-2ZM6 4h1v1h-1ZM0 5h1v1h-1ZM6 5h1v1h-1ZM0 6h7v1h-7Z"/><path class="rg" d="M1 1h5v1h-5ZM1 2h1v1h-1ZM5 2h1v1h-1ZM1 3h5v1h-5ZM1 4h1v1h-1ZM4 4h2v1h-2ZM1 5h5v1h-5Z"/><path class="hl" d="M2 2h3v1h-3ZM2 4h2v1h-2Z"/></svg>{%- endset -%}
+{%- set icon_wreck -%}<svg class="cab cab-wreck" viewBox="0 0 7 7" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path d="M2 1h3v1h-3ZM1 2h5v1h-5ZM0 3h2v1h-2ZM3 3h1v1h-1ZM5 3h2v1h-2ZM0 4h7v1h-7Z"/><path class="rg" d="M1 5h1v1h-1ZM3 5h1v1h-1ZM5 5h1v1h-1ZM0 6h1v1h-1ZM6 6h1v1h-1Z"/><path class="hl" d="M2 2h1v1h-1Z"/></svg>{%- endset -%}
 <!doctype html>
 <html lang="{{ w.lang }}">
 <head>
@@ -154,6 +158,7 @@ h1{margin:0;font:700 clamp(20px,1.9vw,24px)/1.2 var(--pix);letter-spacing:.01em;
 .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--band)}
 .btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--band)}{# FM-006 v0.19.0 first screen: .btn i and .press went with the three anchors of 32780e5; B1 brings .btn.alt back for the second action #}
 {# round 5: the hero's cue, over the primary button only (the probe state): a strip as wide as that button and centred on it, its words and rules in the button's green (the section labels' too). Only the cue animates: its icon and words blink 4 × 1s = 4s, then stay lit (no fill-mode: the animation ends and the element is at rest); the rules and the labels never animate, and the reduced-motion rule at the foot ends every animation, so under reduced motion nothing blinks #}:root{--gold:#e3b84c}.cta{align-items:flex-end}.cta-main{display:flex;flex-direction:column;gap:10px}.cue{display:flex;justify-content:center;box-sizing:border-box;width:0;min-width:100%;padding:6px 0 5px;border-block:1px dashed var(--watt);white-space:nowrap}.cue-t{display:flex;align-items:center;gap:8px;font:400 12px/1 var(--pix);letter-spacing:.06em;color:var(--watt);animation:blink 1s steps(1) 4}.n-ic{display:inline-flex;align-items:center;gap:8px}.cab{flex:none;display:block;width:14px;height:14px;margin-top:-1px}.cab .rg{fill-opacity:.55}.cab .hl{fill:#fff;fill-opacity:.5}.cab-dome{fill:var(--coral)}.cab-stick{fill:var(--blue)}.cab-coin{fill:var(--gold)}{# the three icons' colours: coral for the button, the page's blue for the joystick, gold for the coin; the dark shade is the colour at 55%, the light one is white at 50% over it #}
+.cab-ticket{fill:var(--land)}.cab-ship{fill:var(--ink)}.cab-screen{fill:var(--field)}.cab-wreck{fill:var(--magenta)}{# the four leads' icons: sand for the ticket, the chart's ink for its ship, the field's blue for the screen, the chart's magenta for its wreck #}
 @keyframes blink{50%{opacity:0}}
 
 /* the console under the playfield: the selected incident, and the key */
@@ -322,7 +327,7 @@ section.band{padding-block:72px 40px}
 .chart-note{margin:0;display:flex;align-items:flex-start;gap:18px;font:500 clamp(17px,1.6vw,24px)/1.4 var(--mono);color:var(--ink)}{# B1: the line under the chart is the size of a lede, set in the ink, its wreck at the key's size (3 CSS px to a grid unit) #}
 .chart-note span{max-width:62ch;text-wrap:balance}
 .chart-note svg{flex:none;width:27px;height:18px;margin-top:calc((1.4em - 18px) / 2);fill:var(--magenta);shape-rendering:crispEdges}
-.chart-wrap + .console{padding-top:26px}
+.chart-wrap + .console{padding-top:48px}
 
 /* B1 — the probe dialog: a real modal (<dialog>, showModal): labelled, focus moves in and back out, Escape closes it, Tab stays inside, the page behind is inert.
    Three steps; the approvals folded away (<details>: Enter and Space on the line open it); the prompt in step 1 as a box of two lines that a button opens whole */
@@ -570,7 +575,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 </section>
 
 <section class="band wrap" id="issue-tracker" aria-labelledby="h-issue-tracker">
-  <div class="sec-h"><span class="n">{{ w.it_n }}</span><h2 id="h-issue-tracker">{{ w.it_h }}</h2></div>
+  <div class="sec-h"><span class="n n-ic">{{ w.it_n | replace("— ", "— " ~ icon_ticket ~ " ") }}</span><h2 id="h-issue-tracker">{{ w.it_h }}</h2></div>
   <p>{{ w.it_1 }}</p>
   <p>{{ w.it_2 }}</p>
   <p class="small">{{ w.why_link }}</p>
@@ -578,7 +583,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 
 {# FM-006 v0.19.0 first screen: C, the fleet — a section of its own, early: the first after the chart and its console. Its first line the ruled definition; four tiles as ruled — badge, name, character, the one line; where a clause is needed, README §Seats's own words: the four rights the gate sees (RV-2186) and a seat's charter, beside D1's ruled phrase for the tool's three seats. Each badge inlined from brand/seats/<seat>.svg, its drawing verbatim (the built site carries no brand/), its title left out: decorative, and the four specialists unnamed #}
 <section class="band wrap fleet" id="seats" aria-labelledby="h-fleet">
-  <div class="sec-h"><span class="n">{{ w.fleet_n }}</span><h2 id="h-fleet">{{ w.fleet_h }}</h2></div>
+  <div class="sec-h"><span class="n n-ic">{{ w.fleet_n | replace("— ", "— " ~ icon_ship ~ " ") }}</span><h2 id="h-fleet">{{ w.fleet_h }}</h2></div>
   <p class="fleet-def">{{ w.fleet_def }}</p>
   <p class="fleet-rights">{{ w.fleet_rights }}</p>
   <ul class="seats">
@@ -598,7 +603,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 </section>
 
 <section class="band wrap" id="scores" aria-labelledby="h-scores">
-  <div class="sec-h"><span class="n">{{ w.scores_n }}</span><h2 id="h-scores">{{ w.scores_h }}</h2><p>{{ w.scores_sub }}</p></div>
+  <div class="sec-h"><span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_screen ~ " ") }}</span><h2 id="h-scores">{{ w.scores_h }}</h2><p>{{ w.scores_sub }}</p></div>
   <div class="scores">
     <article class="box board" aria-labelledby="h-board">
       <h3 class="t" id="h-board">{{ w.board_t }}</h3>
@@ -621,7 +626,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 </section>
 
 <section class="band wrap" id="register" aria-labelledby="h-reg">
-  <div class="sec-h"><span class="n">{{ w.reg_n }}</span><h2 id="h-reg">{{ w.reg_h }}</h2><p id="reg-sum"></p></div>
+  <div class="sec-h"><span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_wreck ~ " ") }}</span><h2 id="h-reg">{{ w.reg_h }}</h2><p id="reg-sum"></p></div>
   <div class="regwrap"><table class="reg">
     <thead><tr><th>{{ w.reg_th_tracker }}</th><th>{{ w.reg_th_incident }}</th><th>{{ w.reg_th_filed }}</th><th>{{ w.reg_th_status }}</th><th>{{ w.reg_th_report }}</th><th><span class="sr">{{ w.reg_th_chart }}</span></th></tr></thead>
     <tbody id="reg"></tbody>
