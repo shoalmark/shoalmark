@@ -3,7 +3,7 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: owner
+next: build
 triaged: 2026-10-13
 tier: P1
 rank: 2
@@ -11,6 +11,9 @@ ask: "Do you rule the probe's road to its first outside run as FM-004's *What is
 ask-kind: ruling
 ask-since: 2026-10-21
 ask-proposal: "Accept all three as that entry sets them out; the clean-run wording may be changed in the answer."
+answer: "accepted - Accept all three as that entry sets them out; the clean-run wording may be changed in the answer. The feedback channel must also be accessible from agent side."
+answered: 2026-10-21
+answered-by: holgo99
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
 ---
 
