@@ -14321,10 +14321,9 @@ check("the version is the `VERSION` file and nothing else — one source of trut
 _clones = {p_: re.findall(r"--branch (v\S+)", (HERE / p_).read_text()) for p_ in ("docs/setup.md", "docs/de/setup.md")}
 check(f"FM-006 · the setup pages clone the release they ship with — every `--branch v…` in the English and the German page is v<VERSION>, and each has one (saw {_clones}, VERSION {fm.__version__})",
       all(tags_ and set(tags_) == {f"v{fm.__version__}"} for tags_ in _clones.values()))
-# FM-006, a P2 of v0.19.3: ADOPT's pins named the release commit's tool, while the tag shipped the tool as two later commits left it. On every run:
-# both notes name one release, v<VERSION>, and one SHA-256 — that of the tag's shoalmark.py, git's blob, where the tag is in this clone; before
-# the tag exists, on a release's own head, that of the head's shoalmark.py with `\n` line endings. Between releases shoalmark.py moves on main
-# while ADOPT still pins the last tag, so the tag's tool is the one the pins answer to, never the head's alone
+_PIN_FORMS = {"ADOPT.md": "The pin: release `{0}`; the archive `{1}`, SHA-256 `{2}`; in it, `{3}`, SHA-256 `{4}`.",
+              "ADOPT.de.md": "Die Festlegung: Release `{0}`; das Archiv `{1}`, SHA-256 `{2}`; darin `{3}`, SHA-256 `{4}`."}
+_HEX64 = r"(?<![0-9A-Fa-f])[0-9A-Fa-f]{64}(?![0-9A-Fa-f])"
 
 
 def _tag_tool(tag, repo=None):
@@ -14336,20 +14335,54 @@ def _tag_tool(tag, repo=None):
     return r.stdout if r.returncode == 0 else None
 
 
+def _pin_fields(text, form):
+    """The five fields of `text`'s one line that begins as `form` begins, read by `form`'s shape: None where there is no such line, more than one,
+    or one of another shape."""
+    lines = [line for line in text.split("\n") if line.startswith(form[:form.index("`")])]
+    m = re.fullmatch("([^`]*)".join(re.escape(part) for part in re.split(r"\{\d\}", form)), lines[0]) if len(lines) == 1 else None
+    return m.groups() if m else None
+
+
 def _adopt_pins(read, tag_tool):
-    """(whether ADOPT.md and ADOPT.de.md each name the one release v<VERSION> and the one SHA-256 of its tool, what was read) — `read(path)`
-    gives a file's bytes at the revision judged; `tag_tool(tag)` the tag's shoalmark.py as git holds it, or None where the clone lacks the tag,
-    and the head's shoalmark.py, its line endings `\n`, counts instead."""
+    """(whether ADOPT.md and ADOPT.de.md each carry one pin line, the same five fields in both, what was read). The fields: the release v<VERSION>;
+    its archive's exact address; the archive's SHA-256, 64 lowercase hex characters and the note's only hash besides the tool's; `shoalmark.py`;
+    and the SHA-256 of the release's shoalmark.py. `read(path)` gives a file's bytes at the revision judged; `tag_tool(tag)` the tag's
+    shoalmark.py as git holds it, or None where the clone lacks the tag, and the head's shoalmark.py, its line endings `\n`, counts instead.
+    Between releases shoalmark.py moves on main while the notes still pin the last tag, so the tag's tool is the one the pin answers to."""
     version = read("VERSION").decode("utf-8").strip()
     held = tag_tool(f"v{version}")
     tool = hashlib.sha256(held if held is not None else read("shoalmark.py").replace(b"\r\n", b"\n")).hexdigest()
+    address = f"https://github.com/shoalmark/shoalmark/releases/download/v{version}/shoalmark-{version}.zip"
     seen = {}
-    for name in ("ADOPT.md", "ADOPT.de.md"):
+    for name, form in _PIN_FORMS.items():
         text = read(name).decode("utf-8").replace("\r\n", "\n")
-        seen[name] = (re.findall(r"`(v\d+\.\d+\.\d+)`", text), re.findall(r"\b[0-9a-f]{64}\b", text))
-    holds = all(tags == [f"v{version}"] and sums == [tool] for tags, sums in seen.values())
+        seen[name] = (_pin_fields(text, form), re.findall(_HEX64, text))
+    sound = lambda f, sums: (f is not None and f[0] == f"v{version}" and f[1] == address and re.fullmatch(r"[0-9a-f]{64}", f[2]) is not None
+                             and f[3] == "shoalmark.py" and f[4] == tool and f[2] != tool and sums == [f[2], f[4]])
+    holds = all(sound(f, sums) for f, sums in seen.values()) and len({f for f, _sums in seen.values()}) == 1
     return holds, {"VERSION": version, f"v{version}'s shoalmark.py" if held is not None else "the head's shoalmark.py (no such tag here)": tool[:12],
-                   **{n: (tags, [x[:12] for x in sums]) for n, (tags, sums) in seen.items()}}
+                   **{n: (f and (f[0], f[1], f[2][:12], f[3], f[4][:12]), [x[:12] for x in sums]) for n, (f, sums) in seen.items()}}
+
+
+def _as_pin_line(read):
+    """`read`, with each note given as the pin line of what it named before notes carried one: its one `v…` as the tag, the address that tag
+    gives, a stand-in for the archive's SHA-256, and its one SHA-256 as the tool's. A note that named more or fewer is given as it stands."""
+    def given(rel):
+        data = read(rel)
+        if rel not in _PIN_FORMS:
+            return data
+        text = data.decode("utf-8")
+        tags, sums = re.findall(r"`(v\d+\.\d+\.\d+)`", text), re.findall(r"\b[0-9a-f]{64}\b", text)
+        if len(tags) != 1 or len(sums) != 1:
+            return data
+        address = f"https://github.com/shoalmark/shoalmark/releases/download/{tags[0]}/shoalmark-{tags[0][1:]}.zip"
+        return (_PIN_FORMS[rel].format(tags[0], address, hashlib.sha256(b"a stand-in archive\n").hexdigest(), "shoalmark.py", sums[0]) + "\n").encode()
+    return given
+
+
+def _pinless(text):
+    """Whether a Subversion note carries no pin: no line that begins as a pin line does, and no SHA-256."""
+    return not any(line.startswith(form[:form.index("`")]) for line in text.split("\n") for form in _PIN_FORMS.values()) and not re.search(_HEX64, text)
 
 
 def _adopt_pin_hint(ok, seen):
@@ -14360,28 +14393,40 @@ def _adopt_pin_hint(ok, seen):
 
 _at_rev = lambda rev: (lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
 _pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
-check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md name the one release VERSION names and the one SHA-256 of its shoalmark.py — the tag's, git's "
-      f"blob, where the tag is here; the head's before it (saw {_pins_saw})" + _adopt_pin_hint(_pins_ok, _pins_saw), _pins_ok)
+check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md each carry one pin line, the same in both — the release VERSION names, its archive's exact address, "
+      f"the archive's SHA-256 as the note's only other hash, shoalmark.py, and the SHA-256 of its shoalmark.py: the tag's, git's blob, where the tag is "
+      f"here; the head's before it (saw {_pins_saw})" + _adopt_pin_hint(_pins_ok, _pins_saw), _pins_ok)
+_svn_notes = {n: (HERE / n).read_text(encoding="utf-8") for n in ("ADOPT.svn.md", "ADOPT.svn.de.md")}
+check("FM-006 · ADOPT's pins: the Subversion notes carry no pin — no pin line and no SHA-256 — and one that carries a pin line or a hash is caught",
+      all(_pinless(t_) for t_ in _svn_notes.values()) and not _pinless(_svn_notes["ADOPT.svn.md"] + _PIN_FORMS["ADOPT.md"] + "\n")
+      and not _pinless(_svn_notes["ADOPT.svn.de.md"] + _PIN_FORMS["ADOPT.de.md"] + "\n") and not _pinless(_svn_notes["ADOPT.svn.md"] + "0" * 64 + "\n"))
 _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
 _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
              ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
-             *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2", "v0.19.4")),
+             *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2", "v0.19.4", "v0.20.0")),
              ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
 for _what, _rev, _read, _tags, _want in _pins_ctl:
     if not _held(_rev):
         _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
         continue
-    _got, _seen = _adopt_pins(_read, _tags)
-    check(f"FM-006 · ADOPT's pins · {_what}: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+    _got, _seen = _adopt_pins(_as_pin_line(_read), _tags)
+    check(f"FM-006 · ADOPT's pins · {_what}, its tag and hash read into a pin line: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+if _held("v0.20.0"):
+    _got, _seen = _adopt_pins(_at_rev("v0.20.0"), _tag_tool)
+    check(f"FM-006 · ADOPT's pins · v0.20.0 as tagged, read as it stands: its notes name the release and the hash in prose, with no pin line — fail (saw {_seen})",
+          _got is False)
+else:
+    _skipped("FM-006 · ADOPT's pins · v0.20.0 as tagged, read as it stands", 1, "this clone does not hold v0.20.0")
 
 
 # RV-3003/RV-3004: recorded privately.
 _fixture_tool = b"# a prepared release tool\n"
 _fixture_version = "0.19.4"
 _fixture_sum = hashlib.sha256(_fixture_tool).hexdigest()
-_fixture_docs = {"VERSION": (_fixture_version + "\n").encode(), "shoalmark.py": _fixture_tool,
-                 **{name: (chr(96) + "v" + _fixture_version + chr(96) + "\n" + _fixture_sum + "\n").encode()
-                    for name in ("ADOPT.md", "ADOPT.de.md")}}
+_fixture_fields = (f"v{_fixture_version}", f"https://github.com/shoalmark/shoalmark/releases/download/v{_fixture_version}/shoalmark-{_fixture_version}.zip",
+                   hashlib.sha256(b"# a prepared release archive\n").hexdigest(), "shoalmark.py", _fixture_sum)
+_fixture_note = lambda name, fields=_fixture_fields: ("# a note\n\n" + _PIN_FORMS[name].format(*fields) + "\n\nthe rest of the note\n").encode()
+_fixture_docs = {"VERSION": (_fixture_version + "\n").encode(), "shoalmark.py": _fixture_tool, **{name: _fixture_note(name) for name in _PIN_FORMS}}
 for _number, _documents, _expected in (
         (1, _fixture_docs, True),
         (2, {**_fixture_docs, "shoalmark.py": _fixture_tool.replace(b"\n", b"\r\n")}, True),
@@ -14395,10 +14440,32 @@ for _documents, _tags, _expected, _hinted in (
         (_fixture_changed, lambda tag: _fixture_tool if tag == "v0.19.2" else None, False, True),
         (_fixture_docs, lambda tag: _fixture_tool if tag == "v0.19.2" else None, True, False),
         ({**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)},
-         lambda tag: _fixture_tool, False, False)):
+         lambda tag: _fixture_tool, False, False),
+        (_fixture_changed, lambda tag: _fixture_tool, True, False)):
     _result, _observed = _adopt_pins(_documents.__getitem__, _tags)
     check("RV-3003/RV-3004: recorded privately", _result == _expected
           and ("git fetch --tags" in _adopt_pin_hint(_result, _observed)) == _hinted)
+
+_flip = lambda h: h[:-1] + ("1" if h[-1] == "0" else "0")
+for _field, _fields in (("the tag", ("v0.19.3", *_fixture_fields[1:])),
+                        ("the archive's address", (_fixture_fields[0], _fixture_fields[1] + "?", *_fixture_fields[2:])),
+                        ("the archive's SHA-256, in capitals", (*_fixture_fields[:2], _fixture_fields[2].upper(), *_fixture_fields[3:])),
+                        ("the tool's name", (*_fixture_fields[:3], "shoalmark.pyz", _fixture_fields[4])),
+                        ("the tool's SHA-256", (*_fixture_fields[:4], _flip(_fixture_fields[4])))):
+    _result, _observed = _adopt_pins({**_fixture_docs, **{n: _fixture_note(n, _fields) for n in _PIN_FORMS}}.__getitem__, lambda tag: _fixture_tool)
+    check(f"FM-006 · ADOPT's pins · one field changed in both notes, {_field}: fail (saw {_observed})", _result is False)
+_line = _PIN_FORMS["ADOPT.md"].format(*_fixture_fields).encode()
+for _what, _english, _german in (
+        ("no pin line: the release and the tool's hash named in the prose", f"`v{_fixture_version}`\n{_fixture_sum}\n".encode(), None),
+        ("a second pin line, with no hash", _fixture_docs["ADOPT.md"] + f"The pin: release `v{_fixture_version}`, as above.\n".encode(), None),
+        ("a sixth field after the fifth", _fixture_docs["ADOPT.md"].replace(_line, _line[:-1] + b"; and `RELEASE`."), None),
+        ("a hash outside the pin line", _fixture_docs["ADOPT.md"] + _fixture_fields[2].encode() + b"\n", None),
+        ("the archive's SHA-256 equal to the tool's", _fixture_note("ADOPT.md", (*_fixture_fields[:2], _fixture_sum, *_fixture_fields[3:])),
+         _fixture_note("ADOPT.de.md", (*_fixture_fields[:2], _fixture_sum, *_fixture_fields[3:]))),
+        ("the two notes disagree on the archive's SHA-256", None, _fixture_note("ADOPT.de.md", (*_fixture_fields[:2], _flip(_fixture_fields[2]), *_fixture_fields[3:])))):
+    _documents = {**_fixture_docs, **({"ADOPT.md": _english} if _english else {}), **({"ADOPT.de.md": _german} if _german else {})}
+    _result, _observed = _adopt_pins(_documents.__getitem__, lambda tag: _fixture_tool)
+    check(f"FM-006 · ADOPT's pins · {_what}: fail (saw {_observed})", _result is False)
 
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
