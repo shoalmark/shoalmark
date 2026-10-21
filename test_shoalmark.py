@@ -15218,6 +15218,33 @@ else:
               and read_.get("FM-097") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-097-a%22b.md"
               and len(read_) == 30 and not any("FM-096" in q or "FM-097" in q for q in quoted_))
 
+# FM-006: a parked wreck is filed and not fixed, so it is open — on the chart where the drawing placed it, counted in the top bar's open wrecks, and
+# labelled on hold in the incident box and the register. The row parks three of the drawn wrecks at v0.19.2 and reads them
+if _lf_why:
+    _skipped("FM-006 · a parked wreck is open, on the chart", 1, _lf_why)
+else:
+    with tempfile.TemporaryDirectory() as d:
+        clone_ = _lf_clone(Path(d).resolve())
+        parked_ = ("FM-028", "FM-029", "FM-039")
+        for p_ in (next(clone_.glob(f"work-tracker/{i}-*.md")) for i in parked_):
+            p_.write_text(re.sub(r"(?m)^status: .*$", "status: Parked", p_.read_text(encoding="utf-8"), count=1), encoding="utf-8")
+        git(clone_, "commit", "-q", "-a", "-m", "three wrecks parked")
+        lf_ = _lf_module()
+        g_ = lf_.Git(clone_)
+        try:
+            read_ = lf_.read_wrecks(g_, g_("rev-parse", "HEAD").strip(), "https://github.com/shoalmark/shoalmark")
+        except lf_.Stop as e:                                     # the build stopped on a parked wreck
+            read_ = [{"stopped": str(e)}]
+        drawing_ = {i: (lo, la) for i, lo, la in lf_.DRAWN}
+        seen_ = {w["id"]: (w["status"], (w["lon"], w["lat"])) for w in read_ if w.get("id") in parked_}
+        counts_, tpl_ = lf_.wreck_counts(read_) if "stopped" not in read_[0] else None, (HERE / "overrides/landing.html").read_text(encoding="utf-8")
+        check(f"FM-006 · three parked wrecks are read as open: each on the chart where the drawing placed it, counted among the top bar's open wrecks, "
+              f"and the template labels a parked wreck open, on hold, ordered after the ones in progress (saw {seen_}, counts {counts_}, of {len(read_)} read)",
+              seen_ == {i: ("Parked", drawing_[i]) for i in parked_} and counts_ is not None
+              and counts_ == {"wrecks": len(read_), "open": sum(w["status"] in ("In Progress", "Parked", "Proposed") for w in read_)}
+              and counts_["open"] - sum(w["status"] in ("In Progress", "Proposed") for w in read_) == 3
+              and '"Parked": ["open", T.status_parked]' in tpl_ and 'const ORDER = {"In Progress": 0, "Parked": 1, "Proposed": 2, "Shipped": 3, "Closed": 4};' in tpl_)
+
 if _lf_why:
     _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 4, _lf_why)
 else:
@@ -15239,15 +15266,15 @@ else:
 
         def _lf_status(root):
             p_ = next(root.glob("work-tracker/FM-045-*.md"))
-            p_.write_text(re.sub(r"(?m)^status: .*$", "status: Parked", p_.read_text(encoding="utf-8"), count=1), encoding="utf-8")
+            p_.write_text(re.sub(r"(?m)^status: .*$", "status: Reserved", p_.read_text(encoding="utf-8"), count=1), encoding="utf-8")
         version_ = _lf_case(lambda root: (root / "VERSION").write_text("0.19.3\n", encoding="utf-8"))
         status_ = _lf_case(_lf_status)
         switch_ = _lf_case(lambda root: None, config=on_)
         history_ = _lf_case(lambda root: None, pulls=pulls_)
         check(f"FM-006 · B1 · VERSION other than the newest release tag the commit holds stops the build: exit 1, one line, and the facts.html an earlier "
               f"build left is gone (saw {version_})", _lf_stops(version_, facts_, "VERSION says 0.19.3, and the newest release tag"))
-        check(f"FM-006 · B1 · a wreck whose status is none of In Progress, Proposed, Shipped and Closed stops the build, rather than be guessed (saw {status_})",
-              _lf_stops(status_, facts_, "FM-045's status reads as Parked"))
+        check(f"FM-006 · B1 · a wreck whose status is none of In Progress, Parked, Proposed, Shipped and Closed stops the build, rather than be guessed (saw {status_})",
+              _lf_stops(status_, facts_, "FM-045's status reads as Reserved"))
         check(f"FM-006 · B1 · the probe switch on, and a pin still a stand-in — here no ADOPT pin to read at all — stops the build (saw {switch_})",
               _lf_stops(switch_, facts_, "pins check 1: ADOPT.svn.md is missing"))
         check(f"FM-006 · B1 · a pull request whose commits this history does not hold stops the build, rather than count it as unreviewed (saw {history_})",

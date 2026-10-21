@@ -26,8 +26,8 @@ and exit 1, and a build without the file stops at the template's import, so no p
   there, with no branch but the commit's history: how many questions wait for the Owner, how many acts they owe, and the first
   act's id and line as it prints them, HTML-escaped.
 - **wrecks_json**: every tracker tagged `bug` or `security`, read through shoalmark.py's own reader, with the fields and the
-  report's sentences as `work-tracker/evidence/FM-006/landing/start-page/facts.mjs` reads them. Open means In Progress or
-  Proposed; any status but In Progress, Proposed, Shipped and Closed stops the build. A wreck keeps the position the chart's
+  report's sentences as `work-tracker/evidence/FM-006/landing/start-page/facts.mjs` reads them. Open means In Progress, Parked
+  or Proposed; any status but In Progress, Parked, Proposed, Shipped and Closed stops the build. A wreck keeps the position the chart's
   drawing gave it (`DRAWN`); one the drawing has not placed is placed by the drawing's rule, in the order of its id: the flat
   pixel farthest from every other wreck and every name, at least 12 chart pixels inside the border, its button clear of the
   hero's text, its 7 × 5 footprint all flat or sand. The same trackers always give the same output. **counts**, the top bar's: the
@@ -72,7 +72,7 @@ COHORT_LAST = 159   # FM-006, M5: the last pull request merged under the review-
 REVIEWS = "work-tracker/evidence/reviews/"
 MOCK = "work-tracker/evidence/FM-006/landing/index.html"  # the mock the Owner saw: how many sentences each report carries
 TEMPLATE = "overrides/landing.html"                      # the chart's geography and its names, as the page draws them
-STATUSES, OPEN = ("In Progress", "Proposed", "Shipped", "Closed"), ("In Progress", "Proposed")
+STATUSES, OPEN = ("In Progress", "Parked", "Proposed", "Shipped", "Closed"), ("In Progress", "Parked", "Proposed")   # Parked: filed, not fixed, on hold
 STAND_IN = {"ARCHIVE_URL": "[ARCHIVE URL — filled at build]", "ARCHIVE_SHA256": "[SHA-256 — filled at build]"}
 MONTHS_EN = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
 MONTHS_DE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember")
@@ -407,7 +407,7 @@ class Chart:
 
 
 def wreck_counts(wrecks):
-    """The top bar's counts, from the one list that draws the chart: every wreck, and the open ones — In Progress or Proposed."""
+    """The top bar's counts, from the one list that draws the chart: every wreck, and the open ones — In Progress, Parked or Proposed."""
     return {"wrecks": len(wrecks), "open": sum(w["status"] in OPEN for w in wrecks)}
 
 
@@ -429,7 +429,7 @@ def read_wrecks(git, commit, url):
             continue
         wid = m.group(1)
         if t["status"] not in STATUSES:
-            stop(f"{wid}'s status reads as {t['status']} — a wreck is In Progress, Proposed, Shipped or Closed, and the build stops rather than guess")
+            stop(f"{wid}'s status reads as {t['status']} — a wreck is In Progress, Parked, Proposed, Shipped or Closed, and the build stops rather than guess")
         title = re.search(r"^# (.+)$", text, re.M)
         if not title or not title.group(1).startswith(f"{wid} — "):
             stop(f"{wid}'s first `# ` line does not begin `{wid} — `: the wreck's title is read from it")

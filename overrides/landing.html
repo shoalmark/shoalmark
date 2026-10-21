@@ -725,7 +725,7 @@ const WRECKS = {{ F.wrecks_json }};
 const R = {lon0: 6.62, lon1: 9.00, lat0: 53.45, lat1: 54.35}, W = 320, H = 205;
 const X = lon => (lon - R.lon0) / (R.lon1 - R.lon0) * W, Y = lat => (R.lat1 - lat) / (R.lat1 - R.lat0) * H;
 const P = pts => pts.map(([lo, la]) => [X(lo), Y(la)]);
-const STATUS = {"In Progress": ["open", T.status_progress], "Proposed": ["open", T.status_proposed], "Shipped": ["raised", T.status_raised], "Closed": ["closed", T.status_closed]};
+const STATUS = {"In Progress": ["open", T.status_progress], "Parked": ["open", T.status_parked], "Proposed": ["open", T.status_proposed], "Shipped": ["raised", T.status_raised], "Closed": ["closed", T.status_closed]};
 
 /* ── THE GEOGRAPHY — lon, lat; a drawing of the German Wadden coast, not a survey ── */
 const LAND = [
@@ -910,7 +910,7 @@ function figures() {
 /* ── THE WRECKS, THE INCIDENT, THE REGISTER ── */
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const code = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
-const ORDER = {"In Progress": 0, "Proposed": 1, "Shipped": 2, "Closed": 3};
+const ORDER = {"In Progress": 0, "Parked": 1, "Proposed": 2, "Shipped": 3, "Closed": 4};
 const LE = document.documentElement.lang === "en" ? "" : ' lang="en"';   // a wreck's title stays as filed, in English
 let sel = null, attract = true, timer = null;
 function show(w, user) {
