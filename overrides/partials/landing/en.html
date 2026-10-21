@@ -33,14 +33,17 @@
 
   "chart_aria": "A night chart of the German Bight: the East Frisian islands from Borkum to Wangerooge, the Jade, the Weser and the Elbe, the flats and sandbanks between them, Helgoland offshore. Magenta wrecks lie on the flats; each is a defect from shoalmark's own tracker, listed in the wreck register below.",
   "hero_aria": "The chart of the German Wadden coast, and its wrecks",
-  "claim": "A Pricke on the Wadden flats keeps the fleet in the channel.",
+  "claim": "A workbench for your agents. Your decisions on record.",
   "h1": "The agents keep the work; the person keeps the word.",
   "lede": "See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.",
   "btn_adopt": "Hand your agents the note",
   "btn_probe": "Copy the prompt",
+  "btn_tape": "not yet",
   "btn_how": "How it works",
+  "taped_why": "Not out of order, just not open yet: the prompt behind this button is still being finished, and it goes live with v0.20.1. Until then, hand your agents <a href=\"{adopt}\">the note</a>.",
   "cue": "— press start —",
-  "chart_note": "Every wreck is a defect in shoalmark itself: a bug or a security finding, filed in its own tracker.",
+  "cue_taped": "— opens at v0.20.1 —",
+  "chart_note": "shoalmark runs on itself: every wreck is a bug or a security finding, filed in its own repository.",
 
   "inc_h": "incident",
   "inc_tracker": "tracker",
@@ -53,7 +56,7 @@
   "key_aria": "The chart's key",
   "key_h": "key",
   "key_open_b": "open",
-  "key_open": "filed and not yet raised — in progress, or on the chart",
+  "key_open": "filed and not yet raised — in progress, on hold, or on the chart",
   "key_raised_b": "raised",
   "key_raised": "its fix merged: the tracker shipped",
   "key_closed_b": "closed",
@@ -65,11 +68,13 @@
   "key_note": "Incident: the commit that filed the tracker. Positions are a drawing, not a fix.",
   "key_stamp": "not for navigation",
 
+  "fleet_n": "— co-op mode —",
+
   "fleet_h": "The fleet",
   "fleet_def": "A seat is a role an agent takes, with its duties and its rights written down.",
-  "fleet_rights": "The tool knows the Owner, and three seats with their rights built in — <span><b>planner</b> ask · close · triage</span>, <span><b>reviewer</b> triage</span>, <span><b>builder</b> none</span>. <b>Four rights</b>, each a front-matter transition the gate sees in a diff; anything else is open to every seat.",
+  "fleet_rights": "The tool knows you, the Owner, and three seats with their rights built in — <span><b>planner</b> ask · close · triage</span>, <span><b>reviewer</b> triage</span>, <span><b>builder</b> none</span>. <b>Four rights</b>, each a front-matter transition the gate sees in a diff; anything else is open to every seat.",
   "seat_planner_ch": "the skipper",
-  "seat_planner": "turns the Owner's direction into trackers, and puts the agents' open questions to the Owner, one sentence each.",
+  "seat_planner": "turns your direction into trackers, and puts the agents' open questions to you, one sentence each.",
   "seat_builder_ch": "the shipwright",
   "seat_builder": "builds one change from its tracker, in a worktree of its own, and never accepts its own work.",
   "seat_reviewer_ch": "the inspector",
@@ -99,7 +104,7 @@
   "hs_comment": "# an agent at work — the contract is tools/shoalmark/README.md",
   "p1_small": "Agent, sent here by your Owner? Read <a href=\"{contract}\">the contract</a>; <a href=\"{llms}\">llms.txt</a> is at the site's root.",
   "p2_tag": "2P · for people",
-  "p2_h": "The Owner",
+  "p2_h": "You, the Owner",
   "p2_text": "Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those questions for a sitting at the time you choose.",
   "p2_board_dt": "the board",
   "p2_board": "What waits for you, how long, and what it blocks — first, above everything else.",
@@ -114,8 +119,18 @@
   "peek_chip_done": "done",
   "peek_chip_resched": "reschedule",
   "peek_cap": "An excerpt of shoalmark's own board, {read_date}: what waits for its Owner comes first.",
-  "p2_loses_b": "Nothing of yours is overwritten.",
-  "p2_loses": "What you keep today stays where it is: shoalmark writes only its own files and never overwrites a file or a hook it did not write.",
+  "p2_loses_b": "Nothing overwritten.",
+  "p2_loses": "What you keep today stays where it is: shoalmark writes only its own files and never overwrites a file or a hook it did not write. Nothing ties you to it: the record stays in your repository, as plain Markdown and your own commits.",
+
+  "it_n": "— versus —",
+
+  "it_h": "Why not my issue tracker?",
+
+  "it_1": "Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work record lives in the repository they work in, and your answers are your own commits there.",
+
+  "it_2": "If your current tracker already handles the handovers and decisions you need, that may be enough. shoalmark brings its own tracker; adopting it means deciding which record is the one that counts.",
+
+  "why_link": "<a href=\"why-shoalmark.html\">Why shoalmark?</a>",
 
   "scores_n": "— measured, not promised —",
   "scores_h": "High scores",
@@ -148,11 +163,13 @@
 
   "start_n": "— insert coin —",
   "start_h": "Your agents set it up",
+  "needs_b": "What it needs:",
+  "needs": "Python 3.9 or newer and a Git or Subversion repository; your project can be in any language. No dependencies, and no server, database or account of its own. The tool is one Python file: your repository keeps a pinned copy, every file with its checksum, and it never updates itself.",
   "beta_b": "In this beta:",
   "beta_1": "Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.",
   "beta_2": "For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.",
   "beta_3": "<em>Not proof that work is right.</em> In Git or Subversion changes being checked, a move to <code>Shipped</code> must name in its ship log a commit already in that change's history that changes something outside the records (on Subversion, a revision). This evidence rule does not cover <code>Closed</code>. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing <code>--check</code> on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.",
-  "beta_4": "Made and tested on <code>git</code> with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without <code>git</code> installed, from the release archive, and says once what it cannot verify there: no signature, and without the server's login no author. Signed answers need a <code>git</code> repository, and the pull-request queue a <code>git</code> repository on GitHub and GitHub's command line, <code>gh</code>.",
+  "beta_4": "Made and tested on <code>git</code> with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without <code>git</code> installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a <code>git</code> repository, and the pull-request queue a <code>git</code> repository on GitHub and GitHub's command line, <code>gh</code>.",
   "stage_1": "They fetch shoalmark at a release tag and put a pinned copy in the repository, every file with its checksum (<code>--vendor</code>).",
   "stage_2": "<code>--init</code> writes the configuration, the triage file and the agents' contract.",
   "stage_3": "The agents read the contract and file the work: one Markdown file per work item.",
@@ -178,7 +195,7 @@
   "coin_3": "The contract is <code>tools/shoalmark/README.md</code> in your repository, <a href=\"{contract}\">rendered here</a>. <code>llms.txt</code> is at the site's root.",
 
   "ticker_aria": "At a glance",
-  "ticker": "needs no server or account of its own <b>·</b> ids you can say out loud <b>·</b> one markdown file per work item <b>·</b> one python file <b>·</b> checks with <code>--check</code> <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b>",
+  "ticker": "python 3.9 or newer, no dependencies <b>·</b> no server, database or account of its own <b>·</b> one markdown file per work item <b>·</b> no lock-in: it all stays in your repo <b>·</b> ids you can say out loud <b>·</b> one python file <b>·</b> checks with <code>--check</code> <b>·</b> made and tested on git <b>·</b> windows, macos and linux <b>·</b> apache-2.0 or mit <b>·</b>",
 
   "foot_claim": "<a href=\"why-shoalmark.html\">Why shoalmark?</a>",
   "foot_fine": "{tag}, released {date} — Subversion without git, and a release archive. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come from the repository and were read when the site was built: {read_date}, at {read_sha}.",
@@ -210,6 +227,7 @@
 
   "js": {
     "status_progress": "salvage under way",
+    "status_parked": "salvage on hold",
     "status_proposed": "on the chart",
     "status_raised": "raised",
     "status_closed": "closed",

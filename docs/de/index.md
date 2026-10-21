@@ -1,12 +1,12 @@
 ---
 template: landing.html
 title: Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort
-description: "Eine Werkbank für Ihre Agenten. Ihre Entscheidungen sind dokumentiert."
+description: "Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt."
 ---
 
 # shoalmark
 
-*Eine Werkbank für Ihre Agenten. Ihre Entscheidungen sind dokumentiert.*
+*Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt.*
 
 ## Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.
 
@@ -19,8 +19,6 @@ kann – ein Satz pro Frage, für ein Standup zu der Uhrzeit, die sie wählt –
 
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
 shoalmark sammelt diese Fragen für ein Standup zu der Uhrzeit, die Sie wählen.
-
-[Warum shoalmark?](warum-shoalmark.md)
 
 **Ihre Antwort ist ein Commit, nie ein Klick oder eine Zeile im Chat.** Im Beleg zählt eine Antwort nur als
 Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihre
@@ -35,6 +33,8 @@ hat.
 Ticketsysteme wurden gebaut, damit Menschen einander Arbeit zuweisen. shoalmark ist für Ihre Agenten gebaut: Der Beleg der Arbeit liegt in dem Repository, in dem sie arbeiten, und Ihre Antworten stehen dort als Ihre eigenen Commits.
 
 Wenn Ihr jetziges Ticketsystem die Übergaben und Entscheidungen schon trägt, die Sie brauchen, kann das genügen. shoalmark bringt einen eigenen Tracker mit; ihn einzuführen heißt festzulegen, welcher Beleg maßgeblich ist.
+
+[Warum shoalmark?](warum-shoalmark.md)
 
 ## Gemessen, nicht versprochen
 
@@ -68,13 +68,14 @@ Was shoalmark dazu ausgibt, jeden Tag:
    funktioniert, und was niemand tun darf, um dorthin zu kommen. Dann richten Sie einmal Ihre Signatur ein
    ([zehn Minuten](signing.md)).
 
-**Nichts Bestehendes wird überschrieben.** Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark schreibt nur seine
-eigenen Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht selbst geschrieben hat.
+**Nichts überschrieben.** Was Sie heute schon festhalten, bleibt, wo es ist: shoalmark schreibt nur seine eigenen
+Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht selbst geschrieben hat. Nichts bindet Sie daran:
+Der Beleg bleibt in Ihrem Repository, als Markdown und Ihre eigenen Commits.
 
 ## Was ein Tag Sie kostet
 
-- **Ein Standup, zu der Uhrzeit, die Sie wählen**, fünfzehn Minuten, wenn Sie nichts anderes einstellen; die ersten Zeilen des
-  Boards sind seine Tagesordnung.
+- **Ein Standup, zur Uhrzeit Ihrer Wahl**, standardmäßig fünfzehn Minuten; die ersten Zeilen des Boards sind seine
+  Tagesordnung.
 - **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel
   signiert, sobald Sie das Signieren einschalten.
 - **Der Rest steht auf dem Board:** Ihre Agenten sind angehalten, jede Session mit dem zu beenden, was auf Sie wartet, und
@@ -82,16 +83,17 @@ eigenen Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht s
 
 ## Was es nicht ist
 
-shoalmark braucht keinen eigenen Server und kein eigenes Konto, und seine IDs kann man aussprechen, etwa FM-012. Eine
-Markdown-Datei je Arbeitspaket, eine Python-Datei und Prüfungen, die Sie lokal und in der CI Ihres Projekts ausführen
-können. Läuft mit git auf Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
+shoalmark braucht Python 3.9 oder neuer und sonst nichts: keine Abhängigkeiten, keinen eigenen Server, keine eigene
+Datenbank, kein eigenes Konto. Seine IDs kann man aussprechen, etwa FM-012. Eine Markdown-Datei je Arbeitspaket, eine
+Python-Datei und Prüfungen, die Sie lokal und in der CI Ihres Projekts ausführen können. Ihr Projekt kann in jeder
+Sprache geschrieben sein. Läuft mit git auf Windows, macOS und Linux. Lizenz: Apache-2.0 oder MIT.
 
 **In dieser Beta:**
 
 - Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
 - Für eine Person mit dem letzten Wort und ihre Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
-- *Kein Beweis, dass die Arbeit stimmt.* Bei geprüften Änderungen in Git oder Subversion muss ein Wechsel zu `Shipped` im Abschnitt „Verlauf“ des Arbeitspakets einen Commit nennen, der schon in der Historie der geprüften Änderung liegt und etwas außerhalb des Belegs ändert (unter Subversion eine Revision). Diese Nachweisregel gilt nicht für `Closed`. Bei einem Verstoß meldet die Prüfung einen Fehler und endet mit einem Rückgabewert ungleich null. Ein installierter Git-Commit-Hook kann den Commit dann verweigern, ist aber optional und lässt sich umgehen. Damit die Prüfung vor dem Merge verbindlich ist, muss Ihr Projekt einen erfolgreichen Lauf von `--check` auf dem Branch in CI und Merge-Regeln voraussetzen; shoalmark richtet das nicht für Sie ein. Ob der Commit tut, was er soll, klärt ein Review.
-- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: keine Signatur und ohne Anmeldung am Server keinen Autor. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
+- *Kein Beweis, dass die Arbeit stimmt.* Bei geprüften Änderungen in Git oder Subversion muss ein Wechsel zu `Shipped` im Abschnitt „Verlauf“ (oder „Ship log“) des Arbeitspakets einen Commit nennen, der schon in der Historie der geprüften Änderung liegt und etwas außerhalb des Belegs ändert (unter Subversion eine Revision). Diese Nachweisregel gilt nicht für `Closed`. Bei einem Verstoß meldet die Prüfung einen Fehler und endet mit einem Rückgabewert ungleich null. Ein installierter Git-Commit-Hook kann den Commit dann verweigern, ist aber optional und lässt sich umgehen. Damit die Prüfung vor dem Merge verbindlich ist, muss Ihr Projekt über seine CI und seine Merge-Regeln einen erfolgreichen Lauf von `--check` auf dem Branch voraussetzen; shoalmark richtet das nicht für Sie ein. Ob der Commit tut, was er soll, klärt ein Review.
+- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
 
 ## Hier anfangen
 

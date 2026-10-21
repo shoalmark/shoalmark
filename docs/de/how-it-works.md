@@ -4,13 +4,13 @@ description: "Eine Woche mit shoalmark in vier Schritten: Ihr Teil daran, was es
 
 # So funktioniert's
 
-shoalmark legt die Arbeit Ihres Projekts als Textdateien im Projekt selbst ab, sodass jeder Agent, der daran arbeitet, denselben aktuellen Stand liest. Es zeigt Ihnen zuerst, was auf Ihre Antwort wartet, und lässt Arbeit nur dann als „fertig“ gelten, wenn eine gespeicherte Änderung (ein Commit) im Verlauf des Projekts dahintersteht.
+shoalmark legt die Arbeit Ihres Projekts als Textdateien im Projekt selbst ab, sodass jeder Agent, der daran arbeitet, denselben aktuellen Stand liest. Es zeigt Ihnen zuerst, was auf Ihre Antwort wartet, und seine Prüfungen melden Arbeit, die als ausgeliefert markiert ist, wenn keine gespeicherte Änderung (ein Commit) in der Historie des Projekts dahintersteht.
 
 ## Eine Woche in vier Schritten
 
 **Was Ihr Wort braucht, wartet darauf; kein Agent antwortet für Sie.**
 
-1. **Die Agenten arbeiten und halten fest, wo die Arbeit steht.** Jedes Arbeitspaket ist eine Markdown-Datei mit dem, was jetzt gilt, und dem nächsten Schritt. Ein „fertig“ ohne Commit dahinter lehnt das Gate ab.
+1. **Die Agenten arbeiten und halten fest, wo die Arbeit steht.** Jedes Arbeitspaket ist eine Markdown-Datei mit dem, was jetzt gilt, und dem nächsten Schritt. Einen Wechsel zu *Shipped* ohne Commit dahinter melden die Prüfungen.
 2. **Was nur Sie entscheiden können, wird zu einer Frage.** Braucht ein Agent Ihre Entscheidung, schreibt er sie als einen Satz auf, mit den Optionen und seinem Vorschlag, und macht mit anderer Arbeit weiter. Zwischen den Standups unterbricht Sie niemand, außer für etwas, das sich nicht rückgängig machen lässt.
 3. **Sie sitzen, zu der Uhrzeit, die Sie gewählt haben.** Zu der Uhrzeit, die Sie gewählt haben, gibt das Standup die Tagesordnung aus: zuerst Ihre Entscheidungen, jede mit ihrer Wartezeit und dem, was sie aufhält. Sie antworten mit einem Befehl pro Frage; er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.
 4. **Die Agenten handeln auf Ihre Antwort, und ein Reviewer urteilt vor dem Merge.** Ein Sitz mit dem Recht dazu hält Ihre Antwort im Arbeitspaket fest und macht weiter. Bevor Arbeit zu einem Merge kommt, prüft sie ein Reviewer; das Board sagt, ob dessen Durchgang unabhängig war, also aus einer anderen Session kam als der Code. Das ist eine Meldung, kein Beweis. `--queue` zeigt die offenen Pull Requests in der Reihenfolge, in der sie zu mergen sind.
@@ -50,11 +50,11 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 ## Was shoalmark nicht tut
 
 - Es prüft Ihren Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.
-- Es beweist nicht, dass Arbeit richtig ist. Das Gate lehnt ein „fertig“ ohne Commit dahinter ab; ob dieser Commit seinen Zweck erfüllt, klärt ein Review.
+- Es beweist nicht, dass Arbeit richtig ist. Seine Prüfungen melden einen Wechsel zu *Shipped* ohne Commit dahinter; ob dieser Commit seinen Zweck erfüllt, klärt ein Review.
 - Es ist kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys.
 - Es passt heute zu Projekten, in denen eine Person das Sagen hat. Mehrere Menschen, die das Sagen haben, sind in dieser Beta nicht getestet.
-- Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: keine Signatur und ohne Anmeldung am Server keinen Autor.
-  Es braucht keinen eigenen Server und kein eigenes Konto.
+- Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.
+  Es braucht keinen eigenen Server, keine eigene Datenbank und kein eigenes Konto.
 
 ## Ausprobieren
 

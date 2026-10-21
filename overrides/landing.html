@@ -567,12 +567,18 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
       <p class="loses"><b>{{ w.p2_loses_b }}</b>{{ w.p2_loses }}</p>
     </article>
   </div>
-  <p class="small"><a href="{{ 'why-shoalmark.html' | url }}">Why shoalmark?</a></p>
+</section>
+
+<section class="band wrap" id="issue-tracker" aria-labelledby="h-issue-tracker">
+  <div class="sec-h"><span class="n">{{ w.it_n }}</span><h2 id="h-issue-tracker">{{ w.it_h }}</h2></div>
+  <p>{{ w.it_1 }}</p>
+  <p>{{ w.it_2 }}</p>
+  <p class="small">{{ w.why_link }}</p>
 </section>
 
 {# FM-006 v0.19.0 first screen: C, the fleet — a section of its own, early: the first after the chart and its console. Its first line the ruled definition; four tiles as ruled — badge, name, character, the one line; where a clause is needed, README §Seats's own words: the four rights the gate sees (RV-2186) and a seat's charter, beside D1's ruled phrase for the tool's three seats. Each badge inlined from brand/seats/<seat>.svg, its drawing verbatim (the built site carries no brand/), its title left out: decorative, and the four specialists unnamed #}
 <section class="band wrap fleet" id="seats" aria-labelledby="h-fleet">
-  <div class="sec-h"><h2 id="h-fleet">{{ w.fleet_h }}</h2></div>
+  <div class="sec-h"><span class="n">{{ w.fleet_n }}</span><h2 id="h-fleet">{{ w.fleet_h }}</h2></div>
   <p class="fleet-def">{{ w.fleet_def }}</p>
   <p class="fleet-rights">{{ w.fleet_rights }}</p>
   <ul class="seats">
@@ -589,13 +595,6 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     <p>{{ w.fleet_foot }}</p>
     <a href="{{ urls.seats }}">{{ w.fleet_all }} <span aria-hidden="true">→</span></a>
   </div>
-</section>
-
-<section class="band wrap" id="issue-tracker" aria-labelledby="h-issue-tracker">
-  <div class="sec-h"><h2 id="h-issue-tracker">Why not my issue tracker?</h2></div>
-  <p>Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work record lives in the repository they work in, and your answers are your own commits there.</p>
-
-  <p>If your current tracker already handles the handovers and decisions you need, that may be enough. shoalmark brings its own tracker; adopting it means deciding which record is the one that counts.</p>
 </section>
 
 <section class="band wrap" id="scores" aria-labelledby="h-scores">
@@ -632,6 +631,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 
 <section class="band wrap" id="start" aria-labelledby="h-start">
   <div class="sec-h"><span class="n n-ic">{{ w.start_n | replace("— ", "— " ~ icon_coin ~ " ") }}</span><h2 id="h-start">{{ w.start_h }}</h2></div>
+  <p class="needs"><b>{{ w.needs_b }}</b> {{ w.needs }}</p>
   <div class="loses beta"><b>{{ w.beta_b }}</b><ul>
     <li>{{ w.beta_1 }}</li>
     <li>{{ w.beta_2 }}</li>

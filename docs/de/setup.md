@@ -1,6 +1,6 @@
 # In zehn Minuten eingerichtet
 
-*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: keine Signatur und ohne Anmeldung am Server keinen Autor.*
+*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.*
 
 ## 1. Das Werkzeug ins Repository legen
 
@@ -75,9 +75,9 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 
 ## 6. Das Board öffnen
 
-`docs/work-tracker/index.html` — sie ist git-ignoriert und wird neu gebaut, wenn das Werkzeug läuft, bei einem Commit, der ein
+`docs/work-tracker/index.html` — es ist git-ignoriert und wird neu gebaut, wenn das Werkzeug läuft, bei einem Commit, der ein
 Arbeitspaket ändert, und gleich nach jeder Ihrer Antworten und Handlungen; unter Subversion bei einem Commit über TortoiseSVN oder
-wenn das Werkzeug läuft. Nach einem Checkout, einem Merge oder einem Update baut sie nichts neu: das tut `--html-only`. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml` setzt die Uhrzeit Ihres Standups.
+wenn das Werkzeug läuft. Ein Checkout, ein Merge oder ein Update baut es nicht neu: das tut `--html-only`. Seine erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml` setzt die Uhrzeit Ihres Standups.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

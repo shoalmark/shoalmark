@@ -4,13 +4,13 @@ description: "A week with shoalmark in four steps: your part in it, what it does
 
 # How it works
 
-shoalmark keeps your project's work as plain files inside the project, so every agent that works on it reads the same current state. It shows you first what is waiting for your answer, and it counts work as done only when a saved change (a commit) in the project's history backs it.
+shoalmark keeps your project's work as plain files inside the project, so every agent that works on it reads the same current state. It shows you first what is waiting for your answer, and its checks report work marked as shipped when no saved change (a commit) in the project's history backs it.
 
 ## A week in four steps
 
 **What needs your word waits for it; no agent answers for you.**
 
-1. **The agents work and record where the work stands.** Each work item is a Markdown file with what is true now and what comes next. A *done* with no commit behind it is refused by the gate.
+1. **The agents work and record where the work stands.** Each work item is a Markdown file with what is true now and what comes next. A move to *Shipped* with no commit behind it is reported by the checks.
 2. **What only you can decide becomes a question.** When an agent needs your decision it writes it down as one sentence, with the options and its own proposal, and carries on with other work. Between standups nobody interrupts you, except for what cannot be undone.
 3. **You sit, at the time you chose.** At the time you chose, the standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes your answer as a commit, signed with your key once you turn signing on.
 4. **The agents act on your answer, and a reviewer judges before the merge.** A seat that holds the right to do so records your answer in the work item and moves on. Before work reaches a merge, a reviewer checks it; the board says whether that pass was independent, meaning it came from another session than the code. That is a report, not a proof. `--queue` lists the open pull requests in the order to merge them.
@@ -50,11 +50,11 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 ## What shoalmark does not do
 
 - It does not scan your code for security problems or data leaks.
-- It does not prove that work is right. The gate refuses a *done* with no commit behind it; whether that commit did the job is what a review is for.
+- It does not prove that work is right. Its checks report a move to *Shipped* with no commit behind it; whether that commit did the job is what a review is for.
 - It is not a migration tool: it imports no ticket system and starts from your repository's own work.
 - Today it fits a project with one person in charge. Several people in charge are not tested in this beta.
-- It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and says once what it cannot verify there: no signature, and without the server's login no author.
-  It needs no server or account of its own.
+- It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.
+  It needs no server, database or account of its own.
 
 ## Try it
 

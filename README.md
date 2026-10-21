@@ -25,8 +25,8 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
-- Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and says once what it cannot verify there: no signature, and without the server's login no author. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
+- *Not proof that work is right.* In Git or Subversion changes being checked, a move to `Shipped` must name in its ship log a commit already in that change's history that changes something outside the records (on Subversion, a revision). This evidence rule does not cover `Closed`. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing `--check` on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
 
 Git worktree identity and commit-trailer reports (`--whoami`, `--session-trailer`, `--sessions`), the forge queue
 (`--queue`) and signed answer-branch acts (`--answer`, `--done`, `--due`, `--revoke`) require Git. Under Subversion, `--session new` generates an id without checking a Git commit registry. A server login
@@ -51,7 +51,7 @@ convention only: checks and traceability are later.
 ---
 
 A work tracker that lives in the repository it tracks: one Markdown file per work item, one Python file that reads
-them all, a gate in CI and on commit. It needs no server or database of its own; besides Python 3.9 or newer, a git repository needs `git` installed, and on Subversion it runs without it.
+them all, and checks you can run locally and in your project's CI. It needs no server, database or account of its own, and no dependency beyond Python 3.9.
 **This page is written for the agent that has to use it.** Find your situation, do what it says.
 
 | You are… | Go to |

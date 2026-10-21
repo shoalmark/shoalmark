@@ -1,6 +1,6 @@
 # Set up in ten minutes
 
-*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and says once what it cannot verify there: no signature, and without the server's login no author.*
+*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.*
 
 ## 1. Put the tool in the repository
 

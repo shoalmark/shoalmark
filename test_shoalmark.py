@@ -5460,11 +5460,10 @@ check("FM-006 · a private security report · the CHANGELOG's line — every hoo
 _LANDING_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", "zensical.toml", "docs/index.md", "docs/de/index.md")
 _FOOT_EN = ("{tag}, released {date} — Subversion without git, and a release archive. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
             "from the repository and were read when the site was built: {read_date}, at {read_sha}.")
-_FOOT_DE = ("{tag}, veröffentlicht am {date} – ein Sicherheits-Release: aktualisieren, <code>--install-hook</code> "
-            "auf dem Standard-Branch erneut ausführen, danach einmal <code>--check</code>. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem Board stammen aus "
-            "dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
-_CHART_NOTE = ("Every wreck is a defect in shoalmark itself: a bug or a security finding, filed in its own tracker.",
-               "Jedes Wrack ist ein Fehler in shoalmark selbst: ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Tracker.")
+_FOOT_DE = ("{tag}, veröffentlicht am {date} – Subversion ohne git und ein Release-Archiv. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
+            "Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
+_CHART_NOTE = ("shoalmark runs on itself: every wreck is a bug or a security finding, filed in its own repository.",
+               "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.")
 
 
 def _sources(files, root=None):
@@ -5505,7 +5504,8 @@ def _landing_problems(src):
         bad.append("a language's lang, title or description is not its own")
     if 'import "partials/landing/" ~ ("de" if de else "en") ~ ".html" as L' not in code or 'import "partials/landing/facts.html" as F' not in code:
         bad.append("the template does not choose its words by the page's path, or does not read facts.html")
-    if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(words, ensure_ascii=False)):
+    untaped = {lang: {k: v for k, v in d.items() if k not in ("cue_taped", "taped_why")} for lang, d in words.items()}   # the taped state names the release it ends at
+    if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(untaped, ensure_ascii=False)):
         bad.append("a release is typed where the build's figures give it")
     if code.count('<b id="hud-w">{{ F.counts.wrecks }}</b>') != 1 or code.count('<b id="hud-o">{{ F.counts.open }}</b>') != 1 or re.search(r'id="hud-[wo]">\d', code):
         bad.append("the top bar's wrecks and open counts are not facts.html's `counts`, or a count is typed in the HTML")
@@ -5660,27 +5660,19 @@ check("FM-006 · B1 · the launch check is not blind: each of the switch on with
 # --- FM-006 · B1 · what the tool needs, as M4 builds it to v0.20.0's plan: Subversion without git, from the release archive -----------------
 # The same fact, in every place that says what shoalmark needs: README.md, the English and the German start page and the landing's beta list say it as one
 # sentence among the beta lines, M4's (FM-006, in the go-to-market review's wording, re-read at the words freeze after v0.20.0's tag); the two setup pages
-# and the two How it works pages say it after Python and a git repository's `git`; the README's sentence on what it needs beside Python says it once more.
+# and the two How it works pages say it after Python and a git repository's `git`; the README's sentence on what it needs beside Python is the Owner's form.
 # The Owner's words of 2026-10-09 it replaces ("git installed, on Subversion too") and the withdrawn ruling's opening ("on every machine") stay out.
 _GIT_FILES = ("README.md", "docs/index.md", "docs/de/index.md", "docs/setup.md", "docs/de/setup.md", "docs/how-it-works.md", "docs/de/how-it-works.md",
               "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
-_GIT_EN = ("Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. "
-           "On Subversion it runs without `git` installed, from the release archive, and says once what it cannot verify there: no signature, and without the "
-           "server's login no author. Signed answers need a `git` repository, and the pull-request queue a `git` repository "
-           "on GitHub and GitHub's command line, `gh`.")
-_GIT_DE = ("Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. "
-           "Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: keine Signatur und ohne "
-           "Anmeldung am Server keinen Autor. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange "
-           "braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.")
-_GIT_SVN = ("On Subversion it runs without `git` installed, from the release archive, and says once what it cannot verify there: no signature, and without the "
-            "server's login no author.",
-            "Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und sagt dort einmal, was es nicht prüfen kann: keine Signatur und ohne "
-            "Anmeldung am Server keinen Autor.")
+_GIT_EN = "Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`."
+_GIT_DE = "Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub."
+_GIT_SVN = ("On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.",
+            "Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.")
 _GIT_SETUP = ("*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. " + _GIT_SVN[0] + "*",
               "*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. " + _GIT_SVN[1] + "*")
-_GIT_HOW = ("- It needs Python 3.9 or newer; a git repository needs `git` installed. " + _GIT_SVN[0] + "\n  It needs no server or account of its own.\n",
-            "- Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. " + _GIT_SVN[1] + "\n  Es braucht keinen eigenen Server und kein eigenes Konto.\n")
-_GIT_README = "It needs no server or database of its own; besides Python 3.9 or newer, a git repository needs `git` installed, and on Subversion it runs without it."
+_GIT_HOW = ("- It needs Python 3.9 or newer; a git repository needs `git` installed. " + _GIT_SVN[0] + "\n  It needs no server, database or account of its own.\n",
+            "- Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. " + _GIT_SVN[1] + "\n  Es braucht keinen eigenen Server, keine eigene Datenbank und kein eigenes Konto.\n")
+_GIT_README = "It needs no server, database or account of its own, and no dependency beyond Python 3.9."
 
 
 def _git_problems(src):
@@ -5701,8 +5693,8 @@ def _git_problems(src):
     for path, want in zip(("docs/how-it-works.md", "docs/de/how-it-works.md"), _GIT_HOW):
         if want not in src[path]:
             bad.append(f"{path} does not hold the git sentence and the sentence on the server in the Owner's words, each on a line of its own")
-    if _GIT_README not in src["README.md"] or "no dependency beyond" in src["README.md"]:
-        bad.append("README.md's sentence on what it needs is not the Owner's, or still says no dependency")
+    if _GIT_README not in src["README.md"]:
+        bad.append("README.md's sentence on what it needs is not the Owner's")
     for path in ("README.md", "docs/index.md", "docs/de/index.md", "docs/how-it-works.md", "docs/de/how-it-works.md"):
         if "on every machine" in src[path] or "auf jedem Rechner" in src[path]:
             bad.append(f"{path} holds the opening sentence of the withdrawn ruling, on every machine")
@@ -5729,7 +5721,7 @@ _gctl = {"README's sentence left out": _with(_gs, "README.md", _GIT_SVN[0] + " "
          "the English setup page as it was": _with(_gs, "docs/setup.md", _GIT_SETUP[0], "*For the person who owns the repository. Python 3.9 or newer is the only requirement.*"),
          "the German setup page as it was": _with(_gs, "docs/de/setup.md", _GIT_SETUP[1], "*Für die Person, der das Repository gehört. Python 3.9 oder neuer ist die einzige Voraussetzung.*"),
          "How it works with the withdrawn opening": _with(_gs, "docs/how-it-works.md", _GIT_HOW[0].split("\n")[0], "- It needs `git` on every machine, Subversion included, and Python 3.9 or newer."),
-         "How it works' second sentence as it was": _with(_gs, "docs/de/how-it-works.md", "Es braucht keinen eigenen Server und kein eigenes Konto.", "Es braucht keinen Server und kein Konto."),
+         "How it works' second sentence as it was": _with(_gs, "docs/de/how-it-works.md", "Es braucht keinen eigenen Server, keine eigene Datenbank und kein eigenes Konto.", "Es braucht keinen Server und kein Konto."),
          "the README's other sentence as it was": _with(_gs, "README.md", _GIT_README, "It needs no server, no database and no dependency beyond Python 3.9.")}
 _gctl_saw = {name: len(_git_problems(src)) for name, src in _gctl.items()}
 check("FM-006 · M4 · the git wording's check is not blind: each of the README's sentence left out, the landing's English list as B1 had it, the English start page without gh, the German "
@@ -5740,10 +5732,10 @@ check("FM-006 · M4 · the git wording's check is not blind: each of the README'
 # --- FM-006 · B1 · no server or account of its own, in the Owner's words: the start pages and the ticker --------------------------------------
 # The same claim, in the sentence of each start page that says what shoalmark needs and in the landing's ticker of each language, as it stands in the README and
 # in How it works: no server or account of its own.
-_NEEDS_START = ("shoalmark needs no server or account of its own, and its ids are ones you can say out loud, like FM-012.",
-                "shoalmark braucht keinen eigenen Server und kein eigenes Konto, und seine IDs kann man aussprechen, etwa FM-012.")
-_NEEDS_TICKER = ('"ticker": "needs no server or account of its own <b>·</b> ids you can say out loud <b>·</b> ',
-                 '"ticker": "braucht keinen eigenen Server und kein eigenes Konto <b>·</b> IDs, die man aussprechen kann <b>·</b> ')
+_NEEDS_START = ("shoalmark needs Python 3.9 or newer and nothing else: no dependencies, and no server, database or account of its own.",
+                "shoalmark braucht Python 3.9 oder neuer und sonst nichts: keine Abhängigkeiten, keinen eigenen Server, keine eigene Datenbank, kein eigenes Konto.")
+_NEEDS_TICKER = ("\"ticker\": \"python 3.9 or newer, no dependencies <b>·</b> no server, database or account of its own <b>·</b> ",
+                 "\"ticker\": \"Python 3.9 oder neuer, keine Abhängigkeiten <b>·</b> kein eigener Server, keine eigene Datenbank, kein eigenes Konto <b>·</b> ")
 
 
 def _needs_problems(src):
@@ -5751,10 +5743,10 @@ def _needs_problems(src):
     bad = []
     for path, want in (("docs/index.md", _NEEDS_START[0]), ("docs/de/index.md", _NEEDS_START[1])):
         if want not in " ".join(src[path].split()):
-            bad.append(f"{path}'s sentence on what shoalmark needs is not the Owner's: no server or account of its own")
+            bad.append(f"{path}'s sentence on what shoalmark needs is not the Owner's: no server, database or account of its own")
     for path, want in (("overrides/partials/landing/en.html", _NEEDS_TICKER[0]), ("overrides/partials/landing/de.html", _NEEDS_TICKER[1])):
         if want not in src[path]:
-            bad.append(f"{path}'s ticker does not begin with the Owner's words, no server or account of its own")
+            bad.append(f"{path}'s ticker does not begin with the Owner's words, no server, database or account of its own")
     for path in ("docs/index.md", "docs/de/index.md", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html"):
         if re.search(r"no server and no account|keinen Server und kein Konto", src[path]):
             bad.append(f"{path} still says no server and no account")
@@ -5764,10 +5756,10 @@ def _needs_problems(src):
 _np = _needs_problems(_gs)
 check("FM-006 · B1 · no server or account of its own, in the Owner's words: both start pages' sentence and the landing's ticker in English and German "
       f"(problems found: {_np})", _np == [])
-_nctl = {"the English start page as it was": _with(_gs, "docs/index.md", "needs no server or account of its own,", "needs no server and no account,"),
-         "the German start page as it was": _with(_gs, "docs/de/index.md", "braucht keinen eigenen Server und kein eigenes Konto,", "braucht keinen Server und kein Konto,"),
-         "the English ticker as it was": _with(_gs, "overrides/partials/landing/en.html", '"ticker": "needs no server or account of its own <b>', '"ticker": "needs no server and no account <b>'),
-         "the German ticker as it was": _with(_gs, "overrides/partials/landing/de.html", '"ticker": "braucht keinen eigenen Server und kein eigenes Konto <b>', '"ticker": "braucht keinen Server und kein Konto <b>')}
+_nctl = {"the English start page as it was": _with(_gs, "docs/index.md", "and no server, database or account of its own.", "and no server and no account."),
+         "the German start page as it was": _with(_gs, "docs/de/index.md", "keinen eigenen Server, keine eigene\nDatenbank, kein eigenes Konto.", "keinen Server und kein Konto."),
+         "the English ticker as it was": _with(_gs, "overrides/partials/landing/en.html", "\"ticker\": \"python 3.9 or newer, no dependencies <b>·</b> no server, database or account of its own <b>·</b> ", '"ticker": "needs no server and no account <b>· '),
+         "the German ticker as it was": _with(_gs, "overrides/partials/landing/de.html", "\"ticker\": \"Python 3.9 oder neuer, keine Abhängigkeiten <b>·</b> kein eigener Server, keine eigene Datenbank, kein eigenes Konto <b>·</b> ", '"ticker": "braucht keinen Server und kein Konto <b>· ')}
 _nctl_saw = {name: len(_needs_problems(src)) for name, src in _nctl.items()}
 check("FM-006 · B1 · the no-server-or-account check is not blind: each of the English and the German start page and ticker as it was leaves a problem "
       f"(problems found: {_nctl_saw})", all(_nctl_saw.values()) and len(_nctl_saw) == 4)
@@ -5779,7 +5771,7 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
 # neither blinking; the other labels have no icon. Every icon is aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
 _CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
 _CUE_WORDS = {"en": {"cue": "— press start —", "players_n": "— select player —", "start_n": "— insert coin —", "scores_n": "— measured, not promised —", "reg_n": "— the wreck register —"},
-              "de": {"cue": "— Start drücken —", "players_n": "— Spieler wählen —", "start_n": "— Münze einwerfen —", "scores_n": "— gemessen, nicht versprochen —", "reg_n": "— das Wrackregister —"}}
+              "de": {"cue": "— Start drücken —", "players_n": "— Spieler wählen —", "start_n": "— Münze einwerfen —", "scores_n": "— gemessen, nicht versprochen —", "reg_n": "— Wrackregister —"}}
 
 
 def _cue_problems(src):
@@ -5918,7 +5910,7 @@ check("FM-006 · R11 · the setup pages say what rebuilds the board — the tool
       "nothing rebuilds it after a checkout, a merge or an update, `--html-only` naming the rebuild; no word of `svn update`",
       "git-ignored and rebuilt when the tool runs, on a commit that changes a work item, and\nright after each of your answers and acts; on Subversion, on a commit through TortoiseSVN or when the tool runs. Nothing\n"
       "rebuilds it after a checkout, a merge or an update: `--html-only` does." in _rd("docs/setup.md")
-      and "Nach einem Checkout, einem Merge oder einem Update baut sie nichts neu: das tut `--html-only`." in _rd("docs/de/setup.md")
+      and "Ein Checkout, ein Merge oder ein Update baut es nicht neu: das tut `--html-only`." in _rd("docs/de/setup.md")
       and "mit git auch bei jedem Checkout" not in _rd("docs/de/setup.md") and "on every checkout and merge" not in _rd("docs/setup.md")
       and not re.search(r"svn update|svn up\b", _readme_.replace(_NO_BOARD_LINE, "") + _help_ + _rd("docs/setup.md")))
 check("FM-006 · R11 · the README's hooks section says in one line that on git and on Subversion alike a checkout, a pull and `svn update` rebuild no board, naming `--html-only` as the rebuild; "

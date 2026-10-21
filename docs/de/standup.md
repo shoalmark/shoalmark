@@ -47,7 +47,7 @@ unterwegs ist (eine Frage, die Sie beantwortet haben, steht hier bis zu Ihrem Me
 Requests und, wo ein Repository `[seats]` hat, wer gefragt hat. Sie antworten in jedem Repository wie bisher, und sein
 eigenes `--standup` dort sagt den Rest.
 
-Auf der Tafel trägt der Kasten mit dem, was auf Sie wartet, zwei Knöpfe: **Standup-Prompt** vor den Sitzungen des letzten Tages
+Auf dem Board trägt der Kasten mit dem, was auf Sie wartet, zwei Knöpfe: **Standup-Prompt** vor den Sitzungen des letzten Tages
 und **Abschluss-Prompt** an seinem Ende. Jeder kopiert einen festen Prompt für die Sitzung, die Sie nutzen — Claude Code, Codex
 oder eine andere: der eine bittet sie, Ihren Standup nach dieser Tagesordnung zu halten, einen Punkt nach dem anderen; der andere,
 den Tag aus dem Verlauf vorzulesen und nichts zu ändern. Keiner führt etwas aus, und eine Nachricht ist nie eine Antwort: Ihre
