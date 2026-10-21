@@ -123,10 +123,11 @@ class Git:
 
 
 def berlin():
-    zone, ok = _tool().ratio_zone()
-    if not ok:
+    try:
+        import zoneinfo
+        return zoneinfo.ZoneInfo("Europe/Berlin")
+    except Exception:                                     # no zoneinfo module, or no tzdata on this machine
         stop("no time zone database for Europe/Berlin here: the filing days and the build's day are Berlin days")
-    return zone
 
 
 _FM = []
