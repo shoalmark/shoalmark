@@ -430,6 +430,19 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
   .probe-steps{gap:10px}.probe-step:not(:last-child)::after{bottom:-8px}
   .probe-body{line-height:1.4}.probe-act{margin-top:8px}.probe-prompt{margin-top:8px}.probe-more{margin-top:6px}.probe-fold>summary{padding:8px 12px}
 }{# B1: short phones (375×667): the box of the prompt costs 85px in step 1 and the dialog stays within its window without scrolling inside itself: its spaces give 40px back #}
+/* phones: the chart as a strip behind the wordmark, as the profile header has it: 40 px more room above the wordmark for
+   it, and a cap on the hero's height, so a tall window does not centre the hero far down an empty screen */
+@media (max-width:700px){
+  .title{min-height:min(calc(100vh - 56px - 125px),760px);min-height:min(calc(100svh - 56px - 125px),760px)}
+  .title.has-strip{position:relative;left:auto;top:auto;isolation:isolate}
+  .title.has-strip::before{content:"";position:absolute;left:0;right:0;top:var(--strip-top,0px);height:var(--strip-h,0px);z-index:-1;
+    pointer-events:none;image-rendering:pixelated;
+    background:linear-gradient(90deg,#07111b 0%,rgba(7,17,27,.88) 22%,rgba(7,17,27,.35) 52%,rgba(7,17,27,.05) 78%),
+      linear-gradient(180deg,rgba(7,17,27,0) 62%,#07111b 100%),
+      var(--hero-bg) right top / 100% 100% no-repeat}
+}
+@media (max-width:700px) and (min-height:740px){.title{padding-top:68px}}
+@media (max-width:700px) and (min-height:740px) and (max-height:800px){.title{padding-top:62px}}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
@@ -448,6 +461,17 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
   .hero.is-taped{padding-bottom:108px}
   .hero.is-taped .title .taped-why{position:absolute;left:26px;top:calc(var(--k) * 196px + 16px);width:calc(var(--k) * 300px);max-width:80ch;margin:0}
 }
+/* the coin door, taped: a dark door frame, the coin slit in a light bezel where the copy icon stood, the label in the
+   unlit window, and a strip of painter's tape across the slit, in a colour the page uses nowhere else */
+.btn.taped{padding-left:50px;border:2px solid var(--contour);background:linear-gradient(90deg,#0b1520 0 36px,var(--closed) 36px);
+  box-shadow:inset 0 0 0 1px var(--abyss),4px 4px 0 var(--band)}
+.btn.taped .ic{display:none}
+.btn.taped::before{content:"";position:absolute;left:11px;top:7px;bottom:7px;width:14px;background:#010407;
+  box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px #4b5e6e,inset 6px 0 0 4px #000}
+.btn.taped .tape{color:#fff;background:#1f6fbf repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px);
+  box-shadow:0 2px 0 rgba(5,11,18,.55)}
+@media (min-width:701px){.cta.is-taped>.btn.alt{margin-bottom:18px}}
+@media (max-width:700px){.btn.taped{padding-left:18px}.btn.taped::before{top:9px;bottom:9px}}
 /* an open wreck on hold: drawn hollow (#wo), still and without the open wreck's glow, in the chart's magenta */
 .wreck.open.held{filter:none}
 .wreck.open.held .f1{animation:none}
@@ -1024,6 +1048,33 @@ addEventListener("resize", scale);
   dlg.addEventListener("close", () => { document.documentElement.classList.remove("modal"); clearTimeout(timer); open.focus(); });
 })();
 {%- endif %}
+</script>
+<script>
+/* phones: the chart, drawn once more as a still strip behind the wordmark, ending above the claim */
+addEventListener("load", () => setTimeout(() => {
+  if (!matchMedia("(max-width:700px)").matches) return;
+  const t = document.querySelector(".title"), wm = t.querySelector(".wm"), cl = t.querySelector(".claim");
+  const T0 = t.getBoundingClientRect().top, top = Math.max(0, Math.round(wm.getBoundingClientRect().top - T0) - 58);
+  const h = Math.round(cl.getBoundingClientRect().top - T0) - 4 - top, W = t.clientWidth;
+  const K = 3, CW = Math.round(W / K), CH = Math.round(h / K), CX = 320 - CW, CY = Math.round(84 - CH / 2);   // centred on the wrecks off Neuwerk and Scharhörn
+  const chart = document.getElementById("chart"), fleet = document.getElementById("fleet");
+  const c = document.createElement("canvas"); c.width = CW * K; c.height = CH * K;
+  const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+  g.drawImage(chart, CX, CY, CW, CH, 0, 0, CW * K, CH * K);
+  g.drawImage(fleet, CX, CY, CW, CH, 0, 0, CW * K, CH * K);
+  const FULL = [[2,0,5],[1,1,7],[0,2,2],[3,2,3],[7,2,2],[0,3,9],[1,4,1],[3,4,1],[5,4,1],[7,4,1],[0,5,1],[8,5,1]];
+  const HOLLOW = [[2,0,5],[1,1,1],[7,1,1],[0,2,1],[2,2,1],[6,2,1],[8,2,1],[0,3,9],[1,4,1],[3,4,1],[5,4,1],[7,4,1],[0,5,1],[8,5,1]];
+  const COL = {open: "#ee92d4", raised: "#b07ca3", closed: "#8595a2"};
+  WRECKS.forEach(w => {
+    const cls = STATUS[w.status][0], x = (w.lon - R.lon0) / (R.lon1 - R.lon0) * 320, y = (R.lat1 - w.lat) / (R.lat1 - R.lat0) * 205;
+    const px = Math.round((x - CX) * K) - 9, py = Math.round((y - CY) * K) - 6;
+    g.fillStyle = COL[cls.split(" ")[0]]; g.globalAlpha = cls.startsWith("open") ? 1 : .85;
+    (cls.endsWith("held") ? HOLLOW : FULL).forEach(([dx, dy, n]) => g.fillRect(px + dx * 2, py + dy * 2, n * 2, 2));
+  });
+  g.globalAlpha = 1;
+  t.style.setProperty("--hero-bg", `url(${c.toDataURL()})`); t.style.setProperty("--strip-top", top + "px");
+  t.style.setProperty("--strip-h", h + "px"); t.classList.add("has-strip");
+}, 0));
 </script>
 </body>
 </html>
