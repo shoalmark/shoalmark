@@ -170,6 +170,7 @@ import re
 
 config_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).resolve().parent.parent / "zensical.toml"
 probe_on = bool((tomllib.loads(config_path.read_text(encoding="utf-8"))["project"].get("extra") or {}).get("probe"))
+taped_on = bool((tomllib.loads(config_path.read_text(encoding="utf-8"))["project"].get("extra") or {}).get("taped"))
 SITE_URL = "https://shoalmark.tools/"
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 LOADS = {"script": "src", "img": "src", "source": "src", "iframe": "src", "audio": "src", "video": "src", "embed": "src", "object": "data", "form": "action"}
@@ -190,6 +191,7 @@ class Page(HTMLParser):
         self.lang = self.title = None
         self.meta, self.links, self.anchors, self.texts, self.textareas, self.dialogs, self.scripts, self.loads = {}, [], [], {}, {}, [], [], []
         self.text, self.stack = "", []
+        self.buttons, self.tapes, self.button_texts, self.tape_texts = [], [], [], []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -203,6 +205,8 @@ class Page(HTMLParser):
                 self.loads.append((tag, a["href"]))
         elif tag == "dialog":
             self.dialogs.append(a)
+        if tag == "button" or "tape" in (a.get("class") or "").split():
+            (self.buttons if tag == "button" else self.tapes).append(a)
         if tag in LOADS and a.get(LOADS[tag]):
             self.loads.append((tag, a[LOADS[tag]]))
         if tag not in VOID:
@@ -223,6 +227,8 @@ class Page(HTMLParser):
                 self.title = el["text"].strip()
             elif el["tag"] == "script":
                 self.scripts.append(el["text"])
+            elif el["tag"] == "button" or "tape" in (el["attrs"].get("class") or "").split():
+                (self.button_texts if el["tag"] == "button" else self.tape_texts).append(el["text"])
             if el["tag"] == tag:
                 break
 
@@ -273,6 +279,34 @@ for rel, lang, other, canonical, image, adopt, how in (
         fail(f"{rel} has no language switch to {other}, named by its hreflang")
     if p.meta.get("og:image") != SITE_URL + "assets/" + image or p.meta.get("og:locale") != ("en_GB" if lang == "en" else "de_DE") or not (p.title and p.meta.get("description")):
         fail(f"{rel}'s link preview is not its language's: image {image}, its locale, title and description")
+    if taped_on:
+        # the taped state: the primary button is a button, not a link — shown, taped over (the tape hidden from screen readers), aria-disabled, named
+        # by its reason line through aria-describedby, with no handler; no dialog is built, the second button leads to How it works, the reason line
+        # hands the agents the note, and the Markdown twin leads with that note
+        if probe_on:
+            fail("the probe switch is on and the tape too: the two exclude each other")
+        taped = [b for b in p.buttons if "btn" in (b.get("class") or "").split()]
+        links = [a for a in p.anchors if "btn" in classes(a)]
+        note = "https://github.com/shoalmark/shoalmark/blob/main/" + adopt
+        if (len(taped) != 1 or "taped" not in (taped[0].get("class") or "").split() or taped[0].get("type") != "button" or taped[0].get("aria-disabled") != "true"
+                or taped[0].get("id") or taped[0].get("href") or any(k.startswith("on") for k in taped[0])):
+            fail(f"{rel}: the tape is on, but the primary button is not one button, aria-disabled, with no id, link or handler")
+        if [t.get("aria-hidden") for t in p.tapes] != ["true"]:
+            fail(f"{rel}: the tape is on, but the button carries no tape hidden from screen readers")
+        if taped[0].get("aria-describedby") != "taped-why" or not p.texts.get("taped-why", "").strip():
+            fail(f"{rel}: the tape is on, but the button is not described by the line that says why")
+        if p.dialogs or "probe-text" in p.textareas or any("taped" in script for script in p.scripts):
+            fail(f"{rel}: the tape is on, but a dialog is built or a script handles the taped button")
+        if len(links) != 1 or "alt" not in classes(links[0]) or leads_to(rel, links[0]["attrs"].get("href") or "") != how or not any(a["attrs"].get("href") == note for a in p.anchors):
+            fail(f"{rel}: the tape is on, but the second button does not lead to {how} alone, or no link hands the agents the note ({adopt})")
+        releases = [a["attrs"]["href"].rsplit("/", 1)[1] for a in p.anchors if (a["attrs"].get("href") or "").startswith("https://github.com/shoalmark/shoalmark/releases/tag/")]
+        label_of = [a["text"] for a in p.anchors if "rel" in classes(a)]
+        if len(releases) != 2 or len(set(releases)) != 1 or len(label_of) != 1 or not label_of[0].endswith(releases[0]):
+            fail(f"{rel}: the top bar's release label and its link and the footer's link do not name one release")
+        first_link = re.search(r"\]\(([^)\s]+)\)", (site / ("index.md" if lang == "en" else "de/index.md")).read_text(encoding="utf-8"))
+        if not first_link or first_link.group(1) != note:
+            fail(f"{rel}'s Markdown twin does not lead with the note, the action the taped page hands the agents ({note})")
+        continue
     buttons = [a for a in p.anchors if "btn" in classes(a)]
     primary, second = [a for a in buttons if "alt" not in classes(a)], [a for a in buttons if "alt" in classes(a)]
     if len(primary) != 1 or len(second) != 1 or leads_to(rel, second[0]["attrs"].get("href") or "") != how:
@@ -315,6 +349,10 @@ if not probe_on:
         if found.is_file() and found.suffix in {".html", ".md", ".txt", ".json", ".xml"} and ("probe.txt" in found.read_text(encoding="utf-8") or "probe-open" in found.read_text(encoding="utf-8")):
             fail(f"the probe switch is off, but {found.relative_to(site)} speaks of the probe's prompt")
 
+if taped_on:   # the taped page's primary button is a button: the check below reads its label, the tape's words left out, beside the page's links
+    for landing in ("index.html", "de/index.html"):
+        label = " ".join(pages[landing].button_texts[0].replace(pages[landing].tape_texts[0], " ").split()) if pages[landing].button_texts and pages[landing].tape_texts else ""
+        pages[landing].anchors.append({"attrs": {"class": "btn taped"}, "text": label})
 # How it works: each language's page is in its language and names the primary button as its landing labels it; its twin carries no raw HTML and no include
 for rel, landing, twin, lang, quote in (("how-it-works.html", "index.html", "how-it-works/index.md", "en", '"%s"'), ("de/how-it-works.html", "de/index.html", "de/how-it-works/index.md", "de", "„%s“")):
     label = [a["text"] for a in pages[landing].anchors if "btn" in classes(a) and "alt" not in classes(a)][0]

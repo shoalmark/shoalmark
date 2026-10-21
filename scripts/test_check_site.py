@@ -240,6 +240,66 @@ FIGURE = ('<figure class="week" markdown="0">\n<div class="week-card"><h3 class=
           '<figcaption>One question, a signed commit that sets <code>next</code> to <code>build</code>.</figcaption>\n</figure>')
 
 
+class Taped(unittest.TestCase):
+    """The taped state: the probe switch off and the tape on. The primary button is a taped, aria-disabled button described by its reason line; each control
+    changes one thing in a taped site that passes, and the check names it."""
+
+    def taped_site(self, site):
+        good_site(site)
+        for name, en in (("index.html", True), ("de/index.html", False)):
+            note = "https://github.com/shoalmark/shoalmark/blob/main/ADOPT%s.md" % ("" if en else ".de")
+            old = '<a class="btn" href="%s">%s</a>' % (note, "Hand your agents the note" if en else "Agenten die Notiz geben")
+            new = ('<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">%s</span></button>'
+                   % (LABELS["en" if en else "de"], "not yet" if en else "noch nicht"))
+            why = '<p class="taped-why" id="taped-why">%s <a href="%s">%s</a>.</p>' % ("Not open yet. Until then, hand your agents" if en else "Noch nicht offen. Bis dahin geben Sie Ihren Agenten",
+                                                                                     note, "the note" if en else "die Notiz")
+            text = (site / name).read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new).replace("<footer>", why + "<footer>"), encoding="utf-8")
+        for name, old, new in (("how-it-works.html", "Hand your agents the note", LABELS["en"]), ("how-it-works/index.md", "Hand your agents the note", LABELS["en"]),
+                               ("de/how-it-works.html", "Agenten die Notiz geben", LABELS["de"]), ("de/how-it-works/index.md", "Agenten die Notiz geben", LABELS["de"])):
+            text = (site / name).read_text(encoding="utf-8")       # How it works names the taped button, as the taped state's words do
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new), encoding="utf-8")
+
+    def checked(self, change=None, probe=False):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            self.taped_site(site)
+            if change:
+                change(site)
+            toml = Path(tmp) / "zensical-taped.toml"
+            toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = true\n" % ("true" if probe else "false"), encoding="utf-8")
+            return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+
+    def edit(self, old, new):
+        def change(site):
+            text = (site / "index.html").read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / "index.html").write_text(text.replace(old, new, 1), encoding="utf-8")
+        return change
+
+    def test_a_taped_site_passes(self):
+        result = self.checked()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_each_control_is_refused(self):
+        for name, change, probe, message in (
+                ("the tape left off", self.edit('<span class="tape" aria-hidden="true">not yet</span>', ""), False, "carries no tape hidden from screen readers"),
+                ("a dialog built", self.edit("<footer>", '<dialog id="probe" aria-labelledby="h"><h2 id="h">x</h2></dialog><footer>'), False, "a dialog is built"),
+                ("a click handler on the button", self.edit('aria-disabled="true"', 'aria-disabled="true" onclick="copy()"'), False, "with no id, link or handler"),
+                ("a script that handles the button", self.edit("</body>", '<script>document.querySelector(".taped").addEventListener("click", () => 0)</script></body>'), False,
+                 "a script handles the taped button"),
+                ("aria-describedby missing", self.edit(' aria-describedby="taped-why"', ""), False, "is not described by the line that says why"),
+                ("the button a link", self.edit('<button type="button" class="btn taped"', '<a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md" class="btn">x</a><button type="button" class="btn taped"'), False,
+                 "does not lead to how-it-works.html alone"),
+                ("the switch on with the tape", None, True, "the two exclude each other")):
+            with self.subTest(name):
+                result = self.checked(change, probe)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+
 class Twins(unittest.TestCase):
     """llms_txt.py writes each page's Markdown twin as the page reads: includes expanded, the picture as Markdown, links to twins, probe.txt only while the switch is on."""
 

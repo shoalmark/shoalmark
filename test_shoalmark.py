@@ -5599,7 +5599,8 @@ check("FM-006 · B1 · the landing's source check is not blind: each of a German
 # The switch `probe` in zensical.toml's [project.extra] and the folder "How it works" takes its words from (the snippets' base path) are two places for one
 # fact; the pages name the button as the landing labels it; and no page says that shoalmark scans.
 _LAUNCH_FILES = (*_LANDING_FILES, "docs/how-it-works.md", "docs/de/how-it-works.md",
-                 *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")))
+                 *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")),
+                 "launch/taped/how-it-works.en.md", "launch/taped/how-it-works.de.md")
 _SCAN_FREE = ("It does not scan your code for security problems or data leaks.", "Es prüft Ihren Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.")
 
 
@@ -5608,18 +5609,18 @@ def _launch_problems(src):
     words from one include, names the button as the landing labels it, and says nothing of scanning that the Owner did not rule."""
     words, bad = _landing_words(src)
     toml = src["zensical.toml"]
-    switch = re.search(r"(?ms)^\[project\.extra\]\n(?:#[^\n]*\n)*probe = (true|false)\n", toml)
+    switch = re.search(r"(?ms)^\[project\.extra\]\n(?:#[^\n]*\n)*probe = (true|false)\n(?:taped = (true|false)\n)?", toml)
     folder = re.search(r"(?m)^pymdownx\.snippets\.base_path = \[(.*)\]$", toml)
-    state = {"true": "probe", "false": "interim"}[switch.group(1)] if switch else None
-    if state is None or not folder or re.findall(r'"launch/(\w+)"', folder.group(1)) != [state]:
-        bad.append("zensical.toml: the probe switch and the launch folder in the snippets' base path disagree, or one is missing")
+    state = {("true", None): "probe", ("true", "false"): "probe", ("false", None): "interim", ("false", "false"): "interim", ("false", "true"): "taped"}.get(switch.groups()) if switch else None
+    if state is None or not folder or re.findall(r'"launch/(\w+)"', folder.group(1)) != {"probe": ["probe"], "interim": ["interim"], "taped": ["taped", "interim"]}[state]:
+        bad.append("zensical.toml: the probe switch, the tape and the launch folders in the snippets' base path disagree, or one is missing (the tape goes with the switch off, its folder before the interim one)")
     if '= "how-it-works.md" }' not in toml or '= "de/how-it-works.md" }' not in toml:
         bad.append("zensical.toml: How it works is not in the navigation in both languages")
     for lang, page in (("en", "docs/how-it-works.md"), ("de", "docs/de/how-it-works.md")):
         if src[page].count(f'--8<-- "how-it-works.{lang}.md"') != 1 or "<!-- state" in src[page]:
             bad.append(f"how it works ({lang}) does not take its launch state's words from one include")
         quote = '"%s"' if lang == "en" else "„%s“"
-        for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe")):
+        for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe"), ("taped", "btn_probe")):
             if quote % words[lang].get(key, "?") not in src[f"launch/{launch}/how-it-works.{lang}.md"]:
                 bad.append(f"how it works ({lang}), {launch}: it does not name the button as the landing labels it ({words[lang].get(key)})")
     # the start pages' Markdown twins lead with the page's own action in each state: the note, or the prompt's short address under the button's own label
@@ -5642,10 +5643,11 @@ def _launch_problems(src):
 
 _ls = _sources(_LAUNCH_FILES)
 _lp = _launch_problems(_ls)
-check("FM-006 · B1 · the launch state is one fact in two places that agree (the probe switch, off, and the interim folder of the snippets' base path), How it works stands in the navigation "
-      "and takes its words from that folder in English and German, names the button as the landing labels it in both states, and no page says that shoalmark scans for security problems "
+check("FM-006 · B1 · the launch state is one fact in two places that agree (the probe switch, off, the tape, on, and the taped and interim folders of the snippets' base path), How it works stands in the navigation "
+      "and takes its words from those folders in English and German, names the button as the landing labels it in each state, and no page says that shoalmark scans for security problems "
       f"or data leaks (problems found: {_lp})", _lp == [])
 _ctl = {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n"),
+        "the tape on, its folder left out": _with(_ls, "zensical.toml", '"launch/taped", ', ""),
         "a button named differently in How it works": _with(_ls, "launch/probe/how-it-works.en.md", '"Copy the prompt"', '"Run probe prompt"'),
         "a scan claimed": _with(_ls, "docs/how-it-works.md", "It does not scan your code for security problems or data leaks.", "It scans your code for security problems."),
         "a state fence left in the page": _with(_ls, "docs/de/how-it-works.md", '--8<-- "how-it-works.de.md"', "<!-- state: interim -->"),
@@ -5653,8 +5655,56 @@ _ctl = {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = 
         "a start twin leading with the other state's action": _with(_ls, "launch/probe/start.de.md", "de/probe.txt)", "ADOPT.de.md)"),
         "a start page's action typed in the page": _with(_ls, "docs/index.md", '--8<-- "start.en.md"', "**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**")}
 _ctl_saw = {name: len(_launch_problems(src)) for name, src in _ctl.items()}
-check("FM-006 · B1 · the launch check is not blind: each of the switch on with its folder off, a button named differently in How it works, a scan claimed, a state fence left in the page, "
-      f"the English page out of the navigation, a start twin leading with the other state's action and a start page's action typed in the page leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 7)
+check("FM-006 · B1 · the launch check is not blind: each of the switch on with its folder off, the tape on with its folder left out, a button named differently in How it works, a scan claimed, "
+      f"a state fence left in the page, the English page out of the navigation, a start twin leading with the other state's action and a start page's action typed in the page leaves a problem "
+      f"(problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 8)
+
+
+# --- FM-006 · the taped coin slot: until the release that opens it, the button the probe will open is shown, taped over, and says why ------------------------
+# With the tape on and the probe switch off, the template draws that button as a button — aria-disabled, focusable, with no link and no handler — the tape across
+# it hidden from screen readers and its reason line, under the actions, named by aria-describedby. The dialog and its script stay under the switch alone, and
+# no script reads the taped button. landing_facts.py refuses the tape with the switch on, so the commit that turns the switch on removes the tape; its reader
+# reads the tape's one line before Python 3.11 too, and nothing else in the file stops it. Read from the sources, with controls.
+_TAPED_BUTTON = '<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">'
+
+
+def _taped_problems(src):
+    """What is wrong with the taped state's markup, one line each; none where it is as the Designer drew it."""
+    bad = []
+    code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
+    part = code.split("{%- elif taped %}")[1].split("{%- else %}")[0] if code.count("{%- elif taped %}") == 1 else ""
+    button = re.search(r"<button\b[^>]*>.*?</button>", part, re.S)
+    if not button or not button.group(0).startswith(_TAPED_BUTTON) or re.search(r"\s(href|id|on\w+)=", button.group(0).split(">")[0]):
+        bad.append("the taped button is not a button, aria-disabled and described by its reason line, with no link, id or handler")
+    if not button or '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span>' not in button.group(0) or "{{ w.btn_probe }}" not in button.group(0):
+        bad.append("the taped button does not keep its label with the tape across it, hidden from screen readers")
+    if '{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}' not in part:
+        bad.append("the taped cue is not its words with the coin after the first dash")
+    if '{%- if taped %}\n    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    {%- endif %}' not in code:
+        bad.append("the reason line is not under the actions, in the taped state alone, with the id the button names")
+    for what, mark in (("the dialog", '<dialog class="probe"'), ("the dialog's script", ".showModal()")):
+        tags = re.findall(r"\{%-?\s*(.*?)\s*-?%\}", code[:code.find(mark)]) if mark in code else []
+        if not tags or tags[-1] != "if probe":
+            bad.append(f"{what} is not built under the probe switch alone")
+    script = code[code.find("<script>"):]
+    if "taped" in script:
+        bad.append("a script reads the taped button")
+    return bad
+
+
+_tape_src = _sources(_LANDING_FILES)
+_tape_p = _taped_problems(_tape_src)
+check("FM-006 · the taped coin slot: the button the probe will open is a button, aria-disabled and described by the line under the actions, with no link, id or handler; it keeps "
+      f"its label with the tape across it, hidden from screen readers, under the coin's cue; the dialog and its script are built under the probe switch alone (problems found: {_tape_p})", _tape_p == [])
+_tape_ctl = {"the tape left off": _with(_tape_src, "overrides/landing.html", '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span>', ""),
+         "a dialog built": _with(_tape_src, "overrides/landing.html", '{%- if probe %}\n{#', '{%- if probe or taped %}\n{#'),
+         "a click handler on the button": _with(_tape_src, "overrides/landing.html", 'aria-disabled="true" aria-describedby="taped-why">', 'aria-disabled="true" aria-describedby="taped-why" onclick="copy()">'),
+         "a script that handles the button": _with(_tape_src, "overrides/landing.html", "</script>", 'document.querySelector(".btn.taped").addEventListener("click", () => 0);\n</script>'),
+         "aria-describedby missing": _with(_tape_src, "overrides/landing.html", ' aria-describedby="taped-why">', ">"),
+         "the button a link": _with(_tape_src, "overrides/landing.html", '<button type="button" class="btn taped"', '<button type="button" href="probe.txt" class="btn taped"')}
+_tape_ctl_saw = {name: len(_taped_problems(src)) for name, src in _tape_ctl.items()}
+check("FM-006 · the taped state's check is not blind: each of the tape left off, a dialog built, a click handler on the button, a script that handles it, aria-describedby missing and the "
+      f"button a link leaves a problem (problems found: {_tape_ctl_saw})", all(_tape_ctl_saw.values()) and len(_tape_ctl_saw) == 6)
 
 
 # --- FM-006 · B1 · what the tool needs, as M4 builds it to v0.20.0's plan: Subversion without git, from the release archive -----------------
@@ -5786,9 +5836,9 @@ def _cue_problems(src):
             if words[lang].get(key) != want:
                 bad.append(f"the {lang} word {key} is not {want!r}")
     # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, its icon the dome after the first dash of the words
-    probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
+    probe_part = code.split("{%- elif taped %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- elif taped %}" in code else ""
     cue = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
-    if cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue") != 1 or "w.cue" in code.replace(cue, ""):
+    if cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue") != 1 or re.search(r"w\.cue\b", code.replace(cue, "")):
         bad.append("the cue is not, in the probe state alone, the strip over the primary button, hidden from screen readers, with the dome after its first dash")
     # the animation: only the cue's words and icon blink, at most 5 s in all, then they stay lit; nothing blinks under reduced motion
     rules = re.findall(r"([^{}]+)\{([^{}]*animation[^{}]*)\}", re.sub(r"/\*.*?\*/", "", code, flags=re.S))
@@ -15210,7 +15260,7 @@ else:
               and len(read_) == 30 and not any("FM-096" in q or "FM-097" in q for q in quoted_))
 
 # FM-006: a parked wreck is filed and not fixed, so it is open — on the chart where the drawing placed it, counted in the top bar's open wrecks, and
-# labelled on hold in the incident box and the register. The row parks three of the drawn wrecks at v0.19.2 and reads them
+# labelled on hold in the incident box and the register, drawn hollow and still. The row parks three of the drawn wrecks at v0.19.2 and reads them
 if _lf_why:
     _skipped("FM-006 · a parked wreck is open, on the chart", 1, _lf_why)
 else:
@@ -15230,11 +15280,34 @@ else:
         seen_ = {w["id"]: (w["status"], (w["lon"], w["lat"])) for w in read_ if w.get("id") in parked_}
         counts_, tpl_ = lf_.wreck_counts(read_) if "stopped" not in read_[0] else None, (HERE / "overrides/landing.html").read_text(encoding="utf-8")
         check(f"FM-006 · three parked wrecks are read as open: each on the chart where the drawing placed it, counted among the top bar's open wrecks, "
-              f"and the template labels a parked wreck open, on hold, ordered after the ones in progress (saw {seen_}, counts {counts_}, of {len(read_)} read)",
+              f"and the template labels a parked wreck open, on hold, drawn hollow and ordered after the other open ones (saw {seen_}, counts {counts_}, of {len(read_)} read)",
               seen_ == {i: ("Parked", drawing_[i]) for i in parked_} and counts_ is not None
               and counts_ == {"wrecks": len(read_), "open": sum(w["status"] in ("In Progress", "Parked", "Proposed") for w in read_)}
               and counts_["open"] - sum(w["status"] in ("In Progress", "Proposed") for w in read_) == 3
-              and '"Parked": ["open", T.status_parked]' in tpl_ and 'const ORDER = {"In Progress": 0, "Parked": 1, "Proposed": 2, "Shipped": 3, "Closed": 4};' in tpl_)
+              and '"Parked": ["open held", T.status_parked]' in tpl_ and 'const ORDER = {"In Progress": 0, "Proposed": 1, "Parked": 1.5, "Shipped": 2, "Closed": 3};' in tpl_
+              and '<symbol id="wo" viewBox="0 0 9 6">' in tpl_ and 'STATUS[w.status][0].startsWith("open")' in tpl_)
+
+# FM-006: the tape and the probe switch, read by landing_facts.py as a build reads them; the taped state's markup is checked with the landing's sources
+def _taped_state(lf, text):
+    """landing_facts.py's launch state for a zensical.toml of `text`: (switch, taped), or the one line it stops with."""
+    with tempfile.TemporaryDirectory() as d:
+        config = Path(d) / "zensical.toml"
+        config.write_text(text, encoding="utf-8")
+        try:
+            return lf.launch_state(config)
+        except lf.Stop as e:
+            return str(e)
+
+
+_tape_lf = _lf_module()
+_tape_states = {name: _taped_state(_tape_lf, text) for name, text in (
+    ("both", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\ntaped = true\n'),
+    ("taped", '[project]\nsite_name = "t"\n# the tape, in a comment: taped = maybe\n\n[project.extra]\nprobe = false\ntaped = true  # until the release that opens it\n'),
+    ("off", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = false\n'))}
+check("FM-006 · the tape and the probe switch exclude each other: landing_facts.py stops a build with both on, in one line that says so; with the switch off it reads the tape on, "
+      f"its comments left alone, or off where it is not written (saw {_tape_states})",
+      isinstance(_tape_states["both"], str) and "exclude each other" in _tape_states["both"] and _tape_states["taped"] == (False, True) and _tape_states["off"] == (False, False))
+
 
 if _lf_why:
     _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 4, _lf_why)

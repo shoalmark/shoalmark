@@ -14,6 +14,7 @@
 {%- set w = L.w -%}
 {%- set urls = L.urls -%}
 {%- set probe = config.extra and config.extra.probe -%}
+{%- set taped = config.extra and config.extra.taped -%}
 {%- set rdate = F.release.date_de if de else F.release.date_en -%}
 {#- a string that carries a placeholder: the build's figures and the language's addresses go in by name -#}
 {%- set probe_short = urls.probe_abs | replace("https://", "") | replace("/", "/<wbr>") -%}   {#- the short address as it is typed, from the value the link goes to, so that the two cannot differ; it may break after a slash -#}
@@ -432,12 +433,33 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
 }
+/* the taped coin slot: the primary button shown, aria-disabled, taped over until the release that opens it */
+.btn.taped{position:relative;padding-bottom:26px;background:var(--closed);color:var(--landink);cursor:default}
+.btn.taped:hover,.btn.taped:active{transform:none;box-shadow:4px 4px 0 var(--band)}
+.btn.taped .tape{position:absolute;left:-7px;right:-7px;bottom:5px;padding:3px 0 2px;font:700 10px/1.2 var(--pix);letter-spacing:.12em;text-align:center;text-transform:uppercase;white-space:nowrap;color:var(--landink);background:var(--land);transform:rotate(-2deg);box-shadow:0 2px 0 rgba(5,11,18,.45);clip-path:polygon(0 0,100% 0,98.6% 25%,100% 50%,98.6% 75%,100% 100%,0 100%,1.4% 75%,0 50%,1.4% 25%)}
+.taped-why{margin:14px 0 0;max-width:54ch;font-size:13px;line-height:1.55;color:var(--mute)}
+.taped-why a{color:var(--blue)}
+@media (max-width:700px){.btn.taped{padding-bottom:30px}.btn.taped .tape{bottom:6px;font-size:11px}}
+/* beside the taller taped button, the second button keeps its place */
+@media (min-width:701px){.cta.is-taped>.btn.alt{margin-bottom:14px}}
+/* where the title stands in the chart, the reason line goes under the chart: same place in the markup and reading order */
+@media (min-width:1280px){
+  .hero.is-taped{padding-bottom:108px}
+  .hero.is-taped .title .taped-why{position:absolute;left:26px;top:calc(var(--k) * 196px + 16px);width:calc(var(--k) * 300px);max-width:80ch;margin:0}
+}
+/* an open wreck on hold: drawn hollow (#wo), still and without the open wreck's glow, in the chart's magenta */
+.wreck.open.held{filter:none}
+.wreck.open.held .f1{animation:none}
+.wreck.open.held .f2{display:none}
+.inc-head svg.held{filter:none}
+.key .km{display:grid;gap:5px;justify-items:start}
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <!-- a capsized hull, its ribs up: the wreck, drawn as an invader; two frames for the shuffle -->
   <symbol id="wa" viewBox="0 0 9 6"><path d="M2 0h5v1H2zM1 1h7v1H1zM0 2h2v1H0zM3 2h3v1H3zM7 2h2v1H7zM0 3h9v1H0zM1 4h1v1H1zM3 4h1v1H3zM5 4h1v1H5zM7 4h1v1H7zM0 5h1v1H0zM8 5h1v1H8z"/></symbol>
+  <symbol id="wo" viewBox="0 0 9 6"><path d="M2 0h5v1H2zM1 1h1v1H1zM7 1h1v1H7zM0 2h1v1H0zM2 2h1v1H2zM6 2h1v1H6zM8 2h1v1H8zM0 3h9v1H0zM1 4h1v1H1zM3 4h1v1H3zM5 4h1v1H5zM7 4h1v1H7zM0 5h1v1H0zM8 5h1v1H8z"/></symbol>
   <symbol id="wb" viewBox="0 0 9 6"><path d="M2 0h5v1H2zM1 1h7v1H1zM0 2h2v1H0zM3 2h3v1H3zM7 2h2v1H7zM0 3h9v1H0zM2 4h1v1H2zM4 4h1v1H4zM6 4h1v1H6zM1 5h1v1H1zM7 5h1v1H7z"/></symbol>
   <symbol id="pricke" viewBox="0 0 16 16"><path shape-rendering="crispEdges" d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"/></symbol>
   <!-- a ship of the fleet, top-down, for player one -->
@@ -462,7 +484,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 </header>
 
 <main id="top">
-<section class="hero" aria-label="{{ w.hero_aria }}">
+<section class="hero{% if taped %} is-taped{% endif %}" aria-label="{{ w.hero_aria }}">
   <div class="stage" id="stage">
     <canvas id="chart" width="320" height="205" role="img" aria-label="{{ w.chart_aria }}"></canvas>
     <canvas id="fleet" width="320" height="205" aria-hidden="true"></canvas>
@@ -477,15 +499,21 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     <p class="claim">{{ w.claim }}</p>
     <h1>{{ w.h1 }}</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
     <p class="lede">{{ w.lede }}</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
-    <div class="cta">
+    <div class="cta{% if taped %} is-taped{% endif %}">
       {%- if probe %}
       <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>
       <a class="btn" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}</a></div>{# B1: the probe state — copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
+      {%- elif taped %}
+      <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span></span>
+      <button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></button></div>{# the taped state: the button the probe will open, shown and taped over — no link, no handler, no dialog; the line under the actions says why #}
       {%- else %}
       <a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>{# B1: the interim state — today's action, to the note in the page's language #}
       {%- endif %}
       <a class="btn alt" href="{{ urls.how }}">{{ w.btn_how }}</a>{# B1: the secondary action, always — the new page that explains shoalmark to a person #}
     </div>
+    {%- if taped %}
+    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>
+    {%- endif %}
   </div>
 </section>
 
@@ -511,7 +539,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
   <aside class="box key" aria-label="{{ w.key_aria }}">
     <h2 class="t">{{ w.key_h }}</h2>
     <ul>
-      <li><svg viewBox="0 0 9 6" fill="#ee92d4"><use href="#wa"/></svg><span><b>{{ w.key_open_b }}</b>{{ w.key_open }}</span></li>
+      <li><span class="km"><svg viewBox="0 0 9 6" fill="#ee92d4"><use href="#wa"/></svg><svg viewBox="0 0 9 6" fill="#ee92d4"><use href="#wo"/></svg></span><span><b>{{ w.key_open_b }}</b>{{ w.key_open }}</span></li>
       <li><svg viewBox="0 0 9 6" fill="#b07ca3"><use href="#wa"/></svg><span><b>{{ w.key_raised_b }}</b>{{ w.key_raised }}</span></li>
       <li><svg viewBox="0 0 9 6" fill="#8595a2"><use href="#wa"/></svg><span><b>{{ w.key_closed_b }}</b>{{ w.key_closed }}</span></li>
       <li><svg viewBox="0 0 12 12"><use href="#ship"/></svg><span><b>{{ w.key_fleet_b }}</b>{{ w.key_fleet }}</span></li>
@@ -730,7 +758,7 @@ const WRECKS = {{ F.wrecks_json }};
 const R = {lon0: 6.62, lon1: 9.00, lat0: 53.45, lat1: 54.35}, W = 320, H = 205;
 const X = lon => (lon - R.lon0) / (R.lon1 - R.lon0) * W, Y = lat => (R.lat1 - lat) / (R.lat1 - R.lat0) * H;
 const P = pts => pts.map(([lo, la]) => [X(lo), Y(la)]);
-const STATUS = {"In Progress": ["open", T.status_progress], "Parked": ["open", T.status_parked], "Proposed": ["open", T.status_proposed], "Shipped": ["raised", T.status_raised], "Closed": ["closed", T.status_closed]};
+const STATUS = {"In Progress": ["open", T.status_progress], "Parked": ["open held", T.status_parked], "Proposed": ["open", T.status_proposed], "Shipped": ["raised", T.status_raised], "Closed": ["closed", T.status_closed]};
 
 /* ── THE GEOGRAPHY — lon, lat; a drawing of the German Wadden coast, not a survey ── */
 const LAND = [
@@ -915,13 +943,13 @@ function figures() {
 /* ── THE WRECKS, THE INCIDENT, THE REGISTER ── */
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const code = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
-const ORDER = {"In Progress": 0, "Parked": 1, "Proposed": 2, "Shipped": 3, "Closed": 4};
+const ORDER = {"In Progress": 0, "Proposed": 1, "Parked": 1.5, "Shipped": 2, "Closed": 3};
 const LE = document.documentElement.lang === "en" ? "" : ' lang="en"';   // a wreck's title stays as filed, in English
 let sel = null, attract = true, timer = null;
 function show(w, user) {
   sel = w; const [cls, word] = STATUS[w.status];
   document.querySelectorAll(".wreck").forEach(b => b.setAttribute("aria-pressed", b.dataset.id === w.id));
-  const spr = document.getElementById("inc-spr"); spr.setAttribute("class", cls);
+  const spr = document.getElementById("inc-spr"); spr.setAttribute("class", cls); spr.querySelector("use").setAttribute("href", cls.endsWith("held") ? "#wo" : "#wa");
   document.getElementById("i-id").textContent = w.id;
   document.getElementById("i-inc").textContent = w.inc;
   document.getElementById("i-day").textContent = w.filed;
@@ -936,10 +964,10 @@ function wrecks() {
   const box = document.getElementById("wrecks");
   box.innerHTML = WRECKS.map(w => { const [x, y] = pct(w.lon, w.lat), [cls, word] = STATUS[w.status];
     return `<button type="button" class="wreck ${cls}" data-id="${w.id}" style="left:${x}%;top:${y}%" aria-pressed="false">`
-      + `<svg class="f1" viewBox="0 0 9 6" aria-hidden="true"><use href="#wa"/></svg><svg class="f2" viewBox="0 0 9 6" aria-hidden="true"><use href="#wb"/></svg><span class="lbl" aria-hidden="true">${w.id}</span><span class="sr">${w.id}, ${word}: <span${LE}>${esc(w.title.replace(/`/g, ""))}</span></span></button>`; }).join("");   // B1: the name is built from content, so the English title can carry lang="en"
+      + `<svg class="f1" viewBox="0 0 9 6" aria-hidden="true"><use href="${cls.endsWith("held") ? "#wo" : "#wa"}"/></svg><svg class="f2" viewBox="0 0 9 6" aria-hidden="true"><use href="#wb"/></svg><span class="lbl" aria-hidden="true">${w.id}</span><span class="sr">${w.id}, ${word}: <span${LE}>${esc(w.title.replace(/`/g, ""))}</span></span></button>`; }).join("");   // B1: the name is built from content, so the English title can carry lang="en"
   box.addEventListener("click", e => { const b = e.target.closest(".wreck"); if (b) show(WRECKS.find(w => w.id === b.dataset.id), true); });
   const sorted = [...WRECKS].sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.filed.localeCompare(a.filed) || b.id.localeCompare(a.id));
-  const open = sorted.filter(w => STATUS[w.status][0] === "open"), raised = WRECKS.filter(w => w.status === "Shipped").length, closed = WRECKS.filter(w => w.status === "Closed").length;
+  const open = sorted.filter(w => STATUS[w.status][0].startsWith("open")), raised = WRECKS.filter(w => w.status === "Shipped").length, closed = WRECKS.filter(w => w.status === "Closed").length;
   document.getElementById("hud-w").textContent = WRECKS.length; document.getElementById("hud-o").textContent = open.length;
   const days = WRECKS.map(w => w.filed).sort(), at = d => new Date(d + "T12:00:00Z");   // the filing days, first to last: counted, not typed
   const range = new Intl.DateTimeFormat(T.date_locale, {day: "numeric", month: "long", year: "numeric", timeZone: "UTC"}).formatRange(at(days[0]), at(days[days.length - 1])).replace(/\s*–\s*/, "–");

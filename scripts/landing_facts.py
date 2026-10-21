@@ -35,7 +35,8 @@ and exit 1, and a build without the file stops at the template's import, so no p
 - **pins**: the probe prompt's placeholders (the probe lane's pins.md). With the probe switch off — `[project.extra] probe` in
   zensical.toml — they are the commit, the release's tag and two marked stand-ins, and nothing of them is published. With it
   on they come from ADOPT's pin line, pins.md's checks 1–5 and 7 run (6 and 9 too on a deploy build), and a stand-in left
-  stops the build.
+  stops the build. The tape — `[project.extra] taped`, the primary button shown but taped over until the release that opens
+  it — goes with the switch off only: the tape and the switch on together stop the build.
 
 `--check SITE`, after `zensical build`: the landing's release label, its link and the footer's link are the release this commit
 reads, and so is `facts.html`'s; and `facts.html`'s counts are what its `wrecks_json` holds.
@@ -702,6 +703,37 @@ def check_shapes(release, hiscore, last, end, read, pins, commit, excerpt):
         stop(f"the board's excerpt reads {excerpt!r}, not the shape facts.html carries")
 
 
+def taped_switch(config):
+    """`[project.extra] taped` in zensical.toml: true or false, false where it is not written. Before Python 3.11 only its one line,
+    `taped = true` or `taped = false` under [project.extra], is read, and nothing else in the file stops the reading."""
+    text = Path(config).read_text(encoding="utf-8")
+    try:
+        import tomllib
+    except ImportError:
+        section, value = None, False
+        for line in text.splitlines():
+            head = re.match(r"^\s*\[\s*([^\]]+?)\s*\]\s*(#.*)?$", line)
+            if head:
+                section = head.group(1)
+                continue
+            one = re.match(r"^\s*taped\s*=\s*(true|false)\s*(#.*)?$", line)
+            if one and section == "project.extra":
+                value = one.group(1) == "true"
+        return value
+    value = tomllib.loads(text).get("project", {}).get("extra", {}).get("taped", False)
+    if not isinstance(value, bool):
+        stop(f"{config}'s [project.extra] taped is true or false; it reads {value!r}")
+    return value
+
+
+def launch_state(config):
+    """(switch, taped): the probe switch and the tape, which exclude each other — the commit that turns the switch on removes the tape."""
+    switch, taped = probe_switch(config), taped_switch(config)
+    if switch and taped:
+        stop(f"{config} turns the probe switch on and keeps the tape: the two exclude each other, so the commit that turns the switch on removes the tape")
+    return switch, taped
+
+
 def build(args):
     git = Git(args.repo or ROOT)
     out = Path(args.out) if args.out else ROOT / OUT
@@ -712,7 +744,7 @@ def build(args):
     if args.event not in EVENTS:
         stop(f"--event {args.event!r}: pull_request, push or workflow_dispatch, as docs.yml's GITHUB_EVENT_NAME says, or none for a local build")
     release = read_release(git, commit, args.event, args.ref)
-    switch = probe_switch(args.config or ROOT / "zensical.toml")
+    switch, taped = launch_state(args.config or ROOT / "zensical.toml")
     deploy = args.event in ("push", "workflow_dispatch")
     pins = read_pins(git, commit, release, slug, switch, deploy, args.main, args.archive)
     wrecks = read_wrecks(git, commit, url)
@@ -733,7 +765,7 @@ def build(args):
         f.write(text)
     tmp.replace(out)
     print(f"landing facts: {release['tag']} · hi-score {hiscore}, pull requests to #{last}, merged by {end['en']} · {len(wrecks)} wrecks, "
-          f"{counts['open']} open · the board {excerpt['waiting']} waiting, {excerpt['acts']} act(s) · pins {'checked' if switch else 'stand-ins, the probe switch off'} · "
+          f"{counts['open']} open · the board {excerpt['waiting']} waiting, {excerpt['acts']} act(s) · pins {'checked' if switch else 'stand-ins, the probe switch off' + (', taped' if taped else '')} · "
           f"{commit[:7]} on {read['date']} → {out}")
 
 
