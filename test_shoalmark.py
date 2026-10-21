@@ -12520,9 +12520,8 @@ with tempfile.TemporaryDirectory() as d:
             rm_git(r_)
 fm.configure(HERE)
 
-# --- FM-057 · the board's own run: on `--html-only` the read-at line says that what is changed and not committed is not read, and keeps the time, the branch
-#     and the commit; `view/built.json` records no count. RV-3302: recorded privately. The mutant puts the changed-path read back on `--html-only`: it must fail
-#     the row.
+# --- the board's own run: on `--html-only` the read-at line names the branch, the commit and the time, and its fold says that what is changed and not
+#     committed is not read; `view/built.json` records no count. The mutant puts the changed-path read back on `--html-only`: it must fail the row.
 _CN_MUTANT = ("the changed-path read back on the board's own run", "        read = read_at(count=False)", "        read = read_at()")
 def _cn_repo(base):
     """The row's repository: (its root, the folder the row reads)."""
@@ -12540,25 +12539,26 @@ def _cn_case(base, tool):
     """`--html-only` by `tool`, as a program, in a fresh `_cn_repo`: what the line and the record show, and whether the folder the row reads stayed empty."""
     root, marks = _cn_repo(base)
     code_, _o, e_ = _tool_run(tool, root, "--html-only")
-    line_, _c, _w, built_, _f = _q4_read(root)
+    line_, _c, _w, built_, fold_ = _q4_read(root)
     rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
-    g_ = dict(code=code_, line=line_, built=built_ or {}, marker=any(marks.iterdir()), sha=rp_("rev-parse", "HEAD"), branch=rp_("branch", "--show-current"),
+    g_ = dict(code=code_, line=line_, fold=fold_, built=built_ or {}, marker=any(marks.iterdir()), sha=rp_("rev-parse", "HEAD"), branch=rp_("branch", "--show-current"),
               said=e_.strip()[-160:])
     rm_git(root)
     return g_
 def _cn_ok(g):
-    """The row: exit 0; the folder the row reads stays empty; the line names the branch and the commit, says what is changed and not committed is not read,
-    and when it was built; `view/built.json` records no count."""
-    return (g["code"] == 0 and not g["marker"] and f"read from {g['branch']} at {g['sha'][:7]}" in g["line"] and fm.LABELS["read.git.unread"] in g["line"]
-            and re.search(r"built \d{4}-\d\d-\d\d \d\d:\d\d [+-]\d\d:\d\d", g["line"]) is not None and g["built"].get("changes", 0) is None
-            and g["built"].get("commit") == g["sha"])
+    """The row: exit 0; the folder the row reads stays empty; the line names the branch, the commit and the short time; the fold beneath it says what is
+    changed and not committed is not read, and the full time; `view/built.json` records no count."""
+    return (g["code"] == 0 and not g["marker"] and f"read from {g['branch']} @ {g['sha'][:7]} at " in g["line"]
+            and re.search(r" at \d\d-\d\d \d\d:\d\d", g["line"]) is not None and g["fold"][0] == fm.LABELS["read.about"]
+            and fm.LABELS["read.git.unread"] in g["fold"][1] and re.search(r" at \d{4}-\d\d-\d\d \d\d:\d\d [+-]\d\d:\d\d", g["fold"][1]) is not None
+            and g["built"].get("changes", 0) is None and g["built"].get("commit") == g["sha"])
 def _cn_saw(g):
-    return f"exit {g['code']}, empty {not g['marker']}, {g['line'][:150]!r}, changes {g['built'].get('changes', '-')!r}"
+    return f"exit {g['code']}, empty {not g['marker']}, {g['line'][:150]!r}, {g['fold'][1][:150]!r}, changes {g['built'].get('changes', '-')!r}"
 with tempfile.TemporaryDirectory() as d:
     real_, m_ = Path(d).resolve() / "real", Path(d).resolve() / "mutant"; real_.mkdir(); m_.mkdir(); (m_ / "case").mkdir()
     g_ = _cn_case(real_, HERE / "shoalmark.py")
-    check(f"FM-057 · the board's own run · `--html-only` reads no changed path: the read-at line says what is changed and not committed is not read, beside "
-          f"the time, the branch and the commit; `view/built.json` records no count (saw {_cn_saw(g_)})", _cn_ok(g_))
+    check(f"FM-057 · the board's own run · `--html-only` reads no changed path: the read-at line names the branch, the commit and the time, and its fold says "
+          f"what is changed and not committed is not read; `view/built.json` records no count (saw {_cn_saw(g_)})", _cn_ok(g_))
     tool_ = _r11_tool(m_, _CN_MUTANT[1:])
     c_ = _cn_case(m_ / "case", tool_) if tool_ else None
     check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row, its folder not empty "
