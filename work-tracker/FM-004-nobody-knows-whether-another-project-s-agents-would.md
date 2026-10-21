@@ -3,16 +3,54 @@ id: FM-004
 status: In Progress
 considered: FM-003
 tags: research
-next: build
+next: owner
 triaged: 2026-10-13
 tier: P1
 rank: 2
+ask: "Do you rule the probe's road to its first outside run as FM-004's *What is true now* entry of 21 October sets it out: one feedback channel through the landing's form, the notes' pin following v0.20.1's tag, and four clean local runs before the switch?"
+ask-kind: ruling
+ask-since: 2026-10-21
+ask-proposal: "Accept all three as that entry sets them out; the clean-run wording may be changed in the answer."
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
 
 ## What is true now
+
+**2026-10-21 — three questions on the probe's road to its first outside run, asked as one (the ask above).** Each
+part is the seat's proposal, and the answer may change any of them.
+
+1. **Feedback has one channel, and no mail address for now.** The channel is the landing's form,
+   [`what-your-agent-found.yml`](https://github.com/shoalmark/shoalmark/blob/a9cfbb9ec3cf94bca304fed43333f5785dfab8df/.github/ISSUE_TEMPLATE/what-your-agent-found.yml),
+   on `fm/006-b1-landing`.
+   - `https://shoalmark.tools/feedback` is the one feedback address that the notes and the landing name. It is a small
+     forwarding page in the site's own source, leading to the form.
+   - The agent's report ends with a link that opens the form with its one-line result already in the form's `found`
+     field. The person reads it, edits it and submits it: the agent never posts. The link stays under 2,000
+     characters, and the notes tell the agent to leave out names, paths, code and credentials.
+   - The notes' mail line, its placeholder and the promises that went with it come out, and no second form is added.
+2. **The notes' pin follows the release's tag.** The archive names the commit it is built from, so that commit cannot
+   hold the archive's hash.
+   - v0.20.1's tag build deploys the site as it stands, with the probe still off.
+   - Once the release is published, one commit on main moves the notes' pin to v0.20.1. The hash comes from the
+     release's published `.sha256`, checked against an offline rebuild by
+     [`scripts/build_release_archive.py`](../scripts/build_release_archive.py).
+   - The suite's pin test learns the same order.
+3. **The clean runs before the switch,** as an exception to the fixed rule in *Part B* (below). The proposed wording:
+
+   > The fixed rule is met by four consecutive clean local runs in invented test projects: Git, and Subversion
+   > without git, each once with Claude Code and once with Codex, from the probe build's button to the feedback file;
+   > any failure restarts the four. No outside run happens before the button and the probe are live on the site.
+
+   **The order:**
+   1. v0.20.1's tag;
+   2. the release, published;
+   3. the commit that moves the pin, lifts the tape and turns the probe on;
+   4. the four runs, from that commit's probe build;
+   5. the Owner's run of [`docs.yml`](../.github/workflows/docs.yml), which puts the button and the probe live.
+
+   The site stays as it is until that run.
 
 **2026-10-18 — the release archive ships in v0.20.0, and FM-004 stays open.** Its answered ask is cleared, signed
 `25dc9db`. Its *Done when* names the three outside reports, which v0.20.1's outside run is to give; the archive is not
