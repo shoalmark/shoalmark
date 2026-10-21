@@ -5998,7 +5998,7 @@ if _browser("phone"):
     try:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d).resolve(); run(root, "--init", "--key", "msr")
-            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock-is-booked-per-warehouse-and-counted-per-shelf-in-one-pass-every-night")
+            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock_is_booked_per_warehouse_and_counted_per_shelf_in_one_pass_every_night")
             tracker(root, "MSR-002", status="Proposed", title="An untriaged one"); run(root)
             page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
             seen_ = {w_: _header_at(wt_, page_, w_, _PH_PROBE) or {} for w_ in (390, 360, 320)}
