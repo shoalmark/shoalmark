@@ -12536,7 +12536,7 @@ def _cn_case(base, tool):
     """`--html-only` by `tool`, as a program, in a fresh `_cn_repo`: what the line and the record show, and whether the folder the row reads stayed empty."""
     root, marks = _cn_repo(base)
     code_, _o, e_ = _tool_run(tool, root, "--html-only")
-    line_, _c, _w, built_ = _q4_read(root)
+    line_, _c, _w, built_, _f = _q4_read(root)
     rp_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
     g_ = dict(code=code_, line=line_, built=built_ or {}, marker=any(marks.iterdir()), sha=rp_("rev-parse", "HEAD"), branch=rp_("branch", "--show-current"),
               said=e_.strip()[-160:])
