@@ -6879,7 +6879,9 @@ fm.configure(HERE)
 
 def _docs_refs():
     """Every file the documentation site loads or includes, as its sources name it: zensical.toml's extra_css and favicon, its custom_dir and the logo
-    icon in it; each url() of a docs stylesheet; each `--8<--` include and each relative link of a docs page; each `{{ '…' | url }}` of the overrides."""
+    icon in it; each url() of a docs stylesheet; each `--8<--` include and each relative link of a docs page; each `{{ '…' | url }}` of the overrides.
+    While the site builds with `use_directory_urls = false`, a page is served as `<name>.html`: an overrides link `{{ '<name>.html' | url }}` with no such
+    file under docs/ is the page docs/<name>.md builds, and that source is what must be there."""
     conf_ = (HERE / "zensical.toml").read_text(encoding="utf-8")
     docs_ = HERE / re.search(r'^docs_dir\s*=\s*"([^"]+)"', conf_, re.M).group(1)
     refs_ = [docs_ / c_ for c_ in re.findall(r'"([^"]+)"', re.search(r"^extra_css\s*=\s*\[([^\]]*)\]", conf_, re.M).group(1))]
@@ -6893,8 +6895,10 @@ def _docs_refs():
         t_ = md_.read_text(encoding="utf-8")
         refs_ += [HERE / s_ for s_ in re.findall(r'^--8<-- "([^"]+)"', t_, re.M)]
         refs_ += [(md_.parent / l_.split("#")[0]).resolve() for l_ in re.findall(r"\]\(([^)\s]+)\)", t_) if not re.match(r"(https?:|mailto:|#)", l_)]
+    pages_ = re.search(r"^use_directory_urls\s*=\s*false\b", conf_, re.M) is not None
     for tpl_ in sorted(custom_.rglob("*.html")):
-        refs_ += [docs_ / u_ for u_ in re.findall(r"\{\{\s*'([^']+)'\s*\|\s*url\s*\}\}", tpl_.read_text(encoding="utf-8"))]
+        refs_ += [p_.with_suffix(".md") if pages_ and p_.suffix == ".html" and not p_.exists() else p_
+                  for p_ in (docs_ / u_ for u_ in re.findall(r"\{\{\s*'([^']+)'\s*\|\s*url\s*\}\}", tpl_.read_text(encoding="utf-8")))]
     return sorted(set(refs_))
 
 
