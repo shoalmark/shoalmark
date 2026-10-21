@@ -1395,7 +1395,7 @@ with tempfile.TemporaryDirectory() as d:
             _hung("strip", e_)
     check(f"FM-024 S7 + FM-024 build for 0.19.0 + FM-053 · the board's strip is one line per parent, in the day's one fold — its sub-sessions' seats and numbers, and on expand each member's worktree, model and effort (`—` where a commit carried none); the week's verdicts, folded, a row each; the digest groups the same way under the same words (saw {(strip_ or '')[-330:]!r} · {digest_.strip()[-150:]!r})",
           "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
-              "the day · the last 24 hourssessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —" in strip_
+              "the day · the last 24 hoursstand-up" in strip_ and "stand-up promptsessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —close-out" in strip_
               and "reviews · this week · 2 by another session · 1 by the same session · 1 untraced · reports, not proofs" in strip_
               and "by the same session · its session a9/reviewer-1, the branch's a9 and 1 more" in strip_ and "independent" not in strip_
               and strip_.count("· branch feat") == 4)))      # RV-3343: each row names its branch, the one its verdict was committed to
@@ -5958,7 +5958,7 @@ if _browser("table"):
 # --- FM-053, BF-11: a branch name in a review row moves to the next line whole — `.row code` is an inline block — and breaks only where it is
 #     longer than a line. Measured in Chrome at 375 px, the review rows opened: each name one box --------------------------------------------
 _NAME_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("details").forEach(d=>d.open=true);'
-               'const c=[...document.querySelectorAll("#p .row .what code")];parent.postMessage(JSON.stringify({w:innerWidth,names:c.map(e=>({t:e.textContent,'
+               'const c=[...document.querySelectorAll("#p .row .what>span code")];parent.postMessage(JSON.stringify({w:innerWidth,names:c.map(e=>({t:e.textContent,'
                'd:getComputedStyle(e).display,n:e.getClientRects().length,w:e.getBoundingClientRect().width,row:e.closest(".what").getBoundingClientRect().width}))}),"*")})</script>')
 _nm_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
 check("FM-053, BF-11 · `.row code{display:inline-block}` follows `code{font:inherit}`: a name in a row moves to the next line whole",
@@ -7389,7 +7389,7 @@ def _board_days(zone, at, offset):
         box = seen["box"]
         first = lambda rx, text: (lambda m: int(m.group(1)) if m else None)(re.search(rx, text))
         return {"owner": {tid: int(n) for tid, n in re.findall(r"^(AP-\d+) · ruling · asked (\d+) day\(s\) ago", owner, re.M)}, "owner_oldest": first(r"oldest (\d+) day\(s\)", owner),
-                "box": {tid: int(n) for tid, n in re.findall(r"\b(AP-\d+) Question \d\? · a ruling · (\d+) days", box)}, "box_oldest": first(r"oldest (\d+) days", box),
+                "box": {tid: int(n) for tid, n in re.findall(rf"(AP-\d+)Question \d\?{re.escape(fm.LABELS['ask.ruling'])} (\d+) days", box)}, "box_oldest": first(r"oldest (\d+) days", box),
                 "judged": set(judged), "worksheet": set(re.findall(r"^\| \[(AP-\d+)\]", worksheet, re.M)) & set(judged),
                 "triage": {tid for tid, secs in seen["sec"].items() if "boardtriage" in secs} & set(judged), "stale": {tid for tid, v in seen["stale"].items() if v} & set(judged)}
     finally:
@@ -7521,7 +7521,7 @@ with tempfile.TemporaryDirectory() as tmp:
             check("FM-013 · OK opens the second screen, as rendered: the heading, the command in a monospace block, where to run it — naming the branch — what it does step by step, that it prints each step, what success looks like, how to check it, where to go when it fails",
                   "sign your answer" in s2_ and re.search(r"<pre class=\"cmd\">[^<]*--answer AP-090 accept 'b'</pre>", b2_) is not None
                   and re.search(r'<button type="button" class="copy" aria-label="copy the command"><svg class="ico"[^>]*><path d="[^"]+"></path></svg>command</button>', b2_) is not None
-                  and b2_.index('class="said"') < b2_.index('<pre class="cmd">')
+                  and re.search(r'<p class="said(?: ok)?"[^>]*>.*?<pre class="cmd">', b2_, re.S) is not None
                   and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
                   and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
                   and "commits them, signed with your key — it may ask you to confirm" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
@@ -12119,7 +12119,7 @@ with tempfile.TemporaryDirectory() as tmp:
             shown_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom_))
             box_ = shown_[shown_.find("waiting for you"):shown_.find(" id tier status ")]
             check(f"FM-030 · 0.18.6 · rendered, the box counts *waiting for you* without the asks answered on their way and lists them, with the act done on its way, under *on their way* — no *done* and no *reschedule* there (saw {box_[:700]!r})",
-                  "waiting for you: 1 · oldest 1 days AP-505 Does the report ship first?" in box_ and "your acts, with their time" not in box_
+                  "waiting for you: 1 · oldest 1 days · your answers here: signed AP-505 Does the report ship first?" in box_ and "your acts, with their time" not in box_
                   and f"on their way: 3 AP-501 at seven tomorrow answer answered, on its way · {at_('AP-501')} · signed · your merge is next revoke asked: Will you read production at seven?" in box_
                   and f"AP-502 rejected - not before the audit answer answered, on its way · {at_('AP-502')} · signed · your merge is next" in box_
                   and f"AP-503 this week act done, on its way — evidence/AP-503/key.md · {at_('AP-503')} · signed · your merge is next revoke asked: Will you set up the key?" in box_
