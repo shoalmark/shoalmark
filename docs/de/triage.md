@@ -58,7 +58,7 @@ Sobald Ihr Commit drin ist, bekommen Ihre Agenten die neuen Worte beim nächsten
 gibt sie aus, wie die ersten beiden Punkte unten zeigen. Dafür braucht es weder eine Besprechung noch eine Nachricht.
 
 - **Das Werkzeug.** `--next`, der Befehl am Anfang einer Session, gibt Ihren aktuellen Weg aus, noch vor der
-  gereihten Arbeit. `INDEX.md` führt ihn wörtlich weit oben, und Ihre Tafel zeigt ihn unter dem, was auf Sie wartet.
+  gereihten Arbeit. `INDEX.md` führt ihn wörtlich weit oben, und Ihr Board zeigt ihn unter dem, was auf Sie wartet.
 - **Das Werkzeug.** `--triage` gibt Ihre Absicht über seinen Regeln aus, mit dem Satz *„Where the mechanics below
   leave you a choice, this decides it"*: Wo die Mechanik eine Wahl lässt, entscheidet Ihre Absicht. Ihren Weg gibt
   es darunter aus, mit der Anweisung *„judge against it"*. Ist kein Weg geschrieben, fängt die Sichtung gar nicht
@@ -179,7 +179,7 @@ the author only: git signs a commit after its hooks have run — `--check` on th
 signature"*. Der Hook beweist also nur den Autor, und die Signatur prüft `--check` auf dem Branch.
 
 **Der Weg führt über Sie.** Ein Agent, der eine Zeile geändert haben will, fragt Sie in der Form, die die Ablehnung
-nennt (*das Werkzeug*): mit einem `ask:` in seinem Arbeitspaket und `ask-kind: ruling`. Sie antworten auf Ihrer Tafel.
+nennt (*das Werkzeug*): mit einem `ask:` in seinem Arbeitspaket und `ask-kind: ruling`. Sie antworten auf Ihrem Board.
 Sind Sie einverstanden, ändern Sie die Zeile selbst: Datei bearbeiten, `git commit -S`, pushen. Danach gibt
 `git log -1 --format='%G? %GS %ae'` ein `G` und zweimal Ihre E-Mail aus. Das ist die Probe auf der
 [Signaturseite](signing.md).
@@ -213,9 +213,9 @@ nach jeder Ablehnung aus.
   sieben Tagen nicht eingestuft wurde, eine neue Erfassung oder ein Arbeitspaket, dessen Einwand eine Zeile Ihres
   Wegs nennt (*das Werkzeug*). Nach den Regeln der Sichtung wird ein solches Arbeitspaket noch am selben Tag neu
   eingestuft (die Regel aus FM-033); dass es geschieht, trägt *nur der Text*. Alle anderen behalten ihre Stufe bis zu
-  ihrer nächsten Sichtung, und bis dahin zeigt Ihre Tafel das alte Urteil. Stufe oder Rang von einem Agenten ohne das
+  ihrer nächsten Sichtung, und bis dahin zeigt Ihr Board das alte Urteil. Stufe oder Rang von einem Agenten ohne das
   Recht `triage` lehnt *das Werkzeug* ab; dass kein Agent sie von Hand ändert, trägt *nur der Text*.
-- **Sie beantwortet keine Frage.** Eine Frage auf Ihrer Tafel beantworten Sie mit `--answer`, signiert (*das
+- **Sie beantwortet keine Frage.** Eine Frage auf Ihrem Board beantworten Sie mit `--answer`, signiert (*das
   Werkzeug*). Eine Änderung an der `TRIAGE.md` beantwortet nichts, und ein Merge oder ein Klick ebenso wenig. Dass
   kein Agent so etwas als Ihre Antwort nimmt, steht in einer Zeile des Wegs, bei shoalmark selbst in Zeile 5, und das
   trägt *nur der Text*: Das Werkzeug kann nicht verhindern, dass ein Agent einen Klick als Ihr Wort liest.

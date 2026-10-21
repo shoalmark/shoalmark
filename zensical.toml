@@ -15,6 +15,7 @@ use_directory_urls = false   # links are `setup.html`, not `setup/` — the buil
 nav = [
   { "Start" = "index.md" },
   { "Why shoalmark?" = "why-shoalmark.md" },
+  { "How it works" = "how-it-works.md" },
   { "Set up in ten minutes" = "setup.md" },
   { "Your answer is your commit" = "signing.md" },
   { "Your word in TRIAGE.md" = "triage.md" },
@@ -25,6 +26,7 @@ nav = [
   { "Deutsch" = [
     { "Start" = "de/index.md" },
     { "Warum shoalmark?" = "de/warum-shoalmark.md" },
+    { "So funktioniert's" = "de/how-it-works.md" },
     { "In zehn Minuten eingerichtet" = "de/setup.md" },
     { "Ihre Antwort ist Ihr Commit" = "de/signing.md" },
     { "Ihr Wort in der TRIAGE.md" = "de/triage.md" },
@@ -32,6 +34,12 @@ nav = [
     { "Anforderungen" = "de/requirements.md" },
   ] },
 ]
+
+# The launch state. `probe = false`: the primary button hands the agents the note (ADOPT.md) and no probe prompt is built. `probe = true`: the button copies
+# the probe prompt and opens its dialog, and probe.txt and de/probe.txt are written. "How it works" says which, in both languages, from the folder named below
+# in `base_path`, interim or probe: turn both when turning the switch (a check in test_shoalmark.py refuses a build where they disagree).
+[project.extra]
+probe = false
 
 [project.theme]
 font = false
@@ -55,6 +63,7 @@ scheme = "slate"
 toggle.icon = "lucide/sun"
 toggle.name = "Switch to light mode"
 
-# Render the agents’ contract from the root README; missing includes fail the build.
+# Render the agents’ contract from the root README, and "How it works" with the words of the launch state named in `base_path`; missing includes fail the build.
 [project.markdown_extensions]
 pymdownx.snippets.check_paths = true
+pymdownx.snippets.base_path = [".", "launch/interim"]

@@ -2,7 +2,7 @@
 
 *Menschen haben Sprechzeiten. Agenten haben Budgets. Dazwischen liegt ein fester Standup.*
 
-Alles, was auf Sie wartet, steht in der ersten Zeile der Tafel und in einem Befehl:
+Alles, was auf Sie wartet, steht in der ersten Zeile des Boards und in einem Befehl:
 
 ```
 python3 tools/shoalmark/shoalmark.py --standup
@@ -61,17 +61,17 @@ Session endet mit `--owner`: dieselbe Liste, damit sie zu Ihnen kommt, ohne dass
 
 ## Antworten
 
-Auf der Tafel trägt jede Frage **annehmen** und **ablehnen**. Beides öffnet einen Dialog mit der Frage, ihren
+Auf dem Board trägt jede Frage **annehmen** und **ablehnen**. Beides öffnet einen Dialog mit der Frage, ihren
 Möglichkeiten (die vom Agenten empfohlene zuerst) und dem, was sie aufhält; beim Annehmen können Sie eine Änderung
 mitgeben, beim Ablehnen sagen Sie, warum. OK gibt Ihnen einen Befehl — `python3 tools/shoalmark/shoalmark.py --answer
-AP-007 accept` —, der die Antwort schreibt, mit Ihrem Schlüssel signiert und pusht. Die Antwort ist Ihr eigener
-Commit: [Ihre Antwort ist Ihr Commit](signing.md).
+AP-007 accept` —, der Ihre Antwort als Commit schreibt, mit Ihrem Schlüssel signiert, sobald Sie das Signieren
+einschalten. Die Antwort ist Ihr eigener Commit: [Ihre Antwort ist Ihr Commit](signing.md).
 
 ## Ihre Handlungen, mit ihrer Zeit
 
 Manche Antworten sind Zusagen: *ja, ich lese die Produktion um sieben*. Was folgt, ist eine Handlung, die nur Sie tun
 können, und sie hat eine Zeit — `due:` im Arbeitspaket, und ein Fenster danach (`window:`, 60 Minuten, wenn nichts
-anderes dasteht). Die Tafel listet Ihre Handlungen unter den Fragen, jede **fällig**, **überfällig** nach ihrer Zeit
+anderes dasteht). Das Board listet Ihre Handlungen unter den Fragen, jede **fällig**, **überfällig** nach ihrer Zeit
 oder **versäumt**, wenn ihr Fenster ohne Ergebnis verstrichen ist. Eine zugesagte Handlung steht als Ihre Zusage da — die
 Option, die Sie gewählt haben —, die Frage, die sie beantwortet, klein darunter. Jede trägt zwei Knöpfe: **erledigt** fragt, wo das
 Ergebnis liegt — der Pfad genügt: der Eintrag ergänzt, was das Repository über die Datei weiß, wer sie wann hinzugefügt
@@ -82,7 +82,7 @@ eine Antwort.
 ## Unterwegs — vor Ihrem Merge
 
 Was Sie beantworten oder tun, ist ein signierter Commit auf `answer/<id>`, gepusht; der Standardzweig hat ihn erst nach
-Ihrem Merge. Bis dahin liest die Tafel git, und die Seite, auf die Sie zurückkommen, zeigt es sofort: die Frage verlässt
+Ihrem Merge. Bis dahin liest das Board git, und die Seite, auf die Sie zurückkommen, zeigt es sofort: die Frage verlässt
 *wartet auf Sie*, die Handlung verlässt *Ihre Handlungen*, und beide stehen unter **unterwegs** — Ihre Zusage oder Ihre
 Antwort zuerst, dann was es ist: *beantwortet, unterwegs*, *erledigt, unterwegs — <wo das Ergebnis liegt>*,
 *verschoben, unterwegs — fällig <Zeit>*, *zurückgenommen, unterwegs — <warum>* oder *Erledigung zurückgenommen,
@@ -101,7 +101,7 @@ hinterlassen hat, nennen `--standup` und `--owner` jedes Stück, bis Sie es entf
 ## Welches Review unabhängig war
 
 Bevor Arbeit bei Ihnen zum Mergen ankommt, prüft sie ein Reviewer, und sein Urteils-Commit nennt den Stand, den er
-geprüft hat (`Reviewed: <sha>`). Jeder Commit eines Agenten nennt außerdem seine Session. Deshalb zählt die Tafel die
+geprüft hat (`Reviewed: <sha>`). Jeder Commit eines Agenten nennt außerdem seine Session. Deshalb zählt das Board die
 Urteile der Woche: **unabhängig** — der Reviewer lief in einer anderen Session als der, die die Arbeit gebaut hat —
 oder **gleiche Session** — ein Sub-Agent der Session des Erbauers, also eine zweite Meinung aus demselben Lauf. Ein
 READY ist so viel wert, wie seine Zählung sagt; Sie sehen sie, bevor Sie auf Merge drücken.

@@ -58,8 +58,8 @@ Between standups nobody interrupts you except for what cannot be undone. A sessi
 
 On the board each question carries **accept** and **reject**. Either opens a dialog with the question, its choices, the
 one the agent recommends, and what it holds up; accept may carry your change, reject says why. OK gives you one
-command — `python3 tools/shoalmark/shoalmark.py --answer AP-007 accept` — which writes the answer, signs it with your
-key and pushes it. The answer is your own commit: [Your answer is your commit](signing.md).
+command — `python3 tools/shoalmark/shoalmark.py --answer AP-007 accept` — which writes your answer as a commit, signed
+with your key once you turn signing on. The answer is your own commit: [Your answer is your commit](signing.md).
 
 ## Your acts, with their time
 
