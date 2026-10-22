@@ -289,7 +289,7 @@ def git_dirs():
         if vcs() == "git":
             try:
                 out = vcs_process("git", "rev-parse", "--absolute-git-dir", "--git-common-dir", cwd=ROOT, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", env=nested_git_env(), **standup_program("git"))
+                                  encoding="utf-8", errors="replace", env=nested_git_env(board=True), **standup_program("git"))
             except OSError as e:
                 metadata_unreadable(f"Git could not be run: {e}")
             dirs = out.stdout.splitlines()
@@ -605,7 +605,7 @@ LAZY_FETCH_SINCE = (2, 44)          # the first git that honours `GIT_NO_LAZY_FE
 # EVERY OTHER GIT COMMAND THE TOOL STARTS, and why the board's run never starts it (FM-045). With READ_ONLY_GIT it classifies every git command this file
 # can start: the suite reads the file's source and fails on a command in neither, and on one of these that a board's run of its own starts.
 NEVER_IN_BOARD_RUN = {
-    "ls-remote": "asks a server; the board's run asks none (`default_trunk(…, ask=False)`)",
+    "ls-remote": "asks a server: the queue's alone (`pushed_branches`); `default_trunk` reads the trunk from cached refs, and no run calls `origin_default`",
     "fetch": "asks a server and writes refs: the queue's alone (`--queue`, `--owner`, `--standup`)",
     "remote": "reads origin's address, to find its forge: the queue's alone",
     "merge-tree": "writes objects (`--write-tree`): the queue's alone, telling a conflict",
@@ -619,6 +619,7 @@ NEVER_IN_BOARD_RUN = {
     "tag": "`--vendor`'s alone, reading the tool's own tag",
     "interpret-trailers": "writes the message file (`--in-place`): `--session-trailer`'s alone",
     "--exec-path": "`--install-hook`'s alone, finding an include its configuration names",
+    "check-attr": "tells which filter driver stores a path, where a read compares the working tree (`driver_paths`): the board's run compares none",
 }
 
 
@@ -833,11 +834,14 @@ def configure(root=None):
     _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
     global _ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN
     _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
-    _ASK_ORIGIN = False                                 # whether this run walks the branch's commits, and may ask origin (`main`, `default_trunk`)
+    _ASK_ORIGIN = False
     _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     global LAZY_OFF, _PARTIAL
     LAZY_OFF, _PARTIAL = False, None                    # git's own default for every read, until a run whose reads fetch nothing says otherwise (`lazy_fetch_off`)
+    global BOARD_READS, _DRIVERS, _TREE_UNREAD
+    BOARD_READS, _DRIVERS, _TREE_UNREAD = False, None, False
+    _EDITS.clear()
     BOARD_UNREAD.clear()
     ROOT = find_root(root)
     _VCS = select_vcs(ROOT)
@@ -1177,7 +1181,7 @@ def classify_status(raw, prose=False):
     return "?"
 
 
-def nested_git_env():
+def nested_git_env(board=None):
     """Run Git against a submodule, not the parent hook's repository context.
 
     Git exports repository-local variables while invoking hooks. In a linked
@@ -1189,14 +1193,16 @@ def nested_git_env():
     Every git the tool starts takes its environment from here. The four variables that change what every pathspec means (`PATHSPEC_VARIABLES`) are dropped
     for each, whoever set them: the tool's pathspecs mean what git's default makes them mean.
 
-    And while this run's reads are the board's (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks, and the settings
-    the board's reads run with (`BOARD_SETTINGS`), after every other.
+    While this run's reads fetch nothing (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks. And the settings the
+    board's reads run with (`BOARD_SETTINGS`), after every other: for each git of a run whose reads are the board's (`BOARD_READS`, `LAZY_OFF`) where
+    `board` is None; for this one whatever the run where it is true; never where it is false — an act's git, which runs under the person's own settings.
     """
     env = os.environ.copy()
     for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", *PATHSPEC_VARIABLES):
         env.pop(key, None)
     if LAZY_OFF:
         env[LAZY_FETCH_SWITCH] = "1"
+    if board if board is not None else (LAZY_OFF or BOARD_READS):
         env["GIT_CONFIG_PARAMETERS"] = " ".join(p for p in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), board_settings()) if p)
     return env
 
@@ -1209,22 +1215,52 @@ PATHSPEC_VARIABLES = ("GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_
 
 
 # THE SETTINGS THE BOARD'S READS RUN WITH, fixed in the same place as the switch, whatever the repository, the user or the environment configures: no read of
-# the board's starts a program a configuration names, but the SSH signature check its `%G?` asks for (`gpg.ssh.program`). Git reads `GIT_CONFIG_PARAMETERS` —
-# the scope `git -c` writes — after every configuration file and after `GIT_CONFIG_COUNT`, and the last value of a key there wins: these are appended to what
-# the run inherited. The `-c` the tool hands git on a command line (`READ_ONLY_GIT_C`) comes after them, and names none of these keys.
+# the board's starts a program a configuration names, but the SSH signature check its `%G?` asks for (`gpg.ssh.program`). The board's reads are every git
+# the tool starts but an act's, in every run: the board's own run, the commit's pre-commit and commit-msg hooks, `--check`, the plain run, the digests
+# and every other view (`BOARD_READS`, `LAZY_OFF`). An act runs git as the person's own git runs, under the person's configuration (`nested_git_env(board=False)`): `--answer`,
+# `--done`, `--due`, `--revoke`, `--clear-ask`, `--vendor`, `--install-hook`, `--init` and `--session-trailer`, each a run of its own (`ACT_RUNS`), and the
+# queue's git asks of origin — its `fetch` and `ls-remote` (`forge_prs`, `pushed_branches`).
+# Git reads `GIT_CONFIG_PARAMETERS` — the scope `git -c` writes — after every configuration file and after `GIT_CONFIG_COUNT`, and the last value of a key
+# there wins: these are appended to what the run inherited. The `-c` the tool hands git on a command line (`READ_ONLY_GIT_C`) comes after them, and names
+# none of these keys.
 # - `log.showSignature` false: a `git log` verifies no signature it was not asked for;
-# - `core.fsmonitor` false: `git ls-files` asks no file-system monitor, neither a hook nor git's own daemon;
+# - `core.fsmonitor` false: no read asks a file-system monitor, neither a hook nor git's own daemon;
+# - `core.hooksPath` `NO_HOOKS`, a path inside the tool's own file, which no file system can hold: a read that writes the index as it goes — a `git diff`
+#   against the working tree refreshes it — finds no hook to start;
 # - `gpg.program`, `gpg.openpgp.program` and `gpg.x509.program`: the board trusts SSH signatures only, and git starts the program of a signature's own
-#   format for `%G?`. Each names `NO_SIGNATURE_PROGRAM`, a path inside the tool's own file, which no file system can hold: git's start of it fails before
-#   anything runs, and `%G?` reads `N` — no good signature —, as an OpenPGP or X.509 signature has always read to the board's judgement.
+#   format for `%G?`. Each names `NO_SIGNATURE_PROGRAM`, a path inside the tool's own file too: git's start of it fails before anything runs, and `%G?`
+#   reads `N` — no good signature —, as an OpenPGP or X.509 signature has always read to the board's judgement.
+# A FILTER DRIVER is named by the configuration and chosen for a path by an attribute — of the tree, of `.git/info/attributes` or of `core.attributesFile`:
+# git starts its `clean`, or its `process`, to compare a file of the working tree with what it holds. Each read of the board's that compares — `ls-files
+# --modified` and a `diff` against the working tree (`compared`) — lists the drivers the configuration names, in every scope and every file an include brings
+# (`filter_drivers`), and runs with each one's `clean`, `smudge` and `process` set empty after the settings above (`driver_settings`): git compares each file
+# as it is, and starts none. A file a driver stores may then read as changed when it is not, so what rests on one is not read: a count or an edit whose paths
+# a configured driver stores (`driver_paths`), a comparison that fails — a `required` driver fails it —, and one after which the drivers listed again are not
+# the ones it ran without. None is made again with a driver. Its limit: a driver configured between the list and the read starts in that read; the list
+# taken after it names the read as not read, and does not keep the driver from starting.
 # Textconv is the one setting git takes from no configuration and no environment: a diff driver's `textconv`, which an attribute in the tree names, runs in
-# `log -G`, `log -p` and `show` of a commit by default, and only `--no-textconv` on the command line keeps it off — the board's six such reads carry it
-# (`board_diff_args`), and every other run's do not. Beside it, `--text`: an attribute in the tree that calls a tracker `binary`, or `-diff`, makes `-G`
-# pass over its every change and `-p` print none of it, and the board would read no commit for a line a commit wrote. The gate's reads keep git's default:
-# where they name no commit, the gate refuses the line.
+# `log -G`, `log -p` and `show` of a commit by default, and only `--no-textconv` on the command line keeps it off — every read of the board's that diffs or
+# searches a diff carries it (`board_diff_args`). Beside it, while the reads fetch nothing (`LAZY_OFF`), `--text`: an attribute in the tree that calls a
+# tracker `binary`, or `-diff`, makes `-G` pass over its every change and `-p` print none of it, and the board would read no commit for a line a commit wrote.
+# The gate's reads keep git's default there: where they name no commit, the gate refuses the line.
+# CONTACT WITH A REMOTE. `--owner` and `--standup` end with the queue, and `--queue` is the queue alone; it contacts origin for its pull requests and
+# branches. Its `git fetch` and `git ls-remote` (`forge_prs`, `pushed_branches`) are its act, under the person's own git settings (`nested_git_env(board=False)`).
+# Its `gh pr list` (`forge_prs`, and under `--queue` `forge_closed` too, for the last day's merged and closed) is started with `nested_git_env()`: each of
+# these runs' reads are the board's (`BOARD_READS`), so the `gh` carries the board's settings, which any git it starts reads after the person's, and git's own
+# lazy-fetch default. No other read of the board's contacts a remote of its own; the trunk is read from this clone's cached refs, never from origin
+# (`default_trunk`). The one contact the settings above do not stop is git's own lazy fetch: in a partial clone a read that meets an object the clone lacks
+# fetches it from a promisor remote unless the switch is on, and the switch is on only for the board's own run and the digests' reads up to the queue
+# (`LAZY_OFF`). The queue's reads, the gate, the plain run and an act keep git's default there and may fetch; only under `LAZY_OFF` does a read meet a
+# missing object as a failure.
 NO_SIGNATURE_PROGRAM = str(pathlib.Path(__file__).resolve() / "no-signature-program")
-BOARD_SETTINGS = (("log.showSignature", "false"), ("core.fsmonitor", "false"), ("gpg.program", NO_SIGNATURE_PROGRAM),
+NO_HOOKS = str(pathlib.Path(__file__).resolve() / "no-hooks")
+BOARD_SETTINGS = (("log.showSignature", "false"), ("core.fsmonitor", "false"), ("core.hooksPath", NO_HOOKS), ("gpg.program", NO_SIGNATURE_PROGRAM),
                   ("gpg.openpgp.program", NO_SIGNATURE_PROGRAM), ("gpg.x509.program", NO_SIGNATURE_PROGRAM))
+BOARD_READS = False
+ACT_RUNS = ("answer", "done", "due", "revoke", "clear_ask", "vendor", "install_hook", "init", "session_trailer")
+FILTER_KEYS = r"^filter\."
+MERGE_KEYS = r"^merge\."
+_DRIVERS = None
 
 
 def board_settings():
@@ -1232,9 +1268,95 @@ def board_settings():
     return " ".join("'" + f"{k}={v}".replace("'", "'\\''") + "'" for k, v in BOARD_SETTINGS)
 
 
+def driver_settings(drivers):
+    """Each filter driver of `drivers` with its `clean`, `smudge` and `process` set empty, as `GIT_CONFIG_PARAMETERS` holds them (`board_settings`)."""
+    return " ".join("'" + f"filter.{name}.{key}=".replace("'", "'\\''") + "'" for name in drivers for key in ("clean", "smudge", "process"))
+
+
+def filter_drivers():
+    """The filter drivers git's configuration names here — in every scope, and every file an include brings, as git reads them for a read made here —, by
+    name: one read-only `git config -z --name-only --get-regexp '^filter\\.'`. A sorted tuple, () where there is none; None where the configuration cannot
+    be read, or names a driver no setting can name: a `-c` setting ends its key at the first `=`."""
+    r = vcs_process("git", "config", "-z", "--name-only", "--get-regexp", FILTER_KEYS, cwd=ROOT, capture_output=True, env=nested_git_env(board=True))
+    if r.returncode == 1 and not r.stdout:
+        return ()                                       # git config exits 1, printing nothing, where no key matches
+    if r.returncode != 0:
+        return None
+    try:
+        keys = r.stdout.decode("utf-8").split("\0")
+    except UnicodeDecodeError:
+        return None
+    names = {key[len("filter."):].rpartition(".")[0] for key in keys if key.startswith("filter.") and "." in key[len("filter."):]}
+    return None if any("=" in name for name in names) else tuple(sorted(names))
+
+
+def merge_drivers():
+    """The merge drivers git's configuration names here — a `merge.<name>.driver`, a program git starts to merge a path an attribute gives that driver —, by
+    name, in every scope and include: one read-only `git config -z --name-only --get-regexp '^merge\\.'`. A sorted tuple, () where there is none; None where
+    the configuration cannot be read, or names a driver no setting can name (a `-c` key ends at its first `=`)."""
+    r = vcs_process("git", "config", "-z", "--name-only", "--get-regexp", MERGE_KEYS, cwd=ROOT, capture_output=True, env=nested_git_env(board=True))
+    if r.returncode == 1 and not r.stdout:
+        return ()
+    if r.returncode != 0:
+        return None
+    try:
+        keys = r.stdout.decode("utf-8").split("\0")
+    except UnicodeDecodeError:
+        return None
+    names = {key[len("merge."):-len(".driver")] for key in keys if key.startswith("merge.") and key.endswith(".driver")}
+    return None if any("=" in name for name in names) else tuple(sorted(names))
+
+
+def merge_renormalize():
+    """`merge.renormalize` as git's own merge reads it — the last value, in every scope and include, `-c` among them — under the board's settings, which
+    do not set it: one read-only `git config --type=bool --get merge.renormalize`. True or False; False where it is unset, as git's default; None where it
+    cannot be read, or is no boolean."""
+    r = vcs_process("git", "config", "--type=bool", "--get", "merge.renormalize", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", env=nested_git_env(board=True))
+    if r.returncode == 1 and not r.stdout:
+        return False
+    if r.returncode != 0:
+        return None
+    return {"true": True, "false": False}.get(r.stdout.strip())
+
+
+def compared(*args):
+    """One read of the board's that compares the working tree with what git holds — `git ls-files --modified`, a `git diff` against the working tree —,
+    run with each filter driver the configuration names emptied (`driver_settings`) after the board's settings, whatever the run: git compares each file as
+    it is, and starts no driver. (its result, the drivers it ran without) — or None where it is not read: the drivers cannot be listed, or the drivers
+    listed again after it are not the ones it ran without. A read that fails, as where a driver is `required`, is its caller's to name as not read; it
+    is never made again with a driver."""
+    global _DRIVERS
+    drivers = _DRIVERS if _DRIVERS is not None else filter_drivers()
+    if drivers is None:
+        return None
+    env = nested_git_env(board=True)
+    env["GIT_CONFIG_PARAMETERS"] = " ".join(p for p in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), driver_settings(drivers)) if p)
+    r = vcs_process("git", *args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    _DRIVERS = filter_drivers()
+    return (r, drivers) if _DRIVERS == drivers else None
+
+
+def driver_paths(paths, drivers):
+    """Which of `paths`, each as `compared` named it, a filter driver of `drivers` stores: the `filter` attribute git reads for each — from the tree,
+    `.git/info/attributes` and `core.attributesFile` — with one read-only `git check-attr`; a value that names none of them stores nothing. None where it
+    cannot be read, or a path is not named as git named it."""
+    if not paths or not drivers:
+        return set()
+    if any("\ufffd" in p for p in paths):
+        return None                                     # git wrote a name in bytes that are not UTF-8, and decoding replaced them
+    r = vcs_process("git", "check-attr", "-z", "--stdin", "filter", input="".join(p + "\0" for p in paths), cwd=ROOT, capture_output=True, text=True,
+                    encoding="utf-8", errors="replace", env=nested_git_env(board=True))
+    if r.returncode != 0:
+        return None
+    out = r.stdout.split("\0")
+    return {out[i] for i in range(0, len(out) - 2, 3) if out[i + 2] in drivers}
+
+
 def board_diff_args():
-    """`--no-textconv` and `--text` while this run's reads are the board's (`LAZY_OFF`), for each of its reads that diffs or searches a diff — else nothing."""
-    return ["--no-textconv", "--text"] if LAZY_OFF else []
+    """`--no-textconv` for each read of the board's that diffs or searches a diff (`BOARD_READS`, `LAZY_OFF`), and `--text` beside it while this run's
+    reads fetch nothing (`LAZY_OFF`) — else nothing: an act's reads keep git's default."""
+    return ["--no-textconv", "--text"] if LAZY_OFF else ["--no-textconv"] if BOARD_READS else []
 
 
 # THE BOARD'S READS FETCH NOTHING. In a partial clone a git read that meets an object the clone lacks fetches it from the remote that promised it, by itself:
@@ -2507,7 +2629,7 @@ def forge_prs():
     specs = (git_out("config", "--get-all", "remote.origin.fetch") or "").split() + [f"refs/pull/{p['number']}/head" for p in prs]
     try:
         f = vcs_process("git", "fetch", "--quiet", "origin", *specs, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=60, env=nested_git_env())
+                           errors="replace", timeout=60, env=nested_git_env(board=False))
     except (OSError, subprocess.TimeoutExpired) as e:
         return None, f"--queue: `git fetch origin` did not answer — offline? ({type(e).__name__})"
     if f.returncode != 0:
@@ -2522,7 +2644,7 @@ def pushed_branches(prs):
     default branch, an open pull request's head, or another such branch's head (of twins with one head, the first by
     name stays). A head this clone never fetched — a single-branch clone fetches one — is fetched here, by its ref;
     one still missing stays, marked, and is read as *not fetched here*. [{name, sha, base, here}], by name."""
-    out = git_out("ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head")
+    out = git_out("ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head", board=False)
     if out is None:
         return []
     heads, pulled, default = {}, set(), ""
@@ -2543,7 +2665,7 @@ def pushed_branches(prs):
              if name != default and not name.startswith("answer/") and name not in carried and sha not in carried]
     lacking = set(have_not([sha for _n, sha in named]))
     if lacking:                                             # the one fetch for heads the configured refspec does not cover
-        git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking])
+        git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking], board=False)
     gone = set(have_not(sorted(lacking)))
     kept = [(name, sha) for name, sha in named if sha in gone
             or not (inside(sha, f"refs/remotes/origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
@@ -2847,8 +2969,8 @@ def queue_actions(prs, branches=()):
     `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
     forks = [(p, "wait", "wait: from a fork, read it yourself", "") for p in prs if p.get("isCrossRepository")]
     prs = [p for p in prs if not p.get("isCrossRepository")]
-    git = lambda *a, **k: vcs_process("git", "-c", "core.quotePath=false", *a, cwd=ROOT, capture_output=True, text=True,
-                                         encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    git = lambda *a, board=None, **k: vcs_process("git", "-c", "core.quotePath=false", *a, cwd=ROOT, capture_output=True, text=True,
+                                                     encoding="utf-8", errors="replace", env=nested_git_env(board), **k)
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "refs/remotes/origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
     memo = {}
@@ -2867,7 +2989,7 @@ def queue_actions(prs, branches=()):
         """its own commits — not on its base, merges aside — and each one's patch id"""
         def read():
             shas = git("rev-list", "--no-merges", head(p), "^" + base(p)).stdout.split()
-            diff = git("log", "-p", "--no-merges", "--no-color", "--no-ext-diff", "--ignore-submodules=none", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
+            diff = git("log", "-p", *board_diff_args(), "--no-merges", "--no-color", "--no-ext-diff", "--ignore-submodules=none", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
             ids = git("patch-id", "--stable", input=diff).stdout if diff else ""
             return shas, {c: pid for pid, c in (l.split()[:2] for l in ids.splitlines() if len(l.split()) >= 2)}
         return cached(("own", num(p)), read)
@@ -2879,7 +3001,25 @@ def queue_actions(prs, branches=()):
         return bool(mine) and all(c in theirs or my_ids.get(c) in their_ids for c in mine)
 
     def conflicts(p):
-        r = git("merge-tree", "--write-tree", "--name-only", "--no-messages", base(p), head(p))
+        # git's merge-tree starts the merge driver an attribute selects (`merge.<name>.driver`), and, where `merge.renormalize` is on, the `clean` or
+        # `process` of the filter driver an attribute selects
+        merges, filters = merge_drivers(), filter_drivers()
+        if merges is None or filters is None:
+            return ["(paths unread — the merge and filter drivers could not be listed)"]
+        if merges:
+            return ["(paths unread — a configured merge driver could change the merge)"]
+        renormalize = merge_renormalize() if filters else False
+        if renormalize is None:
+            return ["(paths unread — `merge.renormalize` could not be read)"]
+        if renormalize:
+            return ["(paths unread — `merge.renormalize` is on, and a configured filter driver could change the merge)"]
+        env = nested_git_env(board=True)
+        if filters:
+            env["GIT_CONFIG_PARAMETERS"] = " ".join(x for x in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), driver_settings(filters)) if x)
+        r = vcs_process("git", "-c", "core.quotePath=false", "merge-tree", "--write-tree", "--name-only", "--no-messages", base(p), head(p),
+                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+        if merge_drivers() != () or filter_drivers() != filters or (filters and merge_renormalize() is not False):
+            return ["(paths unread — the drivers or `merge.renormalize` changed during the read, or could not be read after it)"]
         if r.returncode in (0, 1):
             return list(dict.fromkeys(l for l in r.stdout.splitlines()[1:] if l.strip()))
         # merge-tree could not run — a git older than 2.38, or a head that is not here: the forge's own word stands in
@@ -3484,47 +3624,41 @@ def default_trunk(git, ask=None):
     """`origin`'s default branch, by its FULL ref — `origin/HEAD`'s target — or None: what an earlier `answer/<id>` must be merged
     into before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
     name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target is
-    returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). Where
-    this clone has no `origin/HEAD` and holds no `origin/main` or `origin/master` either — a pull request's shallow checkout —
-    None, asking nothing. Where it holds one, a name a seat can push, a run that walks the branch's commits — `--check`, or the
-    default run, on a clean tree (`_ASK_ORIGIN`) — asks origin which branch is its default (`origin_default`, once per run) and
-    returns that branch's ref; where origin cannot be read, or names a branch this clone has not fetched, None, and
-    `walk_problems` refuses in one line (v0.19.1). An origin that names none — its `HEAD` unborn — leaves the ref this clone
-    holds, and so does a clone with no `origin` configured, which nobody can push to. Every other run — the hooks', the
-    board's, the reports', the Owner's commands — asks no server and refuses nothing (`ask=False`): it takes origin's answer
-    where this run has it, else the ref this clone holds, as before. What the tool prints is `ref_name`'s."""
+    returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). No run of
+    the tool asks origin for it: the trunk is read from this clone's cached refs. Where `origin/HEAD` is absent, a reader gets
+    `origin/main` where it is cached, else `origin/master`; neither cached — a pull request's shallow checkout — None. `--check` and
+    the default run, whatever the working tree holds (`ask`: `_ASK_ORIGIN`, and `--check`'s read of the Owner's commits), read both:
+    where both are cached and name different commits, None, and the line that says the default branch cannot be told
+    (`_TRUNK_UNTOLD`), which `walk_problems` refuses with — it names `git remote set-head origin --auto`, the person's own command,
+    which asks origin. Where they name the same commit, they get `origin/main`, as every other reader does. The queue's own contact
+    with origin for its pull requests and branches is separate (`forge_prs`, `pushed_branches`): its `fetch` and `ls-remote` under
+    the person's settings. What the tool prints is `ref_name`'s."""
     global _TRUNK_UNTOLD
     ask = _ASK_ORIGIN if ask is None else ask
     head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
     if head.startswith("refs/remotes/"):
-        return head                                     # set: nothing is asked of origin
-    here = next((r for r in ("refs/remotes/origin/main", "refs/remotes/origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
-    if not here:
-        return None                                     # no default branch here at all: the newest commit alone is judged, and `--check` says so
-    if (not ask and _ORIGIN_DEFAULT is None) or git("config", "--get", "remote.origin.url").returncode != 0:
-        return here                                     # no origin to push to, or a reader that asks no server: the ref this clone holds
-    named = origin_default()
-    if named == "":
-        return here                                     # origin names no default branch: the one this clone holds
-    if named and git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{named}^{{commit}}").returncode == 0:
-        return f"refs/remotes/origin/{named}"
-    if not ask:
-        return here
-    _TRUNK_UNTOLD = ("the default branch cannot be told — this clone has no `origin/HEAD`, and origin "
-                     + (f"names `{named}`, which this clone has not fetched: fetch it, or run" if named else "could not be read: run")
-                     + " `git remote set-head origin <the default branch>`, then run again")
+        return head
+    main = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}")
+    master = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/master^{commit}") if main.returncode != 0 or ask else None
+    if main.returncode != 0:
+        return "refs/remotes/origin/master" if master.returncode == 0 else None
+    if master is None or master.returncode != 0 or master.stdout.strip() == main.stdout.strip():
+        return "refs/remotes/origin/main"
+    _TRUNK_UNTOLD = ("the default branch cannot be told — this clone has no `origin/HEAD`, and its cached `origin/main` and `origin/master` name "
+                     "different commits: run `git remote set-head origin --auto` yourself, which asks origin, then run again")
     return None
 
 
 def origin_default():
     """The name origin gives its default branch — `git ls-remote --symref origin HEAD`, asked once per run at most and kept —
     "" where origin names none (its `HEAD` is unborn), None where origin could not be read or did not say the name. No
-    prompt: a server that wants a password it is not given is one that could not be read."""
+    prompt: a server that wants a password it is not given is one that could not be read. No run of the tool calls it: the trunk
+    is read from this clone's cached refs (`default_trunk`)."""
     global _ORIGIN_DEFAULT
     if _ORIGIN_DEFAULT is None:
         try:
             r = vcs_process("git", "ls-remote", "--symref", "origin", "HEAD", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=60, env=dict(nested_git_env(), GIT_TERMINAL_PROMPT="0"))
+                               errors="replace", timeout=60, env=dict(nested_git_env(board=False), GIT_TERMINAL_PROMPT="0"))
         except (OSError, subprocess.TimeoutExpired):
             r = None
         lines = [l_.split("\t") for l_ in r.stdout.splitlines()] if r is not None and r.returncode == 0 else None
@@ -4929,15 +5063,21 @@ def read_at(count=True):
 
 def tree_changes():
     """How many paths of the working tree are changed and not committed, read as git reads them without writing: each file whose index differs from HEAD
-    (`diff --cached`), each whose file differs from the index, a deletion too (`ls-files --modified`), and each new path git does not ignore, a new folder
-    as one (`ls-files --others`) — each counted once. None where git cannot read it: a read that fails, as one in a partial clone may."""
+    (`diff --cached`), each whose file differs from the index, a deletion too (`ls-files --modified`, which compares the working tree: `compared`), and each
+    new path git does not ignore, a new folder as one (`ls-files --others`) — each counted once. None where it is not read: a read that fails, as one in a
+    partial clone may; a comparison `compared` does not read; or one whose file, compared and not staged, a configured filter driver stores
+    (`driver_paths`), which git compared without its driver: such a file may count as changed when it is not."""
     staged = vcs_process("git", "diff", "--cached", "--name-only", "--no-renames", "-z", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                          errors="replace", env=nested_git_env())
-    tree = vcs_process("git", "ls-files", "-z", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory", cwd=ROOT,
-                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if staged.returncode or tree.returncode:
+    tree = compared("ls-files", "-z", "-t", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory")
+    if staged.returncode or tree is None or tree[0].returncode:
         return None
-    return len({p for p in staged.stdout.split("\0") + tree.stdout.split("\0") if p})
+    held = {p for p in staged.stdout.split("\0") if p}
+    listed = [e for e in tree[0].stdout.split("\0") if len(e) > 2]       # with `-t` git writes each entry as its tag, a space and its path; `?` is untracked
+    stored = driver_paths(sorted({e[2:] for e in listed if e[0] != "?"} - held), tree[1])
+    if stored is None or stored:
+        return None
+    return len(held | {e[2:] for e in listed})
 
 
 def svn_root_revision(status):
@@ -6835,12 +6975,16 @@ def read_changes():
         return out
 
     heads = merge_heads()
-    if COMMITTING or worktree_edited(git):
-        files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"))
+    edits = set() if COMMITTING else worktree_edits()
+    against = [worktree_edits(h) for h in heads] if edits else []
+    if None in against:
+        edits = None
+    if COMMITTING or edits:
+        files = set(staged_now()) if COMMITTING else set(edits)
         if not COMMITTING:
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
-        for h in heads:
-            files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", "--ignore-submodules=none", h))
+        for n, h in enumerate(heads):
+            files &= names(git("diff", "-z", "--cached", "--name-only", "--relative", "--ignore-submodules=none", h)) if COMMITTING else against[n]
         trunk = default_trunk(git) if heads else None
         return brought(heads, "HEAD", exclude=[trunk] if trunk else []) + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
@@ -6871,11 +7015,28 @@ def staged_absent(rels):
     return {rel: extract(ROOT / rel, texts[f":./{rel}"]) for rel in names if texts.get(f":./{rel}") is not None}
 
 
-def worktree_edited(git):
-    """Whether the working tree holds an edit against HEAD (`git diff --name-only HEAD`) — the one reading `read_changes` and `main`
-    share: a diff git cannot make reads as no edit in both, so a run that walks the branch's commits asks origin as it walks
-    (v0.19.1). A submodule's pointer is an edit, whatever `.gitmodules` says (`--ignore-submodules=none`)."""
-    return bool(git("diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD").stdout.strip())
+_EDITS = {}
+_TREE_UNREAD = False
+
+
+def worktree_edits(rev="HEAD"):
+    """The paths the working tree holds edited against `rev`, as git names them — `git diff --name-only <rev>`, which compares the working tree
+    (`compared`) —, read once per run for each revision. None where they are not read: `compared` does not read them; the comparison fails, but before a
+    first commit, which holds no edit; or a configured filter driver stores one of them (`driver_paths`) — git compared it without its driver, and it may
+    read as edited when it is not. A submodule's pointer is an edit, whatever
+    `.gitmodules` says; a submodule's own working tree is not read (`--ignore-submodules=dirty`): no commit here carries it, and reading it starts git in
+    that repository, under its own configuration."""
+    global _TREE_UNREAD
+    if rev not in _EDITS:
+        got, edits = compared("diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", rev), None
+        if got is not None and got[0].returncode == 0:
+            paths = {p for p in got[0].stdout.split("\0") if p}
+            edits = paths if driver_paths(sorted(paths), got[1]) == set() else None
+        elif got is not None and rev == "HEAD" and not head_commit():
+            edits = set()                               # before a first commit git has no HEAD to compare with
+        _EDITS[rev] = edits
+        _TREE_UNREAD = _TREE_UNREAD or edits is None
+    return _EDITS[rev]
 
 
 def walk_problems():
@@ -7552,9 +7713,9 @@ SESSION_ID_RE = re.compile(r"[0-9a-f]{8}(?:/([A-Za-z][A-Za-z0-9_-]*)-\d+)?")    
 SESSION_RECENT = 86400        # seconds: the board and the digest name the sessions with a commit this recent
 
 
-def git_out(*a, cwd=None, source=False):
-    """One git call's stdout, or None when it failed."""
-    r = vcs_process("git", *a, cwd=cwd or ROOT, source=source, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+def git_out(*a, cwd=None, source=False, board=None):
+    """One git call's stdout, or None when it failed — with the settings `nested_git_env` gives it for `board`."""
+    r = vcs_process("git", *a, cwd=cwd or ROOT, source=source, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(board))
     return r.stdout if r.returncode == 0 else None
 
 
@@ -8927,8 +9088,8 @@ def read_history(*revs):
 
 def trunk_ref():
     """The trunk a verdict's branch is measured against — a report's, never a refusal's: the default branch as `--check` reads it
-    (`default_trunk`, asking no server: origin's answer where this run has it), else the local `main`, else `master` — each by its
-    full ref (v0.19.1)."""
+    (`default_trunk`, asking no server: `origin/HEAD`, else the cached `origin/main`, else `origin/master`), else the local `main`,
+    else `master` — each by its full ref."""
     held = default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
     return held or next((ref for ref in ("refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
@@ -11550,6 +11711,8 @@ def main(argv=None, *, _notice=True):
             return EXIT_LINT
     if args.root:
         configure(args.root)
+    global BOARD_READS
+    BOARD_READS = not any(vars(args).get(flag) for flag in ACT_RUNS)
     if tortoise:
         try:
             svn_local_directory(".")                      # A's validated local WC binding, never a server read
@@ -11719,9 +11882,7 @@ def main(argv=None, *, _notice=True):
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
     global _ASK_ORIGIN
-    _ASK_ORIGIN = (mode in ("check", "write") and not args.print_written and vcs() == "git"       # `--check`, or the default run, on a clean tree: the
-                   and not worktree_edited(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                                                                     errors="replace", env=nested_git_env())))      # runs that walk the branch's commits — no hook's (v0.19.1)
+    _ASK_ORIGIN = mode in ("check", "write") and not args.print_written and vcs() == "git"
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
     header = (                  # R21: no line here changes with the day or with another tracker, so branches that change different trackers merge
@@ -11767,6 +11928,9 @@ def main(argv=None, *, _notice=True):
             print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
         elif vcs() == "git" and _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
             print("the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits", file=log)
+        if vcs() == "git" and _TREE_UNREAD:
+            print("the working tree: its edits were not read — git compares a file of it only through a filter driver, which no read of the tool starts, "
+                  "or the comparison failed — so `--check` judged the branch's commits, as on a clean tree", file=log)
         if freeze_retired():                                # R15: a key of the filing freeze is named, never refused (R26)
             print(freeze_retired(), file=log)
     else:
