@@ -7,14 +7,6 @@ next: build
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt the guide's wording of 16 October for the board's reload, as brand/design-guide.md states it at the commit that last filed this ask: it reads its file again when you come back to it, and nothing polls?"
-ask-kind: ruling
-ask-since: 2026-10-16
-ask-options: "yes | yes, with the change I name | no: §2.8 and the read-at line stay as answered at fee3874"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-16
-answered-by: holgo99
 ---
 
 # FM-053 — the board's design for v0.20.1 is the Owner's word in a sitting, not yet a signed answer
@@ -114,6 +106,11 @@ remains:
 **relation** — accepted the proposal
 **signed** — fee3874 · G
 
+**2026-10-16** · Do you adopt the guide's wording of 16 October for the board's reload, as brand/design-guide.md states it at the commit that last filed this ask: it reads its file again when you come back to it, and nothing polls?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 578973d · G
+
 ## Ship log
 
 | Date | Event |
@@ -134,3 +131,4 @@ remains:
 | 2026-10-16 | The reload's wording amended in §2.8 and the read-at line, with the ask that adopts it (`next: owner`). |
 | 2026-10-16 | A2 built on `fm/053-board-v2`: the v2 look and words, R10's look half and B1. Its first review NOT READY at `2c8d041` (`76c1ccd`), four findings. Round 1 on the branch: a palette name that is a list refused in one line (`8597bd7`), a review row's branch (`319ac53`), the header row on a phone (`db21666`), and this record. |
 | 2026-10-16 | The Designer's build findings fixed in round 1: the work table's group line wraps (`4b425b0`); the header's count stands clear of the scheme's button (`5e38e08`); `next: owner` reads *you* (`f37b5b5`); a heading's marker keeps its space on a phone (`cbb49c3`); a review row names the branch's oldest session (`5bb4fb7`); its heading's counts put the number first (`eeacb1c`); *shipped or closed* for *ended* (`e6031e5`); a count past 14 asks (`8ee3602`). The reload stays, as ruled. |
+| 2026-10-22 | The reload's answer recorded under `## Asks` (accepted, signed `578973d`); next: build. |
