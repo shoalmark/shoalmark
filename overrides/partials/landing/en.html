@@ -215,12 +215,12 @@
   "dlg_more": "Show all",
   "dlg_less": "Show less",
   "dlg_close_aria": "Close dialog",
-  "dlg_ap_1": "The network, for two downloads from GitHub: the probe's text and the tool's release archive (public, no login).",
+  "dlg_ap_1": "The network, for downloads from GitHub: the probe's text (on Subversion, its Subversion part too) and the tool's release archive (public, no login).",
   "dlg_ap_2": "Running the system's checksum command (Get-FileHash on Windows, shasum or sha256sum elsewhere) on the downloaded archive and on the tool in it.",
   "dlg_ap_3": "Writing into one new folder outside this project, the throwaway folder; you can delete it afterwards.",
   "dlg_ap_4": "Running Python, only in that folder: first to unpack the archive, then to run the tool.",
   "dlg_ap_5": "Only where the project is a git repository: running git, to list the project's files and read its history; nothing in the project changes.",
-  "dlg_ap_6": "Only on Subversion: running svn, to list the working copy's files, and svnadmin, to make a throwaway local repository in that folder.",
+  "dlg_ap_6": "Only on Subversion: running svn to list the working copy's files and, only after a separate explicit yes, read its history from the project's server; and running svnadmin to make a throwaway local repository in that folder.",
   "dlg_ap_7": "Only for a project already in use: running the project's own code to reproduce a bug, never anything that writes data, calls a live service or changes the project.",
   "dlg_ap_8": "Only after your yes to adopt: changes in the project itself; the agent asks again before its first commit.",
   "dlg_appr_close": "That is as intended.",
@@ -262,7 +262,7 @@
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}
-{#- The probe prompt: the probe lane's hand-over v2, a placeholder until the lane's words are final. Its four pins (the commit and the tag, the archive's address and its SHA-256) are facts.html's. It is built only under the `probe` switch. -#}
+{#- The probe prompt, in the probe lane's final words. Its four pins (the commit and the tag, the archive's address and its SHA-256) are facts.html's. It is built only under the `probe` switch. -#}
 {% set probe_prompt %}Please check honestly whether shoalmark fits this project; the answer may be "no fit". It can take up to 45 minutes.
 Read this text whole, as plain text and not as a summary, and follow it:
 https://raw.githubusercontent.com/shoalmark/shoalmark/{{ADOPT_COMMIT}}/ADOPT.md

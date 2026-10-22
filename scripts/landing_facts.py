@@ -34,7 +34,7 @@ and exit 1, and a build without the file stops at the template's import, so no p
   wrecks and the open ones, counted from that same list.
 - **pins**: the probe prompt's placeholders (the probe lane's pins.md). With the probe switch off — `[project.extra] probe` in
   zensical.toml — they are the commit, the release's tag and two marked stand-ins, and nothing of them is published. With it
-  on they come from ADOPT's pin line, pins.md's checks 1–5 and 7 run (6 and 9 too on a deploy build), and a stand-in left
+  on they come from ADOPT's pin line, pins.md's checks 1–5 and 7 run (6, 8 and 9 too on a deploy build), and a stand-in left
   stops the build. The tape — `[project.extra] taped`, the primary button shown but taped over until the release that opens
   it — goes with the switch off only: the tape and the switch on together stop the build.
 
@@ -59,6 +59,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -561,8 +562,22 @@ def probe_switch(config):
     return value
 
 
-def read_pins(git, commit, release, slug, switch, deploy, main, archive):
-    """The prompt's four pins. Off: the commit, the release's tag and two marked stand-ins. On: ADOPT's pin line, checked."""
+def fetch_raw(url):
+    """The bytes `url` serves, or None where it serves none."""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "shoalmark-landing-facts"}), timeout=60) as r:
+            return r.read()
+    except (OSError, urllib.error.URLError):
+        return None
+
+
+def pause(seconds):
+    time.sleep(seconds)
+
+
+def read_pins(git, commit, release, slug, switch, deploy, main, archive, building=""):
+    """The prompt's four pins. Off: the commit, the release's tag and two marked stand-ins. On: ADOPT's pin line, checked.
+    `building` is the tag a tag's build is for, empty on any other build."""
     if not switch:
         return {"ADOPT_COMMIT": commit, "TAG": release["tag"], **STAND_IN}
     for f in (*NOTES, *SVN_NOTES):
@@ -583,6 +598,8 @@ def read_pins(git, commit, release, slug, switch, deploy, main, archive):
     # one file name, in the tag's own folder of this repository's releases: no dot segment, no further slash, no percent-escape of either
     if not re.fullmatch(rf"https://github\.com/{re.escape(slug)}/releases/download/{re.escape(tag)}/[A-Za-z0-9][A-Za-z0-9._-]*", url):
         stop(f"pins check 2: {url} is not an asset of {tag}")
+    if url != f"https://github.com/{slug}/releases/download/{tag}/shoalmark-{tag[1:]}.zip":
+        stop(f"pins check 2: {url} is not {tag}'s archive, https://github.com/{slug}/releases/download/{tag}/shoalmark-{tag[1:]}.zip")
     if tool != "shoalmark.py" or not all(re.fullmatch(r"[0-9a-f]{64}", s) for s in (archive_sum, tool_sum)):
         stop("pins check 2: the pin line's shape — release, archive, its SHA-256, `shoalmark.py`, its SHA-256")
     for f in NOTES:
@@ -608,9 +625,17 @@ def read_pins(git, commit, release, slug, switch, deploy, main, archive):
     newest = out.decode("utf-8").strip() if code == 0 else "none"
     if newest != tag:
         stop(f"pins check 5: ADOPT names {tag}, the newest release this commit holds is {newest}")
+    if building and building != tag:
+        stop(f"pins check 5: ADOPT names {tag}, and this is the build of the tag {building}")
     if deploy:
         if git.raw("merge-base", "--is-ancestor", commit, main)[0]:
             stop(f"pins check 6: {commit} is not on main")
+        for f in NOTES:
+            raw, want = f"https://raw.githubusercontent.com/{slug}/{commit}/{f}", git.raw("show", f"{commit}:{f}")[1]
+            if fetch_raw(raw) != want:
+                pause(1)
+                if fetch_raw(raw) != want:
+                    stop(f"pins check 8: {raw} does not serve {f} as git holds it at {commit[:7]}, asked twice, a second apart")
         try:
             if archive:
                 data = Path(archive).read_bytes()
@@ -746,7 +771,7 @@ def build(args):
     release = read_release(git, commit, args.event, args.ref)
     switch, taped = launch_state(args.config or ROOT / "zensical.toml")
     deploy = args.event in ("push", "workflow_dispatch")
-    pins = read_pins(git, commit, release, slug, switch, deploy, args.main, args.archive)
+    pins = read_pins(git, commit, release, slug, switch, deploy, args.main, args.archive, args.ref if args.event == "push" else "")
     wrecks = read_wrecks(git, commit, url)
     excerpt = read_excerpt(git, commit)
     pulls = read_pulls(args.pulls, slug, os.environ.get("LANDING_FACTS_TOKEN") or None)

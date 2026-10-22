@@ -15732,7 +15732,7 @@ else:
               _lf_stops(untitled_, facts_, "names no ACTS_TITLE"))
 
 if _lf_why:
-    _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 14, _lf_why)
+    _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 23, _lf_why)
 else:
     import zipfile
     lf_ = _lf_module()
@@ -15758,7 +15758,12 @@ else:
                     "ADOPT.svn.md": f"# Adopt shoalmark on Subversion\n\nIt uses the tool ADOPT's step 3 fetched and checked.{svn}\n",
                     "ADOPT.svn.de.md": "# shoalmark unter Subversion\n\nEs nutzt das Werkzeug, das Schritt 3 der ADOPT geholt und geprüft hat.\n"}
 
-        def _lf_pins(notes, deploy=False, main="scratch-main", archive=zip_, drop=()):
+        _lf_real = (lf_.fetch_raw, lf_.pause)
+        _lf_seen = {"asked": [], "paused": []}
+
+        def _lf_pins(notes, deploy=False, main="scratch-main", archive=zip_, drop=(), building="", raw=None):
+            """read_pins on a commit of the scratch clone that holds `notes`. The raw addresses are not asked over the network: each serves git's bytes
+            at the commit it names, or what `raw` gives for it; every address asked and every pause land in `_lf_seen`."""
             git(clone_, "checkout", "-q", "--detach", _LF_TAG)
             for name_, text_ in notes.items():
                 (clone_ / name_).write_text(text_, encoding="utf-8")
@@ -15769,8 +15774,12 @@ else:
             g_ = lf_.Git(clone_)
             c_ = g_("rev-parse", "HEAD").strip()
             git(clone_, "branch", "-f", "scratch-main", c_)
+            served_ = lambda url: subprocess.run(["git", "-C", str(clone_), "show", "{}:{}".format(*url.split("/")[-2:])], capture_output=True, env=_ENV).stdout
+            _lf_seen["asked"], _lf_seen["paused"] = [], []
+            lf_.fetch_raw = lambda url: (_lf_seen["asked"].append(url.split("/")[-1]), (raw or served_)(url))[1]
+            lf_.pause = _lf_seen["paused"].append
             try:
-                return lf_.read_pins(g_, c_, {"tag": _LF_TAG}, "shoalmark/shoalmark", True, deploy, main, str(archive)), c_
+                return lf_.read_pins(g_, c_, {"tag": _LF_TAG}, "shoalmark/shoalmark", True, deploy, main, str(archive), building), c_
             except lf_.Stop as e:
                 return str(e), c_
         good_, c1_ = _lf_pins(_lf_notes())
@@ -15796,9 +15805,44 @@ else:
                 ("ADOPT's pin other than the tool's SHA-256 at the tag", lambda: _lf_pins(_lf_notes(tsum=osum_)), f"pins check 4: v0.19.2:shoalmark.py is {tsum_}, ADOPT names {osum_}"),
                 ("ADOPT naming the release before the newest", lambda: _lf_pins(_lf_notes(tag="v0.19.1", tsum=osum_)), "pins check 5: ADOPT names v0.19.1, the newest release this commit holds is v0.19.2"),
                 ("a deploy build of a commit not on main", lambda: _lf_pins(_lf_notes(), deploy=True, main=_LF_TAG), "pins check 6: "),
-                ("a deploy build whose archive is another file", lambda: _lf_pins(_lf_notes(), deploy=True, archive=other_), f"pins check 9: the archive's SHA-256 is not {asum_}")):
+                ("a deploy build whose archive is another file", lambda: _lf_pins(_lf_notes(), deploy=True, archive=other_), f"pins check 9: the archive's SHA-256 is not {asum_}"),
+                ("both notes pinning another file in the release's own folder", lambda: _lf_pins(_lf_notes(url=url_.format("v0.19.2", "x").replace("shoalmark-x.zip", "shoalmark.zip"))),
+                 "pins check 2: https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/shoalmark.zip is not v0.19.2's archive, "
+                 "https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/shoalmark-0.19.2.zip"),
+                ("both notes pinning the archive of another version in the release's folder", lambda: _lf_pins(_lf_notes(url=url_.format("v0.19.2", "0.19.1"))),
+                 "pins check 2: https://github.com/shoalmark/shoalmark/releases/download/v0.19.2/shoalmark-0.19.1.zip is not v0.19.2's archive"),
+                ("a tag's build of a tag other than the one ADOPT names", lambda: _lf_pins(_lf_notes(), building="v0.19.3"),
+                 "pins check 5: ADOPT names v0.19.2, and this is the build of the tag v0.19.3"),
+                ("a deploy build whose German raw address serves other bytes, asked twice", lambda: _lf_pins(_lf_notes(), deploy=True,
+                    raw=lambda url: b"other" if url.endswith("/ADOPT.de.md") else subprocess.run(["git", "-C", str(clone_), "show", "{}:{}".format(*url.split("/")[-2:])], capture_output=True, env=_ENV).stdout),
+                 "pins check 8: https://raw.githubusercontent.com/shoalmark/shoalmark/"),
+                ("a deploy build whose raw address serves nothing, asked twice", lambda: _lf_pins(_lf_notes(), deploy=True, raw=lambda url: None), "pins check 8: ")):
             got_, _c = case_()
             check(f"FM-006 · B1 · the probe switch on: {what_} stops the build — {says_.split(':')[0]} (saw {got_!r})", isinstance(got_, str) and got_.startswith(says_))
+        # pins check 8 at its boundary: each raw address is asked once where it serves git's bytes; one that serves nothing the first time is asked once
+        # more after one second, and the build goes on where the second answer is git's bytes; the stop names the language's note
+        good8_, c8_ = _lf_pins(_lf_notes(), deploy=True)
+        seen8_ = {k: list(v) for k, v in _lf_seen.items()}
+        check(f"FM-006 · B1 · pins check 8: a deploy build asks each language's raw address once, at the pinned commit, and pauses nowhere where each serves git's bytes "
+              f"(saw {good8_}, {seen8_})", isinstance(good8_, dict) and seen8_ == {"asked": ["ADOPT.md", "ADOPT.de.md"], "paused": []})
+        flaky_ = {"n": 0}
+
+        def _lf_flaky(url):
+            flaky_["n"] += 1
+            return None if flaky_["n"] == 1 else subprocess.run(["git", "-C", str(clone_), "show", "{}:{}".format(*url.split("/")[-2:])], capture_output=True, env=_ENV).stdout
+        once_, _c = _lf_pins(_lf_notes(), deploy=True, raw=_lf_flaky)
+        seen_once_ = {k: list(v) for k, v in _lf_seen.items()}
+        check(f"FM-006 · B1 · pins check 8: a raw address that serves nothing once is asked once more, after one second, and the build goes on when it then serves "
+              f"git's bytes (saw {once_ if isinstance(once_, str) else 'pins'}, {seen_once_})",
+              isinstance(once_, dict) and seen_once_ == {"asked": ["ADOPT.md", "ADOPT.md", "ADOPT.de.md"], "paused": [1]})
+        twice_, _c = _lf_pins(_lf_notes(), deploy=True, raw=lambda url: None)
+        check(f"FM-006 · B1 · pins check 8: a raw address that serves nothing twice stops the build after one pause of one second, naming the English note first "
+              f"(saw {twice_!r}, {_lf_seen})", isinstance(twice_, str) and "/ADOPT.md does not serve ADOPT.md as git holds it at " in twice_
+              and _lf_seen == {"asked": ["ADOPT.md", "ADOPT.md"], "paused": [1]})
+        tagged_, _c = _lf_pins(_lf_notes(), building="v0.19.2")
+        check(f"FM-006 · B1 · pins check 5: a tag's build of the tag ADOPT names, which is the newest this commit holds, passes (saw {tagged_})",
+              isinstance(tagged_, dict) and tagged_["TAG"] == "v0.19.2")
+        lf_.fetch_raw, lf_.pause = _lf_real
 
 if _lf_why:
     _skipped("FM-006 · B1 · the landing names the release the build reads (RV-2750)", 15, _lf_why)
