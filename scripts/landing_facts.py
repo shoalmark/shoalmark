@@ -283,8 +283,9 @@ def score(git, pulls):
 def score_reviewed(git, pulls):
     """The review-commit cohort, by a rule of its own: (counted, of, its first pull request, its last), or None where no merged pull request is
     numbered THIRD_FIRST or later. A merged pull request from THIRD_FIRST on, the Owner's answer branches left out and every other pull request
-    kept, counts when one of its own commits (those its head holds and its base does not) carries exactly one `Reviewed:` trailer, that trailer
-    names one of those commits, and the commit carrying it is dated (its committer date) before the pull request was opened."""
+    kept, counts when one of its own commits (those its head holds and its base does not) carries exactly one `Reviewed:` trailer, an empty one
+    counted with the rest, that trailer names one of those commits, and the commit carrying it is dated (its committer date) before the pull request
+    was opened."""
     merged = sorted((p for p in map(trim, pulls) if p["merged_at"] and not p["head"]["ref"].startswith("answer/") and p["number"] >= THIRD_FIRST),
                     key=lambda p: p["number"])
     if not merged:
@@ -312,11 +313,11 @@ def score_reviewed(git, pulls):
     every = sorted(set().union(*own.values()))
     dated, named = {}, {}
     if every:
-        out = git("log", "--no-walk=unsorted", "--stdin", "--format=%x00%H %ct%n%(trailers:key=Reviewed,valueonly)", stdin="\n".join(every) + "\n")
+        out = git("log", "--no-walk=unsorted", "--stdin", "--format=%x00%H %ct%x01%(trailers:key=Reviewed,valueonly,unfold)%x01", stdin="\n".join(every) + "\n")
         for chunk in out.split("\x00")[1:]:
-            first, *values = chunk.splitlines()
+            first, values, _ = chunk.split("\x01")
             sha, at = first.split()
-            dated[sha], named[sha] = int(at), [v.strip() for v in values if v.strip()]
+            dated[sha], named[sha] = int(at), [v.strip() for v in values.split("\n")[:-1]]
 
     def counts(p):
         mine, opened = own[p["number"]], utc(p["created_at"])

@@ -15580,8 +15580,8 @@ else:
         check(f"FM-006 · the high scores' third row · each boundary, #167 copied across it: as #159 it is outside the cohort, as #160 inside and counted; on an "
               f"answer branch it is left out; opened at its review commit's second it is not counted, one second later it is (saw {across_})",
               across_ == {"159": (23, 39, 160, 210), "160": (24, 40, 160, 210), "answer": (23, 39, 160, 210), "at": (23, 40, 160, 300), "after": (24, 40, 160, 300)})
-        # the trailer rules, on commits made in a scratch clone: one `Reviewed:` trailer naming the pull request's own commit counts; two such trailers, or
-        # one that names a commit the pull request does not hold, do not
+        # the trailer rules, on commits made in a scratch clone: one `Reviewed:` trailer naming the pull request's own commit counts; two such trailers, an
+        # empty one before or after it, or one that names a commit the pull request does not hold, do not
         clone3_ = _lf_clone(base_)
         b3_ = subprocess.run(["git", "-C", str(clone3_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
 
@@ -15595,13 +15595,18 @@ else:
         one_ = _commit3(f"a verdict\n\nReviewed: {w1_}\n", w1_)
         two_ = _commit3(f"a verdict\n\nReviewed: {w1_}\nReviewed: {w1_}\n", w1_)
         out3_ = _commit3(f"a verdict\n\nReviewed: {b3_}\n", w1_)
+        blank1_ = _commit3(f"a verdict\n\nReviewed:\nReviewed: {w1_}\n", w1_)
+        blank2_ = _commit3(f"a verdict\n\nReviewed: {w1_}\nReviewed:\n", w1_)
         _pr3 = lambda head: {"number": 400, "created_at": _iso(int(subprocess.run(["git", "-C", str(clone3_), "show", "-s", "--format=%ct", head], capture_output=True,
                                                                                      text=True, env=_ENV).stdout) + 60),
                              "merged_at": "2026-12-01T00:00:00Z", "head": {"ref": "fm/third-row-control", "sha": head}, "base": {"sha": b3_}}
-        trailers_ = {k: lf3_.score_reviewed(lf3_.Git(clone3_), [_pr3(h)]) for k, h in (("one", one_), ("two", two_), ("outside", out3_), ("none", w1_))}
+        trailers_ = {k: lf3_.score_reviewed(lf3_.Git(clone3_), [_pr3(h)]) for k, h in (("one", one_), ("two", two_), ("blank-before-valid", blank1_),
+                                                                                      ("valid-before-blank", blank2_), ("outside", out3_), ("none", w1_))}
         check(f"FM-006 · the high scores' third row · the trailer: a pull request whose commit carries one `Reviewed:` trailer naming the pull request's own "
-              f"commit counts; two such trailers, one that names a commit outside the pull request, or none, do not (saw {trailers_})",
-              trailers_ == {"one": (1, 1, 400, 400), "two": (0, 1, 400, 400), "outside": (0, 1, 400, 400), "none": (0, 1, 400, 400)})
+              f"commit counts; two such trailers, an empty `Reviewed:` trailer before or after that one, one that names a commit outside the pull request, "
+              f"or none, do not (saw {trailers_})",
+              trailers_ == {"one": (1, 1, 400, 400), "two": (0, 1, 400, 400), "blank-before-valid": (0, 1, 400, 400), "valid-before-blank": (0, 1, 400, 400),
+                            "outside": (0, 1, 400, 400), "none": (0, 1, 400, 400)})
     # the ranking: the highest score first, rows of the same score in the order given, a row with no pull request left out
     _rows3 = lambda *t: [{"id": i, "score": f"{c}/{o}", "counted": c, "of": o} for i, c, o in t]
     ranked3_ = (lf3_.ranked(_rows3(("files", 1, 4), ("commits", 3, 4), ("before", 2, 4))), lf3_.ranked(_rows3(("files", 1, 2), ("commits", 2, 4), ("before", 0, 0))))
