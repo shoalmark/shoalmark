@@ -13,6 +13,7 @@ The class test of the Owner's ruling R17 (signed 12 October): no seat chooses a 
   whose bytes on disk are not the tag's is named and the run refused, nothing written, whatever `git status` reports; a
   file beside the tool that the tag does not hold, an ignored one included, is named and never copied; an untouched
   source vendors byte for byte from the tag, and so does a checkout whose line ends git converted to CRLF.
+- A file the tag's tree holds under brand/themes/, which `--vendor` no longer takes, is neither read nor copied.
 - A checkout's line ends are judged by git's own rules: a mixed-end, a binary or a lone-CR file is accepted only as the tag
   holds it (RV-3366: recorded privately).
 - A source refused because a committed attribute converts the tag's own file on checkout is told to vendor from that
@@ -92,6 +93,11 @@ TAG_MUTANTS = (
     ("copy a path outside the tag again", "        copied = [rel for rel in copied if rel in data]",
      "        data.update((rel, (HERE / rel).read_bytes()) for rel in beside)",
      "a file beside the tool that the tag does not hold"),
+    ("the brand/themes/ prefix taken from the tag's tree again",
+     '        return rel in TOOL_FILES or rel in {f"brand/{n}" for n in BRAND_FILES} or rel in THEME_FILES',
+     '        return rel in TOOL_FILES or rel in {f"brand/{n}" for n in BRAND_FILES} or rel in THEME_FILES or (rel.startswith("brand/themes/") '
+     'and not any(s.startswith(".") for s in rel[len("brand/themes/"):].split("/")))',
+     "a tag whose tree holds a file under brand/themes/"),
     ("read with replacement objects on again: the two variables and the fixed parameter dropped together",
      '        options["env"] = dict(source_env, GIT_CONFIG_PARAMETERS=inherited + (" " if inherited else "") + SOURCE_GIT_PARAMETER, **SOURCE_GIT_ENV)',
      '        options["env"] = source_env',
@@ -330,8 +336,7 @@ def tag_steps(check, fm, tool_bytes, base):
 
     def from_tag(src, copy, body):
         """Whether the copy holds exactly the tag's files, each byte for byte its blob, each pinned by its hash."""
-        kept = lambda rel: rel in fm.TOOL_FILES or rel in {f"brand/{n}" for n in fm.BRAND_FILES} or (
-            rel.startswith("brand/themes/") and not any(s.startswith(".") for s in rel[len("brand/themes/"):].split("/")))
+        kept = lambda rel: rel in fm.TOOL_FILES or rel in {f"brand/{n}" for n in fm.BRAND_FILES} or rel in fm.THEME_FILES
         held = {rel: show(src, rel) for rel in git(src, "ls-tree", "-r", "--name-only", "HEAD").splitlines() if kept(rel)}
         pins = {hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest() + "  " + rel for rel, data in held.items()}
         return bool(held) and set(body) == pins and all((copy / rel).read_bytes() == data for rel, data in held.items())
@@ -362,14 +367,28 @@ def tag_steps(check, fm, tool_bytes, base):
     release(ign, fm, tool_bytes)
     (ign / ".git" / "info").mkdir(exist_ok=True)
     with open(ign / ".git" / "info" / "exclude", "a", encoding="utf-8") as f:
-        f.write("/brand/theme.css\n")
-    (ign / "brand" / "theme.css").write_bytes(b":root{--ink:#010203}\n")
+        f.write("/brand/labels.yaml\n")
+    (ign / "brand").mkdir(exist_ok=True)
+    (ign / "brand" / "labels.yaml").write_bytes(b"tagline: beside the tag\n")
     status = git(ign, "status", "--porcelain", "--untracked-files=all")
     copy, c, o, e, body = vend(ign, "from-ignored")
-    check("a file beside the tool that the tag does not hold — an ignored brand/theme.css — is named in one line and never copied or pinned; the tag's files are",
-          status == "" and c == 0 and one_line(e) and e.startswith("--vendor: not copied — brand/theme.css beside the tool, which the tag does not hold")
-          and not (copy / "brand" / "theme.css").exists() and not any(l.endswith("  brand/theme.css") for l in body) and from_tag(ign, copy, body),
+    check("a file beside the tool that the tag does not hold — an ignored brand/labels.yaml — is named in one line and never copied or pinned; the tag's files are",
+          status == "" and c == 0 and one_line(e) and e.startswith("--vendor: not copied — brand/labels.yaml beside the tool, which the tag does not hold")
+          and not (copy / "brand" / "labels.yaml").exists() and not any(l.endswith("  brand/labels.yaml") for l in body) and from_tag(ign, copy, body),
           f"status {status!r}, exit {c}, {(o + e).strip()[-200:]!r}")
+
+    # a file the tag's tree holds under brand/themes/, which `--vendor` no longer takes: never copied, and never read, so its bytes on disk refuse nothing
+    old = "brand/themes/shoalmark/theme.css"
+    thm = base / "themed"
+    release(thm, fm, tool_bytes, extra={old: b":root{--ink:#010203}\n"})
+    git(thm, "update-index", "--assume-unchanged", old)
+    (thm / old).write_bytes(b":root{--ink:#040506}\n")
+    status = git(thm, "status", "--porcelain", "--untracked-files=all")
+    copy, c, o, e, body = vend(thm, "from-themed")
+    check("a tag whose tree holds a file under brand/themes/ vendors none of it and reads none of it: that file changed on disk, which `git status` does not "
+          "show, refuses nothing — exit 0, the copy and its PIN the tag's other files alone",
+          status == "" and show(thm, old) != (thm / old).read_bytes() and c == 0 and e == "" and not (copy / "brand" / "themes").exists()
+          and not any("brand/themes/" in l for l in body) and from_tag(thm, copy, body), f"status {status!r}, exit {c}, {(o + e).strip()[-200:]!r}")
 
     # a tracked file changed on disk while `git status` reports the tree clean
     for flag, rel in (("--assume-unchanged", "README.md"), ("--skip-worktree", "NOTICE")):
@@ -385,8 +404,7 @@ def tag_steps(check, fm, tool_bytes, base):
               f"status {status!r}, exit {c}, {(o + e).strip()[-200:]!r}")
 
     # git's own checkout leaves these blobs as the tag holds them (RV-3366: recorded privately): a mixed-end file, a NUL-bearing binary, a lone CR
-    kinds = {"brand/themes/samples/mixed.txt": b"one\r\ntwo\nthree\n", "brand/themes/samples/binary.bin": b"\0bin\nary\n",
-             "brand/themes/samples/lonecr.txt": b"one\rtwo\nthree\n"}
+    kinds = {"brand/labels.yaml": b"one\r\ntwo\nthree\n", "brand/logo.png": b"\0bin\nary\n", "brand/logo.svg": b"one\rtwo\nthree\n"}
     wide = lambda data: re.sub(rb"(?<!\r)\n", b"\r\n", data)
     real = base / "kinds-checkout"
     release(real, fm, tool_bytes, extra=kinds)
@@ -417,7 +435,7 @@ def tag_steps(check, fm, tool_bytes, base):
     # a committed attribute converts the tag's own file on checkout (RV-3376: recorded privately): `text eol=crlf` on the mixed-end blob 41 0d0a 42 0a,
     # which git writes as 41 0d0a 42 0d0a — refused, its one line naming the release's unpacked archive; once as `git status` sees it, once behind
     # `git update-index --assume-unchanged`
-    mixed = "brand/themes/samples/attributed.txt"
+    mixed = "brand/labels.yaml"
     for quiet in (False, True):
         att = base / ("attributed" + ("-quiet" if quiet else ""))
         release(att, fm, tool_bytes, extra={".gitattributes": f"{mixed} text eol=crlf\n".encode("ascii")}, raw={mixed: b"A\r\nB\n"})

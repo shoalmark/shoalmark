@@ -10236,9 +10236,8 @@ def tag_files(tag, sha):
     each file): a file of the tool the tag lacks; one that is no regular file in the tag, or none here; one whose bytes here are not the tag's as git checks
     them out (the same bytes, or the bytes git's CRLF checkout writes for it, `crlf_checkout`). Each file here is compared with the tag's blob
     (RV-3364: recorded privately)."""
-    def kept(rel):                                          # the paths `vendor_files` takes, read from the tag's tree
-        themes = rel[len("brand/themes/"):]
-        return rel in TOOL_FILES or rel in {f"brand/{n}" for n in BRAND_FILES} or (rel.startswith("brand/themes/") and not any(s.startswith(".") for s in themes.split("/")))
+    def kept(rel):                                          # the paths `vendor_files` takes, and `THEME_FILES`, read from the tag's tree
+        return rel in TOOL_FILES or rel in {f"brand/{n}" for n in BRAND_FILES} or rel in THEME_FILES
     listing = vcs_process("git", "ls-tree", "-r", "-z", sha, cwd=HERE, source=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
                           env=nested_git_env())
     if listing.returncode:
