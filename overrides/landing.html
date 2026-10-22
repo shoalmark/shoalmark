@@ -804,7 +804,6 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
         <li class="probe-step"><div class="probe-body"><p>{{ T(w.dlg_s2) }}</p></div></li>
         <li class="probe-step"><div class="probe-body"><p>{{ w.dlg_s3 }}</p></div></li>
       </ol>
-      <p class="probe-lead">{{ T(w.dlg_tell) }}</p>{# FM-049: one opt-in line after the third step, to the issue form in this repository; the visitor writes it, never the agent #}
       <details class="probe-fold probe-approvals">
         <summary><span>{{ w.dlg_fold_appr }}</span></summary>
         <ol class="probe-apps">
@@ -820,6 +819,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
         </ol>
         <p class="probe-lead">{{ w.dlg_appr_close }}</p>
       </details>
+      <p class="probe-lead">{{ T(w.dlg_tell) }}</p>
     </div>
   </div>
 </dialog>

@@ -16352,10 +16352,11 @@ def _tell_problems(src):
         bad.append("the dialog's approvals do not list the ninth after the eighth")
     if 'replace("{discuss}", urls.discuss)' not in code:
         bad.append("the template does not fill {discuss}")
-    step3, approvals, coin3, ticker = (code.find(s) for s in ("<p>{{ w.dlg_s3 }}</p>", '<details class="probe-fold probe-approvals">', "{{ T(w.coin_3) }}", '<div class="ticker"'))
+    step3, approvals, end, coin3, ticker = (code.find(s) for s in ("<p>{{ w.dlg_s3 }}</p>", '<details class="probe-fold probe-approvals">', "</dialog>", "{{ T(w.coin_3) }}",
+                                                                 '<div class="ticker"'))
     at = [m.start() for m in re.finditer(re.escape("{{ T(w.dlg_tell) }}"), code)]
-    if len(at) != 2 or not any(step3 < a < approvals for a in at) or not any(coin3 < a < ticker for a in at):
-        bad.append("the tell line is not printed twice: after the dialog's third step, before its approvals, and under the coin lines")
+    if len(at) != 2 or not step3 < approvals or not any(approvals < a < end for a in at) or not any(coin3 < a < ticker for a in at):
+        bad.append("the tell line is not printed twice: in the dialog after its third step and its approvals, and under the coin lines")
     try:
         form = _docs_yaml(src[_TELL_FORM]) if src[_TELL_FORM].strip() else None
     except ValueError as e:
@@ -16385,7 +16386,7 @@ def _tell_problems(src):
 
 _ts = _sources(_TELL_FILES)
 _tp = _tell_problems(_ts)
-check(f"FM-049 · the probe dialog's line after its third step, and under the coin lines, asks in English and German what the agent found, even \"no fit\", and "
+check(f"FM-049 · the probe dialog's line after its third step and its approvals, and under the coin lines, asks in English and German what the agent found, even \"no fit\", and "
       f"leads to the issue form in this repository, which asks it as one required answer and says the issue is public; the line states the prompt, not the "
       f"agent's conduct (problems found: {_tp})", _tp == [])
 _tctl = {"the English line as go-to-market first wrote it": _with(_ts, "overrides/partials/landing/en.html", "the prompt never asks your agent to post.", "your agent never posts for you."),
@@ -16396,6 +16397,9 @@ _tctl = {"the English line as go-to-market first wrote it": _with(_ts, "override
          "the form's description as it was": _with(_ts, _TELL_FORM, "One line is enough.", "In one line."),
          "the form's answer renamed": _with(_ts, _TELL_FORM, "id: found", "id: result"),
          "the template not filling the address": _with(_ts, "overrides/landing.html", ' | replace("{discuss}", urls.discuss)', ""),
+         "the line before the approvals, as it stood": _with(_with(_ts, "overrides/landing.html", '      </details>\n      <p class="probe-lead">{{ T(w.dlg_tell) }}</p>\n',
+                                                                   '      </details>\n'), "overrides/landing.html", '      <details class="probe-fold probe-approvals">',
+                                                             '      <p class="probe-lead">{{ T(w.dlg_tell) }}</p>\n      <details class="probe-fold probe-approvals">'),
          "the line only in the dialog": _with(_ts, "overrides/landing.html", '<p class="small" style="margin-top:16px">{{ T(w.dlg_tell) }}</p>', ""),
          "no form": {**_ts, _TELL_FORM: ""},
          "the form's answer not required": _with(_ts, _TELL_FORM, "required: true", "required: false"),
@@ -16403,8 +16407,8 @@ _tctl = {"the English line as go-to-market first wrote it": _with(_ts, "override
 _tctl_saw = {name: len(_tell_problems(src)) for name, src in _tctl.items()}
 check("FM-049 · the tell line's check is not blind: each of the English line as go-to-market first wrote it, the German one without its link, the line to a "
       "Discussions category, {discuss} back at the form's address, the ninth approval left out of the dialog, the form's description as it was, its answer "
-      "renamed, the template not filling the address, the line only in the dialog, no form, the form's answer not required, and the form without "
-      f"its German note on privacy leaves a problem (problems found: {_tctl_saw})", all(_tctl_saw.values()) and len(_tctl_saw) == 12)
+      "renamed, the template not filling the address, the line before the approvals as it stood, the line only in the dialog, no form, the form's answer not "
+      f"required, and the form without its German note on privacy leaves a problem (problems found: {_tctl_saw})", all(_tctl_saw.values()) and len(_tctl_saw) == 13)
 
 _FEEDBACK = "docs/feedback/index.html"
 _FEEDBACK_WORDS = ("<title>shoalmark · feedback · Rückmeldung</title>", "<p>Taking you to shoalmark's feedback form on GitHub.</p>",
