@@ -3861,22 +3861,17 @@ i{font-style:italic}
 /* three meanings, one colour each (the guide's amendment, G1): teal done or success, amber a warning, coral a failure — each beside its word */
 .hot{color:var(--coral)}.go{color:var(--teal)}.warn{color:var(--amber)}.owed{color:var(--owed)}
 svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:.7ch;flex:none}a svg.ico{margin:0 0 0 .7ch}
-/* the header line: the name, then the search as a prompt line, one line, its box the field's, and the light-or-dark switch at the right. The
-   field keeps its 200 px; on a phone the search takes a row of its own, under the name and the switch */
 #H{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2ch;margin:6px 0 6px}#H img{height:22px;width:auto}
 #H>b{font-weight:600;color:var(--head);white-space:nowrap}#H>span{color:var(--mute)}#H>span:empty{display:none}
 #sb{flex:1 1 calc(200px + 4ch);display:flex;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
 #sb:before{content:">";content:">" / "";color:var(--mute)}#sb:focus-within{border-color:var(--ink)}
 #q{flex:1;min-width:200px;border:0;background:none;color:var(--ink);padding:3px 0;outline:0}#q::placeholder{color:var(--mute);opacity:1}
-/* a setting is a radio or a switch, never boxed: a 13 px ring in --mute, filled in ink around the page's ground when on; its word in --dim, in
-   ink when on or under the pointer */
 .rd{display:inline-flex;align-items:center;gap:.7ch;color:var(--dim);cursor:pointer;white-space:nowrap}
 .rd input{-webkit-appearance:none;appearance:none;margin:0;width:13px;height:13px;border:1px solid var(--mute);border-radius:50%;background:none;flex:none;cursor:pointer}
 .rd input:checked{border-color:var(--ink);background:radial-gradient(circle,var(--bg) 0 2.5px,var(--ink) 3px)}.rd input:checked+span,.rd:hover{color:var(--ink)}
 .rd:hover input{border-color:var(--ink)}.rd input:focus-visible{outline:1px solid var(--ink);outline-offset:2px}#sl{margin-left:auto}
 #sl input{width:26px;height:14px;border-radius:7px;background:radial-gradient(circle at 6px 50%,var(--mute) 0 3.5px,transparent 4px)}
 #sl input:checked{background:radial-gradient(circle at calc(100% - 6px) 50%,var(--bg) 0 3.5px,transparent 4px) var(--ink)}
-/* the work table's count, what its rows hold: in the toolbar after the grouping, a dot before it */
 #n{color:var(--dim)}#n:before{content:"·";content:"·" / "";color:var(--mute);margin-right:1ch}
 /* never a silent loss: each brand file the board no longer reads, and what replaces it — one line, there while a file is */
 #w{color:var(--amber);margin:0 0 4px}
@@ -3915,8 +3910,6 @@ details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>
    on the row coloured */
 .row.vok,.row.vwarn,.row.vfail{margin:0 -2ch;padding:3px 2ch}.row.vok{background:var(--okbg)}.row.vwarn{background:var(--warnbg)}.row.vfail{background:var(--failbg)}
 .vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}
-/* a verdict's row: its id in a column of 8ch; line 2, its word and who gave it, flows as text and wraps only where it must; an id that links is
-   underlined. The verdicts READY by another session fold into one line on the text column, in --dim, `> ` closed and `v ` open */
 .rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
 details.more{border-top:1px solid var(--line)}details.more>summary{color:var(--dim);padding:3px 0 3px 9ch}
 details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.more[open]>summary:before{content:"v ";content:"v " / ""}
@@ -3934,7 +3927,6 @@ code{font:inherit}
 /* the work table, by rank: no outer box, its column heads types, its groups `// `, each group a fold — a group's line wraps inside the frame
    (BF-1: `td.m`'s nowrap is the cells' alone) */
 #vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}
-/* its settings: the grouping, `by ◉ board ○ story`, then, in every view but the board, `· ◉ open ○ all` — each a radio group — then the count */
 #gv,#ov{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 2ch}#ov[hidden]{display:none}#gw{color:var(--dim)}
 #ov:before{content:"·";content:"·" / "";color:var(--mute);margin-right:-1ch}
 #l{color:var(--mute);font-size:12px;margin-left:auto}#l span{text-transform:lowercase;margin-right:1ch}
@@ -3989,15 +3981,9 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
 #p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}#p .pw.au,#dlg .pw.au{color:var(--amber)}
 #ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block;overflow-wrap:anywhere}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}details.about>summary{color:var(--dim)}details.about>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.about[open]>summary:before{content:"v ";content:"v " / ""}
-/* the running line: the tool's, the last line of every screen, alone at the right — its mark at 16 px, the smallest size its 16-unit grid stays
-   sharp at, the name linking to the tool and leaving the board; the version to its release */
 #r{display:flex;justify-content:flex-end;gap:1ch;align-items:center;margin:28px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
-/* a phone: at least 24 px for every button and every setting, a heading's state flows under its title, its marker keeping its space; the search
-   a header row of its own under the name and the switch; the table's count a line of its own, with no dot */
 @media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.rv .how{padding-left:0}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
 #sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}
-/* a phone: each work row stacks — the id, tier and status share a line, wrapping under the id where they must, and the title takes the full width
-   under them, hanging at the id's column; the column heads go, and nothing scrolls sideways: a title too long for the line breaks inside it */
 @media(max-width:640px){#B>table,#b{display:block}#B>table>thead{display:none}#b>tr:not([hidden]),#b>tr>td{display:block}#b>tr>td.x{display:none}
 #b>tr.t{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:2ch;padding-left:calc(2ch + 5px);border-top:1px solid var(--line)}#b>tr.t>td{border-top:0}
 #b>tr.t>td:first-child{margin-left:calc(-2ch - 5px)}#b>tr.t>td:last-child{flex:1 1 100%;padding-top:0;overflow-wrap:anywhere}}
@@ -4193,12 +4179,6 @@ function box(){
     S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
-  // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs. Opened, a row for each one
-  // that needs a look: every verdict but READY and READY TO TAG by another session — one with findings, one not ready, one with no word, one by
-  // the branch's own session, one not traced, one on the trunk. Those READY by another session fold into one line that counts them and opens to
-  // them in the same rows; the week is one list, never paged
-  // a verdict's branch: the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why — in the
-  // row's own colour: nothing on a verdict's row is coloured but its word. An id is its first seven characters, a link where the forge is known
   const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
   brn=b=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2]))
     :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
@@ -4243,9 +4223,9 @@ function draw(){
     return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
-  $("ov").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
+  $("ov").hidden=gname=="board";
   for(const r of document.querySelectorAll("#gv input,#ov input"))r.checked=r.name=="gv"?+r.value==gi:(r.value=="all")==all;
-  $("p").hidden=!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(!q?box():"");   // the box stands in every view, and hides only during a search, whose results come first
+  $("p").hidden=!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(!q?box():"");
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -4253,7 +4233,6 @@ $("b").onclick=e=>{
   if(g){const k=g.dataset.k;touched.add(k);shut.has(k)?shut.delete(k):shut.add(k);return draw()}
   const r=e.target.closest("tr.t");if(r&&e.target.tagName!="A")r.nextElementSibling.hidden^=1};
 $("q").oninput=draw;
-// the grouping's radios, one per view, after its word — `by`, as `view.by` places it — and open or all: the arrow keys move within each group
 {const [w,rest]=(L["view.by"]??"by {0}").split("{0}");$("gv").innerHTML=`<span id="gw">${esc(w.trim())}</span>`
   +GROUPS.map(([g],i)=>`<label class="rd"><input type="radio" name="gv" value="${i}"${i==gi?" checked":""}><span>${esc(vn(g))}</span></label>`).join("")+(rest?.trim()?`<span>${esc(rest.trim())}</span>`:"")}
 $("gv").onchange=e=>{gi=+e.target.value;draw()};
@@ -4298,10 +4277,8 @@ for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l
 // FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so
 $("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())
   .then(()=>{$("rs").className="said ok";$("rs").innerHTML=`<span class="go">${ICO.check}${lh("read.copied",`<code>${esc($("rc").textContent)}</code>`)}</span>`},()=>{$("rc").hidden=false;$("rs").className="said";$("rs").innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`});
-// light or dark: the page starts from the system's scheme, `auto`. A pick on the switch is kept; a pick equal to the system's scheme is
-// forgotten, so the page follows the system again. A pick switches the page's own `prefers-color-scheme` rules on or off, and the logo's: an
-// image's own rules follow the system, never the page, so its SVG is written again with the rule of the scheme in effect on — one of its own
-// two drawings shows, and nothing is recoloured. Paper stays light.
+// WebKit draws an image's own `prefers-color-scheme` rules by the system's scheme, never the page's: the logo's SVG is written again with
+// the rule of the scheme in effect on
 const ORIG=new Map(),PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g,SYS=matchMedia("(prefers-color-scheme: dark)"),sys=()=>SYS.matches?"dark":"light",
 LOGO=(i=>i&&/^data:image\/svg\+xml;base64,/.test(i.getAttribute("src"))?[i,new TextDecoder().decode(Uint8Array.from(atob(i.getAttribute("src").slice(26)),c=>c.charCodeAt(0)))]:null)(document.querySelector("#H>img"));
 let scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(scheme!="light"&&scheme!="dark")scheme="auto";
@@ -4339,7 +4316,7 @@ LABELS = {
     "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
     "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
-    "scheme.toggle": "dark",     # the light-or-dark switch's word: on where the page is dark
+    "scheme.toggle": "dark",
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
     # BF-3: the Owner is *you* on the board (the guide, §10) — `next: owner` reads *→ you* in the tier's cell; the viewer's handover line shows
     # the record's own field, `owner` in code font, as a setting
@@ -4404,7 +4381,7 @@ LABELS = {
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
     # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
     "reviews.sessions.more": "{0} and {1} more",
-    "reviews.more": "and {0} more verdicts by another session this week",     # the fold of the verdicts READY by another session, and their count
+    "reviews.more": "and {0} more verdicts by another session this week",
     # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous*
     "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
     "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
@@ -4491,8 +4468,6 @@ LABELS = {
     "brand.gone": "no longer read: {0}", "brand.gone.theme": "[palette] in shoalmark.toml", "brand.gone.fonts": "the system's monospace",
     "brand.gone.wordmark": "the name", "brand.gone.themes": "[palette], by name",
 }
-# The labels the board no longer reads, each with what replaces it: a labels.yaml that still sets one is named on the run that meets it, with
-# this — never read, and never refused
 LABELS_GONE = {**{k: "light or dark is one switch, its word `scheme.toggle`" for k in ("scheme.auto", "scheme.light", "scheme.dark", "scheme.button")},
                "footer": "the board ends with the running line alone: no claim stands under it"}
 BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
@@ -5038,7 +5013,7 @@ def read_at_html(read, labels):
     else:
         line = esc(say("read.none", read.get("folder", ""), when))
         about = [say("read.about.none", full), say("read.none.why")]
-    facts = [line, esc(say("read.self"))]                 # each dot stays with the fact before it, so a line never starts with one or holds one alone
+    facts = [line, esc(say("read.self"))]
     return ('<p id="ra" class="m"><span>' + " ".join(f'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>' for i, f in enumerate(facts))
             + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
             f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{esc(say("read.copy"))}</button>'
@@ -9312,7 +9287,7 @@ def board_sessions():
     count, words = collections.Counter(r[4] for r in reps), collections.Counter(r[5] for r in reps)
     parents, everyone = group_counts(groups)
     said = str(CONFIG.get("commit_url") or "")
-    forge = bool(reps) and (bool(re.match(r"https?://[^\s\"'<>]+$", said, re.I)) if said else bool(commit_prefix()))     # a `commit_url` that is no URL names no forge; the read-at line's read says so once
+    forge = bool(reps) and (bool(re.match(r"https?://[^\s\"'<>]+$", said, re.I)) if said else bool(commit_prefix()))
     page = lambda sha: (commit_link(sha)[0] or "") if forge else ""
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
