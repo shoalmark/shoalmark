@@ -9667,13 +9667,40 @@ def _bw_hand_ok(w):
     return not any(c_ for _h, c_ in w["runs"]) and (w["gits"] is None or (w["gits"] > 0 and not w["other"]))
 
 
+def _bm_run_sids(path):
+    """The session ids of the gits each refresh hook's board's run started, selected from the trace2 events at `path` as `_bm_watch` selects them: one level
+    below the git that started the hook, started between that git's `child_start` and `child_exit` for it, but the hook's own two reads (`_BM_OWN`)."""
+    evs_ = []
+    for line_ in (path.read_text(encoding="utf-8").splitlines() if path.is_file() else []):
+        try:
+            evs_.append(json.loads(line_))
+        except ValueError:
+            continue
+    starts_ = sorted((e_["time"], e_["sid"], e_["argv"]) for e_ in evs_ if e_.get("event") == "start" and "time" in e_ and "argv" in e_)
+    sids_, opened_ = set(), {}
+    for e_ in evs_:
+        k_ = (e_.get("sid"), e_.get("child_id"))
+        if e_.get("event") == "child_start" and e_.get("child_class") == "hook" and e_.get("hook_name") in _BM_HOOKS:
+            opened_[k_] = e_
+        elif e_.get("event") == "child_exit" and k_ in opened_:
+            o_ = opened_.pop(k_)
+            run_ = [(s_, a_) for t_, s_, a_ in starts_ if s_.rpartition("/")[0] == o_["sid"] and o_["time"] < t_ < e_["time"]]
+            for own_ in _BM_OWN:
+                i_ = next((i_ for i_, (_s, a_) in enumerate(run_) if a_[1:] == own_), None)
+                if i_ is not None:
+                    del run_[i_]
+            sids_ |= {s_ for s_, _a in run_}
+    return sids_
+
+
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d); root_, inst_ = _bm_repo(base_)
     (root_ / ".gitattributes").write_text("docs/work-tracker/*.md diff=probe\n", encoding="utf-8")
     git(root_, "add", ".gitattributes"); git(root_, "commit", "-qm", "attributes")
     marker_ = base_ / "configured-program-ran"
     script_ = base_ / "configured-program.py"
-    script_.write_text(f"from pathlib import Path\nPath({str(marker_)!r}).write_text('ran')\nraise SystemExit(1)\n", encoding="utf-8")
+    script_.write_text(f"import os\nwith open({str(marker_)!r}, 'a', encoding='utf-8') as f:\n    f.write(os.environ.get('GIT_TRACE2_PARENT_SID', '') + '\\n')\n"
+                       "raise SystemExit(1)\n", encoding="utf-8")
     command_ = f'"{Path(sys.executable).as_posix()}" "{script_.as_posix()}"'
     for key_ in ("core.fsmonitor", "diff.probe.textconv", "gpg.program", "gpg.x509.program", "gpg.ssh.program"):
         git(root_, "config", key_, command_)
@@ -9693,11 +9720,15 @@ with tempfile.TemporaryDirectory() as d:
                 clean_git_("switch", "-q", "-C", "host-work", "work")
             marker_.unlink(missing_ok=True)
             trace_ = base_ / f"hostile-{variable_}-{event_}.json"
-            code_, said_ = _hooked(root_, "-c", "core.fsmonitor=false", *args_, env=dict(_ENV, **{variable_: "1", "GIT_TRACE2_EVENT": str(trace_)}))
+            code_, said_ = _hooked(root_, *args_, env=dict(_ENV, **{variable_: "1", "GIT_TRACE2_EVENT": str(trace_)}))
             hooks_ = _bm_trace(trace_)
             page_ = (_bm_board(root_) or b"").decode("utf-8")
-            check(f"refresh hooks · hostile clone · {event_} with {variable_}: the board shows {wants_}, configured programs stay inert (saw exit {code_}, hooks {hooks_}, marker {marker_.exists()})",
-                  code_ == 0 and not marker_.exists() and bool(hooks_) and all(c_ == 0 for cs_ in hooks_.values() for c_ in cs_)
+            ran_ = marker_.read_text(encoding="utf-8").split() if marker_.exists() else []
+            board_ = _bm_run_sids(trace_)
+            inside_ = sorted(set(ran_) & board_)
+            check(f"refresh hooks · hostile clone · {event_} with {variable_}: the board shows {wants_}, configured programs stay inert in every git a refresh hook's board's "
+                  f"run starts (saw exit {code_}, hooks {hooks_}, {len(board_)} such git(s), the configured program run {len(ran_)} time(s), {len(inside_)} of them by one)",
+                  code_ == 0 and not inside_ and bool(hooks_) and all(c_ == 0 for cs_ in hooks_.values() for c_ in cs_)
                   and re.search(_bm_row(*wants_)[1], page_) is not None and not _bm_bad(said_))
     rm_git(root_)
 fm.configure(HERE)
