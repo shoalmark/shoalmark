@@ -3,18 +3,15 @@ id: FM-053
 status: In Progress
 considered: FM-002, FM-023, FM-024, FM-031, FM-006
 tags: process
-next: build
+next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt the guide's wording of 16 October for the board's reload, as brand/design-guide.md states it at the commit that last filed this ask: it reads its file again when you come back to it, and nothing polls?"
+ask: "Do you adopt the guide's six new lines for the board's settings, header, footer, phone rows, seat icons and reviews, as brand/design-guide.md states them at the commit that last filed this ask, and as FM-053's *What is true now* entry of 22 October sets them out?"
 ask-kind: ruling
-ask-since: 2026-10-16
-ask-options: "yes | yes, with the change I name | no: §2.8 and the read-at line stay as answered at fee3874"
+ask-since: 2026-10-22
+ask-options: "yes | yes, with the change I name | no: the guide stays as its answers of 16 October left it"
 ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-16
-answered-by: holgo99
 ---
 
 # FM-053 — the board's design for v0.20.1 is the Owner's word in a sitting, not yet a signed answer
@@ -82,6 +79,21 @@ remains:
   `scripts/check_site.py`, which run there and not on the build's machine;
 - integration into `release/v0.20.1` with the board's other builds, where its CHANGELOG and ADOPT lines are written.
 
+**2026-10-22 — the guide's six new lines, after the real board.** The Owner had the Designer check the real board on
+main's records, and said yes to the board's next pass in v0.20.1 and to one signed ask for the guide's new lines. They
+are written into `brand/design-guide.md` at the commit that files this tracker's new ask:
+1. §8, *A setting*: a radio or a switch, unboxed and never a button. The header's *◉ dark* follows the system's scheme
+   until a pick differs from it;
+2. §7, the header line names the light-or-dark setting;
+3. §7, the board's order ends with the running line, at the right: the footer's claim goes;
+4. §9, on a phone the work table's rows stack, and nothing scrolls sideways;
+5. §4, *In a row*: a seat icon goes without its ground square, inverted on the light board and on paper;
+6. §1, the *reviews* row: opened, what needs a look, one row each. The READY verdicts by another session fold into one
+   line, and the week is never paged.
+
+The ask adopts all six, as the guide states them there, in one answer. The board's next pass builds to lines 1 to 4
+and 6, on `fm/053-board-polish`. Line 5 waits for the session rows, which v0.20.2 builds.
+
 ## The public homes
 
 - **`brand/design-guide.md`**: the board's design, the v0.20.x rules only. It is what this tracker's ask adopts, as it
@@ -114,6 +126,11 @@ remains:
 **relation** — accepted the proposal
 **signed** — fee3874 · G
 
+**2026-10-16** · Do you adopt the guide's wording of 16 October for the board's reload, as brand/design-guide.md states it at the commit that last filed this ask: it reads its file again when you come back to it, and nothing polls?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 578973d · G
+
 ## Ship log
 
 | Date | Event |
@@ -134,3 +151,6 @@ remains:
 | 2026-10-16 | The reload's wording amended in §2.8 and the read-at line, with the ask that adopts it (`next: owner`). |
 | 2026-10-16 | A2 built on `fm/053-board-v2`: the v2 look and words, R10's look half and B1. Its first review NOT READY at `2c8d041` (`76c1ccd`), four findings. Round 1 on the branch: a palette name that is a list refused in one line (`8597bd7`), a review row's branch (`319ac53`), the header row on a phone (`db21666`), and this record. |
 | 2026-10-16 | The Designer's build findings fixed in round 1: the work table's group line wraps (`4b425b0`); the header's count stands clear of the scheme's button (`5e38e08`); `next: owner` reads *you* (`f37b5b5`); a heading's marker keeps its space on a phone (`cbb49c3`); a review row names the branch's oldest session (`5bb4fb7`); its heading's counts put the number first (`eeacb1c`); *shipped or closed* for *ended* (`e6031e5`); a count past 14 asks (`8ee3602`). The reload stays, as ruled. |
+| 2026-10-22 | The reload's answer recorded under `## Asks` (accepted, signed `578973d`); next: build. |
+| 2026-10-22 | The guide's six new lines (§1's *reviews* row, §4's *In a row*, §7's header line and running line, §8's *A setting*, §9's phone rows), with the ask that adopts them (`next: owner`). |
+| 2026-10-22 | The records pass's RV-3632 fixed forward: §8's *A setting* says only what the Designer drafted. The ask filed again with it, naming the header among the six lines. |
