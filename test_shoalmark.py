@@ -15246,7 +15246,7 @@ else:
                 "desk-scrolls": ("a German dialog that scrolls at 1024×768", _mutate("desk-scrolls", "de/index.html", "max-height:calc(100dvh - 96px);overflow:auto", "max-height:calc(100dvh - 400px);overflow:auto", "desk"),
                                  "at 1024×768, with its fold closed, nothing in the dialog scrolls inside itself"),
                 "door-peel": ("a tape never pulled off", _mutate("door-peel", "index.html", ",tape-pull 1s steps(12) .9s forwards", "", "door"),
-                              "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and lifted away by 2.2 s"),
+                              "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and gone once lifted away, after 2.2 s"),
                 "door-icon": ("a door without its copy icon", _mutate("door-icon", "index.html", ".btn.door .ic{order:2}", ".btn.door .ic{display:none}", "door"),
                               "the lit door is 55 px tall on a desktop and 59 px on a phone, its copy icon centred under its label"),
                 "door-lift": ("a door that lifts on hover", _mutate("door-lift", "index.html", ".btn.door:hover{transform:none}", "", "door"),
