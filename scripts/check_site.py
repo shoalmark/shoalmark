@@ -192,9 +192,18 @@ class Page(HTMLParser):
         self.meta, self.links, self.anchors, self.texts, self.textareas, self.dialogs, self.scripts, self.loads = {}, [], [], {}, {}, [], [], []
         self.text, self.stack = "", []
         self.buttons, self.tapes, self.button_texts, self.tape_texts = [], [], [], []
+        self.tape_holders, self.doors, self.coins = [], [], []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if "tape" in (a.get("class") or "").split() or "gcoin" in (a.get("class") or "").split():
+            holder = next((el for el in reversed(self.stack) if el["tag"] in ("a", "button")), None)
+            kinds = (holder["attrs"].get("class") or "").split() if holder else []
+            where = ("door" if holder["tag"] == "a" and "door" in kinds and holder["attrs"].get("id") == "probe-open"
+                     else "taped" if holder["tag"] == "button" and "taped" in kinds else "elsewhere") if holder else "elsewhere"
+            (self.tape_holders if "tape" in (a.get("class") or "").split() else self.coins).append((where, a.get("aria-hidden")))
+        if "door" in (a.get("class") or "").split():
+            self.doors.append((tag, a))
         if tag == "html":
             self.lang = a.get("lang")
         elif tag == "meta" and (a.get("name") or a.get("property")):
@@ -210,7 +219,7 @@ class Page(HTMLParser):
         if tag in LOADS and a.get(LOADS[tag]):
             self.loads.append((tag, a[LOADS[tag]]))
         if tag not in VOID:
-            self.stack.append({"tag": tag, "attrs": a, "text": ""})
+            self.stack.append({"tag": tag, "attrs": a, "text": "", "name": ""})
 
     def handle_endtag(self, tag):
         if tag in VOID or not any(el["tag"] == tag for el in self.stack):
@@ -220,7 +229,7 @@ class Page(HTMLParser):
             if el["attrs"].get("id"):
                 self.texts[el["attrs"]["id"]] = el["text"]
             if el["tag"] == "a":
-                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["text"].split())})
+                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["name"].split())})
             elif el["tag"] == "textarea" and el["attrs"].get("id"):
                 self.textareas[el["attrs"]["id"]] = el["text"]
             elif el["tag"] == "title":
@@ -233,8 +242,10 @@ class Page(HTMLParser):
                 break
 
     def handle_data(self, data):
-        for el in self.stack:
+        for i, el in enumerate(self.stack):
             el["text"] += data
+            if not any(inner["attrs"].get("aria-hidden") == "true" for inner in self.stack[i + 1:]):
+                el["name"] += data          # the text a screen reader reads as the element's name: what is aria-hidden inside it is left out
         if not any(el["tag"] in ("script", "style") for el in self.stack):
             self.text += data
 
@@ -264,6 +275,8 @@ def leads_to(page, href):
 
 
 pages = {rel: parse(rel) for rel in ("index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html")}
+if taped_on and probe_on:
+    fail("the probe switch is on and the tape too: the two exclude each other")
 for rel, lang, other, canonical, image, adopt, how in (
         ("index.html", "en", "de/index.html", SITE_URL, "preview.png", "ADOPT.md", "how-it-works.html"),
         ("de/index.html", "de", "index.html", SITE_URL + "de/", "preview-de.png", "ADOPT.de.md", "de/how-it-works.html")):
@@ -279,12 +292,18 @@ for rel, lang, other, canonical, image, adopt, how in (
         fail(f"{rel} has no language switch to {other}, named by its hreflang")
     if p.meta.get("og:image") != SITE_URL + "assets/" + image or p.meta.get("og:locale") != ("en_GB" if lang == "en" else "de_DE") or not (p.title and p.meta.get("description")):
         fail(f"{rel}'s link preview is not its language's: image {image}, its locale, title and description")
+    # the tape-off ceremony, with the probe on alone: its tape and its coin stand in the primary link, the door, hidden from screen readers
+    if probe_on:
+        if any(where != "door" for where, _ in p.tape_holders + p.coins) or any(tag != "a" or a.get("id") != "probe-open" for tag, a in p.doors):
+            fail(f"{rel}: the probe switch is on, but a tape or a coin stands outside the ceremony's door: the taped state's tape is built")
+        if any(hidden != "true" for _, hidden in p.tape_holders + p.coins):
+            fail(f"{rel}: the probe switch is on, but the ceremony's tape or coin is read by screen readers")
+    elif p.doors or p.coins or any(where == "door" for where, _ in p.tape_holders):
+        fail(f"{rel}: the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built")
     if taped_on:
         # the taped state: the primary button is a button, not a link — shown, taped over (the tape hidden from screen readers), aria-disabled, named
         # by its reason line through aria-describedby, with no handler; no dialog is built, the second button leads to How it works, the reason line
         # hands the agents the note, and the Markdown twin leads with that note
-        if probe_on:
-            fail("the probe switch is on and the tape too: the two exclude each other")
         taped = [b for b in p.buttons if "btn" in (b.get("class") or "").split()]
         links = [a for a in p.anchors if "btn" in classes(a)]
         note = "https://github.com/shoalmark/shoalmark/blob/main/" + adopt

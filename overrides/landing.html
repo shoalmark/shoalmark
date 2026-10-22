@@ -478,6 +478,39 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .wreck.open.held .f2{display:none}
 .inc-head svg.held{filter:none}
 .key .km{display:grid;gap:5px;justify-items:start}
+/* the probe state: the coin door, lit; the tape-off ceremony; the golden coin */
+.btn.door{position:relative;isolation:isolate;padding-left:50px;padding-bottom:26px;border:2px solid var(--contour);
+  background:linear-gradient(90deg,#0b1520 0 36px,var(--watt) 36px);box-shadow:inset 0 0 0 1px var(--abyss),4px 4px 0 var(--band)}
+.btn.door .ic{display:none}
+.btn.door::before{content:"";position:absolute;left:11px;top:7px;bottom:7px;width:14px;background:#010407;
+  box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px #4b5e6e,inset 6px 0 0 4px #000}
+.btn.door::after{content:"";position:absolute;left:36px;top:0;right:0;bottom:0;z-index:-1;background:var(--closed);
+  animation:tape-unlit .6s steps(1) 1.8s both}
+.btn.door .tape{position:absolute;left:-7px;right:-7px;bottom:5px;padding:3px 0 2px;font:700 10px/1.2 var(--pix);letter-spacing:.12em;
+  text-align:center;text-transform:uppercase;white-space:nowrap;color:#fff;pointer-events:none;
+  background:#1f6fbf repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px);box-shadow:0 2px 0 rgba(5,11,18,.55);
+  transform:rotate(-2deg);transform-origin:7px 50%;animation:tape-peel 1.2s steps(10) .6s both}
+@keyframes tape-peel{0%{transform:rotate(-2deg)}15%{transform:rotate(-6deg)}35%{transform:translate(-4px,-10px) rotate(-11deg)}
+  60%{transform:translate(-22px,-18px) rotate(-19deg);opacity:1}100%{transform:translate(-60px,36px) rotate(-38deg);opacity:0}}
+@keyframes tape-unlit{0%{opacity:1}17%{opacity:0}34%{opacity:1}50%{opacity:0}67%{opacity:1}84%,100%{opacity:0}}
+.is-door .cue{display:grid;justify-items:center}.is-door .cue .was,.is-door .cue .now{grid-area:1/1}
+/* steps(1) flips only at an animation's end, so each cue turns with an animation of 1 ms that starts at 2.4 s */
+.cue .was{animation:tape-gone 1ms 2.4s both}
+.cue .now{visibility:hidden;animation:tape-show 1ms 2.4s both,blink 1s steps(1) 2.4s 4}
+@keyframes tape-gone{to{visibility:hidden}}
+@keyframes tape-show{to{visibility:visible}}
+@media (min-width:701px){.cta.is-door>.btn.alt{margin-bottom:18px}}
+@media (max-width:700px){.btn.door{padding-left:18px}.btn.door::before{top:9px;bottom:9px}}
+.btn.door .gcoin{position:absolute;left:11px;top:10px;width:14px;height:14px;display:none;pointer-events:none;z-index:1;transform-origin:50% 50%}
+.btn.door .gcoin .cab{margin:0}
+@media (hover:hover) and (pointer:fine){.btn.door:hover .gcoin{display:block;animation:golden-coin-near .24s steps(2) both}}
+.btn.door.golden-coin .gcoin{display:block;animation:golden-coin-in .36s steps(4) forwards}
+.btn.door.golden-coin::before{animation:golden-coin-slit .3s steps(1) .22s}
+@keyframes golden-coin-near{from{transform:translate(-12px,-8px)}to{transform:none}}
+@keyframes golden-coin-in{0%{transform:none}30%{transform:scaleX(.55) translateY(3px)}60%{transform:scaleX(.2) translateY(8px)}100%{transform:scaleX(.2) translateY(16px);opacity:0}}
+@keyframes golden-coin-slit{0%,100%{box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px var(--gold),inset 6px 0 0 4px #000}}
+@media (prefers-reduced-motion:reduce){.btn.door .tape,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible}}
+@media print{.btn.door .tape,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible;animation:none}}
 </style>
 </head>
 <body>
@@ -524,10 +557,10 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     <p class="claim">{{ w.claim }}</p>
     <h1>{{ w.h1 }}</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
     <p class="lede">{{ w.lede }}</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
-    <div class="cta{% if taped %} is-taped{% endif %}">
+    <div class="cta{% if taped %} is-taped{% endif %}{% if probe %} is-door{% endif %}">
       {%- if probe %}
-      <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>
-      <a class="btn" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}</a></div>{# B1: the probe state — copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
+      <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span><span class="cue-t now">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>
+      <a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></a></div>{# the probe state: the lit coin door copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
       {%- elif taped %}
       <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span></span>
       <button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></button></div>{# the taped state: the button the probe will open, shown and taped over — no link, no handler, no dialog; the line under the actions says why #}
@@ -1033,11 +1066,21 @@ addEventListener("resize", scale);
   const legacy = () => { ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (err) {} if (ok) ta.blur(); return ok; };
   const good = again_ => { say("ok", W.ok); if (again_) { done.textContent = W.done; clearTimeout(timer); timer = setTimeout(() => { done.textContent = ""; }, 2600); } };   // the box stays as it is
   const bad = () => { say("fail", W.fail); done.textContent = ""; show(true); ta.focus(); ta.select(); };   // step 1 says so, the box opens whole and its text is selected
+  let downAt = 0, hold = null;
+  open.addEventListener("pointerdown", e => {
+    if (e.button) return;
+    downAt = performance.now();
+    open.classList.remove("golden-coin"); void open.offsetWidth; open.classList.add("golden-coin");   // the reflow between the two restarts the coin's animation
+  });
+  open.addEventListener("animationend", e => { if (e.animationName === "golden-coin-in") open.classList.remove("golden-coin"); });
   open.addEventListener("click", e => {
     e.preventDefault();
     const p = write();
-    say("", ""); done.textContent = ""; show(false); dlg.showModal(); document.documentElement.classList.add("modal");
-    p.then(ok => (ok || legacy()) ? good(false) : bad());
+    const wait = matchMedia("(prefers-reduced-motion: reduce)").matches || !downAt || !e.detail ? 0 : Math.max(0, 360 - (performance.now() - downAt));   // a click the keyboard makes has detail 0
+    downAt = 0; clearTimeout(hold);
+    const opening = () => { say("", ""); done.textContent = ""; show(false); dlg.showModal(); document.documentElement.classList.add("modal");
+      p.then(ok => (ok || legacy()) ? good(false) : bad()); };
+    if (wait) hold = setTimeout(opening, wait); else opening();
   });
   again.addEventListener("click", () => { write().then(ok => (ok || legacy()) ? good(true) : bad()); });
   more.addEventListener("click", () => show(box.dataset.open !== "true"));

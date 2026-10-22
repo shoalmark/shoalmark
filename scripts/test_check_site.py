@@ -300,6 +300,71 @@ class Taped(unittest.TestCase):
                 self.assertIn(message, result.stderr)
 
 
+class Ceremony(unittest.TestCase):
+    """The tape-off ceremony beside the taped state. With the probe on, the primary link is the coin door: its tape and its coin stand in it, hidden from
+    screen readers, and the site passes; the taped state's tape, on its taped button, is refused with the probe on, and the ceremony's door is refused with
+    the probe off, taped or not."""
+
+    TAPE = {"en": "not yet", "de": "noch nicht"}
+
+    def door(self, lang, href, extra=""):
+        return ('<span class="cue" aria-hidden="true"><span class="cue-t was">— x —</span><span class="cue-t now">— y —</span></span>'
+                '<a class="btn door"%s href="%s" aria-haspopup="dialog">%s<span class="gcoin" aria-hidden="true"><svg class="cab cab-coin" aria-hidden="true"></svg></span>'
+                '<span class="tape" aria-hidden="true">%s</span></a>' % (extra, href, LABELS[lang], self.TAPE[lang]))
+
+    def checked(self, probe, taped=False, change=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            if taped:
+                Taped.taped_site(self, site)
+            else:
+                good_site(site, probe)
+            for name, lang in (("index.html", "en"), ("de/index.html", "de")):
+                text = (site / name).read_text(encoding="utf-8")
+                if probe:
+                    old = '<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">%s</a>' % LABELS[lang]
+                    self.assertIn(old, text)
+                    text = text.replace(old, self.door(lang, "probe.txt", ' id="probe-open"'))
+                (site / name).write_text(text, encoding="utf-8")
+            if change:
+                change(site)
+            toml = Path(tmp) / "zensical-ceremony.toml"
+            toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = %s\n" % ("true" if probe else "false", "true" if taped else "false"), encoding="utf-8")
+            return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+
+    def put(self, old, new, name="index.html"):
+        def change(site):
+            text = (site / name).read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
+        return change
+
+    def test_the_ceremony_with_the_probe_and_the_taped_tape_without_it(self):
+        taped_button = '<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">not yet</span></button>' % LABELS["en"]
+        note = '<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>'
+        rows = (
+            ("the probe build with the ceremony", dict(probe=True), None),
+            ("the taped tape beside the door, with the probe on", dict(probe=True, change=self.put('<a class="btn alt"', taped_button + '<a class="btn alt"')),
+             "the taped state's tape is built"),
+            ("the door's tape moved onto a taped button, with the probe on", dict(probe=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span></a>', '</a>' + taped_button)),
+             "the taped state's tape is built"),
+            ("the door's tape read by screen readers, with the probe on", dict(probe=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span>', '<span class="tape">not yet</span>')),
+             "the ceremony's tape or coin is read by screen readers"),
+            ("the ceremony's door with the probe off", dict(probe=False, change=self.put(note, self.door("en", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"))),
+             "the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built"),
+            ("the ceremony's coin in the taped state", dict(probe=False, taped=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span></button>',
+                                                                                                 '<span class="tape" aria-hidden="true">not yet</span><span class="gcoin" aria-hidden="true"></span></button>')),
+             "the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built"))
+        for name, args, message in rows:
+            with self.subTest(name):
+                result = self.checked(**args)
+                if message is None:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                else:
+                    self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                    self.assertIn(message, result.stderr)
+
+
 class Twins(unittest.TestCase):
     """llms_txt.py writes each page's Markdown twin as the page reads: includes expanded, the picture as Markdown, links to twins, probe.txt only while the switch is on."""
 

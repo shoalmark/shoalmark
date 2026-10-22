@@ -5691,7 +5691,7 @@ _tape_src = _sources(_LANDING_FILES)
 _tape_p = _taped_problems(_tape_src)
 check("FM-006 · the taped coin slot: the button the probe will open is a button, aria-disabled and described by the line under the actions, with no link, id or handler; it keeps "
       f"its label with the tape across it, hidden from screen readers, under the coin's cue; the dialog and its script are built under the probe switch alone (problems found: {_tape_p})", _tape_p == [])
-_tape_ctl = {"the tape left off": _with(_tape_src, "overrides/landing.html", '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span>', ""),
+_tape_ctl = {"the tape left off": _with(_tape_src, "overrides/landing.html", '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></button>', "</button>"),
          "a dialog built": _with(_tape_src, "overrides/landing.html", '{%- if probe %}\n{#', '{%- if probe or taped %}\n{#'),
          "a click handler on the button": _with(_tape_src, "overrides/landing.html", 'aria-disabled="true" aria-describedby="taped-why">', 'aria-disabled="true" aria-describedby="taped-why" onclick="copy()">'),
          "a script that handles the button": _with(_tape_src, "overrides/landing.html", "</script>", 'document.querySelector(".btn.taped").addEventListener("click", () => 0);\n</script>'),
@@ -5811,8 +5811,9 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
 
 
 # --- FM-006 · B1 · the hero's cue and the arcade labels' cabinet parts ------------------------------------------------------------------------------------
-# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green; only its icon and
-# words blink, four blinks of a second each, then stay lit, and under reduced motion nothing blinks. The players label has a joystick and the start label a coin,
+# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green, the taped cue
+# "— [coin] …" under it until the tape-off ceremony turns the one into the other at 2.4 s; only the live cue's icon and words blink, four blinks of a second each,
+# then stay lit, and under reduced motion nothing blinks. The players label has a joystick and the start label a coin,
 # neither blinking; the issue tracker's, the fleet's, the high scores' and the register's labels have a ticket, a ship, a screen and a wreck, none blinking. Every icon is
 # aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
 _CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
@@ -5830,17 +5831,31 @@ def _cue_problems(src):
         for key, want in _CUE_WORDS[lang].items():
             if words[lang].get(key) != want:
                 bad.append(f"the {lang} word {key} is not {want!r}")
-    # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, its icon the dome after the first dash of the words
+    # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, its icon the dome after the first dash of the words;
+    # the taped cue, its coin after the first dash, shares its place until the ceremony turns it
     probe_part = code.split("{%- elif taped %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- elif taped %}" in code else ""
-    cue = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
-    if cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue") != 1 or re.search(r"w\.cue\b", code.replace(cue, "")):
+    cue = ('<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span>'
+           '<span class="cue-t now">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>')
+    if cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue |") != 1 or re.search(r"w\.cue\b", code.replace(cue, "")):
         bad.append("the cue is not, in the probe state alone, the strip over the primary button, hidden from screen readers, with the dome after its first dash")
-    # the animation: only the cue's words and icon blink, at most 5 s in all, then they stay lit; nothing blinks under reduced motion
+    # the animation: only a cue's words and icon blink, at most 5 s in all, then they stay lit — the taped state's cue from the start, the live cue from 2.4 s,
+    # when the taped cue and the live cue each turn with one step of 1 ms; nothing else of the cue and the labels animates, and nothing blinks under reduced motion
     rules = re.findall(r"([^{}]+)\{([^{}]*animation[^{}]*)\}", re.sub(r"/\*.*?\*/", "", code, flags=re.S))
     mine = [(sel.strip().split(".")[-1], body) for sel, body in rules if re.search(r"\.(cue|cab|n-ic|n|cta-main)\b", sel)]
-    timed = [(sel, re.search(r"animation:\s*blink\s+([\d.]+)s\s+steps\(1\)\s+(\d+)\b", body)) for sel, body in mine]
-    if len(timed) != 1 or timed[0][0] != "cue-t" or not timed[0][1] or float(timed[0][1].group(1)) * int(timed[0][1].group(2)) > 5 or "infinite" in mine[0][1] or "forwards" in mine[0][1]:
-        bad.append("the cue's words and icon are not the only things of the cue and the labels that animate, blinking at most 5 s in all and then lit")
+    seen, wrong = {}, []
+    for sel, body in mine:
+        for one in re.search(r"animation:\s*([^;]*)", body).group(1).split(","):
+            one = one.strip()
+            blink = re.fullmatch(r"blink ([\d.]+)s steps\(1\)(?: ([\d.]+)s)? (\d+)", one)
+            turn = re.fullmatch(r"(tape-gone|tape-show) 1ms 2\.4s both", one)
+            if blink and (sel, blink.group(2)) in (("cue-t", None), ("now", "2.4")) and float(blink.group(1)) * int(blink.group(3)) <= 5:
+                seen.setdefault(sel, []).append("blink")
+            elif turn and (sel, turn.group(1)) in (("was", "tape-gone"), ("now", "tape-show")):
+                seen.setdefault(sel, []).append(turn.group(1))
+            elif one != "none":
+                wrong.append(sel + ": " + one)
+    if wrong or seen != {"cue-t": ["blink"], "was": ["tape-gone"], "now": ["tape-show", "blink"]}:
+        bad.append(f"the cue's words and icon are not the only things of the cue and the labels that animate, blinking at most 5 s in all and then lit ({wrong or seen})")
     if "*,*::before,*::after{animation:none!important" not in code:
         bad.append("the rule that ends every animation under reduced motion is not there")
     # the icons: seven, each aria-hidden and not focusable; every label keeps its words and takes its icon after the first dash
@@ -5879,6 +5894,173 @@ _cctl_saw = {name: len(_cue_problems(src)) for name, src in _cctl.items()}
 check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s or "
       "with its rules, a label blinking, the reduced-motion rule gone, an icon read by screen readers, the scores label without its icon, the register label with another, and a label reworded leaves a problem "
       f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 14)
+
+
+# --- the probe state's coin door: the tape-off ceremony and the golden coin -----------------------------------------------------------------------------
+# With the probe on, the primary link is the coin door, lit. Once per page load the tape over it peels off (0.6–1.8 s), the window lights (1.8–2.4 s) and the
+# taped cue turns to the live one (2.4 s); a press or a tap drops the golden coin into the slot, and the dialog opens when it has landed, at most 0.36 s after
+# the press, at once for the keyboard and under reduced motion; the copy stays inside the click. The tape, the coin and the taped cue are hidden from screen
+# readers and are drawn neither under reduced motion nor in print; the taped and the interim states carry none of it; nothing is stored.
+_CEREMONY_STORAGE = re.compile(r"\b(localStorage|sessionStorage|indexedDB|cookieStore)\b|document\.cookie|\bcaches\s*\.")
+_CEREMONY_DOOR = ('<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false">',
+                  '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></a>')
+_CEREMONY_HIDES = (".btn.door .tape", ".btn.door::after", ".btn.door .gcoin", ".cue .was")
+
+
+def _css_rules(css, media):
+    """{selector: its declarations} of the rules inside every `@media <media>{…}` block of `css`, one level deep."""
+    found = {}
+    for m in re.finditer(r"@media\s*" + re.escape(media) + r"\s*\{", css):
+        depth, i = 1, m.end()
+        while depth and i < len(css):
+            depth += {"{": 1, "}": -1}.get(css[i], 0)
+            i += 1
+        for sels, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css[m.end():i - 1]):
+            for sel in sels.split(","):
+                found[sel.strip()] = found.get(sel.strip(), "") + body + ";"
+    return found
+
+
+def _ceremony_problems(src):
+    """What is wrong with the probe state's coin door and its ceremony in the template, one line each; none where it is drawn as the Designer's plan has it."""
+    bad, tpl = [], src["overrides/landing.html"]
+    code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S).replace(" {", "{")
+    probe_part = code.split("{%- elif taped %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- elif taped %}" in code else ""
+    door = re.search(re.escape(_CEREMONY_DOOR[0]) + r"(?:(?!</svg>).)*" + re.escape(_CEREMONY_DOOR[1]), probe_part, re.S)
+    if not door or code.count('class="btn door"') != 1 or code.count('<span class="gcoin"') != 1 or code.count('<span class="tape"') != 2:
+        bad.append("the probe state's primary link is not the coin door, its label read and its coin and tape after it, each hidden from screen readers, "
+                   "or the door, the coin or a tape stands elsewhere")
+    if 'class="cta{% if taped %} is-taped{% endif %}{% if probe %} is-door{% endif %}"' not in code:
+        bad.append("the actions do not take the door's place in the probe state alone")
+    rm, pr = _css_rules(css, "(prefers-reduced-motion:reduce)"), _css_rules(css, "print")
+    for what, rules in (("under reduced motion", rm), ("in print", pr)):
+        if not all("display:none!important" in rules.get(sel, "") for sel in _CEREMONY_HIDES) or "visibility:visible" not in rules.get(".cue .now", ""):
+            bad.append(f"{what} the tape, the unlit window, the coin or the taped cue is drawn, or the live cue is not shown")
+    if "*,*::before,*::after{animation:none!important" not in css.replace(" ", ""):
+        bad.append("the rule that ends every animation under reduced motion is not there")
+    timing = ("animation:tape-peel 1.2s steps(10) .6s both", "animation:tape-unlit .6s steps(1) 1.8s both", ".cue .was{animation:tape-gone 1ms 2.4s both}",
+              ".cue .now{visibility:hidden;animation:tape-show 1ms 2.4s both,blink 1s steps(1) 2.4s 4}",
+              "@media (hover:hover) and (pointer:fine){.btn.door:hover .gcoin{display:block;animation:golden-coin-near .24s steps(2) both}}",
+              ".btn.door.golden-coin .gcoin{display:block;animation:golden-coin-in .36s steps(4) forwards}")
+    if not all(t.replace(" {", "{") in css for t in timing) or re.search(r"(tape|golden-coin)-[\w-]*[^;{}]*infinite", css):
+        bad.append("the ceremony does not play once, peeling 0.6–1.8 s, lighting 1.8–2.4 s and turning the cue at 2.4 s, or the coin does not come on a mouse's hover "
+                   "and drop on a press")
+    if _CEREMONY_STORAGE.search(tpl):
+        bad.append(f"landing.html names a storage API: {_CEREMONY_STORAGE.search(tpl).group(0)}")
+    if "url(" in css:
+        bad.append("the landing's styles load a file")
+    return bad
+
+
+_crs = _sources(_CUE_FILES)
+_crp = _ceremony_problems(_crs)
+check("FM-006 · the tape-off ceremony · with the probe on the primary link is the coin door, its label read and its coin and tape hidden from screen readers; the taped and interim states "
+      "carry none of it; neither reduced motion nor print draws the tape, the unlit window, the coin or the taped cue; the ceremony plays once, its cue turning at 2.4 s; "
+      f"landing.html names no storage API and its styles load no file (problems found: {_crp})", _crp == [])
+_crctl = {"the coin read by screen readers": _with(_crs, "overrides/landing.html", '<span class="gcoin" aria-hidden="true">', '<span class="gcoin">'),
+          "the door's tape read by screen readers": _with(_crs, "overrides/landing.html", '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></a>', '<span class="tape">{{ w.btn_tape }}</span></a>'),
+          "the coin in the taped state too": _with(_crs, "overrides/landing.html", '{{ w.btn_probe }}<span class="tape" aria-hidden="true">', '{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tape" aria-hidden="true">'),
+          "the coin as the cards' coin": _with(_crs, "overrides/landing.html", '<span class="gcoin" aria-hidden="true">', '<span class="coin" aria-hidden="true">'),
+          "reduced motion drawing the tape": _with(_crs, "overrides/landing.html", "@media (prefers-reduced-motion:reduce){.btn.door .tape,", "@media (prefers-reduced-motion:reduce){"),
+          "print drawing the taped cue": _with(_crs, "overrides/landing.html", "@media print{.btn.door .tape,.btn.door::after,.btn.door .gcoin,.cue .was{", "@media print{.btn.door .tape,.btn.door::after,.btn.door .gcoin{"),
+          "the tape peeling for ever": _with(_crs, "overrides/landing.html", "animation:tape-peel 1.2s steps(10) .6s both", "animation:tape-peel 1.2s steps(10) .6s both infinite"),
+          "the cue turning late": _with(_crs, "overrides/landing.html", ".cue .was{animation:tape-gone 1ms 2.4s both}", ".cue .was{animation:tape-gone .6s steps(1) 2.4s both}"),
+          "a storage API": _with(_crs, "overrides/landing.html", 'downAt = performance.now();', 'downAt = performance.now(); sessionStorage.setItem("seen", "1");'),
+          "the door in every state": _with(_crs, "overrides/landing.html", '{% if probe %} is-door{% endif %}', " is-door")}
+_crctl_saw = {name: len(_ceremony_problems(src)) for name, src in _crctl.items()}
+check("FM-006 · the tape-off ceremony · its source check is not blind: each of the coin or the door's tape read by screen readers, the coin in the taped state, the coin as the cards' coin, "
+      "reduced motion drawing the tape, print drawing the taped cue, the tape peeling for ever, the cue turning late, a storage API and the door in every state leaves a problem "
+      f"(problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 10)
+
+# the dialog's hold and the coin, run: the probe dialog's script under a stand-in page, with a clock the harness moves
+_HOLD_HARNESS = r"""
+const vm = require("vm"), fs = require("fs"), code = fs.readFileSync(process.argv[2], "utf8");
+function run(o) {
+  const t0 = 1000; let clock = t0; const timers = [], log = [];
+  const make = id => { const h = {}, cls = new Set();
+    return {id, value: "PROMPT\n", dataset: {}, style: {}, textContent: "", open: false, offsetWidth: 0, scrollHeight: 0, clientHeight: 0, selectionStart: 0, selectionEnd: 0,
+      addEventListener: (t, f) => { (h[t] = h[t] || []).push(f) }, setAttribute() {}, getAttribute() { return null }, focus() {}, select() {}, blur() {},
+      classList: {add: c => cls.add(c), remove: c => cls.delete(c), contains: c => cls.has(c)}, querySelector: q => make(q),
+      fire(t, e) { (h[t] || []).forEach(f => f(Object.assign({preventDefault() {}, button: 0, detail: 1}, e || {}))) }} };
+  const ids = {}, get = id => ids[id] || (ids[id] = make(id)), dlg = get("probe");
+  dlg.showModal = () => { log.push(["open", clock]); dlg.open = true };
+  const sandbox = {document: {getElementById: get, documentElement: {classList: {add() {}, remove() {}}}, execCommand: () => false},
+    navigator: {clipboard: {writeText: () => { log.push(["copy", clock]); return Promise.resolve(true) }}},
+    matchMedia: q => ({matches: !!o.reduce && q.includes("reduce")}), performance: {now: () => clock},
+    setTimeout: (f, ms) => { timers.push({f, ms: ms || 0, at: clock}); return timers.length }, clearTimeout: n => { if (n && timers[n - 1]) timers[n - 1].f = null },
+    getComputedStyle: () => ({lineHeight: "20px"}), addEventListener() {}, Promise};
+  vm.createContext(sandbox); vm.runInContext(code, sandbox);
+  const door = get("probe-open");
+  if (o.press !== undefined) door.fire("pointerdown", {button: o.press});
+  const coin = door.classList.contains("golden-coin");
+  clock += o.after || 0;
+  const clickAt = clock; door.fire("click", {detail: o.key ? 0 : 1});
+  const before = log.filter(([k]) => k == "open").length;
+  for (const t of timers) if (t.f) { clock = t.at + t.ms; t.f() }
+  const opened = log.find(([k]) => k == "open"), copied = log.find(([k]) => k == "copy");
+  return {coin, openedInClick: before > 0, hold: opened ? opened[1] - t0 : null, copyAt: copied ? copied[1] - t0 : null, clickAt: clickAt - t0, waits: timers.map(t => t.ms)};
+}
+const out = {press: run({press: 0}), late: run({press: 0, after: 100}), slow: run({press: 0, after: 500}), keyboard: run({key: true}),
+             keyAfterPress: run({press: 0, after: 100, key: true}), reduced: run({press: 0, reduce: true}), right: run({press: 2})};
+console.log(JSON.stringify(out));
+"""
+
+
+def _hold_run(tpl):
+    """What the probe dialog's script of `tpl` does on a press, a late or a slow click after it, the keyboard alone and after a press that made no click, a press under
+    reduced motion and a right-button press
+    (the harness's own clock, in ms from the press): {} where Node or the script is missing."""
+    node_ = shutil.which("node")
+    start_ = tpl.find("(function () {", tpl.find("THE PROBE DIALOG"))
+    end_ = tpl.find("})();", start_)
+    if not node_ or start_ < 0 or end_ < 0:
+        return {}
+    block_ = re.sub(r"\{\{.*?\}\}", "{}", re.sub(r"\{#.*?#\}", "", tpl[start_:end_ + 5], flags=re.S), flags=re.S)
+    with tempfile.TemporaryDirectory() as d_:
+        (Path(d_) / "probe.js").write_text(block_, encoding="utf-8")
+        (Path(d_) / "harness.js").write_text(_HOLD_HARNESS, encoding="utf-8")
+        r_ = subprocess.run([node_, str(Path(d_) / "harness.js"), str(Path(d_) / "probe.js")], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, env=_ENV)
+    try:
+        return json.loads(r_.stdout)
+    except ValueError:
+        return {"error": r_.stderr[-300:]}
+
+
+def _hold_problems(o):
+    """What is wrong with the hold and the coin, one line each, from `_hold_run`'s output."""
+    if set(o) != {"press", "late", "slow", "keyboard", "keyAfterPress", "reduced", "right"}:
+        return [f"the probe dialog's script did not run: {o}"]
+    bad = []
+    if not (0 < o["press"]["hold"] <= 360) or o["press"]["openedInClick"] or o["late"]["hold"] > 360 or o["late"]["hold"] <= o["late"]["clickAt"]:
+        bad.append("after a press the dialog does not wait for the coin, or waits longer than 0.36 s from the press")
+    for k in ("slow", "keyboard", "keyAfterPress", "reduced"):
+        if not o[k]["openedInClick"] or o[k]["waits"]:
+            bad.append(f"the dialog does not open at once ({k})")
+    if any(o[k]["copyAt"] != o[k]["clickAt"] for k in o):
+        bad.append("the copy is not made inside the click")
+    if not o["press"]["coin"] or o["keyboard"]["coin"] or o["right"]["coin"]:
+        bad.append("the coin does not drop on a press alone")
+    return bad
+
+
+if shutil.which("node"):
+    _ho = _hold_run(_crs["overrides/landing.html"])
+    _hp = _hold_problems(_ho)
+    check("FM-006 · the tape-off ceremony · the dialog's hold, run: after a press the dialog opens when the coin has landed, at most 0.36 s after the press and not inside the click; "
+          "a slow click, the keyboard (even just after a press that made no click) and reduced motion get it at once; the copy is made inside the click every time; the coin drops on a press alone "
+          f"(problems found: {_hp}; saw {_ho})", _hp == [])
+    _hctl_ = {"a hold of 0.6 s": _with(_crs, "overrides/landing.html", "Math.max(0, 360 - (performance.now() - downAt))", "Math.max(0, 600 - (performance.now() - downAt))"),
+              "a hold for the keyboard": _with(_crs, "overrides/landing.html", " || !downAt || !e.detail ? 0 : ", " || !downAt ? 0 : "),
+              "a hold under reduced motion": _with(_crs, "overrides/landing.html", 'matchMedia("(prefers-reduced-motion: reduce)").matches || !downAt', "!downAt"),
+              "the copy after the hold": _with(_with(_crs, "overrides/landing.html", "    const p = write();\n    const wait", "    const wait"), "overrides/landing.html",
+                                                "const opening = () => { say", "const opening = () => { const p = write(); say"),
+              "the coin on every button": _with(_crs, "overrides/landing.html", "    if (e.button) return;\n", "")}
+    _hctl_saw = {name: _hold_problems(_hold_run(src["overrides/landing.html"])) for name, src in _hctl_.items()}
+    check("FM-006 · the tape-off ceremony · the hold's run is not blind: each of a hold of 0.6 s, a hold for the keyboard, a hold under reduced motion, the copy after the hold and the coin "
+          f"on every button leaves a problem (saw {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 5)
+else:
+    SKIPS.append(("FM-006 · the tape-off ceremony · the dialog's hold, run", 2, "no Node here"))
 
 
 # --- FM-006 · B1 · the header: Docs past a separator as the sand button, the language switch as an outline button with a globe ------------------------------------
@@ -14813,7 +14995,8 @@ fm.configure(HERE)
 # --- FM-006 · B1: the landings in a real browser, in both launch states -------------------------------------------------------------
 # scripts/check_landing_browser.mjs drives headless Chrome over a built site served from 127.0.0.1 alone: for each landing and How it works page at 360,
 # 375, 390 and 1440 px no sideways scroll, no script error, no failed request, no request to another host; and in the probe state the dialog is a real
-# modal (labelled, focus in and back out, Escape, Tab inside, its folds by keyboard) that does not scroll inside itself on a phone with its folds closed.
+# modal (labelled, focus in and back out, Escape, Tab inside, its folds by keyboard) that does not scroll inside itself on a phone with its folds closed, and the
+# tape-off ceremony holds its frames, its reduced-motion and print states, the door's name and the dialog's hold.
 # Behind SHOALMARK_REGENERATE=1, like the other browser rebuilds: the site is built twice, as docs.yml builds it (the figures first, Zensical as
 # requirements-docs.txt pins it, then llms_txt.py); each control changes one thing in a built site and the browser must find it.
 _B1_NAME = "FM-006 · B1 · the landings in a real browser"
@@ -14867,7 +15050,9 @@ else:
                 _saw[_state] = _b1_browser(_site, _state, _work / f"{_state}.json")
                 check(f"{_B1_NAME}, {_state} state: both landings and both How it works pages at 360, 375, 390 and 1440 px — no sideways scroll, no script error, no failed request, no request "
                       f"to another host, the top bar's anchors in one row where they first show" + (", and the dialog is a labelled modal that takes focus in and gives it back, closes on Escape, keeps Tab inside, opens its folds by keyboard, shows a refused "
-                                            "copy and, with its folds closed, does not scroll inside itself at 360×780, 375×667 and 390×844" if _state == "probe" else "")
+                                            "copy and, with its folds closed, does not scroll inside itself at 360×780, 375×667 and 390×844; the tape-off ceremony keeps the page's width and the door's place in "
+                                            "every frame and ends lit, draws nothing under reduced motion or in print, leaves the door named by its label, and the dialog waits 0.36 s from a press for the coin, "
+                                            "not for the keyboard or under reduced motion" if _state == "probe" else "")
                       + f" (exit {_saw[_state][0]}, {_saw[_state][2]} checks, failing {_saw[_state][1]})", _saw[_state][0] == 0 and not _saw[_state][1] and _saw[_state][2] > 40)
             # the controls: one thing changed in a copy of the probe site, and the browser finds exactly that
             _probe = _work / "probe" / "site"
@@ -14925,11 +15110,11 @@ else:
                               "the cue stands clear of every chart label, by at least 2 px"),
                 "cue-motion": ("a cue that blinks under reduced motion", _mutate("cue-motion", "index.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}", "1440x900"),
                                "under reduced motion nothing animates: the document has no animation"),
-                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}", "cue"),
+                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "blink 1s steps(1) 2.4s 4}", "blink 1s steps(1) 2.4s infinite}", "cue"),
                                 "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
                 "cue-rules": ("a cue whose rules blink too", _mutate("cue-rules", "index.html", "</head>", "<style>.cue{animation:blink 1s steps(1) 4}</style></head>", "cue"),
                               "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
-                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 4 forwards}", "cue"),
+                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "blink 1s steps(1) 2.4s 4}", "blink 1s steps(1) 2.4s 4 forwards}", "cue"),
                              "after the blink the cue is at rest and lit"),
                 "bar-docs": ("a Docs button wider than the bar has room for", _mutate("bar-docs", "index.html", "</head>", "<style>.hud nav a.docs{padding-inline:40px!important}</style></head>", "bar"),
                              "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways"),
@@ -14939,10 +15124,32 @@ else:
                              "both header buttons show the focus ring when the keyboard reaches them, whole inside the window and the bar"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
+                "door-wide": ("a tape that peels off past the window's edge", _mutate("door-wide", "index.html", "</head>", "<style>@keyframes tape-peel{to{transform:translateX(900px)}}</style></head>", "door"),
+                              "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
+                "door-moves": ("a door that grows during the ceremony", _mutate("door-moves", "index.html", "</head>", "<style>.btn.door{animation:door-grow 1s steps(1) 1s both}@keyframes door-grow{to{padding-bottom:60px}}</style></head>", "door"),
+                               "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
+                "door-unlit": ("a window that stays unlit", _mutate("door-unlit", "index.html", "84%,100%{opacity:0}", "84%,100%{opacity:1}", "door"),
+                               "the ceremony starts taped and unlit with the taped cue, and ends with the tape gone, the window lit and the live cue shown"),
+                "door-hold": ("a dialog that waits 0.9 s for the coin", _mutate("door-hold", "index.html", "Math.max(0, 360 - (performance.now() - downAt))", "Math.max(0, 900 - (performance.now() - downAt))", "door"),
+                              "after a mouse press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click"),
+                "door-copy": ("a copy made after the hold", _mutate("door-copy", "index.html", "const opening = () => { say", "const opening = () => { write(); say", "door"),
+                              "after a mouse press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click"),
+                "door-reduced": ("a hold under reduced motion", _mutate("door-reduced", "index.html", 'matchMedia("(prefers-reduced-motion: reduce)").matches || !downAt', "!downAt", "door"),
+                                 "under reduced motion a mouse press draws no coin and the dialog opens at once, the copy made in the click"),
+                "door-key": ("a keyboard that waits for the coin", _mutate("door-key", "index.html", " || !downAt || !e.detail ? 0 : Math.max(0, 360 - (performance.now() - downAt))", " ? 0 : 360", "door"),
+                             "the keyboard gets the dialog at once, the copy made in the click"),
+                "door-motion": ("a tape drawn under reduced motion", _mutate("door-motion", "index.html", "@media (prefers-reduced-motion:reduce){.btn.door .tape,", "@media (prefers-reduced-motion:reduce){", "door"),
+                                "under reduced motion the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown"),
+                "door-print": ("a tape drawn in print", _mutate("door-print", "index.html", "@media print{.btn.door .tape,", "@media print{", "door"),
+                               "in print the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown"),
+                "door-name": ("a tape read by screen readers", _mutate("door-name", "index.html", '<span class="tape" aria-hidden="true">not yet</span></a>', '<span class="tape">not yet</span></a>', "door"),
+                              "the door's name is its label alone: the tape and the coin are hidden from screen readers"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone and header buttons without their focus ring makes it exit 1 with that check failing "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone and header buttons without their focus ring, "
+                  "and of the tape-off ceremony a tape that peels off past the window's edge, a door that grows during it, a window that stays unlit, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
+                  "a tape drawn under reduced motion or in print and a tape read by screen readers makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
