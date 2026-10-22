@@ -250,6 +250,7 @@ day.span: the last 24 hours
 reviews.reports: reports, not proofs
 reviews.sessions: "its session {0}, the branch's {1}"
 reviews.sessions.more: "{0} and {1} more"
+reviews.more: "and {0} more verdicts by another session this week"
 reviews.word.another: by another session
 reviews.word.same: by the same session
 reviews.word.untraced: untraced

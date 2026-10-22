@@ -3913,6 +3913,11 @@ details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>
    on the row coloured */
 .row.vok,.row.vwarn,.row.vfail{margin:0 -2ch;padding:3px 2ch}.row.vok{background:var(--okbg)}.row.vwarn{background:var(--warnbg)}.row.vfail{background:var(--failbg)}
 .vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}
+/* a verdict's row: its id in a column of 8ch; line 2, its word and who gave it, flows as text and wraps only where it must; an id that links is
+   underlined. The verdicts READY by another session fold into one line on the text column, in --dim, `> ` closed and `v ` open */
+.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
+details.more{border-top:1px solid var(--line)}details.more>summary{color:var(--dim);padding:3px 0 3px 9ch}
+details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.more[open]>summary:before{content:"v ";content:"v " / ""}
 .ty{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
 .st{color:var(--dim)}.st b:not(.go):not(.hot):not(.warn){color:var(--ink)}.st b{font-weight:600}
 .aq{display:block;padding-left:11ch;color:var(--mute)}.sub{color:var(--dim);margin:8px 0 0}
@@ -3989,7 +3994,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 #r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
 /* a phone: at least 24 px for every button and every setting, a heading's state flows under its title, its marker keeping its space; the search
    a header row of its own under the name and the switch; the table's count a line of its own, with no dot */
-@media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
+@media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.rv .how{padding-left:0}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
 #sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}
 /* a phone: each work row stacks — the id, tier and status share a line, wrapping under the id where they must, and the title takes the full width
    under them, hanging at the id's column; the column heads go, and nothing scrolls sideways: a title too long for the line breaks inside it */
@@ -4189,17 +4194,23 @@ function box(){
     S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
-  // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict
-  // a verdict's branch (RV-3343): the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why —
-  // in the row's own colour: nothing on a verdict's row is coloured but its word (G3, BF-10)
-  const brn=b=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,`<code>${esc(b[2].slice(0,10))}</code>`)
+  // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs. Opened, a row for each one
+  // that needs a look: every verdict but READY and READY TO TAG by another session — one with findings, one not ready, one with no word, one by
+  // the branch's own session, one not traced, one on the trunk. Those READY by another session fold into one line that counts them and opens to
+  // them in the same rows; the week is one list, never paged
+  // a verdict's branch: the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why — in the
+  // row's own colour: nothing on a verdict's row is coloured but its word. An id is its first seven characters, a link where the forge is known
+  const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
+  brn=b=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2]))
     :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
-    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",`<code>${esc(b[1].slice(0,10))}</code>`):l("reviews.branch.none"))}</i>`;
-  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};
+    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1])):l("reviews.branch.none"))}</i>`;
+  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"},
+    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"]),v[5]?l("verdict."+v[5]):l("type.verdict"),
+        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),
+    folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG"),week=REG.verdicts||[],more=week.filter(folds);
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
         "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
-      (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`)+" · "+brn(v[6]||["none"]),v[5]?l("verdict."+v[5]):l("type.verdict"),
-        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",VERDICT[v[5]])).join(""),false))}
+      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
     S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
@@ -4394,6 +4405,7 @@ LABELS = {
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
     # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
     "reviews.sessions.more": "{0} and {1} more",
+    "reviews.more": "and {0} more verdicts by another session this week",     # the fold of the verdicts READY by another session, and their count
     # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous*
     "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
     "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
@@ -9287,7 +9299,9 @@ def board_sessions():
     sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, this
     week's verdicts as [independent, same session, untraced, on trunk, not ready, ready with findings], and each verdict as [verdict, reviewed,
     its session, the range's sessions, the word, the verdict's own word, its branch (`verdict_branch`), the range's oldest session
-    (`oldest_session`)] — or None where there is neither, or no git."""
+    (`oldest_session`), [the verdict's page, the reviewed commit's page]] — or None where there is neither, or no git. A page is the commit's on its
+    forge (`commit_link`), "" where there is none: only where the configuration names a forge is a commit asked for, and then only whether origin
+    holds it."""
     if vcs() != "git":
         return None
     groups = session_groups()
@@ -9296,10 +9310,13 @@ def board_sessions():
         return None
     count, words = collections.Counter(r[4] for r in reps), collections.Counter(r[5] for r in reps)
     parents, everyone = group_counts(groups)
+    said = str(CONFIG.get("commit_url") or "")
+    forge = bool(reps) and (bool(re.match(r"https?://[^\s\"'<>]+$", said, re.I)) if said else bool(commit_prefix()))     # a `commit_url` that is no URL names no forge; the read-at line's read says so once
+    page = lambda sha: (commit_link(sha)[0] or "") if forge else ""
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
-            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first] for v, r, sid, ranged, w, word, branch, first in reps]}
+            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first, [page(v), page(r)]] for v, r, sid, ranged, w, word, branch, first in reps]}
 
 
 def sessions_digest():

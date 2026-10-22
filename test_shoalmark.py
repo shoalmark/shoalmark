@@ -619,6 +619,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
     "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
     "names": "FM-053, BF-11 · a review row's branch names at 375 px, rendered — each one inline box",
+    "reviews": "FM-053, BF-61, BF-62, BF-64 · the reviews section at 1024 and 390 px, rendered — what shows, what folds and its count, the ids and their links",
     "toolbar": "FM-053, BF-52, BF-53 · the work table's toolbar at 1024 and 390 px, rendered — its radio groups, and the box in the story view",
     "phone": "FM-053, BF-55 · the page at 390, 360, 320 and 640 px, rendered — each work row stacked, no sideways scroll",
 }
@@ -1489,14 +1490,14 @@ if _browser("branch"):
             git(root, "checkout", "-q", "--detach"); v_none = commit_(f"review: READY WITH FINDINGS\n\nReviewed: {built}\nSession: r3")
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            what_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
+            what_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
             said_ = {v: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", w_)) for v, w_ in what_.items()}
             check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in the row's own colour (BF-10) with "
                   f"each branch that holds it, and *not known* in italics with why (saw {said_})",
-                  said_[v_known] == f"on {built[:10]} · branch fm/a"
-                  and said_[v_amb] == f"on {built[:10]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
+                  said_[v_known] == f"on {built[:7]} · branch fm/a"
+                  and said_[v_amb] == f"on {built[:7]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
                   and 'class="warn"' not in what_[v_amb] and "<span" not in what_[v_amb]      # BF-10: no colour on a verdict's row but its word
-                  and said_[v_none] == f"on {built[:10]} · branch not known — no branch here holds the verdict on its own line"
+                  and said_[v_none] == f"on {built[:7]} · branch not known — no branch here holds the verdict on its own line"
                   and "<i>branch not known — no branch here holds the verdict on its own line</i>" in what_[v_none])
     except _ChromeFailed as e_:
         _hung("branch", e_)
@@ -1563,7 +1564,7 @@ if _browser("sessions"):
                 git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            said_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
+            said_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
             check(f"FM-053, BF-6 · rendered: none reads —, one its id, many the oldest's id and *and 2 more* (saw {list(said_.values())})",
                   all(re.sub(r"<[^>]+>", "", said_[v]).endswith(w_) for v, w_ in rows_.items()))
     except _ChromeFailed as e_:
@@ -6051,6 +6052,95 @@ if _browser("table"):
         _hung("table", e_)
         fm.configure(HERE)
 
+# --- the reviews section, opened: a row for each verdict that needs a look — not READY, with findings, by the branch's own session, not traced —
+#     and the verdicts READY or READY TO TAG by another session folded into one line that counts them. A verdict a later one on its branch has
+#     followed still shows, and one whose branch is not known folds by its word and who gave it, like any row. A row's second line flows as text,
+#     its state starting on its word's line; an id is seven characters, a link where the forge is known. Measured in Chrome at 1024 and 390 px;
+#     nothing folded, and the row's second line drawn as it was, must each fail it ---------------------------------------------------------------
+def _m_repo(root, forge=False):
+    """A week of verdicts in each case of the reviews' rule, on `root`, HEAD holding them all: {verdict: "shows" or "folds"}. `forge`: a forge named
+    in the configuration, and every commit on origin."""
+    out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+    verdict_ = lambda word, tip, sid: commit_(f"review: {word}\n\nReviewed: {tip}\nSession: {sid}")
+    git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    if forge:
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", 'blob = "https://example.org/o/r/blob/main/"\n\n[kinds]', 1), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+    cases_ = {}
+    git(root, "checkout", "-q", "-b", "fm/a", "main"); b_ = commit_("a, built\n\nSession: b1")
+    cases_[verdict_("NOT READY", b_, "r1")] = "shows"                 # followed by a later verdict on its branch, and still shown
+    b_ = commit_("a, fixed\n\nSession: b1")
+    cases_[verdict_("READY", b_, "r2")] = "folds"; cases_[verdict_("READY TO TAG", b_, "r3")] = "folds"
+    git(root, "checkout", "-q", "-b", "fm/b-a-branch-with-a-long-name", "main"); b_ = commit_("b, built\n\nSession: b2")
+    cases_[verdict_("READY WITH FINDINGS", b_, "r4")] = "shows"
+    git(root, "checkout", "-q", "-b", "fm/c", "main"); b_ = commit_("c, built\n\nSession: s5"); cases_[verdict_("READY", b_, "s5/reviewer-1")] = "shows"
+    git(root, "checkout", "-q", "-b", "fm/d", "main"); b_ = commit_("d, built with no session"); cases_[verdict_("READY", b_, "r6")] = "shows"
+    git(root, "checkout", "-q", "-b", "fm/e", "main"); b_ = commit_("e, built\n\nSession: b7"); cases_[verdict_("NOT READY", b_, "r7")] = "shows"
+    b_ = commit_("e, fixed\n\nSession: b7"); cases_[verdict_("READY", b_, "r8")] = "folds"
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges it", "fm/e"); git(root, "branch", "-q", "-D", "fm/e")
+    git(root, "checkout", "-q", "-b", "together", "main")
+    for name_ in ("fm/a", "fm/b-a-branch-with-a-long-name", "fm/c", "fm/d"):
+        git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+    if forge:
+        git(root, "update-ref", "refs/remotes/origin/together", "HEAD")
+    run_safe(root, "--html-only")
+    return cases_
+
+
+_M_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("#p details.fold").forEach(d=>d.open=true);const m=document.querySelector("#p details.more");'
+            'const rows=[...document.querySelectorAll("#p .row.rv")].map(r=>{const i=r.querySelector(".what>:first-child"),t=r.querySelector(".ty"),s=r.querySelector(".st");'
+            'return{id:i.textContent,href:i.tagName=="A"?i.getAttribute("href"):"",folded:!!r.closest("details.more"),ty:t.getBoundingClientRect().top,st:s.getClientRects()[0]?.top}});'
+            'parent.postMessage(JSON.stringify({w:innerWidth,rows,more:m?m.querySelector("summary").textContent:null,open:m?m.open:null}),"*")})</script>')
+_M_FOLDS = 'folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG")'
+_M_FLOW = ".rv .how{display:block;padding-left:9ch}"
+
+
+def _m_faults(rep, width, cases, forge=""):
+    """What is wrong with the reviews section in one frame — [] where exactly the verdicts READY or READY TO TAG by another session fold, into one line
+    that counts them, closed; every other one shows; each id is seven characters, a link to its commit's page where the forge is known (`forge`, its
+    prefix) and plain where not; and each shown row's state starts on its word's line."""
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    by_ = {r_["id"]: r_ for r_ in rep["rows"]}
+    want_ = {v[:7]: c_ for v, c_ in cases.items()}
+    out_ = [f"{i_}: {'folded' if (by_.get(i_) or {}).get('folded') else 'shown' if i_ in by_ else 'missing'}, wanted {c_}" for i_, c_ in want_.items()
+            if i_ not in by_ or by_[i_]["folded"] != (c_ == "folds")]
+    n_ = sum(c_ == "folds" for c_ in cases.values())
+    out_ += [] if rep["more"] == f"and {n_} more verdicts by another session this week" and rep["open"] is False else [f"the fold {rep['more']!r}, open {rep['open']}"]
+    out_ += [f"an id {i_!r}" for i_ in by_ if len(i_) != 7]
+    out_ += [f"{r_['id']} links {r_['href']!r}" for v, c_ in cases.items() for r_ in [by_.get(v[:7]) or {}] if r_.get("href", "") != (f"{forge}{v}" if forge else "")]
+    out_ += [f"{r_['id']}: its state starts at {r_['st']}, its word at {r_['ty']}" for r_ in rep["rows"] if not r_["folded"] and abs((r_["st"] or 0) - r_["ty"]) > 2]
+    return out_
+
+
+_m_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-61, BF-62, BF-64 · the reviews section folds exactly the verdicts READY or READY TO TAG by another session, into `reviews.more`; a "
+      "verdict's row is `rv`, its second line a block of text; an id is seven characters, and links where the generator gives its commit's page",
+      _m_src.count(_M_FOLDS) == 1 and _m_src.count(_M_FLOW) == 1 and fm.LABELS.get("reviews.more") == "and {0} more verdicts by another session this week"
+      and 'slice(0,10)' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")] and _m_src.count("[page(v), page(r)]") == 1)
+if _browser("reviews"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            base_ = Path(d).resolve(); plain_, forge_ = base_ / "plain", base_ / "forge"; plain_.mkdir(); forge_.mkdir()
+            cases_, fcases_ = _m_repo(plain_), _m_repo(forge_, forge=True)
+            wt_, fwt_ = plain_ / "docs/work-tracker", forge_ / "docs/work-tracker"
+            page_ = (wt_ / "index.html").read_text(encoding="utf-8")
+            seen_ = {w_: _m_faults(_header_at(wt_, page_, w_, _M_PROBE), w_, cases_) for w_ in (1024, 390)}
+            linked_ = _m_faults(_header_at(fwt_, (fwt_ / "index.html").read_text(encoding="utf-8"), 1024, _M_PROBE), 1024, fcases_, "https://example.org/o/r/commit/")
+            check(f"FM-053, BF-61, BF-62, BF-64, BF-66 · at 1024 and 390 px the reviews section shows each verdict that is not READY, has findings, came from the "
+                  f"branch's own session or cannot be traced — an earlier verdict a later one followed included, and one whose branch is not known by its word — "
+                  f"and folds the READY and READY TO TAG by another session into *and 3 more verdicts by another session this week*; each id is seven "
+                  f"characters, and each row's state starts on its word's line (saw {seen_})", not any(seen_.values()))
+            check(f"FM-053, BF-64 · with a forge named and the commits on origin, each verdict's id links to its commit's page (saw {linked_})", not linked_)
+            flat_ = _m_faults(_header_at(wt_, page_.replace(_M_FOLDS, "folds=v=>false"), 1024, _M_PROBE), 1024, cases_)
+            flex_ = _m_faults(_header_at(wt_, page_.replace(_M_FLOW, ".rv .how{padding-left:9ch}"), 390, _M_PROBE), 390, cases_)
+            check(f"FM-053, BF-61, BF-62 · the check's controls: nothing folded fails it, and the row's second line drawn as it was fails it at 390 px "
+                  f"(saw {flat_}, {flex_})", page_.count(_M_FOLDS) == 1 and any("wanted folds" in f_ for f_ in flat_) and any("its state starts" in f_ for f_ in flex_))
+    except _ChromeFailed as e_:
+        _hung("reviews", e_)
+        fm.configure(HERE)
+
 # --- FM-053, BF-11: a branch name in a review row moves to the next line whole — `.row code` is an inline block — and breaks only where it is
 #     longer than a line. Measured in Chrome at 375 px, the review rows opened: each name one box --------------------------------------------
 _NAME_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("details").forEach(d=>d.open=true);'
@@ -6698,6 +6788,7 @@ next.owner: you
 waiting.more: and {0} more: the oldest are above
 reviews.sessions: its session {0}, the branch's {1}
 reviews.sessions.more: {0} and {1} more
+reviews.more: and {0} more verdicts by another session this week
 reviews.word.another: by another session
 reviews.word.same: by the same session
 reviews.word.untraced: untraced

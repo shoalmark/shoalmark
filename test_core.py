@@ -362,7 +362,7 @@ check("FM-024 S7, FM-032 S2, FM-053 · the board carries the report — null whe
       "the parents with a commit in the last 24 hours, each a line that opens on its sub-sessions; and the week's verdicts, folded, a row each",
       "REG=null," in _tri and '{const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];' in _tri
       and 'fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>' in _tri and 'split(l("reviews.title"))' in _tri and 'l("reviews.counts",r[0],r[1])' in _tri
-      and "(REG.verdicts||[]).map(v=>row(" in _tri)
+      and "vr=v=>row(" in _tri and 'week=REG.verdicts||[],more=week.filter(folds)' in _tri and 'week.filter(v=>!folds(v)).map(vr).join("")' in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
       'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
       and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
