@@ -14336,9 +14336,9 @@ def _tag_tool(tag, repo=None):
 
 
 def _pin_fields(text, form):
-    """The five fields of `text`'s one line that begins as `form` begins, read by `form`'s shape: None where there is no such line, more than one,
-    or one of another shape."""
-    lines = [line for line in text.split("\n") if line.startswith(form[:form.index("`")])]
+    """The five fields of `text`'s one pin line, read by `form`'s shape. Every line that begins with the form's introduction, `The pin:` or
+    `Die Festlegung:`, counts first: None where there is no such line, more than one, or one of another shape."""
+    lines = [line for line in text.split("\n") if line.startswith((form.split(":", 1)[0] + ":"))]
     m = re.fullmatch("([^`]*)".join(re.escape(part) for part in re.split(r"\{\d\}", form)), lines[0]) if len(lines) == 1 else None
     return m.groups() if m else None
 
@@ -14381,8 +14381,9 @@ def _as_pin_line(read):
 
 
 def _pinless(text):
-    """Whether a Subversion note carries no pin: no line that begins as a pin line does, and no SHA-256."""
-    return not any(line.startswith(form[:form.index("`")]) for line in text.split("\n") for form in _PIN_FORMS.values()) and not re.search(_HEX64, text)
+    """Whether a Subversion note carries no pin: no line that begins with a pin introduction, `The pin:` or `Die Festlegung:`, whatever follows
+    it, and no SHA-256."""
+    return not any(line.startswith((form.split(":", 1)[0] + ":")) for line in text.split("\n") for form in _PIN_FORMS.values()) and not re.search(_HEX64, text)
 
 
 def _adopt_pin_hint(ok, seen):
@@ -14400,6 +14401,8 @@ _svn_notes = {n: (HERE / n).read_text(encoding="utf-8") for n in ("ADOPT.svn.md"
 check("FM-006 · ADOPT's pins: the Subversion notes carry no pin — no pin line and no SHA-256 — and one that carries a pin line or a hash is caught",
       all(_pinless(t_) for t_ in _svn_notes.values()) and not _pinless(_svn_notes["ADOPT.svn.md"] + _PIN_FORMS["ADOPT.md"] + "\n")
       and not _pinless(_svn_notes["ADOPT.svn.de.md"] + _PIN_FORMS["ADOPT.de.md"] + "\n") and not _pinless(_svn_notes["ADOPT.svn.md"] + "0" * 64 + "\n"))
+check("FM-006 · ADOPT's pins: a Subversion note that holds only a pin introduction of another shape is caught, in English and in German",
+      not _pinless("The pin: malformed line\n") and not _pinless("Die Festlegung: malformed line\n"))
 _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
 _pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
              ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
@@ -14462,7 +14465,9 @@ for _what, _english, _german in (
         ("a hash outside the pin line", _fixture_docs["ADOPT.md"] + _fixture_fields[2].encode() + b"\n", None),
         ("the archive's SHA-256 equal to the tool's", _fixture_note("ADOPT.md", (*_fixture_fields[:2], _fixture_sum, *_fixture_fields[3:])),
          _fixture_note("ADOPT.de.md", (*_fixture_fields[:2], _fixture_sum, *_fixture_fields[3:]))),
-        ("the two notes disagree on the archive's SHA-256", None, _fixture_note("ADOPT.de.md", (*_fixture_fields[:2], _flip(_fixture_fields[2]), *_fixture_fields[3:])))):
+        ("the two notes disagree on the archive's SHA-256", None, _fixture_note("ADOPT.de.md", (*_fixture_fields[:2], _flip(_fixture_fields[2]), *_fixture_fields[3:]))),
+        ("a second pin introduction of another shape, English", _fixture_docs["ADOPT.md"] + b"The pin: malformed extra line\n", None),
+        ("a second pin introduction of another shape, German", None, _fixture_docs["ADOPT.de.md"] + "Die Festlegung: malformed extra line\n".encode())):
     _documents = {**_fixture_docs, **({"ADOPT.md": _english} if _english else {}), **({"ADOPT.de.md": _german} if _german else {})}
     _result, _observed = _adopt_pins(_documents.__getitem__, lambda tag: _fixture_tool)
     check(f"FM-006 · ADOPT's pins · {_what}: fail (saw {_observed})", _result is False)
