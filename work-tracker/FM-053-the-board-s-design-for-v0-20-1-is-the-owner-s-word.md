@@ -21,6 +21,11 @@ answered-by: holgo99
 
 ## What is true now
 
+PR C - RV-3593: block 150 checks the short read-at line and its limits
+fold, retains the no-count record check, and rejects the changed-path-read
+mutant. Its header was cut to the block's title under the comment rule;
+executable code, docstrings and page bytes are unchanged.
+
 **Filed and judged 2026-10-15: In Progress, P2.** `brand/design-guide.md` and `brand/icons/` were added under this
 tracker in `ef33598`. The ask was filed at `2876287`, filed again at `fbf6ef0` with the label `viewer.handover`
 ("handover") in the guide's §10, and is filed again at the commit that sets the light `--mute` and `--teal` to reach

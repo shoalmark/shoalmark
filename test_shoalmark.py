@@ -12520,8 +12520,7 @@ with tempfile.TemporaryDirectory() as d:
             rm_git(r_)
 fm.configure(HERE)
 
-# --- the board's own run: on `--html-only` the read-at line names the branch, the commit and the time, and its fold says that what is changed and not
-#     committed is not read; `view/built.json` records no count. The mutant puts the changed-path read back on `--html-only`: it must fail the row.
+# --- the board's own run on `--html-only`
 _CN_MUTANT = ("the changed-path read back on the board's own run", "        read = read_at(count=False)", "        read = read_at()")
 def _cn_repo(base):
     """The row's repository: (its root, the folder the row reads)."""
