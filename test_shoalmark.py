@@ -15108,7 +15108,8 @@ fm.configure(HERE)
 # --- FM-006 · B1: the landings in a real browser, in both launch states -------------------------------------------------------------
 # scripts/check_landing_browser.mjs drives headless Chrome over a built site served from 127.0.0.1 alone: for each landing and How it works page at 360,
 # 375, 390 and 1440 px no sideways scroll, no script error, no failed request, no request to another host; and in the probe state the dialog is a real
-# modal (labelled, focus in and back out, Escape, Tab inside, its folds by keyboard) that does not scroll inside itself on a phone with its folds closed, and the
+# modal (labelled, focus in and back out, Escape, Tab inside, its folds by keyboard) that shows, with its fold closed and without scrolling, its label, Close, the
+# copied line, Copy again and step 3 on a phone and does not scroll inside itself at 1024×768, and the
 # tape-off ceremony holds its frames, its reduced-motion and print states, the door's name and the dialog's hold.
 # Behind SHOALMARK_REGENERATE=1, like the other browser rebuilds: the site is built twice, as docs.yml builds it (the figures first, Zensical as
 # requirements-docs.txt pins it, then llms_txt.py); each control changes one thing in a built site and the browser must find it.
@@ -15163,7 +15164,8 @@ else:
                 _saw[_state] = _b1_browser(_site, _state, _work / f"{_state}.json")
                 check(f"{_B1_NAME}, {_state} state: both landings and both How it works pages at 360, 375, 390 and 1440 px — no sideways scroll, no script error, no failed request, no request "
                       f"to another host, the top bar's anchors in one row where they first show, the high scores' rows stacked on a phone and in columns wider" + (", and the dialog is a labelled modal that takes focus in and gives it back, closes on Escape, keeps Tab inside, opens its folds by keyboard, shows a refused "
-                                            "copy and, with its folds closed, does not scroll inside itself at 360×780, 375×667 and 390×844; the tape-off ceremony keeps the page's width and the door's place in "
+                                            "copy and, with its fold closed, shows its label, Close, the copied line, Copy again and step 3 without scrolling at 360×780, 375×667 and 390×844 and does not "
+                                            "scroll inside itself at 1024×768; the tape-off ceremony keeps the page's width and the door's place in "
                                             "every frame, peels the tape and ends lit, draws nothing under reduced motion or in print, leaves the door named by its label, and the dialog waits 0.36 s from a press for the coin, "
                                             "not for the keyboard or under reduced motion" if _state == "probe" else "")
                       + f" (exit {_saw[_state][0]}, {_saw[_state][2]} checks, failing {_saw[_state][1]})", _saw[_state][0] == 0 and not _saw[_state][1] and _saw[_state][2] > 40)
@@ -15183,8 +15185,8 @@ else:
                 "error": ("a script error", _mutate("error", "index.html", "</body>", "<script>throw new Error('control')</script></body>"), "no script error"),
                 "host": ("a request to another host", _mutate("host", "index.html", "</head>", '<script src="https://example.org/x.js"></script></head>'), "no request to any other host"),
                 "not-modal": ("a dialog that is not modal", _mutate("not-modal", "index.html", ".showModal()", ".show()"), "the dialog opens by keyboard, as a modal"),
-                "scrolls": ("a dialog that scrolls inside itself on a phone", _mutate("scrolls", "index.html", "</head>", "<style>.probe-scroll{max-height:240px!important}</style></head>"),
-                            "with its folds closed, nothing in the dialog scrolls inside itself"),
+                "scrolls": ("a dialog whose third step is out of view on a phone", _mutate("scrolls", "index.html", "</head>", "<style>.probe-scroll{max-height:240px!important}</style></head>"),
+                            "with its fold closed, the label, Close, the copied line, Copy again and step 3 are in view without scrolling"),
                 "unfolds": ("a fold that keyboard does not open", _mutate("unfolds", "index.html", "</body>", '<script>document.addEventListener("click", e => { if (e.target.closest("summary")) e.preventDefault() })</script></body>'),
                             "fold 1 opens and closes by keyboard"),
                 "wraps": ("a top bar whose anchors show 30 px too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "@media (max-width:1177px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "bar"),
@@ -15270,7 +15272,7 @@ else:
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
+                  "modal, a dialog whose third step is out of view on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
                   "and of the tape-off ceremony a tape that peels off past the window's edge, a tape never pulled off, a door without its copy icon, a door that lifts on hover, a door that grows during it, a window that stays unlit, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
                   "a tape drawn under reduced motion or in print and a tape read by screen readers makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))

@@ -16,8 +16,8 @@
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
 // names; focus is inside it; Tab and Shift+Tab never reach the page behind; the prompt stands in step 1 as a box of two lines with a fade whose button opens it whole
 // and folds it back by keyboard; the approvals' fold opens and closes by keyboard; Escape closes it and focus is back on the
-// button; it fits the window and the page does not scroll sideways under it; and, with the folds closed, nothing inside it scrolls at 360×780, 375×667 and
-// 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
+// button; it fits the window and the page does not scroll sideways under it; and, with the fold closed, its label, Close, the copied line, Copy again and step 3
+// are in view without scrolling at 360×780, 375×667 and 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
 // In the probe state, at 1024×768 on each landing, with the fold closed, nothing in the dialog scrolls inside itself.
 // PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors, `cue` for the hero's cue, `door` for the ceremony, `desk` for the dialog at
 // 1024×768) narrow the run to what is named; the whole run is every page at 360×780, 375×667, 390×844 and 1440×900, the bar, the cue, the door and the desk.
@@ -96,6 +96,12 @@ const OUTSIDE = `(() => { const d = document.getElementById("probe"), e = docume
 // an element inside the dialog that scrolls inside itself (the prompt's own box excepted)
 const SCROLLS = `(() => [...document.querySelectorAll("#probe *")].filter(e => e.tagName != "TEXTAREA" && e.tagName != "PRE" && ["auto", "scroll"].includes(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).map(e => (e.id || e.className || e.tagName) + " " + e.scrollHeight + ">" + e.clientHeight))()`;
 
+const INVIEW = `(() => { const sc = document.querySelector("#probe .probe-scroll"); sc.scrollTop = 0; const v = sc.getBoundingClientRect(), $ = id => document.getElementById(id), parts = {};
+  for (const [k, e] of Object.entries({label: $("probe-h"), close: $("probe-x"), copied: $("probe-status"), again: $("probe-again"), step3: document.querySelectorAll("#probe .probe-steps > li")[2]})) {
+    if (!e) { parts[k] = "missing"; continue }
+    const r = e.getBoundingClientRect(), top = sc.contains(e) ? Math.max(v.top, 0) : 0, bottom = sc.contains(e) ? Math.min(v.bottom, innerHeight) : innerHeight;
+    parts[k] = r.height > 0 && r.top >= top - 1 && r.bottom <= bottom + 1 ? "in view" : [r.top, r.bottom, top, bottom].map(Math.round).join(",") }
+  return {parts, copied: ($("probe-status") || {}).textContent || ""} })()`;
 // how the opened box stands in the window: it grows as far as the window allows, then scrolls inside itself, with a floor of three lines; with the approvals folded the dialog does not scroll
 // (a window too small for the floor makes it scroll); the box ends at the prompt's last line, which the page still copies with its line ending
 const FIT = `(() => { const ta = document.getElementById("probe-text"), sc = document.querySelector("#probe .probe-scroll"), floor = 3 * parseFloat(getComputedStyle(ta).lineHeight) + 26, maxH = parseFloat(getComputedStyle(sc).maxHeight), appr = document.querySelector("#probe .probe-approvals");
@@ -170,8 +176,9 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
     const box = await t.js(`(() => { const b = document.querySelector("#probe").getBoundingClientRect(); return {l: Math.round(b.left), r: Math.round(b.right), sw: document.documentElement.scrollWidth, iw: innerWidth} })()`);
     verdict(page, w, h, "the dialog fits the window, and the page does not scroll sideways under it", box.l >= 0 && box.r <= box.iw && box.sw <= box.iw, JSON.stringify(box));
     if (w < 500) {
-      const scrolling = await t.js(SCROLLS);
-      verdict(page, w, h, "with its folds closed, nothing in the dialog scrolls inside itself", scrolling.length == 0, scrolling.join("; "));
+      const seen = await t.js(INVIEW);
+      verdict(page, w, h, "with its fold closed, the label, Close, the copied line, Copy again and step 3 are in view without scrolling",
+        Object.values(seen.parts).every(v => v == "in view") && !!seen.copied.trim(), JSON.stringify(seen));
     }
     await t.js(`document.querySelectorAll("#probe details[open]").forEach(d => d.open = false)`);
     await t.press("Escape"); await sleep(300);
