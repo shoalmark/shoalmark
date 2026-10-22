@@ -2,8 +2,8 @@
 # The agents' document is README.md, rendered into the site by inclusion — never copied.
 name: docs
 # A release tag or a run by hand builds the site and deploys it. A pull request that changes the site's own sources — its pages,
-# the launch states' words, templates, configuration, the README, the scripts in scripts/ that the build runs, this file — builds it
-# and runs its checks, and deploys nothing.
+# the launch states' words, templates, configuration, the README, the scripts in scripts/ that the build runs, this file and the
+# Worker's two files beside it — builds it and runs its checks, and deploys nothing.
 # A change to the trackers alone does not start it.
 on:
   push: {tags: ["v*"]}
@@ -21,6 +21,8 @@ on:
       - "scripts/check_site.py"
       - "scripts/test_check_site.py"
       - ".github/workflows/docs.yml"
+      - ".github/workflows/docs.worker.js"
+      - ".github/workflows/docs.wrangler.jsonc"
 # Each job names the permissions it needs, and no more; the workflow grants none of its own.
 permissions: {}
 # The image is pinned until 0.19.3, as ci.yml's are.
@@ -61,15 +63,10 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v5
   cloudflare:
-    # The same site to the Worker shoalmark-tools, beside GitHub Pages: the build's own artifact, unpacked as it was built, never
-    # built again, served by docs.wrangler.jsonc and docs.worker.js beside this file. The deploy's guard: never a private fork,
-    # never a pull request.
     if: github.event.repository.private == false && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-24.04
-    # read, for the Worker's two files at this commit; the artifact is this run's own and the API token a repository secret
     permissions: {contents: read}
-    # one Worker deployment at a time, in a group of its own: it neither waits for a GitHub Pages deployment nor cancels one
     concurrency: {group: cloudflare-worker, cancel-in-progress: false}
     steps:
       - uses: actions/checkout@v7

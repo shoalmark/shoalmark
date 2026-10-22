@@ -16139,7 +16139,7 @@ def _docs_yaml(text):
 _DOCS_SOURCES = ("docs/index.md", "docs/de/setup.md", "docs/stylesheets/shoalmark.css", "overrides/landing.html", "overrides/partials/landing/en.html",
                  "launch/interim/how-it-works.en.md", "launch/probe/how-it-works.de.md",
                  "zensical.toml", "requirements-docs.txt", "README.md", "scripts/landing_facts.py", "scripts/llms_txt.py", "scripts/check_site.py",
-                 "scripts/test_check_site.py", ".github/workflows/docs.yml")
+                 "scripts/test_check_site.py", ".github/workflows/docs.yml", ".github/workflows/docs.worker.js", ".github/workflows/docs.wrangler.jsonc")
 _DOCS_NOT = ("work-tracker/FM-006-shoalmark-has-one-document.md", "work-tracker/INDEX.md", "work-tracker/TRIAGE.md", "work-tracker/evidence/reviews/review.md")
 
 
@@ -16178,7 +16178,7 @@ def _docs_wf_properties(text):
     return [
         ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
         ("it starts on a `v*` tag, by hand, and on a pull request that changes the site's own sources — its pages, the launch states' words, templates, configuration, the README, "
-         "the scripts in scripts/ that the build runs and docs.yml — and never on one that changes trackers alone",
+         "the scripts in scripts/ that the build runs, docs.yml and the Worker's two files beside it — and never on one that changes trackers alone",
          isinstance(on, dict) and set(on) == {"push", "workflow_dispatch", "pull_request"} and on.get("push") == {"tags": ["v*"]} and isinstance(pr, dict)
          and set(pr) == {"paths"} and all(starts(p) for p in _DOCS_SOURCES) and not any(starts(p) for p in _DOCS_NOT)),
         ("the deploy job runs after the build, only in the public repository, and never for a pull request",
@@ -16230,6 +16230,8 @@ def _docs_wf_regressions(text):
         ("a pull request starts it whatever it changes: its `paths` gone", lambda t: re.sub(r"(?m)^    paths:\n(      - .*\n)+", "", t, count=1)),
         ("the trackers are among the paths", lambda t: t.replace('      - "docs/**"\n', '      - "docs/**"\n      - "work-tracker/**"\n', 1)),
         ("the launch states' words are not among the paths", lambda t: t.replace('      - "launch/**"\n', "", 1)),
+        ("the Worker's script is not among the paths", lambda t: t.replace('      - ".github/workflows/docs.worker.js"\n', "", 1)),
+        ("the Worker's config is not among the paths", lambda t: t.replace('      - ".github/workflows/docs.wrangler.jsonc"\n', "", 1)),
         ("a pull request deploys: its guard gone", lambda t: t.replace(" && github.event_name != 'pull_request'", "", 1)),
         ("a private fork deploys: its guard gone", lambda t: t.replace("github.event.repository.private == false && ", "", 1)),
         ("the build may write the repository", lambda t: t.replace("{contents: read, pull-requests: read}", "{contents: write, pull-requests: read}", 1)),
