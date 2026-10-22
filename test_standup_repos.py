@@ -5,7 +5,8 @@ The fixture: two git repositories, one with changes in its working tree; a Subve
 a name that is missing; and a second name for a repository already named. Each repository carries a canary for its own
 tool, its deriver, every git hook, and the programs a configuration can name, and each records any run of it.
 
-- One agenda: each folder named with its version control, or why it was not read — and then counted in nothing; the asks
+- One agenda: each folder named with its version control, or why it was not read — and then counted in nothing; a repository
+  by its full path, whether the run starts inside it or outside it; the asks
   by kind, the acts owed, the asks sent back, each with its repository; what the view does not read or run.
 - Counts are each repository's, then added: FM-001 in two repositories is two items.
 - Each repository's rows are read under its own configuration — its name, its id prefixes, its tracker folder, its
@@ -429,6 +430,12 @@ def run_checks(*, results=None):
                 f"(saw {row('notes')!r}, {row('gone')!r}, {row('docs')!r})",
                 "not read: no tracker folder" in row("notes") and "not read: the folder is missing" in row("gone")
                 and f"not read: the same repository as {named['alpha']}, read once — counted in nothing" in row("docs"))
+            shown = []
+            for start in (named["alpha"], cwd):
+                code_s, out_s, _err_s = run(tool, start, env, *argv)
+                shown.append(next((l for l in out_s.splitlines()[1:] if l.startswith("  alpha ")), f"exit {code_s}, no line for alpha"))
+            add(f"Q7 · the folder column names a repository by its full path wherever the run starts — inside that repository and outside it "
+                f"(saw {shown})", all(re.match(rf"  alpha +{re.escape(str(named['alpha']))}  git · ", s) for s in shown))
 
             # 2. never joined by id; each repository's rows under its own configuration
             rulings = section(out, "DECISIONS")

@@ -8917,6 +8917,77 @@ fm.configure(HERE)
 _src = (HERE / "shoalmark.py").read_text()
 check("W1 · the tool names its encoding on every read, write and subprocess that returns text — a locale never decides what it reads",
       not re.search(r"\.read_text\(\)|\.write_text\(", _src) and all("encoding=" in c for c in re.findall(r"subprocess\.run\([^\n]*text=True[^\n]*(?:\n[^\n]*){0,1}", _src)))
+
+
+def _module_bindings(source):
+    """{name: [(line, what), …]} for every name `source` binds at module level: a `def`, a `class`, an assignment's target, an import, a
+    `for` or `with` target and an `except … as`, in the module's own statements and in the blocks of its top-level `if`, `try`, `for`,
+    `while` and `with`, never inside a function or a class. `what` is the binding statement's first line, unparsed; a `def` or a `class`
+    by its name."""
+    out = collections.defaultdict(list)
+
+    def names(target):
+        if isinstance(target, ast.Name):
+            yield target.id
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for part in target.elts:
+                yield from names(part)
+        elif isinstance(target, ast.Starred):
+            yield from names(target.value)
+
+    def walk(statements):
+        for node in statements:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                out[node.name].append((node.lineno, f"{'class' if isinstance(node, ast.ClassDef) else 'def'} {node.name}"))
+                continue
+            targets = (node.targets if isinstance(node, ast.Assign)
+                       else [node.target] if isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.For, ast.AsyncFor))
+                       else [item.optional_vars for item in node.items if item.optional_vars is not None] if isinstance(node, (ast.With, ast.AsyncWith))
+                       else [])
+            for target in targets:
+                for name in names(target):
+                    out[name].append((node.lineno, ast.unparse(node).splitlines()[0]))
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                for alias in node.names:
+                    out[(alias.asname or alias.name).split(".")[0]].append((node.lineno, ast.unparse(node)))
+            for handler in getattr(node, "handlers", ()):
+                if handler.name:
+                    out[handler.name].append((handler.lineno, f"except … as {handler.name}"))
+                walk(handler.body)
+            for field in ("body", "orelse", "finalbody"):
+                walk(getattr(node, field, ()))
+
+    walk(ast.parse(source).body)
+    return out
+
+
+_BOUND_AGAIN = {"SAFE_READS": ("a switch, not a second definition: off, then on while the module's own `configure()` reads the board's run's "
+                               "configuration under the reading rule, and off again after it",
+                               ("SAFE_READS = False", "SAFE_READS = __name__ == '__main__' and '--html-only' in sys.argv[1:]", "SAFE_READS = False"))}
+
+
+def _bound_twice(path, meant=_BOUND_AGAIN):
+    """{name: [line, …]}: each module-level name the tool at `path` binds more than once, with every line that binds it. A name in `meant`
+    passes only where its bindings are the statements listed there, in their order."""
+    bound = _module_bindings(Path(path).read_text(encoding="utf-8"))
+    return {name: [line for line, _what in seen] for name, seen in bound.items()
+            if len(seen) > 1 and tuple(what for _line, what in seen) != meant.get(name, ("", ()))[1]}
+
+
+_twice = _bound_twice(HERE / "shoalmark.py")
+check(f"the tool binds each module-level name once — by a `def`, a `class`, an assignment, an import, a `for`, a `with` or an `except` — so no "
+      f"later definition takes an earlier one's callers; {', '.join(_BOUND_AGAIN)} is bound again by the statements listed with why (saw {_twice})",
+      not _twice)
+_twice_text = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_twice_at = _twice_text.find("\n\n\ndef brand_report(")
+_twice_first = [line for line, _what in _module_bindings(_twice_text).get("standup_shown_path", [])]
+with tempfile.TemporaryDirectory() as tmp:
+    (Path(tmp) / "shoalmark.py").write_text(_twice_text[:_twice_at] + "\n\n\ndef standup_shown_path(path):\n    return str(path)" + _twice_text[_twice_at:],
+                                            encoding="utf-8")
+    _twice_mutant = _bound_twice(Path(tmp) / "shoalmark.py")
+check(f"…the mutant, a second `def standup_shown_path` in a copy of the tool: that copy FAILS the same check, naming both lines (saw {_twice_mutant})",
+      _twice_at > 0 and len(_twice_first) == 1
+      and _twice_mutant == {"standup_shown_path": [_twice_first[0], _twice_text[:_twice_at].count("\n") + 4]})
 _SVN = shutil.which("svn") and shutil.which("svnadmin")
 if not _SVN:
     print("  skip  S1–S3 · Subversion is not installed here — these run in CI")
