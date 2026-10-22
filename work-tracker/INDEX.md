@@ -35,6 +35,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
