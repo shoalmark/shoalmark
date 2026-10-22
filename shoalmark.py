@@ -3451,7 +3451,7 @@ def board_after_act(stamp):
     """FM-030, their signed answer 920970b7 — *right after the act* the board shows it: they pressed the button, ran the command,
     and the page they return to must say *done, on its way* (their words of 13:57:50). Put back where they started — or on `answer/<id>`
     itself, where they ran it — the command rebuilds the board itself: `--html-only`, in its own process, which reads the branch just
-    pushed (`on_their_way`). No hook rebuilds it (R11, FM-057): the act does, every time. Never where the board is tracked by git —
+    pushed (`on_their_way`). The act does, every time, whatever a refresh hook did. Never where the board is tracked by git —
     `--init` ignores it, and written, a committed board would leave the tree changed and refuse their next command. `stamp` is the
     board's file as the push left it — its modification time and size: the rebuild is known by its change. What it says of it, one
     line; "" where there is no tracker directory."""
@@ -4908,7 +4908,7 @@ def head_commit():
     return sha if out.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) else ""
 
 
-# WHAT THE BOARD READ, AND WHEN (FM-057, the quick win beside R11): no hook rebuilds the board, so a page can be hours old and look as it did. The page names its
+# WHAT THE BOARD READ, AND WHEN: no hook runs after a bare `git fetch`, so a page can be hours old and look as it did. The page names its
 # own moment — the time it was built; on git HEAD, the branch or a detached HEAD, and how many paths are changed and not committed (a plain run counts them;
 # the board's own run, `--html-only`, says it does not read them); on Subversion the working
 # copy's revision, from the one local status the board reads; with no version control, the folder — and the command that rebuilds it. `view/built.json`

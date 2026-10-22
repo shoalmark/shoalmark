@@ -230,6 +230,7 @@ with tempfile.TemporaryDirectory() as d:
     check("FM-022 · the scaffolded intent starts with a lead-in that names the repository as a whole, and one example per line, in italics; a fresh scaffold has no intent and no path; one line in the Owner's words is the intent, exactly that line — never the lead-in or the examples left around it",
           "*Three lines in your own words about the repository as a whole, never one feature of it: what this repository, all of it, is for · what is true when it works · what no pass or seat may do to get there." in lead
           and all(f"- **{w}** — *e.g. " in home_text for w in ("for", "so that", "never")) and unsaid == "" and unpathed == "" and said == "- **for** — the stock we sell")
+    # R11: only the scaffold's exact text is left out — never a line of the Owner's for its italics, its bold or its length
     # the three example lines as the scaffold writes them — read from the tool, else spelled out, so a run of these
     # checks on a tool without the tuple fails them instead of stopping the suite
     ex = getattr(fm, "INTENT_EXAMPLES", ("- **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*",
@@ -3634,6 +3635,7 @@ else:
 
 # --- FM-006: a private security report — the board's refresh from the copy: one case each, a branch checked out and merged, beside the tool it would have run instead ---------------
 # Every case is a scratch repository with the tool vendored in it and `--install-hook` run from that tool, a branch that brings the case, and `git switch` to it, back, and a fast-forward merge of it —
+# the copy's hooks rebuilding the board after each move. What must hold: nothing the
 # branch brings runs (a marker file would appear), nothing is written outside the tracker folder (`git status --ignored` outside it is empty, and the folder outside the repository is as it
 # was), and the board inside the tracker folder is refreshed. The control is the tool as it was before this report's first fix, vendored the same way, with the hooks it wrote — which run the
 # working tree's tool after a checkout and a merge: each case's check must fail there, and the check says what it saw.
@@ -10483,6 +10485,7 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root_)
 fm.configure(HERE)
 
+# …the watch's own control: a board's run is seen — `git switch`'s hook and `--answer`'s rebuild, each a named list of git starts — and a watch that
 # recorded nothing fails the same judgement: the switch judged as if nothing were recorded, and a run by hand with `GIT_TRACE2_EVENT` unset, which records none
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_)
@@ -11877,6 +11880,7 @@ for kind_ in ("Subversion", "a plain folder"):
               and codes_ == (0, 0) and o_ == s_ == [])
 fm.configure(HERE)
 
+# --- the board says what it read, and when. On git — a clean tree, a tree with changes, a detached HEAD —, on Subversion
 #     and with no version control, the page's line names its own moment: the time it was built and, as each backend can give it, the commit and the branch and
 #     how many paths are changed and not committed — counted by a plain run; on the board's own run, `--html-only`, the line says they are not read —, the
 #     working copy's revision, or the folder; and the command that rebuilds it, with its copy button. It
@@ -11991,6 +11995,7 @@ with tempfile.TemporaryDirectory() as d:
             rm_git(r_)
 fm.configure(HERE)
 
+# --- the read-at line's head, linked: the commit in *read from main at <commit>* links to its page only where
 #     the repository's own configuration names its forge — `commit_url`, else derived from `blob` (`/blob/` → `/commit/`, GitLab's `/-/blob/` →
 #     `/-/commit/`) — and only for a commit on origin. No link, and the line says why, for a commit not on origin, for no forge configured, for a `blob`
 #     that gives no commit page, and for Subversion without a viewer; no link is ever derived from a remote's URL. One helper, `commit_link`, which the
@@ -15409,6 +15414,7 @@ else:
 # --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
 #     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
 #     program in its own environment (`_tool_run` with no env of its own); and every board's run of the board matrix, through git's trace (`_bm_record`) — the
+#     refresh hooks' runs of the copy after each move, `--answer`'s rebuild, and the run by hand before them. This block adds
 #     its own: FM-045's shape, with origin/HEAD set and unset, and a fresh repository's board, each both ways. Its control names `ls-tree`, which FM-045's shape
 #     starts, as never started — and the same reading finds it
 with tempfile.TemporaryDirectory() as tmp:
