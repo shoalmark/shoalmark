@@ -210,7 +210,7 @@
   "dlg_again_done": "Kopiert",
   "dlg_s2": "Fügen Sie ihn auf dem Rechner, auf dem Ihr Agent läuft, in die Session ein, die Sie ohnehin in Claude Code oder Codex nutzen. Können Sie nicht zwischen Rechnern kopieren, öffnen Sie dort <a href=\"{probe_abs}\">{probe_short}</a>.",
   "dlg_s3": "Der Prompt bittet Ihren Agenten, zuerst zu prüfen und nach Ihrem Ja zu fragen, bevor er etwas schreibt. Das kann bis zu 45 Minuten dauern, und die Antwort darf „passt nicht“ lauten. Sie entscheiden.",
-  "dlg_tell": "Ausprobiert? Sagen Sie uns, was Ihr Agent gefunden hat, auch „passt nicht“: <a href=\"{discuss}\">eine Zeile hier</a>. Der Prompt bittet Ihren Agenten nie, etwas zu posten.",
+  "dlg_tell": "Ausprobiert? Am Ende bittet der Prompt Ihren Agenten, <a href=\"{discuss}\">unser Formular</a> mit dem auszufüllen, was er gefunden hat, auch „passt nicht“, und es auf Ihr Ja für Sie zu öffnen. Sie lesen es und senden es ab, oder nicht: Der Prompt bittet Ihren Agenten nie, etwas zu posten.",
   "dlg_fold_appr": "Wofür Ihr Agent Sie um Freigabe bitten wird",
   "dlg_prompt_label": "Der Prompt",
   "dlg_more": "Alles anzeigen",
@@ -224,6 +224,7 @@
   "dlg_ap_6": "Nur unter Subversion: svn ausführen, um die Dateien der Arbeitskopie aufzulisten und, erst nach einem gesonderten ausdrücklichen Ja, ihre Historie vom Server des Projekts zu lesen; außerdem svnadmin, um in diesem Ordner ein lokales Wegwerf-Repository anzulegen.",
   "dlg_ap_7": "Nur bei einem Projekt, das schon im Einsatz ist: den Code des Projekts ausführen, um einen Fehler nachzustellen, nie etwas, das Daten schreibt, einen laufenden Dienst anspricht oder das Projekt ändert.",
   "dlg_ap_8": "Erst nach Ihrem Ja zur Übernahme: Änderungen am Projekt selbst; vor dem ersten Commit fragt der Agent noch einmal.",
+  "dlg_ap_9": "Nur am Ende und nur auf Ihr Ja: das Rückmeldeformular von shoalmark in Ihrem Browser öffnen, mit dem Text des Agenten darin. Sie senden es ab, oder nicht.",
   "dlg_appr_close": "Das ist so vorgesehen.",
 
   "js": {
@@ -259,7 +260,7 @@
   "how": "how-it-works.html",
   "probe_txt": "probe.txt",
   "probe_abs": "https://shoalmark.tools/de/probe.txt",
-  "discuss": "https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml"
+  "discuss": "https://shoalmark.tools/feedback"
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}

@@ -211,7 +211,7 @@
   "dlg_again_done": "Copied",
   "dlg_s2": "Paste it into the Claude Code or Codex session you already use, on the machine where your agent runs. If you can't copy between machines, open <a href=\"{probe_abs}\">{probe_short}</a> there.",
   "dlg_s3": "The prompt asks your agent to check first and to ask your yes before it writes anything. It can take up to 45 minutes, and the answer may be \"no fit\". You decide.",
-  "dlg_tell": "Tried it? Tell us what your agent found, even \"no fit\": <a href=\"{discuss}\">one line here</a>. The prompt never asks your agent to post.",
+  "dlg_tell": "Tried it? At the end, the prompt asks your agent to fill in <a href=\"{discuss}\">our form</a> with what it found, even \"no fit\", and to open it for you on your yes. You read it and send it, or not: the prompt never asks your agent to post.",
   "dlg_fold_appr": "What your agent will ask you to approve",
   "dlg_prompt_label": "The prompt",
   "dlg_more": "Show all",
@@ -225,6 +225,7 @@
   "dlg_ap_6": "Only on Subversion: running svn to list the working copy's files and, only after a separate explicit yes, read its history from the project's server; and running svnadmin to make a throwaway local repository in that folder.",
   "dlg_ap_7": "Only for a project already in use: running the project's own code to reproduce a bug, never anything that writes data, calls a live service or changes the project.",
   "dlg_ap_8": "Only after your yes to adopt: changes in the project itself; the agent asks again before its first commit.",
+  "dlg_ap_9": "Only at the end, and only on your yes: opening shoalmark's feedback form in your browser, with the agent's text in it. You send it, or not.",
   "dlg_appr_close": "That is as intended.",
 
   "js": {
@@ -260,7 +261,7 @@
   "how": "how-it-works.html",
   "probe_txt": "probe.txt",
   "probe_abs": "https://shoalmark.tools/probe.txt",
-  "discuss": "https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml"
+  "discuss": "https://shoalmark.tools/feedback"
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}

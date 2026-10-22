@@ -16232,11 +16232,21 @@ for _what, _ok in _docs_wf_properties(_docs_text) + _docs_wf_regressions(_docs_t
 # --- FM-049: the probe dialog's one opt-in line, after its third step and under the start section's coin lines, leads to an issue form in this repository
 #     (the Owner's answer of 2026-10-15). The form asks, in English and German, what the visitor's agent found, even "no fit", and says the issue is public;
 #     the line states the prompt's words, never an agent's conduct. Read with _docs_yaml, after it: the form keeps to the shapes that reader knows.
-_TELL = ('Tried it? Tell us what your agent found, even "no fit": <a href="{discuss}">one line here</a>. The prompt never asks your agent to post.',
-         'Ausprobiert? Sagen Sie uns, was Ihr Agent gefunden hat, auch „passt nicht“: <a href="{discuss}">eine Zeile hier</a>. Der Prompt bittet Ihren Agenten nie, '
-         'etwas zu posten.')
+_TELL = ('Tried it? At the end, the prompt asks your agent to fill in <a href="{discuss}">our form</a> with what it found, even "no fit", and to open it for you '
+         'on your yes. You read it and send it, or not: the prompt never asks your agent to post.',
+         'Ausprobiert? Am Ende bittet der Prompt Ihren Agenten, <a href="{discuss}">unser Formular</a> mit dem auszufüllen, was er gefunden hat, auch „passt nicht“, '
+         'und es auf Ihr Ja für Sie zu öffnen. Sie lesen es und senden es ab, oder nicht: Der Prompt bittet Ihren Agenten nie, etwas zu posten.')
+_TELL_AP9 = ("Only at the end, and only on your yes: opening shoalmark's feedback form in your browser, with the agent's text in it. You send it, or not.",
+             "Nur am Ende und nur auf Ihr Ja: das Rückmeldeformular von shoalmark in Ihrem Browser öffnen, mit dem Text des Agenten darin. Sie senden es ab, oder nicht.")
+_TELL_INTRO = ("**This issue is public, under your GitHub name. Leave out anything private:** names, paths, code and credentials. Your agent may have filled it in; "
+               "you read it, change it and send it. The prompt never asks your agent to post.",
+               "**Dieses Issue ist öffentlich, unter Ihrem GitHub-Namen. Lassen Sie Privates weg:** Namen, Pfade, Code und Zugangsdaten. Ihr Agent hat es vielleicht "
+               "ausgefüllt; Sie lesen es, ändern es und senden es ab. Der Prompt bittet Ihren Agenten nie, etwas zu posten.")
+_TELL_DESC = ('Tried it? Tell us what your agent found, even "no fit". One line is enough. · Ausprobiert? Sagen Sie uns, was Ihr Agent gefunden hat, auch „passt nicht“. '
+              'Eine Zeile genügt.')
 _TELL_FORM = ".github/ISSUE_TEMPLATE/what-your-agent-found.yml"
 _TELL_URL = "https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml"
+_TELL_PAGE = "https://shoalmark.tools/feedback"
 _TELL_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", _TELL_FORM)
 
 
@@ -16249,8 +16259,13 @@ def _tell_problems(src):
             bad.append(f"the tell line ({lang}) is not FM-049's")
     for lang in ("en", "de"):
         found = re.search(r'"discuss": "([^"]*)"', src[f"overrides/partials/landing/{lang}.html"])
-        if not found or found.group(1) != _TELL_URL:
-            bad.append(f"{{discuss}} ({lang}) does not lead to the issue form in this repository")
+        if not found or found.group(1) != _TELL_PAGE:
+            bad.append(f"{{discuss}} ({lang}) is not the one feedback address, {_TELL_PAGE}")
+    for lang, want in zip(("en", "de"), _TELL_AP9):
+        if words[lang].get("dlg_ap_9") != want:
+            bad.append(f"the ninth approval ({lang}) is not the ruled row")
+    if code.count('<li class="cond">{{ w.dlg_ap_8 }}</li>\n          <li class="cond">{{ w.dlg_ap_9 }}</li>') != 1:
+        bad.append("the dialog's approvals do not list the ninth after the eighth")
     if 'replace("{discuss}", urls.discuss)' not in code:
         bad.append("the template does not fill {discuss}")
     step3, approvals, coin3, ticker = (code.find(s) for s in ("<p>{{ w.dlg_s3 }}</p>", '<details class="probe-fold probe-approvals">', "{{ T(w.coin_3) }}", '<div class="ticker"'))
@@ -16271,12 +16286,13 @@ def _tell_problems(src):
     asks = kinds("textarea")
     if len(asks) != 1 or (asks[0].get("validations") or {}).get("required") is not True or not (asks[0].get("attributes") or {}).get("label"):
         bad.append("the issue form does not ask, as one required answer, what the agent found")
-    if not all(s in str(form.get("description")) for s in ('"no fit"', "„passt nicht“")):
-        bad.append("the issue form's description does not invite \"no fit\" in English and German")
+    if str(form.get("description")) != _TELL_DESC:
+        bad.append("the issue form's description is not the ruled row: \"no fit\" invited in English and German, one line enough")
     intro = str(((kinds("markdown") or [{}])[0].get("attributes") or {}).get("value", ""))
-    if not all(s in intro for s in ("This issue is public. Leave out anything private", "Dieses Issue ist öffentlich. Lassen Sie Privates weg",
-                                    "the prompt never asks your agent to post", "Der Prompt bittet Ihren Agenten nie, etwas zu posten")):
-        bad.append("the issue form does not say, in English and German, that the issue is public, to leave out anything private, and that the prompt never asks the agent to post")
+    if not all(s in intro for s in _TELL_INTRO):
+        bad.append("the issue form's opening is not the ruled row, in English and German: public under your GitHub name, nothing private, the agent may have filled it in, the prompt never asks it to post")
+    if [b.get("id") for b in asks] != ["found"]:
+        bad.append("the issue form's answer is not the field `found`, which the notes' link fills")
     for path in ("overrides/partials/landing/en.html", "overrides/partials/landing/de.html", _TELL_FORM):
         if "never posts for you" in src[path] or "postet nie für Sie" in src[path]:
             bad.append(f"{path} promises an agent's conduct: that it never posts")
@@ -16288,9 +16304,13 @@ _tp = _tell_problems(_ts)
 check(f"FM-049 · the probe dialog's line after its third step, and under the coin lines, asks in English and German what the agent found, even \"no fit\", and "
       f"leads to the issue form in this repository, which asks it as one required answer and says the issue is public; the line states the prompt, not the "
       f"agent's conduct (problems found: {_tp})", _tp == [])
-_tctl = {"the English line as go-to-market first wrote it": _with(_ts, "overrides/partials/landing/en.html", "The prompt never asks your agent to post.", "Your agent never posts for you."),
-         "the German line without its link": _with(_ts, "overrides/partials/landing/de.html", '<a href=\\"{discuss}\\">eine Zeile hier</a>', "eine Zeile hier"),
-         "the line to a Discussions category": _with(_ts, "overrides/partials/landing/en.html", '"discuss": "' + _TELL_URL, '"discuss": "https://github.com/shoalmark/shoalmark/discussions'),
+_tctl = {"the English line as go-to-market first wrote it": _with(_ts, "overrides/partials/landing/en.html", "the prompt never asks your agent to post.", "your agent never posts for you."),
+         "the German line without its link": _with(_ts, "overrides/partials/landing/de.html", '<a href=\\"{discuss}\\">unser Formular</a>', "unser Formular"),
+         "the line to a Discussions category": _with(_ts, "overrides/partials/landing/en.html", '"discuss": "' + _TELL_PAGE, '"discuss": "https://github.com/shoalmark/shoalmark/discussions'),
+         "{discuss} back at the form's address": _with(_ts, "overrides/partials/landing/de.html", '"discuss": "' + _TELL_PAGE, '"discuss": "' + _TELL_URL),
+         "the ninth approval left out of the dialog": _with(_ts, "overrides/landing.html", '          <li class="cond">{{ w.dlg_ap_9 }}</li>\n', ""),
+         "the form's description as it was": _with(_ts, _TELL_FORM, "One line is enough.", "In one line."),
+         "the form's answer renamed": _with(_ts, _TELL_FORM, "id: found", "id: result"),
          "the template not filling the address": _with(_ts, "overrides/landing.html", ' | replace("{discuss}", urls.discuss)', ""),
          "the line only in the dialog": _with(_ts, "overrides/landing.html", '<p class="small" style="margin-top:16px">{{ T(w.dlg_tell) }}</p>', ""),
          "no form": {**_ts, _TELL_FORM: ""},
@@ -16298,8 +16318,42 @@ _tctl = {"the English line as go-to-market first wrote it": _with(_ts, "override
          "the form without its German note on privacy": _with(_ts, _TELL_FORM, "Lassen Sie Privates weg:", "")}
 _tctl_saw = {name: len(_tell_problems(src)) for name, src in _tctl.items()}
 check("FM-049 · the tell line's check is not blind: each of the English line as go-to-market first wrote it, the German one without its link, the line to a "
-      "Discussions category, the template not filling the address, the line only in the dialog, no form, the form's answer not required, and the form without "
-      f"its German note on privacy leaves a problem (problems found: {_tctl_saw})", all(_tctl_saw.values()) and len(_tctl_saw) == 8)
+      "Discussions category, {discuss} back at the form's address, the ninth approval left out of the dialog, the form's description as it was, its answer "
+      "renamed, the template not filling the address, the line only in the dialog, no form, the form's answer not required, and the form without "
+      f"its German note on privacy leaves a problem (problems found: {_tctl_saw})", all(_tctl_saw.values()) and len(_tctl_saw) == 12)
+
+# the one feedback address: docs/feedback/index.html, which the site serves at https://shoalmark.tools/feedback as it stands — a plain link and a
+# refresh to the issue form, in English and German, no script, not indexed, in the ruled words
+_FEEDBACK = "docs/feedback/index.html"
+_FEEDBACK_WORDS = ("<title>shoalmark · feedback · Rückmeldung</title>", "<p>Taking you to shoalmark's feedback form on GitHub.</p>",
+                   f'<p>If nothing happens: <a href="{_TELL_URL}">open the form</a>.</p>', "<p>What you send there is public, under your GitHub name.</p>",
+                   "<p>Weiter zum Rückmeldeformular von shoalmark auf GitHub.</p>", f'<p>Falls nichts passiert: <a href="{_TELL_URL}">Formular öffnen</a>.</p>',
+                   "<p>Was Sie dort absenden, ist öffentlich, unter Ihrem GitHub-Namen.</p>")
+
+
+def _feedback_problems(page):
+    bad = []
+    targets = re.findall(r'<a [^>]*href="([^"]*)"', page) + re.findall(r'<meta http-equiv="refresh" content="0; url=([^"]*)">', page)
+    if len(targets) != 3 or set(targets) != {_TELL_URL}:
+        bad.append(f"the page does not lead to the issue form alone, by its refresh and its two links: {targets}")
+    if '<meta name="robots" content="noindex">' not in page or re.search(r"<script|\bon\w+=", page, re.I):
+        bad.append("the page is indexed, or carries a script")
+    if not all(w in page for w in _FEEDBACK_WORDS) or '<section lang="en">' not in page or '<section lang="de">' not in page:
+        bad.append("the page's words are not the ruled row, in English and German")
+    return bad
+
+
+_fbp = (HERE / _FEEDBACK).read_text(encoding="utf-8") if (HERE / _FEEDBACK).is_file() else ""
+_fbprob = _feedback_problems(_fbp) if _fbp else [f"there is no {_FEEDBACK}"]
+check(f"FM-006 · the feedback page · {_FEEDBACK} leads to the issue form by a refresh and a plain link, in English and German, in the ruled words, with no "
+      f"script and not indexed (problems found: {_fbprob})", _fbprob == [])
+_fbctl = {"the refresh to another address": _fbp.replace("content=\"0; url=" + _TELL_URL, "content=\"0; url=https://github.com/shoalmark/shoalmark/issues/new", 1),
+          "a link to the discussions": _fbp.replace(f'href="{_TELL_URL}">Formular', 'href="https://github.com/shoalmark/shoalmark/discussions">Formular', 1),
+          "a script that carries a query on": _fbp.replace("</body>", "<script>location.replace(location.search)</script></body>", 1),
+          "the page indexed": _fbp.replace('<meta name="robots" content="noindex">\n', "", 1)}
+_fbctl_saw = {name: len(_feedback_problems(page)) for name, page in _fbctl.items()}
+check("FM-006 · the feedback page · its check is not blind: each of the refresh to another address, a link to the discussions, a script that carries a query on "
+      f"and the page indexed leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 4)
 
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
