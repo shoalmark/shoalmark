@@ -108,6 +108,12 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
   if (page.endsWith("index.html") && !page.startsWith("how")) {   // the ticker's words are long; it clips its own band and takes no room of the page
     const tk = await t.js(`(() => { const e = document.querySelector(".ticker"), r = e.getBoundingClientRect(); return {overflowX: getComputedStyle(e).overflowX, right: Math.round(r.right), iw: innerWidth, sw: document.documentElement.scrollWidth} })()`);
     verdict(page, w, h, "the ticker clips its own band and takes no room of the page", tk.overflowX == "hidden" && tk.right <= tk.iw && tk.sw <= tk.iw, JSON.stringify(tk));
+    const bd = await t.js(`(() => { const head = document.querySelector(".board thead"), rows = [...document.querySelectorAll(".board tbody tr")].map(r => { const g = s => r.querySelector(s).getBoundingClientRect(), tr = r.getBoundingClientRect(), sc = g(".sc"), pd = g(".pd"), rk = g(".rk");
+      return {under: pd.top >= Math.max(sc.bottom, rk.bottom) - 1, full: pd.width >= tr.width - 1, beside: pd.left >= sc.right - 1 && Math.abs(pd.top - tr.top) <= 14} });
+      return {heads: head ? getComputedStyle(head).display : null, rows, tall: Math.round(document.querySelector(".board table").getBoundingClientRect().height)} })()`);
+    verdict(page, w, h, w <= 640 ? "on a phone each high scores row stacks, its period's words under the rank and the score at full width, the column heads gone"
+      : "wider than a phone the high scores keep their three columns under their heads",
+      bd.rows.length > 0 && (w <= 640 ? bd.heads == "none" && bd.rows.every(r => r.under && r.full) : bd.heads != "none" && bd.rows.every(r => r.beside)), JSON.stringify(bd));
   }
   if (state == "probe" && page.endsWith("index.html") && !page.startsWith("how")) {
     await t.js(`document.getElementById("probe-open").focus()`);
@@ -228,7 +234,6 @@ const FRAMES = Array.from({length: 30}, (_, i) => i * 100);
 const DRAWN = `(() => { const d = document.getElementById("probe-open"), cs = (e, p) => e ? getComputedStyle(e, p) : {}, label = [...d.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
   return {tape: cs(d.querySelector(".tapebox")).display, unlit: cs(d, "::after").display, coin: cs(d.querySelector(".gcoin")).display, was: cs(document.querySelector(".cue-t.was")).display,
     now: cs(document.querySelector(".cue-t.now")).visibility, label, tapeWords: (d.querySelector(".tape") || {}).textContent || ""} })()`;
-// the lit door's height and its copy icon: 55 px on a desktop and 59 px on a phone, the icon centred under the label's words and inside the door
 const ICON = `(() => { const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), ic = d.querySelector(".ic"), i = ic ? ic.getBoundingClientRect() : null;
   const words = [...d.childNodes].filter(n => n.nodeType == 3 && n.textContent.trim()), range = document.createRange();
   if (words.length) { range.setStartBefore(words[0]); range.setEndAfter(words[words.length - 1]) }
