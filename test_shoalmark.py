@@ -12149,7 +12149,7 @@ def _refresh_owner_case(base, tool, operations=("pull-ff", "pull-rebase-empty", 
         rows, _ = json.JSONDecoder().raw_decode(page.split(',T=', 1)[1])
         row = next(r for r in rows if r[0] == "AP-501")
         got[op] = dict(code=code, hooks=_bm_trace(trace), owed=bool(row[30]) and (len(row) == 31 or not row[31] or bool(row[31][11])),
-                       done='onclick="OWE(T.find(x=>x[0]==\'${t[0]}\'),\'done\')"' in page,
+                       done='btn("acts.done",t[0],`OWE(T.find(x=>x[0]==\'${t[0]}\'),\'done\')`)' in page,
                        promise="at seven tomorrow" in page,
                        local=op != "pull-rebase-local" or "LOCAL-AFTER-REPLAY" in page,
                        said=said[-300:])
