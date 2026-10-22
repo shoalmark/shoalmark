@@ -7,7 +7,7 @@ next: owner
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt the guide's six new lines for the board's settings, footer, phone rows, seat icons and reviews, as brand/design-guide.md states them at the commit that last filed this ask, and as FM-053's *What is true now* entry of 22 October sets them out?"
+ask: "Do you adopt the guide's six new lines for the board's settings, header, footer, phone rows, seat icons and reviews, as brand/design-guide.md states them at the commit that last filed this ask, and as FM-053's *What is true now* entry of 22 October sets them out?"
 ask-kind: ruling
 ask-since: 2026-10-22
 ask-options: "yes | yes, with the change I name | no: the guide stays as its answers of 16 October left it"
@@ -153,3 +153,4 @@ and 6, on `fm/053-board-polish`. Line 5 waits for the session rows, which v0.20.
 | 2026-10-16 | The Designer's build findings fixed in round 1: the work table's group line wraps (`4b425b0`); the header's count stands clear of the scheme's button (`5e38e08`); `next: owner` reads *you* (`f37b5b5`); a heading's marker keeps its space on a phone (`cbb49c3`); a review row names the branch's oldest session (`5bb4fb7`); its heading's counts put the number first (`eeacb1c`); *shipped or closed* for *ended* (`e6031e5`); a count past 14 asks (`8ee3602`). The reload stays, as ruled. |
 | 2026-10-22 | The reload's answer recorded under `## Asks` (accepted, signed `578973d`); next: build. |
 | 2026-10-22 | The guide's six new lines (§1's *reviews* row, §4's *In a row*, §7's header line and running line, §8's *A setting*, §9's phone rows), with the ask that adopts them (`next: owner`). |
+| 2026-10-22 | The records pass's RV-3632 fixed forward: §8's *A setting* says only what the Designer drafted. The ask filed again with it, naming the header among the six lines. |
