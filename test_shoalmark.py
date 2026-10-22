@@ -14472,6 +14472,27 @@ for _what, _english, _german in (
     _result, _observed = _adopt_pins(_documents.__getitem__, lambda tag: _fixture_tool)
     check(f"FM-006 · ADOPT's pins · {_what}: fail (saw {_observed})", _result is False)
 
+_FIELD_RULES = {"ADOPT.md": ("Percent-encode every byte outside RFC 3986's unreserved ASCII set: A–Z, a–z, 0–9, hyphen, period, underscore and tilde.",
+                             "an apostrophe is `%27`"),
+                "ADOPT.de.md": ("Prozentkodiert jedes Byte außerhalb der nicht reservierten ASCII-Zeichen aus RFC 3986: A–Z, a–z, 0–9, Bindestrich, Punkt, "
+                                "Unterstrich und Tilde.", "wird ein Apostroph zu `%27`")}
+
+
+def _field_rule(text, name):
+    """Whether a main note's step 13, the step that gives the feedback link, requires every byte of the link's field outside RFC 3986's
+    unreserved set to be percent-encoded, and an apostrophe as `%27`."""
+    step = text[text.index("### 13. "):text.index("### 14. ")] if "### 13. " in text and "### 14. " in text else ""
+    rule, apostrophe = _FIELD_RULES[name]
+    return "&found=" in step and rule in step and apostrophe in step
+
+
+_notes13 = {n: (HERE / n).read_text(encoding="utf-8") for n in _FIELD_RULES}
+check("the feedback link's field: both main notes' step 13 require every byte outside RFC 3986's unreserved set percent-encoded and an "
+      "apostrophe as %27, and a note without the rule, or without %27, is caught",
+      all(_field_rule(t_, n_) for n_, t_ in _notes13.items())
+      and not any(_field_rule(t_.replace(_FIELD_RULES[n_][0], ""), n_) for n_, t_ in _notes13.items())
+      and not any(_field_rule(t_.replace(_FIELD_RULES[n_][1], ""), n_) for n_, t_ in _notes13.items()))
+
 check("the schema prints every key with who writes it", all(k in fm.render_schema() for k in ("`considered:`", "`kind-of-problem:`", "`blocked-by:`")) and "`target:`" not in fm.render_schema())
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:

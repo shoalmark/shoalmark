@@ -535,8 +535,7 @@ Rückmeldung an shoalmark an.
    https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml&found=<der Text>
    ```
 
-   `<der Text>` ist der Text, den ihr gezeigt habt, prozentkodiert als UTF-8: Ein Leerzeichen ist `%20`, ein
-   Zeilenumbruch `%0A`.
+   `<der Text>` ist genau der gezeigte Text, als UTF-8 kodiert. Prozentkodiert jedes Byte außerhalb der nicht reservierten ASCII-Zeichen aus RFC 3986: A–Z, a–z, 0–9, Bindestrich, Punkt, Unterstrich und Tilde. Insbesondere wird ein Apostroph zu `%27`, ein doppeltes Anführungszeichen zu `%22`, ein Backtick zu `%60`, `$` zu `%24`, `;` zu `%3B`, `&` zu `%26`, ein Leerzeichen zu `%20` und ein Zeilenumbruch zu `%0A`. Im fertigen Link steht kein unkodierter Apostroph. Das erledigt zum Beispiel Pythons `urllib.parse.quote(text, safe="")`.
 
    | System | Befehl |
    |---|---|

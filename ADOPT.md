@@ -495,7 +495,7 @@ At the very end, after the report and the person's decision on it, whatever it w
    https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml&found=<the text>
    ```
 
-   `<the text>` is the text you showed, percent-encoded as UTF-8: a space is `%20`, a line break `%0A`.
+   `<the text>` is exactly the text you showed, encoded as UTF-8. Percent-encode every byte outside RFC 3986's unreserved ASCII set: A–Z, a–z, 0–9, hyphen, period, underscore and tilde. In particular, an apostrophe is `%27`; a double quote `%22`; a backtick `%60`; `$` is `%24`; `;` is `%3B`; `&` is `%26`; a space `%20`; and a line feed `%0A`. The completed link contains no raw apostrophe. For example, Python's `urllib.parse.quote(text, safe="")` does this.
 
    | System | Command |
    |---|---|
