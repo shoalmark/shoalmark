@@ -274,6 +274,8 @@ if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("i
       const t = await open(page, {w, h, reduce});
       const at = await t.js(TIMES);
       await t.call("Input.dispatchMouseEvent", {type: "mouseMoved", x: at.x, y: at.y});
+      const lift = await t.js(`getComputedStyle(document.getElementById("probe-open")).transform`);
+      verdict(page, w, h, "on hover the door does not lift: the coin coming to the slot is its hover", lift == "none", lift);
       await t.call("Input.dispatchMouseEvent", {type: "mousePressed", x: at.x, y: at.y, button: "left", clickCount: 1});
       const coin = await t.js(`getComputedStyle(document.querySelector("#probe-open .gcoin")).display`);
       await t.call("Input.dispatchMouseEvent", {type: "mouseReleased", x: at.x, y: at.y, button: "left", clickCount: 1});
