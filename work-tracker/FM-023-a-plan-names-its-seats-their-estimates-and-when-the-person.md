@@ -4,15 +4,10 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: owner
+next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you allocate v0.20.1 and the releases after it as this tracker's table of 2026-10-15 sets out: v0.20.1 complete, with B1, the board's design, the probe's final prompt and the ten quick wins beside their deletions?"
-ask-kind: ruling
-ask-since: 2026-10-15
-ask-options: "yes | no: the allocation of 12 October stands"
-ask-proposal: "yes"
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -22,26 +17,66 @@ is designed or built.
 
 ## What is true now
 
+**2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately): the
+hooks that rebuild the board after a checkout, a merge and a rebase. v0.20.0 ships as built, with R11's upgrade note.
+The 15 October table below has a v0.20.1 row for it, and FM-057 holds the case it must cover.
+
+**2026-10-18 — v0.20.0 is cut from main as it stands.** This is the Owner's ruling of 18 October (recorded privately).
+Beside the 12 October allocation and R21, v0.20.0 holds what #189 and #193 merged:
+- **#189:** R22, R15, R13, and R11 with what the board read;
+- **#193:** R9 with the stand-up and close-out prompts, one stand-up across the repositories you name, and FM-045's fix.
+
+Their rows in the 15 October table below now read v0.20.0. The receipts, and R17 with defect 5's class fix, are not
+built and stay in v0.20.1. As the current path's line 3 says, v0.20 is one milestone: v0.20.0 to v0.20.2, as this
+tracker allocates them.
+
+**2026-10-18 — v0.20.2: shoalmark's first two skills, in one Claude plugin, for the Owner's ruling.** These are the
+Owner's rulings of 18 October. `/find-drift` is the first skill. The second, `/prune-drift`, builds on it; its name is
+the Owner's word of 18 October (recorded privately). Both ship in v0.20.2 as a Claude plugin. This table builds nothing.
+
+| Release | Work | Deletion beside it | Depends on |
+|---|---|---|---|
+| v0.20.2 | `/find-drift`, shoalmark's first skill. It finds where an agent could drift off track, and ranks what can become a check. It looks for three things: a rule held only as prose, two sources that disagree, and obsolete text that still reads as live. It reads, and it changes nothing but its report. Its spec is corrected by a second run, on a codebase shoalmark did not shape. | — | Its first run, on shoalmark at `5dcdcc5` (recorded privately) |
+| v0.20.2 | `/prune-drift`, the second skill, built on `/find-drift`. It reads the newest report, and runs `/find-drift` first where no report is fresh. It moves history to the record and rules to checks; only an external quirk stays as prose. | — | `/find-drift` |
+| v0.20.2 | The prune of `shoalmark.py`'s prose, proven prose-only, made on v0.20.1's tagged head. Beside it goes the ratchet that holds code comments to external quirks. | A comment that holds a tracker id, a review id, a date or a ruling: its reason is in the commit log and the trackers. | v0.20.1's tag |
+| v0.20.2 | FM-037's guard over the seat definitions (`.claude/agents/`) and the skills folder: a change to either must be the Owner's signed commit. | — | A design round first |
+| v0.20.2 | Five small conversions, each a rule made a check: the ship log only grows; triage rows only grow; no line of a commit message begins with `---`; the allowed test runner; no home folder's path in public text. | The prose each one replaces | v0.20.1's tag |
+| v0.20.2 | The text fixes `/find-drift`'s first run found, in the rule files: sources that disagree, and obsolete text. The seat definitions are the Owner's to type. | The obsolete text | The second skill |
+| v0.20.2 | The suite's Chrome keychain flag: on macOS, the suite starts Chrome with `--use-mock-keychain`. | — | v0.20.1's head |
+| After v0.20.2 | R5; defects 1, 3 and 4; the four larger conversions; the broader R24 boundary work. | — | The Owner's allocation |
+
+- **When:** the work may start now.
+  - It lands only after v0.20.0 and v0.20.1 are merged, and it merges cleanly onto v0.20.1's head.
+  - It never takes a review slot from v0.20.1.
+  - A branch that no longer merges cleanly is built again from that head.
+- **This row replaces:** the harness plugin of the 15 October table's row *After v0.20.1*. The rest of that row moves
+  to *After v0.20.2*.
+- **Sizes and seats:** S or M each, on seats of v0.20.2's own, on either harness.
+- **Confidence:** 60 % that v0.20.2 is tagged within a week after v0.20.1's tag.
+
 **2026-10-15 — v0.20.1 ships complete, for the Owner's ruling: B1, the board's design, the probe's final prompt, the
-ten quick wins beside the deletions that can ship with them, and R13, R15, R17 and R22.** This is the Owner's direction
+eleven quick wins beside the deletions that can ship with them, and R13, R15, R17 and R22.** This is the Owner's direction
 of 15 October (recorded privately), set out here for their signed answer. It replaces the allocation of 12 October for
 the releases after v0.20.0. The current path's line 5 (`fd44d86`) pairs each deletion with the quick win that takes its
 place, and within a release deleting comes first. This table builds nothing, and the planning feature this tracker
-proposes stays parked.
+proposes stays parked. The rows that read v0.20.0 moved there on 18 October, by the entry above.
 
 | Release | Work | Deletion beside it | Depends on |
 |---|---|---|---|
 | v0.20.0 | As allocated on 12 October: Subversion without git and the release archive, with the answers of 15 October on FM-004 and FM-044. R21 (#179) lands before the cut. | — | R24's minimum, confirmed and verified before the tag |
+| v0.20.0 | The stand-up prompt and the close-out prompt (S each). Each copies a fixed prompt and runs nothing; each is a run sheet for the Owner, so critical. | R9: invitation and notification channels and their scheduler state; owed acts, due, done and their history stay. | — |
+| v0.20.0 | What the board read, and when, with its rebuild command (S). | R11: the global refresh hooks; explicit refresh stays. | — |
+| v0.20.0 | One stand-up across the repositories you name (M). It runs no repository's deriver, queue or hook. | None in v0.20.0: R5 needs a format for validated data-only views first, a design round, and keeps its own row. | — |
+| v0.20.0 | R13's deletion, ahead of the receipts. | R13: the ratio command goes; Shipped's records classification stays. | — |
+| v0.20.0 | R15: the filing freeze's code goes, look-before-filing and ranking stay. R22: STALE shows the differing published lines. | — | — |
 | v0.20.1 | B1, the landing, integrated as FM-006's answer of 15 October; FM-049's opt-in line, to an issue form here; FM-026's placement in every word. | — | v0.20.0's tag, for its pins |
 | v0.20.1 | The probe's final prompt, and what its first outside run needs. | — | v0.20.0's archive |
 | v0.20.1 | The board's design, its look and its words, as FM-053's answer adopts `brand/design-guide.md`. | R10's look half: theme layering, the font files, theme copying and the inline wordmark go. A palette by name or by a few tokens in `shoalmark.toml` takes their place, refused below a set contrast. Every board build names each brand file it no longer reads, with the setting that replaces it: never a silent loss. | FM-053 |
-| v0.20.1 | The stand-up prompt and the close-out prompt (S each). Each copies a fixed prompt and runs nothing; each is a run sheet for the Owner, so critical. | R9: invitation and notification channels and their scheduler state; owed acts, due, done and their history stay. | — |
 | v0.20.1 | Ask ids (M); how this repository proves an answer, said before *accept* (S–M), with defect 8. | R4: an ordinary Owner-signed commit is the canonical answer, and the answer-branch code goes; exact answer and act history are kept. Critical. | FM-050, designed, reviewed and ruled first |
 | v0.20.1 | The session list with copy-to-resume (M), the same list in `--sessions` (S), and who asked (S–M), after the fixes of defects 6 and 7 (FM-056, FM-024). | R10's places half: the logo and the labels become settings, the organisation's brand place goes, and `--vendor` stops copying `brand/`. | R6's look, 20 October, for the harness and resume columns; without it they read *not known* and the rest stands |
-| v0.20.1 | What the board read, and when, with its rebuild command (S). | R11: the global refresh hooks; explicit refresh stays. | — |
-| v0.20.1 | One stand-up across the repositories you name (M). It runs no repository's deriver, queue or hook. | None in v0.20.1: R5 needs a format for validated data-only views first, a design round, and keeps its own row. | — |
-| v0.20.1 | Receipts, read from git (M): counts the record holds, each with its definition, never a total in a heading. | R13: the ratio command goes; Shipped's records classification stays. | R4; FM-055's definitions |
-| v0.20.1 | R15: the filing freeze's code goes, look-before-filing and ranking stay. R17: partial and untagged vendoring go. R22: STALE shows the differing published lines. Defect 5's class fix. | — | — |
+| v0.20.1 | Receipts, read from git (M): counts the record holds, each with its definition, never a total in a heading. | — (R13 went ahead, in v0.20.0) | R4; FM-055's definitions |
+| v0.20.1 | R17: partial and untagged vendoring go. Defect 5's class fix. | — | — |
+| v0.20.1 | R11's hook half comes back: the hooks that rebuild the board after a checkout, a merge and a rebase (FM-057), on the Owner's word of 19 October (recorded privately). | — | v0.20.0's tag |
 | After v0.20.1 | R5; defects 1, 3 and 4; the harness plugin; broader R24 boundary work. | — | As on 12 October |
 | v0.21.x | Research and complex work, each from a round the Owner allocates, as line 6 says. | — | The Owner's allocation |
 | Unchanged | The held rows R6, R7, R8, R16, R20, D3 and D4, looked at on 20 October; R25–R27 kept; #154's prerequisite wording as replaced by the Owner's signed answer of 12 October in adaec88 (#168). | — | As on 12 October |
@@ -273,10 +308,23 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted with a change
 **signed** — adaec88 · G
 
+**2026-10-17** · Do you allocate v0.20.1 and the releases after it as this tracker's table of 2026-10-15 sets out: v0.20.1 complete, with B1, the board's design, the probe's final prompt and the ten quick wins beside their deletions?
+**answered** — accepted - yes but it is eleven quick wins to my count including guided-answer · holgo99
+**relation** — accepted with a change
+**signed** — 8a13e8c · G
+
+**2026-10-18** · Do you allocate v0.20.2 as the table of 2026-10-18 sets out: /find-drift and the second skill in one Claude plugin; the prune of shoalmark.py's prose, proven prose-only; the comment ratchet; FM-037's guard on agents and skills; five conversions; the text fixes; the suite's Chrome keychain flag?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 88bf707 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-19 | R11's hook half comes back in v0.20.1, on the Owner's word of 19 October (recorded privately): one v0.20.1 row; v0.20.0 unchanged. |
+| 2026-10-18 | v0.20.0 cut from main as it stands, on the Owner's ruling of 18 October (recorded privately): R22, R15, R13, R11, R9 and the stand-up across repositories move from v0.20.1, with the two prompts, what the board read and FM-045's fix. The second skill is named `/prune-drift`, the Owner's word of 18 October. |
+| 2026-10-18 | v0.20.2's allocation ask filed: shoalmark's first two skills in one Claude plugin, on the Owner's rulings of 18 October. The answer of 17 October recorded under the asks, and v0.20.1's count of quick wins made the Owner's eleven, the guided answer among them. |
 | 2026-10-15 | The allocation ask filed: v0.20.1 complete, on the Owner's direction of 15 October (recorded privately). |
 | 2026-10-13 22:21 CEST | P first critical NOT READY `62ecf9c`, Reviewed `de17860`; RV-3098 source-binding correction and real controls are built. Current runtime 619/619 and unchanged core 303/303 pass. Sole final verification remains; component verdicts and exhausted B/archive/protected holds stand. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |

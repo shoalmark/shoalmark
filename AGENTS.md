@@ -55,6 +55,29 @@ convention is in [`requirements/README.md`](requirements/README.md); this is Sta
   reopened or marked ready, on release tags, and when dispatched by hand. The Owner authorized these PR triggers on
   2026-09-29 and these hooks on 2026-10-02. Say when a tag is due; never create one.
 
+## A new seat's worktree — one step (FM-024)
+
+`git worktree add` copies the worktree it is run in, its whole `config.worktree`: the worktree added for a seat is the
+adding seat (its name, address, session, harness id and signers file) until each key is written again. Whoever adds it
+runs this step with the new seat's values before the seat's first commit, and reads the list it prints:
+
+```bash
+w=../builder-3                                         # the new seat's worktree
+git worktree add "$w" -b fm/012-slug origin/main       # copies THIS worktree's config.worktree into "$w": every key below
+git -C "$w" config --worktree user.name 'Builder seat'
+git -C "$w" config --worktree user.email '336429412+shoalmark-builder[bot]@users.noreply.github.com'
+git -C "$w" config --worktree seat.session a9f3c2d1/builder-3
+git -C "$w" config --worktree gpg.ssh.allowedSignersFile work-tracker/allowed_signers
+git -C "$w" config --worktree --unset-all seat.harness # the copy's id is another seat's; from the spawn's result:
+                                                       #   git -C "$w" config --worktree seat.harness <its agent id>
+git -C "$w" config --worktree --list                   # every key is now the new seat's own
+```
+
+`--whoami` and the commit hook name every mixed identity a worktree is part of — a harness id or a session another
+worktree carries under another identity, a name another seat carries, a session that names a seat its address is not:
+one harness id is one session. A full, unchanged copy reads as the same seat's second worktree, and only the step
+closes it (README, *Sessions*).
+
 ## How the loop runs — the Owner's signed answers, 2026-09-24
 
 Ruled by their signed answers to FM-031 (`d20bc89`, 11:08, and `eef0c2e`, 21:29), FM-032 (`ffa63b8`, 11:07) and FM-033 (`65f37a4`, 16:29). Each took effect on their answer,
@@ -68,10 +91,9 @@ never on a default; a word in chat changes none of them until they sign it.
 - **A miss is rowed only when it cost the Owner** (FM-032 S3). A seat's own error, found after it was made, gets a row —
   a ship-log line, a tracker, a pitfall — only if it cost the Owner a command or a decision. Otherwise it is fixed, and
   the fixing commit's message says what was wrong: git is its record.
-- **The filing freeze** (FM-032 S4). While 8 or more trackers are open (`freeze_at` in `shoalmark.toml`), only product
-  defects are filed — `tags: bug`, something the tool does wrong for the person using it. Anything else goes as one line
-  into the closest open tracker's body (rule 6), or waits. `--new "…" --tags bug` files a defect; `--new` refuses the rest,
-  and `--check` says when the freeze holds.
+- **The filing freeze** (FM-032 S4) — ruled 2026-09-24 (`ffa63b8`), removed by the Owner's signed ruling R15 of
+  12 October (`work-tracker/evidence/rulings-2026-10-12.md`). Not a rule. Look before you file (rule 2) and the
+  ranking (`rank:`, `--triage`, `--next`) stay.
 - **The cap of 2 waiting pull requests** (FM-031) — ruled 2026-09-24 11:08:24 (`d20bc89`), revoked by the Owner's signed
   answer the same day (`7c97c5b`, PR 46, merged 12:53:19). Not a rule. What waits on them is read from `--queue`,
   pull requests and pushed branches alike.

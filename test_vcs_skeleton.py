@@ -679,7 +679,7 @@ def run_review_root_controls(fm, check):
             real_run(["svnadmin", "create", str(server)], capture_output=True, check=True)
             real_run(["svn", "checkout", "-q", server.as_uri(), str(target)], capture_output=True, check=True)
             config = target / "shoalmark.toml"
-            for label, text in (("configuration validation", "freeze_at = -1\n"), ("configuration parsing", "this is not configuration\n"),
+            for label, text in (("configuration validation", "judged_before_build = \"yes\"\n"), ("configuration parsing", "this is not configuration\n"),
                                 ("policy validation", '[seats]\nbuilder = ["same", "same"]\n')):
                 fm.configure(source); seed(); config.write_text(text, encoding="utf-8")
                 refused = caught(lambda: fm.configure(target), SystemExit) is not None

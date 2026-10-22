@@ -3,13 +3,16 @@ id: FM-055
 status: Proposed
 considered: FM-032, FM-023, FM-050, FM-004
 tags: process
-next: owner
+next: build
 hook: "The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories counted together"
 ask: "Do the receipts count a day in the machine's time zone, a sitting as answers at most 30 minutes apart, and the repositories you name together as one count?"
 ask-kind: ruling
 ask-since: 2026-10-15
 ask-options: "yes | yes, but each repository counted apart | no: I give the three definitions in my answer"
 ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-17
+answered-by: holgo99
 ---
 
 # FM-055 — the receipts need the Owner's definitions of a day, a sitting and repositories counted together

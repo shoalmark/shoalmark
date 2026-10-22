@@ -68,7 +68,7 @@ Rows 2 and 3 are the fix; rows 1, 4, 6 and 9 do not move; row 7 names a differen
 
 ## The PortDive replay — read-only, no fetch in PortDive
 
-A `git clone --shared --no-checkout` of `/Users/hf./Documents/portdive/worktrees/principal-2` in scratch; its `origin`
+A `git clone --shared --no-checkout` of `~/Documents/portdive/worktrees/principal-2` in scratch; its `origin`
 repointed to a scratch bare repository whose `objects/info/alternates` names PortDive's object store, its refs set with
 `update-ref` from the objects — no push, no fetch from PortDive. `gpg.ssh.allowedSignersFile` set as PortDive's clone sets it
 (`docs/work-tracker/allowed_signers`; the tool reads the default branch's copy). The tools: shoalmark's own `shoalmark.py`

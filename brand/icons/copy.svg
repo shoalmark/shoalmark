@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">
+<!-- the front sheet, whole -->
+<rect x="0" y="4" width="8" height="1"/>
+<rect x="0" y="5" width="1" height="6"/>
+<rect x="7" y="5" width="1" height="6"/>
+<rect x="0" y="11" width="8" height="1"/>
+<!-- the sheet behind it, where it shows, a unit clear of the front -->
+<rect x="4" y="0" width="8" height="1"/>
+<rect x="4" y="1" width="1" height="2"/>
+<rect x="11" y="1" width="1" height="7"/>
+<rect x="9" y="7" width="2" height="1"/>
+</svg>

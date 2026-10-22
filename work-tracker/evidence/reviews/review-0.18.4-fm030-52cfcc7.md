@@ -145,7 +145,7 @@ commit `11241d9` and `git switch answer/ap-424`. Fix: where no act is owed here 
 **R4 · P3 · confidence high — the copied `--done` line is double-quoted, so the shell expands the *where*.** The dialog
 wraps the text in `"…"` and turns only `"` into `'`, so a backtick or a `$` survives. I pasted
 ``"the report in `docs/x.md`, cost $HOME"`` into zsh and into bash. Both ran `docs/x.md` as a command and printed
-`the report in , cost /Users/hf.`, which `--done` would sign into `done:`. The answer dialog has quoted this way since
+`the report in , cost ~`, which `--done` would sign into `done:`. The answer dialog has quoted this way since
 before this build. Fix: single-quote the argument in both dialogs (`'…'`, with a `'` written as `'\''`).
 
 **R5 · P3 · confidence high — how the gate reads `T24:00` depends on the interpreter.**

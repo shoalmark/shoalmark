@@ -24,7 +24,7 @@ On Subversion it reads its history from the server through svn, so offline its c
 suite, but it has not been used in real work and comes without a guarantee: say so in your report.
 SVN supplies no cryptographic commit signature. A server-authenticated revision author is distinct from a local
 working-copy label; unavailable author proof cannot be replaced by that label. Signed answer-branch acts, Git worktree
-identity, commit-trailer reports, the merge ratio and the forge queue require Git. `--session new` can generate an id
+identity, commit-trailer reports and the forge queue require Git. `--session new` can generate an id
 on SVN, without proving uniqueness against a commit-trailer registry.
 
 An unpacked release archive can supply the tool without a Git source checkout: keep `RELEASE` and every required
@@ -41,9 +41,9 @@ platform evidence remain necessary for the trial.
 steps: (a) Where does work item 37 stand? (b) What is the next step, and whose? (c) What is waiting for the Owner right
 now? (d) What is blocked, and by what? (e) How can you tell that item 12 is done?
 
-**2. Check what you run.** Fetch the repository at the tag `v0.19.4` into a folder **outside** your working copy. The
+**2. Check what you run.** Fetch the repository at the tag `v0.20.0` into a folder **outside** your working copy. The
 file `shoalmark.py` has — with `\n` line endings — the SHA-256
-`cce2974ae5293d83f0c6b477fd2dc8dcf3f3e36d9bdf726aae71abad65d9a7eb`. It is one file; read it before you run it.
+`06b9ca6960782f845cf87d37ff98ad9d6aeaeefda55ff406169cd0491139b6c5`. It is one file; read it before you run it.
 
 **3. Set up.** In an empty throwaway folder `probe/` (`python` on Windows, otherwise `python3`):
 

@@ -5,7 +5,7 @@
 ## 1. Put the tool in the repository
 
 ```
-git clone --branch v0.19.4 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
+git clone --branch v0.20.0 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
 cd <your repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
@@ -38,6 +38,12 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 - **Subversion:** the TortoiseSVN hook properties and `svn:ignore` for the board. Subversion's command line runs no
   client-side hook, so the contract tells agents to run the tool before `svn commit`. `--check` after the commit is what
   judges it.
+
+A hook's run and the board's `--html-only` run are bounded to 60 s by default; `SHOALMARK_BOARD_SECONDS` sets the bound.
+Explicit person commands such as `--answer` and `--check` are unbounded, through the tree's tool or the hooks' copy.
+The copy keeps all its existing restrictions. The timeout reads parsed arguments: hook modes (`--session-check`,
+`--session-trailer`, `--commit-msg`, `--print-written`, `--tsvn-hook`, `--html-only`) stay bounded even in mixed commands.
+Plain, unknown or malformed copy invocations are ambiguous and stay bounded, including when typed by hand.
 
 ## 4. Say who answers — and who the agents are
 
@@ -72,9 +78,17 @@ what comes first. Agents read both before every judgement. Leave everything else
 
 ## 6. Open the board
 
-`docs/work-tracker/index.html` — it is git-ignored and rebuilt on every commit, and on every checkout and merge with git;
-on Subversion, on a commit through TortoiseSVN or when the tool runs. Its first line is what needs you. Set `standup = "09:00"` in `shoalmark.toml` and run `--standup calendar.ics` for the invite: see
-[The standup](standup.md).
+`docs/work-tracker/index.html` — it is git-ignored and rebuilt when the tool runs, on a commit that changes a work item, and
+right after each of your answers and acts. On git, `post-checkout`, `post-merge` and `post-rewrite` also rebuild it after a
+checkout or switch, a merge (including a fast-forward pull), or a rebase, from the hooks' copy as `--html-only`. Run
+`--install-hook` again to restore hooks removed by v0.20.0. The board says what it read, and when. Its first line is what
+needs you. On Subversion it rebuilds on a commit through TortoiseSVN or when the tool runs; after `svn update`, run
+`--html-only`.
+
+**Limit:** git has no hook after a bare `git fetch`. An answer branch arriving by fetch alone leaves what the board says
+is *on its way* as it was, until a checkout, a merge or `--html-only`.
+
+Set `standup = "09:00"` in `shoalmark.toml` for the time of your one sitting: see [The standup](standup.md).
 
 That is all. The agents file the work; you answer what only you can.
 

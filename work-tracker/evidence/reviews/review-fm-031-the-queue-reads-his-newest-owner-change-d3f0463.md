@@ -107,7 +107,7 @@ The sketch — `rev-list`'s exit read, a wait where it is not 0 — moves no row
 
 ## The PortDive replay — read-only, no fetch in PortDive
 
-As reviewer-47's: `git clone --shared --no-checkout` of `/Users/hf./Documents/portdive/worktrees/principal-2` into scratch,
+As reviewer-47's: `git clone --shared --no-checkout` of `~/Documents/portdive/worktrees/principal-2` into scratch,
 its `origin` repointed to a scratch bare repository whose `objects/info/alternates` names PortDive's object store, its refs
 set with `update-ref` (the remote-tracking refs the clone brought deleted first), checked out detached at the merge's first
 parent, `gpg.ssh.allowedSignersFile` = `docs/work-tracker/allowed_signers`; the tools run with `--root <clone> --queue`

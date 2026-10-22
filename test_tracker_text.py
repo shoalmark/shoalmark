@@ -417,10 +417,10 @@ def converted_checks(fm, base, check):
         check("Git " + filt + " reads retain the filtered object store", packs == {f.name: f.read_bytes() for f in (root / ".git/objects/pack").iterdir()})
 
 
-def run_checks(fm, group="all"):
+def run_checks(fm, group="all", *, results=None):
     if group not in ("all", "physical", "guard", "attribution", "converted"):
         raise ValueError("unknown committed-text control group: " + group)
-    results = []
+    results = [] if results is None else results
     def check(label, ok, detail=""):
         results.append(("FM-046 · " + label, bool(ok), detail))
     saved = fm.ROOT

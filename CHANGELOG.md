@@ -2,6 +2,42 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.20.0 — 2026-10-21
+
+**Upgrade, run `--install-hook` again on your default branch in every committing clone, remove retired configuration and schedules as below, then run `--check` once.** Subversion runs without git, and the release archive supplies the tool without a Git source checkout.
+
+### Added
+- The release supplies `shoalmark-0.20.0.zip` and its `.sha256`. The archive contains the tool, its probe files and a `RELEASE` manifest. An unpacked archive can be the source of `--vendor`: its complete inventory and exact bytes are checked before copying. The manifest proves completeness, not origin; verify the archive's SHA-256 against a pin obtained from a source you trust.
+- `--standup DIR [DIR …]` reads one agenda across the repositories you name, grouping their asks and owed acts. It writes nothing and runs no repository's tool, deriver, hooks, forge queue or configured program. A folder it cannot read is named and counted in nothing; the view names the checks it does not make.
+- The board's box of what waits for the Owner offers a stand-up prompt and a close-out prompt to copy. Each is filled with the repository's checked values.
+
+### Changed
+- Subversion working copies run without git installed, using svn's command-line tools for history. The tool says once what the local run cannot verify: commit signatures and server-authenticated authors. SVN supplies no cryptographic commit signature; without a server's login there is no verified author. Protected Subversion acceptance remains held.
+- The board says what it read and when it was built, with the command to rebuild it. After a checkout, pull or update, run `--html-only`; committed answers and acts still rebuild it immediately.
+- `INDEX.md` has no generated date or tracker counts in its header, reducing merge conflicts. Rows and deterministic content checks stay; an older dated, counted header alone does not fail `--check`. Adjacent tracker rows can still conflict.
+- Under each STALE line, `--check` shows the difference between the file and what the tool would write: at most 40 lines, with invisible characters marked.
+
+### Upgrade notes
+- **R15 — the filing freeze.** If `shoalmark.toml` still sets `freeze_at`, the next `--new` or `--check` says:
+  > shoalmark.toml: `freeze_at` is not read — R15, the Owner's ruling of 12 October, removed the filing freeze, so every filing is written; looking before filing (`--new` prints the closest trackers first, `--related`) and the ranking (`rank:`, `--triage`, `--next`) stay. Delete the line
+
+  Delete that key and its comment; `freeze_tag` is retired too and is named if present. Neither key is read or refused, whatever its value, and a leftover alone does not fail `--check`. Looking before filing and the ranking replace the freeze.
+- **R13 — the counting view.** An existing `--ratio` call now exits 2 and says:
+  > --ratio: R13, the Owner's ruling of 12 October, removed it — no counting view replaces it until the receipts ship
+
+  Remove that call and its `--since` and `--until` arguments; those flags are each named too. The `[ratio]` table's `records` stays read when a tracker moves to `Shipped`. Its `exclude` stays as written but has no counting reader, and `--check` names it when set.
+- **R11 — global board-refresh hooks.** Earlier installations have `post-checkout`, `post-merge` and sometimes `post-rewrite` hooks. Run `--install-hook` again: it removes each unchanged hook shoalmark wrote, naming it. For `post-checkout` the tool's line is (with `{path}` the resolved hook path and `{CMD}` the tool invocation):
+  > removed {path} — an earlier shoalmark wrote it to rebuild the board after every checkout; no hook does now: `{CMD} --html-only` rebuilds it, and each act rebuilds it right after itself
+
+  The merge and rewrite hooks get the same line with their event. A changed hook or a person's own is kept and named; remove the old refresh from a changed hook yourself where wanted. The explicit refresh `--html-only`, the commit's tracker refresh and each act's immediate rebuild stay.
+- **R9 — invitation and notification channels.** `--invite`, `--notify` and `--standup FILE.ics` are removed, each named with exit 2. For an existing `--notify` call the next run says:
+  > --notify: removed by R9 — no notice is posted and nothing is remembered; `--standup` and `--owner` list each act owed with its time, and so does the board
+
+  The next `--standup` or `--owner` that sees their old files prints this heading, then names each leftover and what to do:
+  > LEFT BY INVITES AND NOTIFICATIONS, which R9 removed — `--standup` and `--owner` list each act owed with its time, and so does the board. The tool reads, runs and removes none of these; each is yours to remove:
+
+  Remove the old calendar files and imported events, `notified.json`, the cron entry and its log, or the launchd agent and its log as applicable. The tool never removes them; calendar files outside the repository and schedules with other names are not found automatically. Owed acts, `due:`, `done:` and their history stay. Use `--standup`, `--owner` or the board in place of those channels.
+
 ## 0.19.4 — 2026-10-13
 
 **0.19.4 is a security release: upgrade, run `--install-hook` again on your default branch, then `--check` once.** Committed tracker text has one line-ending normalisation, and the configured Owner's commits are judged under the Owner's signing rules.

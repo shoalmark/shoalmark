@@ -31,7 +31,7 @@ can be rewritten.
 | P5 | It is cheap | a full run over 501 trackers, deriver included, in ≤ 2× the origin's 1.3 s | > 3 s |
 | P6 | It is small | the core grows by ≤ 120 lines; the deriver is ≤ the 831 lines it replaces | the core grows past 200 |
 | P7 | The schema gate still bites | with `_keys` merged, `targt:` is still refused and `target:` named as the near miss; a bad `version:` shape is refused | `_keys` weakens a core check |
-| P8 | A repository without a deriver pays nothing | the 51 existing checks stay green untouched; msr-lager's output is byte-identical | any existing check must change |
+| P8 | A repository without a deriver pays nothing | the 51 existing checks stay green untouched; [client 2]'s output is byte-identical | any existing check must change |
 
 **My forecast, before the spike:** P1 0.80 · P2 0.85 · P3 0.95 · P4 0.60 · P5 0.75 · P6 0.80 · P7 0.85 · P8 0.90 ·
 all eight 0.40. P4 is where I expect trouble: a release is two things in the origin — a version *and* a release
@@ -54,7 +54,7 @@ written to — its working tree shows 0 changed files after every run.
 | P5 | 0.75 | **proven** | 1.40–1.51 s against the origin's 1.23–1.77 s on the same machine, same corpus — about 1.15× |
 | P6 | 0.80 | **proven** | the core grew **1,700 → 1,764 lines (+64)**; the deriver is 128 lines where the origin spends 831 lines of functions on the same axis |
 | P7 | 0.85 | **proven** | `targt:` → *did you mean `target:`?*; a bare `0.17.x` refused with the key's meaning and the list of release targets; a deriver that redefines a core key is itself refused |
-| P8 | 0.90 | **proven** | 51 existing checks green, untouched, on Python 3.14 and 3.9; msr-lager's `INDEX.md` byte-identical under the vendored spike. Honest footnote: its `index.html` is *not* byte-identical — every row gains an empty `{}` and the page a `COLS=[]`; it renders the same |
+| P8 | 0.90 | **proven** | 51 existing checks green, untouched, on Python 3.14 and 3.9; [client 2]'s `INDEX.md` byte-identical under the vendored spike. Honest footnote: its `index.html` is *not* byte-identical — every row gains an empty `{}` and the page a `COLS=[]`; it renders the same |
 | — | all eight: 0.40 | **all eight held** | the forecast was underconfident, most of all on P4 (0.60): a release string sorts as a version without the core knowing what a release is |
 
 **Found by the spike, not foreseen — and that is the part worth the R&D:**

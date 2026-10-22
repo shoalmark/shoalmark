@@ -5,7 +5,7 @@
 ## 1. Das Werkzeug ins Repository legen
 
 ```
-git clone --branch v0.19.4 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
+git clone --branch v0.20.0 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
 cd <Ihr Repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
@@ -39,6 +39,13 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 - **Subversion:** die TortoiseSVN-Hook-Eigenschaften und `svn:ignore` für die Tafel. Die Subversion-Kommandozeile
   kennt keinen Client-Hook — der Vertrag sagt den Agenten, das Werkzeug vor jedem `svn commit` laufen zu lassen.
   `--check` nach dem Commit beurteilt ihn.
+
+Ein Hook-Lauf und der Tafellauf mit `--html-only` sind standardmäßig auf 60 s begrenzt; `SHOALMARK_BOARD_SECONDS` setzt die Grenze.
+Ausdrückliche Befehle einer Person wie `--answer` und `--check` sind unbegrenzt, auch mit der Hook-Kopie.
+Alle bisherigen Beschränkungen der Kopie bleiben bestehen. Für die Laufzeit liest das Werkzeug die geparsten Argumente:
+Hook-Modi (`--session-check`, `--session-trailer`, `--commit-msg`, `--print-written`, `--tsvn-hook`, `--html-only`)
+bleiben auch in gemischten Befehlen begrenzt. Ein einfacher, unbekannter oder fehlerhafter Aufruf der Kopie ist mehrdeutig
+und bleibt begrenzt, auch von Hand.
 
 ## 4. Sagen, wer antwortet — und wer die Agenten sind
 
@@ -75,8 +82,18 @@ Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere 
 
 ## 6. Die Tafel öffnen
 
-`docs/work-tracker/index.html` — sie ist git-ignoriert und wird bei jedem Commit neu gebaut, mit git auch bei jedem Checkout und
-Merge; unter Subversion bei einem Commit über TortoiseSVN oder wenn das Werkzeug läuft. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml`, und `--standup kalender.ics` schreibt die Einladung.
+`docs/work-tracker/index.html` — sie ist git-ignoriert und wird neu gebaut, wenn das Werkzeug läuft, bei einem Commit, der ein
+Arbeitspaket ändert, und gleich nach jeder Ihrer Antworten und Handlungen. Unter git bauen `post-checkout`, `post-merge` und
+`post-rewrite` sie auch nach einem Checkout oder Wechsel, einem Merge (einschließlich eines Pulls mit Fast-Forward) oder einem
+Rebase neu: aus der Kopie der Hooks, mit `--html-only`. Führen Sie `--install-hook` erneut aus, um die von v0.20.0 entfernten
+Hooks wieder einzurichten. Die Tafel sagt, was sie gelesen hat und wann. Ihre erste Zeile zeigt, was auf Sie wartet.
+Unter Subversion wird sie bei einem Commit über TortoiseSVN oder beim Lauf des Werkzeugs neu gebaut; nach `svn update`
+führen Sie `--html-only` aus.
+
+**Grenze:** git hat keinen Hook nach einem bloßen `git fetch`. Kommt ein Antwort-Branch allein durch Fetch an, bleibt die
+Anzeige *unterwegs* auf der Tafel wie zuvor, bis zu einem Checkout, einem Merge oder `--html-only`.
+
+`standup = "09:00"` in `shoalmark.toml` setzt die Uhrzeit Ihres Standups.
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

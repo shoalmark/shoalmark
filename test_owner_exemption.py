@@ -154,6 +154,7 @@ class OwnerExemption(unittest.TestCase):
                             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_freeze_entry_point(self):
+        """R15 removed the filing freeze: with `freeze_at` set and eight trackers open, every author files any tag, and the key is named."""
         for freeze in (0, 8):
             for author in (OWNER, NOREPLY, SEAT):
                 for tag in ("process", "bug"):
@@ -162,8 +163,8 @@ class OwnerExemption(unittest.TestCase):
                         p = root / "shoalmark.toml"
                         write_text(p, p.read_text(encoding="utf-8").replace("freeze_at = 8", f"freeze_at = {freeze}"), encoding="utf-8")
                         r = self.tool(root, "--new", "AP", "Synthetic filing", "--tags", tag, author=author)
-                        expected = 4 if freeze == 8 and author == SEAT and tag == "process" else 0
-                        self.assertEqual(r.returncode, expected, r.stdout + r.stderr)
+                        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                        self.assertIn("`freeze_at` is not read — R15", r.stderr)
 
     def test_owner_signatures_in_ordinary_history(self):
         for author in (OWNER, NOREPLY):

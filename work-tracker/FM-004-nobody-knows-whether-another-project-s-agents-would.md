@@ -7,20 +7,57 @@ next: build
 triaged: 2026-10-13
 tier: P1
 rank: 2
-hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
-ask: "The carried archive fails 11 of its checks on main: #173 prints a Subversion notice before each refusal those checks pin to one line. Which way do you take it?"
+ask: "Do you rule the probe's road to its first outside run as FM-004's *What is true now* entry of 21 October sets it out: one feedback channel through the landing's form, the notes' pin following v0.20.1's tag, and four clean local runs before the switch?"
 ask-kind: ruling
-ask-since: 2026-10-15
-ask-options: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do | a: the 11 checks accept the notice line before the refusal line, a test change only | c: --vendor prints no Subversion notice | hold: the carry waits, and FM-004 leaves v0.20.0"
-ask-proposal: "b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do"
-answer: "accepted - b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do"
-answered: 2026-10-16
+ask-since: 2026-10-21
+ask-proposal: "Accept all three as that entry sets them out; the clean-run wording may be changed in the answer."
+answer: "accepted - Accept all three as that entry sets them out; the clean-run wording may be changed in the answer. The feedback channel must also be accessible from agent side."
+answered: 2026-10-21
 answered-by: holgo99
+hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
 ---
 
 # FM-004 — Nobody knows whether another project's agents would recommend adopting the tool
 
 ## What is true now
+
+**2026-10-21 — three questions on the probe's road to its first outside run, asked as one (the ask above).** Each
+part is the seat's proposal, and the answer may change any of them.
+
+1. **Feedback has one channel, and no mail address for now.** The channel is the landing's form,
+   [`what-your-agent-found.yml`](https://github.com/shoalmark/shoalmark/blob/a9cfbb9ec3cf94bca304fed43333f5785dfab8df/.github/ISSUE_TEMPLATE/what-your-agent-found.yml),
+   on `fm/006-b1-landing`.
+   - `https://shoalmark.tools/feedback` is the one feedback address that the notes and the landing name. It is a small
+     forwarding page in the site's own source, leading to the form.
+   - The agent's report ends with a link that opens the form with its one-line result already in the form's `found`
+     field. The person reads it, edits it and submits it: the agent never posts. The link stays under 2,000
+     characters, and the notes tell the agent to leave out names, paths, code and credentials.
+   - The notes' mail line, its placeholder and the promises that went with it come out, and no second form is added.
+2. **The notes' pin follows the release's tag.** The archive names the commit it is built from, so that commit cannot
+   hold the archive's hash.
+   - v0.20.1's tag build deploys the site as it stands, with the probe still off.
+   - Once the release is published, one commit on main moves the notes' pin to v0.20.1. The hash comes from the
+     release's published `.sha256`, checked against an offline rebuild by
+     [`scripts/build_release_archive.py`](../scripts/build_release_archive.py).
+   - The suite's pin test learns the same order.
+3. **The clean runs before the switch,** as an exception to the fixed rule in *Part B* (below). The proposed wording:
+
+   > The fixed rule is met by four consecutive clean local runs in invented test projects: Git, and Subversion
+   > without git, each once with Claude Code and once with Codex, from the probe build's button to the feedback file;
+   > any failure restarts the four. No outside run happens before the button and the probe are live on the site.
+
+   **The order:**
+   1. v0.20.1's tag;
+   2. the release, published;
+   3. the commit that moves the pin, lifts the tape and turns the probe on;
+   4. the four runs, from that commit's probe build;
+   5. the Owner's run of [`docs.yml`](../.github/workflows/docs.yml), which puts the button and the probe live.
+
+   The site stays as it is until that run.
+
+**2026-10-18 — the release archive ships in v0.20.0, and FM-004 stays open.** Its answered ask is cleared, signed
+`25dc9db`. Its *Done when* names the three outside reports, which v0.20.1's outside run is to give; the archive is not
+that.
 
 **2026-10-15 — how the carry meets #173's notice line is the Owner's to rule (the ask above).** On this branch,
 `258cc3c` follows the carry as option (b): `--vendor`'s four refusals fold the notice into their one line, as
@@ -107,10 +144,16 @@ the limits are said: three runs, one model family, an invented project.
 **relation** — accepted with a change
 **signed** — fcff753 · G
 
+**2026-10-16** · The carried archive fails 11 of its checks on main: #173 prints a Subversion notice before each refusal those checks pin to one line. Which way do you take it?
+**answered** — accepted - b: 258cc3c — --vendor's refusals fold the notice into their one line, as --tsvn-hook's do · holgo99
+**relation** — accepted the proposal
+**signed** — 25dc9db · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-18 | The answered ask cleared (`25dc9db` · G). The archive (#184, `1148114`) ships in v0.20.0; FM-004 stays open for its three outside reports. |
 | 2026-10-15 | Ask filed: how the carried archive meets #173's Subversion notice line; option (b), `258cc3c`, on this branch after the carry. |
 | 2026-10-15 19:50 CEST | FM-004 carried as answered: merge `9bed976` (integration `284a4e8`, verdict `eabee22`) and `9d735ab` (`archive_source()` from the prepared fix of 13 October, recorded privately). Core 321, release.yml 33, the other `--vendor` blocks, `--check` and reproducible builds pass on 3.15 and 3.9.6; 11 of 35 archive checks fail on #173's Subversion notice line, a finding for the Owner. |
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |

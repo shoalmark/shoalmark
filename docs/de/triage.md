@@ -203,8 +203,8 @@ nach jeder Ablehnung aus.
 
 ## Was eine Änderung nicht bewirkt
 
-- **Sie ändert keine Prüfung.** Die Ablehnungen des Gates, die Art, wie `--queue` einen Pull Request liest, der
-  Aufnahmestopp für neue Arbeitspakete und die Rechte der Sitze stehen im Code des Werkzeugs und in `shoalmark.toml`.
+- **Sie ändert keine Prüfung.** Die Ablehnungen des Gates, die Art, wie `--queue` einen Pull Request liest, und die
+  Rechte der Sitze stehen im Code des Werkzeugs und in `shoalmark.toml`.
   Zeile 3 verlangt die Belegdatei eines Reviews, und `--queue` verlangt ein Urteil auf dem Kopf, weil sein Code es so
   vorsieht. Streichen Sie Zeile 3, bleibt das so. *Das Werkzeug:* Keine Prüfung liest, was Ihre Zeilen sagen; die
   Prüfung des Einwands liest ihre Nummern (siehe oben).

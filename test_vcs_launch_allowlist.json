@@ -2,6 +2,5 @@
   "board_after_act|<dynamic>|subprocess.run|3683c9f05d7d9823a5f5478b31a18bfbca24660412d553beec0ef7a08642d1a9",
   "forge_closed|<dynamic>|subprocess.run|701c1899a65e9c89c0c553320a52d9ee495ca0221812fcaf50b72841e5ca599c",
   "forge_prs|<dynamic>|subprocess.run|976adc4d440c186981460607f043c139246775e109bb4c8a1b5e18bae63538dd",
-  "post_notice|<dynamic>|subprocess.run|3ae315fd35cdd26a5acc6a4b5e17b8ab3eff15f8f33ef4a20979961cb17d835e",
   "run_deriver|<dynamic>|subprocess.run|bda09326005f1b7c67d384dd906761f5d971595e3108483c5d9b3e7d49a248a0"
 ]

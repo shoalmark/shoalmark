@@ -4,18 +4,18 @@ status: In Progress
 considered: FM-008, FM-033, FM-007, FM-019, FM-022, FM-014
 tags: bug
 triaged: 2026-09-25
-next: owner
+next: wait
 tier: P1
+done: "2026-10-19T02:39:25+02:00 · recorded privately"
 hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through"
-ask: "Have you chosen and set up R24's minimum privately, and has the independent Auditor verified it?"
-ask-kind: action
-ask-since: 2026-10-12
-ask-proposal: "Confirm completion and independent verification before the tag, without naming the private choice"
 ---
 
 # FM-037 — a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through
 
 ## What is true now
+
+**2026-10-19 — R24's minimum for v0.20.0 is in place and independently verified,** as the Owner's signed answer of
+19 October (`b91ebd1`) confirms. The broader boundary work stays here, after v0.20.0.
 
 **2026-10-12 — R24's bounded release condition.** The Owner's signed R24 requires one privately chosen credential-control minimum and private independent Auditor verification before v0.20.0. Completion and independent verification have not been confirmed here; the ask requests only their confirmation, with the choice kept private. **Confidence 99%:** signed R24 explicitly separates this minimum from broader boundary work after the release. This question sits with the Owner-authority protection already tracked here; FM-007's existing answered act remains intact. Only a sanitized completion reference belongs in public records. Existing signed-answer verification, protected Owner sections/policy, field rights and Shipped remain required.
 
@@ -67,10 +67,22 @@ The seven clauses of the Owner's word above, as written, each with its synthetic
 **Tier: the gate — critical under path line 3; the Owner's cold session reviews it; the Auditor seat verifies after, against its plan
 sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as enforced by the tool, with its tier-0 limit stated.
 
+## Asks
+
+**2026-10-19** · Have you chosen and set up R24's minimum privately, and has the independent Auditor verified it?
+**answered** — accepted - Confirm completion and independent verification before the tag, without naming the private choice · holgo99
+**relation** — accepted the proposal
+**signed** — b91ebd1 · G
+
+## Acts
+
+**2026-10-19** · done — recorded privately · Confirm completion and independent verification before the tag, without naming the private choice · holgo99
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-19 | The Owner's action ask answered and cleared (`b91ebd1` · G): R24's minimum for v0.20.0 is in place and independently verified. FM-037 stays open for the broader boundary work. |
 | 2026-09-26 | The cold re-review's R1 and R2 on `b0d863e` (`b4fbc98`, READY WITH FINDINGS, both P3), fixed forward before the 0.18.4 cut. R1: `--answer` asks `verified_as` — the gate's test, against the default branch's signers file — before it pushes; it read the clone's own file, so mid key rotation it said *pushed* and the gate then refused the answer, telling him to sign a commit he had signed. Neither says *sign it* now to an SSH-signed commit whose key that file does not hold for the identity; each names where the key must land first. R2: where the signers file sits in a checkout and the default branch does not carry it, nothing verifies against it until its first version lands there — a checkout on a branch that writes one let `--queue` read another pull request's change, signed with that branch's key, as clean. A suite case each. |
 | 2026-09-25 | The Auditor seat's pass on `0be4f20`: NOT READY on AU-19 (P2 — a branch that appends its own key under the Owner's email to the signers file vouched for itself where the clone verifies against the checkout's own file) and AU-20 (P3 — the history test refused the root's 0.1.0 scaffold). Both fixed in one commit: signatures verified against the default branch's signers file, the file kept like the two sections, any known scaffold accepted. |
 | 2026-09-25 | Built on its branch for 0.18.4, one commit per clause: the check and what is no change (1, 3), the refusal's way through and its limit (2, 6), the commit-msg hook, `--queue`'s word (4), the author-only fallback and Subversion out of scope (5), the real history (7); main merged after PR 79. R7's reading stated in the design commit and README §5. `next: review` — the Owner's cold session. |

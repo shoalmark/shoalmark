@@ -7,12 +7,11 @@ template: landing.html
 
 # shoalmark
 
-*A Pricke on the Wadden flats keeps the fleet in the channel.*
+*A workbench for your agents. Your decisions on record.*
 
 ## The agents keep the work; the person keeps the word.
 
-Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work lives in your
-repository, no done gets through without a commit behind it, and what waits for your word comes first.
+See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.
 
 **[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**
 
@@ -20,7 +19,9 @@ repository, no done gets through without a commit behind it, and what waits for 
 sentence per question, once a day, and make their answer one command.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
-questions and puts them to you once a day.
+questions for a sitting at the time you choose.
+
+[Why shoalmark?](why-shoalmark.md)
 
 **Your agents move on your word — and only your signed word counts.** In the record, an answer counts only as a commit
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as
@@ -28,6 +29,12 @@ signed by a key you trust, and the gate refuses an unsigned one: on git, once yo
 click, a merge or a line in chat is not an answer. How strong that signature is, you choose — [four tiers](signing.md),
 from a key anything on your account can use to one that needs your touch — and every signature names the key that
 made it.
+
+## Why not my issue tracker?
+
+Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work record lives in the repository they work in, and your answers are your own commits there.
+
+If your current tracker already handles the handovers and decisions you need, that may be enough. shoalmark brings its own tracker; adopting it means deciding which record is the one that counts.
 
 ## Measured, not promised
 
@@ -63,21 +70,21 @@ What shoalmark prints for it, every day:
 
 ## What a day costs you
 
-- **One sitting, fifteen minutes**, at the time you choose. The invite comes as a calendar file.
+- **One sitting, fifteen minutes**, at the time you choose.
 - **One command per answer:** `--answer AP-007 accept`. It writes the answer, signs it with your key and pushes it.
 - **The rest comes to you:** every session's last message ends with what waits for you. You open nothing.
 
 ## What it is not
 
 shoalmark needs no server and no account, and its ids are ones you can say out loud, like FM-012. One Markdown file per
-work item, one Python file, and a gate on every commit that refuses what contradicts itself. Runs with git on Windows,
-macOS and Linux. Licence: Apache-2.0 or MIT.
+work item, one Python file, and checks you can run locally and in your project's CI. Runs with git on Windows, macOS
+and Linux. Licence: Apache-2.0 or MIT.
 
 **In this beta:**
 
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
-- Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
+- *Not proof that work is right.* In Git or Subversion changes being checked, a move to `Shipped` must name in its ship log a commit already in that change's history that changes something outside the records (on Subversion, a revision). This evidence rule does not cover `Closed`. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing `--check` on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.
 - Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
 
 ## Start here

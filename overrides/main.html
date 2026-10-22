@@ -35,9 +35,11 @@
   {% if preview_description -%}
   <meta property="og:description" content="{{ preview_description | e }}">
   {% endif -%}
-  <meta property="og:image" content="https://shoalmark.github.io/shoalmark/assets/preview.png">
+  <meta property="og:image" content="{{ config.site_url }}assets/preview.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="A night chart of the German Bight, with defects from shoalmark's own tracker lying on the flats as wrecks.">
   <meta name="twitter:card" content="summary_large_image">
+  {# The theme supplies the ICO fallback; keep the adaptive SVG for supporting browsers. #}
+  <link rel="icon" href="{{ 'assets/favicon.svg' | url }}" type="image/svg+xml" sizes="any">
 {% endblock %}
