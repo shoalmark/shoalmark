@@ -3896,7 +3896,7 @@ button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabl
 #p>.sec>.sh,#p>.sec>summary>.sh{background:var(--secbg);margin:0 -2ch 6px;padding:4px 2ch}#p>details.sec:not([open])>summary>.sh{margin-bottom:0}
 #p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}
 #p>details.sec>summary:hover>.sh{background:var(--raise)}#p>.sec.wait>.sh{background:var(--warnbg)}
-.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}
+.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}#p .sh b{font-weight:600}
 .sh .c{flex:1 1 auto;min-width:0;font-weight:400;color:var(--dim)}
 /* the drawn markers: drawn, never read */
 h2.sh:before{content:"##";content:"##" / "";display:inline-block;min-width:2ch;color:var(--mute);font-weight:400}
@@ -4922,7 +4922,7 @@ def day_html(labels, prompts=None):
         reasons = [e("day.refused", e("day.value." + k), " " + c(shown(v)) if v else "", e("day.refused." + why, DAY_CAP)) for k, v, why in failed]
         act = (f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day." + kind + ".button")}</button>'
                if text else "".join(f'<span class="why hot">{r}</span>' for r in reasons))
-        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span><span class="c">· {e("day." + kind + ".row")}</span>{act}</template>')
+        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· {e("day." + kind + ".row")}</span>{act}</template>')
         body = (f'<p class="said" aria-live="polite"></p><p class="dp">{e("day.paste")}</p><pre class="cmd">{html_escape(text)}</pre>'
                 f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day.copy")}</button></p>' if text else
                 "".join(f'<p class="dp hot">{r}</p>' for r in reasons))
@@ -5036,8 +5036,9 @@ def read_at_html(read, labels):
     else:
         line = esc(say("read.none", read.get("folder", ""), when))
         about = [say("read.about.none", full), say("read.none.why")]
-    facts = [line, esc(say("read.self"))]
-    return ('<p id="ra" class="m"><span>' + " · ".join(f'<span class="fact">{f}</span>' for f in facts) + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
+    facts = [line, esc(say("read.self"))]                 # each dot stays with the fact before it, so a line never starts with one or holds one alone
+    return ('<p id="ra" class="m"><span>' + " ".join(f'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>' for i, f in enumerate(facts))
+            + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
             f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{esc(say("read.copy"))}</button>'
             '<span id="rs" class="said" aria-live="polite"></span></p>\n'
             f'<details class="about"><summary>{esc(say("read.about"))}</summary><p class="help">{" · ".join(esc(f) for f in about if f)}</p></details>')

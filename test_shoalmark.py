@@ -622,6 +622,7 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "reviews": "FM-053, BF-61, BF-62, BF-64 · the reviews section at 1024 and 390 px, rendered — what shows, what folds and its count, the ids and their links",
     "toolbar": "FM-053, BF-52, BF-53 · the work table's toolbar at 1024 and 390 px, rendered — its radio groups, and the box in the story view",
     "phone": "FM-053, BF-55 · the page at 390, 360, 320 and 640 px, rendered — each work row stacked, no sideways scroll",
+    "riders": "FM-053, BF-29, BF-56, BF-57 · the read-at line, the day's rows and a heading's bold at 390, 360 and 320 px, rendered",
 }
 
 
@@ -6275,6 +6276,61 @@ if _browser("phone"):
                   before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
     except _ChromeFailed as e_:
         _hung("phone", e_)
+        fm.configure(HERE)
+
+# --- three riders: the read-at line keeps each dot with the fact before it, so no line of it starts with a dot or holds one alone; the day's
+#     stand-up and close-out rows keep a space before their dot, as every other heading; and a count set in bold in a heading of the box stands at
+#     the heading's 600, never bolder. Measured in Chrome at 390, 360 and 320 px, on a branch whose name breaks the line; the line's dot joined
+#     between the facts again, and the bold left to the browser, must each fail it -------------------------------------------------------------
+_RD_PROBE = ('<script>addEventListener("load",()=>{const s=document.querySelector("#ra>span"),ch=[],w=document.createTreeWalker(s,NodeFilter.SHOW_TEXT);'
+             'for(let n;n=w.nextNode();)for(let i=0;i<n.data.length;i++)ch.push([n,i]);const top=k=>{const r=document.createRange();r.setStart(ch[k][0],ch[k][1]);'
+             'r.setEnd(ch[k][0],ch[k][1]+1);return Math.round(r.getClientRects()[0].top)},d=ch.findIndex(([n,i])=>n.data[i]=="·");let p=d-1;'
+             'while(p>=0&&/\\s/.test(ch[p][0].data[ch[p][1]]))p--;const rows=[...document.querySelectorAll("#p h3.dr")].map(h=>h.innerText.replace(/\\s+/g," ").slice(0,20)),'
+             'bold=[...document.querySelectorAll("#p .sh b")].map(b=>[b.textContent,getComputedStyle(b).fontWeight]);'
+             'parent.postMessage(JSON.stringify({w:innerWidth,dot:d<0?null:top(d),before:p<0?null:top(p),rows,bold}),"*")})</script>')
+_RD_DOT = ('" ".join(f\'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>\' for i, f in enumerate(facts))',
+           '" · ".join(f\'<span class="fact">{f}</span>\' for f in facts)')      # the dot with its fact, and between the facts as it was
+_RD_BOLD = "#p .sh b{font-weight:600}"
+
+
+def _rider_faults(rep, width):
+    """What is wrong in one frame — [] where the read-at line's dot is on the line of the character before it, the stand-up and close-out rows read
+    *stand-up · * and *close-out · *, and every count set in bold in a heading of the box is at 600."""
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    out_ = [] if rep["dot"] is not None and rep["dot"] == rep["before"] else [f"the dot at {rep['dot']}, the character before it at {rep['before']}"]
+    out_ += [] if len(rep["rows"]) == 2 and rep["rows"][0].startswith("stand-up · ") and rep["rows"][1].startswith("close-out · ") else [f"the day's rows {rep['rows']}"]
+    out_ += [] if rep["bold"] and all(w_ == "600" for _t, w_ in rep["bold"]) else [f"the bold {rep['bold']}"]
+    return out_
+
+
+_rd_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-29, BF-56, BF-57 · the read-at line's facts each carry the dot that follows them; the day's two rows put a space before their state, as "
+      "`hd` does; a bold count in a heading of the box is set at 600",
+      _rd_src.count(_RD_DOT[0]) == 1 and _RD_DOT[1] not in _rd_src and _rd_src.count(_RD_BOLD) == 1
+      and _rd_src.count('<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· ') == 1)
+if _browser("riders"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", extra="tier: P1\n"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+            git(root, "checkout", "-q", "-b", "fm/053-board-polish-and-its-riders"); git(root, "commit", "-q", "--allow-empty", "-m", "built\n\nSession: b1")
+            git(root, "commit", "-q", "--allow-empty", "-m", f"review: NOT READY\n\nReviewed: {out_('rev-parse', 'HEAD')}\nSession: r1")
+            run_safe(root, "--html-only")
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _rider_faults(_header_at(wt_, page_, w_, _RD_PROBE), w_) for w_ in (390, 360, 320)}
+            check(f"FM-053, BF-29, BF-56, BF-57 · at 390, 360 and 320 px the read-at line's dot stays on the line of the fact before it, the day's rows read "
+                  f"*stand-up · * and *close-out · *, and the reviews heading's counts are at 600 (saw {seen_})", not any(seen_.values()))
+            mid_ = page_.split('<p id="ra" class="m"><span>', 1)
+            old_ = mid_[0] + '<p id="ra" class="m"><span>' + mid_[1].replace("&nbsp;·</span> <span", "</span> · <span", 1) if len(mid_) == 2 else page_
+            dots_ = {w_: _rider_faults(_header_at(wt_, old_, w_, _RD_PROBE), w_) for w_ in (360, 320)}
+            bold_ = _rider_faults(_header_at(wt_, page_.replace(_RD_BOLD, ""), 390, _RD_PROBE), 390)
+            check(f"FM-053, BF-29, BF-57 · the check's controls: the dot between the facts again leaves it off the line before it at 360 or 320 px, and the "
+                  f"bold left to the browser is not at 600 (saw {dots_}, {bold_})",
+                  any(any(f_.startswith("the dot at") for f_ in v_) for v_ in dots_.values()) and any(f_.startswith("the bold") for f_ in bold_))
+    except _ChromeFailed as e_:
+        _hung("riders", e_)
         fm.configure(HERE)
 
 # --- FM-053, BF-3: on the board the Owner is *you* (the guide, §10) — `next: owner` reads *→ you* in the tier's cell, and the viewer's handover
