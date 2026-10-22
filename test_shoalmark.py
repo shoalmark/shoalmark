@@ -15014,11 +15014,11 @@ else:
 
         def _b1_site(work, state, name=None, facts_edit=None, template_edit=None):
             """This tree built as docs.yml builds it, in the launch state `state`: the figures first (scripts/landing_facts.py, read from this history at HEAD, the
-            pull requests from the recorded response, the probe switch as it stands, off), then the switch and its launch folder turned, Zensical, then llms_txt.py.
+            pull requests from the response recorded to #211, the probe switch as it stands, off), then the switch and its launch folder turned, Zensical, then llms_txt.py.
             `facts_edit` and `template_edit` change what was written or what the landing is, for a control."""
             stage = work / (name or state)
             shutil.copytree(HERE, stage, ignore=shutil.ignore_patterns(".git", "site", "__pycache__", ".cache", "work-tracker"))
-            run_ = subprocess.run([sys.executable, "scripts/landing_facts.py", "--repo", str(HERE), "--commit", _head, "--pulls", str(HERE / "scripts/landing_facts.pulls-1-144.json")],
+            run_ = subprocess.run([sys.executable, "scripts/landing_facts.py", "--repo", str(HERE), "--commit", _head, "--pulls", str(HERE / "scripts/landing_facts.pulls-1-211.json")],
                                   cwd=str(stage), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900, env=_ENV)
             assert run_.returncode == 0, run_.stderr[-300:]
             if facts_edit:
@@ -15383,7 +15383,7 @@ def _lf_run(*argv):
 def _lf_read(path):
     """facts.html as the template reads it: each `set` as its value, wrecks_json parsed."""
     text = Path(path).read_text(encoding="utf-8")
-    out = {k: json.loads(re.sub(r": none(?=[,}])", ": null", v)) for k, v in re.findall(r"^\{% set (\w+) = (.*) %\}$", text, re.M)}
+    out = {k: json.loads("null" if v == "none" else re.sub(r": none(?=[,}])", ": null", v)) for k, v in re.findall(r"^\{% set (\w+) = (.*) %\}$", text, re.M)}
     out["wrecks"] = json.loads(re.search(r"\{% set wrecks_json %\}(.*)\{% endset %\}", text, re.S).group(1))
     return out
 
@@ -15488,6 +15488,93 @@ else:
               f"as ISO and in English and German, and the commit (saw {f_.get('pins')}, {f_.get('read')})",
               f_.get("pins") == {"ADOPT_COMMIT": tagged_, "TAG": "v0.19.2", "ARCHIVE_URL": "[ARCHIVE URL — filled at build]", "ARCHIVE_SHA256": "[SHA-256 — filled at build]"}
               and f_.get("read") == {"date": "2026-10-09", "date_en": "9 October 2026", "date_de": "9. Oktober 2026", "sha": tagged_[:7]})
+
+# --- the high scores' third row: the review-commit cohort, by a rule of its own, from the pull request numbered THIRD_FIRST on. Read offline from the
+#     response recorded to #211; each boundary has a control copied across it; the trailer rules on commits made in a scratch clone; the rows ranked by
+#     score; and the page's header is the first row the page draws
+_LF_P211 = HERE / "scripts/landing_facts.pulls-1-211.json"
+_lf3_why = _lf_why or ("this tree holds no scripts/landing_facts.pulls-1-211.json" if not _LF_P211.is_file() else "")
+if _lf3_why:
+    _skipped("FM-006 · the high scores' third row", 5, _lf3_why)
+else:
+    lf3_ = _lf_module()
+    _p211 = json.loads(_LF_P211.read_text(encoding="utf-8"))["pulls"]
+    _p167 = next(p for p in _p211 if p["number"] == 167)
+    _own167 = subprocess.run(["git", "-C", str(HERE), "rev-list", _p167["head"]["sha"], "^" + _p167["base"]["sha"]], capture_output=True, text=True, env=_ENV).stdout.split()
+    _carrier167 = [ln.split() for ln in subprocess.run(["git", "-C", str(HERE), "log", "--no-walk=unsorted", "--format=%ct %(trailers:key=Reviewed,valueonly,separator=%x2C)", *_own167],
+                                                         capture_output=True, text=True, env=_ENV).stdout.splitlines() if len(ln.split()) == 2]
+    _at167 = int(_carrier167[0][0]) if len(_carrier167) == 1 else None
+    _iso = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def _third(extra=()):
+        """The review-commit cohort read from the recording and `extra`, or the line a stop says."""
+        try:
+            return lf3_.score_reviewed(lf3_.Git(HERE), _p211 + list(extra))
+        except lf3_.Stop as e_:
+            return str(e_)
+    with tempfile.TemporaryDirectory() as d:
+        base_ = Path(d).resolve()
+        cfg_, out_ = base_ / "zensical.toml", base_ / "facts.html"
+        cfg_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")
+        run_ = _lf_run("--commit", _LF_TAG, "--repo", str(HERE), "--config", str(cfg_), "--pulls", str(_LF_P211), "--out", str(out_))
+        f3_ = _lf_read(out_) if run_[0] == 0 else {}
+        read3_ = (lf3_.score(lf3_.Git(HERE), _p211), _third())
+        want3_ = [{"id": "files", "score": "78/94", "counted": 78, "of": 94}, {"id": "commits", "score": "23/39", "counted": 23, "of": 39},
+                  {"id": "before", "score": "10/37", "counted": 10, "of": 37}]
+        check(f"FM-006 · the high scores' third row · read offline from the response recorded to #211: the review-file cohort 78/94 to #159, the review-commit "
+              f"cohort 23/39 from #160 to #210 and 10/37 before the rule; facts.html ranks them so, the highest first, its hi-score is the first row's, and it "
+              f"bounds the review-commit cohort, #160 to #210, for the words' slots (saw {read3_}; exit {run_[0]} {run_[2].strip()[:160]!r}; scores "
+              f"{f3_.get('scores')}, hiscore {f3_.get('hiscore')!r}, cohort3 {f3_.get('cohort3')})",
+              lf3_.THIRD_FIRST == 160 and read3_ == (((78, 94, 159), (10, 37)), (23, 39, 160, 210)) and f3_.get("scores") == want3_ and f3_.get("hiscore") == "78/94"
+              and f3_.get("cohort3") == {"first": 160, "last": 210})
+        # the controls, #167 (counted) copied across each boundary: numbered 159 it is outside the cohort and numbered 160 inside it; on an answer
+        # branch it stays out; opened at its review commit's own second it is not counted, opened one second later it is
+        across_ = {"159": _third([{**_p167, "number": 159}]), "160": _third([{**_p167, "number": 160}]),
+                   "answer": _third([{**_p167, "number": 300, "head": {**_p167["head"], "ref": "answer/FM-004-control"}}]),
+                   "at": _third([{**_p167, "number": 300, "created_at": _iso(_at167)}]) if _at167 else None,
+                   "after": _third([{**_p167, "number": 300, "created_at": _iso(_at167 + 1)}]) if _at167 else None}
+        check(f"FM-006 · the high scores' third row · each boundary, #167 copied across it: as #159 it is outside the cohort, as #160 inside and counted; on an "
+              f"answer branch it is left out; opened at its review commit's second it is not counted, one second later it is (saw {across_})",
+              across_ == {"159": (23, 39, 160, 210), "160": (24, 40, 160, 210), "answer": (23, 39, 160, 210), "at": (23, 40, 160, 300), "after": (24, 40, 160, 300)})
+        # the trailer rules, on commits made in a scratch clone: one `Reviewed:` trailer naming the pull request's own commit counts; two such trailers, or
+        # one that names a commit the pull request does not hold, do not
+        clone3_ = _lf_clone(base_)
+        b3_ = subprocess.run(["git", "-C", str(clone3_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+
+        def _commit3(message, parent):
+            git(clone3_, "checkout", "-q", "--detach", parent)
+            (clone3_ / "third-row.txt").write_text(message, encoding="utf-8")
+            git(clone3_, "add", "third-row.txt")
+            git(clone3_, "commit", "-q", "-m", message)
+            return subprocess.run(["git", "-C", str(clone3_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        w1_ = _commit3("the work", b3_)
+        one_ = _commit3(f"a verdict\n\nReviewed: {w1_}\n", w1_)
+        two_ = _commit3(f"a verdict\n\nReviewed: {w1_}\nReviewed: {w1_}\n", w1_)
+        out3_ = _commit3(f"a verdict\n\nReviewed: {b3_}\n", w1_)
+        _pr3 = lambda head: {"number": 400, "created_at": _iso(int(subprocess.run(["git", "-C", str(clone3_), "show", "-s", "--format=%ct", head], capture_output=True,
+                                                                                     text=True, env=_ENV).stdout) + 60),
+                             "merged_at": "2026-12-01T00:00:00Z", "head": {"ref": "fm/third-row-control", "sha": head}, "base": {"sha": b3_}}
+        trailers_ = {k: lf3_.score_reviewed(lf3_.Git(clone3_), [_pr3(h)]) for k, h in (("one", one_), ("two", two_), ("outside", out3_), ("none", w1_))}
+        check(f"FM-006 · the high scores' third row · the trailer: a pull request whose commit carries one `Reviewed:` trailer naming the pull request's own "
+              f"commit counts; two such trailers, one that names a commit outside the pull request, or none, do not (saw {trailers_})",
+              trailers_ == {"one": (1, 1, 400, 400), "two": (0, 1, 400, 400), "outside": (0, 1, 400, 400), "none": (0, 1, 400, 400)})
+    # the ranking: the highest score first, rows of the same score in the order given, a row with no pull request left out
+    _rows3 = lambda *t: [{"id": i, "score": f"{c}/{o}", "counted": c, "of": o} for i, c, o in t]
+    ranked3_ = (lf3_.ranked(_rows3(("files", 1, 4), ("commits", 3, 4), ("before", 2, 4))), lf3_.ranked(_rows3(("files", 1, 2), ("commits", 2, 4), ("before", 0, 0))))
+    check(f"FM-006 · the high scores' third row · the rows ranked by score: 3/4 before 2/4 before 1/4 whatever the cohorts' order; 1/2 and 2/4 keep the order "
+          f"given; a cohort with no pull request is no row (saw {[[r['id'] for r in x] for x in ranked3_]})",
+          [[r["id"] for r in x] for x in ranked3_] == [["commits", "before", "files"], ["files", "commits"]])
+    # the page: the rows drawn are the ranked rows the page has words for, in their order; the header's hi-score is the first of them, never facts.html's
+    # own first row, which the page may not draw
+    _code3 = re.sub(r"\{#.*?#\}", "", (HERE / "overrides/landing.html").read_text(encoding="utf-8"), flags=re.S)
+    _page3 = ('{%- set board = F.scores | selectattr("id", "in", board_words) | list -%}' in _code3
+              and _code3.count("<b>{{ (board | first).score }}</b>") == 1 and "F.hiscore" not in _code3 and "F.scores[" not in _code3
+              and "{%- for row in board %}" in _code3 and "{{ ranks[loop.index0] }}" in _code3 and _code3.count("F.scores") == 1
+              and 'replace("{c3_first}", (F.cohort3.first if F.cohort3 else "") | string)' in _code3 and 'replace("{c3_last}", (F.cohort3.last if F.cohort3 else "") | string)' in _code3
+              and re.search(r'<td class="sc">\{\{ row\.score \}\}</td>', _code3) is not None and not re.search(r'<td class="sc">\d', _code3))
+    check(f"FM-006 · the high scores' third row · the page draws the ranked rows it has words for, in their order, ranked by place, and its header's "
+          f"hi-score is the first row it draws; no score is typed; the words' slots {{c3_first}} and {{c3_last}} take the cohort's bounds (saw {_page3})", _page3)
+
 
 # FM-006, B1, RV-2881: wrecks_json is written inside a <script> and a Jinja block — a title or a report that holds `</script>`, a comment's
 # opening, a Jinja delimiter or a JavaScript line separator is escaped in it, and reads back as written
