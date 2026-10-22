@@ -2258,6 +2258,19 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-004 · RV-3020 · R10 · the tool ships no theme: THEME_FILES is empty, brand/themes/ is gone, and the release archive holds the tool's set alone "
           f"(saw {len(getattr(fm, 'THEME_FILES', ()))} · {(HERE / 'brand/themes').exists()})",
           tuple(getattr(fm, "THEME_FILES", ("?",))) == () and not (HERE / "brand/themes").exists() and not hasattr(fm, "theme_files"))
+    themed_ = base / "themed"; themed_.mkdir()
+    themed_src_, _themed_commit = _rel_repo(themed_, list(shipped_) + list(_REL_FIVE), ver, {"brand/themes/monochrome/theme.css": b"/* a theme placed again */\n"})
+    themed_build_ = _rel_build(themed_src_, themed_ / "out", f"v{ver}")
+    themed_zip_ = themed_ / f"out/shoalmark-{ver}.zip"
+    themed_names_ = zipfile.ZipFile(themed_zip_).namelist() if themed_zip_.is_file() else []
+    if themed_zip_.is_file():
+        subprocess.run([sys.executable, "-m", "zipfile", "-e", str(themed_zip_), str(themed_ / "unpacked")], check=True, capture_output=True, env=_ENV)
+    themed_vend_ = _vend(themed_ / "unpacked", _project("themed-project")) if (themed_ / "unpacked").is_dir() else (None, "", "no zip was built")
+    check(f"FM-004 · the archive packs only what archive_check accepts: a commit with a file under brand/themes/ builds a zip with no brand/themes/ entry, "
+          f"and the tool vendors from that zip (saw build exit {themed_build_[0]}, brand entries {[n_ for n_ in themed_names_ if n_.startswith('brand/')]}, "
+          f"vendor exit {themed_vend_[0]}, {themed_vend_[2].strip()[-120:]!r})",
+          themed_build_[0] == 0 and bool(themed_names_) and not any(n_.startswith("brand/themes/") for n_ in themed_names_)
+          and set(themed_names_) == set(shipped_) | set(_REL_FIVE) | {"RELEASE"} and themed_vend_[0] == 0)
     # Acquisition alone into a real local SVN working copy: its metadata must remain valid when Git/server tools are unavailable.
     no_path_ = base / "empty-path"; no_path_.mkdir(); no_git_env_ = dict(_ENV, PATH=str(no_path_))
     local_svn_ = shutil.which("svn") and shutil.which("svnadmin")

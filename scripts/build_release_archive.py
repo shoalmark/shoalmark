@@ -4,10 +4,12 @@
 
 The one build: `.github/workflows/release.yml` runs it on a pushed tag and on its dry run, and the suite's check runs this same file.
 
-- **What it holds:** the files `--vendor` copies — `TOOL_FILES`, the brand's own files beside the tool and the themes it ships — read from the commit's git
-  objects, never from the working tree, at the zip's root with no folder around them (D7); beside them `ARCHIVE_FILES`, the files the probe reads, at
-  their repository paths; and `RELEASE`, a manifest of the version, the tag, the commit and every other file's SHA-256. The manifest proves the set complete, not its origin: whoever changes the zip can rewrite it. The origin is the zip's own
-  SHA-256 against a pin published outside it.
+- **What it holds:** what the tool's `archive_check` accepts, and no more. That is `TOOL_FILES`, the brand's own files beside the tool that `vendor_files`
+  finds, and `THEME_FILES` where the tool binds it, each read from the commit's git objects, never from the working tree, at the zip's root with no
+  folder around them; beside them `ARCHIVE_FILES`, the files the probe reads, at their repository paths; and `RELEASE`, a manifest of the version, the
+  tag, the commit and every other file's SHA-256. No other file of the commit is packed, a file under `brand/themes/` that `THEME_FILES` does not name
+  among them. The manifest proves the set complete, not its origin: whoever changes the zip can rewrite it. The origin is the zip's own SHA-256 against
+  a pin published outside it.
 - **Reproducible:** entries sorted, stored and not deflated (its SHA-256 rests on no zlib version), one timestamp — the commit's committer time read in
   UTC — fixed modes, no extra field. Built again from the same commit, anywhere and in any time zone, it gives the same bytes.
 - **Its input is checked before use:** a tag `v<x.y.z>` or a 40-hex commit, nothing else, so no value reaches git as an option. For a tag, `VERSION` at
@@ -33,7 +35,6 @@ import zipfile
 REF_RE = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+|[0-9a-f]{40}")          # ASCII digits only: `\d` would take any script's digits
 RELEASE_NAME = "RELEASE"
 RELEASE_HEAD = "# shoalmark release manifest"          # the line `release_manifest` in shoalmark.py reads first
-THEMES = "brand/themes/"
 MODE = 0o100644                                         # every entry a regular file, rw-r--r--
 
 
@@ -64,16 +65,16 @@ def literal(source, name, needed=True):
 
 
 def vendored_set(paths, tool_source):
-    """What `--vendor` copies from a tool whose tree holds `paths`, as `vendor_files` in shoalmark.py reads it: `TOOL_FILES`, each required; the brand's
-    own files beside the tool there are; and every file under `brand/themes/` whose name has no part that starts with a dot — `THEME_FILES`, where the
-    tool binds it, each required too: an unpacked archive is vendored only whole (`archive_check`)."""
+    """The vendored set `archive_check` in shoalmark.py accepts from a tool whose tree holds `paths`: `TOOL_FILES`, each required; the brand's own
+    files beside the tool there are, as `vendor_files` finds them; and `THEME_FILES`, where the tool binds it, each required too, since an unpacked
+    archive is vendored only whole. Nothing else is taken, a file under `brand/themes/` that `THEME_FILES` does not name among them."""
     tool_files, brand_files = literal(tool_source, "TOOL_FILES"), literal(tool_source, "BRAND_FILES")
-    missing = [rel for rel in tool_files + literal(tool_source, "THEME_FILES", needed=False) if rel not in paths]
+    theme_files = literal(tool_source, "THEME_FILES", needed=False)
+    missing = [rel for rel in tool_files + theme_files if rel not in paths]
     if missing:
         raise Refused(f"the commit lacks {', '.join(missing)}: it is not the whole tool")
     brand = [f"brand/{n}" for n in brand_files if f"brand/{n}" in paths]
-    themes = [p for p in paths if p.startswith(THEMES) and not any(part.startswith(".") for part in p[len(THEMES):].split("/"))]
-    return sorted(set(tool_files) | set(brand) | set(themes))
+    return sorted(set(tool_files) | set(brand) | set(theme_files))
 
 
 def build(repo, ref):
