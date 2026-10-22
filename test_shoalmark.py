@@ -15203,11 +15203,23 @@ else:
                     out_.append(found_.group(1) if found_ else None)
                 return out_
 
+            _lf_spec = importlib.util.spec_from_file_location("landing_facts", HERE / "scripts/landing_facts.py")
+            _lf_b1 = importlib.util.module_from_spec(_lf_spec)
+            _lf_spec.loader.exec_module(_lf_b1)
+
             def _facts_with(line):
+                """facts.html with the board's excerpt fixed, written as the script writes it: nothing waiting and one act owed, with a fixed id and `line`; or,
+                where `line` is None, nothing waiting and no act."""
+                fixed_ = {"waiting": 0, "acts": 1, "act": {"id": "FM-007", "line": line}} if line is not None else {"waiting": 0, "acts": 0, "act": None}
+
                 def edit_(text):
-                    assert text.count('"line": "') == 1
-                    return re.sub(r'("line": )"(?:[^"\\]|\\.)*"', lambda m: m.group(1) + json.dumps(line, ensure_ascii=False), text)
+                    assert len(re.findall(r"(?m)^\{% set excerpt = .* %\}$", text)) == 1
+                    return re.sub(r"(?m)^\{% set excerpt = .* %\}$", lambda m: "{% set excerpt = " + _lf_b1.jinja_value(fixed_) + " %}", text)
                 return edit_
+
+            def _peek_in(site):
+                """The board's excerpt box as the built landings' HTML holds it, English and German."""
+                return [re.search(r'<div class="peek-box"[^>]*>(.*?)</div>', (site / rel_).read_text(encoding="utf-8"), re.S).group(1) for rel_ in ("index.html", "de/index.html")]
             _good = _line_in(_b1_site(_work, "interim", "excerpt-good", facts_edit=_facts_with(_mark)))
             _twice = _line_in(_b1_site(_work, "interim", "excerpt-twice", facts_edit=_facts_with(_mark), template_edit=lambda s: s.replace("{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}")))
             _bare = _line_in(_b1_site(_work, "interim", "excerpt-bare", facts_edit=_facts_with("After midnight <b>the suite</b> refuses & \"every\" commit")))
@@ -15215,6 +15227,13 @@ else:
                   f"as that text, `&lt;b&gt;` and no <b> element (saw {_good})", _good == [_mark, _mark])
             check("FM-006 · B1 · the excerpt's check is not blind: a template that escapes the line a second time puts `&amp;lt;` on the page, and a script that does not escape it puts a <b> element on it "
                   f"(saw {_twice}, {_bare})", _twice != [_mark, _mark] and "&amp;lt;" in str(_twice) and _bare != [_mark, _mark] and "<b>the suite</b>" in str(_bare))
+            _none = _b1_site(_work, "interim", "excerpt-none", facts_edit=_facts_with(None))
+            _none_peek = _peek_in(_none)
+            _none_words = [" ".join(re.sub(r"<[^>]+>", " ", x).split()) for x in _none_peek]
+            check("FM-006 · B1 · the board's excerpt with no act owed: the English and the German landing print nothing waiting and no act, and no act's line or chip "
+                  f"(saw {_line_in(_none)}, {_none_words})",
+                  _line_in(_none) == [None, None] and all("waiting for you: 0" in x and "your acts, with their time: 0" in x and 'class="chip"' not in x and 'class="id"' not in x
+                                                          for x in _none_peek))
 
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
