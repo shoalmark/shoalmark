@@ -18,8 +18,9 @@
 // and folds it back by keyboard; the approvals' fold opens and closes by keyboard; Escape closes it and focus is back on the
 // button; it fits the window and the page does not scroll sideways under it; and, with the folds closed, nothing inside it scrolls at 360×780, 375×667 and
 // 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
-// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors, `cue` for the hero's cue, `door` for the ceremony) narrow the run to what is named; the
-// whole run is every page at 360×780, 375×667, 390×844 and 1440×900, the bar, the cue and the door.
+// In the probe state, at 1024×768 on each landing, with the fold closed, nothing in the dialog scrolls inside itself.
+// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors, `cue` for the hero's cue, `door` for the ceremony, `desk` for the dialog at
+// 1024×768) narrow the run to what is named; the whole run is every page at 360×780, 375×667, 390×844 and 1440×900, the bar, the cue, the door and the desk.
 import {spawn} from "node:child_process";
 import {createServer} from "node:http";
 import {existsSync, mkdtempSync, readFileSync, statSync, writeFileSync} from "node:fs";
@@ -89,6 +90,7 @@ const verdict = (page, w, h, name, ok, detail = "") => rows.push({page, w, h, ch
 const PAGES = only ? only.split(",") : ["index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html"];
 const SIZES = sizes ? sizes.split(",").filter(s => s.includes("x")).map(s => s.split("x").map(Number)) : [[360, 780], [375, 667], [390, 844], [1440, 900]];
 const BAR = !sizes || sizes.split(",").includes("bar"), CUEON = !sizes || sizes.split(",").includes("cue"), DOOR = !sizes || sizes.split(",").includes("door");   // runs of their own
+const DESK = !sizes || sizes.split(",").includes("desk");
 const ACTIVE = `(() => { const e = document.activeElement; return e ? (e.id || e.className || e.tagName) : "none" })()`;
 const OUTSIDE = `(() => { const d = document.getElementById("probe"), e = document.activeElement; return !!e && e !== document.body && e !== document.documentElement && !d.contains(e) })()`;
 // an element inside the dialog that scrolls inside itself (the prompt's own box excepted)
@@ -183,6 +185,13 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
   verdict(page, w, h, "no script error", t.log.errors.length == 0, t.log.errors.join(" | ").slice(0, 400));
   verdict(page, w, h, "no failed request", t.log.failed.length == 0, t.log.failed.join(" | ").slice(0, 400));
   verdict(page, w, h, "no request to any other host", [...t.log.hosts].every(x => x.startsWith("127.0.0.1")), [...t.log.hosts].filter(x => !x.startsWith("127.0.0.1")).join(" "));
+  await t.close();
+}
+if (state == "probe" && DESK) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
+  const t = await open(page, {w: 1024, h: 768});
+  await t.js(`document.getElementById("probe-open").focus()`); await t.press("Enter"); await sleep(400);
+  const scrolling = await t.js(SCROLLS), open_ = await t.js(`document.getElementById("probe").open`);
+  verdict(page, 1024, 768, "at 1024×768, with its fold closed, nothing in the dialog scrolls inside itself", open_ && scrolling.length == 0, scrolling.join("; ") || String(open_));
   await t.close();
 }
 // the hero's cue (the probe state): a strip as wide as the primary button and centred on it, over the stacked buttons on a phone; clear of every chart label; blinking its icon and

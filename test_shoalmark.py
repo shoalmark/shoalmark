@@ -6024,6 +6024,28 @@ _bdctl_saw = {name: len(_board_problems(src)) for name, src in _bdctl.items()}
 check(f"FM-006 · the high scores on a phone · the check is not blind: each of the rows left in columns, the stacking only below 1 px and the period beside the score leaves a problem "
       f"(problems found: {_bdctl_saw})", all(_bdctl_saw.values()) and len(_bdctl_saw) == 3)
 
+_DIALOG_ROOM = ".probe-scroll{max-height:calc(100vh - 96px);max-height:calc(100dvh - 96px);overflow:auto;"
+
+
+def _dialog_room_problems(src):
+    """What is wrong with the probe dialog's room on a desktop, one line each; none where its scrolling part may take the window's height less 96 px."""
+    code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S)
+    bad = []
+    if css.count(_DIALOG_ROOM) != 1 or len(re.findall(r"\.probe-scroll\{[^}]*max-height", css)) != 2:
+        bad.append("the probe dialog's scrolling part may not take the window's height less 96 px on a desktop, or another rule sets its height")
+    return bad
+
+
+_drp = _dialog_room_problems(_crs)
+check(f"FM-006 · the probe dialog on a desktop · its scrolling part may take the window's height less 96 px, so that at 1024 × 768 the German dialog with its fold "
+      f"closed fits (problems found: {_drp})", _drp == [])
+_drctl = {"the room as it was": _with(_crs, "overrides/landing.html", _DIALOG_ROOM, _DIALOG_ROOM.replace("96px", "110px")),
+          "the room without its dvh": _with(_crs, "overrides/landing.html", "max-height:calc(100dvh - 96px);", "")}
+_drctl_saw = {name: len(_dialog_room_problems(src)) for name, src in _drctl.items()}
+check(f"FM-006 · the probe dialog on a desktop · the check is not blind: each of the room as it was and the room without its dvh leaves a problem (problems found: {_drctl_saw})",
+      all(_drctl_saw.values()) and len(_drctl_saw) == 2)
+
 # the dialog's hold and the coin, run: the probe dialog's script under a stand-in page, with a clock the harness moves
 _HOLD_HARNESS = r"""
 const vm = require("vm"), fs = require("fs"), code = fs.readFileSync(process.argv[2], "utf8");
@@ -15219,6 +15241,8 @@ else:
                               "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
                 "board-columns": ("high scores left in their columns on a phone", _mutate("board-columns", "index.html", "@media(max-width:640px){.board thead{display:none}", "@media(max-width:1px){.board thead{display:none}"),
                                   "on a phone each high scores row stacks, its period's words under the rank and the score at full width, the column heads gone"),
+                "desk-scrolls": ("a German dialog that scrolls at 1024×768", _mutate("desk-scrolls", "de/index.html", "max-height:calc(100dvh - 96px);overflow:auto", "max-height:calc(100dvh - 400px);overflow:auto", "desk"),
+                                 "at 1024×768, with its fold closed, nothing in the dialog scrolls inside itself"),
                 "door-peel": ("a tape never pulled off", _mutate("door-peel", "index.html", ",tape-pull 1s steps(12) .9s forwards", "", "door"),
                               "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and lifted away by 2.2 s"),
                 "door-icon": ("a door without its copy icon", _mutate("door-icon", "index.html", ".btn.door .ic{order:2}", ".btn.door .ic{display:none}", "door"),
@@ -15246,7 +15270,7 @@ else:
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring and high scores left in their columns on a phone, "
+                  "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
                   "and of the tape-off ceremony a tape that peels off past the window's edge, a tape never pulled off, a door without its copy icon, a door that lifts on hover, a door that grows during it, a window that stays unlit, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
                   "a tape drawn under reduced motion or in print and a tape read by screen readers makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
