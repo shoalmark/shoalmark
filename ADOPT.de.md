@@ -14,7 +14,7 @@ Arbeitet das Projekt auf Englisch, lest `ADOPT.md` im selben Commit wie diesen T
 
 shoalmark ist ein Arbeits-Tracker, der in dem Repository lebt, das er verfolgt. Jedes Arbeitspaket ist eine
 Markdown-Datei mit einem kleinen Kopf. Ein Gate lehnt Widersprüche ab; eine generierte `INDEX.md` ist für die Agenten
-da, eine statische Tafel (`index.html`) zeigt dem Menschen dasselbe Bild. Es leistet drei Dinge. Es macht die Arbeit,
+da, ein statisches Board (`index.html`) zeigt dem Menschen dasselbe Bild. Es leistet drei Dinge. Es macht die Arbeit,
 ihren Stand und das, was auf den Owner wartet, sichtbar. Es hält das Wort des Owners als Gate. Und es stellt hinter
 jedes „fertig“ einen Commit in git oder eine Revision unter Subversion.
 Es durchsucht keinen Code nach Sicherheitslücken oder Datenlecks, und nichts in dieser
@@ -256,7 +256,7 @@ Vor `--init` kommen die vier deutschen Dateien aus `<probe>/shoalmark/examples/d
 SHA-256 passt. Sonst lehnt es in einer Zeile ab und schreibt nichts. Die erste Zeile der PIN nennt nur diese
 Prüfungen, zum Beispiel:
 `# shoalmark 0.20.0 · vendored from an archive whose manifest names v0.20.0, commit <sha>, every file matched · <date>`.
-Damit sind Einträge und Tafel deutsch. Dann:
+Damit sind Einträge und Board deutsch. Dann:
 
 ```
 <py> tools/shoalmark/shoalmark.py --init --key <KEY>
@@ -300,8 +300,8 @@ Jeder bekommt:
     und markiert ihn als „nicht nachgestellt“.
 
 Dann `<py> tools/shoalmark/shoalmark.py`: Das Gate sagt, was fehlt. Bessert die Einträge nach, bis es mit 0 endet.
-`<py> tools/shoalmark/shoalmark.py --next` sagt, woran zu arbeiten ist. Die Tafel ist
-`<probe>/trial/docs/work-tracker/index.html`; gebt der Person den Pfad, damit sie sie im Browser öffnet. Das ist die
+`<py> tools/shoalmark/shoalmark.py --next` sagt, woran zu arbeiten ist. Das Board ist
+`<probe>/trial/docs/work-tracker/index.html`; gebt der Person den Pfad, damit sie es im Browser öffnet. Das ist die
 Sicht eures Owners.
 
 ### 6. Geschrieben wird nur in den Wegwerf-Ordner
@@ -319,7 +319,7 @@ eigenen.
 Messt beides.
 
 **Sichtbarkeit.** Stellt die fünf Fragen aus Schritt 4 noch einmal, diesmal mit `--next`, `docs/work-tracker/INDEX.md`
-und der Tafel der Probe. Zählt wieder Dateien und Schritte.
+und dem Board der Probe. Zählt wieder Dateien und Schritte.
 
 **Durchsetzung.** Nehmt euch die Entscheidungen des Owners, die Regeln des Projekts und sein „fertig“ nacheinander
 vor. Sagt für jedes, ob etwas es durchsetzt, und was, oder ob es nur aufgeschrieben ist.
@@ -360,7 +360,7 @@ Eine Anforderung ist eine Tabellenzeile:
 - `accept`: was ein Test beobachtet.
 
 Ein Eintrag nennt sie in einer Zeile seines Textes, `Satisfies: REQ-001`; im Kopf lehnt das Gate den Schlüssel ab. Ein
-Test nennt sie in seinem Namen. Eine Zeile ändert nur der Owner. Unter git gibt er eine signierte Antwort über die Tafel. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und leitet daraus einen eigenen Satz
+Test nennt sie in seinem Namen. Eine Zeile ändert nur der Owner. Unter git gibt er eine signierte Antwort über das Board. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und leitet daraus einen eigenen Satz
 des Unternehmens ab. *Nicht anwendbar* ist die Antwort des Owners mit Begründung; unter git ist sie signiert.
 `requirements/README.md` in `<probe>/shoalmark/` beschreibt die Konvention.
 
@@ -375,7 +375,7 @@ ADOPT.svn.de.md, Schritt 4, versucht nicht selbst, den Server des Projekts zu er
 Zugangsdaten der Person. Wo die Arbeitskopie ihren Server nicht erreicht, etwa in einer abgeschotteten Sandbox,
 sagt der Bericht, was dort geht und was nicht. In einem git-Repository:
 
-- *Geht ohne Server:* die Einträge, das Gate bei einem Commit, `INDEX.md`, die Tafel, `--next`, `--owner` und
+- *Geht ohne Server:* die Einträge, das Gate bei einem Commit, `INDEX.md`, das Board, `--next`, `--owner` und
   `--standup`.
 - *Braucht den Server:* `--queue`, das Pull-Requests über `gh` von GitHub liest, und die Antwort des Owners, die
   `--answer` committet und pusht.
@@ -388,7 +388,7 @@ Dann nennt die Möglichkeiten ehrlich, jede mit ihren Kosten: dort arbeiten, wo 
 der Sandbox für die Arbeit der Agenten, das der Owner von Hand überträgt; oder vorerst nichts übernehmen, bis sich die
 Umgebung ändert. Zieht keine davon vor, ohne einen Grund aus diesem Projekt.
 
-Nichts stellt einen Hinweis zu: `--standup`, `--owner` und die Tafel nennen jede geschuldete Handlung mit ihrer Zeit.
+Nichts stellt einen Hinweis zu: `--standup`, `--owner` und das Board nennen jede geschuldete Handlung mit ihrer Zeit.
 Handlungen brauchen git.
 
 ### 10. Identität
@@ -425,7 +425,7 @@ dieser Gliederung:
 ```
 Wo das Projekt steht: Planung · Bau · Einsatz — weil …
 Was ich gelesen habe: … Dateien, … KB, … Minuten; … übersprungen (aufgeführt in read.md). Das Lesen endete durch: Zeit · Dateien · Umfang · Auflistung · nichts mehr zu lesen.
-Das erste Ergebnis: … Einträge in <probe>/trial, Schlüssel <KEY>. Die Tafel: <probe>/trial/docs/work-tracker/index.html
+Das erste Ergebnis: … Einträge in <probe>/trial, Schlüssel <KEY>. Das Board: <probe>/trial/docs/work-tracker/index.html
 Sichtbarkeit, vorher → nachher: … Dateien / … Schritte → … Dateien / … Schritte.
 Durchsetzung: durchgesetzt, und wodurch: … Nur aufgeschrieben: … Von hier nicht sichtbar: …
 Identität: …
@@ -440,7 +440,7 @@ Der Owner entscheidet.
 
 Der Anteil des Owners je Woche ist mit shoalmark dieser:
 
-- die Fragen beantworten, die auf der Tafel auf ihn warten;
+- die Fragen beantworten, die auf dem Board auf ihn warten;
 - die Absicht und den aktuellen Weg einmal aufschreiben, und ändern, wenn sie sich ändern;
 - der Standup: eine Sitzung mit dem, was auf ihn wartet (`--standup`);
 - die Merges.
@@ -551,8 +551,8 @@ Person ist https://shoalmark.tools/feedback die eine Adresse für Rückmeldungen
 
 Die Probe folgt der Sprache, in der das Projekt arbeitet: seinen Dokumenten, seinem Plan, seinen Commit-Nachrichten.
 Ihr lest diesen Text, weil das Projekt auf Deutsch arbeitet. Also sprecht, berichtet und tragt ihr auf Deutsch ein,
-und ihr richtet die deutschen Abschnittsnamen und die deutsche Tafel vor `--init` ein (Schritt 5). Bei einer anderen
-Sprache bleiben die Abschnittsnamen und die Tafel des Werkzeugs in der Probe englisch; der Bericht sagt das. Schreibt Deutsch
+und ihr richtet die deutschen Abschnittsnamen und das deutsche Board vor `--init` ein (Schritt 5). Bei einer anderen
+Sprache bleiben die Abschnittsnamen und das Board des Werkzeugs in der Probe englisch; der Bericht sagt das. Schreibt Deutsch
 als Deutsch, nicht als Übersetzung aus dem Englischen. Arbeitet das Projekt doch auf Englisch, lest `ADOPT.md` im
 selben Commit und folgt diesem; für eine andere Sprache gilt Schritt 14 von `ADOPT.md`.
 

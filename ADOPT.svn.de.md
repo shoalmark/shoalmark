@@ -27,7 +27,7 @@ nicht erprobt: Es gilt ohne Gewähr, und der Bericht sagt das.
 - Die Identität ist das Server-Konto. Signierte Antworten brauchen git, also sind die Absicht und der aktuelle Weg des
   Owners unter Subversion nicht geschützt: Nichts in einer Arbeitskopie kann den Commit des Owners von dem eines
   Sitzes unterscheiden.
-- Nach `svn update` baut nichts die Tafel neu: Führt `--html-only` aus.
+- Nach `svn update` baut nichts das Board neu: Führt `--html-only` aus.
 
 ## Schritt 1: eine Voraussetzung mehr
 
@@ -86,7 +86,7 @@ svn checkout <adresse> <probe>/trial
 
 Die Adresse ist `file://` mit dem absoluten Pfad des Repositorys dahinter: `file:///Users/…/svnrepo` unter macOS,
 `file:///home/…/svnrepo` unter Linux, unter Windows mit Schrägstrichen `file:///C:/…/svnrepo`. Folgt dann Schritt 5
-von `ADOPT.de.md` in `<probe>/trial`. In einer Arbeitskopie setzt `--init` auch `svn:ignore` für die Tafel. Committet die
+von `ADOPT.de.md` in `<probe>/trial`. In einer Arbeitskopie setzt `--init` auch `svn:ignore` für das Board. Committet die
 Probe ins Wegwerf-Repository: zuerst das Werkzeug laufen lassen, dann `svn add --force .` und `svn commit -m "…"`.
 
 - **Die Kopie für eine Nachstellung** kommt aus der Arbeitskopie, ohne den Server zu fragen:
@@ -113,7 +113,7 @@ Probe ins Wegwerf-Repository: zuerst das Werkzeug laufen lassen, dann `svn add -
 
 Unter Subversion liest das Gate die Historie über svn. Ohne Server lehnt eine Prüfung ab, die die Historie braucht,
 im Hook von TortoiseSVN wie in `--check`. Solche Prüfungen sind ein Wechsel auf `Shipped` und eine Antwort. Es geht
-weiterhin, Einträge anzulegen und zu bearbeiten, ebenso `INDEX.md`, die Tafel, `--next` und ein `--check` auf
+weiterhin, Einträge anzulegen und zu bearbeiten, ebenso `INDEX.md`, das Board, `--next` und ein `--check` auf
 Änderungen, die keine Historie brauchen.
 
 Ein Repository im Rechner selbst (`file://`) ist immer erreichbar; Schritt 10 sagt, was das kostet.
@@ -145,7 +145,7 @@ Dieselben Schritte wie in `ADOPT.de.md`, in der Arbeitskopie des Projekts, ausge
 (`svn info --show-item wc-root`):
 
 - `--vendor`, die aus der Probe kopierten Dateien und `--init --key <KEY>` mit demselben Schlüssel. In einer
-  Arbeitskopie setzt `--init` `svn:ignore` für die Tafel.
+  Arbeitskopie setzt `--init` `svn:ignore` für das Board.
 - Kopiert die Einträge hinein. Abgeschlossene Pakete werden jetzt `Shipped`, jedes mit seinem `r<N>` im *Verlauf*;
   hier prüft sie das Gate.
 - Lasst das Werkzeug laufen, bis es mit 0 endet, dann `svn add` für die neuen Dateien.
