@@ -3894,6 +3894,10 @@ with tempfile.TemporaryDirectory() as d:
           and sw_[0] == 0 and (root / "docs/work-tracker/index.html").is_file() and cm_[0] == 0)
     rm_git(root)
 
+# --- the refresh hooks' install class: over the refresh hooks `_REFRESH_OLD`'s `--install-hook` wrote, or over none, as `_REFRESH_CLEANED`'s left them, this tool's
+#     `--install-hook` writes each as `COPY_HOOKS` gives it, with a line each; a person's own `post-merge` and a `post-rewrite` changed since are kept byte for byte and
+#     named, the person's own with the line that adds the refresh, and exit 4. After each but the person's own, a switch rebuilds the board. Then a copy that hangs,
+#     stopped at `BOARD_RUN_SECONDS`, and a missing copy: either way the checkout is done, exit 0, with one line
 _REFRESH_OLD = "39e5763"
 _REFRESH_CLEANED = "b36527c"
 _REFRESH_MINE = b"#!/bin/sh\n# my own hook\necho merged by me\n"
@@ -4336,6 +4340,8 @@ if not _HAVE_RV:
     _skipped("FM-006 · a private security report · RV-2300 · the operations' controls", len(_RV_OPS), f"this clone does not hold {_RV_REV}")
 fm.configure(HERE)
 
+# --- after a pull — after each way a clone's tree moves, the hooks rebuild the board and it shows what the move brought. A bare origin, an upstream clone that
+# pushes, and a clone with the hooks installed and its board built by hand. The control is `_REFRESH_CLEANED`'s tool, with no refresh hooks: its board stays as the move found it.
 def _board_files(root):
     t_ = root / "docs/work-tracker"
     return {"index.html": (t_ / "index.html").read_bytes() if (t_ / "index.html").is_file() else None, **{f"view/{p_.name}": p_.read_bytes() for p_ in sorted((t_ / "view").glob("*.js"))}}
