@@ -6889,9 +6889,9 @@ with tempfile.TemporaryDirectory() as d:
               and "#ff0000" not in h_page and "#00ff00" not in h_page and "<style data-from" not in h_page
               and "logo          person" in h_report and "labels.yaml   organisation → person" in h_report and "labels changed: 3 of" in h_report
               and 0 <= h_err.find(_said[0]) < h_err.find(_said[1]) and all(f"no longer read: {s_.replace(' is no longer read — ', ' — ')}" in h_report for s_ in _said))
-        _, p2, r2, _, _ = board_with(repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nfooter: set up by X\n")
+        _, p2, r2, _, _ = board_with(repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nsearch: set up by X\n")
         check("C2 · the repository beats the organisation, key by key — and what only the organisation says survives",
-              '"tagline": "from the repo"' in p2 and '"footer": "set up by X"' in p2 and "labels.yaml   organisation → repository" in r2)
+              '"tagline": "from the repo"' in p2 and '"search": "set up by X"' in p2 and "labels.yaml   organisation → repository" in r2)
         board_with()                                          # every place emptied
         del os.environ["XDG_CONFIG_HOME"]; _h = os.environ.pop("HOME", None)
         try:
@@ -6903,10 +6903,10 @@ with tempfile.TemporaryDirectory() as d:
               nohome == 0 and "<style data-from" not in no_page and "<img" not in no_page.split("<script>")[0] and 'id="w"' not in no_page and '"status.Shipped": "Shipped"' in no_page)
         _, de_page, _, de_err, _ = board_with(repo_labels_yaml=GERMAN)
         check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
-              set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
+              set(fm.read_flat(GERMAN)) == set(fm.LABELS) and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
         _shipped_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
         check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
-              set(fm.LABELS) - set(_shipped_de) <= {"footer", "tagline"} and not set(_shipped_de) - set(fm.LABELS))
+              set(fm.LABELS) - set(_shipped_de) <= {"tagline"} and not set(_shipped_de) - set(fm.LABELS))
         if _browser("german"):
             try:
                 dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag]).stdout
@@ -6939,7 +6939,7 @@ with tempfile.TemporaryDirectory() as d:
               and "#0a7" not in n_page and "no longer read: docs/work-tracker/brand/wordmark.svg — the header shows the name" in n_report)
         # --- 0.18.2: the running line — the tool's mark, name and version, on every page, whatever the brand
         _ver = (HERE / "VERSION").read_text(encoding="utf-8").strip()
-        _run = lambda page: (re.search(r'</article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n(<p id="r" class="m">.*?</p>)</footer>\n<dialog', page) or [None, ""])[1]
+        _run = lambda page: (re.search(r'</article>\n<footer id="F">(<p id="r" class="m">.*?</p>)</footer>\n<dialog', page) or [None, ""])[1]
         _links = lambda line: re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener" aria-label="([^"]+)">', line)
         check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
               all(_links(_run(pg)) == [("https://github.com/shoalmark/shoalmark", "shoalmark on GitHub"), (f"https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
@@ -6971,19 +6971,19 @@ with tempfile.TemporaryDirectory() as d:
         _, t_page, _, t_err, t_code = board_with(repo_labels_yaml="tagine: a typo\nstatus.Shipped: Live\n")
         check("a mistyped label is named in a warning and never reaches the page — the rest of the file still applies",
               t_code == 0 and "labels.yaml: tagine is not a label" in t_err and '"tagine"' not in t_page and '"status.Shipped": "Live"' in t_page)
-        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n", org_logo_svg=_SVG)
+        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="tagline: set up by X with shoalmark\n", org_logo_svg=_SVG)
         dest = base / "client" / "tools" / "shoalmark"
         with redirect_stdout(io.StringIO()):
             fm.vendor(dest, allow_untagged=True)
         check("C7 · the organisation's logo and labels travel with --vendor and are pinned like the rest of the copy — its theme.css, read by no board, does not",
-              (dest / "brand/labels.yaml").read_text() == "footer: set up by X with shoalmark\n" and "brand/labels.yaml" in (dest / "PIN").read_text()
+              (dest / "brand/labels.yaml").read_text() == "tagline: set up by X with shoalmark\n" and "brand/labels.yaml" in (dest / "PIN").read_text()
               and "brand/logo.svg" in (dest / "PIN").read_text() and not (dest / "brand/theme.css").exists() and "theme.css" not in (dest / "PIN").read_text())
         (base / "client/docs/work-tracker").mkdir(parents=True)
         (base / "client/docs/work-tracker/MSR-001-x.md").write_text('---\nid: MSR-001\nstatus: Proposed\nconsidered: none\nhook: "h"\n---\n\n# MSR-001 — x\n')
-        (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("footer: ours\n")
+        (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("tagline: ours\n")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
-        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" not in cpage)
+        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"tagline": "ours"' in cpage and "--blue:#123456" not in cpage)
         (dest / "VERSION").write_text("0.0.1-vendored\n", encoding="utf-8")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client"), "--html-only"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         check("0.18.2 · a vendored copy's running line names the version IT runs — its own VERSION, its own release page",
@@ -7005,6 +7005,11 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 # --- FM-002, 0.18.5: the Owner's box carries its title, and the last line is one element — the claim and the running line ------------------
+_RUN_RIGHT = "#r{display:flex;justify-content:flex-end;"        # the running line's place: alone, at the right
+_RUN_PROBE = ('<script>addEventListener("load",()=>{const b=document.body,c=getComputedStyle(b),f=b.getBoundingClientRect(),r=document.getElementById("r").getBoundingClientRect(),'
+              'k=[...document.querySelector("#r").children].map(e=>e.getBoundingClientRect()),t=document.querySelector("#B>table").getBoundingClientRect();'
+              'parent.postMessage(JSON.stringify({w:innerWidth,l:Math.min(...k.map(x=>x.left)),r:Math.max(...k.map(x=>x.right)),fl:f.left+parseFloat(c.paddingLeft),'
+              'fr:f.right-parseFloat(c.paddingRight),gap:Math.round(r.top-t.bottom)}),"*")})</script>')
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     for n_ in (1, 2, 3):
@@ -7013,12 +7018,17 @@ with tempfile.TemporaryDirectory() as d:
     (wt / "brand/labels.yaml").write_text("footer: a claim of our own\n", encoding="utf-8")
     _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
     try:
-        run(root); page = (wt / "index.html").read_text(encoding="utf-8")
-        check("FM-002, FM-053 · the board carries the Owner's box's title, the label `owner.title` — *yours*, set into the box's one titled frame — and the claim "
-              "and the running line in one footer element, after the viewer, the claim hidden in the viewer; no row carries the stripe a theme once drew",
-              '</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n<p id="r" class="m">' in page
-              and page.count("<footer") == 1 and "#p>.pt{position:absolute;top:-11px;" in page and "#B[hidden]~#F #f{display:none}" in page and ".pt{display:none}" not in page
+        _fe = run(root)[2]; page = (wt / "index.html").read_text(encoding="utf-8")
+        check("FM-002, FM-053 · the board carries the Owner's box's title, the label `owner.title` — *yours*, set into the box's one titled frame — and its last "
+              "line is the running line alone, in one footer element after the viewer: the claim is gone, its element and its label; no row carries the "
+              "stripe a theme once drew",
+              '</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="r" class="m">' in page
+              and page.count("<footer") == 1 and "#p>.pt{position:absolute;top:-11px;" in page and 'id="f"' not in page and "#f{" not in page
+              and '"footer":' not in page and "footer" not in fm.LABELS and ".pt{display:none}" not in page
               and '`<span class="pt">${l("owner.title")}</span>`+' in page and "zebra" not in page and '"owner.title": "yours"' in page)
+        check(f"FM-053 · never a silent loss: a labels.yaml that still sets the claim's label is told it is no longer read and what replaces it (saw {_fe.strip()!r})",
+              "repository's labels.yaml: footer is no longer read — the board ends with the running line alone: no claim stands under it" in _fe
+              and "footer is not a label" not in _fe)
         if _browser("hooks"):
             try:
                 import html as _html
@@ -7029,6 +7039,12 @@ with tempfile.TemporaryDirectory() as d:
                 check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view (saw {views_!r})",
                       views_ == "yours|yours|yours")
                 (wt / "probe.html").unlink()
+                at_ = {w_: _header_at(wt, page, w_, _RUN_PROBE) or {} for w_ in (1024, 390)}
+                cut_ = _header_at(wt, page.replace(_RUN_RIGHT, "#r{display:flex;"), 1024, _RUN_PROBE) or {}
+                check(f"FM-053 · the running line stands alone at the right, 28 px under the table, at 1024 and 390 px (saw {at_})",
+                      all(r_.get("w") == w_ and abs(r_["r"] - r_["fr"]) <= 1 and r_["l"] > r_["fl"] + 20 and r_["gap"] == 28 for w_, r_ in at_.items()))
+                check(f"FM-053 · the check's control: the line without its place at the right stands at the left (saw {cut_})",
+                      page.count(_RUN_RIGHT) == 1 and cut_.get("w") == 1024 and abs(cut_["l"] - cut_["fl"]) <= 1)
             except _ChromeFailed as e_:
                 _hung("hooks", e_)
     finally:
@@ -7168,13 +7184,12 @@ with tempfile.TemporaryDirectory() as _nowhere:
         fm.configure(HERE); _logo, _labels, _src, _warn, _gone = fm.brand()
     finally:
         os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
-_given = fm.read_flat((_rb / "labels.yaml").read_text(encoding="utf-8"))
-check("0.18.2 · this repository's labels.yaml is valid — every key a label — with no tagline (the claim speaks to agents; the Owner, 2026-09-24) and the English footer he ruled",
-      set(_given) <= set(fm.LABELS) and "tagline" not in _given and _given.get("footer") == "A Pricke on the Wadden flats keeps the fleet in the channel." and _labels["footer"] == _given["footer"])
+check("FM-053 · this repository's board needs no labels.yaml: the claim under its board is gone, it carries no tagline, and its chrome is the English table",
+      not (_rb / "labels.yaml").exists() and "footer" not in _labels and _labels["tagline"] == "" and _src["labels.yaml"] == [] and _labels == fm.LABELS)
 check("0.18.2 · this repository's logo — the tab's — is the site's tab icon, byte for byte", _src["logo"] == ["repository"] and (_rb / "logo.svg").read_bytes() == (HERE / "docs/assets/favicon.svg").read_bytes())
 check(f"R10 · this repository holds no brand file the board no longer reads — its theme.css, fonts/ and wordmark.svg are gone, and the tool's own brand/ "
       f"ships no themes/ — so its board names none, and warns of nothing (saw {_gone}, {_warn})",
-      sorted(p_.name for p_ in _rb.iterdir()) == ["labels.yaml", "logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
+      sorted(p_.name for p_ in _rb.iterdir()) == ["logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
 
 # --- FM-053's answer, and the guide's amendment G1–G2: the board's colours are `[palette]` — a palette by name or a few tokens in three meanings, `ok`,
 # `warn` and `fail`, refused below the set contrast on every ground its text stands on, ignored by an older copy. The class test, run on the tool and on

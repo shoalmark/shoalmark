@@ -3987,11 +3987,9 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
 #p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}#p .pw.au,#dlg .pw.au{color:var(--amber)}
 #ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block;overflow-wrap:anywhere}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}details.about>summary{color:var(--dim)}details.about>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.about[open]>summary:before{content:"v ";content:"v " / ""}
-/* the claim and the running line: the last line's one element `#F`; the claim shown with the board only, as when it stood in it */
-#f{color:var(--mute);margin:28px 0 0}#f:empty{display:none}#B[hidden]~#F #f{display:none}
-/* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
-   the tool and leaving the board; the version to its release */
-#r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
+/* the running line: the tool's, the last line of every screen, alone at the right — its mark at 16 px, the smallest size its 16-unit grid stays
+   sharp at, the name linking to the tool and leaving the board; the version to its release */
+#r{display:flex;justify-content:flex-end;gap:1ch;align-items:center;margin:28px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
 /* a phone: at least 24 px for every button and every setting, a heading's state flows under its title, its marker keeping its space; the search
    a header row of its own under the name and the switch; the table's count a line of its own, with no dot */
 @media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.rv .how{padding-left:0}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
@@ -4011,8 +4009,7 @@ __READAT__
 <p id="l"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p></div>
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table></div>
 <article id="v" hidden></article>
-<footer id="F"><p id="f" class="m" data-l="footer"></p>
-__RUNNING__</footer>
+<footer id="F">__RUNNING__</footer>
 <dialog id="dlg"></dialog>
 __DAY__
 <script>__MARKED__</script>
@@ -4336,7 +4333,7 @@ document.addEventListener("visibilitychange",()=>{
 # Every word of the board's chrome, in English. A `labels.yaml` — flat `key: value` lines — overrides any of them;
 # the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
 LABELS = {
-    "tagline": "", "footer": "",
+    "tagline": "",
     "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
     "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
@@ -4494,7 +4491,8 @@ LABELS = {
 }
 # The labels the board no longer reads, each with what replaces it: a labels.yaml that still sets one is named on the run that meets it, with
 # this — never read, and never refused
-LABELS_GONE = {k: "light or dark is one switch, its word `scheme.toggle`" for k in ("scheme.auto", "scheme.light", "scheme.dark", "scheme.button")}
+LABELS_GONE = {**{k: "light or dark is one switch, its word `scheme.toggle`" for k in ("scheme.auto", "scheme.light", "scheme.dark", "scheme.button")},
+               "footer": "the board ends with the running line alone: no claim stands under it"}
 BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
 # THE BOARD'S COLOURS (the design guide, §5 and §13; FM-053's answer, and the guide's amendment G1–G2): every colour is a token on `:root`, so a
 # palette is a token swap, and the page writes the one it wears from here. Three meanings, one colour each: `teal` done or success, `amber` a
