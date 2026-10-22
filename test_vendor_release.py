@@ -377,7 +377,6 @@ def tag_steps(check, fm, tool_bytes, base):
           and not (copy / "brand" / "labels.yaml").exists() and not any(l.endswith("  brand/labels.yaml") for l in body) and from_tag(ign, copy, body),
           f"status {status!r}, exit {c}, {(o + e).strip()[-200:]!r}")
 
-    # a file the tag's tree holds under brand/themes/, which `--vendor` no longer takes: never copied, and never read, so its bytes on disk refuse nothing
     old = "brand/themes/shoalmark/theme.css"
     thm = base / "themed"
     release(thm, fm, tool_bytes, extra={old: b":root{--ink:#010203}\n"})
