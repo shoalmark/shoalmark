@@ -3874,6 +3874,8 @@ svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-r
 .rd input{-webkit-appearance:none;appearance:none;margin:0;width:13px;height:13px;border:1px solid var(--mute);border-radius:50%;background:none;flex:none;cursor:pointer}
 .rd input:checked{border-color:var(--ink);background:radial-gradient(circle,var(--bg) 0 2.5px,var(--ink) 3px)}.rd input:checked+span,.rd:hover{color:var(--ink)}
 .rd:hover input{border-color:var(--ink)}.rd input:focus-visible{outline:1px solid var(--ink);outline-offset:2px}#sl{margin-left:auto}
+#sl input{width:26px;height:14px;border-radius:7px;background:radial-gradient(circle at 6px 50%,var(--mute) 0 3.5px,transparent 4px)}
+#sl input:checked{background:radial-gradient(circle at calc(100% - 6px) 50%,var(--bg) 0 3.5px,transparent 4px) var(--ink)}
 /* the work table's count, what its rows hold: in the toolbar after the grouping, a dot before it */
 #n{color:var(--dim)}#n:before{content:"·";content:"·" / "";color:var(--mute);margin-right:1ch}
 /* never a silent loss: each brand file the board no longer reads, and what replaces it — one line, there while a file is */
@@ -3884,7 +3886,7 @@ button{cursor:pointer}
 button.act,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
 button.act:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
-button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabled{opacity:.4}
+button:disabled{opacity:.4}
 /* the Owner's box: the one titled frame, its title set into its top border; inside, sections are `## ` headings with their counts, each
    opening on its band (G2): from frame to frame — structure, not state. The band's top edge is a 1px --box rule, so the band is the divider
    (G8): it holds where a band's faint fill does not, on a dim screen, in print, in forced colours; the first band has none, the box's frame

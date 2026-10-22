@@ -5943,7 +5943,7 @@ _SCHEME_PROBE = ('<script>addEventListener("load",async()=>{const g=i=>document.
                  'c.width=c.height=4;const x=c.getContext("2d"),pix=async()=>{await img.decode().catch(()=>0);x.clearRect(0,0,4,4);x.drawImage(img,0,0,4,4);'
                  'try{return[...x.getImageData(1,1,1,1).data].slice(0,3).join(",")}catch(e){return "unread: "+e.name}},'
                  'state=async()=>({scheme,on:g("s").checked,kept:localStorage.getItem("shoalmark.scheme"),bg:getComputedStyle(document.body).backgroundColor,logo:await pix(),'
-                 'role:g("s").getAttribute("role"),type:g("s").type,word:g("sl").textContent}),o={load:await state()};'
+                 'role:g("s").getAttribute("role"),type:g("s").type,word:g("sl").textContent,wh:(r=>[r.width,r.height])(g("s").getBoundingClientRect())}),o={load:await state()};'
                  'g("s").click();o.pick=await state();g("s").click();o.back=await state();for(const m of["auto","light","dark"]){setScheme(m);o[m]=await state()}'
                  'setScheme("auto");document.body.dataset.probe=JSON.stringify(o)})</script>')
 
@@ -5978,6 +5978,7 @@ def _scheme_faults(runs, kept=False):
                 out_.append(f"{system_} system, {k_}: {r_}")
         if (o_["load"].get("role"), o_["load"].get("type"), o_["load"].get("word")) != ("switch", "checkbox", "dark"):
             out_.append(f"the control {o_['load']}")
+        out_ += [f"{system_} system, {k_}: the switch {r_.get('wh')}, no wider than it is tall" for k_, r_ in o_.items() if not (r_.get("wh") and r_["wh"][0] > r_["wh"][1] > 0)]
     return out_
 
 
@@ -6003,9 +6004,9 @@ if _browser("scheme"):
             wt_ = root / "docs/work-tracker"; page_ = (wt_ / "index.html").read_text(encoding="utf-8")
             fresh_ = _scheme_runs(wt_, page_, 'localStorage.removeItem("shoalmark.scheme")')
             kept_ = _scheme_runs(wt_, page_, 'localStorage.setItem("shoalmark.scheme","OPP")')
-            check(f"FM-053, BF-51, BF-54 · with the system dark and with it light: the page starts from the system's scheme, the switch on where it is dark; a pick is "
-                  f"kept; a pick equal to the system's scheme is forgotten; and in each board scheme — auto, light, dark — the page's ground and the logo's own "
-                  f"drawing are that scheme's (saw {_scheme_faults(fresh_) or fresh_})", not _scheme_faults(fresh_))
+            check(f"FM-053, BF-51, BF-54, BF-68 · with the system dark and with it light: the page starts from the system's scheme, the switch on where it is "
+                  f"dark, drawn as a track wider than it is tall; a pick is kept; a pick equal to the system's scheme is forgotten; and in each board scheme — "
+                  f"auto, light, dark — the page's ground and the logo's own drawing are that scheme's (saw {_scheme_faults(fresh_) or fresh_})", not _scheme_faults(fresh_))
             check(f"FM-053, BF-51 · a pick kept from an earlier visit holds at load against the system's scheme, and switching to the system's scheme forgets it "
                   f"(saw {_scheme_faults(kept_, kept=True) or kept_})", not _scheme_faults(kept_, kept=True))
             loose_ = _scheme_runs(wt_, page_.replace(_SCHEME_OWN, _SCHEME_SYS), 'localStorage.removeItem("shoalmark.scheme")')
@@ -6204,10 +6205,11 @@ def _toolbar_faults(rep, width):
 
 
 _tb_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, BF-52, BF-53 · the toolbar's settings are two radio groups, `#gv` named by its word and `#ov` by its two, and no button; the box hides only "
-      "during a search, and is built whenever there is none",
+check("FM-053, BF-52, BF-53, RV-3660 · the toolbar's settings are two radio groups, `#gv` named by its word and `#ov` by its two, and no button, and "
+      "the page holds no pressed state, its rule included; the box hides only during a search, and is built whenever there is none",
       _tb_src.count('<span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup" aria-labelledby="ovo ova">') == 1
-      and '<button id="g"' not in _tb_src and _tb_src.count(_TB_BOX[0]) == 1 and _tb_src.count('+(!q?box():"")') == 1 and "#vt button" not in _tb_src)
+      and '<button id="g"' not in _tb_src and _tb_src.count(_TB_BOX[0]) == 1 and _tb_src.count('+(!q?box():"")') == 1 and "#vt button" not in _tb_src
+      and "aria-pressed" not in fm.HTML_PAGE)
 if _browser("toolbar"):
     try:
         with tempfile.TemporaryDirectory() as d:
