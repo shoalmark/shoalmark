@@ -7986,6 +7986,7 @@ def worktree_identity(top):
     set), in 128 (no such folder, or no repository there) or in any other failure, or the read names no such key. Read without the `-c` scope of the
     command that runs this (`COMMAND_LINE_CONFIG`): a `git -c user.email=… commit` names the commit's author, not a worktree's setting."""
     env = {k: v for k, v in nested_git_env().items() if not COMMAND_LINE_CONFIG.fullmatch(k)}
+    env["GIT_CONFIG_PARAMETERS"] = board_settings()
     r = vcs_process("git", "-C", top, "config", "-z", "--get-regexp", SEAT_IDENTITY_KEYS, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                     errors="replace", env=env)
     got = dict.fromkeys(SEAT_IDENTITY)

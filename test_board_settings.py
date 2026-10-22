@@ -313,7 +313,7 @@ def build(base, fm, tool, info):
     signers.write_text("o@x " + key.with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
     for k, v in (("user.name", "owner"), ("user.email", "o@x"), ("gpg.format", "ssh"), ("user.signingkey", key.as_posix()),
                  ("gpg.ssh.allowedSignersFile", signers.as_posix()), ("commit.gpgsign", "false"), ("maintenance.auto", "false"), ("gc.auto", "0"),
-                 ("core.autocrlf", "false"), ("seat.session", "abcd1234")):
+                 ("core.autocrlf", "false"), ("seat.session", "abcd1234"), ("seat.harness", "fixture-harness-0001")):
         git(env, root, "config", k, v)
     git(env, root, "remote", "add", "origin", str(origin))
     (root / "shoalmark.toml").write_text('name = "m"\ntracker_dir = "docs/work-tracker"\n[kinds]\nAP = "Work"\n[seats]\nowner = "o@x signed"\n'
