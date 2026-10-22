@@ -6063,8 +6063,6 @@ else:
     SKIPS.append(("FM-006 · the tape-off ceremony · the dialog's hold, run", 2, "no Node here"))
 
 
-# the taped cue (T1) and the reason line (T3), as ruled: they hold before and after the release, while the page stays taped; and the high scores'
-# words for three rows (the box title, the third rank, the review-commit cohort's words, the row before the rule)
 _RULED_WORDS = {"en": {"cue_taped": "— after v0.20.1 —",
                        "taped_why": "Not out of order, just not open yet: the prompt behind this button goes live after v0.20.1, once its last test runs are through. "
                                     "Until then, hand your agents <a href=\"{adopt}\">the note</a>.",
@@ -16330,8 +16328,6 @@ check("FM-049 · the tell line's check is not blind: each of the English line as
       "renamed, the template not filling the address, the line only in the dialog, no form, the form's answer not required, and the form without "
       f"its German note on privacy leaves a problem (problems found: {_tctl_saw})", all(_tctl_saw.values()) and len(_tctl_saw) == 12)
 
-# the one feedback address: docs/feedback/index.html, which the site serves at https://shoalmark.tools/feedback as it stands — a plain link and a
-# refresh to the issue form, in English and German, no script, not indexed, in the ruled words
 _FEEDBACK = "docs/feedback/index.html"
 _FEEDBACK_WORDS = ("<title>shoalmark · feedback · Rückmeldung</title>", "<p>Taking you to shoalmark's feedback form on GitHub.</p>",
                    f'<p>If nothing happens: <a href="{_TELL_URL}">open the form</a>.</p>', "<p>What you send there is public, under your GitHub name.</p>",
