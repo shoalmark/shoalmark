@@ -6758,7 +6758,7 @@ day.value.branch: der Name des Standardzweigs
 """
 def _c4_english(shown):
     return sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
-                              "closed", "parked", "blocked", "board", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
+                              "closed", "parked", "blocked", "neighbours", "file", "intent", "verdict", "missing", "stated", "hand-over", "untriaged", "waiting", "kept")
                    if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
 
 
@@ -6805,6 +6805,9 @@ def _c4_prompt_controls(check):
 
 
 _c4_prompt_controls(check)
+_c4_board = " ".join(fm.read_flat(GERMAN)[k] for k in ("view.board", "viewer.board"))
+check(f"C4 · without a browser, the German board's name and its back link ({_c4_board!r}) hold no English word, and with open beside them only open is "
+      f"found (saw {_c4_english(_c4_board)}, {_c4_english(_c4_board + ' open')})", _c4_english(_c4_board) == [] and _c4_english(_c4_board + " open") == ["open"])
 
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
 # a wordmark as a person draws one: the mark stroked, the name filled, both in the page's ink; an id the page also uses
