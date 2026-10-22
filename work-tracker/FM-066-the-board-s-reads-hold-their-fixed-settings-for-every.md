@@ -15,6 +15,8 @@ hook: "the board's reads hold their fixed settings for every program a configura
 
 **Filed and judged 2026-10-21: In Progress, P1, for v0.20.1, on the Owner's word, which is recorded privately.**
 
+**Rebuilt for public history 2026-10-22:** the reviewed tree is made again on this branch in commits 1 and 2. The review rounds' own commits stay on a private record, and the commits FM-066 names below are on that record.
+
 RV-3529: recorded privately
 
 The board's reads hold their fixed settings for every program a configuration names, and the class test `test_board_settings.py` holds it: a
@@ -216,3 +218,4 @@ the SSH signature check its `%G?` asks for: the comment above `BOARD_SETTINGS` i
 | 2026-10-21 | Fix 1d, text only: the comments and docstrings around the trunk read say only what the head does — every reader gets `origin/HEAD`, else the cached `origin/main`, else `origin/master`, and no run asks origin. Kept and unreached: `default_trunk`'s `ask` parameter and the `ask=` its callers pass, `_ASK_ORIGIN`, `_TRUNK_UNTOLD` with its readers and the line it carries, and `origin_default` with `_ORIGIN_DEFAULT`. No code line changed. |
 | 2026-10-21 | Fix round 2 built by the Builder seat (`27f31560/builder-22`): `514b736` — the digests' conflict preview reads the merge drivers and the filter drivers before and after its `merge-tree`, runs only where both lists are read as none, and is reported as not read otherwise; `4d2ff97` — where `origin/HEAD` is absent and the cached `origin/main` and `origin/master` name different commits, `--check` and the default run on a clean tree refuse in one line, and the origin-discovery block uses an origin whose default branch is `master` with the branch's tip pushed as `main`; `9e85439` — the class test holds the trunk read over a local origin, SSH and a localhost HTTP server; `1765e80` — the comments, docstrings, labels and this tracker say what holds now. The review comes next. |
 | 2026-10-22 | Fix round 3 built by the Builder seat (`27f31560/builder-22`): `7f1c13e` — where `origin/HEAD` is absent and the cached `origin/main` and `origin/master` name different commits, `--check` and the default run refuse in one line whatever the working tree holds, the edited tree a row of the class test with its mutant; `c66172c` — the class test keeps its module docstring, which states the conflict preview's rule, and its comments on git alone. The review comes next. |
+| 2026-10-22 | Rebuilt for public history by the Builder seat (`27f31560/builder-22`) on `fm/066-board-read-settings-public`: commit 1, the record, by the Planner seat, and commit 2, the reviewed tree as one commit. The review rounds' own commits stay on a private record. |
