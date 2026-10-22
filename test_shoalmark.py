@@ -6970,7 +6970,9 @@ with tempfile.TemporaryDirectory() as d:
               set(fm.LABELS) - set(_shipped_de) <= {"tagline"} and not set(_shipped_de) - set(fm.LABELS))
         _en_de = sorted(k_ for k_, v_ in fm.LABELS.items() if v_ and _shipped_de.get(k_) == v_)
         check(f"FM-053 · the German table the tool ships carries the go-to-market seat's words rows: no label in it keeps its English but one whose German "
-              f"is the same word, `brand.gone.theme` (saw {_en_de})", _en_de == ["brand.gone.theme", "reviews.more"])
+              f"is the same word, `brand.gone.theme`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Sitzung in dieser Woche* (saw {_en_de})",
+              _en_de == ["brand.gone.theme"] and _shipped_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche"
+              and fm.LABELS["reviews.more"] == "and {0} more verdicts by another session this week")
         if _browser("german"):
             try:
                 dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag]).stdout
