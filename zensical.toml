@@ -3,7 +3,7 @@
 [project]
 site_url = "https://shoalmark.tools/"
 site_name = "shoalmark"
-site_description = "A work tracker in your repository, built for your agents: no “done” gets through without a commit behind it, and what waits for your word comes first."
+site_description = "A workbench for your agents. Your decisions on record."
 repo_url = "https://github.com/shoalmark/shoalmark"
 repo_name = "shoalmark/shoalmark"
 edit_uri = "edit/main/docs/"
@@ -14,6 +14,7 @@ use_directory_urls = false   # links are `setup.html`, not `setup/` — the buil
 
 nav = [
   { "Start" = "index.md" },
+  { "Why shoalmark?" = "why-shoalmark.md" },
   { "Set up in ten minutes" = "setup.md" },
   { "Your answer is your commit" = "signing.md" },
   { "Your word in TRIAGE.md" = "triage.md" },
@@ -23,6 +24,7 @@ nav = [
   { "For agents — the contract" = "agents/README.md" },
   { "Deutsch" = [
     { "Start" = "de/index.md" },
+    { "Warum shoalmark?" = "de/warum-shoalmark.md" },
     { "In zehn Minuten eingerichtet" = "de/setup.md" },
     { "Ihre Antwort ist Ihr Commit" = "de/signing.md" },
     { "Ihr Wort in der TRIAGE.md" = "de/triage.md" },

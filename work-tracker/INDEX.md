@@ -36,8 +36,10 @@
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
+| [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | P1 | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | In Progress | progress | 2026-10-17 |
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |
+| [FM-053](FM-053-the-board-s-design-for-v0-20-1-is-the-owner-s-word.md) | P2 | The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word | In Progress | progress | 2026-10-15 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
 | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | P1 | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress | progress | 2026-09-25 |
 | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | P2 | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress | progress | 2026-10-13 |
@@ -61,7 +63,6 @@
 | [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | — | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | Proposed | triage | — |
 | [FM-060](FM-060-the-answer-s-refusal-record-is-committed-unsigned-under-the.md) | — | --answer's refusal record is committed unsigned under the Owner's name, and R14 then refuses every branch that carries… | Proposed | triage | — |
 | [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | — | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | Proposed | triage | — |
-| [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | — | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | Proposed | triage | — |
 | [FM-056](FM-056-the-gate-can-name-the-commit-that-removed-a-line-as-the-one.md) | — | The gate names who set a tracker's line with a pickaxe that also matches the commit that removed it, so a line a merge… | Proposed | triage | — |
 | [FM-055](FM-055-the-receipts-need-the-owner-s-definitions-of-a-day-a-sitting.md) | — | The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories co… | Proposed | triage | — |
 | [FM-052](FM-052-a-fixture-that-watches-git-lets-git-s-own-housekeeping-run.md) | — | A fixture that watches .git lets git's own housekeeping run inside the watch, so a green commit can fail once | Proposed | triage | — |
