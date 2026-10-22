@@ -60,3 +60,31 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+  cloudflare:
+    # The same site to the Worker shoalmark-tools, beside GitHub Pages: the build's own artifact, unpacked as it was built, never
+    # built again, served by docs.wrangler.jsonc and docs.worker.js beside this file. The deploy's guard: never a private fork,
+    # never a pull request.
+    if: github.event.repository.private == false && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    # read, for the Worker's two files at this commit; the artifact is this run's own and the API token a repository secret
+    permissions: {contents: read}
+    # one Worker deployment at a time, in a group of its own: it neither waits for a GitHub Pages deployment nor cancels one
+    concurrency: {group: cloudflare-worker, cancel-in-progress: false}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            .github/workflows/docs.wrangler.jsonc
+            .github/workflows/docs.worker.js
+      - uses: actions/download-artifact@v8
+        with: {name: github-pages}
+      - run: mkdir site && tar -xf artifact.tar -C site
+      - uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.125.0"
+          command: deploy --config .github/workflows/docs.wrangler.jsonc

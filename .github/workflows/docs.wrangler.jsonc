@@ -1,0 +1,22 @@
+// The Worker shoalmark-tools, as docs.yml's cloudflare job deploys it: the site the build job made, served as GitHub Pages
+// serves it. The asset layer serves each file at its own path and never redirects (html_handling "none"). Every other
+// path goes to docs.worker.js, which serves a folder by its index.html and answers a missing path with 404.html and
+// status 404. No route, no custom domain and no account here: the custom domains are attached in the dashboard, and a
+// deploy leaves them as they are.
+{
+  "name": "shoalmark-tools",
+  "main": "docs.worker.js",
+  "compatibility_date": "2026-08-01",
+  // served at its custom domains only: no workers.dev address, no preview addresses
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    // the build's artifact, unpacked at the checkout's root; a path here is read from this file's folder
+    "directory": "../../site",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    // "none", not "404-page": with "404-page", a browser's navigation to a folder such as / would get 404.html from the
+    // asset layer before docs.worker.js could serve the folder's index.html
+    "not_found_handling": "none"
+  }
+}

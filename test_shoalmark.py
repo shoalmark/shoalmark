@@ -16156,7 +16156,7 @@ def _docs_wf_properties(text):
     except ValueError as e:
         wf, refused = {}, f" — the file is refused: {e}"
     on, jobs = wf.get("on") or {}, wf.get("jobs") or {}
-    build, deploy = jobs.get("build") or {}, jobs.get("deploy") or {}
+    build, deploy, worker = jobs.get("build") or {}, jobs.get("deploy") or {}, jobs.get("cloudflare") or {}
     pr = on.get("pull_request") if isinstance(on, dict) else None
     paths = pr.get("paths") or [] if isinstance(pr, dict) else []
     starts = lambda path: any(_docs_path_hit(p, path) for p in paths)
@@ -16166,6 +16166,15 @@ def _docs_wf_properties(text):
     facts, zensical, release = at(lambda r: r == 'python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"'), \
         at(lambda r: r.startswith("zensical build")), at(lambda r: r == 'python3 scripts/landing_facts.py --check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"')
     checkout = next((s for s in built if str(s.get("uses") or "").startswith("actions/checkout@")), {})
+    unpack = "mkdir site && tar -xf artifact.tar -C site"
+    shipped = [s for s in worker.get("steps") or [] if isinstance(s, dict)]
+    kind = lambda s: next((u for u in ("actions/checkout@", "actions/download-artifact@", "cloudflare/wrangler-action@") if str(s.get("uses") or "").startswith(u)),
+                          "unpack" if s.get("run") == unpack and set(s) == {"run"} else None)
+    kinds = [kind(s) for s in shipped]
+    wrangler = (shipped[kinds.index("cloudflare/wrangler-action@")].get("with") or {}) if "cloudflare/wrangler-action@" in kinds else {}
+    fetched = (shipped[kinds.index("actions/checkout@")].get("with") or {}) if "actions/checkout@" in kinds else {}
+    group = worker.get("concurrency") if isinstance(worker.get("concurrency"), dict) else {}
+    pages = (deploy.get("steps") or [None])[0]
     return [
         ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
         ("it starts on a `v*` tag, by hand, and on a pull request that changes the site's own sources — its pages, the launch states' words, templates, configuration, the README, "
@@ -16174,16 +16183,40 @@ def _docs_wf_properties(text):
          and set(pr) == {"paths"} and all(starts(p) for p in _DOCS_SOURCES) and not any(starts(p) for p in _DOCS_NOT)),
         ("the deploy job runs after the build, only in the public repository, and never for a pull request",
          deploy.get("if") == "github.event.repository.private == false && github.event_name != 'pull_request'" and deploy.get("needs") == "build"),
-        ("each job holds its own least permissions — the build `contents: read` and `pull-requests: read`, the deploy `pages: write` and `id-token: write` — "
-         "and the workflow grants none", wf.get("permissions") == {} and set(jobs) == {"build", "deploy"}
-         and build.get("permissions") == {"contents": "read", "pull-requests": "read"} and deploy.get("permissions") == {"pages": "write", "id-token": "write"}),
+        ("each job holds its own least permissions — the build `contents: read` and `pull-requests: read`, the deploy `pages: write` and `id-token: write`, "
+         "the Worker's deploy `contents: read` alone — and the workflow grants none", wf.get("permissions") == {} and set(jobs) == {"build", "deploy", "cloudflare"}
+         and build.get("permissions") == {"contents": "read", "pull-requests": "read"} and deploy.get("permissions") == {"pages": "write", "id-token": "write"}
+         and worker.get("permissions") == {"contents": "read"}),
         ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in str(s.get("run") or "") for s in steps)),
         ("the build checks out the whole history with its tags, without keeping the token in the checkout, writes the landing's figures before "
          "`zensical build` and checks the release after it, each told the event and the ref as GitHub names them",
          (checkout.get("with") or {}).get("fetch-depth") == 0 and (checkout.get("with") or {}).get("persist-credentials") is False
          and None not in (facts, zensical, release) and facts < zensical < release),
-        ("only the deploy job is in a concurrency group: a pull request's build neither waits for a deployment nor cancels one",
-         "concurrency" not in wf and "concurrency" not in build and deploy.get("concurrency") == {"group": "pages", "cancel-in-progress": False}),
+        ("only the two deploy jobs are in concurrency groups, each in its own and never cancelling: a pull request's build neither waits for a deployment "
+         "nor cancels one, and neither deployment waits for the other",
+         "concurrency" not in wf and "concurrency" not in build and deploy.get("concurrency") == {"group": "pages", "cancel-in-progress": False}
+         and set(group) == {"group", "cancel-in-progress"} and isinstance(group.get("group"), str) and group.get("group") not in ("", "pages")
+         and group.get("cancel-in-progress") is False),
+        ("the Worker's deploy runs after the build, only in the public repository, and never for a pull request",
+         worker.get("if") == "github.event.repository.private == false && github.event_name != 'pull_request'" and worker.get("needs") == "build"),
+        ("the Worker's deploy takes the site from the build's own artifact and builds nothing: the build uploads site/ as the Pages artifact, and the "
+         "Worker's job downloads `github-pages`, unpacks it into site/, and runs no other step than its checkout and wrangler",
+         sorted(kinds, key=str) == sorted(["actions/checkout@", "actions/download-artifact@", "unpack", "cloudflare/wrangler-action@"])
+         and kinds.index("actions/download-artifact@") < kinds.index("unpack") < kinds.index("cloudflare/wrangler-action@")
+         and shipped[kinds.index("actions/download-artifact@")].get("with") == {"name": "github-pages"}
+         and any(str(s.get("uses") or "").startswith("actions/upload-pages-artifact@") and s.get("with") == {"path": "site"} for s in built)),
+        ("the Worker's checkout fetches only its two files beside docs.yml and keeps no token",
+         fetched.get("persist-credentials") is False and fetched.get("sparse-checkout-cone-mode") is False
+         and fetched.get("sparse-checkout") == ".github/workflows/docs.wrangler.jsonc\n.github/workflows/docs.worker.js\n"),
+        ("wrangler deploys the Worker with the config beside docs.yml, its version pinned exactly",
+         re.fullmatch(r"\d+\.\d+\.\d+", str(wrangler.get("wranglerVersion") or "")) is not None
+         and wrangler.get("command") == "deploy --config .github/workflows/docs.wrangler.jsonc"),
+        ("the API token and the account come from the repository's secret CLOUDFLARE_API_TOKEN and its variable CLOUDFLARE_ACCOUNT_ID, by name",
+         wrangler.get("apiToken") == "${{ secrets.CLOUDFLARE_API_TOKEN }}" and wrangler.get("accountId") == "${{ vars.CLOUDFLARE_ACCOUNT_ID }}"),
+        ("the GitHub Pages deploy stays beside it: one step, `actions/deploy-pages`, in the `github-pages` environment",
+         len(deploy.get("steps") or []) == 1 and isinstance(pages, dict) and pages.get("id") == "deployment"
+         and str(pages.get("uses") or "").startswith("actions/deploy-pages@")
+         and deploy.get("environment") == {"name": "github-pages", "url": "${{ steps.deployment.outputs.page_url }}"}),
     ]
 
 
