@@ -619,7 +619,8 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
     "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
     "names": "FM-053, BF-11 · a review row's branch names at 375 px, rendered — each one inline box",
-    "phone": "FM-053, BF-14 · the page at 390, 360 and 320 px, rendered — no sideways scroll, only the table scrolls, in its own box",
+    "toolbar": "FM-053, BF-52, BF-53 · the work table's toolbar at 1024 and 390 px, rendered — its radio groups, and the box in the story view",
+    "phone": "FM-053, BF-55 · the page at 390, 360, 320 and 640 px, rendered — each work row stacked, no sideways scroll",
 }
 
 
@@ -6079,40 +6080,109 @@ if _browser("names"):
         _hung("names", e_)
         fm.configure(HERE)
 
-# --- FM-053, BF-14: on a phone the page never scrolls sideways — only the work table does, its columns as they are, in its own box; the header,
-#     the box and the toolbar stay put. Measured in Chrome at 390, 360 and 320 px on a board whose table cannot fit a phone; the rule taken out
-#     must let the page scroll ----------------------------------------------------------------------------------------------------------------
-_PH_RULE = "@media(max-width:640px){#B>table{display:block;overflow-x:auto}}\n"
-_PH_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,b=document.getElementById("B");'
-             't=document.querySelector("#B>table");parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,bc:b.clientWidth,'
-             'bs:b.scrollWidth,tc:t.clientWidth,ts:t.scrollWidth}),"*")})</script>')
+# --- the work table's settings are radios: `by ◉ board ○ story`, then `· ◉ open ○ all` in every view but the board — each a radio group named by
+#     its words, its radios under one name, so the arrow keys move within it, each label at least 24 px high on a phone. The box stays in the story
+#     view, the toolbar where it stood, and hides only during a search. Measured in Chrome at 1024 and 390 px; the box hidden outside the board
+#     again must fail it ----------------------------------------------------------------------------------------------------------------------
+_TB_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getElementById(i),q=s=>document.querySelector(s),'
+             'st=()=>({p:g("p").hidden,sections:g("p").querySelectorAll(".sec").length,ov:g("ov").hidden,on:[...document.querySelectorAll("#vt input:checked")].map(r=>r.name+"="+r.value),'
+             'y:Math.round(g("vt").getBoundingClientRect().top+scrollY),rows:document.querySelectorAll("#b tr.g").length}),o={board:st()};'
+             'q("#gv input[value=\\"1\\"]").click();o.story=st();'
+             'const groups=[...document.querySelectorAll("#vt [role=radiogroup]")].map(e=>({id:e.id,name:(e.getAttribute("aria-labelledby")||"").split(" ").map(i=>g(i)?g(i).textContent:"?").join(" "),'
+             'names:[...new Set([...e.querySelectorAll("input")].map(r=>r.type+":"+r.name))],labels:[...e.querySelectorAll("label")].map(l=>[l.textContent,Math.round(l.getBoundingClientRect().height)])}));'
+             'q("#ov input[value=\\"all\\"]").click();o.all=st();g("q").value="row";draw();o.search=st();g("q").value="";q("#gv input[value=\\"0\\"]").click();o.back=st();'
+             'parent.postMessage(JSON.stringify({w:innerWidth,o,groups}),"*")})</script>')
+_TB_BOX = ('$("p").hidden=!!q;', '$("p").hidden=gname!="board"||!!q;')        # the box, and the box hidden outside the board as it was
+
+
+def _toolbar_faults(rep, width):
+    """What is wrong with the toolbar's radios and the box in one frame — [] where each view checks its own radios, open or all shows in every view but
+    the board, the box stands in the board and the story view with the toolbar where it stood and hides during a search, and each group is named by
+    its words, its radios under one name, each label at least 24 px high on a phone."""
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    o_, out_ = rep["o"], []
+    want_ = {"board": (False, True, ["gv=0", "ov=open"]), "story": (False, False, ["gv=1", "ov=open"]), "all": (False, False, ["gv=1", "ov=all"]),
+             "search": (True, False, ["gv=1", "ov=all"]), "back": (False, True, ["gv=0", "ov=all"])}
+    out_ += [f"{k}: {o_.get(k)}" for k, (p_, ov_, on_) in want_.items() if (o_.get(k, {}).get("p"), o_.get(k, {}).get("ov"), o_.get(k, {}).get("on")) != (p_, ov_, on_)]
+    out_ += [] if o_["story"]["y"] == o_["board"]["y"] and o_["story"]["sections"] == o_["board"]["sections"] > 0 and o_["story"]["rows"] > 0 else [f"the story view moved the toolbar or the box: {o_}"]
+    named_ = {g_["id"]: (g_["name"], g_["names"], [t_ for t_, _h in g_["labels"]]) for g_ in rep["groups"]}
+    out_ += [] if named_ == {"gv": ("by", ["radio:gv"], ["board", "story"]), "ov": ("open all", ["radio:ov"], ["open", "all"])} else [f"the groups {rep['groups']}"]
+    out_ += [f"a label {h_} px high" for g_ in rep["groups"] for _t, h_ in g_["labels"] if width <= 640 and h_ < 24]
+    return out_
+
+
+_tb_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-52, BF-53 · the toolbar's settings are two radio groups, `#gv` named by its word and `#ov` by its two, and no button; the box hides only "
+      "during a search, and is built whenever there is none",
+      _tb_src.count('<span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup" aria-labelledby="ovo ova">') == 1
+      and '<button id="g"' not in _tb_src and _tb_src.count(_TB_BOX[0]) == 1 and _tb_src.count('+(!q?box():"")') == 1 and "#vt button" not in _tb_src)
+if _browser("toolbar"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="tier: P1\n", title="row one, a story"); tracker(root, "MSR-002", extra="epic: MSR-001\n", title="row two, its chapter")
+            tracker(root, "MSR-003", status="Shipped", title="row three, shipped"); run(root)
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _toolbar_faults(_header_at(wt_, page_, w_, _TB_PROBE), w_) for w_ in (1024, 390)}
+            before_ = _toolbar_faults(_header_at(wt_, page_.replace(*_TB_BOX), 1024, _TB_PROBE), 1024)
+            check(f"FM-053, BF-52, BF-53 · at 1024 and 390 px each view checks its own radios, open or all shows in every view but the board, each group is "
+                  f"named by its words with its radios under one name and each label at least 24 px high on a phone; the box stands in the story view, the "
+                  f"toolbar where it stood, and hides during a search (saw {seen_})", not any(seen_.values()))
+            check(f"FM-053, BF-53 · the check's control: the box hidden outside the board again fails it (saw {before_})",
+                  page_.count(_TB_BOX[0]) == 1 and any(f_.startswith(("story:", "the story view")) for f_ in before_))
+    except _ChromeFailed as e_:
+        _hung("toolbar", e_)
+        fm.configure(HERE)
+
+# --- on a phone each work row stacks — the id, tier and status on a line, the title under them at the full width, hanging at the id's column, the
+#     column heads gone — so the page is no wider than the screen and nothing scrolls sideways, a title too long for a line broken inside it.
+#     Measured in Chrome at 390, 360 and 320 px on a board whose title cannot fit a phone's line; the stacking taken out must let the page
+#     scroll sideways, and at 640 px it stacks, at 1024 not ---------------------------------------------------------------------------------
+_PH_RULE = ("@media(max-width:640px){#B>table,#b{display:block}#B>table>thead{display:none}#b>tr:not([hidden]),#b>tr>td{display:block}#b>tr>td.x{display:none}\n"
+            "#b>tr.t{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:2ch;padding-left:calc(2ch + 5px);border-top:1px solid var(--line)}#b>tr.t>td{border-top:0}\n"
+            "#b>tr.t>td:first-child{margin-left:calc(-2ch - 5px)}#b>tr.t>td:last-child{flex:1 1 100%;padding-top:0;overflow-wrap:anywhere}}\n")
+_PH_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,t=document.querySelector("#B>table"),r=e=>{const b=e.getBoundingClientRect();return[b.left,b.top,b.right,b.bottom]};'
+             'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,tc:t.clientWidth,ts:t.scrollWidth,head:getComputedStyle(t.tHead).display,'
+             'rows:[...document.querySelectorAll("#b tr.t")].map(x=>({id:r(x.cells[0].querySelector("a")),cell:r(x.cells[0]),title:r(x.cells[x.cells.length-1])}))}),"*")})</script>')
+
+
+def _phone_faults(rep, width, stacked=True):
+    """What is wrong with the work table in one frame — [] where the page and the table are no wider than the screen and each row stacks
+    (`stacked`: the title under the id's line, starting at the id's column, the heads gone) or does not (the title beside the id, the heads shown)."""
+    if not rep or rep.get("w") != width or not rep.get("rows"):
+        return [f"no report, or no row, from the {width} px frame (saw {rep})"]
+    out_ = [f"the page {rep['sw']} px wide in {rep['cw']}"] if rep["sw"] > rep["cw"] + 1 else []
+    out_ += [f"the table {rep['ts']} px wide in {rep['tc']}"] if rep["ts"] > rep["tc"] + 1 else []
+    out_ += [] if (rep["head"] == "none") == stacked else [f"the column heads: {rep['head']}"]
+    for r_ in rep["rows"]:
+        under_ = r_["title"][1] >= r_["cell"][3] - 0.5 and abs(r_["title"][0] - r_["id"][0]) <= 1 and r_["title"][2] <= rep["cw"] + 0.5
+        out_ += [] if under_ == stacked else [f"a row {r_}"]
+    return out_
+
+
 _ph14_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, BF-14 · at 640 px and narrower only the work table scrolls what is wider than the page, in its own box: `#B>table{display:block;overflow-x:auto}` "
-      "in its own phone rule — never the whole board", _ph14_src.count(_PH_RULE) == 1 and "#B{display:block;overflow-x:auto}" not in _ph14_src)
+check("FM-053, BF-55 · at 640 px and narrower each work row stacks, in one phone rule — and the scrolling box the table had there is gone",
+      _ph14_src.count(_PH_RULE) == 1 and "#B>table{display:block;overflow-x:auto}" not in _ph14_src)
 if _browser("phone"):
     try:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d).resolve(); run(root, "--init", "--key", "msr")
-            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock_is_booked_per_warehouse_and_counted_per_shelf_in_one_pass_every_night")
-            tracker(root, "MSR-002", status="Proposed", title="An untriaged one"); run(root)
+            tracker(root, "MSR-001", extra="tier: P1\nrank: 1\nnext: build\n", title="Stock_is_booked_per_warehouse_and_counted_per_shelf_in_one_pass_every_night")
+            tracker(root, "MSR-002", status="Proposed", title="An untriaged one, with a title long enough to wrap on a phone"); run(root)
             page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
-            seen_ = {w_: _header_at(wt_, page_, w_, _PH_PROBE) or {} for w_ in (390, 360, 320)}
-            before_ = _header_at(wt_, page_.replace(_PH_RULE, ""), 360, _PH_PROBE) or {}
-            check(f"FM-053, BF-14 · at 390, 360 and 320 px the page is no wider than the screen, the board does not scroll, and only the table does, in its own "
-                  f"box (saw {seen_})",
-                  page_.count(_PH_RULE) == 1 and all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["bs"] <= r_["bc"] + 1 and r_["ts"] > r_["tc"]
-                                                     for w_, r_ in seen_.items()))
-            check(f"FM-053, BF-14 · the check's control: the rule taken out, the page scrolls sideways at 360 px (saw {before_})",
-                  before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
+            seen_ = {w_: _phone_faults(_header_at(wt_, page_, w_, _PH_PROBE), w_) for w_ in (390, 360, 320, 640)}
             with tempfile.TemporaryDirectory() as d2:
                 plain_ = Path(d2).resolve(); run(plain_, "--init", "--key", "msr")
                 tracker(plain_, "MSR-001", extra="tier: P1\n", title="Stock is booked per warehouse"); tracker(plain_, "MSR-002", status="Proposed", title="An untriaged one")
                 run(plain_)
-                wide_ = {w_: _header_at(plain_ / "docs/work-tracker", (plain_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"), w_, _PH_PROBE) or {}
-                         for w_ in (640, 1024)}
-            check(f"FM-053, BF-14 · nothing changes at 640 and 1024 px: on a board whose table fits, the page is the screen's width and the table does not "
-                  f"scroll (saw {wide_})",
-                  all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["ts"] <= r_["tc"] + 1 for w_, r_ in wide_.items()))
+                wide_ = _phone_faults(_header_at(plain_ / "docs/work-tracker", (plain_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"), 1024, _PH_PROBE), 1024, stacked=False)
+            before_ = _header_at(wt_, page_.replace(_PH_RULE, ""), 360, _PH_PROBE) or {}
+            check(f"FM-053, BF-55 · at 390, 360, 320 and 640 px each row stacks — the title under the id's line, hanging at the id's column — the heads are gone, "
+                  f"and the page is no wider than the screen; at 1024 px, on a board whose titles fit, the row is one line under its heads (saw {seen_}, {wide_})",
+                  page_.count(_PH_RULE) == 1 and not any(seen_.values()) and not wide_)
+            check(f"FM-053, BF-55 · the check's control: the stacking taken out, the page scrolls sideways at 360 px (saw {before_.get('sw')} in {before_.get('cw')})",
+                  before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
     except _ChromeFailed as e_:
         _hung("phone", e_)
         fm.configure(HERE)
@@ -6862,7 +6932,7 @@ with tempfile.TemporaryDirectory() as d:
             try:
                 import html as _html
                 probe = ('<script>{const o=[],s=()=>o.push(($("p").querySelector(".pt")||{}).textContent||"-");s();$("q").value="row";draw();s();'
-                         '$("q").value="";$("g").click();s();document.body.dataset.probe=o.join("|")}</script>')
+                         '$("q").value="";document.querySelector("#gv input[value=\\"1\\"]").click();s();document.body.dataset.probe=o.join("|")}</script>')
                 (wt / "probe.html").write_text(page.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
                 views_ = _html.unescape((re.search(r'data-probe="([^"]*)"', _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout) or [None, ""])[1])
                 check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view (saw {views_!r})",
@@ -7175,9 +7245,9 @@ def _accept(source):
     # 3 · nothing framed but actions: a box only on what is clickable and on the search field, one titled frame, the dialog's window
     framed = sorted({s for s, d_ in plain if any(k == "border" and not v.startswith(("0", "none")) for k, v in d_.items())})
     phone = {s for m, s, d_ in rules if "max-width:640px" in m and d_.get("min-height") == "24px"}
-    out[3] = (framed == sorted({"button.act", ".rd input", "#vt button", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
-              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", ".rd input", "#vt button", "#dlg button"))
-              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", ".rd", "#vt button", "#dlg button"} <= phone
+    out[3] = (framed == sorted({"button.act", ".rd input", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
+              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", ".rd input", "#dlg button"))
+              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", ".rd", "#dlg button"} <= phone
               and not any(k == "border" for s, d_ in plain if s.startswith(("#p>.sec", ".row.v")) for k in d_), f"{framed}")    # a band's top rule (G8) is no frame
     # 4 · said, not implied: no word from the guide's *never* list, no line that promises what a session will do; what is not known is in italics with its reason
     never = re.compile(r"\b(live|running|active|up to date|all your projects|every agent|all sessions|proves|independent|less work|faster|touch)\b", re.I)

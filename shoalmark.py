@@ -3881,8 +3881,8 @@ svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-r
 /* a box means an action; information is never boxed (the Owner's rule). A button is a word in a 1px frame — the frame in --mute, which carries
    the meaning — with 1px by 1ch of padding, so it keeps the 21 px line; ink on --raise under the pointer; a visible focus ring */
 button{cursor:pointer}
-button.act,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
-button.act:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
+button.act,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
+button.act:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
 button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabled{opacity:.4}
 /* the Owner's box: the one titled frame, its title set into its top border; inside, sections are `## ` headings with their counts, each
@@ -3926,7 +3926,10 @@ code{font:inherit}
 .help{color:var(--help);border-left:2px dashed var(--help);padding:0 0 0 1ch;margin:2px 0 6px}
 /* the work table, by rank: no outer box, its column heads types, its groups `// `, each group a fold — a group's line wraps inside the frame
    (BF-1: `td.m`'s nowrap is the cells' alone) */
-#vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}#vt button{margin:0}
+#vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}
+/* its settings: the grouping, `by ◉ board ○ story`, then, in every view but the board, `· ◉ open ○ all` — each a radio group — then the count */
+#gv,#ov{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 2ch}#ov[hidden]{display:none}#gw{color:var(--dim)}
+#ov:before{content:"·";content:"·" / "";color:var(--mute);margin-right:-1ch}
 #l{color:var(--mute);font-size:12px;margin-left:auto}#l span{text-transform:lowercase;margin-right:1ch}
 table{width:100%;border-collapse:collapse}
 th{text-align:left;color:var(--mute);font-size:12px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;padding:3px 2ch 3px 0}
@@ -3986,17 +3989,20 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 #r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
 /* a phone: at least 24 px for every button and every setting, a heading's state flows under its title, its marker keeping its space; the search
    a header row of its own under the name and the switch; the table's count a line of its own, with no dot */
-@media(max-width:640px){button.act,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
+@media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
 #sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}
-/* a phone: the work table, wider than the page with its columns as they are, scrolls in its own box — the header, the box and the toolbar stay put (BF-14) */
-@media(max-width:640px){#B>table{display:block;overflow-x:auto}}
+/* a phone: each work row stacks — the id, tier and status share a line, wrapping under the id where they must, and the title takes the full width
+   under them, hanging at the id's column; the column heads go, and nothing scrolls sideways: a title too long for the line breaks inside it */
+@media(max-width:640px){#B>table,#b{display:block}#B>table>thead{display:none}#b>tr:not([hidden]),#b>tr>td{display:block}#b>tr>td.x{display:none}
+#b>tr.t{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:2ch;padding-left:calc(2ch + 5px);border-top:1px solid var(--line)}#b>tr.t>td{border-top:0}
+#b>tr.t>td:first-child{margin-left:calc(-2ch - 5px)}#b>tr.t>td:last-child{flex:1 1 100%;padding-top:0;overflow-wrap:anywhere}}
 /* on paper the board is always the light one */
 @media print{#sl,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
 </style>
 <div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><label id="sb"><input id="q" autofocus></label><label id="sl" class="rd"><input type="checkbox" role="switch" id="s"><span data-l="scheme.toggle"></span></label></div>__GONE__
 __READAT__
 <div id="p" class="box"></div>
-<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n"></span>
+<div id="vt"><span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup" aria-labelledby="ovo ova"><label class="rd"><input type="radio" name="ov" value="open" checked><span id="ovo" data-l="view.open"></span></label><label class="rd"><input type="radio" name="ov" value="all"><span id="ova" data-l="view.all"></span></label></span><span id="n"></span>
 <p id="l"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p></div>
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table></div>
 <article id="v" hidden></article>
@@ -4227,8 +4233,9 @@ function draw(){
     return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
-  $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
-  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").hidden=gname!="board"||!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(gname=="board"&&!q?box():"");   // the box keeps its title in every view (FM-002 R2)
+  $("ov").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
+  for(const r of document.querySelectorAll("#gv input,#ov input"))r.checked=r.name=="gv"?+r.value==gi:(r.value=="all")==all;
+  $("p").hidden=!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(!q?box():"");   // the box stands in every view, and hides only during a search, whose results come first
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -4236,8 +4243,11 @@ $("b").onclick=e=>{
   if(g){const k=g.dataset.k;touched.add(k);shut.has(k)?shut.delete(k):shut.add(k);return draw()}
   const r=e.target.closest("tr.t");if(r&&e.target.tagName!="A")r.nextElementSibling.hidden^=1};
 $("q").oninput=draw;
-$("g").onclick=()=>{gi=(gi+1)%GROUPS.length;draw()};
-for(const[id,v]of[["o",false],["a",true]])$(id).onclick=()=>{all=v;$("o").setAttribute("aria-pressed",!v);$("a").setAttribute("aria-pressed",v);draw()};
+// the grouping's radios, one per view, after its word — `by`, as `view.by` places it — and open or all: the arrow keys move within each group
+{const [w,rest]=(L["view.by"]??"by {0}").split("{0}");$("gv").innerHTML=`<span id="gw">${esc(w.trim())}</span>`
+  +GROUPS.map(([g],i)=>`<label class="rd"><input type="radio" name="gv" value="${i}"${i==gi?" checked":""}><span>${esc(vn(g))}</span></label>`).join("")+(rest?.trim()?`<span>${esc(rest.trim())}</span>`:"")}
+$("gv").onchange=e=>{gi=+e.target.value;draw()};
+$("ov").onchange=e=>{all=e.target.value=="all";draw()};
 onkeydown=e=>{if(e.key=="/"&&document.activeElement!=$("q")){e.preventDefault();$("q").focus()}if(e.key=="Escape"&&!$("v").hidden)location.hash=""};
 // the viewer: `#=MSR-012` shows that tracker rendered. Markdown comes from view/<ID>.js (a script tag works from
 // disk, a fetch does not); embedded HTML is shown, never run; bare ids and tracker links stay inside the page.

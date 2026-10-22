@@ -378,7 +378,7 @@ check("the board is the first view: progress · triage · triaged · backlog · 
       'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", _tri) is not None
       and 'untriaged(t)?"triage":t[19]]' in _tri and "OPEN.has(t[2])&&!fresh(t)" not in _tri
       and "recent=t=>!!t[17]&&t[17]==LAST" in _tri and "fresh=t=>!!t[17]&&ago(t[17])<=7" in _tri and "__DAYS__" not in _tri and gti.TRIAGE_DAYS == 7
-      and '<button id="g" aria-pressed="true"></button><button id="o"' in _tri)
+      and '<div id="vt"><span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup"' in _tri)
 check("the board shows the triage home: the Owner's current path on top, the newest pass under `triaged` — plain text, ids clickable",
       "HOME={" in _tri and "__HOME__" not in _tri and "FEAT-002 to its end" in _tri and "](FEAT-002" not in _tri.split("const BLOB")[1].split(",T=[")[0]
       and 'HOME.last?`<tr class="s">' in _tri and set(gti.triage_home()) == {"path", "last", "intent"})
@@ -652,7 +652,7 @@ check("three views — board, release, epic; a tag is found by searching it, and
       _tagged.count('GROUPS=[["board"') == 1 and '["tag",' not in _tagged and '["suite",' not in _tagged and '["none",' not in _tagged
       and 'href="#${encodeURIComponent(x)}" class="m k"' in _tagged)
 check("on the board open/all is hidden, Esc leaves the viewer, and a tracker's headings carry GitHub's slugs with a section list when long",
-      '$("o").hidden=$("a").hidden=gname=="board"' in _tagged and 'e.key=="Escape"&&!$("v").hidden' in _tagged
+      '$("ov").hidden=gname=="board"' in _tagged and 'e.key=="Escape"&&!$("v").hidden' in _tagged
       and 'h.id="h-"+h.textContent.toLowerCase()' in _tagged and "if(h2.length>5)" in _tagged)
 _tbl = "| a | b |\n|---|---|\n| 1 | 2 |\n"
 check("a table row that belongs to no table is refused: after a blank line, after a note, a wrapped cell — not inside a code fence",
