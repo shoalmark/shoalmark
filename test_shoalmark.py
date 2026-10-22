@@ -5858,7 +5858,7 @@ _HDR_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getEleme
               'return{l:r.left,r:r.right,t:r.top,b:r.bottom,w:r.width,h:r.height,shown:c.display!="none"&&c.visibility=="visible"&&!!h&&(h==e||e.contains(h))}};'
               'const n=g("n"),dot=getComputedStyle(n,"::before");'
               'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,H:[g("H").scrollWidth,g("H").clientWidth],sb:[g("sb").scrollWidth,g("sb").clientWidth],'
-              'q:box("q"),sl:box("sl"),box:box("sb"),name:box("H").t,n:box("n"),g:box("g"),vt:box("vt"),in:n.parentElement.id,after:!!(g("g").compareDocumentPosition(n)&4),'
+              'q:box("q"),sl:box("sl"),box:box("sb"),name:box("H").t,n:box("n"),g:box("gv"),vt:box("vt"),in:n.parentElement.id,after:!!(g("gv").compareDocumentPosition(n)&4),'
               'dot:dot.display!="none"&&dot.content.includes("·"),text:n.textContent}),"*")})</script>')
 _HDR_BACK = ('<input id="q" autofocus></label>', '<input id="q" autofocus><span id="n"></span></label>')       # the count back in the search box
 
