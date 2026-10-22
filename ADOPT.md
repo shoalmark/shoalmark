@@ -334,9 +334,10 @@ requirement met is a test passed, nothing more.
 
 ### 9. A server out of reach
 
-Use the person's answer from step 2. Do not try to reach the project's server yourself, since that would use the
-person's credentials. Where the working copy cannot reach its server, in an isolated sandbox for example, the report
-says what works there and what does not. In a git repository:
+Use the person's answer from step 2. Apart from the Subversion history read explicitly approved in ADOPT.svn.md step
+4, do not try to reach the project's server yourself, since that would use the person's credentials. Where the
+working copy cannot reach its server, in an isolated sandbox for example, the report says what works there and what
+does not. In a git repository:
 
 - *Works without the server:* the trackers, the gate on a commit, `INDEX.md`, the board, `--next`, `--owner` and
   `--standup`.

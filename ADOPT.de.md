@@ -370,8 +370,9 @@ irgendetwas: Ein Nachweis ist ein bestandener Test, nicht mehr.
 
 ### 9. Ein Server außer Reichweite
 
-Nehmt die Antwort der Person aus Schritt 2. Versucht nicht selbst, den Server des Projekts zu erreichen: Das ginge nur
-mit den Zugangsdaten der Person. Wo die Arbeitskopie ihren Server nicht erreicht, etwa in einer abgeschotteten Sandbox,
+Nehmt die Antwort der Person aus Schritt 2. Abgesehen vom ausdrücklich freigegebenen Lesen der Subversion-Historie in
+ADOPT.svn.de.md, Schritt 4, versucht nicht selbst, den Server des Projekts zu erreichen: Das ginge nur mit den
+Zugangsdaten der Person. Wo die Arbeitskopie ihren Server nicht erreicht, etwa in einer abgeschotteten Sandbox,
 sagt der Bericht, was dort geht und was nicht. In einem git-Repository:
 
 - *Geht ohne Server:* die Einträge, das Gate bei einem Commit, `INDEX.md`, die Tafel, `--next`, `--owner` und

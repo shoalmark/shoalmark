@@ -43,9 +43,10 @@ installer offers to set up.
 
 ## Step 2: the explanation names two more approvals
 
-Running svn, which only reads the working copy, and svnadmin, which makes a throwaway local repository inside the
-folder. On Windows, add: for one step, the Owner commits through TortoiseSVN in that folder, at this machine, and
-sees what the gate does. Ask whether they will be there; without them, the step is left out and the report says so.
+Running svn to list the working copy's files and, only after a separate explicit yes, read its history from the
+project's server; and running svnadmin to make a throwaway local repository inside the folder. On Windows, add: for
+one step, the Owner commits through TortoiseSVN in that folder, at this machine, and sees what the gate does. Ask
+whether they will be there; without them, the step is left out and the report says so.
 
 ## Step 4: listing without the server
 
@@ -55,7 +56,9 @@ svn status -v
 
 It lists every versioned item, with its revision and last author, from the working copy alone; it contacts no server.
 Leave out the lines that begin with `?`: those items are not versioned. Keep the first 5,000 lines. Take the sizes
-from the files themselves. The history comes from the server:
+from the files themselves. The history comes from the server. Ask the person for an explicit yes before contacting the
+project's server to read history. Without that yes, skip `svn log`, mark the history not readable here, and continue.
+With the yes:
 
 ```
 svn log -l 200

@@ -47,9 +47,10 @@ im `PATH`, den der Python-Installer einzurichten anbietet.
 
 ## Schritt 2: Die Erklärung nennt zwei Freigaben mehr
 
-svn, das die Arbeitskopie nur liest, und svnadmin, das im Ordner ein lokales Wegwerf-Repository anlegt. Unter Windows
-kommt dazu: Für einen Schritt committet der Owner in diesem Ordner über TortoiseSVN, an diesem Rechner, und sieht, was
-das Gate tut. Fragt, ob er dabei sein wird. Ohne ihn entfällt der Schritt, und der Bericht sagt das.
+svn ausführen, um die Dateien der Arbeitskopie aufzulisten und, erst nach einem gesonderten ausdrücklichen Ja, ihre
+Historie vom Server des Projekts zu lesen; außerdem svnadmin, um im Ordner ein lokales Wegwerf-Repository anzulegen.
+Unter Windows kommt dazu: Für einen Schritt committet der Owner in diesem Ordner über TortoiseSVN, an diesem Rechner,
+und sieht, was das Gate tut. Fragt, ob er dabei sein wird. Ohne ihn entfällt der Schritt, und der Bericht sagt das.
 
 ## Schritt 4: Auflisten ohne Server
 
@@ -59,7 +60,9 @@ svn status -v
 
 Das listet jedes versionierte Element mit Revision und letztem Autor auf, nur aus der Arbeitskopie; es fragt keinen
 Server. Lasst die Zeilen weg, die mit `?` beginnen: Diese Elemente sind nicht versioniert. Behaltet die ersten 5.000
-Zeilen. Die Größen nehmt aus den Dateien selbst. Die Historie kommt vom Server:
+Zeilen. Die Größen nehmt aus den Dateien selbst. Die Historie kommt vom Server. Fragt die Person ausdrücklich um ihr
+Ja, bevor ihr den Server des Projekts kontaktiert, um die Historie zu lesen. Ohne dieses Ja überspringt `svn log`,
+haltet fest, dass die Historie hier nicht lesbar ist, und fahrt fort. Mit dem Ja:
 
 ```
 svn log -l 200
