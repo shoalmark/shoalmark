@@ -1579,12 +1579,12 @@ check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{
       == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Stamm"))
 
 # --- FM-053, BF-8: the guide's §10 puts *ended* among the words never on a board — the last group's heading reads *shipped or closed*; its key
-#     and its description stay; the German table the tool ships says it in English until the native read, since *beendet* says *ended* too
+#     and its description stay; the German table the tool ships says *ausgeliefert oder geschlossen*, never *beendet*, which says *ended* too
 _ended_ = [k for k, v in fm.LABELS.items() if re.search(r"(?<![\w-])ended(?![\w-])", v)]      # a list made apart: 3.9 takes no backslash in an f-string's braces
-check(f"FM-053, BF-8 · no label says *ended*: the last group is *shipped or closed*, its key `section.ended` and `desc.ended` kept, and the shipped German "
-      f"table's value English until the native read (saw {_ended_})",
+check(f"FM-053, BF-8, G3 · no label says *ended*: the last group is *shipped or closed*, its key `section.ended` and `desc.ended` kept, and the shipped "
+      f"German table's value its words row's, *ausgeliefert oder geschlossen*, never *beendet* (saw {_ended_})",
       fm.LABELS.get("section.ended") == "shipped or closed" and fm.LABELS.get("desc.ended") == "" and not _ended_
-      and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("section.ended") == "shipped or closed")
+      and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("section.ended") == "ausgeliefert oder geschlossen")
 _end_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
 check("FM-053, BF-13 · the last group says its name once — *// shipped or closed · 22*: `desc.ended` is empty, in English and in the German table "
       "the tool ships, and a group's line adds its description only where there is one",
