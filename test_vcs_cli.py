@@ -231,7 +231,7 @@ class CliControls(unittest.TestCase):
                             self.assertEqual(front["answered-by"], "Owner fixture")
                             self.assertEqual(front["next"], "owner")
                             callbacks.append("write")
-                            report = how["said"]("answer/fm-044", " — not pushed in this control")
+                            report = how["said"]("answer/fm-044", " — not pushed in this control", fm.PROOF_SAID["author"])
                             self.assertIsInstance(report, str)
                             callbacks.append("said")
                             self.assertIn(f"FM-044 answered: accepted - {when}\n", report)

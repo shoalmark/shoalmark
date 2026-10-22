@@ -29,7 +29,7 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 - Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
 
 Git worktree identity and commit-trailer reports (`--whoami`, `--session-trailer`, `--sessions`), the forge queue
-(`--queue`) and signed answer-branch acts (`--answer`, `--done`, `--due`, `--revoke`) require Git. Under Subversion, `--session new` generates an id without checking a Git commit registry. A server login
+(`--queue`) and answer-branch acts (`--answer`, `--done`, `--due`, `--revoke`) require Git. Under Subversion, `--session new` generates an id without checking a Git commit registry. A server login
 can attribute an SVN revision; it provides no cryptographic commit signature, and a local working-copy label proves
 no author. Checks that need server history refuse when that history cannot be read.
 
@@ -259,7 +259,7 @@ shoalmark writes runs after a checkout, a merge, a rebase or a pull. The board i
 the commit stages a tracker, and by `--answer`, `--done`, `--due` and `--revoke` right after each pushes.
 Where an earlier version wrote `post-checkout`, `post-merge` or `post-rewrite`, the next `--install-hook` removes each one exactly as that version wrote it, with a line; a hook of
 those names that it did not write — or one changed since — is kept as it is, and named. A commit's hook writes only inside the repository, outside its git directory and through no
-symlink, and it fails closed: where the copy is not there, refuses, or does not finish within 35 seconds (`SHOALMARK_BOARD_SECONDS` gives it longer), the commit is refused with
+symlink, and it fails closed: where the copy is not there, refuses, or does not finish within 60 seconds (`SHOALMARK_BOARD_SECONDS` gives it longer), the commit is refused with
 one line. No hook runs the repository's deriver: where there is one, the commit's hook leaves INDEX.md and the files it derives as staged and says so in one line — run the tool
 before committing; CI's `--check`, which runs the deriver, holds them. `--install-hook` refuses a hooks folder inside the working tree — a `core.hooksPath` there, or a symlink into
 it — where a branch could change the hooks themselves, and writes no hook and no copy. Only `--install-hook` writes the copy — from a pinned
@@ -267,6 +267,11 @@ copy that passes its PIN, else from the working tree's tool, and it says which c
 tree's tool differs from the copy, a hook still judges with the copy and prints one line that says so. A person, an agent and CI run the repository's own tool, as ever. Developing the
 tool itself means installing the branch's copy deliberately: `--install-hook` on that branch, which warns that the copy carries that branch's tool.
 On git and on Subversion alike, after a checkout, a pull or `svn update`, run `--html-only` to rebuild the board.
+
+The board's `--html-only` run has the same 60 s default and environment override. Explicit person commands such as `--answer` and `--check` have no watchdog,
+through either the repository's tool or the hooks' copy. The copy's `COPY` marker still applies all its existing restrictions. For the timeout alone, the tool reads parsed
+arguments: `--session-check`, `--session-trailer`, `--commit-msg`, `--print-written`, `--tsvn-hook` and `--html-only` stay bounded even alongside a person command.
+A plain, unknown or malformed invocation of the copy cannot be distinguished from a hook and stays bounded, including when typed by hand.
 
 Then **the Owner** writes the intent and the current path in `<tracker dir>/TRIAGE.md`. Nobody else edits those two
 sections. The intent is three lines in their own words about the repository as a whole, never one feature of it: what
@@ -317,12 +322,12 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/<ID>-<slug>.md` | the trackers — one flat directory, the id in the filename |
 | `<tracker dir>/TRIAGE.md` | the Owner's intent and current path; one paragraph per pass |
 | `<tracker dir>/sessions.md` | gone since 0.18.0 — the registry of seat sessions is a report, `--sessions` (§*Sessions*); delete a file left from before, history keeps its rows |
-| a seat's worktree | three per-worktree git settings (`git config --worktree`), read by the tool and never by hand: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists them). **`--whoami`** prints `From: <session> <seat> (<worktree>) · <model> · <effort>` — the line a seat's report opens with; a message between sessions names its target by the same identity after `To:` |
+| a seat's worktree | its identity in five per-worktree git settings (`git config --worktree`), written when the worktree is added — `git worktree add` copies all five from the worktree it is run in (§*Sessions*, the step) — and read by the tool: `user.name` and the signers file `gpg.ssh.allowedSignersFile` beside these three: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists these three). **`--whoami`** prints `From: <session> <seat> (<worktree>) · <model> · <effort>` — the line a seat's report opens with; a message between sessions names its target by the same identity after `To:` |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
 | `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads. Under its name one line says what it read, and when: the time it was built; on git the commit, the branch or a detached HEAD, and how many paths were changed and not committed — a plain run counts them; the board's own run, `--html-only`, says what is changed is not read —; on Subversion the working copy's revision; with none, the folder. The commit or the revision links to its page only where the configuration names the forge (`commit_url`, else `blob`) and, on git, only once origin holds it; else the line says why — never a link guessed from a remote's address — and that it reads its file again when you come back to it while nothing polls, with the command that rebuilds it, `--html-only`, and a button that copies it. It never calls itself current |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
 | `<tracker dir>/derive` | optional, executable — the repository's own axis (§7) |
-| `<tracker dir>/brand/` | optional — the repository's `theme.css`, `logo.svg`, `wordmark.svg`, `labels.yaml`, fonts (§9) |
+| `<tracker dir>/brand/` | optional — the repository's `logo.svg`, `labels.yaml` (§9) |
 
 ### What invites and notifications left
 
@@ -401,14 +406,50 @@ begun under a seat's old name (`<id>/implementer-<n>`) still reads as the seat's
 The seat says **who may**; it cannot say **which run**: two sessions of one seat are one author in git. So a seat's
 worktree carries a second setting beside its badge, and every commit made there names its session.
 
+**A new seat's worktree — one step.** Under `extensions.worktreeConfig`, `git worktree add` copies the worktree it is run
+in: its whole `config.worktree`. The new worktree is then the seat it was added from — its name and address, its
+session, its harness id and its signers file — and commits as that seat, with its rights, until each is written again.
+Whoever adds the worktree writes every one before the seat's first commit, and reads the list back:
+
 ```bash
-git config --worktree user.email planner@seat        # the seat — read by the gate for rights
-git config --worktree seat.session a9f3c2d1          # the session — the harness's session id, its first eight hex characters;
-                                                     # a sub-agent derives its id from its parent's: a9f3c2d1/reviewer-1;
-                                                     # a session with no parent and a harness with no id: `<cmd> --session new`
-git config --worktree seat.harness aefd1a3520c000231 # the id the HARNESS gave this seat, written by whoever spawns it from the spawn's
-                                                     # result — Claude Code's session id, or a sub-agent's agent id; Codex's thread id
+w=../builder-3                                         # the new seat's worktree
+git worktree add "$w" -b fm/012-slug origin/main       # copies THIS worktree's config.worktree into "$w": every key below
+git -C "$w" config --worktree user.name 'Builder seat'
+git -C "$w" config --worktree user.email builder@seat  # the seat — read by the gate for rights
+git -C "$w" config --worktree seat.session a9f3c2d1/builder-3
+                                                       # the session — a sub-agent derives its id from its parent's; a session with
+                                                       # no parent takes the harness's session id, its first eight hex characters,
+                                                       # or, where the harness has no id, `<cmd> --session new`
+git -C "$w" config --worktree gpg.ssh.allowedSignersFile docs/work-tracker/allowed_signers
+git -C "$w" config --worktree --unset-all seat.harness
+                                                       # the id the HARNESS gives this seat: the copy's is another seat's. Whoever
+                                                       # spawns the seat writes it from the spawn's result — Claude Code's session id,
+                                                       # or a sub-agent's agent id; Codex's thread id:
+                                                       #   git -C "$w" config --worktree seat.harness <its id>
+git -C "$w" config --worktree --list                   # every key is now this seat's own; anything else listed came with the copy
 ```
+
+**One harness id is one session.** `--whoami` and the commit hook name, one line each, every mixed identity this worktree
+is part of: another worktree that carries this one's `seat.harness` or `seat.session` while another of the four keys —
+`user.name`, `user.email`, `seat.session`, `seat.harness` — differs; another seat's worktree that carries this one's
+`user.name` under another seat; and this worktree itself, where its `seat.session` names a seat its `user.email` is not.
+Each line names the worktree, every key the two share and every key that differs. A line, never a refusal.
+
+*The bound:* one scan reads at most 32 other worktrees, in the order `git worktree list` gives, and names how many it left
+unread. At that cap it starts at most 34 git processes, whether harness ids match or not: the list, one read of this
+worktree's four keys, and one read of each other worktree's four keys. A commit with no `seat.session` or no harness id
+starts none of them. Measured at the cap on 2026-10-16, on a machine under a load of 11 to 13:
+
+| At the cap of 32 | every harness id matching | none matching | no harness id |
+|---|---|---|---|
+| the scan, Python 3.15 | 34 processes · 1.33 s | 34 processes · 1.37 s | none |
+| the scan, Python 3.9.6 | 34 processes · 1.07 s | 34 processes · 1.02 s | none |
+| the prepare-commit-msg hook, Python 3.15 | 38 processes · 2.03 s | 38 processes · 2.26 s | 4 processes · 0.64 s |
+| the prepare-commit-msg hook, Python 3.9.6 | 38 processes · 1.62 s | 38 processes · 1.48 s | 4 processes · 0.45 s |
+
+A worktree whose folder is gone, or that holds none of the keys, is *not known*, and so is a key set nowhere.
+What the line cannot see, and only the step closes: a full, unchanged copy, which reads as the seat's own second
+worktree.
 
 **The trailers:** `--install-hook` writes a `prepare-commit-msg` hook that appends `Session: <seat.session>` and
 `Worktree: <the checkout's directory>` to every commit made in that worktree — never typed, and a trailer the message
@@ -514,12 +555,18 @@ trunk — not a branch verdict** when the tip is on the trunk's own first-parent
 verdict's word from its commit's subject — `READY`, `READY WITH FINDINGS`, `READY TO TAG` or `NOT READY`: a verdict
 commit says one of them.
 
-**Seen:** the board's strip is one line per **parent** session with a commit in the last day, its sub-sessions folded
-into it — *sessions · 2 in the last day (9 with their sub-sessions)*, then *a9f3c2d1 planner (planner-a9) ·
+**Seen:** the board's strip, the one fold of *the day*, is one line per **parent** session with a commit in the last 24
+hours, its sub-sessions folded into it — *sessions · 2 with a commit in the last 24 hours (9 with their sub-sessions)*,
+then *a9f3c2d1 planner (planner-a9) ·
 builder 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line opens on each member's worktree, model and
 effort (`—` where its commits carried none). A parent that made no commit of its own still has its line, its seat and
 worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript. Under it,
-*reviews this week · independent n · same session m*. `--owner`, the digest, carries the same grouping — a header with
+*reviews · this week · n by another session · m by the same session · reports, not proofs*, folded, a row per verdict.
+A row names the verdict's commit, the commit it reviewed, and its branch: the branch that holds the verdict commit on
+its own first-parent line. A ref that only points at the reviewed commit, or reaches the verdict through a merge, is
+not its branch. Once the trunk holds the verdict, the merge that brought its line in names the branch, in its own
+message. Otherwise the row says *ambiguous*, with each branch that holds it, or *branch not known*, with why.
+`--owner`, the digest, carries the same grouping in the same words — a header with
 the two counts, then one line per parent — and ends with the queue where `gh` reads the forge (*what to merge*, above).
 Labels: `sessions.recent` (now with `{1}`, the count with sub-sessions) and `reviews.*` (§9).
 
@@ -575,27 +622,27 @@ Owner's signed answers of 2026-09-24, in [`AGENTS.md`](https://github.com/shoalm
 
 ## 9. Branding the board
 
-Four optional files, the same names in every place — the board is built from the places in order, **the later one
+Two optional files, the same names in every place — the board is built from the places in order, **the later one
 wins**: `tools/shoalmark/brand/`, the organisation's that set the repository up (`--vendor` copies and pins it) ·
 `<tracker dir>/brand/`, the repository's, never loose among the trackers · `~/.config/shoalmark/`, the person's, in
 every repository. Only the git-ignored board reads them: `INDEX.md` and the gate are the same whoever runs them.
 
 | File | Carries |
 |---|---|
-| `theme.css` | colours and fonts. Each place's file is its own stylesheet, so one variable changes one colour; `@import` and `@font-face` work, **with paths written relative to the `theme.css` they are in** — a font goes in `brand/fonts/`. A theme whose import is missing is left out whole |
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
-| `wordmark.svg` | the mark and the name drawn as one, **inline** in the header in place of the logo and the name — the logo stays the tab's, the name the page's title and the wordmark's accessible name. At most 200 kB of UTF-8; shapes, text, gradients, masks and a `<use>` of its own ids, each attribute from a fixed list with a fixed grammar — colours `#hex`, `currentColor`, `none` or a plain name, numbers as `-?digits(.digits)?` with one space or comma between, every id once, never `style`. Anything else refuses it whole, with a warning |
 | `labels.yaml` | every word of the board — flat `key: value` lines, `tagline` and `footer` among them. A German board is this file |
 
-- **`--brand`** says which place gave the board its theme, logo, wordmark and labels; `--brand DIR` writes a commented
-  starter. The name is `name` in `shoalmark.toml`. A theme hard to read is a warning; status colours keep their meaning.
-- **Two themes ship as starters** in the tool's `brand/themes/`, `monochrome` and `shoalmark`, each a `theme.css` with
-  its fonts; `--vendor` copies and pins them, so a vendoring repository receives both. None is worn until
-  `--brand DIR --from <theme>` copies it into a place: a board that chooses none looks as it did. A theme styles three
-  hooks: the Owner's box's title `#p>.pt` (label `owner.title`), the last line `#F` (`#f`, `#r`), `tr.zebra`.
-- **Light and dark:** dark colours go under `@media (prefers-color-scheme:dark)`; `◐` (auto → light → dark) switches
-  that rule for any theme and remembers the choice in the browser; paper stays light. A wordmark in `currentColor`
-  takes the page's ink, at its `height`, else 22 px. Every page ends in the tool's line: its mark, name and version.
+- **The look is the board's own:** `monochrome`, in the system's monospace; no theme is read and no font ships. The
+  colours are `[palette]` in `shoalmark.toml`: `name = "shoalmark"` for the public pages' palette, or a few of
+  `bg` `ink` `fail` `ok` `warn` `owed` `help`, and the surfaces `secbg` `okbg` `warnbg` `failbg`, as `["#light", "#dark"]`.
+  Below 4.5:1 for any text, on the page, a band or a tint, it is refused in one line.
+- **No longer read, never a silent loss:** a place's `theme.css`, `fonts/` and `wordmark.svg` — and the `themes/` an
+  older copy shipped — are named, file by file, by every board build, by `--brand` and in one line of the board, with
+  what replaces each: `[palette]`, the system's monospace, the name. `--check` never fails on them; delete them.
+- **`--brand`** says which place gave the board its logo and labels; `--brand DIR` writes a commented `labels.yaml`.
+  The name is `name` in `shoalmark.toml`.
+- **Light and dark:** the board follows the system; its button *light or dark: auto* (→ light → dark) switches it by
+  hand and remembers the choice in the browser; paper stays light. Every page ends in the tool's line: its mark, name and version.
 - **Another language:** `labels.yaml` for the board's words; `[headings]` in `shoalmark.toml` for the gate's sections.
 
 ## Licence

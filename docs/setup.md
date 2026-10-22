@@ -39,6 +39,12 @@ python3 tools/shoalmark/shoalmark.py --install-hook
   client-side hook, so the contract tells agents to run the tool before `svn commit`. `--check` after the commit is what
   judges it.
 
+A hook's run and the board's `--html-only` run are bounded to 60 s by default; `SHOALMARK_BOARD_SECONDS` sets the bound.
+Explicit person commands such as `--answer` and `--check` are unbounded, through the tree's tool or the hooks' copy.
+The copy keeps all its existing restrictions. The timeout reads parsed arguments: hook modes (`--session-check`,
+`--session-trailer`, `--commit-msg`, `--print-written`, `--tsvn-hook`, `--html-only`) stay bounded even in mixed commands.
+Plain, unknown or malformed copy invocations are ambiguous and stay bounded, including when typed by hand.
+
 ## 4. Say who answers — and who the agents are
 
 In `shoalmark.toml`:

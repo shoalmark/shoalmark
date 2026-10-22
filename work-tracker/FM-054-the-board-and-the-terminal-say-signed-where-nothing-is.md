@@ -16,6 +16,13 @@ hook: "The board's answer dialog and the terminal say signed on every repository
 **Judged 2026-10-15: In Progress, P1.** It is built on `fm/054-proof` for v0.20.1, first, with the board's proof line
 beside it (FM-007).
 
+**Built 2026-10-15 on `fm/054-proof`, not merged** (`e80d080`; the Git entry differential's allowance for it, `e110989`); *nothing is built*,
+below, dates from the filing. Every surface listed under *Facts* reads the mode as the gate does, from the default branch's
+configuration through `owners_at` (`proof_reading`), and says *signed* only where it asks for a signature: *author only*
+elsewhere, the server's login on Subversion, no author with no version control. `--answer`, `--done`, `--due` and `--revoke`
+pass `-S` from the same reading (`answer_signing`) and say in one line where this checkout's configuration differs. The class
+table and its two mutants are `test_proof.py`, staged in `test_shoalmark.py` for CI.
+
 **Filed 2026-10-15; nothing is built.** Held against FM-007, *a signature proves the key, not the hand*: a claim of
 *signed* where nothing is signed is the same honesty, from the other side.
 
@@ -55,3 +62,4 @@ the same reading and says so where this checkout's configuration differs, and th
 |---|---|
 | 2026-10-15 | Filed. |
 | 2026-10-15 | Judged In Progress, P1, for v0.20.1, on `fm/054-proof`. |
+| 2026-10-15 | Built on `fm/054-proof` by the Builder seat (27f31560/builder-11): `e80d080` defect 8, `970c9fd` the proof line (FM-007), `e110989` the Git entry differential's allowance for both; not merged. |

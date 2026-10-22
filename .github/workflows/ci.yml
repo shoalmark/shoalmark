@@ -80,7 +80,6 @@ jobs:
                 "$dir"/evidence/FM-002/slice-a | "$dir"/evidence/FM-002/slice-a/*) records=false ;;
                 "$dir"/evidence/FM-006/landing/index.html) records=false ;;
                 "$dir"/evidence/FM-006/landing/start-page | "$dir"/evidence/FM-006/landing/start-page/*) records=false ;;
-                "$dir"/evidence/FM-006/themes | "$dir"/evidence/FM-006/themes/*) records=false ;;
               esac
             done < "$RUNNER_TEMP/tier.raw"
             nul=$(tr -cd '\000' < "$RUNNER_TEMP/tier.raw" | wc -c)

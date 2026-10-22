@@ -5,7 +5,8 @@ The fixture: two git repositories, one with changes in its working tree; a Subve
 a name that is missing; and a second name for a repository already named. Each repository carries a canary for its own
 tool, its deriver, every git hook, and the programs a configuration can name, and each records any run of it.
 
-- One agenda: each folder named with its version control, or why it was not read — and then counted in nothing; the asks
+- One agenda: each folder named with its version control, or why it was not read — and then counted in nothing; a repository
+  by its full path, whether the run starts inside it or outside it; the asks
   by kind, the acts owed, the asks sent back, each with its repository; what the view does not read or run.
 - Counts are each repository's, then added: FM-001 in two repositories is two items.
 - Each repository's rows are read under its own configuration — its name, its id prefixes, its tracker folder, its
@@ -45,6 +46,15 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 BASE = "ac8899d"                    # the commit Q7 was built on: R9's deletion
+FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
+
+
+def as_named(text):
+    """A base run's stdout with the agenda's headings as the board names them, each where it stands once."""
+    for old, new in FM053_AGENDA:
+        if text.count(old) == 1:
+            text = text.replace(old, new)
+    return text
 STANDUP_GIT = ("rev-parse --verify -q HEAD", "branch --show-current", "rev-parse --absolute-git-dir --git-common-dir")
 SVN_STATUS = "status --verbose --no-ignore --ignore-externals --depth infinity . --xml"
 HOOKS = ("applypatch-msg", "pre-applypatch", "post-applypatch", "pre-commit", "pre-merge-commit", "prepare-commit-msg", "commit-msg",
@@ -420,13 +430,19 @@ def run_checks(*, results=None):
                 f"(saw {row('notes')!r}, {row('gone')!r}, {row('docs')!r})",
                 "not read: no tracker folder" in row("notes") and "not read: the folder is missing" in row("gone")
                 and f"not read: the same repository as {named['alpha']}, read once — counted in nothing" in row("docs"))
+            shown = []
+            for start in (named["alpha"], cwd):
+                code_s, out_s, _err_s = run(tool, start, env, *argv)
+                shown.append(next((l for l in out_s.splitlines()[1:] if l.startswith("  alpha ")), f"exit {code_s}, no line for alpha"))
+            add(f"Q7 · the folder column names a repository by its full path wherever the run starts — inside that repository and outside it "
+                f"(saw {shown})", all(re.match(rf"  alpha +{re.escape(str(named['alpha']))}  git · ", s) for s in shown))
 
             # 2. never joined by id; each repository's rows under its own configuration
-            rulings = section(out, "RULINGS")
+            rulings = section(out, "DECISIONS")
             add(f"Q7 · FM-001 in two repositories is two items, each under its repository with its own question — never joined by id (saw {rulings})",
                 any(re.match(r"  \d\. alpha +FM-001 — Shall alpha ship the launcher first\?  \[3 day\(s\)\]  \[frees FM-004\]$", l) for l in rulings)
                 and any(re.match(r"  \d\. beta +FM-001 — May beta drop the old importer\?  \[1 day\(s\)\]$", l) for l in rulings) and len(rulings) == 2)
-            rest = section(out, "BUTTONS") + section(out, "EVIDENCE COULD SETTLE") + section(out, "YOUR HANDS") + section(out, "ACTS")
+            rest = section(out, "ONE CLICK") + section(out, "EVIDENCE COULD SETTLE") + section(out, "YOUR HANDS") + section(out, "ACTS")
             sent = section(out, "1 ASK(S) SENT BACK")
             add(f"Q7 · each repository's rows are read under its own configuration — its name, id prefixes and tracker folder: beta's BB-003 button and its "
                 f"sent-back BB-005, {'gamma' + chr(39) + 's SV-001, ' if with_svn else ''}delta's PL-001 and alpha's act, each under its own name (saw {rest}, {sent})",
@@ -625,7 +641,8 @@ def run_checks(*, results=None):
             g("add", "-A")
             g("commit", "-qm", "the trackers")
             pair[name] = tuple(normal(x, base) if isinstance(x, str) else x for x in run(t, base, env, "--standup"))
-        add(f"Q7 · `--standup` alone prints what it printed at {BASE} — exit, both streams", pair["then"] == pair["now"],
+        pair["then"] = (pair["then"][0], as_named(pair["then"][1])) + tuple(pair["then"][2:])
+        add(f"Q7 · `--standup` alone prints what it printed at {BASE} — exit, both streams, its kinds as A2 names them", pair["then"] == pair["now"],
             "" if pair["then"] == pair["now"] else f"then {pair['then']!r}\nnow  {pair['now']!r}")
         add("Q7 · …and on that fixture `--standup` printed an agenda — the control that the comparison compared a run that worked",
             pair["now"][0] == 0 and "AP-001" in pair["now"][1] and "AP-004" in pair["now"][1], f"saw {pair['now']!r}"[:300])
