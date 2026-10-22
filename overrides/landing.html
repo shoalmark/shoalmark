@@ -486,18 +486,28 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .btn.door::before{content:"";position:absolute;left:11px;top:7px;bottom:7px;width:14px;background:#010407;
   box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px #4b5e6e,inset 6px 0 0 4px #000}
 .btn.door::after{content:"";position:absolute;left:36px;top:0;right:0;bottom:0;z-index:-1;background:var(--closed);
-  animation:tape-unlit .6s steps(1) 1.8s both}
-.btn.door .tape{position:absolute;left:-7px;right:-7px;bottom:5px;padding:3px 0 2px;font:700 10px/1.2 var(--pix);letter-spacing:.12em;
-  text-align:center;text-transform:uppercase;white-space:nowrap;color:#fff;pointer-events:none;
+  animation:tape-unlit .6s steps(1) 2.2s both}
+/* registered, --p animates as a number; where @property is not known (before Safari 16.4 and Firefox 128) the peel jumps, and the door still ends lit */
+@property --p{syntax:"<number>";inherits:true;initial-value:0}
+.btn.door .tapebox{position:absolute;left:-7px;right:-7px;bottom:5px;height:17px;pointer-events:none;z-index:2;transform:rotate(-2deg);
+  animation:tape-pick .3s steps(3) .6s both,tape-pull 1s steps(12) .9s forwards,tape-off .3s steps(2) 1.9s forwards}
+.btn.door .tape{position:absolute;inset:0;padding:3px 0 2px;font:700 10px/1.2 var(--pix);letter-spacing:.12em;text-align:center;
+  text-transform:uppercase;white-space:nowrap;color:#fff;
   background:#1f6fbf repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px);box-shadow:0 2px 0 rgba(5,11,18,.55);
-  transform:rotate(-2deg);transform-origin:7px 50%;animation:tape-peel 1.2s steps(10) .6s both}
-@keyframes tape-peel{0%{transform:rotate(-2deg)}15%{transform:rotate(-6deg)}35%{transform:translate(-4px,-10px) rotate(-11deg)}
-  60%{transform:translate(-22px,-18px) rotate(-19deg);opacity:1}100%{transform:translate(-60px,36px) rotate(-38deg);opacity:0}}
+  clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)}
+.btn.door .flap{position:absolute;top:0;height:100%;left:calc((1 - var(--p)) * 100%);width:calc(var(--p) * 100%);transform-origin:0 50%;
+  transform:rotate(calc(-10deg - var(--p) * 14deg));
+  background:#5f9ad3 repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 1px,transparent 1px 3px);
+  box-shadow:inset 2px 0 0 #a8cbee,0 3px 0 rgba(5,11,18,.45)}
+.hero{overflow-x:clip}
+@keyframes tape-pick{from{--p:0}to{--p:.06}}
+@keyframes tape-pull{from{--p:.06}to{--p:1}}
+@keyframes tape-off{0%{transform:rotate(-2deg)}50%{transform:rotate(-2deg) translate(18px,-16px)}99%{transform:rotate(-2deg) translate(36px,-32px);opacity:1}100%{transform:rotate(-2deg) translate(36px,-32px);opacity:0}}
 @keyframes tape-unlit{0%{opacity:1}17%{opacity:0}34%{opacity:1}50%{opacity:0}67%{opacity:1}84%,100%{opacity:0}}
 .is-door .cue{display:grid;justify-items:center}.is-door .cue .was,.is-door .cue .now{grid-area:1/1}
-/* steps(1) flips only at an animation's end, so each cue turns with an animation of 1 ms that starts at 2.4 s */
-.cue .was{animation:tape-gone 1ms 2.4s both}
-.cue .now{visibility:hidden;animation:tape-show 1ms 2.4s both,blink 1s steps(1) 2.4s 4}
+/* steps(1) flips only at an animation's end, so each cue turns with an animation of 1 ms that starts at 2.8 s */
+.cue .was{animation:tape-gone 1ms 2.8s both}
+.cue .now{visibility:hidden;animation:tape-show 1ms 2.8s both,blink 1s steps(1) 2.8s 4}
 @keyframes tape-gone{to{visibility:hidden}}
 @keyframes tape-show{to{visibility:visible}}
 @media (min-width:701px){.cta.is-door>.btn.alt{margin-bottom:18px}}
@@ -510,8 +520,8 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 @keyframes golden-coin-near{from{transform:translate(-12px,-8px)}to{transform:none}}
 @keyframes golden-coin-in{0%{transform:none}30%{transform:scaleX(.55) translateY(3px)}60%{transform:scaleX(.2) translateY(8px)}100%{transform:scaleX(.2) translateY(16px);opacity:0}}
 @keyframes golden-coin-slit{0%,100%{box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px var(--gold),inset 6px 0 0 4px #000}}
-@media (prefers-reduced-motion:reduce){.btn.door .tape,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible}}
-@media print{.btn.door .tape,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible;animation:none}}
+@media (prefers-reduced-motion:reduce){.btn.door .tapebox,.btn.door .tape,.btn.door .flap,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible}}
+@media print{.btn.door .tapebox,.btn.door .tape,.btn.door .flap,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible;animation:none}}
 </style>
 </head>
 <body>
@@ -561,7 +571,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     <div class="cta{% if taped %} is-taped{% endif %}{% if probe %} is-door{% endif %}">
       {%- if probe %}
       <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span><span class="cue-t now">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>
-      <a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></a></div>{# the probe state: the lit coin door copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
+      <a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">{{ w.btn_tape }}</span><span class="flap"></span></span></a></div>{# the probe state: the lit coin door copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
       {%- elif taped %}
       <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span></span>
       <button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></button></div>{# the taped state: the button the probe will open, shown and taped over — no link, no handler, no dialog; the line under the actions says why #}

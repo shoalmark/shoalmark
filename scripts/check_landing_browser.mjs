@@ -6,10 +6,10 @@
 // wrap and are cut nowhere, and nothing scrolls sideways; the anchors and the separator with them first show at 1208 px (English) and 1273 px (German); both header buttons show the
 // focus ring when the keyboard reaches them.
 // In the probe state, on each landing: the hero's cue is as wide as the primary button and centred on it (over the stacked buttons on a phone), hidden from screen readers,
-// clear of every chart label; with motion allowed the taped cue turns to the live one at 2.4 s and only the live cue's icon and words blink, 5 s at most, then lit;
+// clear of every chart label; with motion allowed the taped cue turns to the live one at 2.8 s and only the live cue's icon and words blink, 5 s at most, then lit;
 // under reduced motion the document has no animation.
 // In the probe state, the tape-off ceremony on each landing: in every frame from 0 to 2.9 s the page does not scroll sideways, nothing moves the door and the door is the live
-// link; at the end the tape is gone, the window lit and the live cue shown; under reduced motion and in print the tape, the unlit window, the coin and the taped cue are not
+// link; the tape is picked at 0.6 s, pulled off by 1.9 s and gone by 2.2 s; at the end the window is lit and the live cue shown; under reduced motion and in print the tape, the unlit window, the coin and the taped cue are not
 // drawn; the door's name is its label; after a mouse press the dialog opens when the coin has landed, 0.36 s after the press, the copy made in the click, and at once
 // for the keyboard and under reduced motion.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
@@ -198,15 +198,15 @@ if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("
   if (w >= 1280 && (w == 1440 || w == 1600 || w == 2560)) info.push({page, w, h, state: "the cue's clearance of the chart's labels", gap: q.gap, nearest: q.nearest});
   await t.close();
 }
-// the blink: with motion allowed, the taped cue and the live cue each turn once at 2.4 s, with a step of 1 ms; the live cue's icon and words alone blink, 5 s at most, and are lit
+// the blink: with motion allowed, the taped cue and the live cue each turn once at 2.8 s, with a step of 1 ms; the live cue's icon and words alone blink, 5 s at most, and are lit
 // and at rest afterwards, the taped cue gone; the rules, the buttons and the labels never animate
 if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
   const t = await open(page, {w: 1440, h: 900, reduce: false});
   const during = await t.js(`(() => { const an = e => e ? e.getAnimations().map(a => [a.animationName, a.effect.getComputedTiming().activeDuration, (i => Number.isFinite(i) ? i : -1)(a.effect.getComputedTiming().iterations), a.effect.getComputedTiming().delay]) : [];
     return {now: an(document.querySelector(".cue-t.now")), was: an(document.querySelector(".cue-t.was")), others: [".cue", "#probe-open", ".btn.alt", ".sec-h .n"].flatMap(s => [...document.querySelectorAll(s)].flatMap(an)), icons: [...document.querySelectorAll(".cab")].flatMap(e => e.getAnimations()).length} })()`);
   const blinks = during.now.filter(a => a[0] == "blink"), shows = during.now.filter(a => a[0] == "tape-show");
-  const blink = during.now.length == 2 && blinks.length == 1 && blinks[0][1] <= 5000 && blinks[0][2] > 0 && blinks[0][3] == 2400 && shows.length == 1 && shows[0][1] <= 1 && shows[0][3] == 2400
-    && during.was.length == 1 && during.was[0][0] == "tape-gone" && during.was[0][1] <= 1 && during.was[0][3] == 2400;
+  const blink = during.now.length == 2 && blinks.length == 1 && blinks[0][1] <= 5000 && blinks[0][2] > 0 && blinks[0][3] == 2800 && shows.length == 1 && shows[0][1] <= 1 && shows[0][3] == 2800
+    && during.was.length == 1 && during.was[0][0] == "tape-gone" && during.was[0][1] <= 1 && during.was[0][3] == 2800;
   verdict(page, 1440, 900, "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does", blink && during.others.length == 0 && during.icons == 0, JSON.stringify(during));
   await t.js(`Promise.race([Promise.all(document.querySelector(".cue-t.now").getAnimations().map(a => a.finished)), new Promise(r => setTimeout(r, 9000))]).then(() => 1)`); await sleep(200);
   const after = await t.js(`(() => { const w = document.querySelector(".cue-t.now"), was = document.querySelector(".cue-t.was"), c = document.querySelector(".cue");
@@ -215,15 +215,17 @@ if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("
   await t.close();
 }
 // the tape-off ceremony, held frame by frame by the page's own animation clock: the page never scrolls sideways, nothing moves the door, which is the live link from the first frame;
-// at the start the tape is on and the window unlit, at the end the tape is gone, the window lit, the taped cue gone and the live cue shown
+// at the start the tape is on and the window unlit; the peel's value --p is 0 to 0.6 s, rises and never falls, and is 1 from 1.9 s, while the tape stays whole in sight until
+// 1.9 s and is gone from 2.2 s; at the end the window is lit, the taped cue gone and the live cue shown
 const FRAME = `(t => { document.getAnimations().forEach(a => { a.pause(); a.currentTime = t });
   const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), cs = e => e ? getComputedStyle(e) : {};
   return {sw: document.documentElement.scrollWidth, iw: innerWidth, box: [r.left, r.top, r.width, r.height].map(Math.round).join(","), live: d.tagName == "A" && /probe\.txt$/.test(d.getAttribute("href") || ""),
-    tape: +cs(d.querySelector(".tape")).opacity, unlit: +getComputedStyle(d, "::after").opacity, was: cs(document.querySelector(".cue-t.was")).visibility, now: cs(document.querySelector(".cue-t.now")).visibility} })`;
-const FRAMES = [0, 300, 600, 720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800, 1950, 2100, 2250, 2400, 2900];
+    tape: +cs(d.querySelector(".tapebox")).opacity, p: +cs(d.querySelector(".tapebox")).getPropertyValue("--p"), unlit: +getComputedStyle(d, "::after").opacity,
+    was: cs(document.querySelector(".cue-t.was")).visibility, now: cs(document.querySelector(".cue-t.now")).visibility} })`;
+const FRAMES = Array.from({length: 30}, (_, i) => i * 100);
 // what is drawn of the ceremony, and the door's name as the accessibility tree has it (as the label is drawn, in capitals)
 const DRAWN = `(() => { const d = document.getElementById("probe-open"), cs = (e, p) => e ? getComputedStyle(e, p) : {}, label = [...d.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
-  return {tape: cs(d.querySelector(".tape")).display, unlit: cs(d, "::after").display, coin: cs(d.querySelector(".gcoin")).display, was: cs(document.querySelector(".cue-t.was")).display,
+  return {tape: cs(d.querySelector(".tapebox")).display, unlit: cs(d, "::after").display, coin: cs(d.querySelector(".gcoin")).display, was: cs(document.querySelector(".cue-t.was")).display,
     now: cs(document.querySelector(".cue-t.now")).visibility, label, tapeWords: (d.querySelector(".tape") || {}).textContent || ""} })()`;
 // the hold: the times of the press, the click, the copy and the dialog's opening, in the page's own clock; at once is under 150 ms, which the dialog's own
 // layout can take most of, the hold 360 ms
@@ -246,6 +248,10 @@ if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("i
     verdict(page, w, h, "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link", !wide.length && !moved.length, JSON.stringify([...wide, ...moved].slice(0, 3)));
     verdict(page, w, h, "the ceremony starts taped and unlit with the taped cue, and ends with the tape gone, the window lit and the live cue shown",
       first.tape == 1 && first.unlit == 1 && first.was == "visible" && first.now == "hidden" && last.tape == 0 && last.unlit == 0 && last.was == "hidden" && last.now == "visible", JSON.stringify([first, last]));
+    const peel = seen.map(s => [s.f, s.p, s.tape]), rises = seen.every((s, i) => i == 0 || s.p >= seen[i - 1].p);
+    verdict(page, w, h, "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and lifted away by 2.2 s",
+      rises && seen.every(s => s.f > 600 || s.p == 0) && seen.every(s => s.f < 1900 || s.p == 1) && seen.some(s => s.p > 0.06 && s.p < 1)
+        && seen.every(s => s.f >= 1900 || s.tape == 1) && seen.every(s => s.f < 2200 || s.tape == 0), JSON.stringify(peel));
     await t.close();
   }
   for (const [w, h] of [[390, 844], [1440, 900]]) {
