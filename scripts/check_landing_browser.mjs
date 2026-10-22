@@ -9,7 +9,8 @@
 // clear of every chart label; with motion allowed the taped cue turns to the live one at 2.8 s and only the live cue's icon and words blink, 5 s at most, then lit;
 // under reduced motion the document has no animation.
 // In the probe state, the tape-off ceremony on each landing: in every frame from 0 to 2.9 s the page does not scroll sideways, nothing moves the door and the door is the live
-// link; the tape is picked at 0.6 s, pulled off by 1.9 s and gone by 2.2 s; at the end the window is lit and the live cue shown; under reduced motion and in print the tape, the unlit window, the coin and the taped cue are not
+// link; the tape is picked at 0.6 s, pulled off by 1.9 s and gone by 2.2 s; at the end the window is lit and the live cue shown, and the door, 55 px tall on a desktop
+// and 59 px on a phone, shows its copy icon centred under its label; under reduced motion and in print the tape, the unlit window, the coin and the taped cue are not
 // drawn; the door's name is its label; after a mouse press the dialog opens when the coin has landed, 0.36 s after the press, the copy made in the click, and at once
 // for the keyboard and under reduced motion.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
@@ -227,6 +228,13 @@ const FRAMES = Array.from({length: 30}, (_, i) => i * 100);
 const DRAWN = `(() => { const d = document.getElementById("probe-open"), cs = (e, p) => e ? getComputedStyle(e, p) : {}, label = [...d.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
   return {tape: cs(d.querySelector(".tapebox")).display, unlit: cs(d, "::after").display, coin: cs(d.querySelector(".gcoin")).display, was: cs(document.querySelector(".cue-t.was")).display,
     now: cs(document.querySelector(".cue-t.now")).visibility, label, tapeWords: (d.querySelector(".tape") || {}).textContent || ""} })()`;
+// the lit door's height and its copy icon: 55 px on a desktop and 59 px on a phone, the icon centred under the label's words and inside the door
+const ICON = `(() => { const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), ic = d.querySelector(".ic"), i = ic ? ic.getBoundingClientRect() : null;
+  const words = [...d.childNodes].filter(n => n.nodeType == 3 && n.textContent.trim()), range = document.createRange();
+  if (words.length) { range.setStartBefore(words[0]); range.setEndAfter(words[words.length - 1]) }
+  const l = words.length ? range.getBoundingClientRect() : null;
+  return {h: Math.round(r.height), icon: i ? [i.left, i.top, i.width, i.height].map(Math.round) : null, label: l ? [l.left, l.top, l.width, l.height].map(Math.round) : null,
+    centred: !!(i && l && i.width > 0 && Math.abs((i.left + i.width / 2) - (l.left + l.width / 2)) <= 1 && i.top + i.height / 2 > l.top + l.height / 2 + 4 && i.bottom <= r.bottom)} })()`;
 // the hold: the times of the press, the click, the copy and the dialog's opening, in the page's own clock; at once is under 150 ms, which the dialog's own
 // layout can take most of, the hold 360 ms
 const TIMES = `(() => { window.__t = {}; const d = document.getElementById("probe-open"), g = document.getElementById("probe"), w = navigator.clipboard.writeText;
@@ -246,6 +254,8 @@ if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("i
     for (const f of FRAMES) seen.push({f, ...(await t.js(`${FRAME}(${f})`))});
     const wide = seen.filter(s => s.sw > s.iw), moved = seen.filter(s => s.box != seen[0].box || !s.live), first = seen[0], last = seen[seen.length - 1];
     verdict(page, w, h, "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link", !wide.length && !moved.length, JSON.stringify([...wide, ...moved].slice(0, 3)));
+    const lit = await t.js(ICON);
+    verdict(page, w, h, "the lit door is 55 px tall on a desktop and 59 px on a phone, its copy icon centred under its label", lit.h == (w <= 700 ? 59 : 55) && lit.centred, JSON.stringify(lit));
     verdict(page, w, h, "the ceremony starts taped and unlit with the taped cue, and ends with the tape gone, the window lit and the live cue shown",
       first.tape == 1 && first.unlit == 1 && first.was == "visible" && first.now == "hidden" && last.tape == 0 && last.unlit == 0 && last.was == "hidden" && last.now == "visible", JSON.stringify([first, last]));
     const peel = seen.map(s => [s.f, s.p, s.tape]), rises = seen.every((s, i) => i == 0 || s.p >= seen[i - 1].p);

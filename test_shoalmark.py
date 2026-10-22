@@ -5950,6 +5950,8 @@ def _ceremony_problems(src):
         bad.append("the ceremony does not play once, picking the tape 0.6–0.9 s, pulling it 0.9–1.9 s, lifting it 1.9–2.2 s, lighting 2.2–2.8 s and turning the cue at 2.8 s, "
                    "or the coin does not come on a mouse's hover "
                    "and drop on a press")
+    if ".btn.door{flex-direction:column;gap:4px;padding-bottom:10px}" not in css or ".btn.door .ic{order:2}" not in css or re.search(r"\.btn\.door \.ic\{[^}]*display:none", css):
+        bad.append("the lit door does not show its copy icon under its label, in the room the tape leaves")
     peel = ('@property --p{syntax:"<number>";inherits:true;initial-value:0}', "clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)",
             "left:calc((1 - var(--p)) * 100%);width:calc(var(--p) * 100%)")
     if not all(t in css for t in peel) or ".hero{overflow-x:clip}" not in css:
@@ -5964,7 +5966,8 @@ def _ceremony_problems(src):
 
 _crs = _sources(_CUE_FILES)
 _crp = _ceremony_problems(_crs)
-check("FM-006 · the tape-off ceremony · with the probe on the primary link is the coin door, its label read and its coin and tape hidden from screen readers; the taped and interim states "
+check("FM-006 · the tape-off ceremony · with the probe on the primary link is the coin door, its label read, its copy icon under the label and its coin and tape hidden from "
+      "screen readers; the taped and interim states "
       "carry none of it; neither reduced motion nor print draws the tape, the unlit window, the coin or the taped cue; the ceremony plays once, the tape peeled by --p "
       "inside a hero that clips it sideways, its cue turning at 2.8 s; "
       f"landing.html names no storage API and its styles load no file (problems found: {_crp})", _crp == [])
@@ -5981,13 +5984,16 @@ _crctl = {"the coin read by screen readers": _with(_crs, "overrides/landing.html
           "the tape swung off whole, as before": _with(_crs, "overrides/landing.html", "clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)", "clip-path:none"),
           "--p not registered": _with(_crs, "overrides/landing.html", '@property --p{syntax:"<number>";inherits:true;initial-value:0}', ""),
           "the hero not clipping the tape": _with(_crs, "overrides/landing.html", ".hero{overflow-x:clip}", ""),
+          "the door's icon hidden": _with(_crs, "overrides/landing.html", ".btn.door .ic{order:2}", ".btn.door .ic{order:2;display:none}"),
+          "the door's icon beside its label": _with(_crs, "overrides/landing.html", ".btn.door{flex-direction:column;gap:4px;padding-bottom:10px}", ".btn.door{gap:4px;padding-bottom:10px}"),
           "the cue turning late": _with(_crs, "overrides/landing.html", ".cue .was{animation:tape-gone 1ms 2.8s both}", ".cue .was{animation:tape-gone .6s steps(1) 2.8s both}"),
           "a storage API": _with(_crs, "overrides/landing.html", 'downAt = performance.now();', 'downAt = performance.now(); sessionStorage.setItem("seen", "1");'),
           "the door in every state": _with(_crs, "overrides/landing.html", '{% if probe %} is-door{% endif %}', " is-door")}
 _crctl_saw = {name: len(_ceremony_problems(src)) for name, src in _crctl.items()}
 check("FM-006 · the tape-off ceremony · its source check is not blind: each of the coin or the door's tape read by screen readers, the coin in the taped state, the coin as the cards' coin, "
       "reduced motion drawing the tape, print drawing the flap or the taped cue, the tape pulled for ever, the tape swung off whole, --p not registered, the hero not clipping the "
-      f"tape, the cue turning late, a storage API and the door in every state leaves a problem (problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 14)
+      "tape, the door's icon hidden or beside its label, the cue turning late, a storage API and the door in every state leaves a problem "
+      f"(problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 16)
 
 # the dialog's hold and the coin, run: the probe dialog's script under a stand-in page, with a clock the harness moves
 _HOLD_HARNESS = r"""
@@ -15184,6 +15190,8 @@ else:
                               "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
                 "door-peel": ("a tape never pulled off", _mutate("door-peel", "index.html", ",tape-pull 1s steps(12) .9s forwards", "", "door"),
                               "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and lifted away by 2.2 s"),
+                "door-icon": ("a door without its copy icon", _mutate("door-icon", "index.html", ".btn.door .ic{order:2}", ".btn.door .ic{display:none}", "door"),
+                              "the lit door is 55 px tall on a desktop and 59 px on a phone, its copy icon centred under its label"),
                 "door-moves": ("a door that grows during the ceremony", _mutate("door-moves", "index.html", "</head>", "<style>.btn.door{animation:door-grow 1s steps(1) 1s both}@keyframes door-grow{to{padding-bottom:60px}}</style></head>", "door"),
                                "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
                 "door-unlit": ("a window that stays unlit", _mutate("door-unlit", "index.html", "84%,100%{opacity:0}", "84%,100%{opacity:1}", "door"),
@@ -15206,7 +15214,7 @@ else:
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
                   "modal, a dialog that scrolls inside itself on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone and header buttons without their focus ring, "
-                  "and of the tape-off ceremony a tape that peels off past the window's edge, a tape never pulled off, a door that grows during it, a window that stays unlit, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
+                  "and of the tape-off ceremony a tape that peels off past the window's edge, a tape never pulled off, a door without its copy icon, a door that grows during it, a window that stays unlit, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
                   "a tape drawn under reduced motion or in print and a tape read by screen readers makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
