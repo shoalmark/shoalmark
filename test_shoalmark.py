@@ -3908,7 +3908,8 @@ def _refresh_tool(base, change=None, rev=None):
         (at / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(HERE / rel, at / rel)
     src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-    assert src.count(change[0]) == 1, change[0]
+    if src.count(change[0]) != 1:
+        return None
     (at / "shoalmark.py").write_text(src.replace(*change), encoding="utf-8")
     return at / "shoalmark.py"
 
@@ -11569,13 +11570,16 @@ _REFRESH_MUTANTS = (
 for what_, old_, new_, case_ in _REFRESH_MUTANTS:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d); tool_ = _refresh_tool(base_, (old_, new_))
-        if case_ == "class":
+        if tool_ is None:
+            killed_ = False
+        elif case_ == "class":
             killed_ = not all(_refresh_case(base_ / "case", tool_).values())
         elif case_ == "copy":
             killed_ = not _refresh_copy_case(base_, tool_)
         else:
             killed_ = not _refresh_owner_ok(_refresh_owner_case(base_, tool_, (case_,)))
-        check(f"refresh hooks · the mutant {what_} fails the {case_} check", killed_)
+        check(f"refresh hooks · the mutant {what_} fails the {case_} check"
+              + (f" (the change is not there to make: {old_.strip()[:90]!r} is not in the tool exactly once)" if tool_ is None else ""), killed_)
 fm.configure(HERE)
 
 
