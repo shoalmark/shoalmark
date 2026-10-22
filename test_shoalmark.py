@@ -6060,8 +6060,9 @@ if _browser("table"):
 #     its state starting on its word's line; an id is seven characters, a link where the forge is known. Measured in Chrome at 1024 and 390 px;
 #     nothing folded, and the row's second line drawn as it was, must each fail it ---------------------------------------------------------------
 def _m_repo(root, forge=False):
-    """A week of verdicts in each case of the reviews' rule, on `root`, HEAD holding them all: {verdict: "shows" or "folds"}. `forge`: a forge named
-    in the configuration, and every commit on origin."""
+    """A week of verdicts in each case of the reviews' rule, on `root`, HEAD holding them all: ({verdict: "shows" or "folds"}, {verdict: (the page its
+    id links to, [the pages its line links to: the reviewed commit's, the merge's that names its branch or names none])}). `forge`: a forge named in
+    the configuration, every commit on origin, and then one more verdict whose branch a merge origin does not hold brought in, linked nowhere."""
     out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
     commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
     verdict_ = lambda word, tip, sid: commit_(f"review: {word}\n\nReviewed: {tip}\nSession: {sid}")
@@ -6081,27 +6082,38 @@ def _m_repo(root, forge=False):
     git(root, "checkout", "-q", "-b", "fm/e", "main"); b_ = commit_("e, built\n\nSession: b7"); cases_[verdict_("NOT READY", b_, "r7")] = "shows"
     b_ = commit_("e, fixed\n\nSession: b7"); cases_[verdict_("READY", b_, "r8")] = "folds"
     git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges it", "fm/e"); git(root, "branch", "-q", "-D", "fm/e")
+    merges_ = {v_: out_("rev-parse", "HEAD") for v_ in list(cases_)[-2:]}       # fm/e's two verdicts: their merge names no branch
+    git(root, "checkout", "-q", "-b", "fm/f", "main"); b_ = commit_("f, built\n\nSession: b9"); v_ = verdict_("NOT READY", b_, "r9"); cases_[v_] = "shows"
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/f'", "fm/f"); git(root, "branch", "-q", "-D", "fm/f")
+    merges_[v_] = out_("rev-parse", "HEAD")                                      # fm/f's verdict: its merge names its branch
     git(root, "checkout", "-q", "-b", "together", "main")
     for name_ in ("fm/a", "fm/b-a-branch-with-a-long-name", "fm/c", "fm/d"):
         git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+    reviewed_ = {v_: out_("log", "-1", "--format=%(trailers:key=Reviewed,valueonly)", v_).strip() for v_ in cases_}
+    page_ = lambda sha: f"https://example.org/o/r/commit/{sha}" if forge else ""
+    links_ = {v_: (page_(v_), [page_(reviewed_[v_])] + ([page_(merges_[v_])] if v_ in merges_ else [])) for v_ in cases_}
     if forge:
         git(root, "update-ref", "refs/remotes/origin/together", "HEAD")
+        git(root, "checkout", "-q", "-b", "fm/g", "together"); b_ = commit_("g, built after the push\n\nSession: b10"); v_ = verdict_("NOT READY", b_, "r10")
+        git(root, "checkout", "-q", "together"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges this too", "fm/g"); git(root, "branch", "-q", "-D", "fm/g")
+        cases_[v_], links_[v_] = "shows", ("", [])                              # not on origin: no id, no reviewed commit and no merge links
     run_safe(root, "--html-only")
-    return cases_
+    return cases_, links_
 
 
 _M_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("#p details.fold").forEach(d=>d.open=true);const m=document.querySelector("#p details.more");'
             'const rows=[...document.querySelectorAll("#p .row.rv")].map(r=>{const i=r.querySelector(".what>:first-child"),t=r.querySelector(".ty"),s=r.querySelector(".st");'
-            'return{id:i.textContent,href:i.tagName=="A"?i.getAttribute("href"):"",folded:!!r.closest("details.more"),ty:t.getBoundingClientRect().top,st:s.getClientRects()[0]?.top}});'
+            'return{id:i.textContent,href:i.tagName=="A"?i.getAttribute("href"):"",line:[...r.querySelectorAll(".what>span a")].map(a=>a.getAttribute("href")),'
+            'folded:!!r.closest("details.more"),ty:t.getBoundingClientRect().top,st:s.getClientRects()[0]?.top}});'
             'parent.postMessage(JSON.stringify({w:innerWidth,rows,more:m?m.querySelector("summary").textContent:null,open:m?m.open:null}),"*")})</script>')
 _M_FOLDS = 'folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG")'
 _M_FLOW = ".rv .how{display:block;padding-left:9ch}"
 
 
-def _m_faults(rep, width, cases, forge=""):
+def _m_faults(rep, width, cases, links):
     """What is wrong with the reviews section in one frame — [] where exactly the verdicts READY or READY TO TAG by another session fold, into one line
-    that counts them, closed; every other one shows; each id is seven characters, a link to its commit's page where the forge is known (`forge`, its
-    prefix) and plain where not; and each shown row's state starts on its word's line."""
+    that counts them, closed; every other one shows; each id is seven characters, and each verdict's id and the ids on its line link exactly where
+    `links` says, its reviewed commit's and the merge's that names its branch or names none; and each shown row's state starts on its word's line."""
     if not rep or rep.get("w") != width:
         return [f"no report from the {width} px frame (saw {rep})"]
     by_ = {r_["id"]: r_ for r_ in rep["rows"]}
@@ -6111,7 +6123,8 @@ def _m_faults(rep, width, cases, forge=""):
     n_ = sum(c_ == "folds" for c_ in cases.values())
     out_ += [] if rep["more"] == f"and {n_} more verdicts by another session this week" and rep["open"] is False else [f"the fold {rep['more']!r}, open {rep['open']}"]
     out_ += [f"an id {i_!r}" for i_ in by_ if len(i_) != 7]
-    out_ += [f"{r_['id']} links {r_['href']!r}" for v, c_ in cases.items() for r_ in [by_.get(v[:7]) or {}] if r_.get("href", "") != (f"{forge}{v}" if forge else "")]
+    out_ += [f"{r_.get('id')} links {r_.get('href')!r} and {r_.get('line')}, wanted {links[v]}" for v in cases for r_ in [by_.get(v[:7]) or {}]
+             if (r_.get("href", ""), [h_ for h_ in r_.get("line", []) if h_]) != (links[v][0], [h_ for h_ in links[v][1] if h_])]
     out_ += [f"{r_['id']}: its state starts at {r_['st']}, its word at {r_['ty']}" for r_ in rep["rows"] if not r_["folded"] and abs((r_["st"] or 0) - r_["ty"]) > 2]
     return out_
 
@@ -6120,23 +6133,28 @@ _m_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
 check("FM-053, BF-61, BF-62, BF-64 · the reviews section folds exactly the verdicts READY or READY TO TAG by another session, into `reviews.more`; a "
       "verdict's row is `rv`, its second line a block of text; an id is seven characters, and links where the generator gives its commit's page",
       _m_src.count(_M_FOLDS) == 1 and _m_src.count(_M_FLOW) == 1 and fm.LABELS.get("reviews.more") == "and {0} more verdicts by another session this week"
-      and 'slice(0,10)' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")] and _m_src.count("[page(v), page(r)]") == 1)
+      and 'slice(0,10)' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")]
+      and _m_src.count('[page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]') == 1
+      and _m_src.count('lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))') == 1 and _m_src.count('lh("reviews.branch.unnamed",cid(b[1],u))') == 1)
 if _browser("reviews"):
     try:
         with tempfile.TemporaryDirectory() as d:
             base_ = Path(d).resolve(); plain_, forge_ = base_ / "plain", base_ / "forge"; plain_.mkdir(); forge_.mkdir()
-            cases_, fcases_ = _m_repo(plain_), _m_repo(forge_, forge=True)
+            (cases_, links_), (fcases_, flinks_) = _m_repo(plain_), _m_repo(forge_, forge=True)
             wt_, fwt_ = plain_ / "docs/work-tracker", forge_ / "docs/work-tracker"
             page_ = (wt_ / "index.html").read_text(encoding="utf-8")
-            seen_ = {w_: _m_faults(_header_at(wt_, page_, w_, _M_PROBE), w_, cases_) for w_ in (1024, 390)}
-            linked_ = _m_faults(_header_at(fwt_, (fwt_ / "index.html").read_text(encoding="utf-8"), 1024, _M_PROBE), 1024, fcases_, "https://example.org/o/r/commit/")
+            seen_ = {w_: _m_faults(_header_at(wt_, page_, w_, _M_PROBE), w_, cases_, links_) for w_ in (1024, 390)}
+            linked_ = _m_faults(_header_at(fwt_, (fwt_ / "index.html").read_text(encoding="utf-8"), 1024, _M_PROBE), 1024, fcases_, flinks_)
             check(f"FM-053, BF-61, BF-62, BF-64, BF-66 · at 1024 and 390 px the reviews section shows each verdict that is not READY, has findings, came from the "
                   f"branch's own session or cannot be traced — an earlier verdict a later one followed included, and one whose branch is not known by its word — "
                   f"and folds the READY and READY TO TAG by another session into *and 3 more verdicts by another session this week*; each id is seven "
                   f"characters, and each row's state starts on its word's line (saw {seen_})", not any(seen_.values()))
-            check(f"FM-053, BF-64 · with a forge named and the commits on origin, each verdict's id links to its commit's page (saw {linked_})", not linked_)
-            flat_ = _m_faults(_header_at(wt_, page_.replace(_M_FOLDS, "folds=v=>false"), 1024, _M_PROBE), 1024, cases_)
-            flex_ = _m_faults(_header_at(wt_, page_.replace(_M_FLOW, ".rv .how{padding-left:9ch}"), 390, _M_PROBE), 390, cases_)
+            check(f"FM-053, BF-64, RV-3664 · with a forge named, each id on a verdict's row links to its commit's page where origin holds the commit — the "
+                  f"verdict's, the reviewed commit's, and the merge's that names its branch or names none — and none links where origin does not; with no "
+                  f"forge none links (saw {linked_})", not linked_ and any(len(l_[1]) == 2 and l_[1][1] for l_ in flinks_.values())
+                  and any(l_ == ("", []) for l_ in flinks_.values()))
+            flat_ = _m_faults(_header_at(wt_, page_.replace(_M_FOLDS, "folds=v=>false"), 1024, _M_PROBE), 1024, cases_, links_)
+            flex_ = _m_faults(_header_at(wt_, page_.replace(_M_FLOW, ".rv .how{padding-left:9ch}"), 390, _M_PROBE), 390, cases_, links_)
             check(f"FM-053, BF-61, BF-62 · the check's controls: nothing folded fails it, and the row's second line drawn as it was fails it at 390 px "
                   f"(saw {flat_}, {flex_})", page_.count(_M_FOLDS) == 1 and any("wanted folds" in f_ for f_ in flat_) and any("its state starts" in f_ for f_ in flex_))
     except _ChromeFailed as e_:
