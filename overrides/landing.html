@@ -16,7 +16,7 @@
 {%- set probe = config.extra and config.extra.probe -%}
 {%- set taped = config.extra and config.extra.taped -%}
 {%- set rdate = F.release.date_de if de else F.release.date_en -%}
-{%- set board_words = {"files": [w.pd_1_b, w.pd_1], "before": [w.pd_2_b, w.pd_2]} -%}{%- set ranks = [w.rk_1, w.rk_2] -%}
+{%- set board_words = {"files": [w.pd_1_b, w.pd_1], "commits": [w.pd_3_b, w.pd_3], "before": [w.pd_2_b, w.pd_2]} -%}{%- set ranks = [w.rk_1, w.rk_2, w.rk_3] -%}
 {%- set board = F.scores | selectattr("id", "in", board_words) | list -%}{#- the high scores' rows as the data ranks them, those the page has words for -#}
 {#- a string that carries a placeholder: the build's figures and the language's addresses go in by name -#}
 {%- set probe_short = urls.probe_abs | replace("https://", "") | replace("/", "/<wbr>") -%}   {#- the short address as it is typed, from the value the link goes to, so that the two cannot differ; it may break after a slash -#}
@@ -372,7 +372,6 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .probe-fold>:not(summary){margin:12px 14px}
 .probe-fold>:last-child{margin-bottom:14px}
 .probe-label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 6px;font:400 11px/1.4 var(--pix);text-transform:uppercase;color:var(--mute)}
-.probe-ph{font:700 10px/1 var(--pix);text-transform:uppercase;color:var(--landink);background:var(--coral);padding:4px 7px}{# the tag that marks the prompt as the draft it is: delete it, and `dlg_ph_badge`, when the probe lane's words are final #}
 .probe-pbox{position:relative}
 .probe-ta{display:block;width:100%;height:calc(2 * 1.6em + 26px);margin:0;padding:12px 14px;resize:none;overflow:hidden;overflow-wrap:anywhere;background:#040a10;color:var(--ink);border:1px solid var(--contour);border-left:3px solid var(--watt);font:12.5px/1.6 var(--mono);white-space:pre-wrap}{# closed, two lines of the prompt; the whole text stays in the box, so that selecting it and assistive technology reach all of it #}
 .probe-prompt[data-open=true] .probe-ta{overflow:auto}
@@ -768,7 +767,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 
 
 {%- if probe %}
-{# B1 §1: the probe dialog — a real modal that guides in three steps (the Owner's words); the prompt (the probe lane's hand-over v2, a placeholder until the lane's words are final, so marked) and the approvals fold away. Built only under the `probe` switch. #}
+{# the probe dialog — a real modal that guides in three steps; the prompt, in the probe lane's final words, and the approvals fold away. Built only under the `probe` switch. #}
 <dialog class="probe" id="probe" aria-labelledby="probe-h">
   <div class="box probe-box">
     <h2 class="t" id="probe-h">{{ w.dlg_h }}</h2>
@@ -780,7 +779,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
             <p class="probe-line" id="probe-status" role="status"></p>
             <div class="probe-act"><button type="button" class="probe-again" id="probe-again" autofocus><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.dlg_again }}</button><span class="probe-done" id="probe-done" role="status"></span></div>
             <div class="probe-prompt" id="probe-prompt" data-open="false">
-              <label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label>
+              <label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span></label>
               <div class="probe-pbox">
                 <textarea class="probe-ta" id="probe-text" readonly spellcheck="false" rows="9">{{ L.probe_prompt | e }}</textarea>
                 <span class="probe-fade" aria-hidden="true"></span>

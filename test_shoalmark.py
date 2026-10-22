@@ -5525,20 +5525,20 @@ def _landing_problems(src):
     # the probe dialog's step 1: the prompt stands in it as a box of two lines, a real button opens it whole; the prompt has no fold of its own, the approvals keep theirs
     step1 = re.search(r'<li class="probe-step" id="probe-s1">(.*?)</li>', code, re.S)
     step1 = step1.group(1) if step1 else ""
-    box = ('id="probe-prompt"' in step1 and '<label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label>' in step1
+    box = ('id="probe-prompt"' in step1 and '<label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span></label>' in step1
            and 'id="probe-text" readonly' in step1 and '<span class="probe-fade" aria-hidden="true"></span>' in step1)
     button = '<button type="button" class="probe-more" id="probe-more" aria-expanded="false" aria-controls="probe-text">{{ w.dlg_more }}</button>' in step1
     if not box or not button or "<details" in step1 or step1.find('id="probe-again"') > step1.find('id="probe-prompt"') or step1.find('id="probe-again"') < 0:
-        bad.append("the probe dialog's step 1 does not hold, under Copy again and outside any fold, the prompt's box with its label, its tag and its fade and a button with aria-expanded and aria-controls")
+        bad.append("the probe dialog's step 1 does not hold, under Copy again and outside any fold, the prompt's box with its label and its fade and a button with aria-expanded and aria-controls")
     if re.sub(r"/\*.*?\*/", "", code, flags=re.S).count("<details") != 1 or '<details class="probe-fold probe-approvals">' not in code or "{{ w.dlg_fold_appr }}" not in code:
         bad.append("the probe dialog's folds are not the approvals' alone")
     if "dlg_fold_prompt" in tpl + json.dumps(words) or '"less": w.dlg_less' not in code or '"more": w.dlg_more' not in code:
         bad.append("the prompt's fold and its words are still there, or the box's two button words are not the script's")
     if [(w.get("dlg_prompt_label"), w.get("dlg_more"), w.get("dlg_less")) for w in (en, de)] != [("The prompt", "Show all", "Show less"), ("Der Prompt", "Alles anzeigen", "Weniger anzeigen")]:
         bad.append("the box's label and the button's two words are not the ones given, in both languages")
-    # the dialog's tag reads draft, and step 2's link shows the whole short address, taken from the value its href has
-    if (en.get("dlg_ph_badge"), de.get("dlg_ph_badge")) != ("draft", "Entwurf"):
-        bad.append("the dialog's coral tag does not read draft (English) and Entwurf (German)")
+    # the dialog marks the prompt as no draft, and step 2's link shows the whole short address, taken from the value its href has
+    if "dlg_ph_badge" in json.dumps(words) or "probe-ph" in tpl:
+        bad.append("the dialog still marks the prompt as a draft: the badge's key or its span or style is there")
     if not all('<a href="{probe_abs}">{probe_short}</a>' in w.get("dlg_s2", "") for w in (en, de)) \
             or '{%- set probe_short = urls.probe_abs | replace("https://", "") | replace("/", "/<wbr>") -%}' not in code or 'replace("{probe_short}", probe_short)' not in code:
         bad.append("step 2's link does not show the short address taken from the value its href has, without the scheme")
@@ -5577,12 +5577,12 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the button without aria-controls": _with(_ls, "overrides/landing.html", ' aria-controls="probe-text">{{ w.dlg_more }}', '>{{ w.dlg_more }}'),
         "the button a link": _with(_ls, "overrides/landing.html", '<button type="button" class="probe-more" id="probe-more"', '<a class="probe-more" id="probe-more"'),
         "the box without its fade": _with(_ls, "overrides/landing.html", '<span class="probe-fade" aria-hidden="true"></span>', ""),
-        "the box above Copy again": _with(_ls, "overrides/landing.html", '<p class="probe-line" id="probe-status" role="status"></p>', '<div class="probe-prompt" id="probe-prompt"><label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">{{ w.dlg_ph_badge }}</span></label><textarea id="probe-text" readonly></textarea><span class="probe-fade" aria-hidden="true"></span><button type="button" class="probe-more" id="probe-more" aria-expanded="false" aria-controls="probe-text">{{ w.dlg_more }}</button></div><p class="probe-line" id="probe-status" role="status"></p>'),
+        "the box above Copy again": _with(_ls, "overrides/landing.html", '<p class="probe-line" id="probe-status" role="status"></p>', '<div class="probe-prompt" id="probe-prompt"><label class="probe-label" for="probe-text"><span>{{ w.dlg_prompt_label }}</span></label><textarea id="probe-text" readonly></textarea><span class="probe-fade" aria-hidden="true"></span><button type="button" class="probe-more" id="probe-more" aria-expanded="false" aria-controls="probe-text">{{ w.dlg_more }}</button></div><p class="probe-line" id="probe-status" role="status"></p>'),
         "the prompt's fold words back": _with(_ls, "overrides/partials/landing/de.html", '  "dlg_more": "Alles anzeigen",\n', '  "dlg_more": "Alles anzeigen",\n  "dlg_fold_prompt": "Der Prompt im Wortlaut",\n'),
         "a German button word changed": _with(_ls, "overrides/partials/landing/de.html", '"dlg_less": "Weniger anzeigen"', '"dlg_less": "Zuklappen"'),
         "the approvals' fold gone": _with(_ls, "overrides/landing.html", '<details class="probe-fold probe-approvals">', '<div class="probe-approvals-x">'),
-        "the tag as it was": _with(_ls, "overrides/partials/landing/en.html", '"dlg_ph_badge": "draft"', '"dlg_ph_badge": "placeholder"'),
-        "the German tag as it was": _with(_ls, "overrides/partials/landing/de.html", '"dlg_ph_badge": "Entwurf"', '"dlg_ph_badge": "Platzhalter"'),
+        "the draft badge back": _with(_ls, "overrides/landing.html", '<span>{{ w.dlg_prompt_label }}</span></label>', '<span>{{ w.dlg_prompt_label }}</span><span class="probe-ph">draft</span></label>'),
+        "the badge's German key back": _with(_ls, "overrides/partials/landing/de.html", '  "dlg_more": "Alles anzeigen",\n', '  "dlg_more": "Alles anzeigen",\n  "dlg_ph_badge": "Entwurf",\n'),
         "step 2's link text as it was": _with(_ls, "overrides/partials/landing/de.html", '">{probe_short}</a>', '">probe.txt</a>'),
         "step 2's address typed in the template": _with(_ls, "overrides/landing.html", 'urls.probe_abs | replace("https://", "")', '"shoalmark.tools/probe.txt" | replace("https://", "")'),
         "the act's line escaped a second time": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}"),
@@ -5592,7 +5592,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the caption's day typed": _with(_ls, "overrides/partials/landing/en.html", "board, {read_date}:", "board, 1 October 2026:")}
 _ctl_saw = {name: len(_landing_problems(src)) for name, src in _ctl.items()}
 check("FM-006 · B1 · the landing's source check is not blind: each of a German key missing, a release typed in the footer's link, the Owner's line reworded, the register gone from its place, "
-      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed, a top bar count typed, the prompt back in a fold, the button without aria-expanded or without aria-controls or a link, the box without its fade or above Copy again, the prompt's fold words back, a German button word changed, the approvals' fold gone, either tag as it was, step 2's link text as it was and its address typed in the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 25)
+      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed, a top bar count typed, the prompt back in a fold, the button without aria-expanded or without aria-controls or a link, the box without its fade or above Copy again, the prompt's fold words back, a German button word changed, the approvals' fold gone, the draft badge back or its German key back, step 2's link text as it was and its address typed in the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 25)
 
 
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
@@ -6061,6 +6061,45 @@ if shutil.which("node"):
           f"on every button leaves a problem (saw {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 5)
 else:
     SKIPS.append(("FM-006 · the tape-off ceremony · the dialog's hold, run", 2, "no Node here"))
+
+
+# the taped cue (T1) and the reason line (T3), as ruled: they hold before and after the release, while the page stays taped; and the high scores'
+# words for three rows (the box title, the third rank, the review-commit cohort's words, the row before the rule)
+_RULED_WORDS = {"en": {"cue_taped": "— after v0.20.1 —",
+                       "taped_why": "Not out of order, just not open yet: the prompt behind this button goes live after v0.20.1, once its last test runs are through. "
+                                    "Until then, hand your agents <a href=\"{adopt}\">the note</a>.",
+                       "board_t": "pull requests with a review on record when opened", "rk_3": "3rd", "pd_3_b": "reviewed by commit",
+                       "pd_3": "pull requests {c3_first}–{c3_last}, from {cohort_end} to {read_date}", "pd_2_b": "before the rule"},
+                "de": {"cue_taped": "— nach v0.20.1 —",
+                       "taped_why": "Nicht defekt, nur noch nicht offen: Der Prompt hinter diesem Knopf geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind. "
+                                    "Bis dahin geben Sie Ihren Agenten <a href=\"{adopt}\">die Notiz</a>.",
+                       "board_t": "Pull Requests mit festgehaltenem Review beim Öffnen", "rk_3": "3.", "pd_3_b": "per Commit geprüft",
+                       "pd_3": "Pull Requests {c3_first}–{c3_last}, vom {cohort_end} bis {read_date}", "pd_2_b": "vor der Regel"}}
+
+
+def _ruled_problems(src):
+    words, bad = _landing_words(src)
+    for lang, want in _RULED_WORDS.items():
+        for key, text in want.items():
+            if words[lang].get(key) != text:
+                bad.append(f"{lang}.html's {key} is not the ruled row, byte for byte: {words[lang].get(key)!r}")
+    code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
+    if '"commits": [w.pd_3_b, w.pd_3]' not in code or "{%- set ranks = [w.rk_1, w.rk_2, w.rk_3] -%}" not in code:
+        bad.append("the template does not draw the review-commit cohort's row with its words and the third rank")
+    return bad
+
+
+_rws = _sources(_CUE_FILES)
+_rwp = _ruled_problems(_rws)
+check("FM-006 · the ruled words · T1 and T3 are the ruled rows byte for byte in English and German, and the high scores' box title, third rank, review-commit row "
+      f"and the row before the rule are too; the template draws the third row with them (problems found: {_rwp})", _rwp == [])
+_rwctl = {"T1 as it was": _with(_rws, "overrides/partials/landing/en.html", '"cue_taped": "— after v0.20.1 —"', '"cue_taped": "— opens at v0.20.1 —"'),
+          "T3's German as it was": _with(_rws, "overrides/partials/landing/de.html", "geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind", "wird noch fertiggestellt und geht mit v0.20.1 live"),
+          "a byte off in T3": _with(_rws, "overrides/partials/landing/en.html", "once its last test runs are through.", "once its last test runs are through"),
+          "the third rank left out of the template": _with(_rws, "overrides/landing.html", "{%- set ranks = [w.rk_1, w.rk_2, w.rk_3] -%}", "{%- set ranks = [w.rk_1, w.rk_2] -%}")}
+_rwctl_saw = {name: len(_ruled_problems(src)) for name, src in _rwctl.items()}
+check("FM-006 · the ruled words · their check is not blind: each of T1 as it was, T3's German as it was, a byte off in T3 and the third rank left out of the template "
+      f"leaves a problem (problems found: {_rwctl_saw})", all(_rwctl_saw.values()) and len(_rwctl_saw) == 4)
 
 
 # --- FM-006 · B1 · the header: Docs past a separator as the sand button, the language switch as an outline button with a globe ------------------------------------
@@ -15450,13 +15489,18 @@ else:
                       'replaced review files"' in _en_
                       and '"pd_1": "Pull Requests 47–{cohort_last}, von der signierten Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ, bis {cohort_end}, als '
                       'Review-Commits die Review-Dateien ablösten"' in _de_
-                      and "from pull requests 1–{cohort_last} of shoalmark/shoalmark" in _en_ and " Pull requests after {cohort_end} are reviewed by commit and are not counted here.\"," in _en_
-                      and "aus den Pull Requests 1–{cohort_last} von shoalmark/shoalmark" in _de_ and " Pull Requests nach {cohort_end} werden per Commit geprüft und hier nicht gezählt.\"," in _de_
+                      and "from pull requests 1–{c3_last} of shoalmark/shoalmark" in _en_ and "Up to pull request {cohort_last}, one counts when" in _en_
+                      and "From pull request {c3_first}, one counts when one of its own commits carries exactly one <code>Reviewed:</code> trailer" in _en_
+                      and "aus den Pull Requests 1–{c3_last} von shoalmark/shoalmark" in _de_ and "Bis Pull Request {cohort_last} zählt einer" in _de_
+                      and "Ab Pull Request {c3_first} zählt einer, wenn einer seiner eigenen Commits genau einen <code>Reviewed:</code>-Trailer trägt" in _de_
+                      and '"pd_3": "pull requests {c3_first}–{c3_last}, from {cohort_end} to {read_date}"' in _en_
+                      and '"pd_3": "Pull Requests {c3_first}–{c3_last}, vom {cohort_end} bis {read_date}"' in _de_
+                      and "not counted here" not in _en_ and "hier nicht gezählt" not in _de_
                       and 'replace("{cohort_last}", F.cohort_last | string)' in _tpl_ and 'replace("{cohort_end}", F.cohort_end.de if de else F.cohort_end.en)' in _tpl_
                       and "{hiscore_last}" not in _tpl_ + _en_ + _de_)
         check(f"FM-006 · M5 · the hi-score's cohort ends at #{lf_.COHORT_LAST}, the last pull request merged under the review-file rule: one merged as "
               f"#{lf_.COHORT_LAST} is counted in it, one merged as #{lf_.COHORT_LAST + 1} is not; its end is the Berlin day of that merge, not of its opening; "
-              f"pd_1 and board_small say the cohort in FM-006's words and the template fills both slots (saw {_cohort_}, {_end_}, words {_m5_words_})",
+              f"pd_1 and board_small say the cohort in FM-006's words, board_small and pd_3 the review-commit cohort's too, and the template fills the slots (saw {_cohort_}, {_end_}, words {_m5_words_})",
               lf_.COHORT_LAST == 159 and _cohort_ == {159: (71, 83, 159), 160: (71, 82, 144)} and _end_ == {"en": "12 October 2026", "de": "12. Oktober 2026"}
               and _m5_words_)
         check(f"FM-006 · B1 · the wrecks: every tracker tagged `bug` or `security` at {_LF_TAG} — the 27 the landing's WRECKS drew there, field for field and "
