@@ -4924,7 +4924,7 @@ def day_html(labels, prompts=None):
         reasons = [e("day.refused", e("day.value." + k), " " + c(shown(v)) if v else "", e("day.refused." + why, DAY_CAP)) for k, v, why in failed]
         act = (f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day." + kind + ".button")}</button>'
                if text else "".join(f'<span class="why hot">{r}</span>' for r in reasons))
-        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· {e("day." + kind + ".row")}</span>{act}</template>')
+        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· {e("day." + kind + ".row")}</span> {act}</template>')
         body = (f'<p class="said" aria-live="polite"></p><p class="dp">{e("day.paste")}</p><pre class="cmd">{html_escape(text)}</pre>'
                 f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day.copy")}</button></p>' if text else
                 "".join(f'<p class="dp hot">{r}</p>' for r in reasons))

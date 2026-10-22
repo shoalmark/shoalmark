@@ -49,7 +49,7 @@ _ICO = re.escape('<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fi
 _REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb'</p><p class="ddim">' + _T
          + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
 DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
-    rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span> <span class="c">' + _T + rb'</span>(?:<button class="act" type="button" onclick="DAYOPEN\(\''
+    rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span> <span class="c">' + _T + rb'</span> (?:<button class="act" type="button" onclick="DAYOPEN\(\''
     + k + rb'\'\)" aria-label="' + _A + rb'">' + _ICO + _T + rb'</button>|(?:<span class="why hot">' + _C + rb"</span>)+)</template>",
     rb'\n<template id="day-' + k + rb'"><form method="dialog" class="sign"><h3>' + _T + rb"</h3>(?:"
     + rb'<p class="said" aria-live="polite"></p><p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _ICO + _T

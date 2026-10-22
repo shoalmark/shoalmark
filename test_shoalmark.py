@@ -6288,8 +6288,9 @@ _RD_PROBE = ('<script>addEventListener("load",()=>{const s=document.querySelecto
              'for(let n;n=w.nextNode();)for(let i=0;i<n.data.length;i++)ch.push([n,i]);const top=k=>{const r=document.createRange();r.setStart(ch[k][0],ch[k][1]);'
              'r.setEnd(ch[k][0],ch[k][1]+1);return Math.round(r.getClientRects()[0].top)},d=ch.findIndex(([n,i])=>n.data[i]=="·");let p=d-1;'
              'while(p>=0&&/\\s/.test(ch[p][0].data[ch[p][1]]))p--;const rows=[...document.querySelectorAll("#p h3.dr")].map(h=>h.innerText.replace(/\\s+/g," ").slice(0,20)),'
-             'bold=[...document.querySelectorAll("#p .sh b")].map(b=>[b.textContent,getComputedStyle(b).fontWeight]);'
-             'parent.postMessage(JSON.stringify({w:innerWidth,dot:d<0?null:top(d),before:p<0?null:top(p),rows,bold}),"*")})</script>')
+             'bold=[...document.querySelectorAll("#p .sh b")].map(b=>[b.textContent,getComputedStyle(b).fontWeight]),sep=[...document.querySelectorAll("#p h3.dr")].map(h=>{const c=h.querySelector(".c"),w=h.querySelector(".why"),t=x=>x.innerText.replace(/\\s+/g," ").trim();'
+             'return w?t(h).includes(t(c)+" "+t(w).slice(0,12)):null});'
+             'parent.postMessage(JSON.stringify({w:innerWidth,dot:d<0?null:top(d),before:p<0?null:top(p),rows,bold,sep}),"*")})</script>')
 _RD_DOT = ('" ".join(f\'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>\' for i, f in enumerate(facts))',
            '" · ".join(f\'<span class="fact">{f}</span>\' for f in facts)')      # the dot with its fact, and between the facts as it was
 _RD_BOLD = "#p .sh b{font-weight:600}"
@@ -6303,14 +6304,15 @@ def _rider_faults(rep, width):
     out_ = [] if rep["dot"] is not None and rep["dot"] == rep["before"] else [f"the dot at {rep['dot']}, the character before it at {rep['before']}"]
     out_ += [] if len(rep["rows"]) == 2 and rep["rows"][0].startswith("stand-up · ") and rep["rows"][1].startswith("close-out · ") else [f"the day's rows {rep['rows']}"]
     out_ += [] if rep["bold"] and all(w_ == "600" for _t, w_ in rep["bold"]) else [f"the bold {rep['bold']}"]
+    out_ += [] if True in rep["sep"] and False not in rep["sep"] else [f"a day row's state and its warning run together: {rep['sep']}"]
     return out_
 
 
 _rd_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, BF-29, BF-56, BF-57 · the read-at line's facts each carry the dot that follows them; the day's two rows put a space before their state, as "
-      "`hd` does; a bold count in a heading of the box is set at 600",
+check("FM-053, BF-29, BF-56, BF-57, BF-69 · the read-at line's facts each carry the dot that follows them; the day's two rows put a space before their "
+      "state, as `hd` does, and one between their state and what follows it; a bold count in a heading of the box is set at 600",
       _rd_src.count(_RD_DOT[0]) == 1 and _RD_DOT[1] not in _rd_src and _rd_src.count(_RD_BOLD) == 1
-      and _rd_src.count('<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· ') == 1)
+      and _rd_src.count('<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· {e("day." + kind + ".row")}</span> {act}</template>') == 1)
 if _browser("riders"):
     try:
         with tempfile.TemporaryDirectory() as d:
@@ -6322,8 +6324,9 @@ if _browser("riders"):
             run_safe(root, "--html-only")
             page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
             seen_ = {w_: _rider_faults(_header_at(wt_, page_, w_, _RD_PROBE), w_) for w_ in (390, 360, 320)}
-            check(f"FM-053, BF-29, BF-56, BF-57 · at 390, 360 and 320 px the read-at line's dot stays on the line of the fact before it, the day's rows read "
-                  f"*stand-up · * and *close-out · *, and the reviews heading's counts are at 600 (saw {seen_})", not any(seen_.values()))
+            check(f"FM-053, BF-29, BF-56, BF-57, BF-69 · at 390, 360 and 320 px the read-at line's dot stays on the line of the fact before it, the day's rows "
+                  f"read *stand-up · * and *close-out · *, the close-out's state and its warning are two words apart, and the reviews heading's counts are at "
+                  f"600 (saw {seen_})", not any(seen_.values()))
             mid_ = page_.split('<p id="ra" class="m"><span>', 1)
             old_ = mid_[0] + '<p id="ra" class="m"><span>' + mid_[1].replace("&nbsp;·</span> <span", "</span> · <span", 1) if len(mid_) == 2 else page_
             dots_ = {w_: _rider_faults(_header_at(wt_, old_, w_, _RD_PROBE), w_) for w_ in (360, 320)}
