@@ -2394,7 +2394,7 @@ def standup_read(arg, seen, now):
     return out
 
 
-def shown_path(path):
+def standup_shown_path(path):
     """A folder as `--standup DIR …` shows it: under the home, from `~`."""
     try:
         home = str(pathlib.Path.home())
@@ -2437,7 +2437,7 @@ def standup_across(dirs):
           + ("" if asks or acts else " — nothing needs the Owner in them today.") + f" · read {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"
           + (f"\n{BOTTLENECK_SAYS.format(asks, held)}" if asks > BOTTLENECK else ""))
     for r in reads:
-        where = (shown_path(r["root"]) if r["root"] else r["named"])
+        where = (standup_shown_path(r["root"]) if r["root"] else r["named"])
         if r["why"]:
             print(f"  {r['name']:<{w}}  {where}  not read: {r['why']} — counted in nothing")
         else:
