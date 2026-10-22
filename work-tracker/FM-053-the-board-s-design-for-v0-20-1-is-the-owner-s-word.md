@@ -3,7 +3,7 @@ id: FM-053
 status: In Progress
 considered: FM-002, FM-023, FM-024, FM-031, FM-006
 tags: process
-next: owner
+next: build
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
@@ -12,6 +12,9 @@ ask-kind: ruling
 ask-since: 2026-10-22
 ask-options: "yes | yes, with the change I name | no: the guide stays as its answers of 16 October left it"
 ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-22
+answered-by: holgo99
 ---
 
 # FM-053 — the board's design for v0.20.1 is the Owner's word in a sitting, not yet a signed answer
