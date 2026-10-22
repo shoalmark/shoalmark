@@ -90,7 +90,8 @@ Then tell the person what follows, in your own words and in their language, cove
 >   checksum command; writing into that folder; running Python there, to unpack and run the tool; and in a git
 >   repository, running git, to list the project's files and read its history. These requests are expected. If the
 >   project is already in use, I may also ask to run its code to reproduce a bug, never anything that writes data,
->   calls a live service or changes the project.
+>   calls a live service or changes the project. Only at the end, and only on your yes, I may also open shoalmark's
+>   feedback form in your browser, with my text in it. You send it, or not.
 > - At the end you get a report: what fits, what does not, and what adopting would cost. It may say "no fit". You
 >   decide.
 >
@@ -444,35 +445,65 @@ The trial's trackers move into the project at a work-item boundary. You ask befo
 
 ### 13. Feedback
 
-At the very end, whatever the outcome (adopted, declined by the Owner, or no fit), ask once whether the person wants
-to share feedback with shoalmark. On no, you are done. On yes, write `<probe>/feedback.md` from this template, show
-it in full, end the report with the link below, and leave the sending to the person. You never send anything.
+At the very end, after the report and the person's decision on it, whatever it was, offer feedback to shoalmark, once.
 
-```
-shoalmark probe — feedback
-Outcome: adopted · declined by the Owner · no fit
-Why: …
-What the Owner did not understand: …
-What was missing, or would make it better: …
-Where the probe or the onboarding stuck: …
-Setup: version control: git · Subversion · other — OS: Windows · macOS · Linux — agent: Claude Code · Codex · other — kind of stack, in a few words: … — team size: 1 · 2–5 · 6–20 · more than 20
-Time taken: … minutes
-```
+1. **Fill in the text** from your report, in the person's language, with this template. Its first line is the result;
+   the other lines are optional, and an empty one goes.
 
-It never includes code, paths, the contents of files or trackers, tracker ids or the project's key, the names of the
-project, the company, people or customers, addresses, or credentials. Read it once more for these before you show it.
+   ```
+   Outcome: adopted · declined · no fit — <one sentence why>
+   What was unclear: …
+   What was missing, or would make it better: …
+   Where the probe stuck: …
+   Setup: git · Subversion — Windows · macOS · Linux — Claude Code · Codex · other — <kind of stack, a few words> — team: 1 · 2–5 · 6–20 · more than 20 — <minutes> minutes
+   ```
 
-Feedback goes to one place: shoalmark's form for what an agent found. It is **public**: anyone can read it. It needs a
-GitHub account. Its address for a person is https://shoalmark.tools/feedback. The link that ends the report
-opens the form with the report's result line already in it:
+2. **Check it.** Reread the text for these, and take each one out:
+   - code;
+   - paths, file names, host names and addresses (web, mail, server);
+   - the contents of files or trackers, quoted or paraphrased, and command output, logs and error messages;
+   - tracker ids and the project's key;
+   - the names of the project, the company, people or customers, and the person's own name or handle;
+   - credentials of any kind;
+   - commit hashes, branch and tag names, and commit messages.
 
-```
-https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml&found=<the result>
-```
+   The kind of stack stays generic, the team a band, and the time the probe's own. The text in the form is the text you
+   show, word for word: the link carries nothing you did not show.
 
-`<the result>` is the report's line *The result: …*, percent-encoded as UTF-8 (a space is `%20`), with no names,
-paths, code or credentials. The whole link stays under 2,000 characters; shorten the line until it does. The person
-opens it, reads and changes the text, adds from `feedback.md` what they want, and submits it themselves.
+3. **Write it** to `<probe>/feedback.md`. The whole link in step 6 stays under 2,000 characters. Where it would not,
+   shorten the optional lines first, then the first line's sentence. The text you write and show is the text in the
+   link.
+
+4. **Show,** in this order:
+   - the text, exactly as it will stand in the form;
+   - where it goes, in one line: shoalmark's public issue form on GitHub, which anyone can read, under the person's
+     GitHub name once they send it;
+   - what the check took out, in one line, by kind and count, for example *took out 2 file names and 1 tracker id*.
+     Show the items themselves only if the person asks; they never go into the text.
+
+5. **Ask once,** in the person's language:
+
+   > That is the feedback for shoalmark, exactly as their public form would show it, under your GitHub name. It holds
+   > no names, paths or code from this project; I checked. Shall I open the form with it filled in? You can change it
+   > there, then send it or close it.
+
+6. **On yes,** open the form in the person's browser with the system's own command; where you cannot, give them the
+   link. On no, you are done.
+
+   ```
+   https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml&found=<the text>
+   ```
+
+   `<the text>` is the text you showed, percent-encoded as UTF-8: a space is `%20`, a line break `%0A`.
+
+   | System | Command |
+   |---|---|
+   | Windows (PowerShell) | `Start-Process '<the link>'` |
+   | macOS | `open '<the link>'` |
+   | Linux | `xdg-open '<the link>'` |
+
+The person reads it there, changes it and sends it, or not. You never send it, and you never post anything. For a
+person, shoalmark's one feedback address is https://shoalmark.tools/feedback.
 
 ### 14. The language
 

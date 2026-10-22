@@ -99,7 +99,9 @@ Dann erklärt der Person, was folgt, in euren eigenen Worten, in ihrer Sprache u
 >   entpacken und laufen zu lassen; und in einem git-Repository für git, um die Dateien des Projekts aufzulisten und
 >   seine Historie zu lesen. Diese Anfragen sind erwartet. Ist das Projekt schon im Einsatz, frage ich
 >   vielleicht auch, ob ich seinen Code ausführen darf, um einen Fehler nachzustellen. Das ist nie etwas, das Daten
->   schreibt, einen laufenden Dienst anspricht oder das Projekt ändert.
+>   schreibt, einen laufenden Dienst anspricht oder das Projekt ändert. Nur am Ende und nur auf Ihr Ja öffne ich
+>   vielleicht noch das Rückmeldeformular von shoalmark in Ihrem Browser, mit meinem Text darin. Sie senden es ab,
+>   oder nicht.
 > - Am Ende bekommen Sie einen Bericht: was passt, was nicht, und was eine Übernahme kosten würde. Er kann „passt
 >   nicht“ lauten. Sie entscheiden.
 >
@@ -482,38 +484,67 @@ Die Einträge der Probe ziehen an einer Paketgrenze ins Projekt um. Vor dem erst
 
 ### 13. Rückmeldung
 
-Ganz am Ende, wie es auch ausgeht (übernommen, vom Owner abgelehnt oder passt nicht), fragt einmal, ob die Person
-shoalmark eine Rückmeldung geben will. Bei Nein seid ihr fertig. Bei Ja schreibt `<probe>/feedback.md` nach dieser
-Vorlage, zeigt sie vollständig, beendet den Bericht mit dem Link unten und überlasst das Senden der Person. Ihr sendet
-nie etwas.
+Ganz am Ende, nach dem Bericht und der Entscheidung der Person darüber, wie sie auch ausfiel, bietet einmal eine
+Rückmeldung an shoalmark an.
 
-```
-shoalmark-Probe — Rückmeldung
-Ergebnis: übernommen · vom Owner abgelehnt · passt nicht
-Warum: …
-Was der Owner nicht verstanden hat: …
-Was gefehlt hat oder es besser machen würde: …
-Wo die Probe oder die Einführung hakte: …
-Umgebung: Versionsverwaltung: git · Subversion · andere — Betriebssystem: Windows · macOS · Linux — Agent: Claude Code · Codex · anderer — Art des Stacks, in wenigen Worten: … — Teamgröße: 1 · 2–5 · 6–20 · mehr als 20
-Dauer: … Minuten
-```
+1. **Füllt den Text** aus eurem Bericht aus, in der Sprache der Person, nach dieser Vorlage. Seine erste Zeile ist das
+   Ergebnis; die anderen Zeilen sind freiwillig, und eine leere fällt weg.
 
-Sie enthält nie Code, Pfade, den Inhalt von Dateien oder Einträgen, Ids oder den Schlüssel des Projekts, die Namen des
-Projekts, der Firma, von Menschen oder Kunden, Adressen oder Zugangsdaten. Lest sie darauf noch einmal durch, bevor ihr
-sie zeigt.
+   ```
+   Ergebnis: übernommen · abgelehnt · passt nicht — <ein Satz, warum>
+   Was unklar war: …
+   Was gefehlt hat oder es besser machen würde: …
+   Wo die Probe hakte: …
+   Umgebung: git · Subversion — Windows · macOS · Linux — Claude Code · Codex · anderer — <Art des Stacks, in wenigen Worten> — Team: 1 · 2–5 · 6–20 · mehr als 20 — <Minuten> Minuten
+   ```
 
-Die Rückmeldung geht an einen Ort: das Formular von shoalmark für das, was ein Agent gefunden hat. Es ist
-**öffentlich**: Jeder kann es lesen. Es braucht ein GitHub-Konto. Seine Adresse für eine Person ist
-https://shoalmark.tools/feedback. Der Link, mit dem der Bericht endet, öffnet das Formular mit der Ergebniszeile des
-Berichts schon darin:
+2. **Prüft ihn.** Lest den Text darauf noch einmal durch, und nehmt jedes davon heraus:
+   - Code;
+   - Pfade, Dateinamen, Hostnamen und Adressen (Web, Mail, Server);
+   - den Inhalt von Dateien oder Einträgen sowie Befehlsausgaben, Logs und Fehlermeldungen, zitiert oder umschrieben;
+   - Ids und den Schlüssel des Projekts;
+   - die Namen des Projekts, der Firma, von Menschen oder Kunden und den eigenen Namen oder Benutzernamen der Person;
+   - Zugangsdaten jeder Art;
+   - Commit-Hashes, Branch- und Tag-Namen und Commit-Nachrichten.
 
-```
-https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml&found=<das Ergebnis>
-```
+   Die Art des Stacks bleibt allgemein, das Team eine Spanne, und die Dauer ist die der Probe. Im Formular steht genau
+   der Text, den ihr zeigt: Der Link enthält nichts, was ihr nicht gezeigt habt.
 
-`<das Ergebnis>` ist die Zeile *Das Ergebnis: …* des Berichts, prozentkodiert als UTF-8 (ein Leerzeichen ist `%20`),
-ohne Namen, Pfade, Code oder Zugangsdaten. Der ganze Link bleibt unter 2.000 Zeichen; kürzt die Zeile, bis er es tut.
-Die Person öffnet ihn, liest und ändert den Text, ergänzt aus `feedback.md`, was sie will, und sendet ihn selbst ab.
+3. **Schreibt ihn** nach `<probe>/feedback.md`. Der ganze Link aus Schritt 6 bleibt unter 2.000 Zeichen. Wo er es nicht
+   täte, kürzt zuerst die freiwilligen Zeilen, dann den Satz der ersten Zeile. Der Text, den ihr schreibt und zeigt,
+   ist der Text im Link.
+
+4. **Zeigt,** in dieser Reihenfolge:
+   - den Text, genau so, wie er im Formular stehen wird;
+   - wohin er geht, in einer Zeile: das öffentliche Issue-Formular von shoalmark auf GitHub, das jeder lesen kann, unter
+     dem GitHub-Namen der Person, sobald sie es absendet;
+   - was die Prüfung herausgenommen hat, in einer Zeile, nach Art und Zahl, zum Beispiel *2 Dateinamen und 1 Id
+     herausgenommen*. Die Stellen selbst zeigt ihr nur, wenn die Person danach fragt; in den Text kommen sie nie.
+
+5. **Fragt einmal,** in der Sprache der Person:
+
+   > Das ist die Rückmeldung an shoalmark, genau so, wie ihr öffentliches Formular sie zeigen würde, unter Ihrem
+   > GitHub-Namen. Sie enthält keine Namen, Pfade oder Code aus diesem Projekt; ich habe es geprüft. Soll ich das
+   > Formular damit ausgefüllt öffnen? Dort können Sie sie ändern und dann absenden oder schließen.
+
+6. **Bei Ja** öffnet das Formular im Browser der Person mit dem eigenen Befehl des Systems; wo das nicht geht, gebt ihr
+   den Link. Bei Nein seid ihr fertig.
+
+   ```
+   https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml&found=<der Text>
+   ```
+
+   `<der Text>` ist der Text, den ihr gezeigt habt, prozentkodiert als UTF-8: Ein Leerzeichen ist `%20`, ein
+   Zeilenumbruch `%0A`.
+
+   | System | Befehl |
+   |---|---|
+   | Windows (PowerShell) | `Start-Process '<der Link>'` |
+   | macOS | `open '<der Link>'` |
+   | Linux | `xdg-open '<der Link>'` |
+
+Die Person liest ihn dort, ändert ihn und sendet ihn ab, oder nicht. Ihr sendet ihn nie und postet nie etwas. Für eine
+Person ist https://shoalmark.tools/feedback die eine Adresse für Rückmeldungen.
 
 ### 14. Die Sprache
 
