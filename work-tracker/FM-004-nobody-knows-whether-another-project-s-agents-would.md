@@ -112,6 +112,8 @@ the limits are said: three runs, one model family, an invented project.
 
 | Date | Event |
 |---|---|
+| 2026-10-22 05:57 CEST | P3 on `fm/004-probe-prompt`, after round 1's NOT READY `39a76c1`: step 13 fills, checks and shows the feedback and opens the form only on the person's yes, as FM-004's answer `2625879` asks (`e74456e`); RV-3551 (`89ddfac`), RV-3552 (`4dffd7f`) and RV-3553 (`0470627`) by their exact fixes. Round 2 is next. |
+| 2026-10-21 22:21 CEST | The probe's final notes, `5e47133` on `fm/004-probe-prompt`: the probe lane's draft 2 (recorded privately), made true for v0.20.0 and pinned to it, the archive's SHA-256 the published line, which an offline rebuild gives too. The Subversion notes join, `--ratio` leaves the git-only lists, and step 13 offers one channel, pending the Owner's answer on the Board. The pin test reads the pin line. Round 1 of the review is next. |
 | 2026-10-18 | The answered ask cleared (`25dc9db` · G). The archive (#184, `1148114`) ships in v0.20.0; FM-004 stays open for its three outside reports. |
 | 2026-10-15 | Ask filed: how the carried archive meets #173's Subversion notice line; option (b), `258cc3c`, on this branch after the carry. |
 | 2026-10-15 19:50 CEST | FM-004 carried as answered: merge `9bed976` (integration `284a4e8`, verdict `eabee22`) and `9d735ab` (`archive_source()` from the prepared fix of 13 October, recorded privately). Core 321, release.yml 33, the other `--vendor` blocks, `--check` and reproducible builds pass on 3.15 and 3.9.6; 11 of 35 archive checks fail on #173's Subversion notice line, a finding for the Owner. |
