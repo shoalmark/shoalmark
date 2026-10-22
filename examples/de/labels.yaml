@@ -7,9 +7,6 @@ view.board: Tafel
 view.epic: Vorhaben
 view.open: offen
 view.all: alle
-scheme.auto: automatisch
-scheme.light: hell
-scheme.dark: dunkel
 col.id: Id
 col.tier: Stufe
 col.status: Status
@@ -245,7 +242,7 @@ brand.gone.fonts: "the system's monospace"
 brand.gone.wordmark: the name
 brand.gone.themes: "[palette], by name"
 # FM-053's board, v2: its new words — English until the native read
-scheme.button: "light or dark: {0}"
+scheme.toggle: dark
 path.lines: "{0} lines"
 path.line: 1 line
 day.title: the day

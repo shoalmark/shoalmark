@@ -612,7 +612,8 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
     "hooks": "FM-002 · the Owner's box's title, rendered in every view",
     "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
-    "header": "FM-053, RV-3342, BF-2 · the header row at 375, 640, 880 and 1024 px, rendered — the field, its counter and the scheme's action in view",
+    "header": "FM-053, RV-3342, BF-50 · the header line at 320, 375, 640, 880 and 1024 px, rendered — the field on one line, the switch in view, the count in the toolbar",
+    "scheme": "FM-053, BF-51, BF-54 · the light-or-dark switch and the logo under a dark and a light system, rendered — a pick kept, one equal to the system's forgotten, the logo's drawing the board's",
     "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
     "owner": "FM-053, BF-3 · `next: owner`, rendered — *you* in the tier's cell, `owner` in code font on the handover line",
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
@@ -5843,18 +5844,20 @@ if _browser("search"):
         _hung("search", e_)
         fm.configure(HERE)
 
-# --- FM-053, RV-3342: the header row reflows on a phone — at 375, 640, 880 and 1024 px (BF-2), on an empty board and a populated one, the search
-#     field, its counter and the scheme's action stay in view, inside the page's width, the field at its 200 px at least, the counter clear of
-#     the scheme's button, and neither the header nor the search box runs wider than it stands. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be
-#     narrower than Chrome may allow it); the rules before the fix, put back, must fail it ----------------------------------------------------
-_HDR_WIDTHS = (375, 640, 880, 1024)
+# --- the header line — at 320, 375, 640, 880 and 1024 px, on an empty board and a populated one, the search field is one
+#     line, at its 200 px at least, and the light-or-dark switch stays in view beside it, inside the page's width, clear of the field, on a phone
+#     beside the name above it; the work table's count stands in the toolbar after the grouping, with a dot before it, and on a phone on a line of
+#     its own with none. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be narrower than Chrome may
+#     allow it); the count put back in the search box must fail it -----------------------------------------------------------------------------
+_HDR_WIDTHS = (320, 375, 640, 880, 1024)
 _HDR_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getElementById(i),de=document.documentElement,'
               'box=i=>{const e=g(i),r=e.getBoundingClientRect(),c=getComputedStyle(e),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);'
               'return{l:r.left,r:r.right,t:r.top,b:r.bottom,w:r.width,h:r.height,shown:c.display!="none"&&c.visibility=="visible"&&!!h&&(h==e||e.contains(h))}};'
+              'const n=g("n"),dot=getComputedStyle(n,"::before");'
               'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,H:[g("H").scrollWidth,g("H").clientWidth],sb:[g("sb").scrollWidth,g("sb").clientWidth],'
-              'q:box("q"),n:box("n"),s:box("s"),box:box("sb"),text:g("n").textContent}),"*")})</script>')
-_HDR_BEFORE = (("#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;", "#sb{flex:1;display:flex;align-items:center;gap:1ch;"),
-               ("#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}", "#n{color:var(--dim);white-space:nowrap}"), ("\n#sb{flex-basis:100%}#s{margin-left:auto}}", "}"))
+              'q:box("q"),sl:box("sl"),box:box("sb"),name:box("H").t,n:box("n"),g:box("g"),vt:box("vt"),in:n.parentElement.id,after:!!(g("g").compareDocumentPosition(n)&4),'
+              'dot:dot.display!="none"&&dot.content.includes("·"),text:n.textContent}),"*")})</script>')
+_HDR_BACK = ('<input id="q" autofocus></label>', '<input id="q" autofocus><span id="n"></span></label>')       # the count back in the search box
 
 
 def _header_at(where, page, width, probe=_HDR_PROBE):
@@ -5869,25 +5872,34 @@ def _header_at(where, page, width, probe=_HDR_PROBE):
 
 
 def _header_faults(rep, width):
-    """What is wrong with one frame's header — [] where the field, the counter and the scheme's action are shown, not covered, inside the page's
-    width, the counter inside the search box and clear of the scheme's button (BF-2), the field at least 200 px wide, and neither the header nor
-    the box wider than it stands."""
+    """What is wrong with one frame's header — [] where the field and the switch are shown, not covered, inside the page's width and clear of each
+    other; the field one line and at least 200 px wide; neither the header nor the box wider than it stands; on a phone the switch on the name's
+    line, above the field; and the count in the work table's toolbar after the grouping, a dot before it where the line holds both, and on a phone on
+    a line of its own with no dot."""
     if not rep or rep.get("w") != width:
         return [f"no report from the {width} px frame (saw {rep})"]
-    out_ = [f"{k} {rep[k]}" for k in ("q", "n", "s") if not (rep[k]["shown"] and rep[k]["w"] > 0 and rep[k]["h"] > 0 and rep[k]["l"] >= -0.5 and rep[k]["r"] <= rep["cw"] + 0.5)]
+    out_ = [f"{k} {rep[k]}" for k in ("q", "sl") if not (rep[k]["shown"] and rep[k]["w"] > 0 and rep[k]["h"] > 0 and rep[k]["l"] >= -0.5 and rep[k]["r"] <= rep["cw"] + 0.5)]
     out_ += [f"the field {rep['q']['w']:.0f} px"] if rep["q"]["w"] < 199.5 else []
+    out_ += [f"the search box {rep['box']['h']:.0f} px tall"] if rep["box"]["h"] > 31 else []
     out_ += [f"{k} {rep[k][0]} px wide in {rep[k][1]}" for k in ("H", "sb") if rep[k][0] > rep[k][1] + 1]
-    out_ += [] if rep["box"]["l"] - 0.5 <= rep["n"]["l"] and rep["n"]["r"] <= rep["box"]["r"] + 0.5 else ["the counter outside its box"]
-    n_, s_ = rep["n"], rep["s"]
-    out_ += ["the counter under the scheme's button"] if n_["l"] < s_["r"] - 0.5 and s_["l"] < n_["r"] - 0.5 and n_["t"] < s_["b"] - 0.5 and s_["t"] < n_["b"] - 0.5 else []
-    return out_ + ([] if rep["text"].strip() else ["no counter"])
+    b_, s_ = rep["box"], rep["sl"]
+    out_ += ["the switch over the field"] if b_["l"] < s_["r"] - 0.5 and s_["l"] < b_["r"] - 0.5 and b_["t"] < s_["b"] - 0.5 and s_["t"] < b_["b"] - 0.5 else []
+    out_ += ["the switch not above the field on a phone"] if width <= 640 and not s_["b"] <= b_["t"] + 0.5 else []
+    out_ += [f"the count in #{rep['in']}, after the grouping: {rep['after']}"] if rep["in"] != "vt" or not rep["after"] else []
+    n_, g_ = rep["n"], rep["g"]
+    if width <= 640:
+        out_ += [] if n_["t"] >= g_["b"] - 0.5 and abs(n_["l"] - rep["vt"]["l"]) < 1 and not rep["dot"] else ["the count not on a line of its own, without its dot"]
+    else:
+        out_ += [] if n_["l"] >= g_["r"] - 0.5 and n_["t"] < g_["b"] and rep["dot"] else ["the count not after the grouping on its line, with its dot"]
+    return out_ + ([] if rep["text"].strip() else ["no count"])
 
 
 _hdr_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, RV-3342, BF-2 · the header's rules reflow: the search box wraps, its counter is no longer held to one line and stands at the field's "
-      "right edge, the field keeps its 200 px, and on a phone the search takes a header row of its own — the rules before the fix are each gone",
-      all(_hdr_src.count(new_) == 1 for new_, _old in _HDR_BEFORE) and _hdr_src.count("#q{flex:1;min-width:200px;") == 1
-      and not any(old_ in _hdr_src for _new, old_ in _HDR_BEFORE[:2]))
+check("FM-053, RV-3342, BF-50 · the header's rules: the search box holds the field alone and does not wrap, the field keeps its 200 px, the count is the "
+      "work table's, in its toolbar, and on a phone the search takes a header row of its own under the name and the switch, and the count a line of its own",
+      _hdr_src.count("#sb{flex:1 1 calc(200px + 4ch);display:flex;align-items:center;column-gap:1ch;") == 1 and _hdr_src.count("#q{flex:1;min-width:200px;") == 1
+      and _hdr_src.count('<label id="sb"><input id="q" autofocus></label>') == 1 and _hdr_src.count('<span id="n"></span>\n<p id="l">') == 1
+      and _hdr_src.count("\n#sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}") == 1)
 if _browser("header"):
     try:
         with tempfile.TemporaryDirectory() as d:
@@ -5901,20 +5913,103 @@ if _browser("header"):
                     tracker(root, "MSR-005", extra="tier: P2\ntriaged: 2026-09-20\n"); tracker(root, "MSR-006", status="Blocked", extra="tier: P1\n")
                 run(root)
                 page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
-                old_page_ = page_
-                for new_, old_ in _HDR_BEFORE:
-                    old_page_ = old_page_.replace(new_, old_)
+                old_page_ = page_.replace(*_HDR_BACK).replace('<span id="n"></span>\n<p id="l">', '\n<p id="l">')
                 for w_ in _HDR_WIDTHS:
                     rep_ = _header_at(root / "docs/work-tracker", page_, w_); seen_[(kind, w_)] = (_header_faults(rep_, w_), (rep_ or {}).get("text"))
-                before_[kind] = _header_faults(_header_at(root / "docs/work-tracker", old_page_, 375), 375)
-            check(f"FM-053, RV-3342, BF-2 · at 375, 640, 880 and 1024 px, on an empty and a populated board, the search field, its counter and the scheme's action "
-                  f"stay in view inside the page's width — the field at 200 px at least, the counter inside its box and clear of the scheme's button, nothing "
-                  f"wider than it stands (saw {seen_})",
-                  len(seen_) == 8 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
-            check(f"FM-053, RV-3342 · the check's control: the header's rules before the fix, put back, fail it at 375 px on both boards (saw {before_})",
+                before_[kind] = _header_faults(_header_at(root / "docs/work-tracker", old_page_, 1024), 1024)
+            check(f"FM-053, RV-3342, BF-50 · at 320, 375, 640, 880 and 1024 px, on an empty and a populated board, the search field is one line, at 200 px at "
+                  f"least, the switch beside it and in view, clear of it, on a phone above it on the name's line, nothing wider than it stands; the count in the "
+                  f"toolbar after the grouping, a dot before it, and on a phone on a line of its own with none (saw {seen_})",
+                  len(seen_) == 10 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
+            check(f"FM-053, BF-50 · the check's control: the count put back in the search box fails it at 1024 px on both boards (saw {before_})",
                   all(before_.get(k_) and "no report" not in before_[k_][0] for k_ in ("empty", "populated")))
     except _ChromeFailed as e_:
         _hung("header", e_)
+        fm.configure(HERE)
+
+# --- light or dark is one switch, *dark*, and the header's logo follows the board's scheme. The page starts from the
+#     system's scheme; a pick on the switch is kept, and a pick equal to the system's scheme is forgotten, so the page follows the system again. Of
+#     the logo's own two drawings, the one for the scheme in effect shows, in each of the three board schemes and both system appearances, read
+#     from its pixels. Measured in Chrome, the system's appearance set for each run; the logo left as the image's own rules draw it must fail it -
+_SCHEME_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><style>rect{fill:#102030}@media (prefers-color-scheme:dark){rect{fill:#e0f0d0}}</style>'
+               '<rect width="16" height="16"/></svg>')
+_SCHEME_INK = {"light": "16,32,48", "dark": "224,240,208"}           # the logo's light drawing and its dark one
+_SCHEME_BG = {"light": "rgb(247, 247, 245)", "dark": "rgb(14, 14, 14)"}
+_SCHEME_OWN, _SCHEME_SYS = 'const e=m=="auto"?sys():m;', "const e=sys();"      # the logo's scheme: the board's, and the system's
+_SCHEME_PROBE = ('<script>addEventListener("load",async()=>{const g=i=>document.getElementById(i),img=document.querySelector("#H>img"),c=document.createElement("canvas");'
+                 'c.width=c.height=4;const x=c.getContext("2d"),pix=async()=>{await img.decode().catch(()=>0);x.clearRect(0,0,4,4);x.drawImage(img,0,0,4,4);'
+                 'try{return[...x.getImageData(1,1,1,1).data].slice(0,3).join(",")}catch(e){return "unread: "+e.name}},'
+                 'state=async()=>({scheme,on:g("s").checked,kept:localStorage.getItem("shoalmark.scheme"),bg:getComputedStyle(document.body).backgroundColor,logo:await pix(),'
+                 'role:g("s").getAttribute("role"),type:g("s").type,word:g("sl").textContent}),o={load:await state()};'
+                 'g("s").click();o.pick=await state();g("s").click();o.back=await state();for(const m of["auto","light","dark"]){setScheme(m);o[m]=await state()}'
+                 'setScheme("auto");document.body.dataset.probe=JSON.stringify(o)})</script>')
+
+
+def _scheme_runs(wt, page, before=""):
+    """The board `page`, the switch's probe after its script and `before` ahead of it, rendered with the system dark and then light: {system: report}."""
+    import html as _html
+    out_ = {}
+    for system_, n_ in (("dark", 0), ("light", 1)):
+        (wt / "scheme.html").write_text(page.replace("</style>", "</style>\n<script>" + before.replace("OPP", "light" if system_ == "dark" else "dark") + "</script>", 1)
+                                        .replace("</script></html>", "</script>" + _SCHEME_PROBE + "</html>"), encoding="utf-8")
+        dom_ = _chrome_run([f"--blink-settings=preferredColorScheme={n_}", "--virtual-time-budget=6000", "--dump-dom", (wt / "scheme.html").as_uri()]).stdout
+        out_[system_] = json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', dom_) or [None, ""])[1]) or "null")
+    return out_
+
+
+def _scheme_faults(runs, kept=False):
+    """What is wrong with the switch and the logo in `runs` — [] where, under each system scheme, the page starts from it (or, `kept`, from the pick
+    kept against it), a pick is kept, the pick equal to the system's is forgotten, and in every board scheme the page's ground and the logo's drawing
+    are that scheme's."""
+    out_ = []
+    for system_, o_ in runs.items():
+        opp_ = "light" if system_ == "dark" else "dark"
+        if not o_:
+            out_.append(f"no report under a {system_} system"); continue
+        mine_, auto_ = (opp_, opp_, opp_), ("auto", system_, None)           # (the board's scheme, the scheme shown, the pick kept)
+        want_ = {"load": mine_ if kept else auto_, "pick": auto_ if kept else mine_, "back": mine_ if kept else auto_,
+                 "auto": auto_, "light": ("light", "light", "light"), "dark": ("dark", "dark", "dark")}
+        for k_, (scheme_, shown_, stored_) in want_.items():
+            r_ = o_.get(k_) or {}
+            if (r_.get("scheme"), r_.get("on"), r_.get("kept"), r_.get("bg"), r_.get("logo")) != (scheme_, shown_ == "dark", stored_, _SCHEME_BG[shown_], _SCHEME_INK[shown_]):
+                out_.append(f"{system_} system, {k_}: {r_}")
+        if (o_["load"].get("role"), o_["load"].get("type"), o_["load"].get("word")) != ("switch", "checkbox", "dark"):
+            out_.append(f"the control {o_['load']}")
+    return out_
+
+
+_sch_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-51 · light or dark is one switch — `<input type=\"checkbox\" role=\"switch\">` with its word, `scheme.toggle`, *dark* — and no button; "
+      "the labels it retires are named, with what replaces them",
+      _sch_src.count('<label id="sl" class="rd"><input type="checkbox" role="switch" id="s"><span data-l="scheme.toggle"></span></label>') == 1
+      and '<button id="s">' not in _sch_src and fm.LABELS.get("scheme.toggle") == "dark" and not {"scheme.auto", "scheme.light", "scheme.dark", "scheme.button"} & set(fm.LABELS)
+      and set(fm.LABELS_GONE) >= {"scheme.auto", "scheme.light", "scheme.dark", "scheme.button"})
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    (root / "docs/work-tracker/brand").mkdir(parents=True); (root / "docs/work-tracker/brand/labels.yaml").write_text("scheme.button: hell oder dunkel: {0}\nfooterline: x\n", encoding="utf-8")
+    _c, _o, _e = run(root)
+    check(f"FM-053, BF-51 · never a silent loss: a labels.yaml that still sets a retired scheme label is told it is no longer read and what replaces it — "
+          f"never *not a label*, never refused (saw {_e.strip()!r})",
+          _c == 0 and "repository's labels.yaml: scheme.button is no longer read — light or dark is one switch, its word `scheme.toggle`" in _e
+          and "footerline is not a label" in _e and "scheme.button is not a label" not in _e)
+if _browser("scheme"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", extra="tier: P1\n")
+            (root / "docs/work-tracker/brand").mkdir(parents=True); (root / "docs/work-tracker/brand/logo.svg").write_text(_SCHEME_SVG, encoding="utf-8"); run(root)
+            wt_ = root / "docs/work-tracker"; page_ = (wt_ / "index.html").read_text(encoding="utf-8")
+            fresh_ = _scheme_runs(wt_, page_, 'localStorage.removeItem("shoalmark.scheme")')
+            kept_ = _scheme_runs(wt_, page_, 'localStorage.setItem("shoalmark.scheme","OPP")')
+            check(f"FM-053, BF-51, BF-54 · with the system dark and with it light: the page starts from the system's scheme, the switch on where it is dark; a pick is "
+                  f"kept; a pick equal to the system's scheme is forgotten; and in each board scheme — auto, light, dark — the page's ground and the logo's own "
+                  f"drawing are that scheme's (saw {_scheme_faults(fresh_) or fresh_})", not _scheme_faults(fresh_))
+            check(f"FM-053, BF-51 · a pick kept from an earlier visit holds at load against the system's scheme, and switching to the system's scheme forgets it "
+                  f"(saw {_scheme_faults(kept_, kept=True) or kept_})", not _scheme_faults(kept_, kept=True))
+            loose_ = _scheme_runs(wt_, page_.replace(_SCHEME_OWN, _SCHEME_SYS), 'localStorage.removeItem("shoalmark.scheme")')
+            check(f"FM-053, BF-54 · the check's control: the logo written for the system's scheme, not the board's, fails it on a pick against the system "
+                  f"(saw {_scheme_faults(loose_)})", page_.count(_SCHEME_OWN) == 1 and any("pick:" in f_ for f_ in _scheme_faults(loose_)))
+    except _ChromeFailed as e_:
+        _hung("scheme", e_)
         fm.configure(HERE)
 
 # --- FM-053, BF-1: the work table's group line wraps inside the frame — `td.m`'s nowrap is the cells' alone. At 1024, 880 and 640 px the page
@@ -6280,9 +6375,6 @@ view.board: Tafel
 view.epic: Vorhaben
 view.open: offen
 view.all: alle
-scheme.auto: automatisch
-scheme.light: hell
-scheme.dark: dunkel
 waiting.oldest: älteste seit {0} Tagen
 waiting.holds: hält {0} weitere auf
 waiting.days: seit {0} Tagen
@@ -6512,7 +6604,7 @@ brand.gone.theme: [palette] in shoalmark.toml
 brand.gone.fonts: the system's monospace
 brand.gone.wordmark: the name
 brand.gone.themes: [palette], by name
-scheme.button: light or dark: {0}
+scheme.toggle: dark
 path.lines: {0} lines
 path.line: 1 line
 day.title: the day
@@ -6671,15 +6763,9 @@ with tempfile.TemporaryDirectory() as d:
                       cut_ok and english == ["open"])
                 _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
                 ldom = dom("")
-                check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
-                # the scheme button: clicked for real, three times round — whatever the machine's own setting is — on the page's own grounds
-                probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
-                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
-                seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-                check(f"the scheme button switches the page's own light and dark by hand (saw: {seen})",
-                      "light=rgb(247, 247, 245)" in seen and "dark=rgb(14, 14, 14)" in seen and seen.count("auto=") == 1)
-                (wt / "probe.html").unlink()
+                check("C5 · a logo is shown in the header — its SVG written again for the board's scheme — and as the favicon, and a script inside the SVG does nothing",
+                      "<title>repo — work tracker</title>" in ldom and '<link rel="icon" href="data:image/svg+xml;base64,' in ldom
+                      and '<img alt="" src="data:image/svg+xml;charset=utf-8,' in ldom and "PWNED" not in text(ldom))
             except _ChromeFailed as e_:
                 _hung("german", e_)
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
@@ -7089,9 +7175,9 @@ def _accept(source):
     # 3 · nothing framed but actions: a box only on what is clickable and on the search field, one titled frame, the dialog's window
     framed = sorted({s for s, d_ in plain if any(k == "border" and not v.startswith(("0", "none")) for k, v in d_.items())})
     phone = {s for m, s, d_ in rules if "max-width:640px" in m and d_.get("min-height") == "24px"}
-    out[3] = (framed == sorted({"button.act", "#s", "#vt button", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
-              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", "#s", "#vt button", "#dlg button"))
-              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", "#s", "#vt button", "#dlg button"} <= phone
+    out[3] = (framed == sorted({"button.act", ".rd input", "#vt button", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
+              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", ".rd input", "#vt button", "#dlg button"))
+              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", ".rd", "#vt button", "#dlg button"} <= phone
               and not any(k == "border" for s, d_ in plain if s.startswith(("#p>.sec", ".row.v")) for k in d_), f"{framed}")    # a band's top rule (G8) is no frame
     # 4 · said, not implied: no word from the guide's *never* list, no line that promises what a session will do; what is not known is in italics with its reason
     never = re.compile(r"\b(live|running|active|up to date|all your projects|every agent|all sessions|proves|independent|less work|faster|touch)\b", re.I)
@@ -7103,7 +7189,7 @@ def _accept(source):
     # 5 · answer first: the first thing under the header is what waits for you — the box, its first section; on a phone nothing comes before it
     body_ = page.split("</style>")[1]
     out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n(?:<p id="ra" class="m">[^\n]*</p>\n<details class="about">[^\n]*</details>\n)?<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
-              and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css)
+              and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css.replace("#sb{flex-basis:100%;order:1}", "", 1))
               and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
     # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
     out[6] = (all(box_src.count(f'l("{k}"') == 1 for k in ("waiting.title", "waiting.oldest", "waiting.holds", "acts.title", "way.title", "day.title", "sessions.recent",

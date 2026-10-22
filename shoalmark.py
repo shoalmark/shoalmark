@@ -3861,22 +3861,28 @@ i{font-style:italic}
 /* three meanings, one colour each (the guide's amendment, G1): teal done or success, amber a warning, coral a failure — each beside its word */
 .hot{color:var(--coral)}.go{color:var(--teal)}.warn{color:var(--amber)}.owed{color:var(--owed)}
 svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:.7ch;flex:none}a svg.ico{margin:0 0 0 .7ch}
-/* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it. Where the line is short the
-   count wraps under the field, inside the box, and the field keeps its 200 px; on a phone the search takes a row of its own (RV-3342). The
-   count stands at the field's right edge, on the field's line where it fits and on a line of its own where it does not (BF-2) */
+/* the header line: the name, then the search as a prompt line, one line, its box the field's, and the light-or-dark switch at the right. The
+   field keeps its 200 px; on a phone the search takes a row of its own, under the name and the switch */
 #H{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2ch;margin:6px 0 6px}#H img{height:22px;width:auto}
 #H>b{font-weight:600;color:var(--head);white-space:nowrap}#H>span{color:var(--mute)}#H>span:empty{display:none}
-#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
+#sb{flex:1 1 calc(200px + 4ch);display:flex;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
 #sb:before{content:">";content:">" / "";color:var(--mute)}#sb:focus-within{border-color:var(--ink)}
 #q{flex:1;min-width:200px;border:0;background:none;color:var(--ink);padding:3px 0;outline:0}#q::placeholder{color:var(--mute);opacity:1}
-#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}
+/* a setting is a radio or a switch, never boxed: a 13 px ring in --mute, filled in ink around the page's ground when on; its word in --dim, in
+   ink when on or under the pointer */
+.rd{display:inline-flex;align-items:center;gap:.7ch;color:var(--dim);cursor:pointer;white-space:nowrap}
+.rd input{-webkit-appearance:none;appearance:none;margin:0;width:13px;height:13px;border:1px solid var(--mute);border-radius:50%;background:none;flex:none;cursor:pointer}
+.rd input:checked{border-color:var(--ink);background:radial-gradient(circle,var(--bg) 0 2.5px,var(--ink) 3px)}.rd input:checked+span,.rd:hover{color:var(--ink)}
+.rd:hover input{border-color:var(--ink)}.rd input:focus-visible{outline:1px solid var(--ink);outline-offset:2px}#sl{margin-left:auto}
+/* the work table's count, what its rows hold: in the toolbar after the grouping, a dot before it */
+#n{color:var(--dim)}#n:before{content:"·";content:"·" / "";color:var(--mute);margin-right:1ch}
 /* never a silent loss: each brand file the board no longer reads, and what replaces it — one line, there while a file is */
 #w{color:var(--amber);margin:0 0 4px}
 /* a box means an action; information is never boxed (the Owner's rule). A button is a word in a 1px frame — the frame in --mute, which carries
    the meaning — with 1px by 1ch of padding, so it keeps the 21 px line; ink on --raise under the pointer; a visible focus ring */
 button{cursor:pointer}
-button.act,#s,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
-button.act:hover,#s:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
+button.act,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
+button.act:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
 button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabled{opacity:.4}
 /* the Owner's box: the one titled frame, its title set into its top border; inside, sections are `## ` headings with their counts, each
@@ -3978,19 +3984,19 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 /* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
    the tool and leaving the board; the version to its release */
 #r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
-/* a phone: at least 24 px for every button, a heading's state flows under its title, its marker keeping its space (BF-5); the search a header
-   row of its own, the scheme's button under it at the right edge (RV-3342) */
-@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
-#sb{flex-basis:100%}#s{margin-left:auto}}
+/* a phone: at least 24 px for every button and every setting, a heading's state flows under its title, its marker keeping its space; the search
+   a header row of its own under the name and the switch; the table's count a line of its own, with no dot */
+@media(max-width:640px){button.act,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
+#sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}
 /* a phone: the work table, wider than the page with its columns as they are, scrolls in its own box — the header, the box and the toolbar stay put (BF-14) */
 @media(max-width:640px){#B>table{display:block;overflow-x:auto}}
 /* on paper the board is always the light one */
-@media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
+@media print{#sl,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
 </style>
-<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><label id="sb"><input id="q" autofocus><span id="n"></span></label><button id="s"></button></div>__GONE__
+<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><label id="sb"><input id="q" autofocus></label><label id="sl" class="rd"><input type="checkbox" role="switch" id="s"><span data-l="scheme.toggle"></span></label></div>__GONE__
 __READAT__
 <div id="p" class="box"></div>
-<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button>
+<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n"></span>
 <p id="l"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p></div>
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table></div>
 <article id="v" hidden></article>
@@ -4272,16 +4278,21 @@ for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l
 // FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so
 $("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())
   .then(()=>{$("rs").className="said ok";$("rs").innerHTML=`<span class="go">${ICO.check}${lh("read.copied",`<code>${esc($("rc").textContent)}</code>`)}</span>`},()=>{$("rc").hidden=false;$("rs").className="said";$("rs").innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`});
-// light or dark is the viewer's choice: auto follows the system; the other two switch the page's own
-// `prefers-color-scheme` rules on or off. Paper stays light.
-const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
-let scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(!SCHEMES.includes(scheme))scheme="auto";
+// light or dark: the page starts from the system's scheme, `auto`. A pick on the switch is kept; a pick equal to the system's scheme is
+// forgotten, so the page follows the system again. A pick switches the page's own `prefers-color-scheme` rules on or off, and the logo's: an
+// image's own rules follow the system, never the page, so its SVG is written again with the rule of the scheme in effect on — one of its own
+// two drawings shows, and nothing is recoloured. Paper stays light.
+const ORIG=new Map(),PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g,SYS=matchMedia("(prefers-color-scheme: dark)"),sys=()=>SYS.matches?"dark":"light",
+LOGO=(i=>i&&/^data:image\/svg\+xml;base64,/.test(i.getAttribute("src"))?[i,new TextDecoder().decode(Uint8Array.from(atob(i.getAttribute("src").slice(26)),c=>c.charCodeAt(0)))]:null)(document.querySelector("#H>img"));
+let scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(scheme!="light"&&scheme!="dark")scheme="auto";
 const rules=(s,f)=>{try{for(const r of s.cssRules){if(r.styleSheet)rules(r.styleSheet,f);else if(r.media)f(r)}}catch(e){}},
 paint=m=>{for(const s of document.styleSheets)rules(s,r=>{if(!ORIG.has(r)){if(!r.media.mediaText.includes("prefers-color-scheme"))return;ORIG.set(r,r.media.mediaText)}
     r.media.mediaText=m=="auto"?ORIG.get(r):ORIG.get(r).replace(PCS,(x,w)=>w==m?"(min-width:0px)":"(max-width:0px)")});
-  document.documentElement.style.colorScheme=m=="auto"?"":m},
-setScheme=m=>{scheme=m;paint(m);$("s").textContent=(L["scheme.button"]??"{0}").replace("{0}",L["scheme."+m]??m);$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
-$("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));
+  document.documentElement.style.colorScheme=m=="auto"?"":m;const e=m=="auto"?sys():m;
+  if(LOGO)LOGO[0].src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(LOGO[1].replace(PCS,(x,w)=>w==e?"(min-width:0px)":"(max-width:0px)"))},
+setScheme=m=>{scheme=m;paint(m);$("s").checked=(m=="auto"?sys():m)=="dark";try{m=="auto"?localStorage.removeItem("shoalmark.scheme"):localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
+$("s").onchange=()=>{const want=$("s").checked?"dark":"light";setScheme(want==sys()?"auto":want)};
+SYS.addEventListener?.("change",()=>setScheme(scheme));setScheme(scheme);addEventListener("load",()=>paint(scheme));
 onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 // reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so a board rebuilt meanwhile — by an
 // explicit run, a commit or an act; no hook rebuilds it — is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field
@@ -4308,7 +4319,7 @@ LABELS = {
     "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
     "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
-    "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark", "scheme.button": "light or dark: {0}",
+    "scheme.toggle": "dark",     # the light-or-dark switch's word: on where the page is dark
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
     # BF-3: the Owner is *you* on the board (the guide, §10) — `next: owner` reads *→ you* in the tier's cell; the viewer's handover line shows
     # the record's own field, `owner` in code font, as a setting
@@ -4459,6 +4470,9 @@ LABELS = {
     "brand.gone": "no longer read: {0}", "brand.gone.theme": "[palette] in shoalmark.toml", "brand.gone.fonts": "the system's monospace",
     "brand.gone.wordmark": "the name", "brand.gone.themes": "[palette], by name",
 }
+# The labels the board no longer reads, each with what replaces it: a labels.yaml that still sets one is named on the run that meets it, with
+# this — never read, and never refused
+LABELS_GONE = {k: "light or dark is one switch, its word `scheme.toggle`" for k in ("scheme.auto", "scheme.light", "scheme.dark", "scheme.button")}
 BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
 # THE BOARD'S COLOURS (the design guide, §5 and §13; FM-053's answer, and the guide's amendment G1–G2): every colour is a token on `:root`, so a
 # palette is a token swap, and the page writes the one it wears from here. Three meanings, one colour each: `teal` done or success, `amber` a
@@ -4649,9 +4663,10 @@ def brand():
         f = d / "labels.yaml"
         if board_isfile(f):
             given = read_flat(f.read_text(encoding="utf-8"))
-            unknown = sorted(k for k in given if k not in LABELS)
+            unknown = sorted(k for k in given if k not in LABELS and k not in LABELS_GONE)
             if unknown:
                 warn.append(f"{who}'s labels.yaml: {', '.join(unknown[:6])} {'are' if len(unknown) > 1 else 'is'} not a label — `--brand` lists them")
+            warn += [f"{who}'s labels.yaml: {k} is no longer read — {LABELS_GONE[k]}" for k in sorted(k for k in given if k in LABELS_GONE)]
             labels.update({k: v for k, v in given.items() if k in LABELS}); src["labels.yaml"].append(who)
     loose = [n for n in BRAND_FILES if (TRACKER_DIR / n).is_file() or (TRACKER_DIR / n).is_symlink()]
     if loose:

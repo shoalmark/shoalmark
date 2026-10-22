@@ -1052,6 +1052,33 @@ PR_C_JOIN_EDITS = (
      '      +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}\n'),
 )
 
+# the board's next pass: each change it makes to this fixture's page — (the joined page's text, the candidate's), whole lines and the labels
+# item by item, each where it occurs once — applied in order after the join's edits
+BOARD_POLISH_EDITS = (
+    ("/* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it. Where the line is short the\n   count wraps under the field, inside the box, and the field keeps its 200 px; on a phone the search takes a row of its own (RV-3342). The\n   count stands at the field's right edge, on the field's line where it fits and on a line of its own where it does not (BF-2) */\n",
+     "/* the header line: the name, then the search as a prompt line, one line, its box the field's, and the light-or-dark switch at the right. The\n   field keeps its 200 px; on a phone the search takes a row of its own, under the name and the switch */\n"),
+    ('#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}\n',
+     '#sb{flex:1 1 calc(200px + 4ch);display:flex;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}\n'),
+    ('#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}\n',
+     '/* a setting is a radio or a switch, never boxed: a 13 px ring in --mute, filled in ink around the page\'s ground when on; its word in --dim, in\n   ink when on or under the pointer */\n.rd{display:inline-flex;align-items:center;gap:.7ch;color:var(--dim);cursor:pointer;white-space:nowrap}\n.rd input{-webkit-appearance:none;appearance:none;margin:0;width:13px;height:13px;border:1px solid var(--mute);border-radius:50%;background:none;flex:none;cursor:pointer}\n.rd input:checked{border-color:var(--ink);background:radial-gradient(circle,var(--bg) 0 2.5px,var(--ink) 3px)}.rd input:checked+span,.rd:hover{color:var(--ink)}\n.rd:hover input{border-color:var(--ink)}.rd input:focus-visible{outline:1px solid var(--ink);outline-offset:2px}#sl{margin-left:auto}\n/* the work table\'s count, what its rows hold: in the toolbar after the grouping, a dot before it */\n#n{color:var(--dim)}#n:before{content:"·";content:"·" / "";color:var(--mute);margin-right:1ch}\n'),
+    ('button.act,#s,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}\nbutton.act:hover,#s:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}\n',
+     'button.act,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}\nbutton.act:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}\n'),
+    ("/* a phone: at least 24 px for every button, a heading's state flows under its title, its marker keeping its space (BF-5); the search a header\n   row of its own, the scheme's button under it at the right edge (RV-3342) */\n@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}\n#sb{flex-basis:100%}#s{margin-left:auto}}\n",
+     "/* a phone: at least 24 px for every button and every setting, a heading's state flows under its title, its marker keeping its space; the search\n   a header row of its own under the name and the switch; the table's count a line of its own, with no dot */\n@media(max-width:640px){button.act,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}\n#sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}\n"),
+    ('@media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}\n',
+     '@media print{#sl,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}\n'),
+    ('<div id="B"><div id="H"><b>Git entry differential fixture</b><span data-l="tagline"></span><label id="sb"><input id="q" autofocus><span id="n"></span></label><button id="s"></button></div>\n',
+     '<div id="B"><div id="H"><b>Git entry differential fixture</b><span data-l="tagline"></span><label id="sb"><input id="q" autofocus></label><label id="sl" class="rd"><input type="checkbox" role="switch" id="s"><span data-l="scheme.toggle"></span></label></div>\n'),
+    ('<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button>\n',
+     '<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button><span id="n"></span>\n'),
+    ('"view.all": "all", "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark", "scheme.button": "light or dark: {0}", ',
+     '"view.all": "all", "scheme.toggle": "dark", '),
+    ('// light or dark is the viewer\'s choice: auto follows the system; the other two switch the page\'s own\n// `prefers-color-scheme` rules on or off. Paper stays light.\nconst ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\\(\\s*prefers-color-scheme\\s*:\\s*(dark|light)\\s*\\)/g;\nlet scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(!SCHEMES.includes(scheme))scheme="auto";\n',
+     '// light or dark: the page starts from the system\'s scheme, `auto`. A pick on the switch is kept; a pick equal to the system\'s scheme is\n// forgotten, so the page follows the system again. A pick switches the page\'s own `prefers-color-scheme` rules on or off, and the logo\'s: an\n// image\'s own rules follow the system, never the page, so its SVG is written again with the rule of the scheme in effect on — one of its own\n// two drawings shows, and nothing is recoloured. Paper stays light.\nconst ORIG=new Map(),PCS=/\\(\\s*prefers-color-scheme\\s*:\\s*(dark|light)\\s*\\)/g,SYS=matchMedia("(prefers-color-scheme: dark)"),sys=()=>SYS.matches?"dark":"light",\nLOGO=(i=>i&&/^data:image\\/svg\\+xml;base64,/.test(i.getAttribute("src"))?[i,new TextDecoder().decode(Uint8Array.from(atob(i.getAttribute("src").slice(26)),c=>c.charCodeAt(0)))]:null)(document.querySelector("#H>img"));\nlet scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(scheme!="light"&&scheme!="dark")scheme="auto";\n'),
+    ('  document.documentElement.style.colorScheme=m=="auto"?"":m},\nsetScheme=m=>{scheme=m;paint(m);$("s").textContent=(L["scheme.button"]??"{0}").replace("{0}",L["scheme."+m]??m);$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};\n$("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));\n',
+     '  document.documentElement.style.colorScheme=m=="auto"?"":m;const e=m=="auto"?sys():m;\n  if(LOGO)LOGO[0].src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(LOGO[1].replace(PCS,(x,w)=>w==e?"(min-width:0px)":"(max-width:0px)"))},\nsetScheme=m=>{scheme=m;paint(m);$("s").checked=(m=="auto"?sys():m)=="dark";try{m=="auto"?localStorage.removeItem("shoalmark.scheme"):localStorage.setItem("shoalmark.scheme",m)}catch(e){}};\n$("s").onchange=()=>{const want=$("s").checked?"dark":"light";setScheme(want==sys()?"auto":want)};\nSYS.addEventListener?.("change",()=>setScheme(scheme));setScheme(scheme);addEventListener("load",()=>paint(scheme));\n'),
+)
+
 
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
@@ -1060,7 +1087,7 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
