@@ -1,0 +1,194 @@
+{%- set de = page and page.url and page.url[:3] == "de/" -%}
+{%- import "partials/why/" ~ ("de" if de else "en") ~ ".html" as L -%}
+{%- set w = L.w -%}
+<!doctype html><html lang="{{ w.lang }}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ w.title }}</title>
+<meta name="description" content="{{ page.meta.description | e }}">
+<link rel="canonical" href="{{ page.canonical_url }}">
+<link rel="alternate" hreflang="en" href="{{ config.site_url }}why-shoalmark.html">
+<link rel="alternate" hreflang="de" href="{{ config.site_url }}de/warum-shoalmark.html">
+<link rel="alternate" hreflang="x-default" href="{{ config.site_url }}why-shoalmark.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="shoalmark">
+<meta property="og:locale" content="{{ w.locale }}">
+<meta property="og:url" content="{{ page.canonical_url }}">
+<meta property="og:title" content="{{ page.meta.title | e }}">
+<meta property="og:description" content="{{ page.meta.description | e }}">
+<meta property="og:image" content="{{ config.site_url }}assets/{{ w.preview }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ w.og_image_alt }}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="{{ 'favicon.ico' | url }}" type="image/x-icon" sizes="16x16 32x32 48x48">
+<link rel="icon" href="{{ 'assets/favicon.svg' | url }}" type="image/svg+xml" sizes="any">
+<link rel="stylesheet" href="{{ 'stylesheets/fonts.css' | url }}">
+<style>
+:root{color-scheme:dark;--abyss:#050b12;--deep:#07111b;--sea:#0e1f30;--panel:#0b1824;--panel2:#10202f;--band:#15293d;
+ --watt:#bccd8f;--land:#e8d4a0;--landink:#0d1720;--ink:#d9e4ec;--dim:#a9bbc8;--mute:#90a3b1;--contour:#34546c;--coral:#f38a80;--closed:#8595a2;
+ --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;--pix:"Silkscreen","IBM Plex Mono",monospace}
+*{box-sizing:border-box}
+html{background:var(--abyss)}
+body{margin:0;color:var(--ink);font:15px/1.6 var(--mono);background:var(--abyss);overflow-x:hidden}
+a{color:var(--ink)}
+.hud{border-bottom:1px solid var(--band);background:var(--deep)}
+.hud .in{max-width:1080px;margin:0 auto;padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font:600 15px/1 var(--mono)}
+.brand svg{width:18px;height:18px;color:var(--watt);shape-rendering:crispEdges}
+.lang{font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--dim);text-decoration:none;border:1px solid var(--contour);padding:6px 8px}
+main{max-width:1080px;margin:0 auto;padding:0 20px 64px}
+.hero{padding:30px 0 0}
+h1{margin:0;font:700 clamp(28px,4.6vw,52px)/1.1 var(--pix);text-transform:uppercase;letter-spacing:.01em;
+ text-shadow:4px 4px 0 var(--band),0 0 22px rgba(217,228,236,.16)}
+.claim{margin:18px 0 0;font:700 clamp(15px,1.9vw,22px)/1.45 var(--pix);text-transform:uppercase}
+.claim .a{color:var(--watt);display:block}.claim .p{color:var(--land);display:block}
+.tldr{position:relative;margin:40px 0 0;border:2px solid var(--watt);background:var(--panel);padding:30px 28px 22px}
+.tldr>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--watt);color:var(--landink);
+ font:700 13px/1.6 var(--pix);text-transform:uppercase}
+.tldr dl{margin:0;display:grid;grid-template-columns:minmax(10ch,15ch) 1fr;gap:12px 22px;font-size:16px;line-height:1.55}
+.tldr dt{font:400 12px/1.9 var(--pix);text-transform:uppercase;color:var(--watt)}
+.tldr dd{margin:0;color:var(--ink)}
+.tldr dl>div{display:contents}
+.tldr dl>div.try{display:grid;grid-column:1/-1;grid-template-columns:minmax(10ch,15ch) 1fr;gap:12px 22px;margin:10px -28px -22px;
+ padding:16px 28px 18px;background:var(--watt);color:var(--landink);box-shadow:inset 0 3px 0 rgba(13,23,32,.18)}
+.tldr dl>div.try dt{color:var(--landink);font-weight:700}
+.tldr dl>div.try dd{color:var(--landink);font-weight:500}
+.tldr dl>div.try .go{white-space:nowrap}.tldr dl>div.try a{display:inline-block;max-width:calc(100% - 1ch);white-space:normal;margin:2px 4px 4px 0;padding:8px 12px 7px;background:var(--landink);color:var(--watt);font:700 13px/1.3 var(--pix);text-transform:uppercase;text-decoration:none;box-shadow:3px 3px 0 rgba(13,23,32,.35);vertical-align:baseline}.tldr dl>div.try a::after{content:"\00a0→";content:"\00a0→" / ""}.tldr dl>div.try a:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(13,23,32,.4)}.tldr dl>div.try a:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(13,23,32,.35)}.tldr dl>div.try a:focus-visible{outline:2px solid var(--landink);outline-offset:3px}.tldr dl>div.try.taped a{color:var(--ink)}
+.tldr dl>div.try.taped{background:var(--closed)}
+h2.cue{margin:72px 0 26px;padding:7px 0 6px;border-block:1px dashed var(--watt);text-align:center;
+ font:400 13px/1.3 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--watt);text-wrap:balance}
+h2.cue::before{content:"— ";content:"— " / ""}h2.cue::after{content:" —";content:" —" / ""}
+p{margin:0 0 14px}
+.lead{font-size:17px;max-width:60ch}
+.mark{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px;align-items:center}
+.mark .stake{display:flex;align-items:flex-start;gap:22px}
+.mark .stake svg{flex:none;width:64px;height:64px;color:var(--watt);shape-rendering:crispEdges;filter:drop-shadow(3px 3px 0 var(--band))}
+.mark figure{margin:0;border:1px solid var(--contour);background:var(--deep);line-height:0}
+.mark figure img{width:100%;height:auto;image-rendering:pixelated}
+.over{position:relative;border:1px solid var(--coral);background:var(--panel);padding:34px 28px 24px}
+.over>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--coral);color:var(--landink);
+ font:400 12px/1.6 var(--pix);text-transform:uppercase}
+.big{margin:0 0 18px;font:700 clamp(19px,2.2vw,26px)/1.4 var(--pix);text-transform:uppercase;color:var(--ink)}
+.big strong{font-weight:inherit;color:var(--coral)}
+.over p:not(.big){color:var(--dim);max-width:70ch}
+.for{font-size:clamp(17px,1.8vw,20px);line-height:1.55;color:var(--land);max-width:62ch;margin:0 auto;text-align:center}
+.board{margin:56px calc(50% - 50vw) 0;padding:44px 20px 30px;background:var(--deep);border-block:1px solid var(--band)}
+.board figure{position:relative;margin:0 auto;max-width:960px}
+.board img{display:block;width:100%;height:auto;border:1px solid var(--contour)}
+.board img.paper{display:none}
+.board .mock{position:absolute;top:-13px;right:-8px;padding:6px 10px;background:var(--land);color:var(--landink);
+ font:700 14px/1 var(--pix);letter-spacing:.1em;box-shadow:4px 4px 0 var(--band)}
+.board figcaption{margin:14px auto 0;max-width:80ch;color:var(--dim);font-size:14px;text-align:center}
+.intro{max-width:66ch;margin:0 auto 22px;text-align:center;color:var(--ink);font-size:16px}
+.move .pre{max-width:60ch;margin:0 auto 18px;color:var(--dim);font-size:16px}
+.for{margin-bottom:10px}
+.tiles{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.tiles li{padding:18px 18px 16px;border-left:3px solid var(--land);background:var(--panel2);font-size:14px;color:var(--dim)}
+.tiles b{display:block;margin-bottom:8px;font:400 12px/1.5 var(--pix);text-transform:uppercase;color:var(--ink)}
+.never{max-width:72ch;margin:0 auto;color:var(--dim);font-size:15px;text-align:center}
+.move{text-align:center}
+.move .close{margin:0 0 26px;font:700 clamp(18px,2.2vw,26px)/1.35 var(--pix);text-transform:uppercase}
+.acts{display:flex;flex-wrap:wrap;justify-content:center;gap:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 18px;font:700 13px/1 var(--pix);
+ text-transform:uppercase;color:var(--landink);background:var(--watt);text-decoration:none;box-shadow:4px 4px 0 var(--band)}
+.btn.alt{background:var(--land)}
+.btn.ghost{background:none;color:var(--ink);box-shadow:none;border:1px solid var(--contour)}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--band)}.btn.ghost:hover{box-shadow:none}
+.contact{margin:26px auto 0;max-width:62ch;min-height:1.6em}
+@media (max-width:1023px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.mark{grid-template-columns:1fr;gap:22px}}
+@media (max-width:640px){
+ .hud .in{height:40px}
+ .hero{padding-top:14px}
+ h1{font-size:24px}
+ .claim{margin-top:8px;font-size:13px;line-height:1.45}
+ .tldr{margin-top:20px;padding:18px 14px 6px}
+ .tldr dl{display:block;font-size:14px;line-height:1.42}
+ .tldr dt{display:inline;margin-right:.6ch;font-size:10px}
+ .tldr dd{display:inline}
+ .tldr dd::after{content:"";display:block;margin-bottom:6px}
+ .tldr dl>div.try{display:block;margin:6px -14px -6px;padding:12px 14px 8px}
+ h2.cue{margin:56px 0 20px;font-size:12px}
+ .over{padding:16px 16px 18px}
+ .over>.t{position:static;display:inline-block;margin:0 0 14px;line-height:1.5}
+ .mark .stake{flex-direction:column;gap:14px}
+ .mark .stake svg{width:44px;height:44px}
+ .tiles{grid-template-columns:1fr}
+ .btn{width:100%}
+}
+@media (prefers-reduced-motion:reduce){.btn:hover,.tldr dl>div.try a:hover,.tldr dl>div.try a:active{transform:none}}
+@page{size:A4;margin:9mm 12mm}
+@media print{
+ :root{--ink:#10202e;--dim:#33424f;--mute:#4a5864;--contour:#7d8b96;--panel:#fff;--panel2:#f4f6f3;--deep:#fff;--band:#fff;--abyss:#fff;--watt:#4d6a1e;--land:#7a5a14;--coral:#b3402f}
+ html,body{background:#fff}
+ body{font-size:8.5pt;line-height:1.3}
+ .hud,.s-mark,.after-board,.move .pre{display:none}
+ .board .mock{top:-8.5pt;right:0;padding:1.5pt 4pt;background:#fff;color:var(--ink);border:1pt solid var(--ink);box-shadow:none;font-size:7pt}
+ main{max-width:none;padding:0;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);column-gap:14pt;align-items:start}
+ .hero,.s-why{grid-column:1/-1}
+ .s-saw{grid-column:1;grid-row:2}.s-for{grid-column:1;grid-row:3}.board{grid-column:2;grid-row:2/span 2}.s-why{grid-row:4}.s-move{grid-column:1;grid-row:5}.s-never{grid-column:2;grid-row:5}
+ .hero{padding:0}
+ h1{font-size:17pt;text-shadow:none}
+ .claim{margin-top:3pt;font-size:9pt;line-height:1.35}.claim .a,.claim .p{display:inline}
+ .tldr{margin-top:6pt;padding:9pt 9pt 2pt;border-width:1.2pt}
+ .tldr>.t{background:#fff;color:var(--watt);font-size:8pt}
+ .tldr dl{grid-template-columns:13ch 1fr;gap:1.5pt 8pt;font-size:8.4pt;line-height:1.28}
+ .tldr dt{font-size:7pt;line-height:1.75}
+ .tldr dl>div.try{margin:2pt -9pt -2pt;padding:3pt 9pt 2pt;background:none;box-shadow:none;border-top:1.2pt solid var(--watt);gap:1.5pt 8pt;grid-template-columns:13ch 1fr}
+ .tldr dl>div.try .go{white-space:normal}
+ .tldr dl>div.try a{display:inline;max-width:none;padding:0;margin:0;background:none;box-shadow:none;color:var(--ink);font:600 8.4pt/1.28 var(--mono);text-transform:none;text-decoration:underline}
+ .tldr dl>div.try a::after{content:"  " attr(href);font-weight:400;font-size:7.4pt;color:var(--dim);text-decoration:none}
+ h2.cue{margin:5pt 0 3pt;padding:1pt 0;font-size:6.8pt;break-after:avoid}
+ .over{padding:7pt 8pt 2pt;break-inside:avoid}.over>.t{position:static;display:block;margin:0 0 3pt;padding:0;background:none;color:var(--coral);font-size:7pt;line-height:1.5}
+ .big{font-size:8pt;margin-bottom:3pt;line-height:1.28}
+ p{margin-bottom:3pt}.lead,.for,.never,.intro,.move .pre{font-size:8.4pt;text-align:left;margin:0 0 3pt;max-width:none}
+ .for{color:var(--ink)}
+ .board{margin:11pt 0 0;padding:0;border:0;break-inside:avoid;background:none}
+ .board figure{max-width:none}
+ .board img.night{display:none}.board img.paper{display:block;width:100%;border-color:#bbb}
+ .board figcaption{margin-top:3pt;font-size:7.4pt;line-height:1.3;max-width:none;text-align:left}
+ .tiles{gap:3pt;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .tiles li{padding:3pt 6pt;font-size:7.4pt;line-height:1.22;break-inside:avoid}
+ .tiles b{font-size:6.8pt;margin-bottom:1pt}
+ .intro{margin-bottom:3pt;text-align:left}
+ .move{text-align:left}
+ .move .close{font-size:8.2pt;margin:1pt 0 3pt}
+ .acts{display:block}
+ .btn{display:block;width:auto;padding:0;margin:0 0 1pt;background:none;box-shadow:none;border:0;color:var(--ink);font:600 8.8pt/1.34 var(--mono);text-transform:none;text-align:left}
+ .btn::after{content:"  " attr(href);font-weight:400;font-size:7.4pt;color:var(--dim)}
+ .btn.alt,.btn.ghost{background:none;border:0;box-shadow:none}
+ html[lang=de] body,html[lang=de] .tldr dl,html[lang=de] .lead,html[lang=de] .for,html[lang=de] .never,html[lang=de] .intro{font-size:8pt}
+ html[lang=de] .tiles li{font-size:7pt}
+ html[lang=de] .tldr dl,html[lang=de] .tldr dl>div.try{grid-template-columns:15.5ch 1fr}
+ html[lang=de] .tldr dl>div.try a{font-size:8pt}
+ a{text-decoration:none}
+}
+</style></head>
+<body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="pricke" viewBox="0 0 16 16"><path shape-rendering="crispEdges" d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"/></symbol></svg>
+<header class="hud"><div class="in"><a class="brand" href="{{ w.home }}"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="#pricke" fill="currentColor"/></svg><span>shoalmark</span></a></div></header>
+<main>
+<section class="hero" aria-labelledby="h1">
+<h1 id="h1">{{ w.h1 }}</h1>
+<p class="claim"><span class="a">{{ w.claim_a }}</span> <span class="p">{{ w.claim_p }}</span></p>
+<section class="tldr" aria-labelledby="tldr"><h2 class="t" id="tldr">{{ w.tldr }}</h2><dl>{% for item in w.tldr_items %}<div><dt>{{ item[0] }}</dt><dd>{{ item[1] }}</dd></div>{% endfor %}<div class="try"><dt>{{ w.try_it[0] }}</dt><dd>{{ w.try_it[1] }}</dd></div></dl></section>
+</section>
+<section class="s-mark" aria-labelledby="s0"><h2 class="cue" id="s0">{{ w.mark_h }}</h2>
+<div class="mark"><div class="stake"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="#pricke" fill="currentColor"/></svg><div><p class="lead">{{ w.mark }}</p></div></div><figure aria-hidden="true"><img src="{{ 'assets/why/pricken-neuwerk.png' | url }}" alt="" width="480" height="300"></figure></div>
+</section>
+<section class="s-saw" aria-labelledby="s1"><h2 class="cue" id="s1">{{ w.saw_h }}</h2>
+<div class="over"><p class="t">{{ w.saw_t }}</p><p class="big">{{ w.saw_big }}</p><p>{{ w.saw }}</p></div>
+</section>
+<section class="s-for" aria-labelledby="s2"><h2 class="cue" id="s2">{{ w.for_h }}</h2>
+<p class="for">{{ w.for_text }}</p>
+</section><div class="board"><figure><img class="night" src="{{ 'assets/why/board-mockup-dark.png' | url }}" alt="{{ w.board_alt }}" width="1760" height="1576"><img class="paper" src="{{ 'assets/why/board-mockup-light.png' | url }}" alt="" width="1760" height="1576"><span class="mock" aria-hidden="true">MOCKUP</span><figcaption>{{ w.board_cap }}</figcaption></figure></div><section class="after-board" hidden>
+</section>
+<section class="s-why" aria-labelledby="s3"><h2 class="cue" id="s3">{{ w.why_h }}</h2>
+<p class="intro">{{ w.why_intro }}</p><ul class="tiles">{% for tile in w.tiles %}<li><b>{{ tile[0] }}</b>{{ tile[1] }}</li>{% endfor %}</ul>
+</section>
+<section class="s-never" aria-labelledby="s4"><h2 class="cue" id="s4">{{ w.never_h }}</h2>
+<p class="never">{{ w.never }}</p>
+</section>
+<section class="s-move" aria-labelledby="s5"><h2 class="cue" id="s5">{{ w.move_h }}</h2>
+<div class="move"><p class="pre">{{ w.move_pre }}</p><p class="close">{{ w.move_close }}</p><div class="acts"><a class="btn" href="{{ w.acts[0][1] }}">{{ w.acts[0][0] }}</a><a class="btn alt" href="{{ w.acts[1][1] }}">{{ w.acts[1][0] }}</a><a class="btn ghost" href="{{ w.acts[2][1] }}">{{ w.acts[2][0] }}</a></div><p class="contact">{{ w.contact }}</p></div>
+</section>
+</main></body></html>
