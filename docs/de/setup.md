@@ -40,7 +40,7 @@ python3 tools/shoalmark/shoalmark.py --install-hook
   kennt keinen Client-Hook — der Vertrag sagt den Agenten, das Werkzeug vor jedem `svn commit` laufen zu lassen.
   `--check` nach dem Commit beurteilt ihn.
 
-Ein Hook-Lauf und der Tafellauf mit `--html-only` sind standardmäßig auf 60 s begrenzt; `SHOALMARK_BOARD_SECONDS` setzt die Grenze.
+Ein Hook-Lauf und der Board-Lauf mit `--html-only` sind standardmäßig auf 60 s begrenzt; `SHOALMARK_BOARD_SECONDS` setzt die Grenze.
 Ausdrückliche Befehle einer Person wie `--answer` und `--check` sind unbegrenzt, auch mit der Hook-Kopie.
 Alle bisherigen Beschränkungen der Kopie bleiben bestehen. Für die Laufzeit liest das Werkzeug die geparsten Argumente:
 Hook-Modi (`--session-check`, `--session-trailer`, `--commit-msg`, `--print-written`, `--tsvn-hook`, `--html-only`)

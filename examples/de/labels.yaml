@@ -151,7 +151,7 @@ read.about.none: "gelesen aus dem Ordner um {0}"
 # read.copied, day.copied, day.nocopy: drafts — the native read is the go-to-market seat's
 read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
 day.copied: der Prompt ist in Ihrer Zwischenablage
-day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (eine aus einer Datei geöffnete Tafel hat oft keine). Den Prompt markieren und kopieren."
+day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
 link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
 link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
