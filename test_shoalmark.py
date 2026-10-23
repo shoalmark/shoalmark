@@ -5898,6 +5898,39 @@ _sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "das neue Aussehen 
 check("FM-006 · B1 · the footer's check is not blind: a word of W29 changed in the German words is a problem",
       _landing_words(_sw29_ctl)[0].get("de", {}).get("foot_fine") != _FOOT_DE and bool(_landing_problems(_sw29_ctl)))
 
+_CLAIM_PARTS = {"en": ('<a href="why-shoalmark.html">Why shoalmark?</a>', 'Built in the open: <a href="https://github.com/shoalmark/shoalmark">github.com/shoalmark/shoalmark</a>',
+                       'Follow the shipyard on X: <a href="https://x.com/holgo99">@holgo99</a>'),
+                "de": ('<a href="warum-shoalmark.html">Warum shoalmark?</a>', 'Offen gebaut: <a href="https://github.com/shoalmark/shoalmark">github.com/shoalmark/shoalmark</a>',
+                       'Die Werft auf X verfolgen: <a href="https://x.com/holgo99">@holgo99</a>')}
+_CLAIM_SEEN = {"en": "Why shoalmark? · Built in the open: github.com/shoalmark/shoalmark · Follow the shipyard on X: @holgo99",
+               "de": "Warum shoalmark? · Offen gebaut: github.com/shoalmark/shoalmark · Die Werft auf X verfolgen: @holgo99"}
+_CLAIM_CSS = (".foot-band .claim>span{white-space:nowrap}",
+              "@media (max-width:640px){.foot-band .claim>span{display:block;white-space:normal}.foot-band .claim .sep{display:none}}")
+
+
+def _claim_problems(src):
+    """What is wrong with the landing footer's first line, one line each: each words file's foot_claim is the pitch page's link, then the contact line,
+    each part a span of its own and a separator span between, reading as the Owner's line; the template keeps each part whole and stacks the parts on a
+    phone, hiding the separators, as the pitch page's contact line does."""
+    words, bad = _landing_words(src)
+    for lang, parts in _CLAIM_PARTS.items():
+        claim = words.get(lang, {}).get("foot_claim", "")
+        if claim != '<span class="sep"> · </span>'.join(f"<span>{p}</span>" for p in parts):
+            bad.append(f"{lang}.html's foot_claim is not the link, then the contact line, in its spans")
+        if " ".join(re.sub(r"<[^>]+>", "", claim).split()) != _CLAIM_SEEN[lang]:
+            bad.append(f"{lang}.html's foot_claim does not read as the Owner's line")
+    if not all(rule in src["overrides/landing.html"] for rule in _CLAIM_CSS):
+        bad.append("the template does not keep the footer's parts whole, or does not stack them on a phone")
+    return bad
+
+
+_cp = _claim_problems(_ls)
+check(f"FM-006 · B1 · the landing footer's first line: the pitch page's link, then W24's contact line, its words and links as the Owner gave them, each part "
+      f"whole and stacked on a phone as on the pitch page (saw {_cp})", not _cp)
+_cp_ctl = _with(_ls, "overrides/partials/landing/en.html", "Follow the shipyard on X", "Follow the yard on X")
+check("FM-006 · B1 · the footer line's check is not blind: a word of the contact line changed in the English words is a problem",
+      bool(_claim_problems(_cp_ctl)))
+
 
 # --- the docs' stand-up lines: how it works, the start pages' fleet line, setup and the standup page, in English and in German --------------------
 _DOCS_STANDUP_ROWS = {
