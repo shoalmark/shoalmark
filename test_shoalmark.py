@@ -16522,6 +16522,43 @@ def _tag_tool(tag, repo=None):
     return r.stdout if r.returncode == 0 else None
 
 
+def _release_key(tag):
+    """A release tag's three numbers, which order releases, or None where `tag` is not `v` and three numbers."""
+    m = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag or "")
+    return tuple(int(n) for n in m.groups()) if m else None
+
+
+def _release_tags(repo=None):
+    """The release tags this clone holds, each `v` and three numbers: none where it holds none, or is not a git clone."""
+    r = subprocess.run(["git", "-C", str(repo or HERE), "tag", "--list"], capture_output=True, text=True, env=_ENV)
+    return [t for t in r.stdout.split() if _release_key(t)] if r.returncode == 0 else []
+
+
+def _tag_relation(tag, rev="HEAD", repo=None):
+    """Where `rev` stands to `tag`'s commit: "at" it, "after" it (a strict descendant), or None: before it, beside it, or where the clone
+    does not hold the tag."""
+    repo = str(repo or HERE)
+    commit = lambda name: subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "--quiet", name + "^{commit}"], capture_output=True, text=True,
+                                         env=_ENV).stdout.strip()
+    tagged, judged = commit(f"refs/tags/{tag}"), commit(rev)
+    if not tagged or not judged:
+        return None
+    if tagged == judged:
+        return "at"
+    return "after" if subprocess.run(["git", "-C", repo, "merge-base", "--is-ancestor", tagged, judged], capture_output=True, env=_ENV).returncode == 0 else None
+
+
+def _pinned_release(version, tags, relation):
+    """The release ADOPT's notes name at the revision judged, by the order the pin follows: `v<version>` at every strict descendant of its
+    tag's commit; the newest tag below `version` while that tag is not held, at its commit, and wherever the revision does not descend from
+    it. None where the clone holds no tag below `version`."""
+    own = f"v{version}"
+    if own in tags and relation(own) == "after":
+        return own
+    below = [t for t in tags if _release_key(t) < _release_key(own)]
+    return max(below, key=_release_key) if below else None
+
+
 def _pin_fields(text, form):
     """The five fields of `text`'s one pin line, read by `form`'s shape. Every line that begins with the form's introduction, `The pin:` or
     `Die Festlegung:`, counts first: None where there is no such line, more than one, or one of another shape."""
@@ -16530,25 +16567,35 @@ def _pin_fields(text, form):
     return m.groups() if m else None
 
 
-def _adopt_pins(read, tag_tool):
-    """(whether ADOPT.md and ADOPT.de.md each carry one pin line, the same five fields in both, what was read). The fields: the release v<VERSION>;
-    its archive's exact address; the archive's SHA-256, 64 lowercase hex characters and the note's only hash besides the tool's; `shoalmark.py`;
-    and the SHA-256 of the release's shoalmark.py. `read(path)` gives a file's bytes at the revision judged; `tag_tool(tag)` the tag's
-    shoalmark.py as git holds it, or None where the clone lacks the tag, and the head's shoalmark.py, its line endings `\n`, counts instead.
-    Between releases shoalmark.py moves on main while the notes still pin the last tag, so the tag's tool is the one the pin answers to."""
+def _adopt_pins(read, tag_tool, tags, relation):
+    """(whether ADOPT.md and ADOPT.de.md each carry one pin line, the same five fields in both, for the release `_pinned_release` names, what
+    was read). The verdict is None where a tag the order needs is not held here: no release tag below VERSION, the release's tool not read,
+    or a release named above the newest tag held below VERSION and below VERSION itself, which a fetch may bring. The fields: the release;
+    its archive's exact address; the archive's SHA-256, 64 lowercase hex characters and the note's only hash besides the tool's;
+    `shoalmark.py`; and the SHA-256 of the release's shoalmark.py as its tag holds it. `read(path)` gives a file's bytes at the revision
+    judged; `tag_tool(tag)` a tag's shoalmark.py as git holds it, or None; `tags` the release tags the clone holds; `relation(tag)` where the
+    revision judged stands to the tag's commit, as `_tag_relation` gives it. The head's own shoalmark.py never counts: it moves on after a
+    tag while the notes still pin that tag."""
     version = read("VERSION").decode("utf-8").strip()
-    held = tag_tool(f"v{version}")
-    tool = hashlib.sha256(held if held is not None else read("shoalmark.py").replace(b"\r\n", b"\n")).hexdigest()
-    address = f"https://github.com/shoalmark/shoalmark/releases/download/v{version}/shoalmark-{version}.zip"
+    own = _release_key(f"v{version}")
+    release = _pinned_release(version, tags, relation) if own else None
+    held = tag_tool(release) if release else None
+    tool = hashlib.sha256(held).hexdigest() if held is not None else None
+    address = f"https://github.com/shoalmark/shoalmark/releases/download/{release}/shoalmark-{release[1:]}.zip" if release else None
     seen = {}
     for name, form in _PIN_FORMS.items():
         text = read(name).decode("utf-8").replace("\r\n", "\n")
         seen[name] = (_pin_fields(text, form), re.findall(_HEX64, text))
-    sound = lambda f, sums: (f is not None and f[0] == f"v{version}" and f[1] == address and re.fullmatch(r"[0-9a-f]{64}", f[2]) is not None
+    lacking = sorted({f[0] for f, _sums in seen.values() if f is not None and f[0] not in tags})
+    unfetched = [t for t in lacking if release and _release_key(t) and _release_key(release) < _release_key(t) < own]
+    sound = lambda f, sums: (f is not None and f[0] == release and f[1] == address and re.fullmatch(r"[0-9a-f]{64}", f[2]) is not None
                              and f[3] == "shoalmark.py" and f[4] == tool and f[2] != tool and sums == [f[2], f[4]])
-    holds = all(sound(f, sums) for f, sums in seen.values()) and len({f for f, _sums in seen.values()}) == 1
-    return holds, {"VERSION": version, f"v{version}'s shoalmark.py" if held is not None else "the head's shoalmark.py (no such tag here)": tool[:12],
-                   **{n: (f and (f[0], f[1], f[2][:12], f[3], f[4][:12]), [x[:12] for x in sums]) for n, (f, sums) in seen.items()}}
+    holds = (False if not own else None if tool is None or unfetched
+             else all(sound(f, sums) for f, sums in seen.values()) and len({f for f, _sums in seen.values()}) == 1)
+    missing = lacking + ([] if tool is not None or not own else [release or f"a release tag below v{version}"])
+    return holds, {"VERSION": version, "the order's release": release, "its shoalmark.py": tool and tool[:12],
+                   **{n: (f and (f[0], f[1], f[2][:12], f[3], f[4][:12]), [x[:12] for x in sums]) for n, (f, sums) in seen.items()},
+                   **({"not held here": missing} if missing else {})}
 
 
 def _as_pin_line(read):
@@ -16574,16 +16621,21 @@ def _pinless(text):
 
 
 def _adopt_pin_hint(ok, seen):
-    if not ok and "the head's shoalmark.py (no such tag here)" in seen:
+    if not ok and seen.get("not held here"):
         return " — the named tag is not held here; run `git fetch --tags` and check again"
     return ""
 
 
 _at_rev = lambda rev: (lambda rel: subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{rel}"], capture_output=True, check=True, env=_ENV).stdout)
-_pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool)
-check(f"FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md each carry one pin line, the same in both — the release VERSION names, its archive's exact address, "
-      f"the archive's SHA-256 as the note's only other hash, shoalmark.py, and the SHA-256 of its shoalmark.py: the tag's, git's blob, where the tag is "
-      f"here; the head's before it (saw {_pins_saw})" + _adopt_pin_hint(_pins_ok, _pins_saw), _pins_ok)
+_tags_here = _release_tags()
+_pins_ok, _pins_saw = _adopt_pins(lambda rel: (HERE / rel).read_bytes(), _tag_tool, _tags_here, _tag_relation)
+_pins_what = ("FM-006 · ADOPT's pins: ADOPT.md and ADOPT.de.md each carry one pin line, the same in both — the release the pin's order names "
+              "(v<VERSION> where the head is a strict descendant of its tag's commit, else the newest tag below VERSION), its archive's exact address, "
+              "the archive's SHA-256 as the note's only other hash, shoalmark.py, and the SHA-256 of that tag's shoalmark.py, git's blob")
+if _pins_ok is None:
+    _skipped(_pins_what, 1, f"a tag the order needs is not held here (saw {_pins_saw})" + _adopt_pin_hint(_pins_ok, _pins_saw))
+else:
+    check(f"{_pins_what} (saw {_pins_saw})" + _adopt_pin_hint(_pins_ok, _pins_saw), _pins_ok)
 _svn_notes = {n: (HERE / n).read_text(encoding="utf-8") for n in ("ADOPT.svn.md", "ADOPT.svn.de.md")}
 check("FM-006 · ADOPT's pins: the Subversion notes carry no pin — no pin line and no SHA-256 — and one that carries a pin line or a hash is caught",
       all(_pinless(t_) for t_ in _svn_notes.values()) and not _pinless(_svn_notes["ADOPT.svn.md"] + _PIN_FORMS["ADOPT.md"] + "\n")
@@ -16591,18 +16643,34 @@ check("FM-006 · ADOPT's pins: the Subversion notes carry no pin — no pin line
 check("FM-006 · ADOPT's pins: a Subversion note that holds only a pin introduction of another shape is caught, in English and in German",
       not _pinless("The pin: malformed line\n") and not _pinless("Die Festlegung: malformed line\n"))
 _changed_tool = lambda rel: _at_rev("v0.19.2")(rel) + (b"\n# a change on main after the tag\n" if rel == "shoalmark.py" else b"")
-_pins_ctl = [("v0.19.3 as tagged, at 3432566, with its tag here", "3432566", _at_rev("3432566"), _tag_tool, False),
-             ("v0.19.3 as tagged, at 3432566, with its tag absent", "3432566", _at_rev("3432566"), lambda tag: None, False),
-             *((f"{t} as tagged, which pins its own tag's tool", t, _at_rev(t), _tag_tool, True) for t in ("v0.19.0", "v0.19.1", "v0.19.2", "v0.19.4", "v0.20.0")),
-             ("a head that changes shoalmark.py alone after v0.19.2", "v0.19.2", _changed_tool, _tag_tool, True)]
-for _what, _rev, _read, _tags, _want in _pins_ctl:
-    if not _held(_rev):
-        _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {_rev}")
+_after_rev = lambda rev: (lambda tag: "after" if _tag_relation(tag, rev) else None)
+_with_notes = lambda rev, notes_rev: (lambda rel: _at_rev(notes_rev if rel in _PIN_FORMS else rev)(rel))
+_pins_ctl = [("v0.19.3 as tagged, at 3432566, judged after it, with its tag here", ("3432566",), _at_rev("3432566"), (_tag_tool, _tags_here, _after_rev("3432566")), False),
+             ("v0.19.3 as tagged, at 3432566, judged after it, with its tag absent", ("3432566",), _at_rev("3432566"),
+              (lambda tag: None if tag == "v0.19.3" else _tag_tool(tag), [t for t in _tags_here if t != "v0.19.3"], _after_rev("3432566")), False),
+             *((f"{t} as tagged, judged after it, which pins its own tag's tool", (t,), _at_rev(t), (_tag_tool, _tags_here, _after_rev(t)), True)
+               for t in ("v0.19.0", "v0.19.1", "v0.19.2", "v0.19.4", "v0.20.0")),
+             ("v0.20.0 as tagged, judged at its own commit, which names v0.20.0 where the order names the release below", ("v0.20.0",), _at_rev("v0.20.0"),
+              (_tag_tool, _tags_here, lambda tag: _tag_relation(tag, "v0.20.0")), False),
+             ("v0.20.0's tree with v0.19.4's notes, judged at v0.20.0's own commit, which names the release below", ("v0.20.0", "v0.19.4"),
+              _with_notes("v0.20.0", "v0.19.4"), (_tag_tool, _tags_here, lambda tag: _tag_relation(tag, "v0.20.0")), True),
+             ("a head that changes shoalmark.py alone after v0.19.2", ("v0.19.2",), _changed_tool, (_tag_tool, _tags_here, _after_rev("v0.19.2")), True)]
+for _what, _revs, _read, _clone, _want in _pins_ctl:
+    if not all(_held(r_) for r_ in _revs):
+        _skipped(f"FM-006 · ADOPT's pins · {_what}", 1, f"this clone does not hold {', '.join(r_ for r_ in _revs if not _held(r_))}")
         continue
-    _got, _seen = _adopt_pins(_as_pin_line(_read), _tags)
+    _got, _seen = _adopt_pins(_as_pin_line(_read), *_clone)
     check(f"FM-006 · ADOPT's pins · {_what}, its tag and hash read into a pin line: {'pass' if _want else 'fail'} (saw {_seen})", _got == _want)
+_rel_rows = (("v0.20.0", "v0.20.0", "at"), ("v0.19.4", "v0.20.0", "after"), ("v0.20.0", "v0.19.4", None), ("v0.20.0", "11d039e", None), ("v9.9.9", "v0.20.0", None))
+if all(_held(r_) for r_ in ("v0.19.4", "v0.20.0", "11d039e")):
+    _rel_saw = [(t_, r_, _tag_relation(t_, r_)) for t_, r_, _w in _rel_rows]
+    check(f"FM-006 · ADOPT's pins · where a commit stands to a tag's, read from git: v0.20.0's own commit is at it and after v0.19.4's; v0.19.4 is "
+          f"before v0.20.0, and 11d039e, cut before it and merged after it, is beside it: neither; a tag not held gives nothing (saw {_rel_saw})",
+          [w_ for _t, _r, w_ in _rel_saw] == [w_ for _t, _r, w_ in _rel_rows])
+else:
+    _skipped("FM-006 · ADOPT's pins · where a commit stands to a tag's, read from git", 1, "this clone does not hold v0.19.4, v0.20.0 and 11d039e")
 if _held("v0.20.0"):
-    _got, _seen = _adopt_pins(_at_rev("v0.20.0"), _tag_tool)
+    _got, _seen = _adopt_pins(_at_rev("v0.20.0"), _tag_tool, _tags_here, _after_rev("v0.20.0"))
     check(f"FM-006 · ADOPT's pins · v0.20.0 as tagged, read as it stands: its notes name the release and the hash in prose, with no pin line — fail (saw {_seen})",
           _got is False)
 else:
@@ -16617,22 +16685,31 @@ _fixture_fields = (f"v{_fixture_version}", f"https://github.com/shoalmark/shoalm
                    hashlib.sha256(b"# a prepared release archive\n").hexdigest(), "shoalmark.py", _fixture_sum)
 _fixture_note = lambda name, fields=_fixture_fields: ("# a note\n\n" + _PIN_FORMS[name].format(*fields) + "\n\nthe rest of the note\n").encode()
 _fixture_docs = {"VERSION": (_fixture_version + "\n").encode(), "shoalmark.py": _fixture_tool, **{name: _fixture_note(name) for name in _PIN_FORMS}}
+
+
+def _fixture_clone(tools, relations=None):
+    """A stand-in clone for `_adopt_pins`, as (tag_tool, tags, relation): `tools` maps each release tag it holds to that tag's shoalmark.py,
+    and `relations` maps a tag to where the revision judged stands to its commit, "at" or "after"; to every other tag it stands nowhere."""
+    relations = relations or {}
+    return tools.get, sorted(tools, key=_release_key), relations.get
+
+
+_fixture_held = _fixture_clone({"v0.19.4": _fixture_tool}, {"v0.19.4": "after"})
 for _number, _documents, _expected in (
         (1, _fixture_docs, True),
         (2, {**_fixture_docs, "shoalmark.py": _fixture_tool.replace(b"\n", b"\r\n")}, True),
         (3, {**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)}, False),
         (4, {**_fixture_docs, "ADOPT.de.md": _fixture_docs["ADOPT.de.md"].replace(_fixture_sum.encode(), b"0" * 64)}, False)):
-    _result, _observed = _adopt_pins(_documents.__getitem__, lambda _tag: None)
+    _result, _observed = _adopt_pins(_documents.__getitem__, *_fixture_held)
     check("RV-3003/RV-3004: recorded privately", _result == _expected)
 
 _fixture_changed = {**_fixture_docs, "shoalmark.py": _fixture_tool + b"# another change\n"}
-for _documents, _tags, _expected, _hinted in (
-        (_fixture_changed, lambda tag: _fixture_tool if tag == "v0.19.2" else None, False, True),
-        (_fixture_docs, lambda tag: _fixture_tool if tag == "v0.19.2" else None, True, False),
-        ({**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)},
-         lambda tag: _fixture_tool, False, False),
-        (_fixture_changed, lambda tag: _fixture_tool, True, False)):
-    _result, _observed = _adopt_pins(_documents.__getitem__, _tags)
+for _documents, _clone, _expected, _hinted in (
+        (_fixture_changed, _fixture_clone({"v0.19.2": _fixture_tool}), False, True),
+        (_fixture_docs, _fixture_clone({"v0.19.2": _fixture_tool}), False, True),
+        ({**_fixture_docs, "ADOPT.md": _fixture_docs["ADOPT.md"].replace(_fixture_sum.encode(), b"0" * 64)}, _fixture_held, False, False),
+        (_fixture_changed, _fixture_held, True, False)):
+    _result, _observed = _adopt_pins(_documents.__getitem__, *_clone)
     check("RV-3003/RV-3004: recorded privately", _result == _expected
           and ("git fetch --tags" in _adopt_pin_hint(_result, _observed)) == _hinted)
 
@@ -16642,7 +16719,7 @@ for _field, _fields in (("the tag", ("v0.19.3", *_fixture_fields[1:])),
                         ("the archive's SHA-256, in capitals", (*_fixture_fields[:2], _fixture_fields[2].upper(), *_fixture_fields[3:])),
                         ("the tool's name", (*_fixture_fields[:3], "shoalmark.pyz", _fixture_fields[4])),
                         ("the tool's SHA-256", (*_fixture_fields[:4], _flip(_fixture_fields[4])))):
-    _result, _observed = _adopt_pins({**_fixture_docs, **{n: _fixture_note(n, _fields) for n in _PIN_FORMS}}.__getitem__, lambda tag: _fixture_tool)
+    _result, _observed = _adopt_pins({**_fixture_docs, **{n: _fixture_note(n, _fields) for n in _PIN_FORMS}}.__getitem__, *_fixture_held)
     check(f"FM-006 · ADOPT's pins · one field changed in both notes, {_field}: fail (saw {_observed})", _result is False)
 _line = _PIN_FORMS["ADOPT.md"].format(*_fixture_fields).encode()
 for _what, _english, _german in (
@@ -16656,8 +16733,41 @@ for _what, _english, _german in (
         ("a second pin introduction of another shape, English", _fixture_docs["ADOPT.md"] + b"The pin: malformed extra line\n", None),
         ("a second pin introduction of another shape, German", None, _fixture_docs["ADOPT.de.md"] + "Die Festlegung: malformed extra line\n".encode())):
     _documents = {**_fixture_docs, **({"ADOPT.md": _english} if _english else {}), **({"ADOPT.de.md": _german} if _german else {})}
-    _result, _observed = _adopt_pins(_documents.__getitem__, lambda tag: _fixture_tool)
+    _result, _observed = _adopt_pins(_documents.__getitem__, *_fixture_held)
     check(f"FM-006 · ADOPT's pins · {_what}: fail (saw {_observed})", _result is False)
+
+_order_tools = {t: f"# the release tool of {t}\n".encode() for t in ("v0.19.2", "v0.19.3", "v0.19.4")}
+_order_head = b"# the head's tool, changed after the tag\n"
+_order_sum = lambda tool: hashlib.sha256(tool).hexdigest()
+_order_docs = lambda tag, tool_sum: {"VERSION": b"0.19.4\n", "shoalmark.py": _order_head, **{n: _fixture_note(n, (
+    tag, f"https://github.com/shoalmark/shoalmark/releases/download/{tag}/shoalmark-{tag[1:]}.zip", _order_sum(f"# the archive of {tag}\n".encode()),
+    "shoalmark.py", tool_sum)) for n in _PIN_FORMS}}
+_order_named = lambda tag: _order_docs(tag, _order_sum(_order_tools[tag]))
+_order_untagged = _fixture_clone({t: _order_tools[t] for t in ("v0.19.2", "v0.19.3")}, {"v0.19.2": "after", "v0.19.3": "after"})
+_order_after = _fixture_clone(_order_tools, {"v0.19.2": "after", "v0.19.3": "after", "v0.19.4": "after"})
+_order_at = _fixture_clone(_order_tools, {"v0.19.2": "after", "v0.19.3": "after", "v0.19.4": "at"})
+_order_beside = _fixture_clone(_order_tools, {"v0.19.2": "after", "v0.19.3": "after"})
+for _what, _documents, _clone, _expected, _hinted in (
+        ("v0.19.4 named where its tag is not held", _order_docs("v0.19.4", _order_sum(_order_head)), _order_untagged, False, True),
+        ("the release below named where v0.19.4 is not held", _order_named("v0.19.3"), _order_untagged, True, False),
+        ("the release below named at a strict descendant of v0.19.4's commit", _order_named("v0.19.3"), _order_after, False, False),
+        ("v0.19.4 named at a strict descendant of its commit", _order_named("v0.19.4"), _order_after, True, False),
+        ("v0.19.4 named at the tagged commit itself", _order_named("v0.19.4"), _order_at, False, False),
+        ("the release below named at the tagged commit itself", _order_named("v0.19.3"), _order_at, True, False),
+        ("v0.19.4 named at a commit that does not descend from its tag's", _order_named("v0.19.4"), _order_beside, False, False),
+        ("the release below named at a commit that does not descend from v0.19.4's", _order_named("v0.19.3"), _order_beside, True, False),
+        ("a release two below named where v0.19.4 is not held", _order_named("v0.19.2"), _order_untagged, False, False),
+        ("a release two below named at a strict descendant of v0.19.4's commit", _order_named("v0.19.2"), _order_after, False, False),
+        ("v0.19.4's tool hash one digit off", _order_docs("v0.19.4", _flip(_order_sum(_order_tools["v0.19.4"]))), _order_after, False, False),
+        ("the head's tool where the tag's differs", _order_docs("v0.19.4", _order_sum(_order_head)), _order_after, False, False),
+        ("the tag's tool where the head's differs", _order_named("v0.19.4"), _order_after, True, False),
+        ("no release tag below VERSION held", _order_named("v0.19.3"), _fixture_clone({"v0.19.4": _order_tools["v0.19.4"]}, {"v0.19.4": "at"}), None, True),
+        ("a release named above the newest tag held below VERSION, which a fetch may bring", _order_named("v0.19.3"),
+         _fixture_clone({"v0.19.2": _order_tools["v0.19.2"]}, {"v0.19.2": "after"}), None, True)):
+    _result, _observed = _adopt_pins(_documents.__getitem__, *_clone)
+    check(f"FM-006 · ADOPT's pins · the order · {_what}: {({True: 'pass', False: 'fail', None: 'skipped'})[_expected]}"
+          f"{', with the fetch hint' if _hinted else ''} (saw {_observed})",
+          _result is _expected and ("git fetch --tags" in _adopt_pin_hint(_result, _observed)) == _hinted)
 
 _FIELD_RULES = {"ADOPT.md": ("Percent-encode every byte outside RFC 3986's unreserved ASCII set: A–Z, a–z, 0–9, hyphen, period, underscore and tilde.",
                              "an apostrophe is `%27`"),
