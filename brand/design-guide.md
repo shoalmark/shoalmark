@@ -18,7 +18,7 @@ Everything else supports that, folds, or goes.
 | your acts, with their time | what the Owner owes, by the clock | open where any exist; absent where none |
 | **the day** | **A frame, the last 24 hours:** it holds three parts at one level, `h3`, their text on one column: `### stand-up` with its copy button in the heading, the day's sessions as a fold, and `### close-out` with its copy button. No row rule runs between them, and no type word stands in for *begins* or *ends*: the order says it. Its heading carries only its own summary: *the last 24 hours* | open; it never folds, because it holds both actions |
 | sessions, inside the day | the way back into a session: one fold, *sessions* | open on a desktop, folded on a phone, its heading carrying the counts and its caveat in a few words (*at work or closed: not known*). Opened, a row that holds something for the Owner, such as a session *waiting for your answer*, is open, and the others are closed |
-| reviews | the week's verdicts and who gave them: before a merge, whether each READY came from another session than the branch's (`README.md`, *Verdicts*, says *independent*: the older word). Opened, one row per verdict: its commit, its branch, its word as a type, and whether its session is another than the branch's or the same | folded after the day, its heading carrying the week's counts in words, *6 by another session · 2 by the same session*, and *reports, not proofs*, led by *n not ready* in coral and *n with findings* in amber where there are any; never inside the day, which is the last 24 hours |
+| reviews | the week's verdicts and who gave them: before a merge, whether each READY came from another session than the branch's (`README.md`, *Verdicts*, says *independent*: the older word). Opened, what needs a look, one row each: every verdict that is not READY, has findings, came from the branch's own session or cannot be traced. The rest, READY by another session, fold into one line, *and n more verdicts by another session this week*, which opens to them in the same rows. A row is two lines: the verdict's id, *on <branch> @ <commit>*; then its word as a type and who gave it, *by another session · <its session>, the branch's <session>*; a branch or a session not known says so, with its reason. The week is one list: it is never paged | folded after the day, its heading carrying the week's counts in words, *6 by another session · 2 by the same session*, and *reports, not proofs*, led by *n not ready* in coral and *n with findings* in amber where there are any; never inside the day, which is the last 24 hours |
 | receipts | counts, read on request | folded, its heading carrying the range and *counts the record holds, not a cause*, **never a total**: a total in a heading reads as a result in any picture of the board. The counts appear opened, each with its definition |
 | your current path | your own words, known by heart; titled *your current path*, never *only you change it* while FM-037 is open | folded, its heading carrying its line count |
 | the work, by rank | the table below the box | as today |
@@ -109,7 +109,9 @@ copied, `monochrome` is the board's own look and `shoalmark` a palette by name, 
 
 - **Source:** `brand/seats/<seat>.svg` (FM-024), seven hand-drawn icons on a 20-unit grid. They would become static
   constants in the tool, as `PRICKE` is.
-- **In a row: 20 px, in grey** (`filter: grayscale(1)`). The family was drawn to read without colour, and its README judges
+- **In a row: 20 px, in grey, without the icon's ground; on the light board and on paper, inverted**
+  (`filter: grayscale(1)`, with `invert(1)` there). The row leaves out the icon's ground square, so no seat sits on a
+  tile; the icon files and their use as avatars keep it. The family was drawn to read without colour, and its README judges
   each icon at 20 px *"grey included"*. Grey keeps colour for state: several icons' details, every blush among them, use
   the same coral that means a failure.
 - **In colour** only where the icons themselves are the subject: a gallery, the README, a forge avatar.
@@ -282,7 +284,8 @@ Every row reads in one order:
 ## 7. Layout
 
 - **One column, one frame:** `max-width: calc(104ch + 32px)`. There is no sidebar and no tabs. The header line is the page's
-  identity card: the name, the search, what was read and when, and the *rebuild command* copy button.
+  identity card: the name, the search, the light-or-dark setting (*◉ dark*, §8 *A setting*), what was read and when,
+  and the *rebuild command* copy button.
 - **Vertical rhythm** comes in lines of 21 px:
   - a section of the Owner's box opens on its band (§8, *A surface*), 16 px below the section before it. The band's top
     edge is a 1px `--box` rule, so the band is the divider: it holds where a band's faint fill does not, on a dim
@@ -305,7 +308,7 @@ Every row reads in one order:
   3. the Owner's box: waiting for you, your acts, *the day* (stand-up, its sessions, close-out), reviews, receipts, the
      current path;
   4. the work table;
-  5. the claim, and the running line.
+  5. the running line, at the right.
 
 ---
 
@@ -319,6 +322,7 @@ Every row reads in one order:
 | **A fold** | A `details` element: the heading is its `summary`, `> ` closed and `v ` open. Its default follows §1. On a phone, a script may close it at load |
 | **A row** | §6. A row that opens shows its details in quiet lines indented 4ch: commit counts, the last commit's subject, model, effort. A session's sub-sessions stand on one line of their own under its row (*+ builder 1–3 · reviewer 1, who resume with it*), never inside the seat's cell |
 | **A button** | A box, in `monochrome`: the word in the grid's face and `--dim`, lowercase, inside a 1px `--mute` frame (5.0:1 and 6.0:1: the frame carries the meaning) with 1px by 1ch of padding, 17px of line inside, so a button keeps the 21px line. Under the pointer: ink on `--raise`, the frame in ink. A visible focus ring (1px ink outline, offset 2px). At least 24px high on a phone (3px by 1ch of padding). In a dialog the one button that goes ahead is filled in ink. A pair stays on one line. **A copy button** carries the copy icon before its noun (*stand-up prompt*); its accessible name keeps the verb, *copy the stand-up prompt*, which contains the visible label (WCAG 2.5.3). A verb button has no icon |
+| **A setting** | A radio or a switch, unboxed, drawn as the guided answer view's radios: its mark, *◉* on and *○* off, then its word, in `--dim`, and in ink when on. A setting holds a state, so it is never a button (§6). **A switch** is one `<input type="checkbox" role="switch">` with its word, on where what it names holds: the header's *◉ dark* is on where the board is dark. The page starts from the system's scheme; a pick is kept, and a pick equal to the system's is forgotten, so the page follows the system again. Paper stays light. **A choice** of two or more is a named `role="radiogroup"`, its options on one line after its word, *by ◉ board ○ story*, and the arrow keys move within it. On a phone each label is at least 24px high |
 | **Copy feedback** | Under the row, in the state line, on teal's tint from frame to frame: *copied:* in teal after the check icon, then the command, then the limit on a line of its own (*whether it still runs is not known here*). Or *not copied* in coral after the cross icon: *this page has no clipboard here … select the command*. *Copied* is said only when the clipboard confirms it |
 | **A dialog** | A window: a 1px ink frame, its title set into the top border. Sections are `## ` headings. The command or prompt stands behind a 1ch teal rule at its left edge, on the page ground, never in a tinted box; the change a command commits may stand as a diff (*A surface*). The status line comes first (*the prompt is on your clipboard*), then the text, then *what it asks the session to run* and *what it does not ask for*. A dialog promises the prompt's words, never a session's conduct |
 | **Help** | The tool's own voice: one short line that says how to read a section (*begins with your stand-up, ends with your close-out, at the times you choose*). **One help line per view, not per section:** a fold's caveat is a few words in its heading's state, and the page's fuller limits stand once, folded under the read-at line (*The page's limits*). Violet (`--help`) behind a 2px dashed rule at its left edge, 1ch in, on the page ground. **Never a value, a state, an action or a warning:** a row's reason stays its grey state line, a consequence stays amber, or coral where it names a failure, a button never sits inside help. At most one help line per section, under its heading or in an empty state; never one per row. In a dialog the dialog itself is the help, so its text stays ink and grey, except the guided answer view's one help line (*The guided answer view*). The same words rules as everything else (§10). Recognised without colour by its dashed rule (§11, test 1). **Hiding:** help that only explains how to read carries its own mark, `[×]`: superscript, 11 px, in help's violet, underlined under the pointer, spoken *hide this help*. It stands after the last word of a one-line help, and top-right, at the end of the first line, of a help that wraps. It is the one action not in a box: it belongs to help's voice, not to the page's actions. The × sign, never the letter x: `[x]` is a done checkbox in Markdown. Pressed, the line is hidden in this browser, and a quiet line under the read-at line says *some help is hidden in this browser* with *show help again*. **The page's limits never hide:** the read-at line, *what this page reads, and what it cannot see*, an empty state's reason and a count's definition. Hiding is a viewer's convenience, kept in the browser, never in the repository |
@@ -352,6 +356,10 @@ The theme's other drawn markers stay: they label structure, never an action.
 | Desktop | the box, open: waiting for you and the sessions | receipts; each session's details |
 | 800 px | the same, with session rows stacked | as desktop |
 | Phone | waiting for you, its buttons kept together | sessions and receipts, their headings still carrying their counts |
+
+**The work table on a phone** (640 px and narrower) stacks each row: the id, tier and status share a line, wrapping
+under the id where they must, and the title takes the full width under them, hanging at the id's column. The column
+heads go, and the rule moves to the row. Nothing scrolls sideways: the page is never wider than the screen.
 
 ---
 
