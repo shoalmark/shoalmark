@@ -2,8 +2,8 @@
 
 ## Get a better-performing human Owner.
 
-Agents do not wait for tools. They wait for their human. Asked what slows them most, three independent agents gave
-the same answer, by a wide margin: **the Owner's unanswered questions** — one question, open three days, held three
+Agents do not wait for tools. They wait for their human. Asked what slows them most, three agents, run
+separately, gave the same answer, by a wide margin: **the Owner's unanswered questions** — one question, open three days, held three
 packages. And where the human does keep up, they keep up by not reading: in the repository this tool came from,
 **200 pull requests were merged in 22 days, 85 % of them less than a minute after opening, none with a review.**
 Blocking and stamping have one root — a person asked for many small decisions in the middle of the work.
@@ -25,8 +25,8 @@ Trust is earned there from the Owner's own answers before anything runs unattend
 
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
-- Not proof that work is right. The gate refuses a *done* without a commit behind it. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
+- *Not proof that work is right.* Under Git or Subversion, a checked change that moves a work item to `Shipped` must name, in the item's ship log, a commit that is already in that change's history and changes something outside the records (on Subversion, a revision). This evidence rule does not cover `Closed`. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing `--check` on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
 
 Git worktree identity and commit-trailer reports (`--whoami`, `--session-trailer`, `--sessions`), the forge queue
 (`--queue`) and answer-branch acts (`--answer`, `--done`, `--due`, `--revoke`) require Git. Under Subversion, `--session new` generates an id without checking a Git commit registry. A server login
@@ -51,7 +51,7 @@ convention only: checks and traceability are later.
 ---
 
 A work tracker that lives in the repository it tracks: one Markdown file per work item, one Python file that reads
-them all, a gate on every commit. It needs no server, no database and no dependency beyond Python 3.9.
+them all, and checks you can run locally and in your project's CI. It needs no server, database or account of its own, and no dependency beyond Python 3.9.
 **This page is written for the agent that has to use it.** Find your situation, do what it says.
 
 | You are… | Go to |

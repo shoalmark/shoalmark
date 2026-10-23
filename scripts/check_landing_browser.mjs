@@ -1,0 +1,408 @@
+// check_landing_browser.mjs SITE STATE OUT.json [PAGES [SIZES]] — the built landings, English and German, in a real headless Chrome (Node 22 or newer, Chrome in $CHROME).
+// SITE is a built site, STATE is `interim` or `probe` (the launch state it was built in). The site is served from 127.0.0.1 and every other host is
+// unresolvable, so a page that asks for the outside fails and is logged. For each landing and How it works page at 360, 375 and 390 px (and 1440):
+//   no sideways scroll, no script error, no failed request, no request to any other host.
+// On each landing, with the widest three-digit hi-score (888/888) set in the top bar, at every whole width from 360 to 1920 px: the bar's items stand in one row, overlap none another,
+// wrap and are cut nowhere, and nothing scrolls sideways; the anchors and the separator with them first show at 1208 px (English) and 1273 px (German); both header buttons show the
+// focus ring when the keyboard reaches them.
+// In the probe state, on each landing: the hero's cue is as wide as the primary button and centred on it (over the stacked buttons on a phone), hidden from screen readers,
+// clear of every chart label; with motion allowed the taped cue turns to the live one at 2.8 s and only the live cue's icon and words blink, 5 s at most, then lit;
+// under reduced motion the document has no animation.
+// In the probe state, the tape-off ceremony on each landing: in every frame from 0 to 2.9 s the page does not scroll sideways, nothing moves the door and the door is the live
+// link; the tape is picked at 0.6 s, pulled off by 1.9 s and gone after 2.2 s; at the end the window is lit and the live cue shown, and the door, 55 px tall on a desktop
+// and 59 px on a phone, shows its copy icon centred under its label; under reduced motion and in print the tape, the unlit window, the coin and the taped cue are not
+// drawn; the door's name is its label; after a mouse press the dialog opens when the coin has landed, 0.36 s after the press, the copy made in the click, and at once
+// for the keyboard and under reduced motion.
+// In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
+// names; focus is inside it; Tab and Shift+Tab never reach the page behind; the prompt stands in step 1 as a box of two lines with a fade whose button opens it whole
+// and folds it back by keyboard; the approvals' fold opens and closes by keyboard; Escape closes it and focus is back on the
+// button; it fits the window and the page does not scroll sideways under it; and, with the fold closed, its label, Close, the copied line, Copy again and step 3
+// are in view without scrolling at 360×780, 375×667 and 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
+// In the probe state, at 1024×768 on each landing, with the fold closed, nothing in the dialog scrolls inside itself.
+// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors, `cue` for the hero's cue, `door` for the ceremony, `desk` for the dialog at
+// 1024×768) narrow the run to what is named; the whole run is every page at 360×780, 375×667, 390×844 and 1440×900, the bar, the cue, the door and the desk.
+import {spawn} from "node:child_process";
+import {createServer} from "node:http";
+import {existsSync, mkdtempSync, readFileSync, statSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join, resolve} from "node:path";
+
+const [dir, state, out, only, sizes] = process.argv.slice(2);
+if (!dir || !["interim", "probe"].includes(state) || !out) { console.error("usage: check_landing_browser.mjs SITE interim|probe OUT.json [PAGES [SIZES]]"); process.exit(2) }
+const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const TYPES = {html: "text/html; charset=utf-8", css: "text/css", js: "text/javascript", json: "application/json", svg: "image/svg+xml", png: "image/png",
+  woff2: "font/woff2", xml: "application/xml", txt: "text/plain; charset=utf-8", md: "text/markdown; charset=utf-8"};
+
+// the built site as a host serves it: use_directory_urls is off, the files are as they are, and the project site lives under /shoalmark/ on GitHub Pages
+const root = resolve(dir);
+const server = createServer((q, s) => {
+  let path = decodeURIComponent(new URL(q.url, "http://x").pathname);
+  if (path.startsWith("/shoalmark/")) path = path.slice(10);
+  const f = join(root, path);
+  if (!f.startsWith(root) || !existsSync(f) || statSync(f).isDirectory()) { s.writeHead(404); return s.end() }
+  s.writeHead(200, {"content-type": TYPES[f.split(".").pop()] ?? "application/octet-stream"}); s.end(readFileSync(f));
+});
+await new Promise(r => server.listen(0, "127.0.0.1", r));
+const origin = `http://127.0.0.1:${server.address().port}/`;
+
+const port = 9400 + Math.floor(Math.random() * 500);
+const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", `--remote-debugging-port=${port}`, "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1",
+  ...(process.env.CHROME_FLAGS ? process.env.CHROME_FLAGS.split(" ") : []), `--user-data-dir=${mkdtempSync(join(tmpdir(), "shoalmark-landing-"))}`, "about:blank"], {stdio: "ignore"});
+let version = null;
+for (let i = 0; i < 80 && !version; i++) { try { version = (await (await fetch(`http://127.0.0.1:${port}/json/version`)).json()).Browser } catch { await sleep(250) } }
+if (!version) { console.error("check_landing_browser: Chrome did not start"); chrome.kill(); server.close(); process.exit(2) }
+
+// a tab: js(expr), call(method, params), press(key, modifiers), close(); log holds what the page did
+async function open(url, {w, h, clipboard = "ok", reduce = true}) {
+  const t = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, {method: "PUT"})).json();
+  const ws = new WebSocket(t.webSocketDebuggerUrl); await new Promise(r => ws.onopen = r);
+  let id = 0; const pending = new Map(), asked = new Map();
+  const log = {errors: [], failed: [], hosts: new Set()};
+  ws.onmessage = e => { const m = JSON.parse(e.data), p = m.params;
+    if (m.method == "Runtime.exceptionThrown") log.errors.push(p.exceptionDetails.exception?.description ?? p.exceptionDetails.text);
+    if (m.method == "Runtime.consoleAPICalled" && p.type == "error") log.errors.push("console: " + p.args.map(a => a.value ?? a.description).join(" "));
+    if (m.method == "Network.requestWillBeSent") { asked.set(p.requestId, p.request.url); if (!/^(data|about|blob):/.test(p.request.url)) log.hosts.add(new URL(p.request.url).host) }
+    if (m.method == "Network.loadingFailed" && !p.canceled) log.failed.push(`${asked.get(p.requestId)} ${p.errorText}`);
+    if (m.method == "Network.responseReceived" && p.response.status >= 400) log.failed.push(`${p.response.url} HTTP ${p.response.status}`);
+    if (pending.has(m.id)) { pending.get(m.id)(m.result ?? {error: m.error}); pending.delete(m.id) } };
+  const call = (method, params = {}) => new Promise(r => { pending.set(++id, r); ws.send(JSON.stringify({id, method, params})) });
+  const js = async expr => { const r = await call("Runtime.evaluate", {expression: expr, returnByValue: true, awaitPromise: true});
+    if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails).slice(0, 400)); return r.result.value };
+  await call("Runtime.enable"); await call("Network.enable"); await call("Page.enable");
+  await call("Emulation.setDeviceMetricsOverride", {width: w, height: h, deviceScaleFactor: 1, mobile: false});
+  await call("Emulation.setEmulatedMedia", {features: [{name: "prefers-reduced-motion", value: reduce ? "reduce" : "no-preference"}]});
+  // the clipboard is stubbed, so that the two states of the dialog happen on demand; the page's own code runs unchanged
+  await call("Page.addScriptToEvaluateOnNewDocument", {source: clipboard == "ok"
+    ? `Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText: t => { window.__copied = t; return Promise.resolve() }}})`
+    : `Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText: () => Promise.reject(new Error("refused"))}}); document.execCommand = () => false`});
+  await call("Page.navigate", {url: origin + url}); await sleep(1500);
+  await js("document.fonts.ready.then(() => 1)");
+  const key = async (k, mods = 0) => { for (const type of [k.text ? "keyDown" : "rawKeyDown", "keyUp"]) await call("Input.dispatchKeyEvent", {type, key: k.key, code: k.code, windowsVirtualKeyCode: k.vk, modifiers: mods, ...(type == "keyDown" ? {text: k.text} : {})}) };   // Enter carries its character, as a keyboard sends it: a summary and a link act on it
+  const KEYS = {Tab: {key: "Tab", code: "Tab", vk: 9}, Escape: {key: "Escape", code: "Escape", vk: 27}, Enter: {key: "Enter", code: "Enter", vk: 13, text: "\r"}, Space: {key: " ", code: "Space", vk: 32}};
+  const press = async (name, mods = 0) => { await key(KEYS[name], mods); await sleep(150) };
+  const close = async () => { ws.close(); await fetch(`http://127.0.0.1:${port}/json/close/${t.id}`).catch(() => {}) };
+  return {js, call, press, close, log};
+}
+
+const rows = [], info = [];
+const verdict = (page, w, h, name, ok, detail = "") => rows.push({page, w, h, check: name, ok: !!ok, ...(ok ? {} : {detail})});
+const PAGES = only ? only.split(",") : ["index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html"];
+const SIZES = sizes ? sizes.split(",").filter(s => s.includes("x")).map(s => s.split("x").map(Number)) : [[360, 780], [375, 667], [390, 844], [1440, 900]];
+const BAR = !sizes || sizes.split(",").includes("bar"), CUEON = !sizes || sizes.split(",").includes("cue"), DOOR = !sizes || sizes.split(",").includes("door");   // runs of their own
+const DESK = !sizes || sizes.split(",").includes("desk");
+const ACTIVE = `(() => { const e = document.activeElement; return e ? (e.id || e.className || e.tagName) : "none" })()`;
+const OUTSIDE = `(() => { const d = document.getElementById("probe"), e = document.activeElement; return !!e && e !== document.body && e !== document.documentElement && !d.contains(e) })()`;
+// an element inside the dialog that scrolls inside itself (the prompt's own box excepted)
+const SCROLLS = `(() => [...document.querySelectorAll("#probe *")].filter(e => e.tagName != "TEXTAREA" && e.tagName != "PRE" && ["auto", "scroll"].includes(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1).map(e => (e.id || e.className || e.tagName) + " " + e.scrollHeight + ">" + e.clientHeight))()`;
+
+const INVIEW = `(() => { const sc = document.querySelector("#probe .probe-scroll"); sc.scrollTop = 0; const v = sc.getBoundingClientRect(), $ = id => document.getElementById(id), parts = {};
+  for (const [k, e] of Object.entries({label: $("probe-h"), close: $("probe-x"), copied: $("probe-status"), again: $("probe-again"), step3: document.querySelectorAll("#probe .probe-steps > li")[2]})) {
+    if (!e) { parts[k] = "missing"; continue }
+    const r = e.getBoundingClientRect(), top = sc.contains(e) ? Math.max(v.top, 0) : 0, bottom = sc.contains(e) ? Math.min(v.bottom, innerHeight) : innerHeight;
+    parts[k] = r.height > 0 && r.top >= top - 1 && r.bottom <= bottom + 1 ? "in view" : [r.top, r.bottom, top, bottom].map(Math.round).join(",") }
+  return {parts, copied: ($("probe-status") || {}).textContent || ""} })()`;
+// how the opened box stands in the window: it grows as far as the window allows, then scrolls inside itself, with a floor of three lines; with the approvals folded the dialog does not scroll
+// (a window too small for the floor makes it scroll); the box ends at the prompt's last line, which the page still copies with its line ending
+const FIT = `(() => { const ta = document.getElementById("probe-text"), sc = document.querySelector("#probe .probe-scroll"), floor = 3 * parseFloat(getComputedStyle(ta).lineHeight) + 26, maxH = parseFloat(getComputedStyle(sc).maxHeight), appr = document.querySelector("#probe .probe-approvals");
+  return {box: Math.round(ta.getBoundingClientRect().height), floor: Math.round(floor), whole: ta.scrollHeight <= ta.clientHeight + 1, dialogScrolls: sc.scrollHeight > sc.clientHeight + 1, filled: sc.clientHeight >= maxH - 2, apprOpen: appr.open,
+    shownEnd: ta.value.endsWith("\\n"), keptEnd: ta.defaultValue.endsWith("\\n"), sideways: sc.scrollWidth > sc.clientWidth + 1} })()`;
+const fitsOk = f => !f.apprOpen && !f.shownEnd && f.keptEnd && !f.sideways && (f.dialogScrolls ? f.box <= f.floor + 1 : (f.whole || f.filled));
+
+for (const page of PAGES) for (const [w, h] of SIZES) {
+  const t = await open(page, {w, h});
+  const m = await t.js(`({sw: document.documentElement.scrollWidth, iw: innerWidth})`);
+  verdict(page, w, h, "no sideways scroll", m.sw <= m.iw, `${m.sw} > ${m.iw}`);
+  if (page.endsWith("index.html") && !page.startsWith("how")) {   // the ticker's words are long; it clips its own band and takes no room of the page
+    const tk = await t.js(`(() => { const e = document.querySelector(".ticker"), r = e.getBoundingClientRect(); return {overflowX: getComputedStyle(e).overflowX, right: Math.round(r.right), iw: innerWidth, sw: document.documentElement.scrollWidth} })()`);
+    verdict(page, w, h, "the ticker clips its own band and takes no room of the page", tk.overflowX == "hidden" && tk.right <= tk.iw && tk.sw <= tk.iw, JSON.stringify(tk));
+    const bd = await t.js(`(() => { const head = document.querySelector(".board thead"), rows = [...document.querySelectorAll(".board tbody tr")].map(r => { const g = s => r.querySelector(s).getBoundingClientRect(), tr = r.getBoundingClientRect(), sc = g(".sc"), pd = g(".pd"), rk = g(".rk");
+      return {under: pd.top >= Math.max(sc.bottom, rk.bottom) - 1, full: pd.width >= tr.width - 1, beside: pd.left >= sc.right - 1 && Math.abs(pd.top - tr.top) <= 14} });
+      return {heads: head ? getComputedStyle(head).display : null, rows, tall: Math.round(document.querySelector(".board table").getBoundingClientRect().height)} })()`);
+    verdict(page, w, h, w <= 640 ? "on a phone each high scores row stacks, its period's words under the rank and the score at full width, the column heads gone"
+      : "wider than a phone the high scores keep their three columns under their heads",
+      bd.rows.length > 0 && (w <= 640 ? bd.heads == "none" && bd.rows.every(r => r.under && r.full) : bd.heads != "none" && bd.rows.every(r => r.beside)), JSON.stringify(bd));
+  }
+  if (state == "probe" && page.endsWith("index.html") && !page.startsWith("how")) {
+    await t.js(`document.getElementById("probe-open").focus()`);
+    await t.press("Enter"); await sleep(400);
+    const dlg = await t.js(`(() => { const d = document.getElementById("probe"); return {open: d.open, modal: d.matches(":modal"), label: (document.getElementById(d.getAttribute("aria-labelledby")) || {}).textContent, inside: d.contains(document.activeElement)} })()`);
+    verdict(page, w, h, "the dialog opens by keyboard, as a modal", dlg.open && dlg.modal, JSON.stringify(dlg));
+    verdict(page, w, h, "the dialog is labelled", !!(dlg.label || "").trim(), JSON.stringify(dlg));
+    await t.call("Accessibility.enable");
+    const ax = (await t.call("Accessibility.getFullAXTree")).nodes.filter(n => !n.ignored && n.role?.value == "dialog");
+    verdict(page, w, h, "the accessibility tree names the dialog and says it is modal", ax.length == 1 && !!ax[0].name?.value?.trim() && ax[0].properties?.find(p => p.name == "modal")?.value?.value === true, JSON.stringify(ax.map(n => [n.name?.value, n.properties])).slice(0, 300));
+    verdict(page, w, h, "focus moves into the dialog", dlg.inside, await t.js(ACTIVE));
+    const copied = await t.js(`(() => ({copied: window.__copied, shown: document.getElementById("probe-text").defaultValue}))()`);
+    verdict(page, w, h, "the prompt copied is the prompt of the page, byte for byte, its line ending included", typeof copied.copied == "string" && copied.copied == copied.shown && copied.shown.endsWith("\n"), JSON.stringify([String(copied.copied).length, copied.shown.length]));
+    const addr = await t.js(`(() => { const a = document.querySelector("#probe .probe-steps li:nth-child(2) a"), sc = document.querySelector("#probe .probe-scroll"); return a ? {href: a.getAttribute("href"), text: a.textContent, sideways: sc.scrollWidth > sc.clientWidth + 1} : null })()`);
+    const wantAddr = "https://shoalmark.tools/" + (page.startsWith("de/") ? "de/" : "") + "probe.txt";
+    verdict(page, w, h, "step 2's link shows the whole short address, which is its href without the scheme, and the dialog has no sideways scroll", !!addr && addr.href == wantAddr && addr.text == wantAddr.replace("https://", "") && !addr.sideways, JSON.stringify(addr));
+    const focusable = await t.js(`document.querySelectorAll('#probe a[href], #probe button, #probe textarea, #probe summary, #probe input, #probe [tabindex]:not([tabindex="-1"])').length`);
+    let leaked = null;
+    for (let i = 0; i < focusable + 3 && !leaked; i++) { await t.press("Tab"); if (await t.js(OUTSIDE)) leaked = "Tab " + (i + 1) + ": " + await t.js(ACTIVE) }
+    for (let i = 0; i < focusable + 3 && !leaked; i++) { await t.press("Tab", 8); if (await t.js(OUTSIDE)) leaked = "Shift+Tab " + (i + 1) + ": " + await t.js(ACTIVE) }
+    verdict(page, w, h, "Tab and Shift+Tab stay inside the dialog", !leaked && focusable > 0, leaked ?? "nothing to focus in the dialog");
+    // each fold (a <details>) opens and closes by keyboard
+    const folds = await t.js(`document.querySelectorAll("#probe details").length`);
+    for (let i = 0; i < folds; i++) {
+      const before = await t.js(`(() => { const s = document.querySelectorAll("#probe details > summary")[${i}]; s.focus(); return document.querySelectorAll("#probe details")[${i}].open })()`);
+      await t.press("Enter"); const after = await t.js(`document.querySelectorAll("#probe details")[${i}].open`);
+      await t.press("Space"); const again = await t.js(`document.querySelectorAll("#probe details")[${i}].open`);
+      verdict(page, w, h, `fold ${i + 1} opens and closes by keyboard`, before !== after && again === before, `${before} ${after} ${again}`);
+    }
+    // the prompt stands in step 1 as a box of two lines with a fade, under Copy again; a real button, in the Tab order, opens it whole in place and folds it back
+    const PB = `(() => { const ta = document.getElementById("probe-text"), b = document.getElementById("probe-more"), f = document.querySelector("#probe .probe-fade"), r = e => e.getBoundingClientRect(),
+      s1 = document.getElementById("probe-s1"), again = document.getElementById("probe-again"); if (!ta || !b) return {missing: true}; return {h: Math.round(r(ta).height), expanded: b.getAttribute("aria-expanded"), controls: b.getAttribute("aria-controls"), tag: b.tagName,
+      type: b.type, tab: b.tabIndex, inStep1: s1.contains(ta) && s1.contains(b), under: r(ta).top > r(again).bottom, fadePE: f ? getComputedStyle(f).pointerEvents : null, fadeClear: !f || getComputedStyle(f).display == "none" || r(f).bottom <= r(b).top,
+      whole: ta.scrollHeight <= ta.clientHeight + 1, lines: ta.value.split("\\n").length, inFold: !!ta.closest("details")} })()`;
+    const shut = await t.js(PB);
+    verdict(page, w, h, "the prompt box is in step 1 under Copy again, outside any fold, closed at two lines, its button a real one that controls the prompt", !shut.missing && shut.inStep1 && shut.under && !shut.inFold && shut.h < 90 && !shut.whole && shut.expanded == "false" && shut.controls == "probe-text" && shut.tag == "BUTTON" && shut.type == "button" && shut.tab >= 0 && shut.lines >= 5, JSON.stringify(shut));
+    verdict(page, w, h, "the fade is decorative: it takes no pointer events and never covers the button", shut.fadePE == "none" && shut.fadeClear, JSON.stringify(shut));
+    await t.js(`(document.getElementById("probe-more") || document.body).focus()`);
+    await t.press("Enter");
+    const opened = await t.js(PB), fitO = await t.js(FIT);
+    verdict(page, w, h, "the opened box grows as far as the window allows and scrolls inside itself beyond that, ends at the prompt's last line, and the dialog does not scroll (but for the box's floor)", fitsOk(fitO), JSON.stringify(fitO));
+    if (w == 1440) {   // a resize, or a turned phone: the box follows the window it is in
+      await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 600, deviceScaleFactor: 1, mobile: false}); await sleep(400);
+      const low = await t.js(FIT);
+      await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: h, deviceScaleFactor: 1, mobile: false}); await sleep(400);
+      const back = await t.js(FIT);
+      verdict(page, w, h, "the opened box follows a resize: smaller in a lower window, as large again when the window is", fitsOk(low) && low.box < fitO.box && fitsOk(back) && back.box == fitO.box, JSON.stringify([fitO.box, low, back.box]));
+    }
+    await t.press("Space");
+    const folded = await t.js(PB);
+    verdict(page, w, h, "the button opens the box by Enter and folds it back by Space", opened.expanded == "true" && opened.h > shut.h && folded.expanded == "false" && folded.h == shut.h, JSON.stringify([shut.h, opened, folded.h, folded.expanded]));
+    const box = await t.js(`(() => { const b = document.querySelector("#probe").getBoundingClientRect(); return {l: Math.round(b.left), r: Math.round(b.right), sw: document.documentElement.scrollWidth, iw: innerWidth} })()`);
+    verdict(page, w, h, "the dialog fits the window, and the page does not scroll sideways under it", box.l >= 0 && box.r <= box.iw && box.sw <= box.iw, JSON.stringify(box));
+    if (w < 500) {
+      const seen = await t.js(INVIEW);
+      verdict(page, w, h, "with its fold closed, the label, Close, the copied line, Copy again and step 3 are in view without scrolling",
+        Object.values(seen.parts).every(v => v == "in view") && !!seen.copied.trim(), JSON.stringify(seen));
+    }
+    await t.js(`document.querySelectorAll("#probe details[open]").forEach(d => d.open = false)`);
+    await t.press("Escape"); await sleep(300);
+    const gone = await t.js(`({open: document.getElementById("probe").open, focus: document.activeElement.id})`);
+    verdict(page, w, h, "Escape closes the dialog and focus is back on the button", !gone.open && gone.focus == "probe-open", JSON.stringify(gone));
+  }
+  if (page.endsWith("index.html") && !page.startsWith("how")) {
+    const moving = await t.js(`document.getAnimations().length`);
+    verdict(page, w, h, "under reduced motion nothing animates: the document has no animation", moving === 0, String(moving));
+  }
+  verdict(page, w, h, "no script error", t.log.errors.length == 0, t.log.errors.join(" | ").slice(0, 400));
+  verdict(page, w, h, "no failed request", t.log.failed.length == 0, t.log.failed.join(" | ").slice(0, 400));
+  verdict(page, w, h, "no request to any other host", [...t.log.hosts].every(x => x.startsWith("127.0.0.1")), [...t.log.hosts].filter(x => !x.startsWith("127.0.0.1")).join(" "));
+  await t.close();
+}
+if (state == "probe" && DESK) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
+  const t = await open(page, {w: 1024, h: 768});
+  await t.js(`document.getElementById("probe-open").focus()`); await t.press("Enter"); await sleep(400);
+  const scrolling = await t.js(SCROLLS), open_ = await t.js(`document.getElementById("probe").open`);
+  verdict(page, 1024, 768, "at 1024×768, with its fold closed, nothing in the dialog scrolls inside itself", open_ && scrolling.length == 0, scrolling.join("; ") || String(open_));
+  await t.close();
+}
+// the hero's cue (the probe state): a strip as wide as the primary button and centred on it, over the stacked buttons on a phone; clear of every chart label; blinking its icon and
+// words alone, 5 s at most, then lit. The chart's labels are its names, its figures and the wrecks' labels; the strip stands clear of each by at least 2 px.
+const CUE = `(() => { const r = e => { const b = e.getBoundingClientRect(); return {l: b.left, r: b.right, t: b.top, b: b.bottom, w: b.width, cx: (b.left + b.right) / 2} }, c = document.querySelector(".cue"), b = document.getElementById("probe-open"), a = document.querySelector(".btn.alt");
+  if (!c || !b || !a) return {missing: true};
+  const labels = [...document.querySelectorAll(".name, .fig, .wreck .lbl")].filter(e => getComputedStyle(e).display != "none" && e.getBoundingClientRect().width > 0), rc = r(c);
+  let gap = Infinity, nearest = ""; for (const e of labels) { const x = r(e), g = Math.max(x.l - rc.r, rc.l - x.r, x.t - rc.b, rc.t - x.b); if (g < gap) { gap = g; nearest = e.textContent.trim().slice(0, 20) } }
+  return {cue: rc, btn: r(b), alt: r(a), gap: Math.round(gap * 10) / 10, nearest, hidden: c.getAttribute("aria-hidden"), sw: document.documentElement.scrollWidth - innerWidth} })()`;
+if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844], [1024, 768], [1280, 720], [1366, 768], [1440, 900], [1536, 864], [1599, 900], [1600, 900], [1920, 1080], [2560, 1300]]) {
+  const t = await open(page, {w, h});
+  const q = await t.js(CUE);
+  if (q.missing) { verdict(page, w, h, "the hero's cue is there, over the primary button", false, "no cue"); await t.close(); continue }
+  const near = (a, b) => Math.abs(a - b) <= 1;
+  const phone = w < 700;
+  verdict(page, w, h, phone ? "the cue is centred over the stacked buttons, as wide as they" : "the cue is as wide as the primary button and centred on it, above it",
+    near(q.cue.w, q.btn.w) && near(q.cue.cx, q.btn.cx) && q.cue.b <= q.btn.t && (phone ? near(q.cue.cx, q.alt.cx) && q.alt.t >= q.btn.b : q.alt.l >= q.btn.r), JSON.stringify([q.cue, q.btn, q.alt].map(o => [Math.round(o.l), Math.round(o.w)])));
+  verdict(page, w, h, "the cue is hidden from screen readers and takes no room sideways", q.hidden == "true" && q.sw <= 0, JSON.stringify([q.hidden, q.sw]));
+  if (w >= 1280) verdict(page, w, h, "the cue stands clear of every chart label, by at least 2 px", q.gap >= 2, `nearest ${q.nearest}: ${q.gap}px`);
+  if (w >= 1280 && (w == 1440 || w == 1600 || w == 2560)) info.push({page, w, h, state: "the cue's clearance of the chart's labels", gap: q.gap, nearest: q.nearest});
+  await t.close();
+}
+// the blink: with motion allowed, the taped cue and the live cue each turn once at 2.8 s, with a step of 1 ms; the live cue's icon and words alone blink, 5 s at most, and are lit
+// and at rest afterwards, the taped cue gone; the rules, the buttons and the labels never animate
+if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
+  const t = await open(page, {w: 1440, h: 900, reduce: false});
+  const during = await t.js(`(() => { const an = e => e ? e.getAnimations().map(a => [a.animationName, a.effect.getComputedTiming().activeDuration, (i => Number.isFinite(i) ? i : -1)(a.effect.getComputedTiming().iterations), a.effect.getComputedTiming().delay]) : [];
+    return {now: an(document.querySelector(".cue-t.now")), was: an(document.querySelector(".cue-t.was")), others: [".cue", "#probe-open", ".btn.alt", ".sec-h .n"].flatMap(s => [...document.querySelectorAll(s)].flatMap(an)), icons: [...document.querySelectorAll(".cab")].flatMap(e => e.getAnimations()).length} })()`);
+  const blinks = during.now.filter(a => a[0] == "blink"), shows = during.now.filter(a => a[0] == "tape-show");
+  const blink = during.now.length == 2 && blinks.length == 1 && blinks[0][1] <= 5000 && blinks[0][2] > 0 && blinks[0][3] == 2800 && shows.length == 1 && shows[0][1] <= 1 && shows[0][3] == 2800
+    && during.was.length == 1 && during.was[0][0] == "tape-gone" && during.was[0][1] <= 1 && during.was[0][3] == 2800;
+  verdict(page, 1440, 900, "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does", blink && during.others.length == 0 && during.icons == 0, JSON.stringify(during));
+  await t.js(`Promise.race([Promise.all(document.querySelector(".cue-t.now").getAnimations().map(a => a.finished)), new Promise(r => setTimeout(r, 9000))]).then(() => 1)`); await sleep(200);
+  const after = await t.js(`(() => { const w = document.querySelector(".cue-t.now"), was = document.querySelector(".cue-t.was"), c = document.querySelector(".cue");
+    return {blinking: w ? w.getAnimations().filter(a => a.animationName == "blink").length : -1, op: w ? getComputedStyle(w).opacity : null, shown: w ? getComputedStyle(w).visibility : null, was: was ? getComputedStyle(was).visibility : null, rules: c ? getComputedStyle(c).opacity : null} })()`);
+  verdict(page, 1440, 900, "after the blink the cue is at rest and lit", after.blinking == 0 && after.op == "1" && after.shown == "visible" && after.was == "hidden" && after.rules == "1", JSON.stringify(after));
+  await t.close();
+}
+// the tape-off ceremony, held frame by frame by the page's own animation clock: the page never scrolls sideways, nothing moves the door, which is the live link from the first frame;
+// at the start the tape is on and the window unlit; the peel's value --p is 0 to 0.6 s, rises and never falls, and is 1 from 1.9 s, while the tape stays whole in sight until
+// 1.9 s and is gone after 2.2 s; at the end the window is lit, the taped cue gone and the live cue shown
+const FRAME = `(t => { document.getAnimations().forEach(a => { a.pause(); a.currentTime = t });
+  const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), cs = e => e ? getComputedStyle(e) : {};
+  return {sw: document.documentElement.scrollWidth, iw: innerWidth, box: [r.left, r.top, r.width, r.height].map(Math.round).join(","), live: d.tagName == "A" && /probe\.txt$/.test(d.getAttribute("href") || ""),
+    tape: +cs(d.querySelector(".tapebox")).opacity, p: +cs(d.querySelector(".tapebox")).getPropertyValue("--p"), unlit: +getComputedStyle(d, "::after").opacity,
+    was: cs(document.querySelector(".cue-t.was")).visibility, now: cs(document.querySelector(".cue-t.now")).visibility} })`;
+const FRAMES = Array.from({length: 30}, (_, i) => i * 100);
+// what is drawn of the ceremony, and the door's name as the accessibility tree has it (as the label is drawn, in capitals)
+const DRAWN = `(() => { const d = document.getElementById("probe-open"), cs = (e, p) => e ? getComputedStyle(e, p) : {}, label = [...d.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
+  return {tape: cs(d.querySelector(".tapebox")).display, unlit: cs(d, "::after").display, coin: cs(d.querySelector(".gcoin")).display, was: cs(document.querySelector(".cue-t.was")).display,
+    now: cs(document.querySelector(".cue-t.now")).visibility, label, tapeWords: (d.querySelector(".tape") || {}).textContent || ""} })()`;
+const ICON = `(() => { const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), ic = d.querySelector(".ic"), i = ic ? ic.getBoundingClientRect() : null;
+  const words = [...d.childNodes].filter(n => n.nodeType == 3 && n.textContent.trim()), range = document.createRange();
+  if (words.length) { range.setStartBefore(words[0]); range.setEndAfter(words[words.length - 1]) }
+  const l = words.length ? range.getBoundingClientRect() : null;
+  return {h: Math.round(r.height), icon: i ? [i.left, i.top, i.width, i.height].map(Math.round) : null, label: l ? [l.left, l.top, l.width, l.height].map(Math.round) : null,
+    centred: !!(i && l && i.width > 0 && Math.abs((i.left + i.width / 2) - (l.left + l.width / 2)) <= 1 && i.top + i.height / 2 > l.top + l.height / 2 + 4 && i.bottom <= r.bottom)} })()`;
+// the hold: the times of the press, the click, the copy and the dialog's opening, in the page's own clock; at once is under 150 ms, which the dialog's own
+// layout can take most of, the hold 360 ms
+const TIMES = `(() => { window.__t = {}; const d = document.getElementById("probe-open"), g = document.getElementById("probe"), w = navigator.clipboard.writeText;
+  d.addEventListener("pointerdown", () => { window.__t.down = performance.now() }, true); d.addEventListener("click", () => { window.__t.click = performance.now() }, true);
+  navigator.clipboard.writeText = x => { window.__t.copy = performance.now(); return w(x) };
+  new MutationObserver(() => { if (g.open && window.__t.open == null) window.__t.open = performance.now() }).observe(g, {attributes: true, attributeFilter: ["open"]});
+  d.scrollIntoView({block: "center"}); const r = d.getBoundingClientRect(); return {x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2)} })()`;
+if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
+  for (const [w, h] of [[360, 780], [390, 844], [1024, 768], [1440, 900]]) {
+    const t = await open(page, {w, h, reduce: false});
+    if (w == 360 || w == 1440) {   // the name, with motion allowed, while the tape is drawn: reduced motion does not draw it, which would hide it from the tree in any case
+      const at = await t.js(DRAWN), root = (await t.call("DOM.getDocument", {depth: 0})).root.nodeId, node = (await t.call("DOM.querySelector", {nodeId: root, selector: "#probe-open"})).nodeId;
+      const ax = (await t.call("Accessibility.getPartialAXTree", {nodeId: node, fetchRelatives: false})).nodes?.find(n => !n.ignored) ?? {};
+      verdict(page, w, h, "the door's name is its label alone: the tape and the coin are hidden from screen readers", at.tape != "none" && ax.role?.value == "link" && !!at.label && (ax.name?.value ?? "").toLowerCase() == at.label.toLowerCase() && !ax.name.value.toLowerCase().includes(at.tapeWords.trim().toLowerCase()), JSON.stringify([at.tape, ax.role?.value, ax.name?.value, at.label]));
+    }
+    const seen = [];
+    for (const f of FRAMES) seen.push({f, ...(await t.js(`${FRAME}(${f})`))});
+    const wide = seen.filter(s => s.sw > s.iw), moved = seen.filter(s => s.box != seen[0].box || !s.live), first = seen[0], last = seen[seen.length - 1];
+    verdict(page, w, h, "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link", !wide.length && !moved.length, JSON.stringify([...wide, ...moved].slice(0, 3)));
+    const lit = await t.js(ICON);
+    verdict(page, w, h, "the lit door is 55 px tall on a desktop and 59 px on a phone, its copy icon centred under its label", lit.h == (w <= 700 ? 59 : 55) && lit.centred, JSON.stringify(lit));
+    verdict(page, w, h, "the ceremony starts taped and unlit with the taped cue, and ends with the tape gone, the window lit and the live cue shown",
+      first.tape == 1 && first.unlit == 1 && first.was == "visible" && first.now == "hidden" && last.tape == 0 && last.unlit == 0 && last.was == "hidden" && last.now == "visible", JSON.stringify([first, last]));
+    const peel = seen.map(s => [s.f, s.p, s.tape]), rises = seen.every((s, i) => i == 0 || s.p >= seen[i - 1].p);
+    verdict(page, w, h, "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and gone once lifted away, after 2.2 s",
+      rises && seen.every(s => s.f > 600 || s.p == 0) && seen.every(s => s.f < 1900 || s.p == 1) && seen.some(s => s.p > 0.06 && s.p < 1)
+        && seen.every(s => s.f >= 1900 || s.tape == 1) && seen.every(s => s.f <= 2200 || s.tape == 0), JSON.stringify(peel));   // at 2.2 s exactly a paused Chrome still draws the lift's last step
+    await t.close();
+  }
+  for (const [w, h] of [[390, 844], [1440, 900]]) {
+    for (const reduce of [false, true]) {
+      const t = await open(page, {w, h, reduce});
+      const at = await t.js(TIMES);
+      await t.call("Input.dispatchMouseEvent", {type: "mouseMoved", x: at.x, y: at.y});
+      const lift = await t.js(`getComputedStyle(document.getElementById("probe-open")).transform`);
+      verdict(page, w, h, "on hover the door does not lift: the coin coming to the slot is its hover", lift == "none", lift);
+      await t.call("Input.dispatchMouseEvent", {type: "mousePressed", x: at.x, y: at.y, button: "left", clickCount: 1});
+      const coin = await t.js(`getComputedStyle(document.querySelector("#probe-open .gcoin")).display`);
+      await t.call("Input.dispatchMouseEvent", {type: "mouseReleased", x: at.x, y: at.y, button: "left", clickCount: 1});
+      await sleep(900);
+      const T_ = await t.js(`window.__t`);
+      const hold = T_.open - T_.down, after = T_.open - T_.click, copied = T_.copy - T_.click;
+      if (!reduce) verdict(page, w, h, "after a mouse press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click",
+        coin == "block" && hold >= 340 && hold <= 470 && after >= 150 && copied >= 0 && copied < 50, JSON.stringify({coin, ...T_}));
+      else verdict(page, w, h, "under reduced motion a mouse press draws no coin and the dialog opens at once, the copy made in the click",
+        coin == "none" && after >= 0 && after < 150 && copied >= 0 && copied < 50, JSON.stringify({coin, ...T_}));
+      info.push({page, w, h, state: reduce ? "a mouse press under reduced motion" : "a mouse press", "press to dialog, ms": Math.round(hold), "click to dialog, ms": Math.round(after), "click to copy, ms": Math.round(copied)});
+      await t.close();
+    }
+    const t = await open(page, {w, h, reduce: false});
+    await t.js(TIMES); await t.js(`document.getElementById("probe-open").focus()`);
+    const before = await t.js(`performance.now()`); await t.press("Enter"); await sleep(300);
+    const K = await t.js(`window.__t`);
+    verdict(page, w, h, "the keyboard gets the dialog at once, the copy made in the click", K.open != null && K.open - K.click < 150 && K.copy - K.click < 50 && K.click >= before, JSON.stringify(K));
+    await t.close();
+  }
+  for (const [w, h] of [[360, 780], [1440, 900]]) {
+    const t = await open(page, {w, h});   // reduced motion
+    const rm = await t.js(DRAWN);
+    verdict(page, w, h, "under reduced motion the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown",
+      rm.tape == "none" && rm.unlit == "none" && rm.coin == "none" && rm.was == "none" && rm.now == "visible", JSON.stringify(rm));
+    await t.call("Emulation.setEmulatedMedia", {media: "print", features: [{name: "prefers-reduced-motion", value: "no-preference"}]});
+    const pr = await t.js(DRAWN);
+    verdict(page, w, h, "in print the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown",
+      pr.tape == "none" && pr.unlit == "none" && pr.coin == "none" && pr.was == "none" && pr.now == "visible", JSON.stringify(pr));
+    await t.close();
+  }
+}
+// the top bar, with the widest three-digit hi-score (888/888) set in it, at every whole width from 360 to 1920 px: its items (the mark, each score figure, the switch, each anchor shown, the
+// separator, Docs) stand in one row inside the bar's padding, overlap none another, wrap nowhere and are cut nowhere, and neither the bar nor the page scrolls sideways; the anchors and the
+// separator with them first show at 1208 px in English and 1273 px in German; both buttons show the focus ring when the keyboard reaches them
+const BARM = `(() => {
+  const wrap = document.querySelector(".hud .wrap"), cs = getComputedStyle(wrap), pl = parseFloat(cs.paddingLeft), pr = parseFloat(cs.paddingRight), W = innerWidth, vis = e => e.getClientRects().length > 0 && getComputedStyle(e).display != "none" && getComputedStyle(e).visibility != "hidden";
+  const R = e => { const b = e.getBoundingClientRect(); return {l: b.left, r: b.right, t: b.top, b: b.bottom, h: b.height} };
+  const items = []; const add = (name, e) => { if (e && vis(e)) items.push({name, ...R(e), el: e}) };
+  add("brand", document.querySelector(".hud .brand"));
+  [...document.querySelectorAll(".hud .score > div")].forEach((e, i) => add("score" + i, e));
+  add("switch", document.querySelector(".hud .lang"));
+  [...document.querySelectorAll(".hud nav a:not(.docs)")].forEach((e, i) => add("anchor" + i, e));
+  add("sep", document.querySelector(".hud nav .sep"));
+  add("docs", document.querySelector(".hud nav a.docs"));
+  items.sort((a, b) => a.l - b.l);
+  const bad = [];
+  for (let i = 1; i < items.length; i++) if (items[i].l - items[i - 1].r < -0.01) bad.push("overlap " + items[i - 1].name + "|" + items[i].name);
+  const bar = document.querySelector(".hud").getBoundingClientRect();
+  for (const i of items) {
+    if (i.l < pl - 0.5 || i.r > W - pr + 0.5) bad.push("outside " + i.name);
+    if (i.t < bar.top - 0.5 || i.b > bar.bottom + 0.5) bad.push("off the row " + i.name);
+    if (/^(anchor|docs|switch)/.test(i.name) && i.h >= 36) bad.push("tall " + i.name);
+    if (/^(anchor|docs|switch|brand)/.test(i.name)) { const r = document.createRange(); r.selectNodeContents(i.el); if (new Set([...r.getClientRects()].filter(x => x.width > 0 && x.height > 4 && x.height < 30).map(x => Math.round(x.top / 4))).size > 1) bad.push("wraps " + i.name) }
+  }
+  const hud = document.querySelector(".hud");
+  if (wrap.scrollWidth > wrap.clientWidth || hud.scrollWidth > hud.clientWidth) bad.push("the bar scrolls");
+  if (document.documentElement.scrollWidth > innerWidth) bad.push("the page scrolls sideways");
+  const a = document.querySelector(".hud nav a:not(.docs)"), s = document.querySelector(".hud nav .sep");
+  return {bad, anchors: !!a && vis(a), sep: !!s && vis(s)} })()`;
+const RING = `(() => { const e = document.activeElement, cs = getComputedStyle(e), r = e.getBoundingClientRect(), ow = parseFloat(cs.outlineWidth), oo = parseFloat(cs.outlineOffset), g = ow + oo, bar = document.querySelector(".hud").getBoundingClientRect();
+  return {el: e.className || e.tagName, style: cs.outlineStyle, width: ow, offset: oo, color: cs.outlineColor, inside: r.left - g >= 0 && r.right + g <= innerWidth && r.top - g >= bar.top && r.bottom + g <= bar.bottom} })()`;
+if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.startsWith("how"))) {
+  const lang = page.startsWith("de/") ? "de" : "en", want = lang == "de" ? 1273 : 1208;
+  const t = await open(page, {w: 1000, h: 900});
+  await t.js(`document.querySelector(".score .opt b").textContent = "888/888"`);   // the widest three-digit hi-score: the breakpoint must leave room for it
+  const failing = [];
+  let first = null, firstSep = null;
+  for (let w = 360; w <= 1920; w++) {
+    await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: 900, deviceScaleFactor: 1, mobile: false});
+    const m = await t.js(BARM);
+    if (m.bad.length) failing.push(w + ": " + m.bad.slice(0, 2).join(", "));
+    if (m.anchors && first === null) first = w;
+    if (m.sep && firstSep === null) firstSep = w;
+    if (m.anchors !== m.sep) failing.push(w + ": the anchors and the separator do not go together");
+  }
+  verdict(page, 0, 900, "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways", failing.length == 0, `${failing.length} widths: ${failing.slice(0, 4).join(" | ")}`);
+  verdict(page, first ?? 0, 900, `the top bar's anchors, and the separator with them, first show at ${want} px`, first === want && firstSep === want, `anchors first at ${first}, separator at ${firstSep}`);
+  info.push({page, w: first, state: "the width where the top bar's anchors first show"});
+  for (const [w, h] of [[360, 780], [390, 844], [1440, 900]]) {   // the keyboard reaches both buttons and the ring shows, whole inside the window and the bar
+    await t.call("Emulation.setDeviceMetricsOverride", {width: w, height: h, deviceScaleFactor: 1, mobile: false});
+    const rings = {};
+    for (const [name, sel] of [["Docs", ".hud nav a.docs"], ["the switch", ".hud .lang"]]) {
+      await t.js(`document.activeElement.blur(); window.scrollTo(0, 0)`);
+      await t.press("Tab");   // the keyboard is what last acted, so that focus on the button is focus-visible, as when Tab reaches it
+      await t.js(`document.querySelector(${JSON.stringify(sel)}).focus()`);
+      rings[name] = await t.js(`(() => { const e = document.activeElement; return {here: e.matches(${JSON.stringify(sel)}), visible: e.matches(":focus-visible"), ...(${RING})} })()`);
+    }
+    verdict(page, w, h, "both header buttons show the focus ring when the keyboard reaches them, whole inside the window and the bar", Object.values(rings).every(r => r.here && r.visible && r.style == "solid" && r.width >= 2 && r.inside), JSON.stringify(rings));
+  }
+  await t.close();
+}
+// a refused copy: the dialog says so, the box opens as far as the window allows and its whole text is selected and focused, so that Ctrl+C copies it all
+if (state == "probe") for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844], [1440, 900]]) {
+  const t = await open(page, {w, h, clipboard: "refused"});
+  await t.js(`document.getElementById("probe-open").click()`); await sleep(500);
+  const s = await t.js(`(() => { const a = document.getElementById("probe-text"), st = document.getElementById("probe-status"), b = document.getElementById("probe-more"); return {state: st.dataset.state, text: st.textContent.trim(), selected: a.selectionStart == 0 && a.selectionEnd == a.value.length && a.value.length > 0,
+    focused: document.activeElement === a, expanded: b ? b.getAttribute("aria-expanded") : null} })()`);
+  const f = await t.js(FIT);
+  verdict(page, w, h, "where the copy is refused, the dialog says so, the box opens, and its whole text is selected and focused, so that Ctrl+C copies it all", s.state == "fail" && s.text.length > 0 && s.selected && s.focused && s.expanded == "true", JSON.stringify(s));
+  verdict(page, w, h, "where the copy is refused, the opened box grows as far as the window allows and the dialog does not scroll (but for the box's floor)", fitsOk(f), JSON.stringify(f));
+  await t.js(`navigator.clipboard.writeText = () => Promise.resolve()`); await t.js(`document.getElementById("probe-again").click()`); await sleep(400);
+  const later = await t.js(`({state: document.getElementById("probe-status").dataset.state, expanded: (document.getElementById("probe-more") || {getAttribute: () => null}).getAttribute("aria-expanded")})`);
+  verdict(page, w, h, "a later successful copy returns step 1 to the clipboard line and leaves the box as it is", later.state == "ok" && later.expanded == "true", JSON.stringify(later));
+  info.push({page, w, h, state: "copy refused, the box open", box: f.box, dialogScrolls: f.dialogScrolls});
+  await t.close();
+}
+
+writeFileSync(out, JSON.stringify({chrome: version, state, rows, info}, null, 1));
+const bad = rows.filter(r => !r.ok);
+console.log(JSON.stringify({chrome: version, state, checks: rows.length, failing: bad.length, first: bad.slice(0, 6)}));
+for (const i of info) console.log("info (not judged): " + JSON.stringify(i));
+chrome.kill(); server.close();
+process.exit(bad.length ? 1 : 0);
