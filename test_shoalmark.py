@@ -6623,6 +6623,7 @@ fm.configure(HERE)
 # --- FM-002: a board anyone can brand — a logo and its labels, three places, the nearest to the viewer wins --------
 GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
+lang: de
 search: Suche — Id, Stufe, Status, Wörter
 search.help: Eine ganze Id zeigt diesen Eintrag.
 view.by: nach {0}
@@ -7008,6 +7009,12 @@ with tempfile.TemporaryDirectory() as d:
               f"is the same word, `brand.gone.theme`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Sitzung in dieser Woche* (saw {_en_de})",
               _en_de == ["brand.gone.theme"] and _shipped_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche"
               and fm.LABELS["reviews.more"] == "and {0} more verdicts by another session this week")
+        _, lang_de_, _, _, _ = board_with(repo_labels_yaml=(HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+        _, lang_en_, _, _, _ = board_with()
+        check(f"FM-053, BF-76 · a board says its words' language: the German table's board opens `<html lang=\"de\">`, the default board `<html lang=\"en\">` "
+              f"(saw {lang_de_[:40]!r}, {lang_en_[:40]!r})",
+              lang_de_.startswith('<!doctype html>\n<html lang="de">') and lang_en_.startswith('<!doctype html>\n<html lang="en">')
+              and fm.LABELS.get("lang") == "en" and _shipped_de.get("lang") == "de")
         if _browser("german"):
             try:
                 dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag]).stdout

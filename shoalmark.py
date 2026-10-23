@@ -3840,7 +3840,7 @@ def render_triage(trackers):
 
 
 HTML_PAGE = r"""<!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="__LANG__"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">__FAVICON__
 <title>__NAME__ — work tracker</title>
 <style>
@@ -4312,7 +4312,7 @@ document.addEventListener("visibilitychange",()=>{
 # Every word of the board's chrome, in English. A `labels.yaml` — flat `key: value` lines — overrides any of them;
 # the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
 LABELS = {
-    "tagline": "",
+    "tagline": "", "lang": "en",
     "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
     "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
@@ -5206,6 +5206,7 @@ def render_html(trackers, read=None):
     logo, labels, _src, warnings, gone = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
+    page = page.replace("__LANG__", labels["lang"] if re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*", labels["lang"]) else "en")
     # never a silent loss (R10's look half): each brand file the board no longer reads, file by file, in the run's output and in one line of the page
     for path, instead, _key in gone:
         print(f"  brand: {path} is no longer read — {instead}", file=sys.stderr)
