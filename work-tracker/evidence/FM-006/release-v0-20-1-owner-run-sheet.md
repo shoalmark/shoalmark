@@ -51,7 +51,28 @@ printf '%s\n' "$MAIN_AT_PUSH"
 
 **Paste back:** the pull request's URL, its head SHA and `MAIN_AT_PUSH`.
 
-## 3. The one CI run
+## 3. The dry run: release.yml with the pushed head's 40-hex commit
+
+It proves that the archive builds from the pushed head before the tag exists.
+
+```sh
+test "$(git ls-remote origin refs/heads/release/v0.20.1 | cut -f1)" = "$RELEASE_HEAD" &&
+gh workflow run release.yml --ref release/v0.20.1 -f "ref=$RELEASE_HEAD" &&
+sleep 15 &&
+DRY_RUN_ID="$(gh run list --workflow release.yml --event workflow_dispatch --commit "$RELEASE_HEAD" --limit 1 --json databaseId --jq '.[0].databaseId')" &&
+gh run watch "$DRY_RUN_ID" --exit-status &&
+gh run view "$DRY_RUN_ID" --json url,headSha,conclusion &&
+DRY_DIR="$(mktemp -d)" &&
+gh run download "$DRY_RUN_ID" --name release-archive --dir "$DRY_DIR" &&
+(cd "$DRY_DIR" && shasum -a 256 -c shoalmark-0.20.1.zip.sha256) &&
+unzip -p "$DRY_DIR/shoalmark-0.20.1.zip" RELEASE | grep -x 'tag none'
+```
+
+**Expect:** `release.yml` takes the full 40-hex SHA as its `ref` input, runs on `RELEASE_HEAD` and succeeds. It keeps `release-archive` as the run's artifact and attaches nothing to a release. The checksum verifies. The archive's `RELEASE` says `tag none`, so compare its bytes only with another build of the same commit, never with the tag's build.
+
+**Paste back:** the run's URL, its `headSha` and conclusion, the checksum line, and the `tag none` line.
+
+## 4. The one CI run
 
 ```sh
 gh pr checks "$RELEASE_PR" --required --watch &&
@@ -62,7 +83,7 @@ test "$(gh pr view "$RELEASE_PR" --json headRefOid --jq .headRefOid)" = "$RELEAS
 
 **Paste back:** the check results.
 
-## 4. The merge, only on the critical READY and every required check green
+## 5. The merge, only on the critical READY and every required check green
 
 The critical review's verdict names the commit it judged, and its tree must be `RELEASE_HEAD`'s.
 
