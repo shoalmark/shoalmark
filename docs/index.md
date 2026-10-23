@@ -9,7 +9,7 @@ template: landing.html
 
 *A workbench for your agents. Your decisions on record.*
 
-## The agents keep the work; the person keeps the word.
+## The agents do the work; you have the final word.
 
 See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.
 

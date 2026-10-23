@@ -24,7 +24,7 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
     dialog = (f'<dialog class="probe" id="probe" aria-labelledby="probe-h"><h2 id="probe-h">The probe prompt</h2>'
               f'<textarea id="probe-text" readonly>{PROMPT.replace(chr(34), "&#34;")}</textarea>'
               f'<a href="{short}">{short.replace("https://", "").replace("/", "/<wbr>")}</a></dialog>') if probe else ""
-    return (f'<!doctype html><html lang="{lang}"><head><title>{"The agents keep the work" if en else "Die Agenten tragen die Arbeit"}</title>'
+    return (f'<!doctype html><html lang="{lang}"><head><title>{"The agents do the work" if en else "Die Agenten tragen die Arbeit"}</title>'
             f'<meta name="description" content="{"A work tracker" if en else "Ein Arbeits-Tracker"}">'
             f'<link rel="canonical" href="{where}">'
             f'<link rel="alternate" hreflang="en" href="{SITE_URL}"><link rel="alternate" hreflang="de" href="{SITE_URL}de/">'
@@ -164,7 +164,7 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("de/index.html", 'hreflang="en">EN</a>', 'hreflang="de">EN</a>'), "no language switch")
         self.refused(self.edit("de/index.html", '<html lang="de">', '<html lang="en">'), "says lang='en'")
         self.refused(self.edit("de/index.html", "assets/preview-de.png", "assets/preview.png"), "link preview is not its language's")
-        self.refused(self.edit("de/index.html", "Die Agenten tragen die Arbeit", "The agents keep the work"), "share a title")
+        self.refused(self.edit("de/index.html", "Die Agenten tragen die Arbeit", "The agents do the work"), "share a title")
 
     def test_the_second_button_leads_to_how_it_works_of_its_language(self):
         self.refused(self.edit("de/index.html", 'href="../de/how-it-works.html"', 'href="../how-it-works.html"'), "second button that leads to de/how-it-works.html")
