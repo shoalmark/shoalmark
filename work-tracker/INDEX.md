@@ -35,6 +35,8 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
+| [FM-061](FM-061-vendoring-still-takes-an-untagged-or-partial-source-a-weaker.md) | P2 | vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows | In Progress | progress | 2026-10-16 |
 | [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | P1 | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | In Progress | progress | 2026-10-17 |
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |

@@ -290,7 +290,7 @@ def git_dirs():
         if vcs() == "git":
             try:
                 out = vcs_process("git", "rev-parse", "--absolute-git-dir", "--git-common-dir", cwd=ROOT, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", env=nested_git_env(), **standup_program("git"))
+                                  encoding="utf-8", errors="replace", env=nested_git_env(board=True), **standup_program("git"))
             except OSError as e:
                 metadata_unreadable(f"Git could not be run: {e}")
             dirs = out.stdout.splitlines()
@@ -609,7 +609,7 @@ LAZY_FETCH_SINCE = (2, 44)          # the first git that honours `GIT_NO_LAZY_FE
 # EVERY OTHER GIT COMMAND THE TOOL STARTS, and why the board's run never starts it (FM-045). With READ_ONLY_GIT it classifies every git command this file
 # can start: the suite reads the file's source and fails on a command in neither, and on one of these that a board's run of its own starts.
 NEVER_IN_BOARD_RUN = {
-    "ls-remote": "asks a server; the board's run asks none (`default_trunk(…, ask=False)`)",
+    "ls-remote": "asks a server: the queue's alone (`pushed_branches`); `default_trunk` reads the trunk from cached refs, and no run calls `origin_default`",
     "fetch": "asks a server and writes refs: the queue's alone (`--queue`, `--owner`, `--standup`)",
     "remote": "reads origin's address, to find its forge: the queue's alone",
     "merge-tree": "writes objects (`--write-tree`): the queue's alone, telling a conflict",
@@ -623,6 +623,7 @@ NEVER_IN_BOARD_RUN = {
     "tag": "`--vendor`'s alone, reading the tool's own tag",
     "interpret-trailers": "writes the message file (`--in-place`): `--session-trailer`'s alone",
     "--exec-path": "`--install-hook`'s alone, finding an include its configuration names",
+    "check-attr": "tells which filter driver stores a path, where a read compares the working tree (`driver_paths`): the board's run compares none",
 }
 
 
@@ -838,11 +839,14 @@ def configure(root=None):
     _WALK_COMMITS, _HAS_SESSIONS = {}, {}               # each walked commit's parents and trailers, and whose history carries a `Session:` — read once (v0.19.1)
     global _ORIGIN_DEFAULT, _TRUNK_UNTOLD, _ASK_ORIGIN
     _ORIGIN_DEFAULT = None                              # the name origin gives its default branch, asked once per run at most (`origin_default`)
-    _ASK_ORIGIN = False                                 # whether this run walks the branch's commits, and may ask origin (`main`, `default_trunk`)
+    _ASK_ORIGIN = False
     _TRUNK_UNTOLD = None                                # the one line where origin's default branch cannot be told (`default_trunk`, `walk_problems`)
     _GIT_DIRS = None                                    # the git directories a run of the copy writes nothing into, read once per repository
     global LAZY_OFF, _PARTIAL
     LAZY_OFF, _PARTIAL = False, None                    # git's own default for every read, until a run whose reads fetch nothing says otherwise (`lazy_fetch_off`)
+    global BOARD_READS, _DRIVERS, _TREE_UNREAD
+    BOARD_READS, _DRIVERS, _TREE_UNREAD = False, None, False
+    _EDITS.clear()
     BOARD_UNREAD.clear()
     ROOT = find_root(root)
     _VCS = select_vcs(ROOT)
@@ -1183,7 +1187,7 @@ def classify_status(raw, prose=False):
     return "?"
 
 
-def nested_git_env():
+def nested_git_env(board=None):
     """Run Git against a submodule, not the parent hook's repository context.
 
     Git exports repository-local variables while invoking hooks. In a linked
@@ -1195,14 +1199,16 @@ def nested_git_env():
     Every git the tool starts takes its environment from here. The four variables that change what every pathspec means (`PATHSPEC_VARIABLES`) are dropped
     for each, whoever set them: the tool's pathspecs mean what git's default makes them mean.
 
-    And while this run's reads are the board's (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks, and the settings
-    the board's reads run with (`BOARD_SETTINGS`), after every other.
+    While this run's reads fetch nothing (`LAZY_OFF`): git's own switch that keeps a read from fetching what a partial clone lacks. And the settings the
+    board's reads run with (`BOARD_SETTINGS`), after every other: for each git of a run whose reads are the board's (`BOARD_READS`, `LAZY_OFF`) where
+    `board` is None; for this one whatever the run where it is true; never where it is false — an act's git, which runs under the person's own settings.
     """
     env = os.environ.copy()
     for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", *PATHSPEC_VARIABLES):
         env.pop(key, None)
     if LAZY_OFF:
         env[LAZY_FETCH_SWITCH] = "1"
+    if board if board is not None else (LAZY_OFF or BOARD_READS):
         env["GIT_CONFIG_PARAMETERS"] = " ".join(p for p in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), board_settings()) if p)
     return env
 
@@ -1212,25 +1218,62 @@ def nested_git_env():
 # that never wrote the tracker's line; `GIT_GLOB_PATHSPECS` and `GIT_NOGLOB_PATHSPECS` change a path that holds a wildcard. The tool's own pathspecs are each
 # a path the repository holds, or that magic, and need none of the four: they are dropped for every git the tool starts (`nested_git_env`).
 PATHSPEC_VARIABLES = ("GIT_LITERAL_PATHSPECS", "GIT_ICASE_PATHSPECS", "GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS")
+# EVERY READ OF THE TOOL'S OWN SOURCE SEES GIT'S OWN OBJECTS (RV-3365: recorded privately): its provenance and its tag's tree and blobs are read with no
+# replacement object and no graft, whatever the environment or the source's configuration says — set last, over every other, by the source boundary
+# (`vcs_process`, `source=True`).
+SOURCE_GIT_ENV = {"GIT_NO_REPLACE_OBJECTS": "1", "GIT_GRAFT_FILE": os.devnull}
+# …and `core.useReplaceRefs` false, as the last of `GIT_CONFIG_PARAMETERS`, quoted as `board_settings` quotes: read after every configuration file, and
+# after every parameter the environment holds, which stay as they are (RV-3369: recorded privately)
+SOURCE_GIT_PARAMETER = "'core.useReplaceRefs=false'"
 
 
 # THE SETTINGS THE BOARD'S READS RUN WITH, fixed in the same place as the switch, whatever the repository, the user or the environment configures: no read of
-# the board's starts a program a configuration names, but the SSH signature check its `%G?` asks for (`gpg.ssh.program`). Git reads `GIT_CONFIG_PARAMETERS` —
-# the scope `git -c` writes — after every configuration file and after `GIT_CONFIG_COUNT`, and the last value of a key there wins: these are appended to what
-# the run inherited. The `-c` the tool hands git on a command line (`READ_ONLY_GIT_C`) comes after them, and names none of these keys.
+# the board's starts a program a configuration names, but the SSH signature check its `%G?` asks for (`gpg.ssh.program`). The board's reads are every git
+# the tool starts but an act's, in every run: the board's own run, the commit's pre-commit and commit-msg hooks, `--check`, the plain run, the digests
+# and every other view (`BOARD_READS`, `LAZY_OFF`). An act runs git as the person's own git runs, under the person's configuration (`nested_git_env(board=False)`): `--answer`,
+# `--done`, `--due`, `--revoke`, `--clear-ask`, `--vendor`, `--install-hook`, `--init` and `--session-trailer`, each a run of its own (`ACT_RUNS`), and the
+# queue's git asks of origin — its `fetch` and `ls-remote` (`forge_prs`, `pushed_branches`).
+# Git reads `GIT_CONFIG_PARAMETERS` — the scope `git -c` writes — after every configuration file and after `GIT_CONFIG_COUNT`, and the last value of a key
+# there wins: these are appended to what the run inherited. The `-c` the tool hands git on a command line (`READ_ONLY_GIT_C`) comes after them, and names
+# none of these keys.
 # - `log.showSignature` false: a `git log` verifies no signature it was not asked for;
-# - `core.fsmonitor` false: `git ls-files` asks no file-system monitor, neither a hook nor git's own daemon;
+# - `core.fsmonitor` false: no read asks a file-system monitor, neither a hook nor git's own daemon;
+# - `core.hooksPath` `NO_HOOKS`, a path inside the tool's own file, which no file system can hold: a read that writes the index as it goes — a `git diff`
+#   against the working tree refreshes it — finds no hook to start;
 # - `gpg.program`, `gpg.openpgp.program` and `gpg.x509.program`: the board trusts SSH signatures only, and git starts the program of a signature's own
-#   format for `%G?`. Each names `NO_SIGNATURE_PROGRAM`, a path inside the tool's own file, which no file system can hold: git's start of it fails before
-#   anything runs, and `%G?` reads `N` — no good signature —, as an OpenPGP or X.509 signature has always read to the board's judgement.
+#   format for `%G?`. Each names `NO_SIGNATURE_PROGRAM`, a path inside the tool's own file too: git's start of it fails before anything runs, and `%G?`
+#   reads `N` — no good signature —, as an OpenPGP or X.509 signature has always read to the board's judgement.
+# A FILTER DRIVER is named by the configuration and chosen for a path by an attribute — of the tree, of `.git/info/attributes` or of `core.attributesFile`:
+# git starts its `clean`, or its `process`, to compare a file of the working tree with what it holds. Each read of the board's that compares — `ls-files
+# --modified` and a `diff` against the working tree (`compared`) — lists the drivers the configuration names, in every scope and every file an include brings
+# (`filter_drivers`), and runs with each one's `clean`, `smudge` and `process` set empty after the settings above (`driver_settings`): git compares each file
+# as it is, and starts none. A file a driver stores may then read as changed when it is not, so what rests on one is not read: a count or an edit whose paths
+# a configured driver stores (`driver_paths`), a comparison that fails — a `required` driver fails it —, and one after which the drivers listed again are not
+# the ones it ran without. None is made again with a driver. Its limit: a driver configured between the list and the read starts in that read; the list
+# taken after it names the read as not read, and does not keep the driver from starting.
 # Textconv is the one setting git takes from no configuration and no environment: a diff driver's `textconv`, which an attribute in the tree names, runs in
-# `log -G`, `log -p` and `show` of a commit by default, and only `--no-textconv` on the command line keeps it off — the board's six such reads carry it
-# (`board_diff_args`), and every other run's do not. Beside it, `--text`: an attribute in the tree that calls a tracker `binary`, or `-diff`, makes `-G`
-# pass over its every change and `-p` print none of it, and the board would read no commit for a line a commit wrote. The gate's reads keep git's default:
-# where they name no commit, the gate refuses the line.
+# `log -G`, `log -p` and `show` of a commit by default, and only `--no-textconv` on the command line keeps it off — every read of the board's that diffs or
+# searches a diff carries it (`board_diff_args`). Beside it, while the reads fetch nothing (`LAZY_OFF`), `--text`: an attribute in the tree that calls a
+# tracker `binary`, or `-diff`, makes `-G` pass over its every change and `-p` print none of it, and the board would read no commit for a line a commit wrote.
+# The gate's reads keep git's default there: where they name no commit, the gate refuses the line.
+# CONTACT WITH A REMOTE. `--owner` and `--standup` end with the queue, and `--queue` is the queue alone; it contacts origin for its pull requests and
+# branches. Its `git fetch` and `git ls-remote` (`forge_prs`, `pushed_branches`) are its act, under the person's own git settings (`nested_git_env(board=False)`).
+# Its `gh pr list` (`forge_prs`, and under `--queue` `forge_closed` too, for the last day's merged and closed) is started with `nested_git_env()`: each of
+# these runs' reads are the board's (`BOARD_READS`), so the `gh` carries the board's settings, which any git it starts reads after the person's, and git's own
+# lazy-fetch default. No other read of the board's contacts a remote of its own; the trunk is read from this clone's cached refs, never from origin
+# (`default_trunk`). The one contact the settings above do not stop is git's own lazy fetch: in a partial clone a read that meets an object the clone lacks
+# fetches it from a promisor remote unless the switch is on, and the switch is on only for the board's own run and the digests' reads up to the queue
+# (`LAZY_OFF`). The queue's reads, the gate, the plain run and an act keep git's default there and may fetch; only under `LAZY_OFF` does a read meet a
+# missing object as a failure.
 NO_SIGNATURE_PROGRAM = str(pathlib.Path(__file__).resolve() / "no-signature-program")
-BOARD_SETTINGS = (("log.showSignature", "false"), ("core.fsmonitor", "false"), ("gpg.program", NO_SIGNATURE_PROGRAM),
+NO_HOOKS = str(pathlib.Path(__file__).resolve() / "no-hooks")
+BOARD_SETTINGS = (("log.showSignature", "false"), ("core.fsmonitor", "false"), ("core.hooksPath", NO_HOOKS), ("gpg.program", NO_SIGNATURE_PROGRAM),
                   ("gpg.openpgp.program", NO_SIGNATURE_PROGRAM), ("gpg.x509.program", NO_SIGNATURE_PROGRAM))
+BOARD_READS = False
+ACT_RUNS = ("answer", "done", "due", "revoke", "clear_ask", "vendor", "install_hook", "init", "session_trailer")
+FILTER_KEYS = r"^filter\."
+MERGE_KEYS = r"^merge\."
+_DRIVERS = None
 
 
 def board_settings():
@@ -1238,9 +1281,95 @@ def board_settings():
     return " ".join("'" + f"{k}={v}".replace("'", "'\\''") + "'" for k, v in BOARD_SETTINGS)
 
 
+def driver_settings(drivers):
+    """Each filter driver of `drivers` with its `clean`, `smudge` and `process` set empty, as `GIT_CONFIG_PARAMETERS` holds them (`board_settings`)."""
+    return " ".join("'" + f"filter.{name}.{key}=".replace("'", "'\\''") + "'" for name in drivers for key in ("clean", "smudge", "process"))
+
+
+def filter_drivers():
+    """The filter drivers git's configuration names here — in every scope, and every file an include brings, as git reads them for a read made here —, by
+    name: one read-only `git config -z --name-only --get-regexp '^filter\\.'`. A sorted tuple, () where there is none; None where the configuration cannot
+    be read, or names a driver no setting can name: a `-c` setting ends its key at the first `=`."""
+    r = vcs_process("git", "config", "-z", "--name-only", "--get-regexp", FILTER_KEYS, cwd=ROOT, capture_output=True, env=nested_git_env(board=True))
+    if r.returncode == 1 and not r.stdout:
+        return ()                                       # git config exits 1, printing nothing, where no key matches
+    if r.returncode != 0:
+        return None
+    try:
+        keys = r.stdout.decode("utf-8").split("\0")
+    except UnicodeDecodeError:
+        return None
+    names = {key[len("filter."):].rpartition(".")[0] for key in keys if key.startswith("filter.") and "." in key[len("filter."):]}
+    return None if any("=" in name for name in names) else tuple(sorted(names))
+
+
+def merge_drivers():
+    """The merge drivers git's configuration names here — a `merge.<name>.driver`, a program git starts to merge a path an attribute gives that driver —, by
+    name, in every scope and include: one read-only `git config -z --name-only --get-regexp '^merge\\.'`. A sorted tuple, () where there is none; None where
+    the configuration cannot be read, or names a driver no setting can name (a `-c` key ends at its first `=`)."""
+    r = vcs_process("git", "config", "-z", "--name-only", "--get-regexp", MERGE_KEYS, cwd=ROOT, capture_output=True, env=nested_git_env(board=True))
+    if r.returncode == 1 and not r.stdout:
+        return ()
+    if r.returncode != 0:
+        return None
+    try:
+        keys = r.stdout.decode("utf-8").split("\0")
+    except UnicodeDecodeError:
+        return None
+    names = {key[len("merge."):-len(".driver")] for key in keys if key.startswith("merge.") and key.endswith(".driver")}
+    return None if any("=" in name for name in names) else tuple(sorted(names))
+
+
+def merge_renormalize():
+    """`merge.renormalize` as git's own merge reads it — the last value, in every scope and include, `-c` among them — under the board's settings, which
+    do not set it: one read-only `git config --type=bool --get merge.renormalize`. True or False; False where it is unset, as git's default; None where it
+    cannot be read, or is no boolean."""
+    r = vcs_process("git", "config", "--type=bool", "--get", "merge.renormalize", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", env=nested_git_env(board=True))
+    if r.returncode == 1 and not r.stdout:
+        return False
+    if r.returncode != 0:
+        return None
+    return {"true": True, "false": False}.get(r.stdout.strip())
+
+
+def compared(*args):
+    """One read of the board's that compares the working tree with what git holds — `git ls-files --modified`, a `git diff` against the working tree —,
+    run with each filter driver the configuration names emptied (`driver_settings`) after the board's settings, whatever the run: git compares each file as
+    it is, and starts no driver. (its result, the drivers it ran without) — or None where it is not read: the drivers cannot be listed, or the drivers
+    listed again after it are not the ones it ran without. A read that fails, as where a driver is `required`, is its caller's to name as not read; it
+    is never made again with a driver."""
+    global _DRIVERS
+    drivers = _DRIVERS if _DRIVERS is not None else filter_drivers()
+    if drivers is None:
+        return None
+    env = nested_git_env(board=True)
+    env["GIT_CONFIG_PARAMETERS"] = " ".join(p for p in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), driver_settings(drivers)) if p)
+    r = vcs_process("git", *args, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    _DRIVERS = filter_drivers()
+    return (r, drivers) if _DRIVERS == drivers else None
+
+
+def driver_paths(paths, drivers):
+    """Which of `paths`, each as `compared` named it, a filter driver of `drivers` stores: the `filter` attribute git reads for each — from the tree,
+    `.git/info/attributes` and `core.attributesFile` — with one read-only `git check-attr`; a value that names none of them stores nothing. None where it
+    cannot be read, or a path is not named as git named it."""
+    if not paths or not drivers:
+        return set()
+    if any("\ufffd" in p for p in paths):
+        return None                                     # git wrote a name in bytes that are not UTF-8, and decoding replaced them
+    r = vcs_process("git", "check-attr", "-z", "--stdin", "filter", input="".join(p + "\0" for p in paths), cwd=ROOT, capture_output=True, text=True,
+                    encoding="utf-8", errors="replace", env=nested_git_env(board=True))
+    if r.returncode != 0:
+        return None
+    out = r.stdout.split("\0")
+    return {out[i] for i in range(0, len(out) - 2, 3) if out[i + 2] in drivers}
+
+
 def board_diff_args():
-    """`--no-textconv` and `--text` while this run's reads are the board's (`LAZY_OFF`), for each of its reads that diffs or searches a diff — else nothing."""
-    return ["--no-textconv", "--text"] if LAZY_OFF else []
+    """`--no-textconv` for each read of the board's that diffs or searches a diff (`BOARD_READS`, `LAZY_OFF`), and `--text` beside it while this run's
+    reads fetch nothing (`LAZY_OFF`) — else nothing: an act's reads keep git's default."""
+    return ["--no-textconv", "--text"] if LAZY_OFF else ["--no-textconv"] if BOARD_READS else []
 
 
 # THE BOARD'S READS FETCH NOTHING. In a partial clone a git read that meets an object the clone lacks fetches it from the remote that promised it, by itself:
@@ -2513,7 +2642,7 @@ def forge_prs():
     specs = (git_out("config", "--get-all", "remote.origin.fetch") or "").split() + [f"refs/pull/{p['number']}/head" for p in prs]
     try:
         f = vcs_process("git", "fetch", "--quiet", "origin", *specs, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=60, env=nested_git_env())
+                           errors="replace", timeout=60, env=nested_git_env(board=False))
     except (OSError, subprocess.TimeoutExpired) as e:
         return None, f"--queue: `git fetch origin` did not answer — offline? ({type(e).__name__})"
     if f.returncode != 0:
@@ -2528,7 +2657,7 @@ def pushed_branches(prs):
     default branch, an open pull request's head, or another such branch's head (of twins with one head, the first by
     name stays). A head this clone never fetched — a single-branch clone fetches one — is fetched here, by its ref;
     one still missing stays, marked, and is read as *not fetched here*. [{name, sha, base, here}], by name."""
-    out = git_out("ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head")
+    out = git_out("ls-remote", "--symref", "origin", "HEAD", "refs/heads/*", "refs/pull/*/head", board=False)
     if out is None:
         return []
     heads, pulled, default = {}, set(), ""
@@ -2549,7 +2678,7 @@ def pushed_branches(prs):
              if name != default and not name.startswith("answer/") and name not in carried and sha not in carried]
     lacking = set(have_not([sha for _n, sha in named]))
     if lacking:                                             # the one fetch for heads the configured refspec does not cover
-        git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking])
+        git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking], board=False)
     gone = set(have_not(sorted(lacking)))
     kept = [(name, sha) for name, sha in named if sha in gone
             or not (inside(sha, f"refs/remotes/origin/{default}") or any(inside(sha, p["headRefOid"]) for p in prs))]
@@ -2853,8 +2982,8 @@ def queue_actions(prs, branches=()):
     `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
     forks = [(p, "wait", "wait: from a fork, read it yourself", "") for p in prs if p.get("isCrossRepository")]
     prs = [p for p in prs if not p.get("isCrossRepository")]
-    git = lambda *a, **k: vcs_process("git", "-c", "core.quotePath=false", *a, cwd=ROOT, capture_output=True, text=True,
-                                         encoding="utf-8", errors="replace", env=nested_git_env(), **k)
+    git = lambda *a, board=None, **k: vcs_process("git", "-c", "core.quotePath=false", *a, cwd=ROOT, capture_output=True, text=True,
+                                                     encoding="utf-8", errors="replace", env=nested_git_env(board), **k)
     head, base, num = (lambda p: p["headRefOid"]), (lambda p: "refs/remotes/origin/" + p["baseRefName"]), (lambda p: p["number"])
     age = lambda p: (p.get("createdAt") or "", p["number"])
     memo = {}
@@ -2873,7 +3002,7 @@ def queue_actions(prs, branches=()):
         """its own commits — not on its base, merges aside — and each one's patch id"""
         def read():
             shas = git("rev-list", "--no-merges", head(p), "^" + base(p)).stdout.split()
-            diff = git("log", "-p", "--no-merges", "--no-color", "--no-ext-diff", "--ignore-submodules=none", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
+            diff = git("log", "-p", *board_diff_args(), "--no-merges", "--no-color", "--no-ext-diff", "--ignore-submodules=none", "--format=commit %H", head(p), "^" + base(p)).stdout if shas else ""
             ids = git("patch-id", "--stable", input=diff).stdout if diff else ""
             return shas, {c: pid for pid, c in (l.split()[:2] for l in ids.splitlines() if len(l.split()) >= 2)}
         return cached(("own", num(p)), read)
@@ -2885,7 +3014,25 @@ def queue_actions(prs, branches=()):
         return bool(mine) and all(c in theirs or my_ids.get(c) in their_ids for c in mine)
 
     def conflicts(p):
-        r = git("merge-tree", "--write-tree", "--name-only", "--no-messages", base(p), head(p))
+        # git's merge-tree starts the merge driver an attribute selects (`merge.<name>.driver`), and, where `merge.renormalize` is on, the `clean` or
+        # `process` of the filter driver an attribute selects
+        merges, filters = merge_drivers(), filter_drivers()
+        if merges is None or filters is None:
+            return ["(paths unread — the merge and filter drivers could not be listed)"]
+        if merges:
+            return ["(paths unread — a configured merge driver could change the merge)"]
+        renormalize = merge_renormalize() if filters else False
+        if renormalize is None:
+            return ["(paths unread — `merge.renormalize` could not be read)"]
+        if renormalize:
+            return ["(paths unread — `merge.renormalize` is on, and a configured filter driver could change the merge)"]
+        env = nested_git_env(board=True)
+        if filters:
+            env["GIT_CONFIG_PARAMETERS"] = " ".join(x for x in (env.get("GIT_CONFIG_PARAMETERS", "").strip(), driver_settings(filters)) if x)
+        r = vcs_process("git", "-c", "core.quotePath=false", "merge-tree", "--write-tree", "--name-only", "--no-messages", base(p), head(p),
+                        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+        if merge_drivers() != () or filter_drivers() != filters or (filters and merge_renormalize() is not False):
+            return ["(paths unread — the drivers or `merge.renormalize` changed during the read, or could not be read after it)"]
         if r.returncode in (0, 1):
             return list(dict.fromkeys(l for l in r.stdout.splitlines()[1:] if l.strip()))
         # merge-tree could not run — a git older than 2.38, or a head that is not here: the forge's own word stands in
@@ -3547,7 +3694,7 @@ def board_after_act(stamp):
     """FM-030, their signed answer 920970b7 — *right after the act* the board shows it: they pressed the button, ran the command,
     and the page they return to must say *done, on its way* (their words of 13:57:50). Put back where they started — or on `answer/<id>`
     itself, where they ran it — the command rebuilds the board itself: `--html-only`, in its own process, which reads the branch just
-    pushed (`on_their_way`). No hook rebuilds it (R11, FM-057): the act does, every time. Never where the board is tracked by git —
+    pushed (`on_their_way`). The act does, every time, whatever a refresh hook did. Never where the board is tracked by git —
     `--init` ignores it, and written, a committed board would leave the tree changed and refuse their next command. `stamp` is the
     board's file as the push left it — its modification time and size: the rebuild is known by its change. What it says of it, one
     line; "" where there is no tracker directory."""
@@ -3580,47 +3727,41 @@ def default_trunk(git, ask=None):
     """`origin`'s default branch, by its FULL ref — `origin/HEAD`'s target — or None: what an earlier `answer/<id>` must be merged
     into before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
     name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target is
-    returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). Where
-    this clone has no `origin/HEAD` and holds no `origin/main` or `origin/master` either — a pull request's shallow checkout —
-    None, asking nothing. Where it holds one, a name a seat can push, a run that walks the branch's commits — `--check`, or the
-    default run, on a clean tree (`_ASK_ORIGIN`) — asks origin which branch is its default (`origin_default`, once per run) and
-    returns that branch's ref; where origin cannot be read, or names a branch this clone has not fetched, None, and
-    `walk_problems` refuses in one line (v0.19.1). An origin that names none — its `HEAD` unborn — leaves the ref this clone
-    holds, and so does a clone with no `origin` configured, which nobody can push to. Every other run — the hooks', the
-    board's, the reports', the Owner's commands — asks no server and refuses nothing (`ask=False`): it takes origin's answer
-    where this run has it, else the ref this clone holds, as before. What the tool prints is `ref_name`'s."""
+    returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). No run of
+    the tool asks origin for it: the trunk is read from this clone's cached refs. Where `origin/HEAD` is absent, a reader gets
+    `origin/main` where it is cached, else `origin/master`; neither cached — a pull request's shallow checkout — None. `--check` and
+    the default run, whatever the working tree holds (`ask`: `_ASK_ORIGIN`, and `--check`'s read of the Owner's commits), read both:
+    where both are cached and name different commits, None, and the line that says the default branch cannot be told
+    (`_TRUNK_UNTOLD`), which `walk_problems` refuses with — it names `git remote set-head origin --auto`, the person's own command,
+    which asks origin. Where they name the same commit, they get `origin/main`, as every other reader does. The queue's own contact
+    with origin for its pull requests and branches is separate (`forge_prs`, `pushed_branches`): its `fetch` and `ls-remote` under
+    the person's settings. What the tool prints is `ref_name`'s."""
     global _TRUNK_UNTOLD
     ask = _ASK_ORIGIN if ask is None else ask
     head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD").stdout.strip()
     if head.startswith("refs/remotes/"):
-        return head                                     # set: nothing is asked of origin
-    here = next((r for r in ("refs/remotes/origin/main", "refs/remotes/origin/master") if git("rev-parse", "--verify", "--quiet", r + "^{commit}").returncode == 0), None)
-    if not here:
-        return None                                     # no default branch here at all: the newest commit alone is judged, and `--check` says so
-    if (not ask and _ORIGIN_DEFAULT is None) or git("config", "--get", "remote.origin.url").returncode != 0:
-        return here                                     # no origin to push to, or a reader that asks no server: the ref this clone holds
-    named = origin_default()
-    if named == "":
-        return here                                     # origin names no default branch: the one this clone holds
-    if named and git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{named}^{{commit}}").returncode == 0:
-        return f"refs/remotes/origin/{named}"
-    if not ask:
-        return here
-    _TRUNK_UNTOLD = ("the default branch cannot be told — this clone has no `origin/HEAD`, and origin "
-                     + (f"names `{named}`, which this clone has not fetched: fetch it, or run" if named else "could not be read: run")
-                     + " `git remote set-head origin <the default branch>`, then run again")
+        return head
+    main = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}")
+    master = git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/master^{commit}") if main.returncode != 0 or ask else None
+    if main.returncode != 0:
+        return "refs/remotes/origin/master" if master.returncode == 0 else None
+    if master is None or master.returncode != 0 or master.stdout.strip() == main.stdout.strip():
+        return "refs/remotes/origin/main"
+    _TRUNK_UNTOLD = ("the default branch cannot be told — this clone has no `origin/HEAD`, and its cached `origin/main` and `origin/master` name "
+                     "different commits: run `git remote set-head origin --auto` yourself, which asks origin, then run again")
     return None
 
 
 def origin_default():
     """The name origin gives its default branch — `git ls-remote --symref origin HEAD`, asked once per run at most and kept —
     "" where origin names none (its `HEAD` is unborn), None where origin could not be read or did not say the name. No
-    prompt: a server that wants a password it is not given is one that could not be read."""
+    prompt: a server that wants a password it is not given is one that could not be read. No run of the tool calls it: the trunk
+    is read from this clone's cached refs (`default_trunk`)."""
     global _ORIGIN_DEFAULT
     if _ORIGIN_DEFAULT is None:
         try:
             r = vcs_process("git", "ls-remote", "--symref", "origin", "HEAD", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=60, env=dict(nested_git_env(), GIT_TERMINAL_PROMPT="0"))
+                               errors="replace", timeout=60, env=dict(nested_git_env(board=False), GIT_TERMINAL_PROMPT="0"))
         except (OSError, subprocess.TimeoutExpired):
             r = None
         lines = [l_.split("\t") for l_ in r.stdout.splitlines()] if r is not None and r.returncode == 0 else None
@@ -3840,7 +3981,7 @@ def render_triage(trackers):
 
 
 HTML_PAGE = r"""<!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="__LANG__"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">__FAVICON__
 <title>__NAME__ — work tracker</title>
 <style>
@@ -3861,24 +4002,27 @@ i{font-style:italic}
 /* three meanings, one colour each (the guide's amendment, G1): teal done or success, amber a warning, coral a failure — each beside its word */
 .hot{color:var(--coral)}.go{color:var(--teal)}.warn{color:var(--amber)}.owed{color:var(--owed)}
 svg.ico{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:.7ch;flex:none}a svg.ico{margin:0 0 0 .7ch}
-/* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it. Where the line is short the
-   count wraps under the field, inside the box, and the field keeps its 200 px; on a phone the search takes a row of its own (RV-3342). The
-   count stands at the field's right edge, on the field's line where it fits and on a line of its own where it does not (BF-2) */
 #H{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2ch;margin:6px 0 6px}#H img{height:22px;width:auto}
 #H>b{font-weight:600;color:var(--head);white-space:nowrap}#H>span{color:var(--mute)}#H>span:empty{display:none}
-#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
+#sb{flex:1 1 calc(200px + 4ch);display:flex;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}
 #sb:before{content:">";content:">" / "";color:var(--mute)}#sb:focus-within{border-color:var(--ink)}
 #q{flex:1;min-width:200px;border:0;background:none;color:var(--ink);padding:3px 0;outline:0}#q::placeholder{color:var(--mute);opacity:1}
-#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}
+.rd{display:inline-flex;align-items:center;gap:.7ch;color:var(--dim);cursor:pointer;white-space:nowrap}
+.rd input{-webkit-appearance:none;appearance:none;margin:0;width:13px;height:13px;border:1px solid var(--mute);border-radius:50%;background:none;flex:none;cursor:pointer}
+.rd input:checked{border-color:var(--ink);background:radial-gradient(circle,var(--bg) 0 2.5px,var(--ink) 3px)}.rd input:checked+span,.rd:hover{color:var(--ink)}
+.rd:hover input{border-color:var(--ink)}.rd input:focus-visible{outline:1px solid var(--ink);outline-offset:2px}#sl{margin-left:auto}
+#sl input{width:26px;height:14px;border-radius:7px;background:radial-gradient(circle at 6px 50%,var(--mute) 0 3.5px,transparent 4px)}
+#sl input:checked{background:radial-gradient(circle at calc(100% - 6px) 50%,var(--bg) 0 3.5px,transparent 4px) var(--ink)}
+#n{color:var(--dim)}#n:before{content:"·";content:"·" / "";color:var(--mute);margin-right:1ch}
 /* never a silent loss: each brand file the board no longer reads, and what replaces it — one line, there while a file is */
 #w{color:var(--amber);margin:0 0 4px}
 /* a box means an action; information is never boxed (the Owner's rule). A button is a word in a 1px frame — the frame in --mute, which carries
    the meaning — with 1px by 1ch of padding, so it keeps the 21 px line; ink on --raise under the pointer; a visible focus ring */
 button{cursor:pointer}
-button.act,#s,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
-button.act:hover,#s:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
+button.act,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}
+button.act:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}
 button:focus-visible,summary:focus-visible,a:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
-button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabled{opacity:.4}
+button:disabled{opacity:.4}
 /* the Owner's box: the one titled frame, its title set into its top border; inside, sections are `## ` headings with their counts, each
    opening on its band (G2): from frame to frame — structure, not state. The band's top edge is a 1px --box rule, so the band is the divider
    (G8): it holds where a band's faint fill does not, on a dim screen, in print, in forced colours; the first band has none, the box's frame
@@ -3890,7 +4034,7 @@ button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabl
 #p>.sec>.sh,#p>.sec>summary>.sh{background:var(--secbg);margin:0 -2ch 6px;padding:4px 2ch}#p>details.sec:not([open])>summary>.sh{margin-bottom:0}
 #p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}
 #p>details.sec>summary:hover>.sh{background:var(--raise)}#p>.sec.wait>.sh{background:var(--warnbg)}
-.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}
+.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}#p .sh b{font-weight:600}
 .sh .c{flex:1 1 auto;min-width:0;font-weight:400;color:var(--dim)}
 /* the drawn markers: drawn, never read */
 h2.sh:before{content:"##";content:"##" / "";display:inline-block;min-width:2ch;color:var(--mute);font-weight:400}
@@ -3907,6 +4051,9 @@ details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>
    on the row coloured */
 .row.vok,.row.vwarn,.row.vfail{margin:0 -2ch;padding:3px 2ch}.row.vok{background:var(--okbg)}.row.vwarn{background:var(--warnbg)}.row.vfail{background:var(--failbg)}
 .vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}
+.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
+details.more{border-top:1px solid var(--line)}details.more>summary{color:var(--dim);padding:3px 0 3px 9ch}
+details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.more[open]>summary:before{content:"v ";content:"v " / ""}
 .ty{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
 .st{color:var(--dim)}.st b:not(.go):not(.hot):not(.warn){color:var(--ink)}.st b{font-weight:600}
 .aq{display:block;padding-left:11ch;color:var(--mute)}.sub{color:var(--dim);margin:8px 0 0}
@@ -3920,7 +4067,9 @@ code{font:inherit}
 .help{color:var(--help);border-left:2px dashed var(--help);padding:0 0 0 1ch;margin:2px 0 6px}
 /* the work table, by rank: no outer box, its column heads types, its groups `// `, each group a fold — a group's line wraps inside the frame
    (BF-1: `td.m`'s nowrap is the cells' alone) */
-#vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}#vt button{margin:0}
+#vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}
+#gv,#ov{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 2ch}#ov[hidden]{display:none}#gw{color:var(--dim)}
+#ov:before{content:"·";content:"·" / "";color:var(--mute);margin-right:-1ch}
 #l{color:var(--mute);font-size:12px;margin-left:auto}#l span{text-transform:lowercase;margin-right:1ch}
 table{width:100%;border-collapse:collapse}
 th{text-align:left;color:var(--mute);font-size:12px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;padding:3px 2ch 3px 0}
@@ -3973,29 +4122,23 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
 #p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}#p .pw.au,#dlg .pw.au{color:var(--amber)}
 #ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block;overflow-wrap:anywhere}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}details.about>summary{color:var(--dim)}details.about>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.about[open]>summary:before{content:"v ";content:"v " / ""}
-/* the claim and the running line: the last line's one element `#F`; the claim shown with the board only, as when it stood in it */
-#f{color:var(--mute);margin:28px 0 0}#f:empty{display:none}#B[hidden]~#F #f{display:none}
-/* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to
-   the tool and leaving the board; the version to its release */
-#r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
-/* a phone: at least 24 px for every button, a heading's state flows under its title, its marker keeping its space (BF-5); the search a header
-   row of its own, the scheme's button under it at the right edge (RV-3342) */
-@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
-#sb{flex-basis:100%}#s{margin-left:auto}}
-/* a phone: the work table, wider than the page with its columns as they are, scrolls in its own box — the header, the box and the toolbar stay put (BF-14) */
-@media(max-width:640px){#B>table{display:block;overflow-x:auto}}
+#r{display:flex;justify-content:flex-end;gap:1ch;align-items:center;margin:28px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
+@media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.rv .how{padding-left:0}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
+#sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}
+@media(max-width:640px){#B>table,#b{display:block}#B>table>thead{display:none}#b>tr:not([hidden]),#b>tr>td{display:block}#b>tr>td.x{display:none}
+#b>tr.t{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:2ch;padding-left:calc(2ch + 5px);border-top:1px solid var(--line)}#b>tr.t>td{border-top:0}
+#b>tr.t>td:first-child{margin-left:calc(-2ch - 5px)}#b>tr.t>td:last-child{flex:1 1 100%;padding-top:0;overflow-wrap:anywhere}}
 /* on paper the board is always the light one */
-@media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
+@media print{#sl,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}
 </style>
-<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><label id="sb"><input id="q" autofocus><span id="n"></span></label><button id="s"></button></div>__GONE__
+<div id="B"><div id="H">__HEADMARK__<span data-l="tagline"></span><label id="sb"><input id="q" autofocus></label><label id="sl" class="rd"><input type="checkbox" role="switch" id="s"><span data-l="scheme.toggle"></span></label></div>__GONE__
 __READAT__
 <div id="p" class="box"></div>
-<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button>
+<div id="vt"><span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup" aria-labelledby="ovo ova"><label class="rd"><input type="radio" name="ov" value="open" checked><span id="ovo" data-l="view.open"></span></label><label class="rd"><input type="radio" name="ov" value="all"><span id="ova" data-l="view.all"></span></label></span><span id="n"></span>
 <p id="l"><i class="q"></i><span data-l="status.Proposed"></span><i class="q b"></i><span data-l="status.In Progress"></span><i class="q y"></i><span data-l="status.Parked"></span><i class="q r"></i><span data-l="status.Blocked"></span><i class="q t"></i><span data-l="status.Shipped"></span><i class="q z"></i><span data-l="status.Closed"></span></p></div>
 <table><thead><tr><th data-l="col.id"><th data-l="col.tier"><th data-l="col.status">__COLHEADS__<th data-l="col.title"></thead><tbody id="b"></tbody></table></div>
 <article id="v" hidden></article>
-<footer id="F"><p id="f" class="m" data-l="footer"></p>
-__RUNNING__</footer>
+<footer id="F">__RUNNING__</footer>
 <dialog id="dlg"></dialog>
 __DAY__
 <script>__MARKED__</script>
@@ -4177,17 +4320,17 @@ function box(){
     S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
-  // …and the week's verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict
-  // a verdict's branch (RV-3343): the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why —
-  // in the row's own colour: nothing on a verdict's row is coloured but its word (G3, BF-10)
-  const brn=b=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,`<code>${esc(b[2].slice(0,10))}</code>`)
+  const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
+  brn=(b,u)=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))
     :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
-    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",`<code>${esc(b[1].slice(0,10))}</code>`):l("reviews.branch.none"))}</i>`;
-  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};
+    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none"))}</i>`;
+  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"},
+    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]),v[5]?l("verdict."+v[5]):l("type.verdict"),
+        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),
+    folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG"),week=REG.verdicts||[],more=week.filter(folds);
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
         "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
-      (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`)+" · "+brn(v[6]||["none"]),v[5]?l("verdict."+v[5]):l("type.verdict"),
-        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",VERDICT[v[5]])).join(""),false))}
+      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
     S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
@@ -4221,8 +4364,9 @@ function draw(){
     return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
   $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
-  $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there
-  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").hidden=gname!="board"||!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(gname=="board"&&!q?box():"");   // the box keeps its title in every view (FM-002 R2)
+  $("ov").hidden=gname=="board";
+  for(const r of document.querySelectorAll("#gv input,#ov input"))r.checked=r.name=="gv"?+r.value==gi:(r.value=="all")==all;
+  $("p").hidden=!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(!q?box():"");
   history.replaceState(null,"","#"+encodeURIComponent(q));
 }
 $("b").onclick=e=>{
@@ -4230,8 +4374,10 @@ $("b").onclick=e=>{
   if(g){const k=g.dataset.k;touched.add(k);shut.has(k)?shut.delete(k):shut.add(k);return draw()}
   const r=e.target.closest("tr.t");if(r&&e.target.tagName!="A")r.nextElementSibling.hidden^=1};
 $("q").oninput=draw;
-$("g").onclick=()=>{gi=(gi+1)%GROUPS.length;draw()};
-for(const[id,v]of[["o",false],["a",true]])$(id).onclick=()=>{all=v;$("o").setAttribute("aria-pressed",!v);$("a").setAttribute("aria-pressed",v);draw()};
+{const [w,rest]=(L["view.by"]??"by {0}").split("{0}");$("gv").innerHTML=`<span id="gw">${esc(w.trim())}</span>`
+  +GROUPS.map(([g],i)=>`<label class="rd"><input type="radio" name="gv" value="${i}"${i==gi?" checked":""}><span>${esc(vn(g))}</span></label>`).join("")+(rest?.trim()?`<span>${esc(rest.trim())}</span>`:"")}
+$("gv").onchange=e=>{gi=+e.target.value;draw()};
+$("ov").onchange=e=>{all=e.target.value=="all";draw()};
 onkeydown=e=>{if(e.key=="/"&&document.activeElement!=$("q")){e.preventDefault();$("q").focus()}if(e.key=="Escape"&&!$("v").hidden)location.hash=""};
 // the viewer: `#=MSR-012` shows that tracker rendered. Markdown comes from view/<ID>.js (a script tag works from
 // disk, a fetch does not); embedded HTML is shown, never run; bare ids and tracker links stay inside the page.
@@ -4272,16 +4418,19 @@ for(const e of document.querySelectorAll("[data-l]"))e.textContent=L[e.dataset.l
 // FM-057: the rebuild command beside what the board read, and when — copied on the dialog's path: *Copied* only when the clipboard says so
 $("rb").onclick=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText($("rc").textContent):Promise.reject())
   .then(()=>{$("rs").className="said ok";$("rs").innerHTML=`<span class="go">${ICO.check}${lh("read.copied",`<code>${esc($("rc").textContent)}</code>`)}</span>`},()=>{$("rc").hidden=false;$("rs").className="said";$("rs").innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`});
-// light or dark is the viewer's choice: auto follows the system; the other two switch the page's own
-// `prefers-color-scheme` rules on or off. Paper stays light.
-const ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g;
-let scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(!SCHEMES.includes(scheme))scheme="auto";
+// WebKit draws an image's own `prefers-color-scheme` rules by the system's scheme, never the page's: the logo's SVG is written again with
+// the rule of the scheme in effect on
+const ORIG=new Map(),PCS=/\(\s*prefers-color-scheme\s*:\s*(dark|light)\s*\)/g,SYS=matchMedia("(prefers-color-scheme: dark)"),sys=()=>SYS.matches?"dark":"light",
+LOGO=(i=>i&&/^data:image\/svg\+xml;base64,/.test(i.getAttribute("src"))?[i,new TextDecoder().decode(Uint8Array.from(atob(i.getAttribute("src").slice(26)),c=>c.charCodeAt(0)))]:null)(document.querySelector("#H>img"));
+let scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(scheme!="light"&&scheme!="dark")scheme="auto";
 const rules=(s,f)=>{try{for(const r of s.cssRules){if(r.styleSheet)rules(r.styleSheet,f);else if(r.media)f(r)}}catch(e){}},
 paint=m=>{for(const s of document.styleSheets)rules(s,r=>{if(!ORIG.has(r)){if(!r.media.mediaText.includes("prefers-color-scheme"))return;ORIG.set(r,r.media.mediaText)}
     r.media.mediaText=m=="auto"?ORIG.get(r):ORIG.get(r).replace(PCS,(x,w)=>w==m?"(min-width:0px)":"(max-width:0px)")});
-  document.documentElement.style.colorScheme=m=="auto"?"":m},
-setScheme=m=>{scheme=m;paint(m);$("s").textContent=(L["scheme.button"]??"{0}").replace("{0}",L["scheme."+m]??m);$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
-$("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));
+  document.documentElement.style.colorScheme=m=="auto"?"":m;const e=m=="auto"?sys():m;
+  if(LOGO)LOGO[0].src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(LOGO[1].replace(PCS,(x,w)=>w==e?"(min-width:0px)":"(max-width:0px)"))},
+setScheme=m=>{scheme=m;paint(m);$("s").checked=(m=="auto"?sys():m)=="dark";try{m=="auto"?localStorage.removeItem("shoalmark.scheme"):localStorage.setItem("shoalmark.scheme",m)}catch(e){}};
+$("s").onchange=()=>{const want=$("s").checked?"dark":"light";setScheme(want==sys()?"auto":want)};
+SYS.addEventListener?.("change",()=>setScheme(scheme));setScheme(scheme);addEventListener("load",()=>paint(scheme));
 onbeforeprint=()=>paint("light");onafterprint=()=>paint(scheme);
 // reload: begin — the board and its tracker pages (one page: `#=ID` is a tracker's) reload themselves when the tab is visible again, so a board rebuilt meanwhile — by an
 // explicit run, a commit or an act; no hook rebuilds it — is on the screen when the person comes back. The same page and nothing else: no poll, no timer, no second file, no server. Never while a dialog is open or a field
@@ -4304,11 +4453,11 @@ document.addEventListener("visibilitychange",()=>{
 # Every word of the board's chrome, in English. A `labels.yaml` — flat `key: value` lines — overrides any of them;
 # the words the page's LOGIC compares (a status, a section, a move) stay what an agent types: these are what is SHOWN.
 LABELS = {
-    "tagline": "", "footer": "",
+    "tagline": "", "lang": "en",
     "search": "search · ~ID",       # fits the box at its CSS minimum, 200 px, whatever the window: the whole help is its title
     "search.help": "A whole id shows that tracker. What links to it: ~ID (Markdown links only). A story's chapters: the story view. Anything else matches by substring — tier, status, words, blocked, untriaged.",
     "view.by": "by {0}", "view.board": "board", "view.epic": "story", "view.open": "open", "view.all": "all",
-    "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark", "scheme.button": "light or dark: {0}",
+    "scheme.toggle": "dark",
     "col.id": "id", "col.tier": "tier", "col.status": "status", "col.title": "title",
     # BF-3: the Owner is *you* on the board (the guide, §10) — `next: owner` reads *→ you* in the tier's cell; the viewer's handover line shows
     # the record's own field, `owner` in code font, as a setting
@@ -4373,6 +4522,7 @@ LABELS = {
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
     # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
     "reviews.sessions.more": "{0} and {1} more",
+    "reviews.more": "and {0} more verdicts by another session this week", "reviews.more.one": "and 1 more verdict by another session this week",
     # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous*
     "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
     "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
@@ -4459,6 +4609,8 @@ LABELS = {
     "brand.gone": "no longer read: {0}", "brand.gone.theme": "[palette] in shoalmark.toml", "brand.gone.fonts": "the system's monospace",
     "brand.gone.wordmark": "the name", "brand.gone.themes": "[palette], by name",
 }
+LABELS_GONE = {**{k: "light or dark is one switch, its word `scheme.toggle`" for k in ("scheme.auto", "scheme.light", "scheme.dark", "scheme.button")},
+               "footer": "the board ends with the running line alone: no claim stands under it"}
 BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
 # THE BOARD'S COLOURS (the design guide, §5 and §13; FM-053's answer, and the guide's amendment G1–G2): every colour is a token on `:root`, so a
 # palette is a token swap, and the page writes the one it wears from here. Three meanings, one colour each: `teal` done or success, `amber` a
@@ -4649,9 +4801,10 @@ def brand():
         f = d / "labels.yaml"
         if board_isfile(f):
             given = read_flat(f.read_text(encoding="utf-8"))
-            unknown = sorted(k for k in given if k not in LABELS)
+            unknown = sorted(k for k in given if k not in LABELS and k not in LABELS_GONE)
             if unknown:
                 warn.append(f"{who}'s labels.yaml: {', '.join(unknown[:6])} {'are' if len(unknown) > 1 else 'is'} not a label — `--brand` lists them")
+            warn += [f"{who}'s labels.yaml: {k} is no longer read — {LABELS_GONE[k]}" for k in sorted(k for k in given if k in LABELS_GONE)]
             labels.update({k: v for k, v in given.items() if k in LABELS}); src["labels.yaml"].append(who)
     loose = [n for n in BRAND_FILES if (TRACKER_DIR / n).is_file() or (TRACKER_DIR / n).is_symlink()]
     if loose:
@@ -4887,7 +5040,7 @@ def day_html(labels, prompts=None):
         reasons = [e("day.refused", e("day.value." + k), " " + c(shown(v)) if v else "", e("day.refused." + why, DAY_CAP)) for k, v, why in failed]
         act = (f'<button class="act" type="button" onclick="DAYOPEN(\'{kind}\')" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day." + kind + ".button")}</button>'
                if text else "".join(f'<span class="why hot">{r}</span>' for r in reasons))
-        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span><span class="c">· {e("day." + kind + ".row")}</span>{act}</template>')
+        rows.append(f'<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· {e("day." + kind + ".row")}</span> {act}</template>')
         body = (f'<p class="said" aria-live="polite"></p><p class="dp">{e("day.paste")}</p><pre class="cmd">{html_escape(text)}</pre>'
                 f'<p class="m ddim"><button type="button" class="copy" aria-label="{e("day." + kind + ".spoken")}">{icon("copy")}{e("day.copy")}</button></p>' if text else
                 "".join(f'<p class="dp hot">{r}</p>' for r in reasons))
@@ -4916,7 +5069,7 @@ def head_commit():
     return sha if out.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) else ""
 
 
-# WHAT THE BOARD READ, AND WHEN (FM-057, the quick win beside R11): no hook rebuilds the board, so a page can be hours old and look as it did. The page names its
+# WHAT THE BOARD READ, AND WHEN: no hook runs after a bare `git fetch`, so a page can be hours old and look as it did. The page names its
 # own moment — the time it was built; on git HEAD, the branch or a detached HEAD, and how many paths are changed and not committed (a plain run counts them;
 # the board's own run, `--html-only`, says it does not read them); on Subversion the working
 # copy's revision, from the one local status the board reads; with no version control, the folder — and the command that rebuilds it. `view/built.json`
@@ -4937,15 +5090,21 @@ def read_at(count=True):
 
 def tree_changes():
     """How many paths of the working tree are changed and not committed, read as git reads them without writing: each file whose index differs from HEAD
-    (`diff --cached`), each whose file differs from the index, a deletion too (`ls-files --modified`), and each new path git does not ignore, a new folder
-    as one (`ls-files --others`) — each counted once. None where git cannot read it: a read that fails, as one in a partial clone may."""
+    (`diff --cached`), each whose file differs from the index, a deletion too (`ls-files --modified`, which compares the working tree: `compared`), and each
+    new path git does not ignore, a new folder as one (`ls-files --others`) — each counted once. None where it is not read: a read that fails, as one in a
+    partial clone may; a comparison `compared` does not read; or one whose file, compared and not staged, a configured filter driver stores
+    (`driver_paths`), which git compared without its driver: such a file may count as changed when it is not."""
     staged = vcs_process("git", "diff", "--cached", "--name-only", "--no-renames", "-z", cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                          errors="replace", env=nested_git_env())
-    tree = vcs_process("git", "ls-files", "-z", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory", cwd=ROOT,
-                       capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if staged.returncode or tree.returncode:
+    tree = compared("ls-files", "-z", "-t", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory")
+    if staged.returncode or tree is None or tree[0].returncode:
         return None
-    return len({p for p in staged.stdout.split("\0") + tree.stdout.split("\0") if p})
+    held = {p for p in staged.stdout.split("\0") if p}
+    listed = [e for e in tree[0].stdout.split("\0") if len(e) > 2]       # with `-t` git writes each entry as its tag, a space and its path; `?` is untracked
+    stored = driver_paths(sorted({e[2:] for e in listed if e[0] != "?"} - held), tree[1])
+    if stored is None or stored:
+        return None
+    return len(held | {e[2:] for e in listed})
 
 
 def svn_root_revision(status):
@@ -5002,7 +5161,8 @@ def read_at_html(read, labels):
         line = esc(say("read.none", read.get("folder", ""), when))
         about = [say("read.about.none", full), say("read.none.why")]
     facts = [line, esc(say("read.self"))]
-    return ('<p id="ra" class="m"><span>' + " · ".join(f'<span class="fact">{f}</span>' for f in facts) + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
+    return ('<p id="ra" class="m"><span>' + " ".join(f'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>' for i, f in enumerate(facts))
+            + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
             f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{esc(say("read.copy"))}</button>'
             '<span id="rs" class="said" aria-live="polite"></span></p>\n'
             f'<details class="about"><summary>{esc(say("read.about"))}</summary><p class="help">{" · ".join(esc(f) for f in about if f)}</p></details>')
@@ -5193,6 +5353,7 @@ def render_html(trackers, read=None):
     logo, labels, _src, warnings, gone = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
+    page = page.replace("__LANG__", labels["lang"] if re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*", labels["lang"]) else "en")
     # never a silent loss (R10's look half): each brand file the board no longer reads, file by file, in the run's output and in one line of the page
     for path, instead, _key in gone:
         print(f"  brand: {path} is no longer read — {instead}", file=sys.stderr)
@@ -6860,12 +7021,16 @@ def read_changes():
         return out
 
     heads = merge_heads()
-    if COMMITTING or worktree_edited(git):
-        files = set(staged_now()) if COMMITTING else names(git("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"))
+    edits = set() if COMMITTING else worktree_edits()
+    against = [worktree_edits(h) for h in heads] if edits else []
+    if None in against:
+        edits = None
+    if COMMITTING or edits:
+        files = set(staged_now()) if COMMITTING else set(edits)
         if not COMMITTING:
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
-        for h in heads:
-            files &= names(git("diff", "-z", *(["--cached"] if COMMITTING else []), "--name-only", "--relative", "--ignore-submodules=none", h))
+        for n, h in enumerate(heads):
+            files &= names(git("diff", "-z", "--cached", "--name-only", "--relative", "--ignore-submodules=none", h)) if COMMITTING else against[n]
         trunk = default_trunk(git) if heads else None
         return brought(heads, "HEAD", exclude=[trunk] if trunk else []) + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
@@ -6896,11 +7061,28 @@ def staged_absent(rels):
     return {rel: extract(ROOT / rel, texts[f":./{rel}"]) for rel in names if texts.get(f":./{rel}") is not None}
 
 
-def worktree_edited(git):
-    """Whether the working tree holds an edit against HEAD (`git diff --name-only HEAD`) — the one reading `read_changes` and `main`
-    share: a diff git cannot make reads as no edit in both, so a run that walks the branch's commits asks origin as it walks
-    (v0.19.1). A submodule's pointer is an edit, whatever `.gitmodules` says (`--ignore-submodules=none`)."""
-    return bool(git("diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD").stdout.strip())
+_EDITS = {}
+_TREE_UNREAD = False
+
+
+def worktree_edits(rev="HEAD"):
+    """The paths the working tree holds edited against `rev`, as git names them — `git diff --name-only <rev>`, which compares the working tree
+    (`compared`) —, read once per run for each revision. None where they are not read: `compared` does not read them; the comparison fails, but before a
+    first commit, which holds no edit; or a configured filter driver stores one of them (`driver_paths`) — git compared it without its driver, and it may
+    read as edited when it is not. A submodule's pointer is an edit, whatever
+    `.gitmodules` says; a submodule's own working tree is not read (`--ignore-submodules=dirty`): no commit here carries it, and reading it starts git in
+    that repository, under its own configuration."""
+    global _TREE_UNREAD
+    if rev not in _EDITS:
+        got, edits = compared("diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", rev), None
+        if got is not None and got[0].returncode == 0:
+            paths = {p for p in got[0].stdout.split("\0") if p}
+            edits = paths if driver_paths(sorted(paths), got[1]) == set() else None
+        elif got is not None and rev == "HEAD" and not head_commit():
+            edits = set()                               # before a first commit git has no HEAD to compare with
+        _EDITS[rev] = edits
+        _TREE_UNREAD = _TREE_UNREAD or edits is None
+    return _EDITS[rev]
 
 
 def walk_problems():
@@ -7099,9 +7281,12 @@ def vcs_process(program, *args, cwd=None, source=False, **options):
     if program not in ("git", "svn"):
         raise ValueError("the VCS process boundary accepts git or svn")
     if source:
-        # Exactly the existing source-provenance reads, also used by the separate archive's source check during integration.
+        # Exactly the existing source-provenance reads, also used by the separate archive's source check during integration — and the release
+        # commit's tree and each of its blobs, each named by the object id git gave (`tag_files`): `--vendor` copies the tag's own bytes.
         source_reads = (("rev-parse", "--show-toplevel"), ("rev-parse", "HEAD"), ("tag", "--points-at", "HEAD"),
                         ("status", "--porcelain", "--untracked-files=all"))
+        if args[:-1] in (("ls-tree", "-r", "-z"), ("cat-file", "blob")) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(args[-1])):
+            source_reads += (args,)
         source_home = HERE
         try:
             resolved = pathlib.Path(cwd).resolve(strict=True) if cwd is not None else None
@@ -7115,7 +7300,8 @@ def vcs_process(program, *args, cwd=None, source=False, **options):
             print("shoalmark: source provenance accepts only its fixed Git reads in the tool's source folder — nothing is started", file=sys.stderr)
             raise SystemExit(EXIT_LINT)
         cwd = source_home                               # launch canonical HERE, never a checked alias's original spelling
-        options["env"] = source_env                     # no direct caller can inherit or supply another repository's context
+        inherited = source_env.get("GIT_CONFIG_PARAMETERS", "")   # the caller's environment was judged as given; the launch is hardened after that
+        options["env"] = dict(source_env, GIT_CONFIG_PARAMETERS=inherited + (" " if inherited else "") + SOURCE_GIT_PARAMETER, **SOURCE_GIT_ENV)
     elif program == "git" and vcs() == "svn":
         print("shoalmark: this Git operation requires a Git working copy; the configured target is Subversion — nothing is started", file=sys.stderr)
         raise SystemExit(EXIT_LINT)
@@ -7577,9 +7763,9 @@ SESSION_ID_RE = re.compile(r"[0-9a-f]{8}(?:/([A-Za-z][A-Za-z0-9_-]*)-\d+)?")    
 SESSION_RECENT = 86400        # seconds: the board and the digest name the sessions with a commit this recent
 
 
-def git_out(*a, cwd=None, source=False):
-    """One git call's stdout, or None when it failed."""
-    r = vcs_process("git", *a, cwd=cwd or ROOT, source=source, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+def git_out(*a, cwd=None, source=False, board=None):
+    """One git call's stdout, or None when it failed — with the settings `nested_git_env` gives it for `board`."""
+    r = vcs_process("git", *a, cwd=cwd or ROOT, source=source, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(board))
     return r.stdout if r.returncode == 0 else None
 
 
@@ -7825,6 +8011,7 @@ def worktree_identity(top):
     set), in 128 (no such folder, or no repository there) or in any other failure, or the read names no such key. Read without the `-c` scope of the
     command that runs this (`COMMAND_LINE_CONFIG`): a `git -c user.email=… commit` names the commit's author, not a worktree's setting."""
     env = {k: v for k, v in nested_git_env().items() if not COMMAND_LINE_CONFIG.fullmatch(k)}
+    env["GIT_CONFIG_PARAMETERS"] = board_settings()
     r = vcs_process("git", "-C", top, "config", "-z", "--get-regexp", SEAT_IDENTITY_KEYS, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                     errors="replace", env=env)
     got = dict.fromkeys(SEAT_IDENTITY)
@@ -9060,8 +9247,8 @@ def read_history(*revs):
 
 def trunk_ref():
     """The trunk a verdict's branch is measured against — a report's, never a refusal's: the default branch as `--check` reads it
-    (`default_trunk`, asking no server: origin's answer where this run has it), else the local `main`, else `master` — each by its
-    full ref (v0.19.1)."""
+    (`default_trunk`, asking no server: `origin/HEAD`, else the cached `origin/main`, else `origin/master`), else the local `main`,
+    else `master` — each by its full ref."""
     held = default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()), ask=False)
     return held or next((ref for ref in ("refs/heads/main", "refs/heads/master") if git_out("rev-parse", "--verify", "--quiet", ref + "^{commit}")), None)
 
@@ -9258,11 +9445,6 @@ def group_counts(groups):
 
 
 def board_sessions():
-    """The report as the board shows it — the parents with a commit in the last 24 hours (each: id, seat, worktree, its
-    sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, this
-    week's verdicts as [independent, same session, untraced, on trunk, not ready, ready with findings], and each verdict as [verdict, reviewed,
-    its session, the range's sessions, the word, the verdict's own word, its branch (`verdict_branch`), the range's oldest session
-    (`oldest_session`)] — or None where there is neither, or no git."""
     if vcs() != "git":
         return None
     groups = session_groups()
@@ -9271,10 +9453,14 @@ def board_sessions():
         return None
     count, words = collections.Counter(r[4] for r in reps), collections.Counter(r[5] for r in reps)
     parents, everyone = group_counts(groups)
+    said = str(CONFIG.get("commit_url") or "")
+    forge = bool(reps) and (bool(re.match(r"https?://[^\s\"'<>]+$", said, re.I)) if said else bool(commit_prefix()))
+    page = lambda sha: (commit_link(sha)[0] or "") if forge else ""
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
-            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first] for v, r, sid, ranged, w, word, branch, first in reps]}
+            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first, [page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]]
+                         for v, r, sid, ranged, w, word, branch, first in reps]}
 
 
 def sessions_digest():
@@ -9925,7 +10111,8 @@ def cli_preflight(args, backend):
     return CLI_GIT_ONLY[operation] if backend != "git" and operation in CLI_GIT_ONLY else (None, EXIT_OK)
 
 
-def parse_args(argv, *, classification_only=False):
+def cli_parser():
+    """The command line, as `parse_args` reads it and as `r17_given` reads its option names."""
     parser = argparse.ArgumentParser(prog=os.environ.get("SHOALMARK_CMD") or "shoalmark", description="A work tracker that lives in the repository it tracks.")
     add = parser.add_argument
     add("--root", metavar="DIR", help="the repository to track; default: the nearest shoalmark.toml or git toplevel above the working directory")
@@ -9947,8 +10134,8 @@ def parse_args(argv, *, classification_only=False):
     add("--html-only", action="store_true",
         help="the board's read-only run: write only the git-ignored board — index.html and view/ in the tracker folder — and print its link. It starts no deriver and no program but read-only git, "
              "reads only regular files inside the repository (no symlink is followed), refuses a tracker folder that resolves outside it, and writes neither through a symlink nor over a file git "
-             "tracks; its board carries no derived columns. It stands alone, with --root. No hook shoalmark writes runs it: it is the explicit refresh")
-    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg and commit-msg — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. No hook refreshes the board: a post-checkout, post-merge or post-rewrite an earlier version wrote is removed, with a line, and any other is kept and named; --html-only rebuilds the board. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
+             "tracks; its board carries no derived columns. It stands alone, with --root. The checkout, merge and rewrite hooks run it from the hooks' copy; it can also be run explicitly")
+    add("--install-hook", action="store_true", help="wire the gate into the version control system found: plain git hooks — pre-commit, prepare-commit-msg, commit-msg, post-checkout, post-merge and post-rewrite — every one running a COPY of the tool this keeps in the git directory (shoalmark-trusted/, shared by every worktree), which runs nothing a branch brings; a commit's hook fails closed, and no hook runs the deriver — explicit runs do. The checkout, merge and rewrite hooks rebuild the board as --html-only and always exit 0. An unchanged refresh hook an earlier version wrote is replaced; a changed hook or a person's own is kept and named. A bare git fetch has no hook: run --html-only or check out or merge before reading newly fetched answers on the board. A hooks folder inside the working tree is refused. Only this writes or replaces the copy: from a pinned copy that passes its PIN, else from the working tree's tool, and it names the commit and branch — run it on your default branch, and again after upgrading — or on Subversion the TortoiseSVN hook properties and svn:ignore; never overwrites a hook that is not its own")
     add("--standup", nargs="*", metavar="DIR", help="the Owner's one sitting: the agenda by kind — rulings, their hands, what evidence could settle, buttons — and inside a kind what frees the most first; "
                                                      "then what invites and notifications left here, each named, never removed (R9). With DIR …: one agenda across the repositories named, each "
                                                      "read as it stands — its branch and commit, a Subversion working copy's revision, or the folder — running nothing of theirs and writing "
@@ -10021,14 +10208,18 @@ def parse_args(argv, *, classification_only=False):
     add("--from", dest="theme", metavar="THEME", help=argparse.SUPPRESS)      # retired with the themes: named and refused, never a silent loss
     add("--init", action="store_true", help="scaffold shoalmark.toml, the tracker directory and TRIAGE.md; never overwrites")
     add("--key", metavar="KEY", help="with --init: the project key every id carries — MSR gives MSR-001; default: the directory name's first word, cut to five characters")
-    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR with a PIN of sha256 hashes. From a release: "
-                                            "a clean Git checkout at its VERSION tag, or an already-unpacked release archive holding RELEASE. Unzip first; a ZIP path is not a source argument. "
+    add("--vendor", metavar="DIR", help="copy the running tool's source into DIR with a PIN of sha256 hashes. From a release only (R17): "
+                                            "a clean Git checkout of the whole tool at its VERSION tag, or an already-unpacked release archive whose RELEASE names its tag. Unzip first; a ZIP path is not a source argument. "
                                             "An archive's complete inventory and exact raw bytes are validated before copying the tool files; its manifest verifies internal bytes, not external origin. "
                                             "The PIN names the source; `--check` in the consumer reads it")
-    add("--partial", action="store_true", help="with --vendor: copy what a Git source has although files are missing, and name them in the PIN; never bypass an archive's required manifest, inventory or safe paths")
-    add("--allow-untagged", action="store_true", help="with --vendor: permit a Git working copy not at its release tag or not clean, or a fully validated tag-none archive dry run; the PIN records the untagged source. Never bypass archive validation")
+    for flag in R17_FLAGS:                                  # R17 removed them: kept only to be named — one line, exit 2 (`r17_removed`)
+        add(flag, action="store_true", help=argparse.SUPPRESS)
     add("--version", action="version", version=__version__)
-    return parser.parse_args(argv)
+    return parser
+
+
+def parse_args(argv, *, classification_only=False):
+    return cli_parser().parse_args(argv)
 
 
 DERIVED_COLUMNS = []          # the columns a deriver contributed on this run, in the order it named them
@@ -10195,6 +10386,65 @@ def source_provenance():
     why = "; ".join(([f"HEAD {sha[:10]} is not at the tag {want}" + (f" (it carries {', '.join(tags)})" if tags else "")] if want not in tags else [])
                     + ([f"the tree has changes: {', '.join(dirty[:8])}" + (" …" if len(dirty) > 8 else "")] if dirty else []))
     return (want if want in tags else ""), sha, dirty, why
+
+
+# The bytes git counts as neither printable nor a line end, as its own checkout counts them (`crlf_checkout`): the controls below 32 but BS, TAB, ESC
+# and FF, and DEL; CR and LF are counted apart.
+NONPRINTABLE = bytes(sorted(set(range(32)) - {8, 9, 10, 12, 13, 27} | {127}))
+
+
+def crlf_checkout(blob):
+    """The bytes git's checkout writes for `blob` where `core.autocrlf` (text=auto) converts it — every LF made CRLF — or None where git writes the blob
+    as it is (RV-3366: recorded privately): one with no LF; one that holds a CR, alone or before an LF; and one git calls binary — a NUL, or fewer than 128
+    printable bytes for each byte that is not, a final Ctrl-Z not counted."""
+    cr, lf = blob.count(b"\r"), blob.count(b"\n")
+    nonprintable = len(blob) - len(blob.translate(None, NONPRINTABLE)) - (1 if blob.endswith(b"\x1a") else 0)
+    printable = len(blob) - cr - lf - nonprintable - (1 if blob.endswith(b"\x1a") else 0)
+    if lf == 0 or cr or b"\0" in blob or (printable >> 7) < nonprintable:
+        return None
+    return blob.replace(b"\n", b"\r\n")
+
+
+def tag_files(tag, sha):
+    """What `--vendor` copies from a Git source, read from the tree of its release commit `sha` at `tag` — the tag's own bytes, never the working copy's:
+    ({path: the tag's bytes}, [each file here beside the tool that the tag does not hold — never copied], "") — or ({}, [those files], what is wrong, naming
+    each file): a file of the tool the tag lacks; one that is no regular file in the tag, or none here; one whose bytes here are not the tag's as git checks
+    them out (the same bytes, or the bytes git's CRLF checkout writes for it, `crlf_checkout`). Each file here is compared with the tag's blob
+    (RV-3364: recorded privately)."""
+    def kept(rel):                                          # the paths `vendor_files` takes, and `THEME_FILES`, read from the tag's tree
+        return rel in TOOL_FILES or rel in {f"brand/{n}" for n in BRAND_FILES} or rel in THEME_FILES
+    listing = vcs_process("git", "ls-tree", "-r", "-z", sha, cwd=HERE, source=True, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          env=nested_git_env())
+    if listing.returncode:
+        raise OSError(f"the tree of {sha[:10]} cannot be read")
+    held = {}
+    for entry in listing.stdout.split("\0"):
+        meta, _, rel = entry.partition("\t")
+        if rel and kept(rel):
+            held[rel] = meta.split(" ")                     # mode, type, object id
+    beside = sorted(set(vendor_files()) - set(held))
+    lacking = [rel for rel in TOOL_FILES if rel not in held]
+    if lacking:
+        return {}, beside, f"the tag {tag} does not hold {', '.join(lacking)} — it is not the whole tool"
+    odd = sorted(rel for rel, meta in held.items() if len(meta) != 3 or meta[1] != "blob" or meta[0] not in ("100644", "100755"))
+    if odd:
+        return {}, beside, f"{', '.join(odd)}: no regular file in the tag {tag}"
+    data, differ = {}, []
+    for rel, (_, _, oid) in sorted(held.items()):
+        blob = vcs_process("git", "cat-file", "blob", oid, cwd=HERE, source=True, capture_output=True, env=nested_git_env())
+        if blob.returncode or (hashlib.sha1 if len(oid) == 40 else hashlib.sha256)(b"blob %d\0" % len(blob.stdout) + blob.stdout).hexdigest() != oid:
+            raise OSError(f"the tag's object for {rel} cannot be read")
+        here = HERE / rel
+        if _norm(here) != os.path.normcase(os.path.realpath(here)) or not here.is_file():
+            differ.append(rel)                              # a symlink, a folder or nothing where the tag holds a file
+            continue
+        disk = here.read_bytes()
+        if disk != blob.stdout and disk != crlf_checkout(blob.stdout):
+            differ.append(rel)
+        data[rel] = blob.stdout
+    if differ:
+        return {}, beside, f"on disk, {', '.join(differ)} {'is' if len(differ) == 1 else 'are'} not the tag's own bytes"
+    return data, beside, ""
 
 
 # THE RELEASE ARCHIVE (FM-004, item 8; the Owner's D7 and their words of 2026-10-11): `shoalmark-<version>.zip`, built from a tag by
@@ -10412,6 +10662,49 @@ def archive_check():
     return ({}, {}, f"it is not what its {RELEASE_NAME} names — " + "; ".join(said)) if said else (data, m, "")
 
 
+# R17 (the Owner's ruling of 12 October, FM-061): `--vendor` takes only a tagged, verified, complete release, so no seat chooses a weaker trusted pin. Its
+# two bypasses are gone: each, given, is named in one line, exit 2, before anything is read or written (`r17_removed`). A copy pinned through one before
+# runs as pinned, and `--check` and `--vendor` name it with what to do (`bypass_lines`); neither refuses it for that alone.
+R17_FLAGS = ("--partial", "--allow-untagged")
+
+
+def r17_given(argv):
+    """The flags R17 removed that the words of `argv` name, each word read as argparse reads it — the flag, `--flag=…`, or an abbreviation that names it
+    and no other option — up to a bare `--`. Read before argparse, whose `--help` and `--version` end the run (RV-3367)."""
+    options = [name for action in cli_parser()._actions for name in action.option_strings if name.startswith("--")]
+    given = set()
+    for word in argv:
+        if word == "--":
+            break
+        name = word.partition("=")[0]
+        named = [name] if name in options else [option for option in options if option.startswith(name)] if name.startswith("--") else []
+        given.update(named if len(named) == 1 else ())
+    return [flag for flag in R17_FLAGS if flag in given]
+
+
+def r17_removed(given):
+    """The one line naming each flag R17 removed that is `given`, or "" where none is."""
+    them = "it" if len(given) == 1 else "them"
+    return (f"{' and '.join(given)}: R17 removed {them} — --vendor takes only a tagged, verified, complete release: run --vendor without {them}, from a "
+            f"clean clone at v{__version__} or from that release's unpacked archive; nothing was written") if given else ""
+
+
+def pin_bypasses(m):
+    """The flags R17 removed that a checked manifest (`pin_manifest`) says its copy was vendored through, each with what it let in: `--allow-untagged`
+    for a source with no release tag (a working copy, or an archive whose manifest names none), `--partial` for a source missing files. Since 0.17.8 only
+    those flags wrote these forms; they are read as ever (R26)."""
+    if not m:
+        return []
+    return ([("--allow-untagged", "an archive whose manifest names no release tag" if m["archive"] else f"a working copy, untagged {m['untagged']}")]
+            if not m["tag"] else []) + ([("--partial", f"a source missing {', '.join(m['missing'])}")] if m["partial"] else [])
+
+
+def bypass_lines(m, copy):
+    """R17: one line for each removed flag `copy` was vendored through (`pin_bypasses`), saying what to do — a report, never a refusal."""
+    return [f"{copy} was vendored through {flag}, from {what} — R17 removed that flag: the copy runs as pinned; vendor again from a tagged, verified, "
+            f"complete release to replace it" for flag, what in pin_bypasses(m)]
+
+
 # The manifest `--vendor` writes as a PIN's first line — the only form `--check` accepts (FM-011, R1): from a git checkout, its tag and commit or
 # `untagged`; from an unpacked release archive (FM-004), only what `--vendor` checked — the tag and commit its manifest names, every file matched
 MANIFEST_RE = re.compile(r"# shoalmark (?P<version>\d+\.\d+\.\d+) · (?:(?:tag v(?P<tag>\d+\.\d+\.\d+) · commit (?P<commit>[0-9a-f]{7,40})"
@@ -10452,8 +10745,8 @@ def pin_manifest(pin_text, pinned_version):
 
 
 def pin_report():
-    """What `--check` says of a vendored copy's PIN manifest: where it came from, only once checked — a warning when it
-    was no release or is partial, and one naming what is wrong when the manifest is not what `--vendor` wrote."""
+    """What `--check` says of a vendored copy's PIN manifest: where it came from, only once checked — a warning for each flag R17 removed that it was
+    vendored through (`bypass_lines`), and one naming what is wrong when the manifest is not what `--vendor` wrote. Reports, never refusals."""
     pin = HERE / "PIN"
     if ROOT not in HERE.parents or not board_isfile(pin):  # the reading rule: the running copy's PIN and VERSION are files of the tree, as in `pin_problems`
         return []
@@ -10467,13 +10760,8 @@ def pin_report():
         source = f"an archive whose manifest names {'v' + m['tag'] if m['tag'] else 'no tag'} (commit {m['commit'][:10]}), every file matched"
     else:
         source = f"tag v{m['tag']} (commit {m['commit'][:10]})" if m["tag"] else f"untagged {m['untagged']}"
-    lines = [f"pinned {m['version']} from {source}, vendored {m['vendored']}, {'partial' if m['partial'] else 'complete'}"]
-    if not m["tag"]:
-        lines.append("warning: this copy was vendored from an archive whose manifest names no release tag — vendor again from a release's archive" if m["archive"]
-                     else "warning: this copy was vendored from a working copy, not a release — vendor again from a clone at a tag")
-    if m["partial"]:
-        lines.append(f"warning: this copy is partial — missing {', '.join(m['missing'])}")
-    return lines
+    return [f"pinned {m['version']} from {source}, vendored {m['vendored']}, {'partial' if m['partial'] else 'complete'}"] \
+        + ["warning: " + line for line in bypass_lines(m, "this copy")]
 
 
 def vendor_files():
@@ -10482,13 +10770,21 @@ def vendor_files():
     return [rel for rel in TOOL_FILES + tuple(f"brand/{n}" for n in BRAND_FILES) if (HERE / rel).is_file()]
 
 
-def vendor(dest, partial=False, allow_untagged=False):
-    """Copy this tool into `dest` and pin every file (FM-011). Refused — exit 4, nothing written — when the source is
-    not the whole tool (`TOOL_FILES`; `--partial` copies what there is and says so in the PIN), when it is no release
-    (HEAD exactly at the tag of its `VERSION`, a clean tree; `--allow-untagged` vendors it and says so), or when the copy
-    in `dest` was edited in place. The PIN's first line is the manifest: version, tag, commit, date, complete|partial. From an unpacked release archive
-    (FM-004, `archive_source`): refused unless every file it copies is the archive's `RELEASE` names, byte for byte, and its version is VERSION's; the PIN
-    then claims only that, beside the tag and commit the manifest names."""
+def clone_advice(tag):
+    """How a Git source `--vendor` refused can still be vendored: its release tag in a clean clone, or that release's unpacked archive
+    (RV-3376: recorded privately)."""
+    return f"Check out {tag} again in a clean clone and vendor from there, or vendor from that release's unpacked archive."
+
+
+def vendor(dest):
+    """Copy this tool into `dest` and pin every file (FM-011) — from a tagged, verified, complete release only (R17). Refused — exit 4, nothing written —
+    when the source is not the whole tool (`TOOL_FILES`), when it is no release (HEAD exactly at the tag of its `VERSION`, a clean tree), or when the copy
+    in `dest` was edited in place. From a Git source it copies the tag's own bytes, read from the tag's tree (`tag_files`): a file whose bytes on disk are
+    not the tag's is named and the run refused, nothing written; a file beside the tool that the tag does not hold is named and never copied. The PIN's
+    first line is the manifest: version, tag, commit, date, complete. From an unpacked release archive
+    (FM-004, `archive_source`): refused unless its `RELEASE` names a release tag, every file it copies is what that `RELEASE` names, byte for byte, and its
+    version is VERSION's; the PIN then claims only that, beside the tag and commit the manifest names. A copy in `dest` vendored through a flag R17
+    removed is named, one line for each (`bypass_lines`), by every run that reads its PIN — refused or not."""
     copied = vendor_files()
     named = pathlib.Path(dest).absolute()
     dest = pathlib.Path(os.path.realpath(named))            # a destination a person names: resolved once, where it is named
@@ -10499,64 +10795,69 @@ def vendor(dest, partial=False, allow_untagged=False):
         write_rule(named / rel)                             # before anything is read or written
         write_rule(dest / rel)
     had = (board_text(dest / "VERSION") or "").strip()     # the reading rule
+    pinned = board_text(dest / "PIN") or ""
     # the file a PIN line names is read only where the copy would overwrite it — one of `copied` — and under the reading rule
-    edited = [l.partition("  ")[2] for l in (board_text(dest / "PIN") or "").splitlines()
+    edited = [l.partition("  ")[2] for l in pinned.splitlines()
               if not l.startswith("#") and l.partition("  ")[2] in copied and board_isfile(dest / l.partition("  ")[2])
               and digest(dest / l.partition("  ")[2]) != l.partition("  ")[0]]
+    for line in bypass_lines(pin_manifest(pinned, had)[0], f"the copy in {dest}"):     # R17: an earlier bypass is named, never a silent loss
+        print("note: " + line)
     if edited:
         print(f"--vendor: {', '.join(edited)} in {dest} was edited in place — its changes would be lost. Move them upstream first, or delete the copy.", file=sys.stderr)
         return EXIT_LINT
     data, release = {}, None
-    if archive_source():                                    # FM-004: an unpacked release archive is judged whole, and never copied in part — `--partial` or not
+    if archive_source():                                    # FM-004: an unpacked release archive is judged whole, and never copied in part
         data, release, wrong = archive_check()
         if wrong:
             print(f"--vendor: {HERE} is an unpacked release archive, and {wrong}; nothing was written. Download the release's archive again and check its "
                   "SHA-256 against the pin published beside it.", file=sys.stderr)
             return EXIT_LINT
-        if not release["tag"] and not allow_untagged:
+        if not release["tag"]:                              # R17: a dry run's archive is no release, however whole
             print(f"--vendor: {HERE} is an unpacked release archive whose {RELEASE_NAME} names no release tag — a dry run's, not a release; nothing was "
-                  "written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
+                  "written. Vendor from a release's archive.", file=sys.stderr)
             return EXIT_LINT
-        missing = []
     else:
         missing = [rel for rel in TOOL_FILES if not (HERE / rel).is_file()]
-        if missing and not partial:
+        if missing:
             print(f"--vendor: {HERE} is not the whole tool — missing {', '.join(missing)}. Vendor from a clone at a release tag; "
-                  f"nothing was written. (`--partial` copies what there is and names the rest in the PIN.)", file=sys.stderr)
+                  "nothing was written.", file=sys.stderr)
             return EXIT_LINT
         try:
-            tag, sha, dirty, why = source_provenance()
+            tag, sha, _dirty, why = source_provenance()
         except OSError:
             print(f"--vendor: {HERE} holds no {RELEASE_NAME} manifest, and its Git provenance cannot be read; nothing was written. "
                   "Download the release's archive again and check its SHA-256 against the pin published beside it.", file=sys.stderr)
             return EXIT_LINT
-        if why and not allow_untagged:
-            print(f"--vendor: {why}. A consumer runs a release, never a working copy: check out v{__version__} in a clean clone "
-                  f"and vendor from there; nothing was written. (`--allow-untagged` vendors it anyway and says so in the PIN.)", file=sys.stderr)
+        if why:
+            print(f"--vendor: {why}. A consumer runs a release, never a working copy; nothing was written. {clone_advice(f'v{__version__}')}", file=sys.stderr)
             return EXIT_LINT
+        try:
+            data, beside, wrong = tag_files(tag, sha)       # the tag's own bytes, each file here compared with them
+        except OSError as e:
+            print(f"--vendor: {HERE} at {tag}: {e}; nothing was written. {clone_advice(tag)}", file=sys.stderr)
+            return EXIT_LINT
+        unheld = f"{', '.join(beside)} beside the tool, which the tag does not hold" if beside else ""
+        if wrong:
+            print(f"--vendor: {HERE} at {tag}: {wrong}" + (f"; and {unheld}" if unheld else "") + f" — nothing was written. {clone_advice(tag)}", file=sys.stderr)
+            return EXIT_LINT
+        if unheld:
+            print(f"--vendor: not copied — {unheld}; the copy holds the tag's files alone", file=sys.stderr)
+        copied = [rel for rel in copied if rel in data]     # the tag's paths alone, each from the tag's tree
     lines = []
     for rel in copied:
-        src = HERE / rel
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
-        if release is not None:
-            (dest / rel).write_bytes(data[rel])             # the bytes judged are the bytes copied
-        else:
-            shutil.copyfile(src, dest / rel)
-        pin_hash = hashlib.sha256(data[rel].replace(b"\r\n", b"\n")).hexdigest() if release is not None else digest(src)   # legacy PIN line-end normalization
-        lines.append(f"{pin_hash}  {rel}")
+        (dest / rel).write_bytes(data[rel])                 # the bytes judged are the bytes copied: the archive's, or the tag's
+        normalized = data[rel].replace(b"\r\n", b"\n")      # legacy PIN line-end normalization
+        lines.append(f"{hashlib.sha256(normalized).hexdigest()}  {rel}")
     today = datetime.date.today().isoformat()
     if release is not None:                                 # FM-004: the PIN claims only what `--vendor` checked
-        said = release["tag"] or "no tag"
-        head = [f"# shoalmark {__version__} · vendored from an archive whose manifest names {said}, commit {release['commit']}, every file matched · {today}"]
-        source = f"an archive whose manifest names {said}"
+        head = [f"# shoalmark {__version__} · vendored from an archive whose manifest names {release['tag']}, commit {release['commit']}, every file matched · {today}"]
+        source = f"an archive whose manifest names {release['tag']}"
     else:
-        head = [f"# shoalmark {__version__} · " + (f"tag {tag} · commit {sha}" if tag else f"untagged {sha[:10] or '(no git)'}" + (" (dirty)" if dirty else ""))
-                + f" · vendored {today} · {'partial' if missing else 'complete'}"]
-        head += [f"# missing: {', '.join(missing)}"] if missing else []
-        source = "tag " + tag if tag else "an untagged source, " + (sha[:10] or "no git")
+        head = [f"# shoalmark {__version__} · tag {tag} · commit {sha} · vendored {today} · complete"]
+        source = "tag " + tag
     put((dest / "PIN"), "\n".join(head + lines) + "\n")
-    print(f"vendored shoalmark {__version__} from {source} into {dest} — {len(lines)} files, pinned in PIN"
-          + (f" (was {had})" if had and had != __version__ else "") + (f" — PARTIAL: missing {', '.join(missing)}" if missing else ""))
+    print(f"vendored shoalmark {__version__} from {source} into {dest} — {len(lines)} files, pinned in PIN" + (f" (was {had})" if had and had != __version__ else ""))
     if had and had != __version__ and changes_since(had):
         print("\nWhat changes for this repository:\n\n" + changes_since(had))
     return EXIT_OK
@@ -10717,15 +11018,11 @@ HOOKS = {
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"'}     # what a hook that is not ours runs, after the interpreter, `-I` and the copy (`COPY_AT`)
-# R11, the Owner's ruling of 12 October (FM-057): NO HOOK REFRESHES THE BOARD. `--install-hook` writes none after a checkout, a merge or a rewrite; the board is
-# rebuilt by an explicit run (the plain run, `--html-only`), by the commit's own hook where a tracker is staged, and by each act right after it (`board_after_act`).
-# The three an earlier version wrote are each removed on its next run, with a line — only where the file is, byte for byte but the interpreter or command it
-# names, what that version wrote: 0.3.0 to 0.19.0 (`FORMER_PLAIN`, `post-checkout` and `post-merge`, marked `# fathom-mark` until 0.6.0), and from the hooks' copy until R11
-# (`FORMER_COPY`, all three). Any other file of those names is a person's own: it is kept, byte for byte, and named.
+HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
+              "post-checkout": "--html-only", "post-merge": "--html-only", "post-rewrite": "--html-only"}
 REFRESH_HOOKS = {"post-checkout": "checkout", "post-merge": "merge", "post-rewrite": "rebase or an amend"}
 FORMER_PLAIN = "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n"
-FORMER_COPY = {
+COPY_HOOKS = {
     name: "#!/bin/sh\n{mark} — after a " + when + ": refresh the git-ignored board, from the copy of the tool kept in the git directory (`--install-hook` writes it). It reads the tree\n"
           "# and writes the board, and runs nothing a branch brings; it never blocks a " + when + " — it exits 0, with one line where the refresh failed.\n"
           + _COPY_FIND +
@@ -10737,16 +11034,13 @@ FORMER_COPY = {
 
 
 def former_refresh_hook(name, path):
-    """R11 — what the file `path`, the hook `name` (one of `REFRESH_HOOKS`), is: "former" where it is exactly a refresh hook an earlier version wrote, but the
-    interpreter or the command it names (one line each), read with `\\r\\n` as `\\n`; "changed" where its second line is the mark such a hook opens with and the
-    rest is not that hook's; "" for any other — a person's own, a symlink, a folder, a file that cannot be read as UTF-8."""
     if path.is_symlink() or not path.is_file():
         return ""
     try:
         text = path.read_bytes().decode("utf-8").replace("\r\n", "\n")
     except (OSError, UnicodeDecodeError):
         return ""
-    shapes = [FORMER_COPY[name].format(mark=HOOK_MARK, py="\0")] + [FORMER_PLAIN.format(mark=m, cmd="\0") for m in (HOOK_MARK, LEGACY_HOOK_MARK) if name != "post-rewrite"]
+    shapes = [COPY_HOOKS[name].format(mark=HOOK_MARK, py="\0")] + [FORMER_PLAIN.format(mark=m, cmd="\0") for m in (HOOK_MARK, LEGACY_HOOK_MARK) if name != "post-rewrite"]
     if any(re.fullmatch(r"[^\n\0]+".join(re.escape(part) for part in shape.split("\0")), text) for shape in shapes):
         return "former"
     return "changed" if text.split("\n")[1:2] and text.split("\n")[1] in {shape.split("\n")[1] for shape in shapes} else ""
@@ -11284,20 +11578,20 @@ def install_hook():
         put(path, text.format(py=PY, **fill))
         path.chmod(0o755)
         print(f"wrote {path}")
-    for name, when in REFRESH_HOOKS.items():                # R11: no hook refreshes the board — an earlier version's is removed, a person's own kept, each named
+    for name, text in (COPY_HOOKS if copy_code == EXIT_OK else {}).items():
         path = hooks / name
-        if not os.path.lexists(path):
-            continue
         kind = former_refresh_hook(name, path)
-        if kind == "former":
-            path.unlink()
-            print(f"removed {path} — an earlier shoalmark wrote it to rebuild the board after every {when}; no hook does now: "
-                  f"`{CMD} --html-only` rebuilds it, and each act rebuilds it right after itself")
-        elif kind == "changed":
-            print(f"kept {path} — an earlier shoalmark wrote it, and it was changed since: it is left as it is, and still rebuilds the board after every "
-                  f"{when} — remove it, or what of it is shoalmark's, where you no longer want that")
-        else:
-            print(f"kept {path} — not one shoalmark wrote; nothing shoalmark writes runs after a {when}")
+        if os.path.lexists(path) and kind != "former":
+            if kind == "changed":
+                print(f"kept {path} — an earlier shoalmark wrote it, and it was changed since: it is left as it is, and still rebuilds the board after every "
+                      f"{REFRESH_HOOKS[name]}")
+            else:
+                print(f"{path} exists and is not shoalmark's — left alone. Add to it: `{PY} -I {COPY_AT} {HOOK_LINES[name]}`", file=sys.stderr)
+                code = EXIT_LINT
+            continue
+        put(path, text.format(py=PY, **fill))
+        path.chmod(0o755)
+        print(f"wrote {path}" + (" — replaced the refresh hook an earlier shoalmark wrote" if kind == "former" else ""))
     for line in copy_lines:
         print(line, file=sys.stderr if copy_code != EXIT_OK or line.startswith("warning:") else sys.stdout)
     return code or copy_code
@@ -11749,6 +12043,10 @@ def main(argv=None, *, _notice=True):
     for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
         if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+    removed = r17_removed(r17_given(sys.argv[1:] if argv is None else list(argv)))     # before argparse: its --help and --version end the run (RV-3367)
+    if removed:                                             # R17: a removed flag is named, never silently ignored — before anything is read or written
+        print(removed, file=sys.stderr)
+        return 2
     args = parse_args(argv)
     for flag, needs, alone, like in (("--tags", "--new", args.tags is not None and not args.new, '`--new KIND "the title" --tags bug`'),
                                      ("--supersede", "--answer", args.supersede and not args.answer, '`--answer <id> accept|reject "<option>" --supersede`')):
@@ -11786,6 +12084,8 @@ def main(argv=None, *, _notice=True):
             return EXIT_LINT
     if args.root:
         configure(args.root)
+    global BOARD_READS
+    BOARD_READS = not any(vars(args).get(flag) for flag in ACT_RUNS)
     if tortoise:
         try:
             svn_local_directory(".")                      # A's validated local WC binding, never a server read
@@ -11813,14 +12113,14 @@ def main(argv=None, *, _notice=True):
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
         if not limitation:
-            return vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+            return vendor(args.vendor)
         # FM-004: a --vendor refusal keeps its one line, the Subversion notice folded in (" — " + notice) as --tsvn-hook's and the
         # preflight's are, whichever function refuses, returning or raising; any other run of it says the notice once, on its own line
         import io
         said, code = io.StringIO(), None
         stderr, sys.stderr = sys.stderr, said
         try:
-            code = vendor(args.vendor, partial=args.partial, allow_untagged=args.allow_untagged)
+            code = vendor(args.vendor)
         except SystemExit as stop:
             code = stop.code
             raise
@@ -11955,9 +12255,7 @@ def main(argv=None, *, _notice=True):
 
     unknown = [t["id"] for t in trackers if t["status"] == "?"]
     global _ASK_ORIGIN
-    _ASK_ORIGIN = (mode in ("check", "write") and not args.print_written and vcs() == "git"       # `--check`, or the default run, on a clean tree: the
-                   and not worktree_edited(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                                                                     errors="replace", env=nested_git_env())))      # runs that walk the branch's commits — no hook's (v0.19.1)
+    _ASK_ORIGIN = mode in ("check", "write") and not args.print_written and vcs() == "git"
     problems = pin_problems() + lint(trackers, committing=args.print_written) + derived_problems
     ledger = [p for p in problems if not checkout_finding(p)]          # FM-034: the checkout's own findings stay out of INDEX.md
     header = (                  # R21: no line here changes with the day or with another tracker, so branches that change different trackers merge
@@ -12003,6 +12301,9 @@ def main(argv=None, *, _notice=True):
             print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
         elif vcs() == "git" and _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits
             print("the branch's commits: the tree has uncommitted edits, so `--check` judged them against what HEAD holds, not the branch's commits", file=log)
+        if vcs() == "git" and _TREE_UNREAD:
+            print("the working tree: its edits were not read — git compares a file of it only through a filter driver, which no read of the tool starts, "
+                  "or the comparison failed — so `--check` judged the branch's commits, as on a clean tree", file=log)
         if freeze_retired():                                # R15: a key of the filing freeze is named, never refused (R26)
             print(freeze_retired(), file=log)
     else:

@@ -49,7 +49,7 @@ _ICO = re.escape('<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fi
 _REST = (rb"<h4>" + _T + rb"</h4><p>" + _T + rb"</p><h4>" + _T + rb"</h4><p>" + _C + rb'</p><p class="ddim">' + _T
          + rb'</p><menu><button value="done" class="go">' + _T + rb"</button></menu></form></template>")
 DAY_TEMPLATES = tuple(re.compile(t) for k in (b"standup", b"closeout") for t in (
-    rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span><span class="c">' + _T + rb'</span>(?:<button class="act" type="button" onclick="DAYOPEN\(\''
+    rb'\n<template id="day-row-' + k + rb'"><span>' + _T + rb'</span> <span class="c">' + _T + rb'</span> (?:<button class="act" type="button" onclick="DAYOPEN\(\''
     + k + rb'\'\)" aria-label="' + _A + rb'">' + _ICO + _T + rb'</button>|(?:<span class="why hot">' + _C + rb"</span>)+)</template>",
     rb'\n<template id="day-' + k + rb'"><form method="dialog" class="sign"><h3>' + _T + rb"</h3>(?:"
     + rb'<p class="said" aria-live="polite"></p><p class="dp">' + _T + rb'</p><pre class="cmd">' + _T + rb'</pre><p class="m ddim"><button type="button" class="copy" aria-label="' + _A + rb'">' + _ICO + _T
@@ -838,6 +838,94 @@ def rows_match(old, new, counted=True):
     return strip(old) == strip(new) or fm057_rows(old, new, counted)
 
 
+# THE BOARD'S SETTINGS ON EVERY READ. The candidate's starts and calls are held equal to the baseline's, in order, once these are set aside: from the
+# candidate's, the board's settings and each emptied filter driver in a start's environment (`settings_undone`), each list of the filter drivers
+# (`DRIVERS_WORDS`) and each `check-attr`, `-t` on `ls-files`, `--no-textconv` where `--text` is not beside it, and a read of the cached `origin/master`
+# directly after one of the cached `origin/main` (`TRUNK_READS`); from both, every read of the working tree's edits (`edit_read`), whose number is held on
+# its own (`edit_reads`).
+DRIVERS_WORDS = ("config", "-z", "--name-only", "--get-regexp", "^filter\\.")
+TRUNK_READS = (("rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}"), ("rev-parse", "--verify", "--quiet", "refs/remotes/origin/master^{commit}"))
+SETTING = re.compile(r"'(?:[^']|'\\'')*'")
+BOARD_KEYS = ("'log.showSignature=", "'core.fsmonitor=", "'gpg.program=", "'gpg.openpgp.program=", "'gpg.x509.program=")
+FILTER_SETTING = re.compile(r"'filter\..*\.(?:clean|smudge|process)='")
+
+
+def edit_read(words):
+    """Whether a start's words are a `diff` of one revision against the working tree: how either version reads the working tree's edits."""
+    return (bool(words) and words[0] == "diff" and "--cached" not in words and "--name-only" in words
+            and len([word for word in words[1:] if not word.startswith("-")]) == 1)
+
+
+def edit_reads(rows):
+    return sum(edit_read(git_words(row)) for row in rows)
+
+
+def origin_undone(rows):
+    """The starts or calls with these removed: each `config --get remote.origin.url`, each `ls-remote --symref origin HEAD`, and the one
+    `rev-parse --verify --quiet refs/remotes/origin/<name>^{commit}` that directly follows either. Every other start and call stays, in order."""
+    out, drop_next_rp = [], False
+    for row in rows:
+        w = git_words(row)
+        if w == ("config", "--get", "remote.origin.url") or w == ("ls-remote", "--symref", "origin", "HEAD"):
+            drop_next_rp = True
+            continue
+        if drop_next_rp and len(w) >= 2 and w[0] == "rev-parse" and "--verify" in w and any(x.startswith("refs/remotes/origin/") and x.endswith("^{commit}") for x in w):
+            drop_next_rp = False
+            continue
+        drop_next_rp = False
+        out.append(row)
+    return out
+
+
+def settings_undone(env):
+    """A start's environment with the board's settings set aside, so it can be held equal to the baseline's: the hooks path and every emptied filter driver
+    always, and the rest (`BOARD_KEYS`) where the read does not keep from fetching (`GIT_NO_LAZY_FETCH`)."""
+    if not isinstance(env, dict) or "GIT_CONFIG_PARAMETERS" not in env:
+        return env
+    kept = [s for s in SETTING.findall(env["GIT_CONFIG_PARAMETERS"]) if not s.startswith("'core.hooksPath=") and not FILTER_SETTING.fullmatch(s)
+            and (env.get("GIT_NO_LAZY_FETCH") == "1" or not s.startswith(BOARD_KEYS))]
+    out = {key: value for key, value in env.items() if key != "GIT_CONFIG_PARAMETERS"}
+    return dict(out, GIT_CONFIG_PARAMETERS=" ".join(kept)) if kept else out
+
+
+def board_settings_undone(rows, candidate):
+    """The starts or calls of a run, each read of the working tree's edits taken out; and, from the candidate's, its settings, its drivers' lists, its
+    `check-attr`, its `ls-files` tag, its `--no-textconv` outside the board's own run, and each read of `origin/master` directly after one of
+    `origin/main` (`TRUNK_READS`) — each as specified above."""
+    out, last = [], None
+    for row in rows:
+        words = git_words(row)
+        follows, last = last == TRUNK_READS[0], words
+        if edit_read(words) or (candidate and (words == DRIVERS_WORDS or words[:1] == ("check-attr",) or (words == TRUNK_READS[1] and follows))):
+            continue
+        if not candidate:
+            out.append(row)
+            continue
+        argv = list((row.get("argv") if "argv" in row else (row.get("args") or [None])[0]) or [])
+        kept = [word for word in words if not (word == "--no-textconv" and "--text" not in words) and not (words[:1] == ("ls-files",) and word == "-t")]
+        new_argv = argv[:len(argv) - len(words)] + kept if len(argv) >= len(words) else argv
+        row = dict(row)
+        if "argv" in row:
+            row["argv"] = new_argv
+            if "raw" in row:
+                row["raw"] = subprocess.list2cmdline([str(word) for word in new_argv])
+            row["environment"] = settings_undone(row.get("environment"))
+        else:
+            row["args"] = [new_argv, *(row.get("args") or [])[1:]]
+            options = dict(row.get("options") or {})
+            if "env" in options:
+                options["env"] = settings_undone(options["env"])
+            row["options"] = options
+            result = row.get("result")
+            if isinstance(result, dict) and "args" in result:
+                result = dict(result, args=new_argv)
+                if words[:1] == ("ls-files",) and "-t" in words and isinstance(result.get("stdout"), str):
+                    result["stdout"] = "\0".join(entry[2:] if len(entry) > 2 else entry for entry in result["stdout"].split("\0"))
+                row["result"] = result
+        out.append(row)
+    return out
+
+
 def fm057_board(baseline, candidate):
     """Whether the candidate's page and `view/built.json` are the baseline's but for FM-057, each read back from the bytes its run left — the hash in the
     snapshot checked: the page's rows (`T=[…]`) are the baseline's, and the record is the baseline's with exactly the four fields of what it read added — `vcs`
@@ -879,7 +967,7 @@ FM057_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
 ))
 FM057_READ_AT = re.compile("\n".encode() + re.escape('<p id="ra" class="m"><span><span class="fact">read from main @ ').encode() + rb"[0-9a-f]{7}"
                            + re.escape(" at ").encode() + rb"[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}"
-                           + re.escape('</span> · <span class="fact">it reads its file again when you come back to it; nothing polls</span></span><code id="rc" hidden>shoalmark --html-only</code>'
+                           + re.escape('&nbsp;·</span> <span class="fact">it reads its file again when you come back to it; nothing polls</span></span><code id="rc" hidden>shoalmark --html-only</code>'
                                        '<button type="button" id="rb" class="act" aria-label="copy the rebuild command"><svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 4h8v1h-8ZM0 5h1v6h-1ZM7 5h1v6h-1ZM0 11h8v1h-8ZM4 0h8v1h-8ZM4 1h1v2h-1ZM11 1h1v7h-1ZM9 7h2v1h-2Z"></path></svg>rebuild command</button>'
                                        '<span id="rs" class="said" aria-live="polite"></span></p>\n<details class="about"><summary>what this page reads, and what it cannot see</summary>'
                                        "<p class=\"help\">read from main's history at ").encode() + rb"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [+-][0-9]{2}:[0-9]{2}"
@@ -1052,6 +1140,57 @@ PR_C_JOIN_EDITS = (
      '      +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}\n'),
 )
 
+# the board's next pass: each change it makes to this fixture's page — (the joined page's text, the candidate's), whole lines and the labels
+# item by item, each where it occurs once — applied in order after the join's edits
+BOARD_POLISH_EDITS = (
+    ("/* the header line: the name, then the search as a prompt line — its box is the field's; the count stands in it. Where the line is short the\n   count wraps under the field, inside the box, and the field keeps its 200 px; on a phone the search takes a row of its own (RV-3342). The\n   count stands at the field's right edge, on the field's line where it fits and on a line of its own where it does not (BF-2) */\n",
+     ''),
+    ('#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}\n',
+     '#sb{flex:1 1 calc(200px + 4ch);display:flex;align-items:center;column-gap:1ch;border:1px solid var(--mute);padding:0 1ch;min-width:0}\n'),
+    ('#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}\n',
+     '.rd{display:inline-flex;align-items:center;gap:.7ch;color:var(--dim);cursor:pointer;white-space:nowrap}\n.rd input{-webkit-appearance:none;appearance:none;margin:0;width:13px;height:13px;border:1px solid var(--mute);border-radius:50%;background:none;flex:none;cursor:pointer}\n.rd input:checked{border-color:var(--ink);background:radial-gradient(circle,var(--bg) 0 2.5px,var(--ink) 3px)}.rd input:checked+span,.rd:hover{color:var(--ink)}\n.rd:hover input{border-color:var(--ink)}.rd input:focus-visible{outline:1px solid var(--ink);outline-offset:2px}#sl{margin-left:auto}\n#sl input{width:26px;height:14px;border-radius:7px;background:radial-gradient(circle at 6px 50%,var(--mute) 0 3.5px,transparent 4px)}\n#sl input:checked{background:radial-gradient(circle at calc(100% - 6px) 50%,var(--bg) 0 3.5px,transparent 4px) var(--ink)}\n#n{color:var(--dim)}#n:before{content:"·";content:"·" / "";color:var(--mute);margin-right:1ch}\n'),
+    ('button.act,#s,#vt button,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}\nbutton.act:hover,#s:hover,#vt button:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}\n',
+     'button.act,#dlg button{line-height:17px;border:1px solid var(--mute);background:none;color:var(--dim);padding:1px 1ch;margin:0 0 0 1ch;white-space:nowrap;vertical-align:baseline}\nbutton.act:hover,#dlg button:hover{background:var(--raise);color:var(--ink);border-color:var(--ink)}\n'),
+    ('button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}button:disabled{opacity:.4}\n',
+     'button:disabled{opacity:.4}\n'),
+    ('.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}\n',
+     '.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}#p .sh b{font-weight:600}\n'),
+    ('.vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}\n',
+     '.vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}\n.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}\ndetails.more{border-top:1px solid var(--line)}details.more>summary{color:var(--dim);padding:3px 0 3px 9ch}\ndetails.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.more[open]>summary:before{content:"v ";content:"v " / ""}\n'),
+    ('#vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}#vt button{margin:0}\n',
+     '#vt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 1ch;margin:22px 0 6px}\n#gv,#ov{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 2ch}#ov[hidden]{display:none}#gw{color:var(--dim)}\n#ov:before{content:"·";content:"·" / "";color:var(--mute);margin-right:-1ch}\n'),
+    ("/* the claim and the running line: the last line's one element `#F`; the claim shown with the board only, as when it stood in it */\n#f{color:var(--mute);margin:28px 0 0}#f:empty{display:none}#B[hidden]~#F #f{display:none}\n/* the running line: the tool's, on every screen — its mark at 16 px, the smallest size its 16-unit grid stays sharp at, the name linking to\n   the tool and leaving the board; the version to its release */\n#r{display:flex;gap:1ch;align-items:center;margin:20px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}\n/* a phone: at least 24 px for every button, a heading's state flows under its title, its marker keeping its space (BF-5); the search a header\n   row of its own, the scheme's button under it at the right edge (RV-3342) */\n@media(max-width:640px){button.act,#s,#vt button,#dlg button{min-height:24px;padding:3px 1ch}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}\n#sb{flex-basis:100%}#s{margin-left:auto}}\n/* a phone: the work table, wider than the page with its columns as they are, scrolls in its own box — the header, the box and the toolbar stay put (BF-14) */\n@media(max-width:640px){#B>table{display:block;overflow-x:auto}}\n",
+     '#r{display:flex;justify-content:flex-end;gap:1ch;align-items:center;margin:28px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}\n@media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.rv .how{padding-left:0}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}\n#sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}\n@media(max-width:640px){#B>table,#b{display:block}#B>table>thead{display:none}#b>tr:not([hidden]),#b>tr>td{display:block}#b>tr>td.x{display:none}\n#b>tr.t{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:2ch;padding-left:calc(2ch + 5px);border-top:1px solid var(--line)}#b>tr.t>td{border-top:0}\n#b>tr.t>td:first-child{margin-left:calc(-2ch - 5px)}#b>tr.t>td:last-child{flex:1 1 100%;padding-top:0;overflow-wrap:anywhere}}\n'),
+    ('@media print{#s,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}\n',
+     '@media print{#sl,#sb,#vt{display:none}:root{--bg:#fff;--ink:#000;--dim:#333;--mute:#555;--line:rgba(0,0,0,.25)}}\n'),
+    ('<div id="B"><div id="H"><b>Git entry differential fixture</b><span data-l="tagline"></span><label id="sb"><input id="q" autofocus><span id="n"></span></label><button id="s"></button></div>\n',
+     '<div id="B"><div id="H"><b>Git entry differential fixture</b><span data-l="tagline"></span><label id="sb"><input id="q" autofocus></label><label id="sl" class="rd"><input type="checkbox" role="switch" id="s"><span data-l="scheme.toggle"></span></label></div>\n'),
+    ('<div id="vt"><button id="g" aria-pressed="true"></button><button id="o" aria-pressed="true" data-l="view.open"></button><button id="a" aria-pressed="false" data-l="view.all"></button>\n',
+     '<div id="vt"><span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup" aria-labelledby="ovo ova"><label class="rd"><input type="radio" name="ov" value="open" checked><span id="ovo" data-l="view.open"></span></label><label class="rd"><input type="radio" name="ov" value="all"><span id="ova" data-l="view.all"></span></label></span><span id="n"></span>\n'),
+    ('<footer id="F"><p id="f" class="m" data-l="footer"></p>\n<p id="r" class="m"><a href="https://github.com/shoalmark/shoalmark" target="_blank" rel="noopener" aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"></path></svg>shoalmark<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 2h4v1h-4ZM0 3h1v8h-1ZM9 8h1v3h-1ZM0 11h10v1h-10ZM6 0h6v1h-6ZM11 1h1v5h-1ZM10 1h1v1h-1ZM9 2h1v1h-1ZM8 3h1v1h-1ZM7 4h1v1h-1ZM6 5h1v1h-1ZM5 6h1v1h-1Z"></path></svg></a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.19.4" target="_blank" rel="noopener" aria-label="release v0.19.4">v0.19.4</a></p></footer>\n',
+     '<footer id="F"><p id="r" class="m"><a href="https://github.com/shoalmark/shoalmark" target="_blank" rel="noopener" aria-label="shoalmark on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"></path></svg>shoalmark<svg class="ico" viewBox="0 0 12 12" width="12" height="12" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M0 2h4v1h-4ZM0 3h1v8h-1ZM9 8h1v3h-1ZM0 11h10v1h-10ZM6 0h6v1h-6ZM11 1h1v5h-1ZM10 1h1v1h-1ZM9 2h1v1h-1ZM8 3h1v1h-1ZM7 4h1v1h-1ZM6 5h1v1h-1ZM5 6h1v1h-1Z"></path></svg></a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/v0.19.4" target="_blank" rel="noopener" aria-label="release v0.19.4">v0.19.4</a></p></footer>\n'),
+    ('"tagline": "", "footer": "", ',
+     '"tagline": "", "lang": "en", '),
+    ('"view.all": "all", "scheme.auto": "auto", "scheme.light": "light", "scheme.dark": "dark", "scheme.button": "light or dark: {0}", ',
+     '"view.all": "all", "scheme.toggle": "dark", '),
+    ('"reviews.sessions.more": "{0} and {1} more", ',
+     '"reviews.sessions.more": "{0} and {1} more", "reviews.more": "and {0} more verdicts by another session this week", "reviews.more.one": "and 1 more verdict by another session this week", '),
+    ('  // …and the week\'s verdicts and who gave them: folded, its heading carrying the counts in words — reports, not proofs; one row per verdict\n  // a verdict\'s branch (RV-3343): the one that holds the verdict on its own line, or the merge that names it; else ambiguous or not known, with why —\n  // in the row\'s own colour: nothing on a verdict\'s row is coloured but its word (G3, BF-10)\n  const brn=b=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,`<code>${esc(b[2].slice(0,10))}</code>`)\n',
+     '  const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,\n  brn=(b,u)=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))\n'),
+    ('    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",`<code>${esc(b[1].slice(0,10))}</code>`):l("reviews.branch.none"))}</i>`;\n  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"};\n',
+     '    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none"))}</i>`;\n  if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"},\n    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]),v[5]?l("verdict."+v[5]):l("type.verdict"),\n        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),\n    folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG"),week=REG.verdicts||[],more=week.filter(folds);\n'),
+    ('      (REG.verdicts||[]).map(v=>row(`<code>${esc(v[0].slice(0,10))}</code>`,lh("reviews.on",`<code>${esc(v[1].slice(0,10))}</code>`)+" · "+brn(v[6]||["none"]),v[5]?l("verdict."+v[5]):l("type.verdict"),\n        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",VERDICT[v[5]])).join(""),false))}\n',
+     '      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}\n'),
+    ('  $("o").hidden=$("a").hidden=gname=="board";   // the board shows everything — open/all has nothing to say there\n  $("g").textContent=L["view.by"].replace("{0}",vn(gname));$("p").hidden=gname!="board"||!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(gname=="board"&&!q?box():"");   // the box keeps its title in every view (FM-002 R2)\n',
+     '  $("ov").hidden=gname=="board";\n  for(const r of document.querySelectorAll("#gv input,#ov input"))r.checked=r.name=="gv"?+r.value==gi:(r.value=="all")==all;\n  $("p").hidden=!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(!q?box():"");\n'),
+    ('$("g").onclick=()=>{gi=(gi+1)%GROUPS.length;draw()};\nfor(const[id,v]of[["o",false],["a",true]])$(id).onclick=()=>{all=v;$("o").setAttribute("aria-pressed",!v);$("a").setAttribute("aria-pressed",v);draw()};\n',
+     '{const [w,rest]=(L["view.by"]??"by {0}").split("{0}");$("gv").innerHTML=`<span id="gw">${esc(w.trim())}</span>`\n  +GROUPS.map(([g],i)=>`<label class="rd"><input type="radio" name="gv" value="${i}"${i==gi?" checked":""}><span>${esc(vn(g))}</span></label>`).join("")+(rest?.trim()?`<span>${esc(rest.trim())}</span>`:"")}\n$("gv").onchange=e=>{gi=+e.target.value;draw()};\n$("ov").onchange=e=>{all=e.target.value=="all";draw()};\n'),
+    ('// light or dark is the viewer\'s choice: auto follows the system; the other two switch the page\'s own\n// `prefers-color-scheme` rules on or off. Paper stays light.\nconst ORIG=new Map(),SCHEMES=["auto","light","dark"],PCS=/\\(\\s*prefers-color-scheme\\s*:\\s*(dark|light)\\s*\\)/g;\nlet scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(!SCHEMES.includes(scheme))scheme="auto";\n',
+     '// WebKit draws an image\'s own `prefers-color-scheme` rules by the system\'s scheme, never the page\'s: the logo\'s SVG is written again with\n// the rule of the scheme in effect on\nconst ORIG=new Map(),PCS=/\\(\\s*prefers-color-scheme\\s*:\\s*(dark|light)\\s*\\)/g,SYS=matchMedia("(prefers-color-scheme: dark)"),sys=()=>SYS.matches?"dark":"light",\nLOGO=(i=>i&&/^data:image\\/svg\\+xml;base64,/.test(i.getAttribute("src"))?[i,new TextDecoder().decode(Uint8Array.from(atob(i.getAttribute("src").slice(26)),c=>c.charCodeAt(0)))]:null)(document.querySelector("#H>img"));\nlet scheme="auto";try{scheme=localStorage.getItem("shoalmark.scheme")||"auto"}catch(e){}if(scheme!="light"&&scheme!="dark")scheme="auto";\n'),
+    ('  document.documentElement.style.colorScheme=m=="auto"?"":m},\nsetScheme=m=>{scheme=m;paint(m);$("s").textContent=(L["scheme.button"]??"{0}").replace("{0}",L["scheme."+m]??m);$("s").dataset.scheme=m;try{localStorage.setItem("shoalmark.scheme",m)}catch(e){}};\n$("s").onclick=()=>setScheme(SCHEMES[(SCHEMES.indexOf(scheme)+1)%3]);setScheme(scheme);addEventListener("load",()=>paint(scheme));\n',
+     '  document.documentElement.style.colorScheme=m=="auto"?"":m;const e=m=="auto"?sys():m;\n  if(LOGO)LOGO[0].src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(LOGO[1].replace(PCS,(x,w)=>w==e?"(min-width:0px)":"(max-width:0px)"))},\nsetScheme=m=>{scheme=m;paint(m);$("s").checked=(m=="auto"?sys():m)=="dark";try{m=="auto"?localStorage.removeItem("shoalmark.scheme"):localStorage.setItem("shoalmark.scheme",m)}catch(e){}};\n$("s").onchange=()=>{const want=$("s").checked?"dark":"light";setScheme(want==sys()?"auto":want)};\nSYS.addEventListener?.("change",()=>setScheme(scheme));setScheme(scheme);addEventListener("load",()=>paint(scheme));\n'),
+)
+
 
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
@@ -1060,7 +1199,7 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
@@ -1338,7 +1477,6 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         setup("clone", "--bare", "-q", str(root), str(origin), cwd=top)
         setup("remote", "add", "origin", str(origin))
         setup("update-ref", "refs/remotes/origin/main", "HEAD")
-        # Deliberately absent origin/HEAD requires a real local ls-remote on a clean walk.
         assert setup("status", "--porcelain", "--untracked-files=all") == ""
         saved = top / "saved-consumer"
         shutil.copytree(root, saved)
@@ -1376,6 +1514,9 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 observed = invoke(tool, root, flags, launch, entry_env)
                 observed.update(case=label, version=version, initial_git_status=initial_status,
                                 foreign_before=foreign_before, foreign_after=snapshot(foreign))
+                observed.update(starts_raw=observed["starts"], run_calls_raw=observed["run_calls"],
+                                starts=board_settings_undone(observed["starts"], version == "candidate"),
+                                run_calls=board_settings_undone(observed["run_calls"], version == "candidate"))
                 rows.append(observed); pair.append(observed)
             before, after = pair
             label_prefix = "Git entry " + label + ": "
@@ -1391,16 +1532,23 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                                (before["status"], before["stdout"], before["stderr"]) == said)
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
-            assert_control(label_prefix + "all actual process argv/effective cwd/env match, but for FM-057's reads, and FM-054's reads of the default branch's "
-                           "configuration set aside, each a read",
-                           rows_match(before["starts"], fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
+            assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
+                           "reads of the default branch's configuration, each a read, are set aside",
+                           rows_match(origin_undone(before["starts"]), fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
                            and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"])))
-            assert_control(label_prefix + "run options and actual process results match, but for FM-057's reads, and FM-054's reads set aside, each a read",
-                           rows_match(before["run_calls"], fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
+            assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
+                           "reads, each a read, are set aside",
+                           rows_match(origin_undone(before["run_calls"]), fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"])))
+            assert_control(label_prefix + "the candidate reads the working tree's edits once where the baseline reads them, and not where it does not",
+                           edit_reads(after["starts_raw"]) == (1 if edit_reads(before["starts_raw"]) else 0))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
-            assert_control(label_prefix + "actual main state/result and selected origin policy match", before["main_returns"] == after["main_returns"]
-                           and bool(after["main_returns"]) and after["main_returns"][-1]["ASK_ORIGIN"] is ask)
+            unasked = lambda entries: [{key: value for key, value in entry.items() if key != "ASK_ORIGIN"} for entry in entries]
+            refuses = ask or label in ("dirty-check-fallback", "dirty-default-fallback")
+            assert_control(label_prefix + "actual main state/result match with `ASK_ORIGIN` set aside; the baseline's origin policy is the case's, and the "
+                           "candidate's is set for `--check` and the default run whatever the working tree holds",
+                           unasked(before["main_returns"]) == unasked(after["main_returns"]) and bool(after["main_returns"])
+                           and before["main_returns"][-1]["ASK_ORIGIN"] is ask and after["main_returns"][-1]["ASK_ORIGIN"] is refuses)
             assert_control(label_prefix + "Git entry emits no SVN limitation", "protected SVN acceptance" not in before["stdout"] + before["stderr"] + after["stdout"] + after["stderr"])
             assert_control(label_prefix + "production writes confined to disposable fixture", all(Path(value).is_relative_to(top)
                            for observed in pair for write in observed["writes"] for key, value in write.items() if key in ("path", "destination")))
@@ -1408,21 +1556,27 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             if readonly:
                 assert_control(label_prefix + "read-only entry leaves consumer snapshot identical", all(observed["before"] == observed["after"] for observed in pair))
             if label in ("clean-check-origin", "dirty-check-fallback", "clean-default-origin", "dirty-default-fallback"):
-                main_probe = lambda observed: [row for row in observed["starts"] if same_start(row["argv"], row.get("raw"), ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"])
-                                              and "main" in row["product_stack"] and "worktree_edited" in row["product_stack"]
-                                              and "read_changes" not in row["product_stack"]]
+                probe_argv = {"baseline": ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"],
+                              "candidate": ["git", "diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", "HEAD"]}
+                main_probe = lambda observed: [row for row in observed["starts_raw"] if same_start(row["argv"], row.get("raw"), probe_argv[observed["version"]])
+                                              and ("main" in row["product_stack"] and "worktree_edited" in row["product_stack"]
+                                                   and "read_changes" not in row["product_stack"] if observed["version"] == "baseline"
+                                                   else "worktree_edits" in row["product_stack"])]
                 probes = [main_probe(observed) for observed in pair]
-                assert_control(label_prefix + "converted main probe actually runs once at consumer cwd", all(len(probe) == 1 and probe[0]["cwd"] == str(root) for probe in probes))
-                assert_control(label_prefix + "converted probe drops all eight actual hook/pathspec contamination keys", all(set(POISON_KEYS).issubset(observed["invocation_environment"])
+                assert_control(label_prefix + "the working tree's edit read actually runs once at consumer cwd: the baseline's from `main`'s probe, the "
+                               "candidate's from `worktree_edits`", all(len(probe) == 1 and probe[0]["cwd"] == str(root) for probe in probes))
+                assert_control(label_prefix + "that read drops all eight actual hook/pathspec contamination keys", all(set(POISON_KEYS).issubset(observed["invocation_environment"])
                                and len(probe) == 1 and not set(POISON_KEYS).intersection(probe[0]["environment"]) for observed, probe in zip(pair, probes)))
-                assert_control(label_prefix + "candidate routes that probe through common boundary", all("vcs_process" in row["product_stack"] for row in probes[1])
-                               and all("vcs_process" not in row["product_stack"] for row in probes[0]))
+                assert_control(label_prefix + "candidate routes that read through common boundary", len(probes[1]) == 1
+                               and all("vcs_process" in row["product_stack"] for row in probes[1]) and all("vcs_process" not in row["product_stack"] for row in probes[0]))
                 if condition == "dirty":
                     assert_control(label_prefix + "dirty tree selects uncommitted fallback", all(observed["main_returns"][-1]["WALK"] == "uncommitted" for observed in pair))
+                asks = lambda observed: sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts_raw"])
                 if label == "clean-default-origin":
-                    assert_control(label_prefix + "clean default actually reads local origin once", all(sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts"]) == 1 for observed in pair))
+                    assert_control(label_prefix + "clean default starts no `ls-remote --symref origin HEAD`, and `origin_undone` removes exactly one from the baseline's starts",
+                                   asks(after) == 0 and asks(before) == 1)
                 if label == "dirty-default-fallback":
-                    assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts"]) for observed in pair))
+                    assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts_raw"]) for observed in pair))
 
         # R13's allowance is held to its one line on the real ratio-window pair: anything else the candidate says differently does not match.
         old13, new13 = (next(row for row in rows if row["case"] == R13_CASES[0] and row["version"] == version) for version in ("baseline", "candidate"))
@@ -1477,20 +1631,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         allowance = "Git entry FM-057 allowance: "
         new_starts, new_calls = fm054_own(new["starts"]), fm054_own(new["run_calls"])
         page, record = (base64.b64decode(new["board_after"][path]["bytes_base64"]) for path in (PAGE_PATH, BUILT_PATH))
-        assert_control(allowance + "the default run's starts and calls differ by FM-057's reads alone, its page and record by what it read, and equal runs still match",
-                       old["starts"] != new_starts and fm057_rows(old["starts"], new_starts) and fm057_rows(old["run_calls"], new_calls)
+        old_ou = origin_undone(old["starts"])
+        assert_control(allowance + "the default run's starts and calls differ by FM-057's reads and the starts `origin_undone` removes alone, its page and record by what it read, and equal runs match",
+                       old["starts"] != new_starts and fm057_rows(old_ou, new_starts) and fm057_rows(origin_undone(old["run_calls"]), new_calls)
                        and fm057_board(old, new) and rows_match(new_starts, new_starts) and snapshots_match(new, new))
         extra = dict(new_starts[0], argv=new_starts[0]["argv"][:1] + ["status", "--porcelain"])
         at = next(i for i, row in enumerate(new_starts) if git_words(row) == FM057_READS[2])
         assert_control(allowance + "one start more, or FM-057's reads apart or with one missing, does not match",
-                       not rows_match(old["starts"], new_starts + [extra])
-                       and not rows_match(old["starts"], new_starts[:at] + [extra] + new_starts[at:])
-                       and not rows_match(old["starts"], new_starts[:at] + new_starts[at + 1:]))
+                       not rows_match(old_ou, new_starts + [extra])
+                       and not rows_match(old_ou, new_starts[:at] + [extra] + new_starts[at:])
+                       and not rows_match(old_ou, new_starts[:at] + new_starts[at + 1:]))
         bare = [row for row in new_starts if git_words(row) not in FM057_READS[2:]]
         assert_control(allowance + "a run that reads no changed path, as the board's own run (`--html-only`) does, differs by the two moved reads alone; the "
                        "changed-path reads where none are read, or none where a run counts them, do not match",
-                       len(bare) == len(new_starts) - 2 and fm057_rows(old["starts"], bare, counted=False)
-                       and not fm057_rows(old["starts"], new_starts, counted=False) and not fm057_rows(old["starts"], bare, counted=True))
+                       len(bare) == len(new_starts) - 2 and fm057_rows(old_ou, bare, counted=False)
+                       and not fm057_rows(old_ou, new_starts, counted=False) and not fm057_rows(old_ou, bare, counted=True))
         row = PAGE_ROWS.search(page).group(1).split(b"\n")[0]
         built = json.loads(record)
         assert_control(allowance + "a page whose rows differ, or a record with a basis value changed, a field missing or a fifth field added, does not match",
@@ -1535,6 +1690,33 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
                        f"does not name does not match (each variant made: {made057})",
                        all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
+        settings = "Git entry board settings allowance: "
+        raw = new["starts_raw"]
+        reads = [i for i, row in enumerate(raw) if "GIT_CONFIG_PARAMETERS" in (row.get("environment") or {}) and git_words(row)[:1] == ("log",)
+                 and fm054_own([row])]
+        def changed(i, **change):
+            return raw[:i] + [dict(raw[i], **change)] + raw[i + 1:]
+        if reads:
+            at = reads[0]
+            env_ = dict(raw[at]["environment"], GIT_CONFIG_PARAMETERS=raw[at]["environment"]["GIT_CONFIG_PARAMETERS"] + " 'core.pager=more'")
+            argv_ = raw[at]["argv"] + ["--text"]
+        assert_control(settings + "the default run's starts differ from the baseline's by the board's settings, the drivers' lists, the tag, the flag, the "
+                       "read of `origin/master`, the edits read once, the starts `origin_undone` removes and FM-054's reads alone; left in, they do not match",
+                       bool(reads) and rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw, True))) and not rows_match(old["starts"], raw))
+        assert_control(settings + "a start with a setting the board's are not, or with `--text` beside `--no-textconv` outside the board's own run, does not "
+                       "match",
+                       bool(reads) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, environment=env_), True)))
+                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, argv=argv_), True))))
+        ask_row = next((row for row in old["starts"] if git_words(row) == ("ls-remote", "--symref", "origin", "HEAD")), None)
+        assert_control("Git entry origin-ask allowance: the candidate starts no `ls-remote --symref origin HEAD`, and its starts with one added do not match "
+                       "once `origin_undone` has removed the baseline's",
+                       ask_row is not None and not any(git_words(row) == ("ls-remote", "--symref", "origin", "HEAD") for row in raw)
+                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw + [ask_row], True))))
+        pairs = [i for i in range(1, len(raw)) if git_words(raw[i]) == TRUNK_READS[1] and git_words(raw[i - 1]) == TRUNK_READS[0] and fm054_own([raw[i]])]
+        moved = raw[:pairs[0]] + raw[pairs[0] + 1:] + [raw[pairs[0]]] if pairs else raw
+        assert_control("Git entry trunk-read allowance: the clean default run reads the cached `origin/master` directly after `origin/main`, and is taken "
+                       "out only there; the same read anywhere else does not match",
+                       bool(pairs) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(moved, True))))
         # FM-054's allowance is held to its difference on the same pair: the page carries PROOF, and only `proof_reading`'s reads are new
         fm054 = "Git entry FM-054 allowance: "
         reads = fm054_reads(new["starts"])
@@ -1543,7 +1725,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         unstacked = [dict(row, product_stack=[s for s in row["product_stack"] if s != "proof_reading"]) for row in new["starts"]]
         strip = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
         assert_control(fm054 + "the same reads made outside `proof_reading` are not set aside, and do not match the baseline's starts",
-                       not rows_match(old["starts"], fm054_own(unstacked)) and rows_match(old["starts"], fm054_own(new["starts"])))
+                       not rows_match(origin_undone(old["starts"]), fm054_own(unstacked)) and rows_match(origin_undone(old["starts"]), fm054_own(new["starts"])))
         writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
         assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
                        bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))

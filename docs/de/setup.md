@@ -1,11 +1,11 @@
 # In zehn Minuten eingerichtet
 
-*Für die Person, der das Repository gehört. Python 3.9 oder neuer ist die einzige Voraussetzung.*
+*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.*
 
 ## 1. Das Werkzeug ins Repository legen
 
 ```
-git clone --branch v0.20.0 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
+git clone --branch v0.20.1 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
 cd <Ihr Repository>
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
@@ -36,11 +36,11 @@ python3 tools/shoalmark/shoalmark.py --install-hook
 ```
 
 - **git:** einfache Hooks — der Index wird bei jedem Commit erzeugt und geprüft; ein Arbeitspaket, das sich widerspricht, wird abgelehnt.
-- **Subversion:** die TortoiseSVN-Hook-Eigenschaften und `svn:ignore` für die Tafel. Die Subversion-Kommandozeile
+- **Subversion:** die TortoiseSVN-Hook-Eigenschaften und `svn:ignore` für das Board. Die Subversion-Kommandozeile
   kennt keinen Client-Hook — der Vertrag sagt den Agenten, das Werkzeug vor jedem `svn commit` laufen zu lassen.
   `--check` nach dem Commit beurteilt ihn.
 
-Ein Hook-Lauf und der Tafellauf mit `--html-only` sind standardmäßig auf 60 s begrenzt; `SHOALMARK_BOARD_SECONDS` setzt die Grenze.
+Ein Hook-Lauf und der Board-Lauf mit `--html-only` sind standardmäßig auf 60 s begrenzt; `SHOALMARK_BOARD_SECONDS` setzt die Grenze.
 Ausdrückliche Befehle einer Person wie `--answer` und `--check` sind unbegrenzt, auch mit der Hook-Kopie.
 Alle bisherigen Beschränkungen der Kopie bleiben bestehen. Für die Laufzeit liest das Werkzeug die geparsten Argumente:
 Hook-Modi (`--session-check`, `--session-trailer`, `--commit-msg`, `--print-written`, `--tsvn-hook`, `--html-only`)
@@ -72,7 +72,7 @@ Lesen der Konfiguration ab.
 **Sessions.** Neben seinem Sitz trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
 und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`, daneben den Worktree. Das Gate lehnt
 den Commit eines Sitzes ohne eine Session seines eigenen Sitzes ab; `--sessions` liest allein aus diesen Zeilen ab, wer
-was wann und wo gemacht hat, und die Tafel zeigt, wer am letzten Tag gearbeitet hat. Das erledigen Ihre Agenten.
+was wann und wo gemacht hat, und das Board zeigt, wer am letzten Tag gearbeitet hat. Das erledigen Ihre Agenten.
 Ihre eigenen Commits tragen keine Session: Ihre Signatur ist Ihr Ausweis.
 
 ## 5. Zwei Dinge schreiben, die nur Sie können
@@ -80,11 +80,20 @@ Ihre eigenen Commits tragen keine Session: Ihre Signatur ist Ihr Ausweis.
 `docs/work-tracker/TRIAGE.md` öffnen. **Die Absicht** — *für · damit · niemals*, in Ihren Worten — und **der aktuelle
 Weg**: was zuerst kommt. Agenten lesen beides vor jeder Bewertung. Alles andere überlassen Sie ihnen.
 
-## 6. Die Tafel öffnen
+## 6. Das Board öffnen
 
-`docs/work-tracker/index.html` — sie ist git-ignoriert und wird neu gebaut, wenn das Werkzeug läuft, bei einem Commit, der ein
-Arbeitspaket ändert, und gleich nach jeder Ihrer Antworten und Handlungen; unter Subversion bei einem Commit über TortoiseSVN oder
-wenn das Werkzeug läuft. Nach einem Checkout, einem Merge oder einem Update baut sie nichts neu: das tut `--html-only`. Ihre erste Zeile zeigt, was auf Sie wartet. `standup = "09:00"` in `shoalmark.toml` setzt die Uhrzeit Ihres Standups.
+`docs/work-tracker/index.html` — es ist git-ignoriert und wird neu gebaut, wenn das Werkzeug läuft, bei einem Commit, der ein
+Arbeitspaket ändert, und gleich nach jeder Ihrer Antworten und Handlungen. Unter git bauen `post-checkout`, `post-merge` und
+`post-rewrite` es auch nach einem Checkout oder Wechsel, einem Merge (einschließlich eines Pulls mit Fast-Forward) oder einem
+Rebase neu: aus der Kopie der Hooks, mit `--html-only`. Führen Sie `--install-hook` erneut aus, um die von v0.20.0 entfernten
+Hooks wieder einzurichten. Das Board sagt, was es gelesen hat und wann. Seine erste Zeile zeigt, was auf Sie wartet.
+Unter Subversion wird es bei einem Commit über TortoiseSVN oder beim Lauf des Werkzeugs neu gebaut; nach `svn update`
+führen Sie `--html-only` aus.
+
+**Grenze:** git hat keinen Hook nach einem bloßen `git fetch`. Kommt ein Antwort-Branch allein durch Fetch an, bleibt die
+Anzeige *unterwegs* auf dem Board wie zuvor, bis zu einem Checkout, einem Merge oder `--html-only`.
+
+Wenn Sie eine feste Uhrzeit für Ihren Standup wollen, setzen Sie `standup = "09:00"` in `shoalmark.toml`. Ohne sie halten Sie den Standup, wann immer es Ihnen passt: siehe [Der Standup](standup.md).
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

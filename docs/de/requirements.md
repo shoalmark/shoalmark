@@ -19,7 +19,7 @@ Diese Seite wiederholt sie nicht.
 
 ## Ihr Teil
 
-Eine Anforderung ändert sich nur durch Ihre signierte Antwort über die Tafel — nie durch die Änderung eines Sitzes. Die
+Eine Anforderung ändert sich nur durch Ihre signierte Antwort über das Board — nie durch die Änderung eines Sitzes. Die
 Id bleibt, die Zeile ändert sich, Git bewahrt den Verlauf. Findet ein Sitz eine Zeile falsch, stellt er eine Frage an
 Sie. *Nicht anwendbar* ist eine signierte Antwort mit ihrer Begründung, nie die eines Sitzes.
 

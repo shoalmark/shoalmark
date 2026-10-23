@@ -9,21 +9,19 @@ template: landing.html
 
 *A workbench for your agents. Your decisions on record.*
 
-## The agents keep the work; the person keeps the word.
+## The agents do the work; you have the final word.
 
 See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.
 
-**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**
+--8<-- "start.en.md"
 
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
-sentence per question, once a day, and make their answer one command.
+sentence per question, for their stand-up, whenever it suits them, and make their answer one command.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
-questions for a sitting at the time you choose.
+questions on the board until it suits you.
 
-[Why shoalmark?](why-shoalmark.md)
-
-**Your agents move on your word — and only your signed word counts.** In the record, an answer counts only as a commit
+**Your answer is a commit, never a click or a line in chat.** In the record, an answer counts only as a commit
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as
 [the set-up page](setup.md) writes it. Under Subversion, it counts only as a commit the server authenticated as you. A
 click, a merge or a line in chat is not an answer. How strong that signature is, you choose — [four tiers](signing.md),
@@ -35,6 +33,8 @@ made it.
 Ticket systems were built for people handing work to people. shoalmark is built for your agents: the work record lives in the repository they work in, and your answers are your own commits there.
 
 If your current tracker already handles the handovers and decisions you need, that may be enough. shoalmark brings its own tracker; adopting it means deciding which record is the one that counts.
+
+[Why shoalmark?](why-shoalmark.md)
 
 ## Measured, not promised
 
@@ -66,26 +66,30 @@ What shoalmark prints for it, every day:
 4. **You** write three lines in your own words: what the repository is for, what is true when it works, and what
    nobody may do to get there. Then you set up your signature, once ([ten minutes](signing.md)).
 
-**You lose nothing.** What you keep today stays where it is: shoalmark changes only what it wrote itself.
+**Nothing overwritten.** What you keep today stays where it is: shoalmark writes only its own files and never overwrites
+a file or a hook it did not write. Nothing ties you to it: the record stays in your repository, as plain Markdown and
+your own commits.
 
 ## What a day costs you
 
-- **One sitting, fifteen minutes**, at the time you choose.
-- **One command per answer:** `--answer AP-007 accept`. It writes the answer, signs it with your key and pushes it.
-- **The rest comes to you:** every session's last message ends with what waits for you. You open nothing.
+- **One stand-up, whenever it suits you**, one click copies the stand-up prompt; the board's first lines are its agenda.
+- **One command per answer:** `--answer AP-007 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
+- **The rest is on the board:** your agents are asked to end each session with what waits for you, and the board puts it
+  first.
 
 ## What it is not
 
-shoalmark needs no server and no account, and its ids are ones you can say out loud, like FM-012. One Markdown file per
-work item, one Python file, and checks you can run locally and in your project's CI. Runs with git on Windows, macOS
-and Linux. Licence: Apache-2.0 or MIT.
+shoalmark needs Python 3.9 or newer and nothing else: no dependencies, and no server, database or account of its own.
+Its ids are ones you can say out loud, like FM-012. One Markdown file per work item, one Python file, and checks you can
+run locally and in your project's CI. Your project can be in any language. Runs with git on Windows, macOS and Linux.
+Licence: Apache-2.0 or MIT.
 
 **In this beta:**
 
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
-- *Not proof that work is right.* In Git or Subversion changes being checked, a move to `Shipped` must name in its ship log a commit already in that change's history that changes something outside the records (on Subversion, a revision). This evidence rule does not cover `Closed`. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing `--check` on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. Signed answers need `git`, and the pull-request queue `git` and GitHub.
+- *Not proof that work is right.* Under Git or Subversion, a checked change that moves a work item to `Shipped` must name, in the item's ship log, a commit that is already in that change's history and changes something outside the records (on Subversion, a revision). This evidence rule does not cover `Closed`. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing `--check` on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
 
 ## Start here
 

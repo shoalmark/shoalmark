@@ -1,0 +1,1 @@
+The button "Hand your agents the note" leads to `ADOPT.md`, a note for your project's agents. It invites them to a measurement, not an instruction: about twenty minutes, everything in a throwaway folder, nothing in the real working directory. At the end the agents report to you, and you decide.
