@@ -5904,14 +5904,15 @@ _CLAIM_PARTS = {"en": ('<a href="why-shoalmark.html">Why shoalmark?</a>', 'Built
                        'Die Werft auf X verfolgen: <a href="https://x.com/holgo99">@holgo99</a>')}
 _CLAIM_SEEN = {"en": "Why shoalmark? · Built in the open: github.com/shoalmark/shoalmark · Follow the shipyard on X: @holgo99",
                "de": "Warum shoalmark? · Offen gebaut: github.com/shoalmark/shoalmark · Die Werft auf X verfolgen: @holgo99"}
-_CLAIM_CSS = (".foot-band .claim>span{white-space:nowrap}",
-              "@media (max-width:640px){.foot-band .claim>span{display:block;white-space:normal}.foot-band .claim .sep{display:none}}")
+_CLAIM_CSS = (".foot-band .claim>span:not(.sep){white-space:nowrap}",
+              "@media (max-width:640px){.foot-band .claim>span:not(.sep){display:block;white-space:normal}.foot-band .claim .sep{display:none}}")
 
 
 def _claim_problems(src):
     """What is wrong with the landing footer's first line, one line each: each words file's foot_claim is the pitch page's link, then the contact line,
-    each part a span of its own and a separator span between, reading as the Owner's line; the template keeps each part whole and stacks the parts on a
-    phone, hiding the separators, as the pitch page's contact line does."""
+    each part a span of its own and a separator span between, reading as the Owner's line; the template keeps each part whole, so the line wraps only at
+    its separators, and stacks the parts on a phone, hiding the separators, as the pitch page's contact line does: there a part wider than the screen
+    wraps inside itself, as on the pitch page."""
     words, bad = _landing_words(src)
     for lang, parts in _CLAIM_PARTS.items():
         claim = words.get(lang, {}).get("foot_claim", "")
@@ -5921,6 +5922,8 @@ def _claim_problems(src):
             bad.append(f"{lang}.html's foot_claim does not read as the Owner's line")
     if not all(rule in src["overrides/landing.html"] for rule in _CLAIM_CSS):
         bad.append("the template does not keep the footer's parts whole, or does not stack them on a phone")
+    if ".foot-band .claim>span{white-space:nowrap}" in src["overrides/landing.html"]:
+        bad.append("the template keeps the whole footer line from wrapping: its separators take the parts' nowrap")
     return bad
 
 

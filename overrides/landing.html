@@ -312,8 +312,8 @@ section.band{padding-block:72px 40px}
 .foot-band .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;padding-block:26px 30px}
 .foot-band .claim{margin:0;font-style:normal;color:#b4c3d1;font-size:14px}
 .foot-band .claim a{color:var(--drying)}
-.foot-band .claim>span{white-space:nowrap}
-@media (max-width:640px){.foot-band .claim>span{display:block;white-space:normal}.foot-band .claim .sep{display:none}}
+.foot-band .claim>span:not(.sep){white-space:nowrap}
+@media (max-width:640px){.foot-band .claim>span:not(.sep){display:block;white-space:normal}.foot-band .claim .sep{display:none}}
 .foot-band .mk{display:flex;align-items:center;gap:8px;font-size:12px;color:#b4c3d1}
 .foot-band .mk a{color:var(--drying);text-decoration:none;display:flex;align-items:center;gap:6px}
 .foot-band .mk svg{width:16px;height:16px}
