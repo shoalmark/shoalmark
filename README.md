@@ -636,7 +636,7 @@ every repository. Only the git-ignored board reads them: `INDEX.md` and the gate
 | File | Carries |
 |---|---|
 | `logo.svg` / `logo.png` | the header and the browser tab; at most 200 kB; a script inside an SVG cannot run |
-| `labels.yaml` | every word of the board — flat `key: value` lines, `tagline` and `footer` among them. A German board is this file |
+| `labels.yaml` | every word of the board — flat `key: value` lines, `tagline` among them. A German board is this file |
 
 - **The look is the board's own:** `monochrome`, in the system's monospace; no theme is read and no font ships. The
   colours are `[palette]` in `shoalmark.toml`: `name = "shoalmark"` for the public pages' palette, or a few of

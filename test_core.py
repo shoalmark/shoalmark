@@ -362,7 +362,7 @@ check("FM-024 S7, FM-032 S2, FM-053 · the board carries the report — null whe
       "the parents with a commit in the last 24 hours, each a line that opens on its sub-sessions; and the week's verdicts, folded, a row each",
       "REG=null," in _tri and '{const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];' in _tri
       and 'fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>' in _tri and 'split(l("reviews.title"))' in _tri and 'l("reviews.counts",r[0],r[1])' in _tri
-      and "(REG.verdicts||[]).map(v=>row(" in _tri)
+      and "vr=v=>row(" in _tri and 'week=REG.verdicts||[],more=week.filter(folds)' in _tri and 'week.filter(v=>!folds(v)).map(vr).join("")' in _tri)
 check("FM-021 · the progress line says it is empty until a first pass while none has run — no `triaged:` anywhere, no pass in TRIAGE.md",
       'PASSED=LAST||(HOME.last.match(' in _tri and 'progress:PASSED?l("desc.progress"):l("desc.progress.none")' in _tri
       and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
@@ -378,7 +378,7 @@ check("the board is the first view: progress · triage · triaged · backlog · 
       'GROUPS=[["board",' in _tri and re.search(r"BOARD=\{progress:[^}]*triage:[^}]*triaged:[^}]*backlog:[^}]*ended:", _tri) is not None
       and 'untriaged(t)?"triage":t[19]]' in _tri and "OPEN.has(t[2])&&!fresh(t)" not in _tri
       and "recent=t=>!!t[17]&&t[17]==LAST" in _tri and "fresh=t=>!!t[17]&&ago(t[17])<=7" in _tri and "__DAYS__" not in _tri and gti.TRIAGE_DAYS == 7
-      and '<button id="g" aria-pressed="true"></button><button id="o"' in _tri)
+      and '<div id="vt"><span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup"' in _tri)
 check("the board shows the triage home: the Owner's current path on top, the newest pass under `triaged` — plain text, ids clickable",
       "HOME={" in _tri and "__HOME__" not in _tri and "FEAT-002 to its end" in _tri and "](FEAT-002" not in _tri.split("const BLOB")[1].split(",T=[")[0]
       and 'HOME.last?`<tr class="s">' in _tri and set(gti.triage_home()) == {"path", "last", "intent"})
@@ -652,7 +652,7 @@ check("three views — board, release, epic; a tag is found by searching it, and
       _tagged.count('GROUPS=[["board"') == 1 and '["tag",' not in _tagged and '["suite",' not in _tagged and '["none",' not in _tagged
       and 'href="#${encodeURIComponent(x)}" class="m k"' in _tagged)
 check("on the board open/all is hidden, Esc leaves the viewer, and a tracker's headings carry GitHub's slugs with a section list when long",
-      '$("o").hidden=$("a").hidden=gname=="board"' in _tagged and 'e.key=="Escape"&&!$("v").hidden' in _tagged
+      '$("ov").hidden=gname=="board"' in _tagged and 'e.key=="Escape"&&!$("v").hidden' in _tagged
       and 'h.id="h-"+h.textContent.toLowerCase()' in _tagged and "if(h2.length>5)" in _tagged)
 _tbl = "| a | b |\n|---|---|\n| 1 | 2 |\n"
 check("a table row that belongs to no table is refused: after a blank line, after a note, a wrapped cell — not inside a code fence",

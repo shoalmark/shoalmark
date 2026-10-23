@@ -643,13 +643,17 @@ _BLOCKS = {       # each browser block: its name, as a skip or a failure reads i
     "revoke": "FM-030 · 0.18.6 · revoke, rendered — the one button on what is on its way, and the one command OK gives",
     "hooks": "FM-002 · the Owner's box's title, rendered in every view",
     "branch": "FM-053, RV-3343 · a review row's branch, rendered — known, ambiguous, not known",
-    "header": "FM-053, RV-3342, BF-2 · the header row at 375, 640, 880 and 1024 px, rendered — the field, its counter and the scheme's action in view",
+    "header": "FM-053, RV-3342, BF-50 · the header line at 320, 375, 640, 880 and 1024 px, rendered — the field on one line, the switch in view, the count in the toolbar",
+    "scheme": "FM-053, BF-51, BF-54 · the light-or-dark switch and the logo under a dark and a light system, rendered — a pick kept, one equal to the system's forgotten, the logo's drawing the board's",
     "table": "FM-053, BF-1 · the work table at 1024, 880 and 640 px, rendered — no wider than its frame",
     "owner": "FM-053, BF-3 · `next: owner`, rendered — *you* in the tier's cell, `owner` in code font on the handover line",
     "sessions": "FM-053, BF-6 · a review row's branch sessions, rendered — none, one, and many as the oldest and a count",
     "more": "FM-053, BF-9 · past 14 asks, rendered — the 14 oldest, then *and 2 more: the oldest are above*",
     "names": "FM-053, BF-11 · a review row's branch names at 375 px, rendered — each one inline box",
-    "phone": "FM-053, BF-14 · the page at 390, 360 and 320 px, rendered — no sideways scroll, only the table scrolls, in its own box",
+    "reviews": "FM-053, BF-61, BF-62, BF-64 · the reviews section at 1024 and 390 px, rendered — what shows, what folds and its count, the ids and their links",
+    "toolbar": "FM-053, BF-52, BF-53 · the work table's toolbar at 1024 and 390 px, rendered — its radio groups, and the box in the story view",
+    "phone": "FM-053, BF-55 · the page at 390, 360, 320 and 640 px, rendered — each work row stacked, no sideways scroll",
+    "riders": "FM-053, BF-29, BF-56, BF-57 · the read-at line, the day's rows and a heading's bold at 390, 360 and 320 px, rendered",
 }
 
 
@@ -1518,14 +1522,14 @@ if _browser("branch"):
             git(root, "checkout", "-q", "--detach"); v_none = commit_(f"review: READY WITH FINDINGS\n\nReviewed: {built}\nSession: r3")
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            what_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
+            what_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
             said_ = {v: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", w_)) for v, w_ in what_.items()}
             check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in the row's own colour (BF-10) with "
                   f"each branch that holds it, and *not known* in italics with why (saw {said_})",
-                  said_[v_known] == f"on {built[:10]} · branch fm/a"
-                  and said_[v_amb] == f"on {built[:10]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
+                  said_[v_known] == f"on {built[:7]} · branch fm/a"
+                  and said_[v_amb] == f"on {built[:7]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
                   and 'class="warn"' not in what_[v_amb] and "<span" not in what_[v_amb]      # BF-10: no colour on a verdict's row but its word
-                  and said_[v_none] == f"on {built[:10]} · branch not known — no branch here holds the verdict on its own line"
+                  and said_[v_none] == f"on {built[:7]} · branch not known — no branch here holds the verdict on its own line"
                   and "<i>branch not known — no branch here holds the verdict on its own line</i>" in what_[v_none])
     except _ChromeFailed as e_:
         _hung("branch", e_)
@@ -1592,7 +1596,7 @@ if _browser("sessions"):
                 git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            said_ = {v: (re.search(rf'<div class="what"><code>{v[:10]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
+            said_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
             check(f"FM-053, BF-6 · rendered: none reads —, one its id, many the oldest's id and *and 2 more* (saw {list(said_.values())})",
                   all(re.sub(r"<[^>]+>", "", said_[v]).endswith(w_) for v, w_ in rows_.items()))
     except _ChromeFailed as e_:
@@ -1606,12 +1610,12 @@ check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{
       == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Stamm"))
 
 # --- FM-053, BF-8: the guide's §10 puts *ended* among the words never on a board — the last group's heading reads *shipped or closed*; its key
-#     and its description stay; the German table the tool ships says it in English until the native read, since *beendet* says *ended* too
+#     and its description stay; the German table the tool ships says *ausgeliefert oder geschlossen*, never *beendet*, which says *ended* too
 _ended_ = [k for k, v in fm.LABELS.items() if re.search(r"(?<![\w-])ended(?![\w-])", v)]      # a list made apart: 3.9 takes no backslash in an f-string's braces
-check(f"FM-053, BF-8 · no label says *ended*: the last group is *shipped or closed*, its key `section.ended` and `desc.ended` kept, and the shipped German "
-      f"table's value English until the native read (saw {_ended_})",
+check(f"FM-053, BF-8, G3 · no label says *ended*: the last group is *shipped or closed*, its key `section.ended` and `desc.ended` kept, and the shipped "
+      f"German table's value its words row's, *ausgeliefert oder geschlossen*, never *beendet* (saw {_ended_})",
       fm.LABELS.get("section.ended") == "shipped or closed" and fm.LABELS.get("desc.ended") == "" and not _ended_
-      and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("section.ended") == "shipped or closed")
+      and fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8")).get("section.ended") == "ausgeliefert oder geschlossen")
 _end_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
 check("FM-053, BF-13 · the last group says its name once — *// shipped or closed · 22*: `desc.ended` is empty, in English and in the German table "
       "the tool ships, and a group's line adds its description only where there is one",
@@ -6649,18 +6653,20 @@ if _browser("search"):
         _hung("search", e_)
         fm.configure(HERE)
 
-# --- FM-053, RV-3342: the header row reflows on a phone — at 375, 640, 880 and 1024 px (BF-2), on an empty board and a populated one, the search
-#     field, its counter and the scheme's action stay in view, inside the page's width, the field at its 200 px at least, the counter clear of
-#     the scheme's button, and neither the header nor the search box runs wider than it stands. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be
-#     narrower than Chrome may allow it); the rules before the fix, put back, must fail it ----------------------------------------------------
-_HDR_WIDTHS = (375, 640, 880, 1024)
+# --- the header line — at 320, 375, 640, 880 and 1024 px, on an empty board and a populated one, the search field is one
+#     line, at its 200 px at least, and the light-or-dark switch stays in view beside it, inside the page's width, clear of the field, on a phone
+#     beside the name above it; the work table's count stands in the toolbar after the grouping, with a dot before it, and on a phone on a line of
+#     its own with none. Measured in Chrome, each width the board in a frame of that width (a window is not asked to be narrower than Chrome may
+#     allow it); the count put back in the search box must fail it -----------------------------------------------------------------------------
+_HDR_WIDTHS = (320, 375, 640, 880, 1024)
 _HDR_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getElementById(i),de=document.documentElement,'
               'box=i=>{const e=g(i),r=e.getBoundingClientRect(),c=getComputedStyle(e),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);'
               'return{l:r.left,r:r.right,t:r.top,b:r.bottom,w:r.width,h:r.height,shown:c.display!="none"&&c.visibility=="visible"&&!!h&&(h==e||e.contains(h))}};'
+              'const n=g("n"),dot=getComputedStyle(n,"::before");'
               'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,H:[g("H").scrollWidth,g("H").clientWidth],sb:[g("sb").scrollWidth,g("sb").clientWidth],'
-              'q:box("q"),n:box("n"),s:box("s"),box:box("sb"),text:g("n").textContent}),"*")})</script>')
-_HDR_BEFORE = (("#sb{flex:1 1 calc(200px + 4ch);display:flex;flex-wrap:wrap;align-items:center;column-gap:1ch;", "#sb{flex:1;display:flex;align-items:center;gap:1ch;"),
-               ("#n{color:var(--dim);padding:3px 0;margin-left:auto;text-align:right}", "#n{color:var(--dim);white-space:nowrap}"), ("\n#sb{flex-basis:100%}#s{margin-left:auto}}", "}"))
+              'q:box("q"),sl:box("sl"),box:box("sb"),name:box("H").t,n:box("n"),g:box("gv"),vt:box("vt"),in:n.parentElement.id,after:!!(g("gv").compareDocumentPosition(n)&4),'
+              'dot:dot.display!="none"&&dot.content.includes("·"),text:n.textContent}),"*")})</script>')
+_HDR_BACK = ('<input id="q" autofocus></label>', '<input id="q" autofocus><span id="n"></span></label>')       # the count back in the search box
 
 
 def _header_at(where, page, width, probe=_HDR_PROBE):
@@ -6675,25 +6681,34 @@ def _header_at(where, page, width, probe=_HDR_PROBE):
 
 
 def _header_faults(rep, width):
-    """What is wrong with one frame's header — [] where the field, the counter and the scheme's action are shown, not covered, inside the page's
-    width, the counter inside the search box and clear of the scheme's button (BF-2), the field at least 200 px wide, and neither the header nor
-    the box wider than it stands."""
+    """What is wrong with one frame's header — [] where the field and the switch are shown, not covered, inside the page's width and clear of each
+    other; the field one line and at least 200 px wide; neither the header nor the box wider than it stands; on a phone the switch on the name's
+    line, above the field; and the count in the work table's toolbar after the grouping, a dot before it where the line holds both, and on a phone on
+    a line of its own with no dot."""
     if not rep or rep.get("w") != width:
         return [f"no report from the {width} px frame (saw {rep})"]
-    out_ = [f"{k} {rep[k]}" for k in ("q", "n", "s") if not (rep[k]["shown"] and rep[k]["w"] > 0 and rep[k]["h"] > 0 and rep[k]["l"] >= -0.5 and rep[k]["r"] <= rep["cw"] + 0.5)]
+    out_ = [f"{k} {rep[k]}" for k in ("q", "sl") if not (rep[k]["shown"] and rep[k]["w"] > 0 and rep[k]["h"] > 0 and rep[k]["l"] >= -0.5 and rep[k]["r"] <= rep["cw"] + 0.5)]
     out_ += [f"the field {rep['q']['w']:.0f} px"] if rep["q"]["w"] < 199.5 else []
+    out_ += [f"the search box {rep['box']['h']:.0f} px tall"] if rep["box"]["h"] > 31 else []
     out_ += [f"{k} {rep[k][0]} px wide in {rep[k][1]}" for k in ("H", "sb") if rep[k][0] > rep[k][1] + 1]
-    out_ += [] if rep["box"]["l"] - 0.5 <= rep["n"]["l"] and rep["n"]["r"] <= rep["box"]["r"] + 0.5 else ["the counter outside its box"]
-    n_, s_ = rep["n"], rep["s"]
-    out_ += ["the counter under the scheme's button"] if n_["l"] < s_["r"] - 0.5 and s_["l"] < n_["r"] - 0.5 and n_["t"] < s_["b"] - 0.5 and s_["t"] < n_["b"] - 0.5 else []
-    return out_ + ([] if rep["text"].strip() else ["no counter"])
+    b_, s_ = rep["box"], rep["sl"]
+    out_ += ["the switch over the field"] if b_["l"] < s_["r"] - 0.5 and s_["l"] < b_["r"] - 0.5 and b_["t"] < s_["b"] - 0.5 and s_["t"] < b_["b"] - 0.5 else []
+    out_ += ["the switch not above the field on a phone"] if width <= 640 and not s_["b"] <= b_["t"] + 0.5 else []
+    out_ += [f"the count in #{rep['in']}, after the grouping: {rep['after']}"] if rep["in"] != "vt" or not rep["after"] else []
+    n_, g_ = rep["n"], rep["g"]
+    if width <= 640:
+        out_ += [] if n_["t"] >= g_["b"] - 0.5 and abs(n_["l"] - rep["vt"]["l"]) < 1 and not rep["dot"] else ["the count not on a line of its own, without its dot"]
+    else:
+        out_ += [] if n_["l"] >= g_["r"] - 0.5 and n_["t"] < g_["b"] and rep["dot"] else ["the count not after the grouping on its line, with its dot"]
+    return out_ + ([] if rep["text"].strip() else ["no count"])
 
 
 _hdr_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, RV-3342, BF-2 · the header's rules reflow: the search box wraps, its counter is no longer held to one line and stands at the field's "
-      "right edge, the field keeps its 200 px, and on a phone the search takes a header row of its own — the rules before the fix are each gone",
-      all(_hdr_src.count(new_) == 1 for new_, _old in _HDR_BEFORE) and _hdr_src.count("#q{flex:1;min-width:200px;") == 1
-      and not any(old_ in _hdr_src for _new, old_ in _HDR_BEFORE[:2]))
+check("FM-053, RV-3342, BF-50 · the header's rules: the search box holds the field alone and does not wrap, the field keeps its 200 px, the count is the "
+      "work table's, in its toolbar, and on a phone the search takes a header row of its own under the name and the switch, and the count a line of its own",
+      _hdr_src.count("#sb{flex:1 1 calc(200px + 4ch);display:flex;align-items:center;column-gap:1ch;") == 1 and _hdr_src.count("#q{flex:1;min-width:200px;") == 1
+      and _hdr_src.count('<label id="sb"><input id="q" autofocus></label>') == 1 and _hdr_src.count('<span id="n"></span>\n<p id="l">') == 1
+      and _hdr_src.count("\n#sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}") == 1)
 if _browser("header"):
     try:
         with tempfile.TemporaryDirectory() as d:
@@ -6707,20 +6722,104 @@ if _browser("header"):
                     tracker(root, "MSR-005", extra="tier: P2\ntriaged: 2026-09-20\n"); tracker(root, "MSR-006", status="Blocked", extra="tier: P1\n")
                 run(root)
                 page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
-                old_page_ = page_
-                for new_, old_ in _HDR_BEFORE:
-                    old_page_ = old_page_.replace(new_, old_)
+                old_page_ = page_.replace(*_HDR_BACK).replace('<span id="n"></span>\n<p id="l">', '\n<p id="l">')
                 for w_ in _HDR_WIDTHS:
                     rep_ = _header_at(root / "docs/work-tracker", page_, w_); seen_[(kind, w_)] = (_header_faults(rep_, w_), (rep_ or {}).get("text"))
-                before_[kind] = _header_faults(_header_at(root / "docs/work-tracker", old_page_, 375), 375)
-            check(f"FM-053, RV-3342, BF-2 · at 375, 640, 880 and 1024 px, on an empty and a populated board, the search field, its counter and the scheme's action "
-                  f"stay in view inside the page's width — the field at 200 px at least, the counter inside its box and clear of the scheme's button, nothing "
-                  f"wider than it stands (saw {seen_})",
-                  len(seen_) == 8 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
-            check(f"FM-053, RV-3342 · the check's control: the header's rules before the fix, put back, fail it at 375 px on both boards (saw {before_})",
+                before_[kind] = _header_faults(_header_at(root / "docs/work-tracker", old_page_, 1024), 1024)
+            check(f"FM-053, RV-3342, BF-50 · at 320, 375, 640, 880 and 1024 px, on an empty and a populated board, the search field is one line, at 200 px at "
+                  f"least, the switch beside it and in view, clear of it, on a phone above it on the name's line, nothing wider than it stands; the count in the "
+                  f"toolbar after the grouping, a dot before it, and on a phone on a line of its own with none (saw {seen_})",
+                  len(seen_) == 10 and not any(f_ for f_, _t in seen_.values()) and all(t_ for _f, t_ in seen_.values()))
+            check(f"FM-053, BF-50 · the check's control: the count put back in the search box fails it at 1024 px on both boards (saw {before_})",
                   all(before_.get(k_) and "no report" not in before_[k_][0] for k_ in ("empty", "populated")))
     except _ChromeFailed as e_:
         _hung("header", e_)
+        fm.configure(HERE)
+
+# --- light or dark is one switch, *dark*, and the header's logo follows the board's scheme. The page starts from the
+#     system's scheme; a pick on the switch is kept, and a pick equal to the system's scheme is forgotten, so the page follows the system again. Of
+#     the logo's own two drawings, the one for the scheme in effect shows, in each of the three board schemes and both system appearances, read
+#     from its pixels. Measured in Chrome, the system's appearance set for each run; the logo left as the image's own rules draw it must fail it -
+_SCHEME_SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><style>rect{fill:#102030}@media (prefers-color-scheme:dark){rect{fill:#e0f0d0}}</style>'
+               '<rect width="16" height="16"/></svg>')
+_SCHEME_INK = {"light": "16,32,48", "dark": "224,240,208"}           # the logo's light drawing and its dark one
+_SCHEME_BG = {"light": "rgb(247, 247, 245)", "dark": "rgb(14, 14, 14)"}
+_SCHEME_OWN, _SCHEME_SYS = 'const e=m=="auto"?sys():m;', "const e=sys();"      # the logo's scheme: the board's, and the system's
+_SCHEME_PROBE = ('<script>addEventListener("load",async()=>{const g=i=>document.getElementById(i),img=document.querySelector("#H>img"),c=document.createElement("canvas");'
+                 'c.width=c.height=4;const x=c.getContext("2d"),pix=async()=>{await img.decode().catch(()=>0);x.clearRect(0,0,4,4);x.drawImage(img,0,0,4,4);'
+                 'try{return[...x.getImageData(1,1,1,1).data].slice(0,3).join(",")}catch(e){return "unread: "+e.name}},'
+                 'state=async()=>({scheme,on:g("s").checked,kept:localStorage.getItem("shoalmark.scheme"),bg:getComputedStyle(document.body).backgroundColor,logo:await pix(),'
+                 'role:g("s").getAttribute("role"),type:g("s").type,word:g("sl").textContent,wh:(r=>[r.width,r.height])(g("s").getBoundingClientRect())}),o={load:await state()};'
+                 'g("s").click();o.pick=await state();g("s").click();o.back=await state();for(const m of["auto","light","dark"]){setScheme(m);o[m]=await state()}'
+                 'setScheme("auto");document.body.dataset.probe=JSON.stringify(o)})</script>')
+
+
+def _scheme_runs(wt, page, before=""):
+    """The board `page`, the switch's probe after its script and `before` ahead of it, rendered with the system dark and then light: {system: report}."""
+    import html as _html
+    out_ = {}
+    for system_, n_ in (("dark", 0), ("light", 1)):
+        (wt / "scheme.html").write_text(page.replace("</style>", "</style>\n<script>" + before.replace("OPP", "light" if system_ == "dark" else "dark") + "</script>", 1)
+                                        .replace("</script></html>", "</script>" + _SCHEME_PROBE + "</html>"), encoding="utf-8")
+        dom_ = _chrome_run([f"--blink-settings=preferredColorScheme={n_}", "--virtual-time-budget=6000", "--dump-dom", (wt / "scheme.html").as_uri()]).stdout
+        out_[system_] = json.loads(_html.unescape((re.search(r'data-probe="([^"]*)"', dom_) or [None, ""])[1]) or "null")
+    return out_
+
+
+def _scheme_faults(runs, kept=False):
+    """What is wrong with the switch and the logo in `runs` — [] where, under each system scheme, the page starts from it (or, `kept`, from the pick
+    kept against it), a pick is kept, the pick equal to the system's is forgotten, and in every board scheme the page's ground and the logo's drawing
+    are that scheme's."""
+    out_ = []
+    for system_, o_ in runs.items():
+        opp_ = "light" if system_ == "dark" else "dark"
+        if not o_:
+            out_.append(f"no report under a {system_} system"); continue
+        mine_, auto_ = (opp_, opp_, opp_), ("auto", system_, None)           # (the board's scheme, the scheme shown, the pick kept)
+        want_ = {"load": mine_ if kept else auto_, "pick": auto_ if kept else mine_, "back": mine_ if kept else auto_,
+                 "auto": auto_, "light": ("light", "light", "light"), "dark": ("dark", "dark", "dark")}
+        for k_, (scheme_, shown_, stored_) in want_.items():
+            r_ = o_.get(k_) or {}
+            if (r_.get("scheme"), r_.get("on"), r_.get("kept"), r_.get("bg"), r_.get("logo")) != (scheme_, shown_ == "dark", stored_, _SCHEME_BG[shown_], _SCHEME_INK[shown_]):
+                out_.append(f"{system_} system, {k_}: {r_}")
+        if (o_["load"].get("role"), o_["load"].get("type"), o_["load"].get("word")) != ("switch", "checkbox", "dark"):
+            out_.append(f"the control {o_['load']}")
+        out_ += [f"{system_} system, {k_}: the switch {r_.get('wh')}, no wider than it is tall" for k_, r_ in o_.items() if not (r_.get("wh") and r_["wh"][0] > r_["wh"][1] > 0)]
+    return out_
+
+
+_sch_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-51 · light or dark is one switch — `<input type=\"checkbox\" role=\"switch\">` with its word, `scheme.toggle`, *dark* — and no button; "
+      "the labels it retires are named, with what replaces them",
+      _sch_src.count('<label id="sl" class="rd"><input type="checkbox" role="switch" id="s"><span data-l="scheme.toggle"></span></label>') == 1
+      and '<button id="s">' not in _sch_src and fm.LABELS.get("scheme.toggle") == "dark" and not {"scheme.auto", "scheme.light", "scheme.dark", "scheme.button"} & set(fm.LABELS)
+      and set(fm.LABELS_GONE) >= {"scheme.auto", "scheme.light", "scheme.dark", "scheme.button"})
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve(); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    (root / "docs/work-tracker/brand").mkdir(parents=True); (root / "docs/work-tracker/brand/labels.yaml").write_text("scheme.button: hell oder dunkel: {0}\nfooterline: x\n", encoding="utf-8")
+    _c, _o, _e = run(root)
+    check(f"FM-053, BF-51 · never a silent loss: a labels.yaml that still sets a retired scheme label is told it is no longer read and what replaces it — "
+          f"never *not a label*, never refused (saw {_e.strip()!r})",
+          _c == 0 and "repository's labels.yaml: scheme.button is no longer read — light or dark is one switch, its word `scheme.toggle`" in _e
+          and "footerline is not a label" in _e and "scheme.button is not a label" not in _e)
+if _browser("scheme"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", extra="tier: P1\n")
+            (root / "docs/work-tracker/brand").mkdir(parents=True); (root / "docs/work-tracker/brand/logo.svg").write_text(_SCHEME_SVG, encoding="utf-8"); run(root)
+            wt_ = root / "docs/work-tracker"; page_ = (wt_ / "index.html").read_text(encoding="utf-8")
+            fresh_ = _scheme_runs(wt_, page_, 'localStorage.removeItem("shoalmark.scheme")')
+            kept_ = _scheme_runs(wt_, page_, 'localStorage.setItem("shoalmark.scheme","OPP")')
+            check(f"FM-053, BF-51, BF-54, BF-68 · with the system dark and with it light: the page starts from the system's scheme, the switch on where it is "
+                  f"dark, drawn as a track wider than it is tall; a pick is kept; a pick equal to the system's scheme is forgotten; and in each board scheme — "
+                  f"auto, light, dark — the page's ground and the logo's own drawing are that scheme's (saw {_scheme_faults(fresh_) or fresh_})", not _scheme_faults(fresh_))
+            check(f"FM-053, BF-51 · a pick kept from an earlier visit holds at load against the system's scheme, and switching to the system's scheme forgets it "
+                  f"(saw {_scheme_faults(kept_, kept=True) or kept_})", not _scheme_faults(kept_, kept=True))
+            loose_ = _scheme_runs(wt_, page_.replace(_SCHEME_OWN, _SCHEME_SYS), 'localStorage.removeItem("shoalmark.scheme")')
+            check(f"FM-053, BF-54 · the check's control: the logo written for the system's scheme, not the board's, fails it on a pick against the system "
+                  f"(saw {_scheme_faults(loose_)})", page_.count(_SCHEME_OWN) == 1 and any("pick:" in f_ for f_ in _scheme_faults(loose_)))
+    except _ChromeFailed as e_:
+        _hung("scheme", e_)
         fm.configure(HERE)
 
 # --- FM-053, BF-1: the work table's group line wraps inside the frame — `td.m`'s nowrap is the cells' alone. At 1024, 880 and 640 px the page
@@ -6761,6 +6860,129 @@ if _browser("table"):
         _hung("table", e_)
         fm.configure(HERE)
 
+# --- the reviews section, opened: a row for each verdict that needs a look — not READY, with findings, by the branch's own session, not traced —
+#     and the verdicts READY or READY TO TAG by another session folded into one line that counts them. A verdict a later one on its branch has
+#     followed still shows, and one whose branch is not known folds by its word and who gave it, like any row. A row's second line flows as text,
+#     its state starting on its word's line; an id is seven characters, a link where the forge is known. Measured in Chrome at 1024 and 390 px;
+#     nothing folded, and the row's second line drawn as it was, must each fail it ---------------------------------------------------------------
+def _m_repo(root, forge=False):
+    out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+    verdict_ = lambda word, tip, sid: commit_(f"review: {word}\n\nReviewed: {tip}\nSession: {sid}")
+    git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
+    if forge:
+        (root / "shoalmark.toml").write_text((root / "shoalmark.toml").read_text(encoding="utf-8").replace("[kinds]", 'blob = "https://example.org/o/r/blob/main/"\n\n[kinds]', 1), encoding="utf-8")
+    run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+    cases_ = {}
+    git(root, "checkout", "-q", "-b", "fm/a", "main"); b_ = commit_("a, built\n\nSession: b1")
+    cases_[verdict_("NOT READY", b_, "r1")] = "shows"                 # followed by a later verdict on its branch, and still shown
+    b_ = commit_("a, fixed\n\nSession: b1")
+    cases_[verdict_("READY", b_, "r2")] = "folds"; cases_[verdict_("READY TO TAG", b_, "r3")] = "folds"
+    git(root, "checkout", "-q", "-b", "fm/b-a-branch-with-a-long-name", "main"); b_ = commit_("b, built\n\nSession: b2")
+    cases_[verdict_("READY WITH FINDINGS", b_, "r4")] = "shows"
+    git(root, "checkout", "-q", "-b", "fm/c", "main"); b_ = commit_("c, built\n\nSession: s5"); cases_[verdict_("READY", b_, "s5/reviewer-1")] = "shows"
+    git(root, "checkout", "-q", "-b", "fm/d", "main"); b_ = commit_("d, built with no session"); cases_[verdict_("READY", b_, "r6")] = "shows"
+    git(root, "checkout", "-q", "-b", "fm/e", "main"); b_ = commit_("e, built\n\nSession: b7"); cases_[verdict_("NOT READY", b_, "r7")] = "shows"
+    b_ = commit_("e, fixed\n\nSession: b7"); cases_[verdict_("READY", b_, "r8")] = "folds"
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges it", "fm/e"); git(root, "branch", "-q", "-D", "fm/e")
+    merges_ = {v_: out_("rev-parse", "HEAD") for v_ in list(cases_)[-2:]}
+    git(root, "checkout", "-q", "-b", "fm/f", "main"); b_ = commit_("f, built\n\nSession: b9"); v_ = verdict_("NOT READY", b_, "r9"); cases_[v_] = "shows"
+    git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/f'", "fm/f"); git(root, "branch", "-q", "-D", "fm/f")
+    merges_[v_] = out_("rev-parse", "HEAD")
+    git(root, "checkout", "-q", "-b", "together", "main")
+    for name_ in ("fm/a", "fm/b-a-branch-with-a-long-name", "fm/c", "fm/d"):
+        git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+    reviewed_ = {v_: out_("log", "-1", "--format=%(trailers:key=Reviewed,valueonly)", v_).strip() for v_ in cases_}
+    page_ = lambda sha: f"https://example.org/o/r/commit/{sha}" if forge else ""
+    links_ = {v_: (page_(v_), [page_(reviewed_[v_])] + ([page_(merges_[v_])] if v_ in merges_ else [])) for v_ in cases_}
+    if forge:
+        git(root, "update-ref", "refs/remotes/origin/together", "HEAD")
+        git(root, "checkout", "-q", "-b", "fm/g", "together"); b_ = commit_("g, built after the push\n\nSession: b10"); v_ = verdict_("NOT READY", b_, "r10")
+        git(root, "checkout", "-q", "together"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges this too", "fm/g"); git(root, "branch", "-q", "-D", "fm/g")
+        cases_[v_], links_[v_] = "shows", ("", [])
+    run_safe(root, "--html-only")
+    return cases_, links_
+
+
+_M_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("#p details.fold").forEach(d=>d.open=true);const m=document.querySelector("#p details.more");'
+            'const rows=[...document.querySelectorAll("#p .row.rv")].map(r=>{const i=r.querySelector(".what>:first-child"),t=r.querySelector(".ty"),s=r.querySelector(".st");'
+            'return{id:i.textContent,href:i.tagName=="A"?i.getAttribute("href"):"",line:[...r.querySelectorAll(".what>span a")].map(a=>a.getAttribute("href")),'
+            'folded:!!r.closest("details.more"),ty:t.getBoundingClientRect().top,st:s.getClientRects()[0]?.top}});'
+            'parent.postMessage(JSON.stringify({w:innerWidth,rows,more:m?m.querySelector("summary").textContent:null,open:m?m.open:null}),"*")})</script>')
+_M_FOLDS = 'folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG")'
+_M_FLOW = ".rv .how{display:block;padding-left:9ch}"
+
+
+def _m_faults(rep, width, cases, links):
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    by_ = {r_["id"]: r_ for r_ in rep["rows"]}
+    want_ = {v[:7]: c_ for v, c_ in cases.items()}
+    out_ = [f"{i_}: {'folded' if (by_.get(i_) or {}).get('folded') else 'shown' if i_ in by_ else 'missing'}, wanted {c_}" for i_, c_ in want_.items()
+            if i_ not in by_ or by_[i_]["folded"] != (c_ == "folds")]
+    n_ = sum(c_ == "folds" for c_ in cases.values())
+    out_ += [] if rep["more"] == f"and {n_} more verdicts by another session this week" and rep["open"] is False else [f"the fold {rep['more']!r}, open {rep['open']}"]
+    out_ += [f"an id {i_!r}" for i_ in by_ if len(i_) != 7]
+    out_ += [f"{r_.get('id')} links {r_.get('href')!r} and {r_.get('line')}, wanted {links[v]}" for v in cases for r_ in [by_.get(v[:7]) or {}]
+             if (r_.get("href", ""), [h_ for h_ in r_.get("line", []) if h_]) != (links[v][0], [h_ for h_ in links[v][1] if h_])]
+    out_ += [f"{r_['id']}: its state starts at {r_['st']}, its word at {r_['ty']}" for r_ in rep["rows"] if not r_["folded"] and abs((r_["st"] or 0) - r_["ty"]) > 2]
+    return out_
+
+
+_m_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-61, BF-62, BF-64 · the reviews section folds exactly the verdicts READY or READY TO TAG by another session, into `reviews.more`; a "
+      "verdict's row is `rv`, its second line a block of text; an id is seven characters, and links where the generator gives its commit's page",
+      _m_src.count(_M_FOLDS) == 1 and _m_src.count(_M_FLOW) == 1 and fm.LABELS.get("reviews.more") == "and {0} more verdicts by another session this week"
+      and 'slice(0,10)' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")]
+      and _m_src.count('[page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]') == 1
+      and _m_src.count('lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))') == 1 and _m_src.count('lh("reviews.branch.unnamed",cid(b[1],u))') == 1)
+_ONE = 'more.length==1?l("reviews.more.one"):l("reviews.more",more.length)'
+_one_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+check("FM-053 · the reviews' fold counts one verdict in the singular — `reviews.more.one`, picked where the count is 1 — and more in the plural, in "
+      "English and in the German table the tool ships",
+      _m_src.count(_ONE) == 1 and fm.LABELS.get("reviews.more.one") == "and 1 more verdict by another session this week"
+      and _one_de.get("reviews.more.one") == "und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche"
+      and _one_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche")
+if _browser("reviews"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            base_ = Path(d).resolve(); plain_, forge_ = base_ / "plain", base_ / "forge"; plain_.mkdir(); forge_.mkdir()
+            (cases_, links_), (fcases_, flinks_) = _m_repo(plain_), _m_repo(forge_, forge=True)
+            wt_, fwt_ = plain_ / "docs/work-tracker", forge_ / "docs/work-tracker"
+            page_ = (wt_ / "index.html").read_text(encoding="utf-8")
+            seen_ = {w_: _m_faults(_header_at(wt_, page_, w_, _M_PROBE), w_, cases_, links_) for w_ in (1024, 390)}
+            linked_ = _m_faults(_header_at(fwt_, (fwt_ / "index.html").read_text(encoding="utf-8"), 1024, _M_PROBE), 1024, fcases_, flinks_)
+            check(f"FM-053, BF-61, BF-62, BF-64, BF-66 · at 1024 and 390 px the reviews section shows each verdict that is not READY, has findings, came from the "
+                  f"branch's own session or cannot be traced — an earlier verdict a later one followed included, and one whose branch is not known by its word — "
+                  f"and folds the READY and READY TO TAG by another session into *and 3 more verdicts by another session this week*; each id is seven "
+                  f"characters, and each row's state starts on its word's line (saw {seen_})", not any(seen_.values()))
+            check(f"FM-053, BF-64, RV-3664 · with a forge named, each id on a verdict's row links to its commit's page where origin holds the commit — the "
+                  f"verdict's, the reviewed commit's, and the merge's that names its branch or names none — and none links where origin does not; with no "
+                  f"forge none links (saw {linked_})", not linked_ and any(len(l_[1]) == 2 and l_[1][1] for l_ in flinks_.values())
+                  and any(l_ == ("", []) for l_ in flinks_.values()))
+            flat_ = _m_faults(_header_at(wt_, page_.replace(_M_FOLDS, "folds=v=>false"), 1024, _M_PROBE), 1024, cases_, links_)
+            flex_ = _m_faults(_header_at(wt_, page_.replace(_M_FLOW, ".rv .how{padding-left:9ch}"), 390, _M_PROBE), 390, cases_, links_)
+            check(f"FM-053, BF-61, BF-62 · the check's controls: nothing folded fails it, and the row's second line drawn as it was fails it at 390 px "
+                  f"(saw {flat_}, {flex_})", page_.count(_M_FOLDS) == 1 and any("wanted folds" in f_ for f_ in flat_) and any("its state starts" in f_ for f_ in flex_))
+            one_ = base_ / "one"; one_.mkdir(); out_ = lambda *a: subprocess.run(["git", "-C", str(one_), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            git(one_, "init", "-q", "-b", "main"); run(one_, "--init", "--key", "msr"); tracker(one_, "MSR-001"); run(one_)
+            git(one_, "add", "-A"); git(one_, "commit", "-qm", "the trunk\n\nSession: t0"); git(one_, "checkout", "-q", "-b", "fm/one")
+            git(one_, "commit", "-q", "--allow-empty", "-m", "one, built\n\nSession: b1"); built_ = out_("rev-parse", "HEAD")
+            fold_ = lambda: (re.search(r'<details class="more"><summary>(.*?)</summary>', (run_safe(one_, "--html-only"), _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
+                             (one_ / "docs/work-tracker/index.html").as_uri()]).stdout)[1]) or [None, ""])[1]
+            brand_ = one_ / "docs/work-tracker/brand"; said_ = {}
+            for n_, word_ in ((1, "READY"), (2, "READY TO TAG")):
+                git(one_, "commit", "-q", "--allow-empty", "-m", f"review: {word_}\n\nReviewed: {built_}\nSession: r{n_}")
+                said_[("en", n_)] = fold_()
+                brand_.mkdir(parents=True, exist_ok=True); (brand_ / "labels.yaml").write_text((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+                said_[("de", n_)] = fold_(); (brand_ / "labels.yaml").unlink()
+            check(f"FM-053 · rendered, the fold reads one verdict in the singular and two in the plural, in English and in German (saw {said_})",
+                  said_ == {("en", 1): "and 1 more verdict by another session this week", ("de", 1): "und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche",
+                            ("en", 2): "and 2 more verdicts by another session this week", ("de", 2): "und 2 weitere Urteile von einer anderen Sitzung in dieser Woche"})
+    except _ChromeFailed as e_:
+        _hung("reviews", e_)
+        fm.configure(HERE)
+
 # --- FM-053, BF-11: a branch name in a review row moves to the next line whole — `.row code` is an inline block — and breaks only where it is
 #     longer than a line. Measured in Chrome at 375 px, the review rows opened: each name one box --------------------------------------------
 _NAME_PROBE = ('<script>addEventListener("load",()=>{document.querySelectorAll("details").forEach(d=>d.open=true);'
@@ -6790,42 +7012,170 @@ if _browser("names"):
         _hung("names", e_)
         fm.configure(HERE)
 
-# --- FM-053, BF-14: on a phone the page never scrolls sideways — only the work table does, its columns as they are, in its own box; the header,
-#     the box and the toolbar stay put. Measured in Chrome at 390, 360 and 320 px on a board whose table cannot fit a phone; the rule taken out
-#     must let the page scroll ----------------------------------------------------------------------------------------------------------------
-_PH_RULE = "@media(max-width:640px){#B>table{display:block;overflow-x:auto}}\n"
-_PH_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,b=document.getElementById("B");'
-             't=document.querySelector("#B>table");parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,bc:b.clientWidth,'
-             'bs:b.scrollWidth,tc:t.clientWidth,ts:t.scrollWidth}),"*")})</script>')
+# --- the work table's settings are radios: `by ◉ board ○ story`, then `· ◉ open ○ all` in every view but the board — each a radio group named by
+#     its words, its radios under one name, so the arrow keys move within it, each label at least 24 px high on a phone. The box stays in the story
+#     view, the toolbar where it stood, and hides only during a search. Measured in Chrome at 1024 and 390 px; the box hidden outside the board
+#     again must fail it ----------------------------------------------------------------------------------------------------------------------
+_TB_PROBE = ('<script>addEventListener("load",()=>{const g=i=>document.getElementById(i),q=s=>document.querySelector(s),'
+             'st=()=>({p:g("p").hidden,sections:g("p").querySelectorAll(".sec").length,ov:g("ov").hidden,on:[...document.querySelectorAll("#vt input:checked")].map(r=>r.name+"="+r.value),'
+             'y:Math.round(g("vt").getBoundingClientRect().top+scrollY),rows:document.querySelectorAll("#b tr.g").length}),o={board:st()};'
+             'q("#gv input[value=\\"1\\"]").click();o.story=st();'
+             'const groups=[...document.querySelectorAll("#vt [role=radiogroup]")].map(e=>({id:e.id,name:(e.getAttribute("aria-labelledby")||"").split(" ").map(i=>g(i)?g(i).textContent:"?").join(" "),'
+             'names:[...new Set([...e.querySelectorAll("input")].map(r=>r.type+":"+r.name))],labels:[...e.querySelectorAll("label")].map(l=>[l.textContent,Math.round(l.getBoundingClientRect().height)])}));'
+             'q("#ov input[value=\\"all\\"]").click();o.all=st();g("q").value="row";draw();o.search=st();g("q").value="";q("#gv input[value=\\"0\\"]").click();o.back=st();'
+             'parent.postMessage(JSON.stringify({w:innerWidth,o,groups}),"*")})</script>')
+_TB_BOX = ('$("p").hidden=!!q;', '$("p").hidden=gname!="board"||!!q;')        # the box, and the box hidden outside the board as it was
+
+
+def _toolbar_faults(rep, width):
+    """What is wrong with the toolbar's radios and the box in one frame — [] where each view checks its own radios, open or all shows in every view but
+    the board, the box stands in the board and the story view with the toolbar where it stood and hides during a search, and each group is named by
+    its words, its radios under one name, each label at least 24 px high on a phone."""
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    o_, out_ = rep["o"], []
+    want_ = {"board": (False, True, ["gv=0", "ov=open"]), "story": (False, False, ["gv=1", "ov=open"]), "all": (False, False, ["gv=1", "ov=all"]),
+             "search": (True, False, ["gv=1", "ov=all"]), "back": (False, True, ["gv=0", "ov=all"])}
+    out_ += [f"{k}: {o_.get(k)}" for k, (p_, ov_, on_) in want_.items() if (o_.get(k, {}).get("p"), o_.get(k, {}).get("ov"), o_.get(k, {}).get("on")) != (p_, ov_, on_)]
+    out_ += [] if o_["story"]["y"] == o_["board"]["y"] and o_["story"]["sections"] == o_["board"]["sections"] > 0 and o_["story"]["rows"] > 0 else [f"the story view moved the toolbar or the box: {o_}"]
+    named_ = {g_["id"]: (g_["name"], g_["names"], [t_ for t_, _h in g_["labels"]]) for g_ in rep["groups"]}
+    out_ += [] if named_ == {"gv": ("by", ["radio:gv"], ["board", "story"]), "ov": ("open all", ["radio:ov"], ["open", "all"])} else [f"the groups {rep['groups']}"]
+    out_ += [f"a label {h_} px high" for g_ in rep["groups"] for _t, h_ in g_["labels"] if width <= 640 and h_ < 24]
+    return out_
+
+
+_tb_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-52, BF-53, RV-3660 · the toolbar's settings are two radio groups, `#gv` named by its word and `#ov` by its two, and no button, and "
+      "the page holds no pressed state, its rule included; the box hides only during a search, and is built whenever there is none",
+      _tb_src.count('<span id="gv" role="radiogroup" aria-labelledby="gw"></span><span id="ov" role="radiogroup" aria-labelledby="ovo ova">') == 1
+      and '<button id="g"' not in _tb_src and _tb_src.count(_TB_BOX[0]) == 1 and _tb_src.count('+(!q?box():"")') == 1 and "#vt button" not in _tb_src
+      and "aria-pressed" not in fm.HTML_PAGE)
+if _browser("toolbar"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); run(root, "--init", "--key", "msr")
+            tracker(root, "MSR-001", extra="tier: P1\n", title="row one, a story"); tracker(root, "MSR-002", extra="epic: MSR-001\n", title="row two, its chapter")
+            tracker(root, "MSR-003", status="Shipped", title="row three, shipped"); run(root)
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _toolbar_faults(_header_at(wt_, page_, w_, _TB_PROBE), w_) for w_ in (1024, 390)}
+            before_ = _toolbar_faults(_header_at(wt_, page_.replace(*_TB_BOX), 1024, _TB_PROBE), 1024)
+            check(f"FM-053, BF-52, BF-53 · at 1024 and 390 px each view checks its own radios, open or all shows in every view but the board, each group is "
+                  f"named by its words with its radios under one name and each label at least 24 px high on a phone; the box stands in the story view, the "
+                  f"toolbar where it stood, and hides during a search (saw {seen_})", not any(seen_.values()))
+            check(f"FM-053, BF-53 · the check's control: the box hidden outside the board again fails it (saw {before_})",
+                  page_.count(_TB_BOX[0]) == 1 and any(f_.startswith(("story:", "the story view")) for f_ in before_))
+    except _ChromeFailed as e_:
+        _hung("toolbar", e_)
+        fm.configure(HERE)
+
+# --- on a phone each work row stacks — the id, tier and status on a line, the title under them at the full width, hanging at the id's column, the
+#     column heads gone — so the page is no wider than the screen and nothing scrolls sideways, a title too long for a line broken inside it.
+#     Measured in Chrome at 390, 360 and 320 px on a board whose title cannot fit a phone's line; the stacking taken out must let the page
+#     scroll sideways, and at 640 px it stacks, at 1024 not ---------------------------------------------------------------------------------
+_PH_RULE = ("@media(max-width:640px){#B>table,#b{display:block}#B>table>thead{display:none}#b>tr:not([hidden]),#b>tr>td{display:block}#b>tr>td.x{display:none}\n"
+            "#b>tr.t{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:2ch;padding-left:calc(2ch + 5px);border-top:1px solid var(--line)}#b>tr.t>td{border-top:0}\n"
+            "#b>tr.t>td:first-child{margin-left:calc(-2ch - 5px)}#b>tr.t>td:last-child{flex:1 1 100%;padding-top:0;overflow-wrap:anywhere}}\n")
+_PH_PROBE = ('<script>addEventListener("load",()=>{const de=document.documentElement,t=document.querySelector("#B>table"),r=e=>{const b=e.getBoundingClientRect();return[b.left,b.top,b.right,b.bottom]};'
+             'parent.postMessage(JSON.stringify({w:innerWidth,cw:de.clientWidth,sw:de.scrollWidth,tc:t.clientWidth,ts:t.scrollWidth,head:getComputedStyle(t.tHead).display,'
+             'rows:[...document.querySelectorAll("#b tr.t")].map(x=>({id:r(x.cells[0].querySelector("a")),cell:r(x.cells[0]),title:r(x.cells[x.cells.length-1])}))}),"*")})</script>')
+
+
+def _phone_faults(rep, width, stacked=True):
+    """What is wrong with the work table in one frame — [] where the page and the table are no wider than the screen and each row stacks
+    (`stacked`: the title under the id's line, starting at the id's column, the heads gone) or does not (the title beside the id, the heads shown)."""
+    if not rep or rep.get("w") != width or not rep.get("rows"):
+        return [f"no report, or no row, from the {width} px frame (saw {rep})"]
+    out_ = [f"the page {rep['sw']} px wide in {rep['cw']}"] if rep["sw"] > rep["cw"] + 1 else []
+    out_ += [f"the table {rep['ts']} px wide in {rep['tc']}"] if rep["ts"] > rep["tc"] + 1 else []
+    out_ += [] if (rep["head"] == "none") == stacked else [f"the column heads: {rep['head']}"]
+    for r_ in rep["rows"]:
+        under_ = r_["title"][1] >= r_["cell"][3] - 0.5 and abs(r_["title"][0] - r_["id"][0]) <= 1 and r_["title"][2] <= rep["cw"] + 0.5
+        out_ += [] if under_ == stacked else [f"a row {r_}"]
+    return out_
+
+
 _ph14_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, BF-14 · at 640 px and narrower only the work table scrolls what is wider than the page, in its own box: `#B>table{display:block;overflow-x:auto}` "
-      "in its own phone rule — never the whole board", _ph14_src.count(_PH_RULE) == 1 and "#B{display:block;overflow-x:auto}" not in _ph14_src)
+check("FM-053, BF-55 · at 640 px and narrower each work row stacks, in one phone rule — and the scrolling box the table had there is gone",
+      _ph14_src.count(_PH_RULE) == 1 and "#B>table{display:block;overflow-x:auto}" not in _ph14_src)
 if _browser("phone"):
     try:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d).resolve(); run(root, "--init", "--key", "msr")
-            tracker(root, "MSR-001", extra="tier: P1\n", title="Stock_is_booked_per_warehouse_and_counted_per_shelf_in_one_pass_every_night")
-            tracker(root, "MSR-002", status="Proposed", title="An untriaged one"); run(root)
+            tracker(root, "MSR-001", extra="tier: P1\nrank: 1\nnext: build\n", title="Stock_is_booked_per_warehouse_and_counted_per_shelf_in_one_pass_every_night")
+            tracker(root, "MSR-002", status="Proposed", title="An untriaged one, with a title long enough to wrap on a phone"); run(root)
             page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
-            seen_ = {w_: _header_at(wt_, page_, w_, _PH_PROBE) or {} for w_ in (390, 360, 320)}
-            before_ = _header_at(wt_, page_.replace(_PH_RULE, ""), 360, _PH_PROBE) or {}
-            check(f"FM-053, BF-14 · at 390, 360 and 320 px the page is no wider than the screen, the board does not scroll, and only the table does, in its own "
-                  f"box (saw {seen_})",
-                  page_.count(_PH_RULE) == 1 and all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["bs"] <= r_["bc"] + 1 and r_["ts"] > r_["tc"]
-                                                     for w_, r_ in seen_.items()))
-            check(f"FM-053, BF-14 · the check's control: the rule taken out, the page scrolls sideways at 360 px (saw {before_})",
-                  before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
+            seen_ = {w_: _phone_faults(_header_at(wt_, page_, w_, _PH_PROBE), w_) for w_ in (390, 360, 320, 640)}
             with tempfile.TemporaryDirectory() as d2:
                 plain_ = Path(d2).resolve(); run(plain_, "--init", "--key", "msr")
                 tracker(plain_, "MSR-001", extra="tier: P1\n", title="Stock is booked per warehouse"); tracker(plain_, "MSR-002", status="Proposed", title="An untriaged one")
                 run(plain_)
-                wide_ = {w_: _header_at(plain_ / "docs/work-tracker", (plain_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"), w_, _PH_PROBE) or {}
-                         for w_ in (640, 1024)}
-            check(f"FM-053, BF-14 · nothing changes at 640 and 1024 px: on a board whose table fits, the page is the screen's width and the table does not "
-                  f"scroll (saw {wide_})",
-                  all(r_.get("w") == w_ and r_["sw"] <= r_["cw"] + 1 and r_["ts"] <= r_["tc"] + 1 for w_, r_ in wide_.items()))
+                wide_ = _phone_faults(_header_at(plain_ / "docs/work-tracker", (plain_ / "docs/work-tracker/index.html").read_text(encoding="utf-8"), 1024, _PH_PROBE), 1024, stacked=False)
+            before_ = _header_at(wt_, page_.replace(_PH_RULE, ""), 360, _PH_PROBE) or {}
+            check(f"FM-053, BF-55 · at 390, 360, 320 and 640 px each row stacks — the title under the id's line, hanging at the id's column — the heads are gone, "
+                  f"and the page is no wider than the screen; at 1024 px, on a board whose titles fit, the row is one line under its heads (saw {seen_}, {wide_})",
+                  page_.count(_PH_RULE) == 1 and not any(seen_.values()) and not wide_)
+            check(f"FM-053, BF-55 · the check's control: the stacking taken out, the page scrolls sideways at 360 px (saw {before_.get('sw')} in {before_.get('cw')})",
+                  before_.get("w") == 360 and before_["sw"] > before_["cw"] + 1)
     except _ChromeFailed as e_:
         _hung("phone", e_)
+        fm.configure(HERE)
+
+# --- three riders: the read-at line keeps each dot with the fact before it, so no line of it starts with a dot or holds one alone; the day's
+#     stand-up and close-out rows keep a space before their dot, as every other heading; and a count set in bold in a heading of the box stands at
+#     the heading's 600, never bolder. Measured in Chrome at 390, 360 and 320 px, on a branch whose name breaks the line; the line's dot joined
+#     between the facts again, and the bold left to the browser, must each fail it -------------------------------------------------------------
+_RD_PROBE = ('<script>addEventListener("load",()=>{const s=document.querySelector("#ra>span"),ch=[],w=document.createTreeWalker(s,NodeFilter.SHOW_TEXT);'
+             'for(let n;n=w.nextNode();)for(let i=0;i<n.data.length;i++)ch.push([n,i]);const top=k=>{const r=document.createRange();r.setStart(ch[k][0],ch[k][1]);'
+             'r.setEnd(ch[k][0],ch[k][1]+1);return Math.round(r.getClientRects()[0].top)},d=ch.findIndex(([n,i])=>n.data[i]=="·");let p=d-1;'
+             'while(p>=0&&/\\s/.test(ch[p][0].data[ch[p][1]]))p--;const rows=[...document.querySelectorAll("#p h3.dr")].map(h=>h.innerText.replace(/\\s+/g," ").slice(0,20)),'
+             'bold=[...document.querySelectorAll("#p .sh b")].map(b=>[b.textContent,getComputedStyle(b).fontWeight]),sep=[...document.querySelectorAll("#p h3.dr")].map(h=>{const c=h.querySelector(".c"),w=h.querySelector(".why"),t=x=>x.innerText.replace(/\\s+/g," ").trim();'
+             'return w?t(h).includes(t(c)+" "+t(w).slice(0,12)):null});'
+             'parent.postMessage(JSON.stringify({w:innerWidth,dot:d<0?null:top(d),before:p<0?null:top(p),rows,bold,sep}),"*")})</script>')
+_RD_DOT = ('" ".join(f\'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>\' for i, f in enumerate(facts))',
+           '" · ".join(f\'<span class="fact">{f}</span>\' for f in facts)')      # the dot with its fact, and between the facts as it was
+_RD_BOLD = "#p .sh b{font-weight:600}"
+
+
+def _rider_faults(rep, width):
+    """What is wrong in one frame — [] where the read-at line's dot is on the line of the character before it, the stand-up and close-out rows read
+    *stand-up · * and *close-out · *, and every count set in bold in a heading of the box is at 600."""
+    if not rep or rep.get("w") != width:
+        return [f"no report from the {width} px frame (saw {rep})"]
+    out_ = [] if rep["dot"] is not None and rep["dot"] == rep["before"] else [f"the dot at {rep['dot']}, the character before it at {rep['before']}"]
+    out_ += [] if len(rep["rows"]) == 2 and rep["rows"][0].startswith("stand-up · ") and rep["rows"][1].startswith("close-out · ") else [f"the day's rows {rep['rows']}"]
+    out_ += [] if rep["bold"] and all(w_ == "600" for _t, w_ in rep["bold"]) else [f"the bold {rep['bold']}"]
+    out_ += [] if True in rep["sep"] and False not in rep["sep"] else [f"a day row's state and its warning run together: {rep['sep']}"]
+    return out_
+
+
+_rd_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+check("FM-053, BF-29, BF-56, BF-57, BF-69 · the read-at line's facts each carry the dot that follows them; the day's two rows put a space before their "
+      "state, as `hd` does, and one between their state and what follows it; a bold count in a heading of the box is set at 600",
+      _rd_src.count(_RD_DOT[0]) == 1 and _RD_DOT[1] not in _rd_src and _rd_src.count(_RD_BOLD) == 1
+      and _rd_src.count('<template id="day-row-{kind}"><span>{e("day." + kind + ".title")}</span> <span class="c">· {e("day." + kind + ".row")}</span> {act}</template>') == 1)
+if _browser("riders"):
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve(); out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001", extra="tier: P1\n"); run(root)
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+            git(root, "checkout", "-q", "-b", "fm/053-board-polish-and-its-riders"); git(root, "commit", "-q", "--allow-empty", "-m", "built\n\nSession: b1")
+            git(root, "commit", "-q", "--allow-empty", "-m", f"review: NOT READY\n\nReviewed: {out_('rev-parse', 'HEAD')}\nSession: r1")
+            run_safe(root, "--html-only")
+            page_ = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8"); wt_ = root / "docs/work-tracker"
+            seen_ = {w_: _rider_faults(_header_at(wt_, page_, w_, _RD_PROBE), w_) for w_ in (390, 360, 320)}
+            check(f"FM-053, BF-29, BF-56, BF-57, BF-69 · at 390, 360 and 320 px the read-at line's dot stays on the line of the fact before it, the day's rows "
+                  f"read *stand-up · * and *close-out · *, the close-out's state and its warning are two words apart, and the reviews heading's counts are at "
+                  f"600 (saw {seen_})", not any(seen_.values()))
+            mid_ = page_.split('<p id="ra" class="m"><span>', 1)
+            old_ = mid_[0] + '<p id="ra" class="m"><span>' + mid_[1].replace("&nbsp;·</span> <span", "</span> · <span", 1) if len(mid_) == 2 else page_
+            dots_ = {w_: _rider_faults(_header_at(wt_, old_, w_, _RD_PROBE), w_) for w_ in (360, 320)}
+            bold_ = _rider_faults(_header_at(wt_, page_.replace(_RD_BOLD, ""), 390, _RD_PROBE), 390)
+            check(f"FM-053, BF-29, BF-57 · the check's controls: the dot between the facts again leaves it off the line before it at 360 or 320 px, and the "
+                  f"bold left to the browser is not at 600 (saw {dots_}, {bold_})",
+                  any(any(f_.startswith("the dot at") for f_ in v_) for v_ in dots_.values()) and any(f_.startswith("the bold") for f_ in bold_))
+    except _ChromeFailed as e_:
+        _hung("riders", e_)
         fm.configure(HERE)
 
 # --- FM-053, BF-3: on the board the Owner is *you* (the guide, §10) — `next: owner` reads *→ you* in the tier's cell, and the viewer's handover
@@ -7079,6 +7429,7 @@ fm.configure(HERE)
 # --- FM-002: a board anyone can brand — a logo and its labels, three places, the nearest to the viewer wins --------
 GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
+lang: de
 search: Suche — Id, Stufe, Status, Wörter
 search.help: Eine ganze Id zeigt diesen Eintrag.
 view.by: nach {0}
@@ -7086,9 +7437,6 @@ view.board: Board
 view.epic: Vorhaben
 view.open: offen
 view.all: alle
-scheme.auto: automatisch
-scheme.light: hell
-scheme.dark: dunkel
 waiting.oldest: älteste seit {0} Tagen
 waiting.holds: hält {0} weitere auf
 waiting.days: seit {0} Tagen
@@ -7318,7 +7666,7 @@ brand.gone.theme: [palette] in shoalmark.toml
 brand.gone.fonts: the system's monospace
 brand.gone.wordmark: the name
 brand.gone.themes: [palette], by name
-scheme.button: light or dark: {0}
+scheme.toggle: dark
 path.lines: {0} lines
 path.line: 1 line
 day.title: the day
@@ -7342,6 +7690,8 @@ next.owner: you
 waiting.more: and {0} more: the oldest are above
 reviews.sessions: its session {0}, the branch's {1}
 reviews.sessions.more: {0} and {1} more
+reviews.more: and {0} more verdicts by another session this week
+reviews.more.one: und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche
 reviews.word.another: by another session
 reviews.word.same: by the same session
 reviews.word.untraced: untraced
@@ -7445,9 +7795,9 @@ with tempfile.TemporaryDirectory() as d:
               and "#ff0000" not in h_page and "#00ff00" not in h_page and "<style data-from" not in h_page
               and "logo          person" in h_report and "labels.yaml   organisation → person" in h_report and "labels changed: 3 of" in h_report
               and 0 <= h_err.find(_said[0]) < h_err.find(_said[1]) and all(f"no longer read: {s_.replace(' is no longer read — ', ' — ')}" in h_report for s_ in _said))
-        _, p2, r2, _, _ = board_with(repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nfooter: set up by X\n")
+        _, p2, r2, _, _ = board_with(repo_labels_yaml="tagline: from the repo\n", org_labels_yaml="tagline: from the org\nsearch: set up by X\n")
         check("C2 · the repository beats the organisation, key by key — and what only the organisation says survives",
-              '"tagline": "from the repo"' in p2 and '"footer": "set up by X"' in p2 and "labels.yaml   organisation → repository" in r2)
+              '"tagline": "from the repo"' in p2 and '"search": "set up by X"' in p2 and "labels.yaml   organisation → repository" in r2)
         board_with()                                          # every place emptied
         del os.environ["XDG_CONFIG_HOME"]; _h = os.environ.pop("HOME", None)
         try:
@@ -7459,10 +7809,21 @@ with tempfile.TemporaryDirectory() as d:
               nohome == 0 and "<style data-from" not in no_page and "<img" not in no_page.split("<script>")[0] and 'id="w"' not in no_page and '"status.Shipped": "Shipped"' in no_page)
         _, de_page, _, de_err, _ = board_with(repo_labels_yaml=GERMAN)
         check("C4 · a German board needs no code: every label has a German value, none is unknown, and what the page's logic compares is untouched",
-              set(fm.read_flat(GERMAN)) == set(fm.LABELS) - {"footer"} and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
+              set(fm.read_flat(GERMAN)) == set(fm.LABELS) and "is not a label" not in de_err and 't[2]=="In Progress"' in de_page and '"status.In Progress": "In Arbeit"' in de_page)
         _shipped_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
         check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
-              set(fm.LABELS) - set(_shipped_de) <= {"footer", "tagline"} and not set(_shipped_de) - set(fm.LABELS))
+              set(fm.LABELS) - set(_shipped_de) <= {"tagline"} and not set(_shipped_de) - set(fm.LABELS))
+        _en_de = sorted(k_ for k_, v_ in fm.LABELS.items() if v_ and _shipped_de.get(k_) == v_)
+        check(f"FM-053 · the German table the tool ships carries the go-to-market seat's words rows: no label in it keeps its English but one whose German "
+              f"is the same word, `brand.gone.theme`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Sitzung in dieser Woche* (saw {_en_de})",
+              _en_de == ["brand.gone.theme"] and _shipped_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche"
+              and fm.LABELS["reviews.more"] == "and {0} more verdicts by another session this week")
+        _, lang_de_, _, _, _ = board_with(repo_labels_yaml=(HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+        _, lang_en_, _, _, _ = board_with()
+        check(f"FM-053, BF-76 · a board says its words' language: the German table's board opens `<html lang=\"de\">`, the default board `<html lang=\"en\">` "
+              f"(saw {lang_de_[:40]!r}, {lang_en_[:40]!r})",
+              lang_de_.startswith('<!doctype html>\n<html lang="de">') and lang_en_.startswith('<!doctype html>\n<html lang="en">')
+              and fm.LABELS.get("lang") == "en" and _shipped_de.get("lang") == "de")
         if _browser("german"):
             try:
                 dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "index.html").as_uri() + frag]).stdout
@@ -7480,15 +7841,9 @@ with tempfile.TemporaryDirectory() as d:
                       cut_ok and english == ["open"])
                 _, _, _, _, _ = board_with(repo_logo_svg=_SVG)
                 ldom = dom("")
-                check("C5 · a logo is shown in the header and as the favicon — and a script inside the SVG does nothing", "<title>repo — work tracker</title>" in ldom and ldom.count("data:image/svg+xml;base64,") >= 2 and "PWNED" not in text(ldom))
-                # the scheme button: clicked for real, three times round — whatever the machine's own setting is — on the page's own grounds
-                probe = '<script>{const o=[];for(let i=0;i<3;i++){$("s").click();o.push($("s").dataset.scheme+"="+getComputedStyle(document.body).backgroundColor)}document.body.dataset.probe=o.join("|")}</script>'
-                (wt / "probe.html").write_text((wt / "index.html").read_text(encoding="utf-8").replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
-                pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout
-                seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
-                check(f"the scheme button switches the page's own light and dark by hand (saw: {seen})",
-                      "light=rgb(247, 247, 245)" in seen and "dark=rgb(14, 14, 14)" in seen and seen.count("auto=") == 1)
-                (wt / "probe.html").unlink()
+                check("C5 · a logo is shown in the header — its SVG written again for the board's scheme — and as the favicon, and a script inside the SVG does nothing",
+                      "<title>repo — work tracker</title>" in ldom and '<link rel="icon" href="data:image/svg+xml;base64,' in ldom
+                      and '<img alt="" src="data:image/svg+xml;charset=utf-8,' in ldom and "PWNED" not in text(ldom))
             except _ChromeFailed as e_:
                 _hung("german", e_)
         (wt / "brand").mkdir(exist_ok=True); (wt / "brand/logo.png").write_bytes(b"\x89PNG" + b"0" * (fm.LOGO_MAX + 1)); (wt / "brand/logo.svg").unlink(missing_ok=True)
@@ -7501,7 +7856,7 @@ with tempfile.TemporaryDirectory() as d:
               and "#0a7" not in n_page and "no longer read: docs/work-tracker/brand/wordmark.svg — the header shows the name" in n_report)
         # --- 0.18.2: the running line — the tool's mark, name and version, on every page, whatever the brand
         _ver = (HERE / "VERSION").read_text(encoding="utf-8").strip()
-        _run = lambda page: (re.search(r'</article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n(<p id="r" class="m">.*?</p>)</footer>\n<dialog', page) or [None, ""])[1]
+        _run = lambda page: (re.search(r'</article>\n<footer id="F">(<p id="r" class="m">.*?</p>)</footer>\n<dialog', page) or [None, ""])[1]
         _links = lambda line: re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener" aria-label="([^"]+)">', line)
         check("0.18.2 · the running line ends every page — no brand, a hostile one, a German one, a logo — outside the board and the tracker view: two links, the tool and its release at VERSION, the ' · ' between them plain",
               all(_links(_run(pg)) == [("https://github.com/shoalmark/shoalmark", "shoalmark on GitHub"), (f"https://github.com/shoalmark/shoalmark/releases/tag/v{_ver}", f"release v{_ver}")]
@@ -7533,18 +7888,18 @@ with tempfile.TemporaryDirectory() as d:
         _, t_page, _, t_err, t_code = board_with(repo_labels_yaml="tagine: a typo\nstatus.Shipped: Live\n")
         check("a mistyped label is named in a warning and never reaches the page — the rest of the file still applies",
               t_code == 0 and "labels.yaml: tagine is not a label" in t_err and '"tagine"' not in t_page and '"status.Shipped": "Live"' in t_page)
-        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n", org_logo_svg=_SVG)
+        board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="tagline: set up by X with shoalmark\n", org_logo_svg=_SVG)
         dest = base / "client" / "tools" / "shoalmark"
         _vend_release(dest, tool=_release(base / "org-release"))     # R17: the organisation's copy — its brand committed — at its release tag
         check("C7 · the organisation's logo and labels travel with --vendor and are pinned like the rest of the copy — its theme.css, read by no board, does not",
-              (dest / "brand/labels.yaml").read_text() == "footer: set up by X with shoalmark\n" and "brand/labels.yaml" in (dest / "PIN").read_text()
+              (dest / "brand/labels.yaml").read_text() == "tagline: set up by X with shoalmark\n" and "brand/labels.yaml" in (dest / "PIN").read_text()
               and "brand/logo.svg" in (dest / "PIN").read_text() and not (dest / "brand/theme.css").exists() and "theme.css" not in (dest / "PIN").read_text())
         (base / "client/docs/work-tracker").mkdir(parents=True)
         (base / "client/docs/work-tracker/MSR-001-x.md").write_text('---\nid: MSR-001\nstatus: Proposed\nconsidered: none\nhook: "h"\n---\n\n# MSR-001 — x\n')
-        (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("footer: ours\n")
+        (base / "client/shoalmark.toml").write_text('[kinds]\nMSR = "Work"\n'); (base / "client/docs/work-tracker/brand").mkdir(); (base / "client/docs/work-tracker/brand/labels.yaml").write_text("tagline: ours\n")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client")], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         cpage = (base / "client/docs/work-tracker/index.html").read_text(encoding="utf-8")
-        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"footer": "ours"' in cpage and "--blue:#123456" not in cpage)
+        check("C7 · …and the client overrides it beside its own trackers, without touching the pinned copy", r.returncode == 0 and '"tagline": "ours"' in cpage and "--blue:#123456" not in cpage)
         (dest / "VERSION").write_text("0.0.1-vendored\n", encoding="utf-8")
         r = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(base / "client"), "--html-only"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_ENV, XDG_CONFIG_HOME=str(base / "nowhere")))
         check("0.18.2 · a vendored copy's running line names the version IT runs — its own VERSION, its own release page",
@@ -7566,6 +7921,11 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 # --- FM-002, 0.18.5: the Owner's box carries its title, and the last line is one element — the claim and the running line ------------------
+_RUN_RIGHT = "#r{display:flex;justify-content:flex-end;"        # the running line's place: alone, at the right
+_RUN_PROBE = ('<script>addEventListener("load",()=>{const b=document.body,c=getComputedStyle(b),f=b.getBoundingClientRect(),r=document.getElementById("r").getBoundingClientRect(),'
+              'k=[...document.querySelector("#r").children].map(e=>e.getBoundingClientRect()),t=document.querySelector("#B>table").getBoundingClientRect();'
+              'parent.postMessage(JSON.stringify({w:innerWidth,l:Math.min(...k.map(x=>x.left)),r:Math.max(...k.map(x=>x.right)),fl:f.left+parseFloat(c.paddingLeft),'
+              'fr:f.right-parseFloat(c.paddingRight),gap:Math.round(r.top-t.bottom)}),"*")})</script>')
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); fm.configure(root)
     for n_ in (1, 2, 3):
@@ -7574,22 +7934,33 @@ with tempfile.TemporaryDirectory() as d:
     (wt / "brand/labels.yaml").write_text("footer: a claim of our own\n", encoding="utf-8")
     _xdg = os.environ.get("XDG_CONFIG_HOME"); os.environ["XDG_CONFIG_HOME"] = str(root / "nobody")     # the person's own place stays out of it
     try:
-        run(root); page = (wt / "index.html").read_text(encoding="utf-8")
-        check("FM-002, FM-053 · the board carries the Owner's box's title, the label `owner.title` — *yours*, set into the box's one titled frame — and the claim "
-              "and the running line in one footer element, after the viewer, the claim hidden in the viewer; no row carries the stripe a theme once drew",
-              '</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="f" class="m" data-l="footer"></p>\n<p id="r" class="m">' in page
-              and page.count("<footer") == 1 and "#p>.pt{position:absolute;top:-11px;" in page and "#B[hidden]~#F #f{display:none}" in page and ".pt{display:none}" not in page
+        _fe = run(root)[2]; page = (wt / "index.html").read_text(encoding="utf-8")
+        check("FM-002, FM-053 · the board carries the Owner's box's title, the label `owner.title` — *yours*, set into the box's one titled frame — and its last "
+              "line is the running line alone, in one footer element after the viewer: the claim is gone, its element and its label; no row carries the "
+              "stripe a theme once drew",
+              '</tbody></table></div>\n<article id="v" hidden></article>\n<footer id="F"><p id="r" class="m">' in page
+              and page.count("<footer") == 1 and "#p>.pt{position:absolute;top:-11px;" in page and 'id="f"' not in page and "#f{" not in page
+              and '"footer":' not in page and "footer" not in fm.LABELS and ".pt{display:none}" not in page
               and '`<span class="pt">${l("owner.title")}</span>`+' in page and "zebra" not in page and '"owner.title": "yours"' in page)
+        check(f"FM-053 · never a silent loss: a labels.yaml that still sets the claim's label is told it is no longer read and what replaces it (saw {_fe.strip()!r})",
+              "repository's labels.yaml: footer is no longer read — the board ends with the running line alone: no claim stands under it" in _fe
+              and "footer is not a label" not in _fe)
         if _browser("hooks"):
             try:
                 import html as _html
                 probe = ('<script>{const o=[],s=()=>o.push(($("p").querySelector(".pt")||{}).textContent||"-");s();$("q").value="row";draw();s();'
-                         '$("q").value="";$("g").click();s();document.body.dataset.probe=o.join("|")}</script>')
+                         '$("q").value="";document.querySelector("#gv input[value=\\"1\\"]").click();s();document.body.dataset.probe=o.join("|")}</script>')
                 (wt / "probe.html").write_text(page.replace("</script></html>", "</script>" + probe + "</html>"), encoding="utf-8")
                 views_ = _html.unescape((re.search(r'data-probe="([^"]*)"', _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt / "probe.html").as_uri()]).stdout) or [None, ""])[1])
                 check(f"FM-002 R2 · the Owner's box carries its title in every view that draws it — the board, a search, the story view (saw {views_!r})",
                       views_ == "yours|yours|yours")
                 (wt / "probe.html").unlink()
+                at_ = {w_: _header_at(wt, page, w_, _RUN_PROBE) or {} for w_ in (1024, 390)}
+                cut_ = _header_at(wt, page.replace(_RUN_RIGHT, "#r{display:flex;"), 1024, _RUN_PROBE) or {}
+                check(f"FM-053 · the running line stands alone at the right, 28 px under the table, at 1024 and 390 px (saw {at_})",
+                      all(r_.get("w") == w_ and abs(r_["r"] - r_["fr"]) <= 1 and r_["l"] > r_["fl"] + 20 and r_["gap"] == 28 for w_, r_ in at_.items()))
+                check(f"FM-053 · the check's control: the line without its place at the right stands at the left (saw {cut_})",
+                      page.count(_RUN_RIGHT) == 1 and cut_.get("w") == 1024 and abs(cut_["l"] - cut_["fl"]) <= 1)
             except _ChromeFailed as e_:
                 _hung("hooks", e_)
     finally:
@@ -7729,13 +8100,12 @@ with tempfile.TemporaryDirectory() as _nowhere:
         fm.configure(HERE); _logo, _labels, _src, _warn, _gone = fm.brand()
     finally:
         os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
-_given = fm.read_flat((_rb / "labels.yaml").read_text(encoding="utf-8"))
-check("0.18.2 · this repository's labels.yaml is valid — every key a label — with no tagline (the claim speaks to agents; the Owner, 2026-09-24) and the English footer he ruled",
-      set(_given) <= set(fm.LABELS) and "tagline" not in _given and _given.get("footer") == "A Pricke on the Wadden flats keeps the fleet in the channel." and _labels["footer"] == _given["footer"])
+check("FM-053 · this repository's board needs no labels.yaml: the claim under its board is gone, it carries no tagline, and its chrome is the English table",
+      not (_rb / "labels.yaml").exists() and "footer" not in _labels and _labels["tagline"] == "" and _src["labels.yaml"] == [] and _labels == fm.LABELS)
 check("0.18.2 · this repository's logo — the tab's — is the site's tab icon, byte for byte", _src["logo"] == ["repository"] and (_rb / "logo.svg").read_bytes() == (HERE / "docs/assets/favicon.svg").read_bytes())
 check(f"R10 · this repository holds no brand file the board no longer reads — its theme.css, fonts/ and wordmark.svg are gone, and the tool's own brand/ "
       f"ships no themes/ — so its board names none, and warns of nothing (saw {_gone}, {_warn})",
-      sorted(p_.name for p_ in _rb.iterdir()) == ["labels.yaml", "logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
+      sorted(p_.name for p_ in _rb.iterdir()) == ["logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
 
 # --- FM-053's answer, and the guide's amendment G1–G2: the board's colours are `[palette]` — a palette by name or a few tokens in three meanings, `ok`,
 # `warn` and `fail`, refused below the set contrast on every ground its text stands on, ignored by an older copy. The class test, run on the tool and on
@@ -7897,9 +8267,9 @@ def _accept(source):
     # 3 · nothing framed but actions: a box only on what is clickable and on the search field, one titled frame, the dialog's window
     framed = sorted({s for s, d_ in plain if any(k == "border" and not v.startswith(("0", "none")) for k, v in d_.items())})
     phone = {s for m, s, d_ in rules if "max-width:640px" in m and d_.get("min-height") == "24px"}
-    out[3] = (framed == sorted({"button.act", "#s", "#vt button", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
-              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", "#s", "#vt button", "#dlg button"))
-              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", "#s", "#vt button", "#dlg button"} <= phone
+    out[3] = (framed == sorted({"button.act", ".rd input", "#dlg button", "#sb", "#dlg textarea", "#dlg input[type=datetime-local]", "#p", "#dlg>form", ".q"})
+              and all(any(d_.get("border") == "1px solid var(--mute)" for s, d_ in plain if s == b_) for b_ in ("button.act", ".rd input", "#dlg button"))
+              and all(fm.contrast(tokens["mute"][i], tokens["bg"][i]) >= 3 for i in (0, 1)) and {"button.act", ".rd", "#dlg button"} <= phone
               and not any(k == "border" for s, d_ in plain if s.startswith(("#p>.sec", ".row.v")) for k in d_), f"{framed}")    # a band's top rule (G8) is no frame
     # 4 · said, not implied: no word from the guide's *never* list, no line that promises what a session will do; what is not known is in italics with its reason
     never = re.compile(r"\b(live|running|active|up to date|all your projects|every agent|all sessions|proves|independent|less work|faster|touch)\b", re.I)
@@ -7911,7 +8281,7 @@ def _accept(source):
     # 5 · answer first: the first thing under the header is what waits for you — the box, its first section; on a phone nothing comes before it
     body_ = page.split("</style>")[1]
     out[5] = (re.search(r'<div id="H">.*?</div>(<p id="w"[^>]*>[^<]*</p>)?\n(?:<p id="ra" class="m">[^\n]*</p>\n<details class="about">[^\n]*</details>\n)?<div id="p" class="box"></div>\n<div id="vt">', body_) is not None
-              and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css)
+              and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css.replace("#sb{flex-basis:100%;order:1}", "", 1))
               and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
     # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
     out[6] = (all(box_src.count(f'l("{k}"') == 1 for k in ("waiting.title", "waiting.oldest", "waiting.holds", "acts.title", "way.title", "day.title", "sessions.recent",
