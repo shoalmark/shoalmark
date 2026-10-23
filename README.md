@@ -37,8 +37,8 @@ For archive acquisition, unpack the release ZIP and keep its complete inventory,
 files. Run the unpacked tool with `--root <project directory> --vendor <destination>`; `--vendor` names the destination
 and takes its source from the running tool's folder. It validates every exact source byte and required file before
 copying the 19 tool files. The manifest verifies the archive's internal bytes and completeness; obtain the release
-from the source you trust. The manifest and probe files remain acquisition inputs. A tag-none dry-run archive needs
-the existing `--allow-untagged`; neither that flag nor `--partial` permits an invalid or incomplete archive. Full SVN
+from the source you trust. The manifest and probe files remain acquisition inputs. A tag-none dry-run archive is
+refused, however complete: `--vendor` takes only a tagged, verified, complete release (R17). Full SVN
 gate, board, history, protection and installed-entry qualification remains separate from archive acquisition; no
 complete operation without Git or new proof-platform result is promised here.
 
@@ -293,12 +293,15 @@ recognised by their exact text, never by italics, bold or length: an example wit
 **`--vendor` vouches for what it copies.** It refuses — exit 4, nothing written — a source that is not the whole tool
 (it names the missing files), a source that is no release (a git checkout whose HEAD is exactly at `v<VERSION>`, with
 a clean tree — it names the HEAD and the changed paths), and a copy in the target that was edited in place. A consumer
-runs a release, never a working copy. `--partial` copies an incomplete source anyway and `--allow-untagged` a working
-copy; each says so in the PIN. The PIN's first line is the manifest —
-`# shoalmark X.Y.Z · tag vX.Y.Z · commit <sha> · vendored <date> · complete` — and the consumer's `--check` checks it
-(that exact form, the tag against the version, the version against the copy's `VERSION`) before it prints where the
-copy came from, with a warning for an untagged or partial one; any other line is named, and the copy called
-*unverified*.
+runs a release, never a working copy, and nothing bypasses that (R17): `--partial` and `--allow-untagged` are gone, and
+either, given, is refused in one line, exit 2. From a git checkout it copies the tag's own bytes, each file read from
+the tag's tree: a file whose bytes on disk are not the tag's is named and the run refused, nothing written; a file
+beside the tool that the tag does not hold, an ignored one too, is named and never copied. The PIN's first line is the
+manifest — `# shoalmark X.Y.Z · tag vX.Y.Z · commit <sha> · vendored <date> · complete` — and the consumer's
+`--check` checks it (that exact form, the tag against the version, the version against the copy's `VERSION`) before it
+prints where the copy came from; any other line is named, and the copy called *unverified*. A copy vendored through
+either flag before runs as pinned: `--check` and `--vendor` name the flag it came through and say to vendor again from
+a release.
 
 Upgrade: `--vendor` again from the new release's clone (it names the tag, prints what changed since the version it
 replaces, and refuses a copy that was edited in place), then `--init` again to refresh the contract between its markers

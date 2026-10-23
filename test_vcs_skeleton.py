@@ -23,6 +23,17 @@ from unittest.mock import patch
 HERE = Path(__file__).resolve().parent
 
 
+def source_launch_env(fm):
+    """The environment a source read starts with: `nested_git_env()`, the fixed parameter after every inherited one, then `SOURCE_GIT_ENV` — each
+    where the tool under test has it."""
+    env = dict(fm.nested_git_env())
+    if hasattr(fm, "SOURCE_GIT_PARAMETER"):
+        inherited = env.get("GIT_CONFIG_PARAMETERS", "")
+        env["GIT_CONFIG_PARAMETERS"] = inherited + (" " if inherited else "") + fm.SOURCE_GIT_PARAMETER
+    env.update(getattr(fm, "SOURCE_GIT_ENV", {}))
+    return env
+
+
 def caught(call, error):
     try:
         call()
@@ -127,7 +138,7 @@ PROCESS_APIS = {
 }
 PROCESS_METHODS = set().union(*PROCESS_APIS.values()) - {"get", "open"}     # ordinary mapping/file methods; webbrowser's resolved APIs are still checked
 LAUNCH_CEILING_SHA256 = "1eabbea359cde1c65db4a688c3ff609d6acda0a33e38bc0b84021f9fde9bf6a0"
-BOUNDARY_SHA256 = "86d6d728c50b5803dfd53a3f6aa2a4948e104db716d3a7684fb43598237c6602"
+BOUNDARY_SHA256 = "a498b679dc5751b6a85f3ccd93a23959b2a4343c3b1aea5abfaf3efe4983cbdc"       # FM-061: the two source reads by object id (`tag_files`), SOURCE_GIT_ENV and SOURCE_GIT_PARAMETER
 ALLOWLIST_PATH = "test_vcs_launch_allowlist.json"
 CEILING_PATH = "test_vcs_launch_ceiling.json"
 
@@ -702,13 +713,13 @@ def run_review_root_controls(fm, check):
                              ("status", "--porcelain", "--untracked-files=all")):
                     before = len(starts); result = fm.git_out(*args, cwd=source, source=True)
                     check("RV-3087: real fixed source read " + " ".join(args), result is not None and len(starts) == before + 1
-                          and starts[-1][1]["cwd"] == source and starts[-1][1]["env"] == fm.nested_git_env()
+                          and starts[-1][1]["cwd"] == source and starts[-1][1]["env"] == source_launch_env(fm)
                           and starts[-1][1]["capture_output"] and starts[-1][1]["text"] and starts[-1][1]["encoding"] == "utf-8" and starts[-1][1]["errors"] == "replace")
                 check("RV-3087: real source provenance still reports canonical source", fm.source_provenance()[1] == fm.git_out("rev-parse", "HEAD", cwd=source, source=True).strip())
                 before = len(starts)
                 result = fm.vcs_process("git", "rev-parse", "HEAD", cwd=source, source=True, capture_output=True)
                 check("RV-3087: direct fixed read supplies the sanitized source environment", result.returncode == 0 and len(starts) == before + 1
-                      and starts[-1][1]["cwd"] == source and starts[-1][1].get("env") == fm.nested_git_env())
+                      and starts[-1][1]["cwd"] == source and starts[-1][1].get("env") == source_launch_env(fm))
                 wrong = foreign / "a" / "b" / "c"; wrong.mkdir(parents=True)
                 if os.name != "nt":
                     source_alias = area / "source-alias"; source_alias.symlink_to(source, target_is_directory=True)

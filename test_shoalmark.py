@@ -149,6 +149,39 @@ def git(cwd, *a, day=None):
                    check=True, capture_output=True, env=env)
 
 
+_RELEASES = {}
+def _release(into=None):
+    """R17 (FM-061): `--vendor` takes only a tagged, verified, complete release, so the suite vendors this tree's tool from a release of it: the files
+    `--vendor` copies, as they are here, byte for byte, committed in a scratch repository tagged `v<VERSION>`, its tree clean. Returns its `shoalmark.py` —
+    built in `into`, or, with none, built once for the whole run and removed at its end."""
+    if into is None and "run" in _RELEASES:
+        return _RELEASES["run"][1]
+    if into is None:
+        held_ = tempfile.TemporaryDirectory(prefix="shoalmark-release-")      # removed when the run ends, git's read-only objects included
+        top_ = Path(held_.name).resolve()
+    else:
+        top_ = Path(into).resolve(); top_.mkdir(parents=True, exist_ok=True)
+    for rel_ in fm.vendor_files():
+        (top_ / rel_).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(HERE / rel_, top_ / rel_)
+    for a_ in (("init", "-q"), ("add", "-A"), ("commit", "-qm", "the release"), ("tag", f"v{fm.__version__}")):
+        subprocess.run(["git", "-C", str(top_), "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+                        "-c", "core.autocrlf=false", *a_], check=True, capture_output=True, env=_ENV)     # the tag's blobs are this tree's bytes, on every system
+    if into is None:
+        _RELEASES["run"] = (held_, top_ / "shoalmark.py")
+    return top_ / "shoalmark.py"
+
+
+def _vend_release(dest, cwd=None, tool=None, check=False):
+    """`--vendor dest` as a consumer runs it, from this tree's release (`_release`) or the release `tool` names — run from `cwd`, by default the nearest
+    folder above `dest` that is there: the finished program, its exit and both streams."""
+    if cwd is None:
+        cwd = Path(dest).absolute().parent
+        while not cwd.is_dir():
+            cwd = cwd.parent
+    return subprocess.run([sys.executable, str(tool or _release()), "--vendor", str(dest)], cwd=str(cwd), capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", env=_ENV, check=check)
+
+
 def tracker(root, tid, status="In Progress", extra="", body="## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n", title="t"):
     d = root / "docs" / "work-tracker"
     d.mkdir(parents=True, exist_ok=True)
@@ -502,9 +535,7 @@ with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     dest = root / "tools" / "shoalmark"
     fm.configure(root)                                       # its own root, a real one — never the root the block before left behind, removed with it (CI on #184)
-    out = io.StringIO()
-    with redirect_stdout(out):
-        fm.vendor(dest, allow_untagged=True)                 # the suite's own tree is a working copy, not a release (0.17.8)
+    _vend_release(dest, cwd=root)                            # the suite's own tree is a working copy, not a release: vendored from a release of it (R17)
     pin = (dest / "PIN").read_text()
     check("a vendored copy carries its licence: both texts, the notice, and the SPDX line in the tool",
           all((dest / f).exists() and f in pin for f in ("LICENSE-APACHE", "LICENSE-MIT", "NOTICE"))
@@ -1777,8 +1808,7 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 with tempfile.TemporaryDirectory() as d:
     dest = Path(d).resolve() / "tools" / "shoalmark"
-    with redirect_stdout(io.StringIO()):
-        fm.vendor(dest, allow_untagged=True)
+    _vend_release(dest)
     # FM-009: `--vendor` compares the consumer's VERSION file against our version. While the version was ALSO declared
     # as a constant beside that file the two could drift — and did, for two releases — so a consumer pinned at the
     # stale constant read as up to date and the changelog it was owed was suppressed.
@@ -1786,9 +1816,7 @@ with tempfile.TemporaryDirectory() as d:
           (dest / "VERSION").read_text().strip() == fm.__version__)
     (dest / "VERSION").write_text("0.2.0\n")
     (dest / "PIN").write_text("\n".join(f"{fm.digest(dest / l.partition('  ')[2])}  {l.partition('  ')[2]}" for l in (dest / "PIN").read_text().splitlines() if not l.startswith("#")) + "\n")
-    out = io.StringIO()
-    with redirect_stdout(out):
-        fm.vendor(dest, allow_untagged=True)
+    out = io.StringIO(_vend_release(dest).stdout)
     check("vendoring again says which version it replaces and what changed since", "(was 0.2.0)" in out.getvalue() and "## 0.3.0" in out.getvalue() and "## 0.2.0" not in out.getvalue())
     _heads = re.findall(r"^## (\d+\.\d+\.\d+)", (HERE / "CHANGELOG.md").read_text(), re.M)
     check(f"a consumer one release behind ({_heads[1]}) is shown exactly the section it lacks — the newest, which is this version's",
@@ -1825,16 +1853,14 @@ with tempfile.TemporaryDirectory() as d:
           gone_.returncode == fm.EXIT_LINT and "missing NOTICE" in gone_.stderr and not (base / "c2").exists()
           and dirty_.returncode == fm.EXIT_LINT and "the tree has changes: README.md" in dirty_.stderr and not (base / "c3").exists())
     g("commit", "-qam", "past the tag"); moved = g("rev-parse", "HEAD").stdout.strip()
+    pinned_ = (cons / "tools/shoalmark/PIN").read_text()
     refused_ = vend(base / "c4/tools/shoalmark"); allowed_ = vend(cons / "tools/shoalmark", "--allow-untagged")
-    upin_ = (cons / "tools/shoalmark/PIN").read_text(); subprocess.run(tool_, capture_output=True, env=_ENV)
-    uwarn_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     (src / "NOTICE").unlink(); part_ = vend(base / "c5/tools/shoalmark", "--partial", "--allow-untagged")
-    ppin_ = (base / "c5/tools/shoalmark/PIN").read_text() if (base / "c5/tools/shoalmark/PIN").exists() else ""
-    check(f"FM-011 · HEAD past the tag is refused, naming it; --allow-untagged vendors and the PIN says `untagged <sha>`, which the consumer's --check warns of; --partial names what is missing (saw {upin_.splitlines()[:1]}, {ppin_.splitlines()[:2]})",
+    r17_ = lambda r_, flags_: r_.returncode == 2 and r_.stdout == "" and r_.stderr.count("\n") == 1 and r_.stderr.startswith(f"{flags_}: R17 removed ")
+    check(f"FM-011 · R17 · HEAD past the tag is refused, naming it; --allow-untagged and --partial, which once vendored such a source, are each refused in one line naming R17, exit 2 — nothing written, the consumer's copy as pinned (saw {allowed_.stderr.strip()[:90]!r} · {part_.stderr.strip()[:90]!r})",
           refused_.returncode == fm.EXIT_LINT and f"HEAD {moved[:10]} is not at the tag v{ver} (it carries" not in refused_.stderr and f"HEAD {moved[:10]} is not at the tag v{ver}" in refused_.stderr
-          and allowed_.returncode == 0 and upin_.startswith(f"# shoalmark {ver} · untagged {moved[:10]} · vendored ")
-          and uwarn_.returncode == 0 and f"pinned {ver} from untagged {moved[:10]}" in uwarn_.stdout and "warning: this copy was vendored from a working copy, not a release" in uwarn_.stdout
-          and part_.returncode == 0 and "· partial" in ppin_.splitlines()[0] and "# missing: NOTICE" in ppin_ and "PARTIAL: missing NOTICE" in part_.stdout)
+          and r17_(allowed_, "--allow-untagged") and r17_(part_, "--partial and --allow-untagged")
+          and (cons / "tools/shoalmark/PIN").read_text() == pinned_ and not (base / "c4").exists() and not (base / "c5").exists())
     # R1: the manifest is checked, not displayed — the form --vendor writes, and agreeing with the pinned VERSION
     body_ = "\n".join(l for l in (cons / "tools/shoalmark/PIN").read_text().splitlines() if not l.startswith("#"))
     good_ = f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored 2026-09-23 · complete"
@@ -2223,9 +2249,9 @@ with tempfile.TemporaryDirectory() as d:
         u_ = _unpack(base / f"mutated-{n_}") if zipped.is_file() else base / f"mutated-{n_}"
         if u_.is_dir():
             change_(u_)
-        p_ = _project(f"refusing-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        p_ = _project(f"refusing-{n_}"); r_ = _vend(u_, p_)
         seen_[what_] = (r_[0], r_[2].strip(), not (p_ / "tools").exists(), says_ in r_[2] and len(r_[2].strip().splitlines()) == 1)
-    check(f"FM-004 · from an unpacked zip, a changed byte, a missing file, an extra file in the set and another VERSION are each refused in one line naming it — exit 4, nothing written, `--partial` and `--allow-untagged` or not (saw {[(w_, s_[0], s_[1][-90:]) for w_, s_ in seen_.items()]})",
+    check(f"FM-004 · from an unpacked zip, a changed byte, a missing file, an extra file in the set and another VERSION are each refused in one line naming it — exit 4, nothing written: no flag bypasses it (R17) (saw {[(w_, s_[0], s_[1][-90:]) for w_, s_ in seen_.items()]})",
           len(seen_) == 4 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in seen_.values()))
     five_ = {}
     for n_, (what_, rel_, change_, says_) in enumerate((("a changed byte", "examples/de/TRIAGE.md", lambda f: f.write_bytes(f.read_bytes() + b"\n"), "changed: examples/de/TRIAGE.md"),
@@ -2234,7 +2260,7 @@ with tempfile.TemporaryDirectory() as d:
         held_ = (u_ / rel_).is_file()
         if held_:
             change_(u_ / rel_)
-        p_ = _project(f"five-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        p_ = _project(f"five-target-{n_}"); r_ = _vend(u_, p_)
         five_[what_] = (held_, r_[0], r_[2].strip()[-90:], not (p_ / "tools").exists(), says_ in r_[2] and len(r_[2].strip().splitlines()) == 1)
     check(f"FM-004 · among the probe's five, a changed byte and a missing file are each refused in one line naming it — exit 4, nothing written (saw {five_})",
           len(five_) == 2 and all(held_ and c_ == fm.EXIT_LINT and none_ and named_ for held_, c_, _e, none_, named_ in five_.values()))
@@ -2251,7 +2277,7 @@ with tempfile.TemporaryDirectory() as d:
         u_ = _unpack(base / f"short-{n_}") if zipped.is_file() else base / f"short-{n_}"
         if u_.is_dir():
             _drop(u_, rel_)
-        p_ = _project(f"short-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        p_ = _project(f"short-target-{n_}"); r_ = _vend(u_, p_)
         whole_[rel_] = (r_[0], r_[2].strip()[-110:], not (p_ / "tools").exists(), f"missing {rel_}" in r_[2] and len(r_[2].strip().splitlines()) == 1)
     check(f"FM-004 · RV-3020 · from an unpacked zip, a file of the vendored set gone together with its RELEASE line — a licence, the renderer, the changelog — is refused in one line naming it, exit 4, nothing written: the archive is vendored only whole (saw {whole_})",
           len(whole_) == 3 and all(c_ == fm.EXIT_LINT and none_ and named_ for c_, _e, none_, named_ in whole_.values()))
@@ -2272,8 +2298,8 @@ with tempfile.TemporaryDirectory() as d:
               and all((no_git_ / "tools/shoalmark" / n_).read_bytes() == z_.read(n_) for n_ in pinned_))
         absent_manifest_ = _unpack(base / "missing-manifest"); (absent_manifest_ / "RELEASE").unlink()
         absent_target_ = _svn_project("missing-manifest-target")
-        absent_ = _vend(absent_manifest_, absent_target_, "--partial", "--allow-untagged", env=no_git_env_)
-        check(f"FM-004 · a missing RELEASE with no Git binary refuses in one line before writing, including with the legacy bypass flags (saw {absent_[0]}, {absent_[2].strip()[-150:]!r})",
+        absent_ = _vend(absent_manifest_, absent_target_, env=no_git_env_)
+        check(f"FM-004 · a missing RELEASE with no Git binary refuses in one line before writing (saw {absent_[0]}, {absent_[2].strip()[-150:]!r})",
               absent_[0] == fm.EXIT_LINT and "holds no RELEASE manifest" in absent_[2]
               and len(absent_[2].strip().splitlines()) == 1 and not (absent_target_ / "tools").exists())
         from test_vcs_archive import run_archive_integration_controls
@@ -2284,7 +2310,7 @@ with tempfile.TemporaryDirectory() as d:
     for n_, text_ in enumerate(("not a manifest\n", release_ + release_.splitlines()[4] + "\n", release_ + "0" * 64 + "  ../outside\n")):
         u_ = _unpack(base / f"bad-manifest-{n_}")
         (u_ / "RELEASE").write_text(text_, encoding="utf-8")
-        p_ = _project(f"bad-manifest-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+        p_ = _project(f"bad-manifest-target-{n_}"); r_ = _vend(u_, p_)
         malformed_[n_] = (r_[0], not (p_ / "tools").exists(), len(r_[2].strip().splitlines()) == 1)
     check(f"FM-004 · malformed, duplicate and outside manifest entries refuse in one line before writing (saw {malformed_})",
           len(malformed_) == 3 and all(c_ == fm.EXIT_LINT and none_ and one_ for c_, none_, one_ in malformed_.values()))
@@ -2294,7 +2320,7 @@ with tempfile.TemporaryDirectory() as d:
             u_ = _unpack(base / f"unsafe-{n_}"); target_ = base / f"link-outside-{n_}"
             shutil.move(str(u_ / rel_), str(target_))
             (u_ / rel_).symlink_to(target_, target_is_directory=target_.is_dir())
-            p_ = _project(f"unsafe-target-{n_}"); r_ = _vend(u_, p_, "--partial", "--allow-untagged")
+            p_ = _project(f"unsafe-target-{n_}"); r_ = _vend(u_, p_)
             symlink_cases_[rel_] = (r_[0], not (p_ / "tools").exists(), len(r_[2].strip().splitlines()) == 1,
                                     "symlink" in r_[2])
     except (OSError, NotImplementedError) as e:
@@ -3886,7 +3912,7 @@ def _hook_scenario(base, payload, control=None, steps=None):
     if control == "old":
         _old_tree(tool, _OLD_REV)
     else:
-        subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(tool), "--allow-untagged"], cwd=str(base), capture_output=True, env=_ENV, check=True)
+        _vend_release(tool, cwd=base, check=True)          # R17: from a release of this tree
     git(root, "add", "-A"); git(root, "commit", "-qm", "base")
     trunk = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip()
     inst = _tool_run(tool / "shoalmark.py", root, "--install-hook")
@@ -4075,7 +4101,7 @@ with tempfile.TemporaryDirectory() as d:
 # a pinned copy whose file differs from its PIN is refused — the hooks' copy is not written, nor the hooks that run it
 with tempfile.TemporaryDirectory() as d:
     base_ = Path(d).resolve(); root = base_ / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001")
-    subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"], cwd=str(base_), capture_output=True, env=_ENV, check=True)
+    _vend_release(root / "tools/shoalmark", cwd=base_, check=True)          # R17: from a release of this tree
     (root / "tools/shoalmark/shoalmark.py").write_text((root / "tools/shoalmark/shoalmark.py").read_text(encoding="utf-8") + "\n# changed in place\n", encoding="utf-8")
     c_, o_, e_ = _tool_run(root / "tools/shoalmark/shoalmark.py", root, "--install-hook")
     check(f"FM-006 · a private security report · a pinned copy whose file differs from its PIN is refused: exit 4, the hooks' copy is not written, and no hook — every one runs the copy (RV-2300) (saw {e_.strip()[:200]!r})",
@@ -4464,7 +4490,7 @@ def _off_main(pinned, rev=None):
     with tempfile.TemporaryDirectory() as d:
         base = Path(d).resolve(); root = base / "repo"; root.mkdir(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); fm.configure(HERE)
         if pinned:
-            subprocess.run([sys.executable, str(HERE / "shoalmark.py"), "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"], cwd=str(base), capture_output=True, env=_ENV, check=True)
+            _vend_release(root / "tools/shoalmark", cwd=base, check=True)          # R17: from a release of this tree
             tool_ = root / "tools/shoalmark/shoalmark.py"
         elif rev:
             _old_tree(base / "tool", rev); tool_ = base / "tool" / "shoalmark.py"
@@ -4808,7 +4834,7 @@ def _cp(rev=None):
     """`--vendor DIR`, where DIR is a folder of the tree that is a symlink to an empty folder beside the repository."""
     with tempfile.TemporaryDirectory() as d:
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
-        for key_, argv_ in (("vendor", ("--vendor", "vend", "--partial", "--allow-untagged")),):
+        for key_, argv_ in (("vendor", ("--vendor", "vend") + (("--partial", "--allow-untagged") if rev else ())),):     # R17: the flags for the old tool alone, the control
             away_ = marks / key_; away_.mkdir(); os.symlink(away_, root / argv_[1], target_is_directory=True)
             c_, o_, e_ = _tool_run(tool_, root, *argv_)
             g_[key_] = dict(code=c_, err=e_.strip(), out=o_.strip(), empty=sorted(os.listdir(away_)) == [])
@@ -5161,7 +5187,16 @@ def _vr(rev=None):
     """`--vendor vend` run twice from the tool at the repository's root; before the second run, the PIN names one more file, `extra/notes.txt` — a
     symlink to a FIFO beside the repository."""
     with tempfile.TemporaryDirectory() as d:
-        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; argv_ = [sys.executable, str(tool_), "--root", str(root), "--vendor", "vend", "--partial", "--allow-untagged"]
+        root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"
+        argv_ = [sys.executable, str(tool_), "--root", str(root), "--vendor", "vend", *(("--partial", "--allow-untagged") if rev else ())]     # the flags for the old tool alone
+        if not rev:                                         # R17: the tool at the root is vendored only as a release — the whole tool, committed and tagged,
+            for rel_ in fm.TOOL_FILES:                      # and what it writes into the tree no change to it
+                if not (root / rel_).is_file():
+                    (root / rel_).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(HERE / rel_, root / rel_)
+            (root / ".git/info").mkdir(exist_ok=True)
+            with open(root / ".git/info/exclude", "a", encoding="utf-8") as f_:
+                f_.write("/vend/\n")
+            git(root, "add", "-A"); git(root, "commit", "-qm", "the whole tool"); git(root, "-c", "tag.gpgsign=false", "tag", f"v{fm.__version__}")
         first_ = subprocess.run(argv_, cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
         fifo_ = marks / "fifo"; os.mkfifo(fifo_); (root / "vend/extra").mkdir(); os.symlink(fifo_, root / "vend/extra/notes.txt")
         pin_ = root / "vend/PIN"; pin_.write_text(pin_.read_text(encoding="utf-8") + "0" * 64 + "  extra/notes.txt\n", encoding="utf-8")
@@ -5440,8 +5475,8 @@ def _pn(rev=None):
     with tempfile.TemporaryDirectory() as d:
         base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
         git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
-        src_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
-        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", "--partial", "--allow-untagged")
+        src_ = _release() if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]     # R17: from a release of this tree
+        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", *(("--partial", "--allow-untagged") if rev else ()))     # the flags for the old tool alone
         outside_ = marks / "outside.txt"; outside_.write_text("inert\n", encoding="utf-8")
         pin_ = root / "tools/shoalmark/PIN"; pin_.write_text(pin_.read_text(encoding="utf-8") + "0" * 64 + "  ../../../marks/outside.txt\n", encoding="utf-8")
         mark_ = marks / "opened"; env_ = _watch(marks / "watch", mark_, opened=[outside_]); live_ = _watch_sees_open(env_, mark_, outside_)
@@ -5514,7 +5549,7 @@ def _nd(rev=None):
         root, marks, inst = _root_repo(d, rev); tool_ = root / "shoalmark.py"; g_ = {}
         conf_ = root / "shoalmark.toml"; conf_.write_text('standup = "09:00"\n' + conf_.read_text(encoding="utf-8"), encoding="utf-8")
         sums_ = lambda p_: hashlib.sha256(p_.read_bytes()).hexdigest() if p_.is_file() else None
-        for key_, inner_, there_, argv_ in (("vendor", "shoalmark.py", True, lambda door_: ("--vendor", str(door_), "--partial", "--allow-untagged")),
+        for key_, inner_, there_, argv_ in (("vendor", "shoalmark.py", True, lambda door_: ("--vendor", str(door_)) + (("--partial", "--allow-untagged") if rev else ())),     # R17: the flags for the old tool alone
                                              ("brand-starter", "labels.yaml", False, lambda door_: ("--brand", str(door_))),
                                              ("standup", "cal.ics", True, lambda door_: ("--standup", str(door_ / "cal.ics")))):
             folder_ = root / "dest" / key_; folder_.mkdir(parents=True); target_ = marks / f"target-{key_}"
@@ -5580,8 +5615,8 @@ def _pr(rev=None):
     with tempfile.TemporaryDirectory() as d:
         base = Path(d).resolve(); root, marks = base / "repo", base / "marks"; root.mkdir(); marks.mkdir()
         git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "base"); fm.configure(HERE)
-        src_ = HERE / "shoalmark.py" if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]
-        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", "--partial", "--allow-untagged")
+        src_ = _release() if not rev else (_old_tree(base / "tool", rev), base / "tool" / "shoalmark.py")[1]     # R17: from a release of this tree
+        v_ = _tool_run(src_, root, "--vendor", "tools/shoalmark", *(("--partial", "--allow-untagged") if rev else ()))     # the flags for the old tool alone
         copy_ = root / "tools/shoalmark"; pin_ = copy_ / "PIN"
         pin_.write_text("".join(l_ + "\n" for l_ in pin_.read_text(encoding="utf-8").splitlines() if not l_.endswith("  VERSION")), encoding="utf-8")
         target_ = marks / "version.txt"; target_.write_text((copy_ / "VERSION").read_text(encoding="utf-8").strip() + f"-{_PR_MARK}\n", encoding="utf-8")
@@ -6713,8 +6748,7 @@ with tempfile.TemporaryDirectory() as d:
               t_code == 0 and "labels.yaml: tagine is not a label" in t_err and '"tagine"' not in t_page and '"status.Shipped": "Live"' in t_page)
         board_with(org_theme_css=":root{--blue:#123456}", org_labels_yaml="footer: set up by X with shoalmark\n", org_logo_svg=_SVG)
         dest = base / "client" / "tools" / "shoalmark"
-        with redirect_stdout(io.StringIO()):
-            fm.vendor(dest, allow_untagged=True)
+        _vend_release(dest, tool=_release(base / "org-release"))     # R17: the organisation's copy — its brand committed — at its release tag
         check("C7 · the organisation's logo and labels travel with --vendor and are pinned like the rest of the copy — its theme.css, read by no board, does not",
               (dest / "brand/labels.yaml").read_text() == "footer: set up by X with shoalmark\n" and "brand/labels.yaml" in (dest / "PIN").read_text()
               and "brand/logo.svg" in (dest / "PIN").read_text() and not (dest / "brand/theme.css").exists() and "theme.css" not in (dest / "PIN").read_text())
@@ -8999,7 +9033,7 @@ else:
               and (root / "docs/work-tracker/index.html").exists())
         contract = (root / "AGENTS.md").read_text(encoding="utf-8")
         check("S3 · the contract says the true thing for Subversion: run the tool before `svn commit` — its command line has no hook", "before every `svn commit`" in contract and "gate on every\ncommit" not in contract)
-        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
+        _vend_release(root / "tools/shoalmark", cwd=base); fm.configure(root)          # R17: from a release of this tree
         svn("update", cwd=root); code, out, _ = run(root, "--install-hook")
         props = {p_: svn("propget", "--strict", p_, ".", cwd=root).stdout for p_ in fm.TSVN_HOOKS}
         again = run(root, "--install-hook")[1]
@@ -9350,7 +9384,7 @@ else:
               code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-011: is not committed yet, and it carries lines that `ask`, `close` and `triage` guard"))
         # the TortoiseSVN pre-commit run of the copy vendored into the working copy says the same line — called with what TortoiseSVN hands it: its path list,
         # its message file and the working copy, which FM-044's binding (P, accepted) reads before anything else and refuses where they are not real
-        fm.configure(HERE); run(HERE, "--vendor", str(root / "tools/shoalmark"), "--allow-untagged"); fm.configure(root)
+        _vend_release(root / "tools/shoalmark", cwd=base); fm.configure(root)          # R17: from a release of this tree
         paths6_, message6_ = base / "affected-paths.txt", base / "commit-message.txt"
         paths6_.write_text(str(p_) + "\n", encoding="utf-8"); message6_.write_text("C6-011\n", encoding="utf-8")
         hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths6_), "3", str(message6_), str(root)], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
@@ -14572,8 +14606,7 @@ check(f"FM-034 · R4 · the checkout line counts each commit it could not check 
 # …and a pinned file this checkout has not got is the checkout's finding too — said, never written into the INDEX
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); dest = root / "tools" / "shoalmark"
-    with redirect_stdout(io.StringIO()):
-        fm.vendor(dest, allow_untagged=True)
+    _vend_release(dest)                                      # R17: from a release of this tree
     tracker(root, "FEAT-001", status="Proposed")
     (dest / "LICENSE-MIT").unlink()
     gone_ = subprocess.run([sys.executable, str(dest / "shoalmark.py"), "--root", str(root)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
@@ -16168,6 +16201,10 @@ for _label, _ok, _detail in test_worktree_identity.run_checks(fm):
         _skipped(_label, 1, _detail)
     else:
         check(_label + (f" — {_detail}" if _detail else ""), _ok)
+
+import test_vendor_release
+for _label, _ok, _saw in test_vendor_release.run_checks(fm):       # FM-061: R17's class test, the tool as a program started from a release of it
+    check(_label if _ok else f"{_label} (saw {_saw})", _ok)
 
 # FM-044 bounded local-stage runtime controls. Component-only AST assertions
 # remain with their immutable standalone reviews; core retains the unchanged
