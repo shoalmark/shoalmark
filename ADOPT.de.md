@@ -115,36 +115,36 @@ Wartet auf das Ja. Ohne Ja hört ihr auf; geschrieben ist dann nichts.
 ### 3. Das Werkzeug, geholt und geprüft
 
 Legt den Ordner an; im Folgenden ist `<probe>` sein Pfad. Das Werkzeug kommt als Archiv seines Releases, für jedes
-Projekt und jedes System dasselbe. Die Release-Seite enthält auch `shoalmark-0.20.0.zip.sha256`, in der Form, die
+Projekt und jedes System dasselbe. Die Release-Seite enthält auch `shoalmark-0.20.1.zip.sha256`, in der Form, die
 `shasum -a 256 -c` liest. Im Zip liegen die Dateien unkomprimiert an der Wurzel. Sein Manifest `RELEASE` nennt
 Version, Tag, Commit und den SHA-256 jeder Datei.
 
-Die Festlegung: Release `v0.20.0`; das Archiv `https://github.com/shoalmark/shoalmark/releases/download/v0.20.0/shoalmark-0.20.0.zip`, SHA-256 `2e0df08842edc34b474b0ff0b913dfb8c370a9aa27300c684c43491d0b522c0d`; darin `shoalmark.py`, SHA-256 `06b9ca6960782f845cf87d37ff98ad9d6aeaeefda55ff406169cd0491139b6c5`.
+Die Festlegung: Release `v0.20.1`; das Archiv `https://github.com/shoalmark/shoalmark/releases/download/v0.20.1/shoalmark-0.20.1.zip`, SHA-256 `c2760b7f2296296b0e9119bb8ad563862510e2de23965e406909b8b024d5ffbf`; darin `shoalmark.py`, SHA-256 `688d7f0d6902a0065d1e061cd16e48ebd18c0397d367a58a11445999fbb58ca6`.
 
 1. **Prüft die Adresse, bevor ihr ladet.** Sie ist in der Festlegung und im Prompt dieselbe, Zeichen für Zeichen.
-   Sie ist genau `https://github.com/shoalmark/shoalmark/releases/download/v0.20.0/shoalmark-0.20.0.zip`.
+   Sie ist genau `https://github.com/shoalmark/shoalmark/releases/download/v0.20.1/shoalmark-0.20.1.zip`.
    Weicht sie ab, ladet nichts und sagt es der Person.
 
 2. **Ladet** das Archiv mit dem eigenen Werkzeug des Systems in den Ordner:
 
    | System | Befehl |
    |---|---|
-   | Windows (PowerShell) | `Invoke-WebRequest -UseBasicParsing -Uri https://github.com/shoalmark/shoalmark/releases/download/v0.20.0/shoalmark-0.20.0.zip -OutFile <probe>\shoalmark-0.20.0.zip` |
-   | macOS und Linux | `curl -fsSL -o <probe>/shoalmark-0.20.0.zip https://github.com/shoalmark/shoalmark/releases/download/v0.20.0/shoalmark-0.20.0.zip` |
+   | Windows (PowerShell) | `Invoke-WebRequest -UseBasicParsing -Uri https://github.com/shoalmark/shoalmark/releases/download/v0.20.1/shoalmark-0.20.1.zip -OutFile <probe>\shoalmark-0.20.1.zip` |
+   | macOS und Linux | `curl -fsSL -o <probe>/shoalmark-0.20.1.zip https://github.com/shoalmark/shoalmark/releases/download/v0.20.1/shoalmark-0.20.1.zip` |
 
 3. **Prüft seinen SHA-256, bevor etwas läuft.** Er muss der SHA-256 des Archivs oben sein.
 
    | System | Befehl |
    |---|---|
-   | Windows (PowerShell) | `Get-FileHash -Algorithm SHA256 <probe>\shoalmark-0.20.0.zip`, oder `certutil -hashfile <probe>\shoalmark-0.20.0.zip SHA256` |
-   | macOS | `shasum -a 256 <probe>/shoalmark-0.20.0.zip` |
-   | Linux | `sha256sum <probe>/shoalmark-0.20.0.zip` |
+   | Windows (PowerShell) | `Get-FileHash -Algorithm SHA256 <probe>\shoalmark-0.20.1.zip`, oder `certutil -hashfile <probe>\shoalmark-0.20.1.zip SHA256` |
+   | macOS | `shasum -a 256 <probe>/shoalmark-0.20.1.zip` |
+   | Linux | `sha256sum <probe>/shoalmark-0.20.1.zip` |
 
    `Get-FileHash` gibt Großbuchstaben aus; vergleicht ohne Rücksicht auf Groß- und Kleinschreibung. Weicht die
    Prüfsumme ab, führt nichts aus, löscht den Ordner und sagt es der Person.
 
 4. **Entpackt** es mit Pythons eigenem Modul, das auf jedem System gleich ist:
-   `<py> -m zipfile -e <probe>/shoalmark-0.20.0.zip <probe>/shoalmark/`.
+   `<py> -m zipfile -e <probe>/shoalmark-0.20.1.zip <probe>/shoalmark/`.
 
 5. **Prüft das Werkzeug:** Derselbe Befehl muss für `<probe>/shoalmark/shoalmark.py` den SHA-256 des Werkzeugs oben
    ausgeben.
@@ -255,7 +255,7 @@ Vor `--init` kommen die vier deutschen Dateien aus `<probe>/shoalmark/examples/d
 `--vendor` prüft, dass die Version des Manifests mit `VERSION` übereinstimmt und jede Datei des Satzes zu ihrem
 SHA-256 passt. Sonst lehnt es in einer Zeile ab und schreibt nichts. Die erste Zeile der PIN nennt nur diese
 Prüfungen, zum Beispiel:
-`# shoalmark 0.20.0 · vendored from an archive whose manifest names v0.20.0, commit <sha>, every file matched · <date>`.
+`# shoalmark 0.20.1 · vendored from an archive whose manifest names v0.20.1, commit <sha>, every file matched · <date>`.
 Damit sind Einträge und Board deutsch. Dann:
 
 ```

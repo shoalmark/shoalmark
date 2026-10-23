@@ -6034,11 +6034,15 @@ def _launch_problems(src):
 
 _ls = _sources(_LAUNCH_FILES)
 _lp = _launch_problems(_ls)
-check("FM-006 · B1 · the launch state is one fact in two places that agree (the probe switch, off, the tape, on, and the taped and interim folders of the snippets' base path), How it works stands in the navigation "
+_on = "\nprobe = true\n" in _ls["zensical.toml"]
+check(f"FM-006 · B1 · the launch state is one fact in two places that agree ({'the probe switch, on, the tape, off, and the probe folder' if _on else 'the probe switch, off, the tape, on, and the taped and interim folders'} "
+      "of the snippets' base path), How it works stands in the navigation "
       "and takes its words from those folders in English and German, names the button as the landing labels it in each state, and no page says that shoalmark scans for security problems "
       f"or data leaks (problems found: {_lp})", _lp == [])
-_ctl = {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n"),
-        "the tape on, its folder left out": _with(_ls, "zensical.toml", '"launch/taped", ', ""),
+_ctl = {**({"the switch off, its folder on": _with(_ls, "zensical.toml", "\nprobe = true\n", "\nprobe = false\n"),
+           "the tape on beside the switch": _with(_ls, "zensical.toml", "\ntaped = false\n", "\ntaped = true\n")} if _on else
+           {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n"),
+            "the tape on, its folder left out": _with(_ls, "zensical.toml", '"launch/taped", ', "")}),
         "a button named differently in How it works": _with(_ls, "launch/probe/how-it-works.en.md", '"Copy the prompt"', '"Run probe prompt"'),
         "a scan claimed": _with(_ls, "docs/how-it-works.md", "It does not scan your code for security problems or data leaks.", "It scans your code for security problems."),
         "a state fence left in the page": _with(_ls, "docs/de/how-it-works.md", '--8<-- "how-it-works.de.md"', "<!-- state: interim -->"),
@@ -6046,7 +6050,8 @@ _ctl = {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = 
         "a start twin leading with the other state's action": _with(_ls, "launch/probe/start.de.md", "de/probe.txt)", "ADOPT.de.md)"),
         "a start page's action typed in the page": _with(_ls, "docs/index.md", '--8<-- "start.en.md"', "**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**")}
 _ctl_saw = {name: len(_launch_problems(src)) for name, src in _ctl.items()}
-check("FM-006 · B1 · the launch check is not blind: each of the switch on with its folder off, the tape on with its folder left out, a button named differently in How it works, a scan claimed, "
+check(f"FM-006 · B1 · the launch check is not blind: each of {'the switch off with its folder on, the tape on beside the switch' if _on else 'the switch on with its folder off, the tape on with its folder left out'}, "
+      "a button named differently in How it works, a scan claimed, "
       f"a state fence left in the page, the English page out of the navigation, a start twin leading with the other state's action and a start page's action typed in the page leaves a problem "
       f"(problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 8)
 
