@@ -8474,10 +8474,23 @@ _PAL_CASES = (   # (what, the table, refused?, what the page or the one line mus
     ("a token that is not two colours", '[palette]\nfail = ["#b3402f"]\n', True, ("`fail` is two colours, light then dark, each #rrggbb",)))
 
 
-def _palette_class(source):
+_READ_AT_TIME = re.compile(r"\b\d\d-\d\d \d\d:\d\d\b")
+
+
+def _read_at_masked(page):
+    """`page` with the time of its read-at line masked: in the line and the fold beneath it, from `<p id="ra"` to the fold's end, each minute the
+    build printed (`MM-DD hh:mm`, the short form and the tail of the full one) is written as letters. Every other byte stands, the line's words and
+    the rest of the page."""
+    a = page.find('<p id="ra"')
+    b = page.find("</details>", a) if a >= 0 else -1
+    return page if b < 0 else page[:a] + _READ_AT_TIME.sub("MM-DD hh:mm", page[a:b]) + page[b:]
+
+
+def _palette_class(source, mask=None, keep=None):
     """The class test on a tool whose source is `source`, a copy of it run as a program: each case's table in shoalmark.toml, the board built, `--check`
     run. Worn: exit 0 and the page's tokens. Refused: the board's run and `--check` exit 1 with the one line naming the pair, and the page left as it was.
-    (ok, what differed)."""
+    Two builds are compared through `mask`, by default `_read_at_masked`; `keep`, a dict, takes each case's page. (ok, what differed)."""
+    mask = mask or _read_at_masked
     with tempfile.TemporaryDirectory() as d_:
         base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
         (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
@@ -8499,18 +8512,39 @@ def _palette_class(source):
                 ok_ = c_ == 0 and chk_ == 0 and all(w in page_ for w in want) and "is refused" not in e_ + e2_ and "--band" not in page_    # the section band is --secbg
             if not ok_:
                 wrong_.append(f"{what}: exit {c_}/{chk_} · {e_.strip()[:160]!r}")
-        if pages_["no table"] != pages_["monochrome by name"]:
+        if keep is not None:
+            keep.update(pages_)
+        if mask(pages_["no table"]) != mask(pages_["monochrome by name"]):
             wrong_.append("monochrome by name is not the board with no table, byte for byte")
         rm_git(root_)
         return not wrong_, wrong_
 
 
-_pal_ok, _pal_saw = _palette_class(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"))
+_pal_pages = {}
+_pal_ok, _pal_saw = _palette_class(_tool_src := (HERE / "shoalmark.py").read_text(encoding="utf-8"), keep=_pal_pages)
 check(f"FM-053, G1–G2, DF-4 · `[palette]`: monochrome with no table and by name, byte for byte, its three meanings, its section band `--secbg` (never `--band`) and its tints the amendment's; shoalmark "
       f"by name, its own amber and tint; tokens above and at 4.5:1 worn, in light and in dark, every text on every surface; a named tint worn, a taken one checked against the "
       f"palette's accents, and each refused where a text cannot stand on it; one below, a page and an "
       f"ink too close, an unknown name, a name that is a list (empty, or naming a palette), a key it does not take — `heed` among them — and a token that is not two colours each refused in one line naming "
       f"it, by the board's run and by `--check`, exit 1, the page left as it was (saw {_pal_saw})", _pal_ok)
+_pal_page = _pal_pages.get("no table", "")
+_pal_line = _pal_page[_pal_page.find('<p id="ra"'):_pal_page.find("</p>", _pal_page.find('<p id="ra"'))] if '<p id="ra"' in _pal_page else ""
+_pal_time = (_READ_AT_TIME.findall(_pal_line) or [""])[0]
+_pal_later = _pal_page.replace(_pal_line, _pal_line.replace(_pal_time, "12-31 23:59" if _pal_time != "12-31 23:59" else "01-01 00:00")) if _pal_time else _pal_page
+_pal_worded = _pal_page.replace(_pal_line, _pal_line.replace(_pal_time, _pal_time + "!")) if _pal_time else _pal_page
+check(f"FM-053 · the `[palette]` check's mask of the read-at time: each page prints its time ({_pal_time!r}); a later minute changes the line, and the "
+      f"mask hides that alone; a byte of the line beside it is still compared",
+      bool(_pal_time) and _pal_later != _pal_page and _read_at_masked(_pal_later) == _read_at_masked(_pal_page)
+      and _read_at_masked(_pal_worded) != _read_at_masked(_pal_page) and bool(_pal_pages)
+      and all(len(_READ_AT_TIME.findall(page_)) >= 2 for page_ in _pal_pages.values()))
+_PAL_CLOCK = ('    out = {"built_at": datetime.datetime.now().astimezone().replace(microsecond=0).isoformat(), "vcs": vcs() or "none"}',
+              '    out = {"built_at": (lambda c: (c.write_text(str(int(c.read_text()) + 1) if c.exists() else "0", encoding="utf-8"), '
+              'datetime.datetime.now() + datetime.timedelta(minutes=int(c.read_text(encoding="utf-8"))))[1])'
+              '(pathlib.Path(__file__).with_name("clock")).astimezone().replace(microsecond=0).isoformat(), "vcs": vcs() or "none"}')
+_pal_clocked = _tool_src.replace(*_PAL_CLOCK)
+check("FM-053 · the `[palette]` check across a minute: a copy whose clock moves a minute on each run passes it; its mutant, comparing the two builds "
+      "with no mask, FAILS it",
+      _tool_src.count(_PAL_CLOCK[0]) == 1 and _palette_class(_pal_clocked)[0] and not _palette_class(_pal_clocked, mask=lambda page: page)[0])
 _PAL_MUTANT = ('''                    refuse(f"{named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1")''',
                '''                    print(f"warning: {named(token)} {t[token]} on {named(ground)} {t[ground]} is {r:.2f}:1 in {s}, below {PALETTE_FLOOR}:1", file=sys.stderr)''')
 check("FM-053 · the `[palette]` class test's mutant, the refusal below the contrast turned back into a warning: the class test FAILS on it",
