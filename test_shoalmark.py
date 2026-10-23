@@ -8069,12 +8069,33 @@ fm.configure(HERE)
 # --- R10's look half: the documentation keeps its look — every file the docs load stays, and the docs' chart is drawn by their own stylesheet ------
 
 
-def _docs_refs():
+def _snippet_bases(conf_):
+    """The folders the site's build looks in for a `--8<--` include, in its order: zensical.toml's `pymdownx.snippets.base_path`, `.` where the key is
+    absent."""
+    base_ = re.search(r"^pymdownx\.snippets\.base_path\s*=\s*\[([^\]]*)\]", conf_, re.M)
+    return re.findall(r'"([^"]+)"', base_.group(1)) if base_ else ["."]
+
+
+def _probe_turned(conf_):
+    """zensical.toml with the probe state's switch turned, as a probe build turns it: probe = true, taped = false, and `base_path` on launch/probe. A
+    copy, never written; one already turned stays as it is. None where a key the switch turns is not there exactly once."""
+    for pat_, new_ in ((r"^probe = (?:true|false)$", "probe = true"), (r"^taped = (?:true|false)$", "taped = false"),
+                       (r"^pymdownx\.snippets\.base_path = \[[^\]]*\]$", 'pymdownx.snippets.base_path = [".", "launch/probe"]')):
+        conf_, n_ = re.subn(pat_, new_, conf_, flags=re.M)
+        if n_ != 1:
+            return None
+    return conf_
+
+
+def _docs_refs(bases=None):
     """Every file the documentation site loads or includes, as its sources name it: zensical.toml's extra_css and favicon, its custom_dir and the logo
     icon in it; each url() of a docs stylesheet; each `--8<--` include and each relative link of a docs page; each `{{ '…' | url }}` of the overrides.
+    An include is found where the build finds it: in the first folder of `bases`, in its order, that holds it, by default zensical.toml's
+    `pymdownx.snippets.base_path` (`_snippet_bases`); one that no folder holds is named in the first.
     While the site builds with `use_directory_urls = false`, a page is served as `<name>.html`: an overrides link `{{ '<name>.html' | url }}` with no such
     file under docs/ is the page docs/<name>.md builds, and that source is what must be there."""
     conf_ = (HERE / "zensical.toml").read_text(encoding="utf-8")
+    bases_ = list(bases or _snippet_bases(conf_))
     docs_ = HERE / re.search(r'^docs_dir\s*=\s*"([^"]+)"', conf_, re.M).group(1)
     refs_ = [docs_ / c_ for c_ in re.findall(r'"([^"]+)"', re.search(r"^extra_css\s*=\s*\[([^\]]*)\]", conf_, re.M).group(1))]
     refs_.append(docs_ / re.search(r'^favicon\s*=\s*"([^"]+)"', conf_, re.M).group(1))
@@ -8085,7 +8106,8 @@ def _docs_refs():
                   if not re.match(r"['\"]?(data:|https?:|#)", u_)]
     for md_ in sorted(docs_.rglob("*.md")):
         t_ = md_.read_text(encoding="utf-8")
-        refs_ += [HERE / s_ for s_ in re.findall(r'^--8<-- "([^"]+)"', t_, re.M)]
+        refs_ += [next((HERE / b_ / s_ for b_ in bases_ if (HERE / b_ / s_).is_file()), HERE / bases_[0] / s_)
+                  for s_ in re.findall(r'^--8<-- "([^"]+)"', t_, re.M)]
         refs_ += [(md_.parent / l_.split("#")[0]).resolve() for l_ in re.findall(r"\]\(([^)\s]+)\)", t_) if not re.match(r"(https?:|mailto:|#)", l_)]
     pages_ = re.search(r"^use_directory_urls\s*=\s*false\b", conf_, re.M) is not None
     for tpl_ in sorted(custom_.rglob("*.html")):
@@ -8100,6 +8122,23 @@ check(f"R10 · the docs keep their look: every file the documentation loads or i
       f"its includes and its pages ({len(_dref)} files; missing: {_dgone})",
       not _dgone and len(_dref) >= 30 and HERE / "docs/stylesheets/shoalmark.css" in _dref and HERE / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2" in _dref
       and HERE / "README.md" in _dref)
+_dlaunch = lambda refs_: [p_ for p_ in refs_ if HERE / "launch" in p_.parents]
+_dbases = _snippet_bases((HERE / "zensical.toml").read_text(encoding="utf-8"))
+check(f"R10 · the docs keep their look · the committed state: each include a launch state holds is found in a folder of `base_path`, {_dbases} "
+      f"(saw {[p_.relative_to(HERE).as_posix() for p_ in _dlaunch(_dref)]})",
+      bool(_dlaunch(_dref)) and all(p_.exists() and any(HERE / b_ in p_.parents for b_ in _dbases if b_ != ".") for p_ in _dlaunch(_dref)))
+_dturned = _probe_turned((HERE / "zensical.toml").read_text(encoding="utf-8"))
+_dprobe = _docs_refs(bases=_snippet_bases(_dturned)) if _dturned else []
+_dprobe_gone = [p_.relative_to(HERE).as_posix() if HERE in p_.parents else str(p_) for p_ in _dprobe if not p_.exists()]
+check(f"R10 · the docs keep their look · the probe state, zensical.toml turned in a copy as a probe build turns it (probe = true, taped = false, "
+      f"`base_path` on launch/probe): every file is there, and each include a launch state holds is found in launch/probe ({len(_dprobe)} files; "
+      f"missing: {_dprobe_gone}; from the launch states: {[p_.relative_to(HERE).as_posix() for p_ in _dlaunch(_dprobe)]})",
+      _dturned is not None and _snippet_bases(_dturned) == [".", "launch/probe"] and len(_dprobe) >= 30 and not _dprobe_gone
+      and bool(_dlaunch(_dprobe)) and all(HERE / "launch/probe" in p_.parents for p_ in _dlaunch(_dprobe)))
+_dmut = [p_.relative_to(HERE).as_posix() for p_ in _docs_refs(bases=["."]) if not p_.exists()]
+check(f"R10 · the docs keep their look · the mutant, each include looked for at the repository's root alone: it FAILS the row, naming the includes the "
+      f"build finds in a later folder of `pymdownx.snippets.base_path` (saw missing: {_dmut})",
+      bool(_dmut) and not _dgone and all(any(p_.as_posix().endswith("/" + m_) and p_.exists() and p_ != HERE / m_ for p_ in _dref) for m_ in _dmut))
 _dcss = (HERE / "docs/stylesheets/shoalmark.css").read_text(encoding="utf-8")
 check("R10 · the docs draw their own chart: their stylesheet holds the chart's frame, its graticule and its figures, and loads no board file",
       "body::before" in _dcss and "repeating-linear-gradient(var(--chart)" in _dcss and "53°57'N" in _dcss and "8°24'E" in _dcss
