@@ -6060,9 +6060,6 @@ if _browser("table"):
 #     its state starting on its word's line; an id is seven characters, a link where the forge is known. Measured in Chrome at 1024 and 390 px;
 #     nothing folded, and the row's second line drawn as it was, must each fail it ---------------------------------------------------------------
 def _m_repo(root, forge=False):
-    """A week of verdicts in each case of the reviews' rule, on `root`, HEAD holding them all: ({verdict: "shows" or "folds"}, {verdict: (the page its
-    id links to, [the pages its line links to: the reviewed commit's, the merge's that names its branch or names none])}). `forge`: a forge named in
-    the configuration, every commit on origin, and then one more verdict whose branch a merge origin does not hold brought in, linked nowhere."""
     out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
     commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
     verdict_ = lambda word, tip, sid: commit_(f"review: {word}\n\nReviewed: {tip}\nSession: {sid}")
@@ -6082,10 +6079,10 @@ def _m_repo(root, forge=False):
     git(root, "checkout", "-q", "-b", "fm/e", "main"); b_ = commit_("e, built\n\nSession: b7"); cases_[verdict_("NOT READY", b_, "r7")] = "shows"
     b_ = commit_("e, fixed\n\nSession: b7"); cases_[verdict_("READY", b_, "r8")] = "folds"
     git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges it", "fm/e"); git(root, "branch", "-q", "-D", "fm/e")
-    merges_ = {v_: out_("rev-parse", "HEAD") for v_ in list(cases_)[-2:]}       # fm/e's two verdicts: their merge names no branch
+    merges_ = {v_: out_("rev-parse", "HEAD") for v_ in list(cases_)[-2:]}
     git(root, "checkout", "-q", "-b", "fm/f", "main"); b_ = commit_("f, built\n\nSession: b9"); v_ = verdict_("NOT READY", b_, "r9"); cases_[v_] = "shows"
     git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/f'", "fm/f"); git(root, "branch", "-q", "-D", "fm/f")
-    merges_[v_] = out_("rev-parse", "HEAD")                                      # fm/f's verdict: its merge names its branch
+    merges_[v_] = out_("rev-parse", "HEAD")
     git(root, "checkout", "-q", "-b", "together", "main")
     for name_ in ("fm/a", "fm/b-a-branch-with-a-long-name", "fm/c", "fm/d"):
         git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
@@ -6096,7 +6093,7 @@ def _m_repo(root, forge=False):
         git(root, "update-ref", "refs/remotes/origin/together", "HEAD")
         git(root, "checkout", "-q", "-b", "fm/g", "together"); b_ = commit_("g, built after the push\n\nSession: b10"); v_ = verdict_("NOT READY", b_, "r10")
         git(root, "checkout", "-q", "together"); git(root, "merge", "-q", "--no-ff", "-m", "the Owner merges this too", "fm/g"); git(root, "branch", "-q", "-D", "fm/g")
-        cases_[v_], links_[v_] = "shows", ("", [])                              # not on origin: no id, no reviewed commit and no merge links
+        cases_[v_], links_[v_] = "shows", ("", [])
     run_safe(root, "--html-only")
     return cases_, links_
 
@@ -6111,9 +6108,6 @@ _M_FLOW = ".rv .how{display:block;padding-left:9ch}"
 
 
 def _m_faults(rep, width, cases, links):
-    """What is wrong with the reviews section in one frame — [] where exactly the verdicts READY or READY TO TAG by another session fold, into one line
-    that counts them, closed; every other one shows; each id is seven characters, and each verdict's id and the ids on its line link exactly where
-    `links` says, its reviewed commit's and the merge's that names its branch or names none; and each shown row's state starts on its word's line."""
     if not rep or rep.get("w") != width:
         return [f"no report from the {width} px frame (saw {rep})"]
     by_ = {r_["id"]: r_ for r_ in rep["rows"]}

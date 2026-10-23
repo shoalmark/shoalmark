@@ -9271,13 +9271,6 @@ def group_counts(groups):
 
 
 def board_sessions():
-    """The report as the board shows it — the parents with a commit in the last 24 hours (each: id, seat, worktree, its
-    sub-sessions' runs, and every member's worktree, model and effort for the expand), the header's two counts, this
-    week's verdicts as [independent, same session, untraced, on trunk, not ready, ready with findings], and each verdict as [verdict, reviewed,
-    its session, the range's sessions, the word, the verdict's own word, its branch (`verdict_branch`), the range's oldest session
-    (`oldest_session`), [the verdict's page, the reviewed commit's page, the page of the merge its branch is read from]] — or None where there is
-    neither, or no git. A page is the commit's on its forge (`commit_link`), "" where there is none: only where the configuration names a forge is
-    a commit asked for, and then only whether origin holds it."""
     if vcs() != "git":
         return None
     groups = session_groups()
