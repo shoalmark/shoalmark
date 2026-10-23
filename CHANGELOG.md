@@ -2,6 +2,48 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.20.1 — 2026-10-23
+
+**Upgrade, run `--install-hook` again in every committing clone (the refresh hooks come back), delete the brand files the board names as no longer read, then run `--check` once.** The board rebuilds itself again after a checkout, a merge or a rebase, and its reads of git run under fixed settings. The board has one look of its own. `--vendor` takes only a tagged, verified, complete release.
+
+### Security
+- The board's reads run git under fixed settings, whatever the repository's configuration names: no fsmonitor, no hooks and no signature program. Where a read compares the working tree, every filter driver the configuration names is left out. The digests' conflict preview runs only where no merge driver and no filter driver could change the merge; otherwise it is reported as not read. An act — `--answer`, `--done`, `--due`, `--revoke`, `--clear-ask`, `--vendor`, `--install-hook`, `--init` and `--session-trailer` — runs git under your own settings.
+- `--check` and the plain run read the default branch from the clone's cached refs and ask origin nothing. The queue (`--queue`, and the end of `--owner` and `--standup`) still contacts origin for its pull requests and branches.
+- `--vendor` takes only a tagged, verified, complete release (R17): `--partial` and `--allow-untagged` are removed. The verified source, the completeness checks and the pin stay.
+
+### Changed
+- `--install-hook` writes the three board refresh hooks again, beside the three commit hooks: `post-checkout`, `post-merge` and `post-rewrite`. After a checkout or switch, a merge (a fast-forward pull among them), or a rebase, they run `--html-only` from the hooks' copy. Each exits 0, with one line if the refresh failed or was stopped. A `git fetch` alone starts none of them. On Subversion, run `--html-only` after `svn update`, as before.
+- The board has one look of its own: `monochrome`, in the system's monospace. No theme is read, no font ships, and the header shows the name. Its colours are `[palette]` in `shoalmark.toml`: `name = "shoalmark"` for the public pages' palette, or a few of its keys as `["#light", "#dark"]`. A palette below 4.5:1 for any text is refused in one line. `--vendor` copies no theme.
+- The board follows its design guide. It has three colour meanings: teal for done, amber for a warning, coral for a failure. Its box has a band for each section, and rows line up. The header's search sits on one line, with its count in the toolbar. Light or dark is one switch. Each work row stacks on a phone, and the footer is the tool's running line alone.
+- The board's read-at line says where and when it read in one line, with its limits in a fold. The day's stand-up and close-out each have their own heading and copy button.
+- An answer is recorded by the Owner's own commit, made in their terminal and signed only where the default branch requires it. The board's second screen gives the command to copy, its steps, the result to expect, its check, and what to do if it fails.
+- The board's run and a hook's run of the copy stop after 60 seconds, up from 35; `SHOALMARK_BOARD_SECONDS` gives them longer. A command you run yourself through the hooks' copy is not stopped.
+- The German board says Board, not Tafel.
+- `ADOPT.md` and `ADOPT.de.md` are the notes for an agent trying shoalmark in a project. The agent works in one throwaway folder from the release archive and ends with a report, and the Owner decides. `ADOPT.svn.md` and `ADOPT.svn.de.md` are new: their part for a Subversion working copy, with no pin. Step 13 ends with the feedback: the agent fills a short text from its report and takes out what a filing never includes. It shows the text, and opens the project's form only on the person's yes.
+- The notes' pin line names the release, its archive's address and SHA-256, and the SHA-256 of its `shoalmark.py`. The pin follows the release's tag: this release's notes and its tag still pin v0.20.0. The first commit on main after v0.20.1 is published moves the pin to v0.20.1, with the published archive's SHA-256.
+- The release archive holds only what `--vendor` accepts from it: the tool's files, the brand files beside it, the probe's five files and `RELEASE`. It holds no theme.
+
+### Upgrade notes
+- **The refresh hooks come back.** Run `--install-hook` again in every committing clone, to restore the hooks that v0.20.0 removed. A person's own hook is kept byte for byte, with the line that would add the refresh.
+- **R17: partial and untagged vendoring.** An existing `--vendor … --partial` or `--allow-untagged` call now exits 2, writes nothing and says (for one flag):
+  > --partial: R17 removed it — --vendor takes only a tagged, verified, complete release: run --vendor without it, from a clean clone at v0.20.1 or from that release's unpacked archive; nothing was written
+
+  A copy vendored earlier through either flag still runs as pinned. The next `--vendor` and `--check` that meet it name it in one line; `--check` says, for example:
+  > warning: this copy was vendored through --allow-untagged, from a working copy, untagged <commit> — R17 removed that flag: the copy runs as pinned; vendor again from a tagged, verified, complete release to replace it
+
+  `--check` never fails on that line alone. Vendor again from a release tag, or from the release's unpacked archive, to replace the copy.
+- **R10: the board's look.** A brand place's `theme.css`, `fonts/` and `wordmark.svg`, and the `themes/` an older copy shipped, are no longer read. Every board build and `--brand` name each one, file by file, with what replaces it:
+  > brand: tools/shoalmark/brand/themes/ is no longer read — no theme is copied: the board's colours are `[palette]` in shoalmark.toml, by name — monochrome or shoalmark
+
+  The board shows the same in one line. `--check` never fails on them; delete them, and set `[palette]` where you want other colours. `--from THEME` is refused in one line, with what replaces it.
+- **The default branch, read from the clone.** Where a clone has no `origin/HEAD` and its cached `origin/main` and `origin/master` name different commits, `--check` and the plain run refuse in one line:
+  > the default branch cannot be told — this clone has no `origin/HEAD`, and its cached `origin/main` and `origin/master` name different commits: run `git remote set-head origin --auto` yourself, which asks origin, then run again
+
+### The site
+- The landing and *How it works*, in English and German, take their figures from the repository when the site is built. The probe's button stays taped over until the release that opens it. `https://shoalmark.tools/feedback` leads to the one feedback form.
+- The site is also deployed to Cloudflare, on the Owner's word.
+- The pitch page in more color.
+
 ## 0.20.0 — 2026-10-21
 
 **Upgrade, run `--install-hook` again on your default branch in every committing clone, remove retired configuration and schedules as below, then run `--check` once.** Subversion runs without git, and the release archive supplies the tool without a Git source checkout.
