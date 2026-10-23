@@ -838,6 +838,94 @@ def rows_match(old, new, counted=True):
     return strip(old) == strip(new) or fm057_rows(old, new, counted)
 
 
+# THE BOARD'S SETTINGS ON EVERY READ. The candidate's starts and calls are held equal to the baseline's, in order, once these are set aside: from the
+# candidate's, the board's settings and each emptied filter driver in a start's environment (`settings_undone`), each list of the filter drivers
+# (`DRIVERS_WORDS`) and each `check-attr`, `-t` on `ls-files`, `--no-textconv` where `--text` is not beside it, and a read of the cached `origin/master`
+# directly after one of the cached `origin/main` (`TRUNK_READS`); from both, every read of the working tree's edits (`edit_read`), whose number is held on
+# its own (`edit_reads`).
+DRIVERS_WORDS = ("config", "-z", "--name-only", "--get-regexp", "^filter\\.")
+TRUNK_READS = (("rev-parse", "--verify", "--quiet", "refs/remotes/origin/main^{commit}"), ("rev-parse", "--verify", "--quiet", "refs/remotes/origin/master^{commit}"))
+SETTING = re.compile(r"'(?:[^']|'\\'')*'")
+BOARD_KEYS = ("'log.showSignature=", "'core.fsmonitor=", "'gpg.program=", "'gpg.openpgp.program=", "'gpg.x509.program=")
+FILTER_SETTING = re.compile(r"'filter\..*\.(?:clean|smudge|process)='")
+
+
+def edit_read(words):
+    """Whether a start's words are a `diff` of one revision against the working tree: how either version reads the working tree's edits."""
+    return (bool(words) and words[0] == "diff" and "--cached" not in words and "--name-only" in words
+            and len([word for word in words[1:] if not word.startswith("-")]) == 1)
+
+
+def edit_reads(rows):
+    return sum(edit_read(git_words(row)) for row in rows)
+
+
+def origin_undone(rows):
+    """The starts or calls with these removed: each `config --get remote.origin.url`, each `ls-remote --symref origin HEAD`, and the one
+    `rev-parse --verify --quiet refs/remotes/origin/<name>^{commit}` that directly follows either. Every other start and call stays, in order."""
+    out, drop_next_rp = [], False
+    for row in rows:
+        w = git_words(row)
+        if w == ("config", "--get", "remote.origin.url") or w == ("ls-remote", "--symref", "origin", "HEAD"):
+            drop_next_rp = True
+            continue
+        if drop_next_rp and len(w) >= 2 and w[0] == "rev-parse" and "--verify" in w and any(x.startswith("refs/remotes/origin/") and x.endswith("^{commit}") for x in w):
+            drop_next_rp = False
+            continue
+        drop_next_rp = False
+        out.append(row)
+    return out
+
+
+def settings_undone(env):
+    """A start's environment with the board's settings set aside, so it can be held equal to the baseline's: the hooks path and every emptied filter driver
+    always, and the rest (`BOARD_KEYS`) where the read does not keep from fetching (`GIT_NO_LAZY_FETCH`)."""
+    if not isinstance(env, dict) or "GIT_CONFIG_PARAMETERS" not in env:
+        return env
+    kept = [s for s in SETTING.findall(env["GIT_CONFIG_PARAMETERS"]) if not s.startswith("'core.hooksPath=") and not FILTER_SETTING.fullmatch(s)
+            and (env.get("GIT_NO_LAZY_FETCH") == "1" or not s.startswith(BOARD_KEYS))]
+    out = {key: value for key, value in env.items() if key != "GIT_CONFIG_PARAMETERS"}
+    return dict(out, GIT_CONFIG_PARAMETERS=" ".join(kept)) if kept else out
+
+
+def board_settings_undone(rows, candidate):
+    """The starts or calls of a run, each read of the working tree's edits taken out; and, from the candidate's, its settings, its drivers' lists, its
+    `check-attr`, its `ls-files` tag, its `--no-textconv` outside the board's own run, and each read of `origin/master` directly after one of
+    `origin/main` (`TRUNK_READS`) — each as specified above."""
+    out, last = [], None
+    for row in rows:
+        words = git_words(row)
+        follows, last = last == TRUNK_READS[0], words
+        if edit_read(words) or (candidate and (words == DRIVERS_WORDS or words[:1] == ("check-attr",) or (words == TRUNK_READS[1] and follows))):
+            continue
+        if not candidate:
+            out.append(row)
+            continue
+        argv = list((row.get("argv") if "argv" in row else (row.get("args") or [None])[0]) or [])
+        kept = [word for word in words if not (word == "--no-textconv" and "--text" not in words) and not (words[:1] == ("ls-files",) and word == "-t")]
+        new_argv = argv[:len(argv) - len(words)] + kept if len(argv) >= len(words) else argv
+        row = dict(row)
+        if "argv" in row:
+            row["argv"] = new_argv
+            if "raw" in row:
+                row["raw"] = subprocess.list2cmdline([str(word) for word in new_argv])
+            row["environment"] = settings_undone(row.get("environment"))
+        else:
+            row["args"] = [new_argv, *(row.get("args") or [])[1:]]
+            options = dict(row.get("options") or {})
+            if "env" in options:
+                options["env"] = settings_undone(options["env"])
+            row["options"] = options
+            result = row.get("result")
+            if isinstance(result, dict) and "args" in result:
+                result = dict(result, args=new_argv)
+                if words[:1] == ("ls-files",) and "-t" in words and isinstance(result.get("stdout"), str):
+                    result["stdout"] = "\0".join(entry[2:] if len(entry) > 2 else entry for entry in result["stdout"].split("\0"))
+                row["result"] = result
+        out.append(row)
+    return out
+
+
 def fm057_board(baseline, candidate):
     """Whether the candidate's page and `view/built.json` are the baseline's but for FM-057, each read back from the bytes its run left — the hash in the
     snapshot checked: the page's rows (`T=[…]`) are the baseline's, and the record is the baseline's with exactly the four fields of what it read added — `vcs`
@@ -1338,7 +1426,6 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         setup("clone", "--bare", "-q", str(root), str(origin), cwd=top)
         setup("remote", "add", "origin", str(origin))
         setup("update-ref", "refs/remotes/origin/main", "HEAD")
-        # Deliberately absent origin/HEAD requires a real local ls-remote on a clean walk.
         assert setup("status", "--porcelain", "--untracked-files=all") == ""
         saved = top / "saved-consumer"
         shutil.copytree(root, saved)
@@ -1376,6 +1463,9 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 observed = invoke(tool, root, flags, launch, entry_env)
                 observed.update(case=label, version=version, initial_git_status=initial_status,
                                 foreign_before=foreign_before, foreign_after=snapshot(foreign))
+                observed.update(starts_raw=observed["starts"], run_calls_raw=observed["run_calls"],
+                                starts=board_settings_undone(observed["starts"], version == "candidate"),
+                                run_calls=board_settings_undone(observed["run_calls"], version == "candidate"))
                 rows.append(observed); pair.append(observed)
             before, after = pair
             label_prefix = "Git entry " + label + ": "
@@ -1391,16 +1481,23 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                                (before["status"], before["stdout"], before["stderr"]) == said)
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
-            assert_control(label_prefix + "all actual process argv/effective cwd/env match, but for FM-057's reads, and FM-054's reads of the default branch's "
-                           "configuration set aside, each a read",
-                           rows_match(before["starts"], fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
+            assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
+                           "reads of the default branch's configuration, each a read, are set aside",
+                           rows_match(origin_undone(before["starts"]), fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
                            and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"])))
-            assert_control(label_prefix + "run options and actual process results match, but for FM-057's reads, and FM-054's reads set aside, each a read",
-                           rows_match(before["run_calls"], fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
+            assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
+                           "reads, each a read, are set aside",
+                           rows_match(origin_undone(before["run_calls"]), fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"])))
+            assert_control(label_prefix + "the candidate reads the working tree's edits once where the baseline reads them, and not where it does not",
+                           edit_reads(after["starts_raw"]) == (1 if edit_reads(before["starts_raw"]) else 0))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
-            assert_control(label_prefix + "actual main state/result and selected origin policy match", before["main_returns"] == after["main_returns"]
-                           and bool(after["main_returns"]) and after["main_returns"][-1]["ASK_ORIGIN"] is ask)
+            unasked = lambda entries: [{key: value for key, value in entry.items() if key != "ASK_ORIGIN"} for entry in entries]
+            refuses = ask or label in ("dirty-check-fallback", "dirty-default-fallback")
+            assert_control(label_prefix + "actual main state/result match with `ASK_ORIGIN` set aside; the baseline's origin policy is the case's, and the "
+                           "candidate's is set for `--check` and the default run whatever the working tree holds",
+                           unasked(before["main_returns"]) == unasked(after["main_returns"]) and bool(after["main_returns"])
+                           and before["main_returns"][-1]["ASK_ORIGIN"] is ask and after["main_returns"][-1]["ASK_ORIGIN"] is refuses)
             assert_control(label_prefix + "Git entry emits no SVN limitation", "protected SVN acceptance" not in before["stdout"] + before["stderr"] + after["stdout"] + after["stderr"])
             assert_control(label_prefix + "production writes confined to disposable fixture", all(Path(value).is_relative_to(top)
                            for observed in pair for write in observed["writes"] for key, value in write.items() if key in ("path", "destination")))
@@ -1408,21 +1505,27 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             if readonly:
                 assert_control(label_prefix + "read-only entry leaves consumer snapshot identical", all(observed["before"] == observed["after"] for observed in pair))
             if label in ("clean-check-origin", "dirty-check-fallback", "clean-default-origin", "dirty-default-fallback"):
-                main_probe = lambda observed: [row for row in observed["starts"] if same_start(row["argv"], row.get("raw"), ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"])
-                                              and "main" in row["product_stack"] and "worktree_edited" in row["product_stack"]
-                                              and "read_changes" not in row["product_stack"]]
+                probe_argv = {"baseline": ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"],
+                              "candidate": ["git", "diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", "HEAD"]}
+                main_probe = lambda observed: [row for row in observed["starts_raw"] if same_start(row["argv"], row.get("raw"), probe_argv[observed["version"]])
+                                              and ("main" in row["product_stack"] and "worktree_edited" in row["product_stack"]
+                                                   and "read_changes" not in row["product_stack"] if observed["version"] == "baseline"
+                                                   else "worktree_edits" in row["product_stack"])]
                 probes = [main_probe(observed) for observed in pair]
-                assert_control(label_prefix + "converted main probe actually runs once at consumer cwd", all(len(probe) == 1 and probe[0]["cwd"] == str(root) for probe in probes))
-                assert_control(label_prefix + "converted probe drops all eight actual hook/pathspec contamination keys", all(set(POISON_KEYS).issubset(observed["invocation_environment"])
+                assert_control(label_prefix + "the working tree's edit read actually runs once at consumer cwd: the baseline's from `main`'s probe, the "
+                               "candidate's from `worktree_edits`", all(len(probe) == 1 and probe[0]["cwd"] == str(root) for probe in probes))
+                assert_control(label_prefix + "that read drops all eight actual hook/pathspec contamination keys", all(set(POISON_KEYS).issubset(observed["invocation_environment"])
                                and len(probe) == 1 and not set(POISON_KEYS).intersection(probe[0]["environment"]) for observed, probe in zip(pair, probes)))
-                assert_control(label_prefix + "candidate routes that probe through common boundary", all("vcs_process" in row["product_stack"] for row in probes[1])
-                               and all("vcs_process" not in row["product_stack"] for row in probes[0]))
+                assert_control(label_prefix + "candidate routes that read through common boundary", len(probes[1]) == 1
+                               and all("vcs_process" in row["product_stack"] for row in probes[1]) and all("vcs_process" not in row["product_stack"] for row in probes[0]))
                 if condition == "dirty":
                     assert_control(label_prefix + "dirty tree selects uncommitted fallback", all(observed["main_returns"][-1]["WALK"] == "uncommitted" for observed in pair))
+                asks = lambda observed: sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts_raw"])
                 if label == "clean-default-origin":
-                    assert_control(label_prefix + "clean default actually reads local origin once", all(sum(same_start(row["argv"], row.get("raw"), ["git", "ls-remote", "--symref", "origin", "HEAD"]) for row in observed["starts"]) == 1 for observed in pair))
+                    assert_control(label_prefix + "clean default starts no `ls-remote --symref origin HEAD`, and `origin_undone` removes exactly one from the baseline's starts",
+                                   asks(after) == 0 and asks(before) == 1)
                 if label == "dirty-default-fallback":
-                    assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts"]) for observed in pair))
+                    assert_control(label_prefix + "dirty default asks no origin", all(not any(row["argv"][1:2] == ["ls-remote"] for row in observed["starts_raw"]) for observed in pair))
 
         # R13's allowance is held to its one line on the real ratio-window pair: anything else the candidate says differently does not match.
         old13, new13 = (next(row for row in rows if row["case"] == R13_CASES[0] and row["version"] == version) for version in ("baseline", "candidate"))
@@ -1477,20 +1580,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         allowance = "Git entry FM-057 allowance: "
         new_starts, new_calls = fm054_own(new["starts"]), fm054_own(new["run_calls"])
         page, record = (base64.b64decode(new["board_after"][path]["bytes_base64"]) for path in (PAGE_PATH, BUILT_PATH))
-        assert_control(allowance + "the default run's starts and calls differ by FM-057's reads alone, its page and record by what it read, and equal runs still match",
-                       old["starts"] != new_starts and fm057_rows(old["starts"], new_starts) and fm057_rows(old["run_calls"], new_calls)
+        old_ou = origin_undone(old["starts"])
+        assert_control(allowance + "the default run's starts and calls differ by FM-057's reads and the starts `origin_undone` removes alone, its page and record by what it read, and equal runs match",
+                       old["starts"] != new_starts and fm057_rows(old_ou, new_starts) and fm057_rows(origin_undone(old["run_calls"]), new_calls)
                        and fm057_board(old, new) and rows_match(new_starts, new_starts) and snapshots_match(new, new))
         extra = dict(new_starts[0], argv=new_starts[0]["argv"][:1] + ["status", "--porcelain"])
         at = next(i for i, row in enumerate(new_starts) if git_words(row) == FM057_READS[2])
         assert_control(allowance + "one start more, or FM-057's reads apart or with one missing, does not match",
-                       not rows_match(old["starts"], new_starts + [extra])
-                       and not rows_match(old["starts"], new_starts[:at] + [extra] + new_starts[at:])
-                       and not rows_match(old["starts"], new_starts[:at] + new_starts[at + 1:]))
+                       not rows_match(old_ou, new_starts + [extra])
+                       and not rows_match(old_ou, new_starts[:at] + [extra] + new_starts[at:])
+                       and not rows_match(old_ou, new_starts[:at] + new_starts[at + 1:]))
         bare = [row for row in new_starts if git_words(row) not in FM057_READS[2:]]
         assert_control(allowance + "a run that reads no changed path, as the board's own run (`--html-only`) does, differs by the two moved reads alone; the "
                        "changed-path reads where none are read, or none where a run counts them, do not match",
-                       len(bare) == len(new_starts) - 2 and fm057_rows(old["starts"], bare, counted=False)
-                       and not fm057_rows(old["starts"], new_starts, counted=False) and not fm057_rows(old["starts"], bare, counted=True))
+                       len(bare) == len(new_starts) - 2 and fm057_rows(old_ou, bare, counted=False)
+                       and not fm057_rows(old_ou, new_starts, counted=False) and not fm057_rows(old_ou, bare, counted=True))
         row = PAGE_ROWS.search(page).group(1).split(b"\n")[0]
         built = json.loads(record)
         assert_control(allowance + "a page whose rows differ, or a record with a basis value changed, a field missing or a fifth field added, does not match",
@@ -1535,6 +1639,33 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
                        f"does not name does not match (each variant made: {made057})",
                        all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
+        settings = "Git entry board settings allowance: "
+        raw = new["starts_raw"]
+        reads = [i for i, row in enumerate(raw) if "GIT_CONFIG_PARAMETERS" in (row.get("environment") or {}) and git_words(row)[:1] == ("log",)
+                 and fm054_own([row])]
+        def changed(i, **change):
+            return raw[:i] + [dict(raw[i], **change)] + raw[i + 1:]
+        if reads:
+            at = reads[0]
+            env_ = dict(raw[at]["environment"], GIT_CONFIG_PARAMETERS=raw[at]["environment"]["GIT_CONFIG_PARAMETERS"] + " 'core.pager=more'")
+            argv_ = raw[at]["argv"] + ["--text"]
+        assert_control(settings + "the default run's starts differ from the baseline's by the board's settings, the drivers' lists, the tag, the flag, the "
+                       "read of `origin/master`, the edits read once, the starts `origin_undone` removes and FM-054's reads alone; left in, they do not match",
+                       bool(reads) and rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw, True))) and not rows_match(old["starts"], raw))
+        assert_control(settings + "a start with a setting the board's are not, or with `--text` beside `--no-textconv` outside the board's own run, does not "
+                       "match",
+                       bool(reads) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, environment=env_), True)))
+                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, argv=argv_), True))))
+        ask_row = next((row for row in old["starts"] if git_words(row) == ("ls-remote", "--symref", "origin", "HEAD")), None)
+        assert_control("Git entry origin-ask allowance: the candidate starts no `ls-remote --symref origin HEAD`, and its starts with one added do not match "
+                       "once `origin_undone` has removed the baseline's",
+                       ask_row is not None and not any(git_words(row) == ("ls-remote", "--symref", "origin", "HEAD") for row in raw)
+                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw + [ask_row], True))))
+        pairs = [i for i in range(1, len(raw)) if git_words(raw[i]) == TRUNK_READS[1] and git_words(raw[i - 1]) == TRUNK_READS[0] and fm054_own([raw[i]])]
+        moved = raw[:pairs[0]] + raw[pairs[0] + 1:] + [raw[pairs[0]]] if pairs else raw
+        assert_control("Git entry trunk-read allowance: the clean default run reads the cached `origin/master` directly after `origin/main`, and is taken "
+                       "out only there; the same read anywhere else does not match",
+                       bool(pairs) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(moved, True))))
         # FM-054's allowance is held to its difference on the same pair: the page carries PROOF, and only `proof_reading`'s reads are new
         fm054 = "Git entry FM-054 allowance: "
         reads = fm054_reads(new["starts"])
@@ -1543,7 +1674,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         unstacked = [dict(row, product_stack=[s for s in row["product_stack"] if s != "proof_reading"]) for row in new["starts"]]
         strip = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
         assert_control(fm054 + "the same reads made outside `proof_reading` are not set aside, and do not match the baseline's starts",
-                       not rows_match(old["starts"], fm054_own(unstacked)) and rows_match(old["starts"], fm054_own(new["starts"])))
+                       not rows_match(origin_undone(old["starts"]), fm054_own(unstacked)) and rows_match(origin_undone(old["starts"]), fm054_own(new["starts"])))
         writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
         assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
                        bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))

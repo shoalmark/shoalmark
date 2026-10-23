@@ -14,6 +14,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -25,6 +26,23 @@ import test_vcs_shared as shared
 
 HERE = Path(__file__).resolve().parent
 BASE = "6fe35f5624ffba76490f11b15ed424973414b101"
+# The board's settings this comparison sets aside before it holds a start's environment equal to the accepted source's: the hooks path and each emptied
+# filter driver always, and the rest (`BOARD_KEYS`) where the read does not keep from fetching (`GIT_NO_LAZY_FETCH`). Set aside the same way on both sides,
+# so every other difference in the environment still counts.
+SETTING = re.compile(r"'(?:[^']|'\\'')*'")
+EMPTIED = re.compile(r"'filter\..*\.(?:clean|smudge|process)='")
+BOARD_KEYS = ("'log.showSignature=", "'core.fsmonitor=", "'gpg.program=", "'gpg.openpgp.program=", "'gpg.x509.program=")
+
+
+def board_settings_undone(env):
+    """`env` with the board's settings taken out: the hooks path and every emptied filter driver always, the others where the read does not keep from
+    fetching (`GIT_NO_LAZY_FETCH`)."""
+    if not isinstance(env, dict) or "GIT_CONFIG_PARAMETERS" not in env:
+        return env
+    kept = [s for s in SETTING.findall(env["GIT_CONFIG_PARAMETERS"]) if not s.startswith("'core.hooksPath=") and not EMPTIED.fullmatch(s)
+            and (env.get("GIT_NO_LAZY_FETCH") == "1" or not s.startswith(BOARD_KEYS))]
+    out = {key: value for key, value in env.items() if key != "GIT_CONFIG_PARAMETERS"}
+    return dict(out, GIT_CONFIG_PARAMETERS=" ".join(kept)) if kept else out
 OWNED = {"answer_refs", "built_on", "config_file_problem", "default_branch", "git_version", "head_commit",
          "install_copy", "install_hook", "last_worked_on", "on_their_way", "promisor_remotes", "recover_from_log",
          "repos_naming", "specs_unread", "svn_last_worked_on"}
@@ -126,6 +144,8 @@ def git_controls(fm, old, check):
             records = []
             def run(argv, **kwargs):
                 normalized = copy.deepcopy(kwargs); normalized["cwd"] = os.path.abspath(normalized.get("cwd") or ".")
+                if "env" in normalized:
+                    normalized["env"] = board_settings_undone(normalized["env"])
                 # Each source's own unavailable signature program follows its real __file__.
                 def normalize(value):
                     if isinstance(value, dict):
@@ -296,7 +316,7 @@ def cwd_probe(source, root, launch, operation, deleted):
     if deleted:
         launch.rmdir()
     def environment(env):
-        values = dict(os.environ if env is None else env)
+        values = board_settings_undone(dict(os.environ if env is None else env))
         return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
     def audit(event, args):
         if not active[0]:

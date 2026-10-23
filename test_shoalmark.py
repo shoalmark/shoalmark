@@ -8462,7 +8462,6 @@ with tempfile.TemporaryDirectory() as tmp:
         check(f"FM-006 · v0.19.1 · with {case_}, `--check` judges the newest commit alone — the close under it passes as before — and says so in one line (saw {nd_[0]})",
               nd_[0] == 0 and "AP-975" not in nd_[2] and [l_ for l_ in nd_[1].splitlines() if l_.startswith("the branch's commits:")] == [nodef_])
         rm_git(r_)
-    # where this clone has no `origin/HEAD`, `--check` asks origin which branch is its default — never a name a seat can push
     m_ = base / "m-work"; m_.mkdir(); subprocess.run(["git", "init", "-q", "--bare", "-b", "master", str(base / "m.git")], check=True, env=_ENV)
     subprocess.run(["git", "init", "-q", "-b", "master", str(m_)], check=True, env=_ENV)
     for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
@@ -8480,8 +8479,7 @@ with tempfile.TemporaryDirectory() as tmp:
         c_ = base / name_; subprocess.run(["git", "clone", "-q", *how_, str(base / "m.git"), str(c_)], check=True, env=_ENV)
         git(c_, "switch", "-q", "--detach", "origin/fm/976-work"); subprocess.run(["git", "-C", str(c_), "symbolic-ref", "-d", "refs/remotes/origin/HEAD"], capture_output=True, env=_ENV)
         return c_
-    def askedM_(c_):
-        """`--check` in `c_`, and the `git ls-remote` calls it made."""
+    def askedM_(c_, flags_=("--check",)):
         seen_, real_ = [], subprocess.Popen
         class counted_(real_):
             def __init__(self, *a, **k):
@@ -8489,36 +8487,43 @@ with tempfile.TemporaryDirectory() as tmp:
                 super().__init__(*a, **k)
         subprocess.Popen = counted_
         try:
-            got_ = run(c_, "--check")
+            got_ = run(c_, *flags_)
         finally:
             subprocess.Popen = real_
         return got_, seen_.count(["git", "ls-remote"])
+    untoldM_ = ("checkout: the default branch cannot be told — this clone has no `origin/HEAD`, and its cached `origin/main` and `origin/master` name "
+                "different commits: run `git remote set-head origin --auto` yourself, which asks origin, then run again")
+    toldM_ = lambda got_: [l_.strip() for l_ in got_[2].splitlines() if "the default branch cannot be told" in l_]
     mc_ = cloneM_("m-ci"); asked_, ls_ = askedM_(mc_)
-    check(f"FM-006 · v0.19.1 · in a repository whose default branch is `master`, a clone with no `origin/HEAD` and the branch's tip pushed as `main` asks origin once, and the close under a later commit is refused (saw {asked_[0]}, {ls_})",
-          asked_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in asked_[2] and ls_ == 1)
-    git(mc_, "remote", "set-url", "origin", str(base / "nowhere.git")); untold_, _l = askedM_(mc_)
-    told_ = [l_.strip() for l_ in untold_[2].splitlines() if "the default branch cannot be told" in l_]
-    check(f"FM-006 · v0.19.1 · with no `origin/HEAD`, an `origin/main` here and an origin that cannot be read, `--check` refuses in one line: the default branch cannot be told (saw {untold_[0]}, {told_!r})",
-          untold_[0] == fm.EXIT_LINT and told_ == ["checkout: the default branch cannot be told — this clone has no `origin/HEAD`, and origin could not be read: "
-                                                   "run `git remote set-head origin <the default branch>`, then run again"])
-    one_ = base / "m-one"; subprocess.run(["git", "clone", "-q", "--single-branch", "--branch", "main", str(base / "m.git"), str(one_)], check=True, env=_ENV)
-    subprocess.run(["git", "-C", str(one_), "symbolic-ref", "-d", "refs/remotes/origin/HEAD"], capture_output=True, env=_ENV); single_, _l = askedM_(one_)
-    told_ = [l_.strip() for l_ in single_[2].splitlines() if "the default branch cannot be told" in l_]
-    check(f"FM-006 · v0.19.1 · with no `origin/HEAD`, only `main` fetched and origin's default branch `master` not, `--check` refuses in one line naming it (saw {single_[0]}, {told_!r})",
-          single_[0] == fm.EXIT_LINT and told_ == ["checkout: the default branch cannot be told — this clone has no `origin/HEAD`, and origin names `master`, which this clone has not fetched: "
-                                                   "fetch it, or run `git remote set-head origin <the default branch>`, then run again"])
+    check(f"FM-006 · v0.20.1 · in a repository whose default branch is `master`, a clone with no `origin/HEAD` and the branch's tip pushed as `main` asks origin nothing, and `--check` refuses in one line: the default branch cannot be told (saw {asked_[0]}, {ls_}, {toldM_(asked_)!r})",
+          asked_[0] == fm.EXIT_LINT and toldM_(asked_) == [untoldM_] and ls_ == 0)
+    plainM_, ls_p_ = askedM_(cloneM_("m-plain"), ())
+    check(f"FM-006 · v0.20.1 · the default run in such a clone asks origin nothing and refuses in the same one line (saw {plainM_[0]}, {ls_p_}, {toldM_(plainM_)!r})",
+          plainM_[0] == fm.EXIT_LINT and toldM_(plainM_) == [untoldM_] and ls_p_ == 0)
+    git(mc_, "remote", "set-url", "origin", str(base / "nowhere.git")); unreadable_, ls_u_ = askedM_(mc_)
+    check(f"FM-006 · v0.20.1 · with the origin unreadable too, `--check` asks origin nothing and refuses in the same one line (saw {unreadable_[0]}, {ls_u_}, {toldM_(unreadable_)!r})",
+          unreadable_[0] == fm.EXIT_LINT and toldM_(unreadable_) == [untoldM_] and ls_u_ == 0)
+    same_ = cloneM_("m-same"); git(same_, "update-ref", "refs/remotes/origin/main", "refs/remotes/origin/master"); samec_, ls_sc_ = askedM_(same_)
+    check(f"FM-006 · v0.20.1 · where the cached `origin/main` and `origin/master` name the same commit, `--check` reads the trunk from `origin/main`, asks origin nothing, and refuses the close under a later commit (saw {samec_[0]}, {ls_sc_})",
+          samec_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/main — this change is a `close`" in samec_[2]
+          and ls_sc_ == 0 and not toldM_(samec_))
+    one_ = base / "m-one"; subprocess.run(["git", "clone", "-q", "--single-branch", "--branch", "master", str(base / "m.git"), str(one_)], check=True, env=_ENV)
+    subprocess.run(["git", "-C", str(one_), "symbolic-ref", "-d", "refs/remotes/origin/HEAD"], capture_output=True, env=_ENV)
+    git(one_, "fetch", "-q", "origin", "fm/976-work"); git(one_, "switch", "-q", "--detach", "FETCH_HEAD"); masteronly_, ls_mo_ = askedM_(one_)
+    check(f"FM-006 · v0.20.1 · with no `origin/HEAD` and only `origin/master` cached, it reads the trunk from `origin/master`, asks origin nothing, and refuses the close (saw {masteronly_[0]}, {ls_mo_})",
+          masteronly_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in masteronly_[2] and ls_mo_ == 0)
     pr_ = base / "m-pr"; subprocess.run(["git", "init", "-q", str(pr_)], check=True, env=_ENV); git(pr_, "remote", "add", "origin", str(base / "m.git"))
     git(pr_, "fetch", "-q", "--depth=1", "origin", "+refs/heads/fm/976-work:refs/remotes/pull/1/merge"); git(pr_, "checkout", "-q", "--detach", "refs/remotes/pull/1/merge")
     shallow_, ls_s_ = askedM_(pr_)
-    check(f"FM-006 · v0.19.1 · a pull request's shallow checkout — no `origin/HEAD`, no `origin/main` or `origin/master` — asks origin nothing and passes as before (saw {shallow_[0]}, {ls_s_})",
+    check(f"FM-006 · v0.20.1 · a pull request's shallow checkout — no `origin/HEAD`, no `origin/main` or `origin/master` — asks origin nothing and judges the newest commit alone (saw {shallow_[0]}, {ls_s_})",
           shallow_[0] == 0 and ls_s_ == 0 and "AP-976" not in shallow_[2] and "the default branch cannot be told" not in shallow_[2])
-    held_m_ = cloneM_("m-held"); git(held_m_, "remote", "set-head", "origin", "master"); kept_, ls_h_ = askedM_(held_m_)
-    check(f"FM-006 · v0.19.1 · a clone with `origin/HEAD` set asks origin nothing — no `git ls-remote` — and refuses the same close (saw {kept_[0]}, {ls_h_})",
-          kept_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}`" in kept_[2] and ls_h_ == 0)
-    idx_ = cloneM_("m-idx"); (idx_ / ".git/index").write_bytes(b"not an index")      # a working tree whose diff git cannot make
+    held_m_ = cloneM_("m-held"); git(held_m_, "remote", "set-head", "origin", "--auto"); kept_, ls_h_ = askedM_(held_m_)
+    check(f"FM-006 · v0.20.1 · after `git remote set-head origin --auto`, the person's own command, `--check` reads `origin/HEAD` as the trunk, asks origin nothing, and refuses the close under a later commit, walking from `origin/master` (saw {kept_[0]}, {ls_h_})",
+          kept_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in kept_[2] and ls_h_ == 0)
+    idx_ = cloneM_("m-idx"); git(idx_, "remote", "set-head", "origin", "--auto"); (idx_ / ".git/index").write_bytes(b"not an index")      # a working tree whose diff git cannot make
     broken_, ls_i_ = askedM_(idx_)
-    check(f"FM-006 · v0.19.1 · with a working tree whose diff git cannot make, `--check` reads it one way — as no edit — asks origin, and refuses the close under a later commit (saw {broken_[0]}, {ls_i_})",
-          broken_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in broken_[2] and ls_i_ == 1)
+    check(f"FM-006 · v0.20.1 · with a working tree whose diff git cannot make, `--check` reads it as no edit, asks origin nothing, and refuses the close under a later commit (saw {broken_[0]}, {ls_i_})",
+          broken_[0] == fm.EXIT_LINT and f"AP-976: in `{hid_m_[:10]}` (implementer@seat), on this branch since origin/master — this change is a `close`" in broken_[2] and ls_i_ == 0)
     # a commit through the hooks asks origin nothing: a hook reads the ref this clone holds, as before — offline too
     for k_, v_ in (("user.name", "p"), ("user.email", "principal@seat"), ("commit.gpgsign", "false")):
         git(mc_, "config", k_, v_)
@@ -12771,8 +12776,9 @@ with tempfile.TemporaryDirectory() as d:
           f"what is changed and not committed is not read; `view/built.json` records no count (saw {_cn_saw(g_)})", _cn_ok(g_))
     tool_ = _refresh_tool(m_, _CN_MUTANT[1:])
     c_ = _cn_case(m_ / "case", tool_) if tool_ else None
-    check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row, its folder not empty "
-          f"(saw {_cn_saw(c_) if c_ else 'the change is not there to make'})", c_ is not None and not _cn_ok(c_) and c_["marker"])
+    check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row — the board's run is stopped, exit 4, "
+          f"before it compares the working tree, and its folder stays empty (saw {_cn_saw(c_) if c_ else 'the change is not there to make'})",
+          c_ is not None and not _cn_ok(c_) and c_["code"] == fm.EXIT_LINT and not c_["marker"])
 fm.configure(HERE)
 
 # --- FM-030, 0.18.6 — revoke: on what is on its way the board has ONE button, *revoke*, and it copies `--revoke <id> "<why>"` — a
@@ -16152,6 +16158,9 @@ _module_guard(test_day_prompts, check)
 # Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
 import test_standup_repos
 _module_guard(test_standup_repos, check)
+
+import test_board_settings
+_module_guard(test_board_settings, check, fm)
 
 import test_worktree_identity
 for _label, _ok, _detail in test_worktree_identity.run_checks(fm):
