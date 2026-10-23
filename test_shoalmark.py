@@ -6395,8 +6395,8 @@ def _why_problems(src):
         if not landing or words.get("og_image_alt") != landing.group(1):
             bad.append(f"the {lang} page's link preview does not describe the image as the landing does")
     de = src["docs/de/warum-shoalmark.md"] + json.dumps(_why_words(src["overrides/partials/why/de.html"]), ensure_ascii=False)
-    if "Tafel" in de or "Board" not in de or re.search(r"\b([Dd]u|[Dd]ein\w*|[Dd]ich|[Dd]ir)\b", de):
-        bad.append("the German page says Tafel, or not Board, or speaks to its reader as du")
+    if "Board" not in de or re.search(r"\b([Dd]u|[Dd]ein\w*|[Dd]ich|[Dd]ir)\b", de):
+        bad.append("the German page does not say Board, or speaks to its reader as du")
     if 'import "partials/why/" ~ ("de" if de else "en") ~ ".html" as L' not in tpl or tpl.count('<span class="mock" aria-hidden="true">MOCKUP</span>') != 1:
         bad.append("the template does not take its words by the page's language, or the board picture is not marked MOCKUP once")
     if not all(f"{{{{ 'assets/why/{name}' | url }}}}" in tpl for name in ("pricken-neuwerk.png", "board-mockup-dark.png", "board-mockup-light.png")) \
@@ -6423,13 +6423,13 @@ check(f"FM-006 · the pitch page · every ruled row stands on its page and in th
       _wp == [])
 _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.md", _WHY_ROWS["en"]["W19"] + "\n", ""),
          "a row dropped from the German words": _with(_ws, "overrides/partials/why/de.html", _WHY_ROWS["de"]["W19"].split("** ", 1)[1], ""),
-         "the German page saying Tafel": _with(_ws, "docs/de/warum-shoalmark.md", "auf dem Board", "auf der Tafel"),
+         "the German page in du": _with(_ws, "docs/de/warum-shoalmark.md", "Wann es Ihnen passt, kopieren Sie", "Wann es dir passt, kopierst du"),
          "the board picture without its MOCKUP tag": _with(_ws, "overrides/why.html", '<span class="mock" aria-hidden="true">MOCKUP</span>', ""),
          "the English page off its template": _with(_ws, "docs/why-shoalmark.md", "template: why.html\n", ""),
          "the German title as the English one": _with(_ws, "overrides/partials/why/de.html", '"title": "Warum shoalmark? · shoalmark"', '"title": "Why shoalmark? · shoalmark"'),
          "a picture from another host": _with(_ws, "overrides/why.html", "{{ 'assets/why/pricken-neuwerk.png' | url }}", "https://example.org/p.png")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
-check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page saying Tafel, "
+check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in du, "
       f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one and a picture from another host leaves "
       f"a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 7)
 
