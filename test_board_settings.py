@@ -325,7 +325,7 @@ def build(base, fm, tool, info):
              "glob/a.txt": "global\n", "inc/a.txt": "included\n", **({"req/a.txt": "required\n"} if info else {})}
     for rel, text in files.items():
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
-        (root / rel).write_text(text, encoding="utf-8")
+        (root / rel).write_bytes(text.encode("utf-8"))
     attributes = ("data/*.txt filter=cleanprobe\nproc/*.txt filter=procprobe\nwt/*.txt filter=wtprobe\nglob/*.txt filter=globprobe\n"
                   "inc/*.txt filter=incprobe\n" + ("req/*.txt filter=reqprobe\n" if info else ""))
     (root / ".gitattributes").write_text("*.md diff=probe\n" + ("" if info else attributes), encoding="utf-8")
@@ -368,7 +368,7 @@ def build(base, fm, tool, info):
     pgp = signed_by_hand(env, root, "AP-502", "-----BEGIN PGP SIGNATURE-----\n \n iQ==\n -----END PGP SIGNATURE-----")
     x509 = signed_by_hand(env, root, "AP-503", "-----BEGIN SIGNED MESSAGE-----\n MA==\n -----END SIGNED MESSAGE-----")
     git(env, root, "fetch", "-q", "origin")
-    (root / "data/a.txt").write_text("lower case\n", encoding="utf-8")     # the checkouts above wrote the blob's text into the file
+    (root / "data/a.txt").write_bytes(b"lower case\n")     # the checkouts above wrote the blob's text into the file
     copy = lay_copy(fm, tool, root)
     hooks = base / "hooks"
     hooks.mkdir()
