@@ -6559,6 +6559,9 @@ def _why_problems(src):
     if tpl.count("{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }}") != 2 or "{{ ('assets/why/contributions-2026-' ~ w.lang ~ '@2x.png') | url }} 2x" not in tpl \
             or '<figure class="said"><blockquote><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p></blockquote><figcaption>{{ w.said_by }}</figcaption></figure>' not in tpl:
         bad.append("the template does not draw the statement as a quote with its attribution, or the card of the page's language from the site's own files")
+    if ".over>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--coral);color:var(--landink);" not in tpl \
+            or ".over p:not(.big):not(.t){color:var(--dim);max-width:70ch}" not in tpl or re.search(r"\.over p:not\(\.big\)\{", tpl):
+        bad.append("the What we saw tab is not the ink on coral its own rule sets: a rule for the box's other lines also colours it")
     if not all(f"{{{{ 'assets/why/{name}' | url }}}}" in tpl for name in ("pricken-neuwerk.png", "board-mockup-dark.png", "board-mockup-light.png")) \
             or re.search(r"(src|href)=\"(https?:)?//(?!shoalmark\.tools/|github\.com/shoalmark/|x\.com/holgo99)", tpl) or re.search(r"url\(", tpl):
         bad.append("the template does not draw the site's own three pictures, or it loads something from another host")
@@ -6590,11 +6593,13 @@ _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.m
          "the German title as the English one": _with(_ws, "overrides/partials/why/de.html", '"title": "Warum shoalmark? · shoalmark"', '"title": "Why shoalmark? · shoalmark"'),
          "the statement dropped from the German page": _with(_ws, "docs/de/warum-shoalmark.md", _WHY_ROWS["de"]["W38"].split("<br>")[1], ""),
          "the English card on the German page": _with(_ws, "docs/de/warum-shoalmark.md", "contributions-2026-de.png", "contributions-2026-en.png"),
+         "the tab coloured as the box's other lines": _with(_ws, "overrides/why.html", ".over p:not(.big):not(.t){", ".over p:not(.big){"),
          "a picture from another host": _with(_ws, "overrides/why.html", "{{ 'assets/why/pricken-neuwerk.png' | url }}", "https://example.org/p.png")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
 check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in du, "
       f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one, the statement dropped from the German "
-      f"page, the English card on the German page and a picture from another host leaves a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 9)
+      f"page, the English card on the German page, the tab coloured as the box's other lines and a picture from another host leaves a problem "
+      f"(problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 10)
 
 _WHY_ENGLISH = {
     "W40": "shoalmark — the agents do the work; you have the final word",
