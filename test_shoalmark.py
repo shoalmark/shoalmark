@@ -5711,9 +5711,9 @@ check("refresh hooks · the README names the hooks, read-at wording, and fetch-o
 # from facts.html, which the build writes and nothing commits. These read the sources, as the suite reads the other pages, and have controls:
 # a copy of the sources with one thing changed, which must be refused.
 _LANDING_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", "zensical.toml", "docs/index.md", "docs/de/index.md")
-_FOOT_EN = ("{tag}, released {date} — Subversion without git, and a release archive. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
+_FOOT_EN = ("{tag}, released {date} — the board's new look, and the probe's final prompt. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
             "from the repository and were read when the site was built: {read_date}, at {read_sha}.")
-_FOOT_DE = ("{tag}, veröffentlicht am {date} – Subversion ohne git und ein Release-Archiv. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
+_FOOT_DE = ("{tag}, veröffentlicht am {date} – das neue Aussehen des Boards und der fertige Probe-Prompt. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
             "Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
 _CHART_NOTE = ("shoalmark runs on itself: every wreck is a bug or a security finding, filed in its own repository.",
                "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.")
@@ -5822,7 +5822,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "a release typed in the footer's link": _with(_ls, "overrides/landing.html", 'releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}', 'releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2'),
         "the Owner's line reworded": _with(_ls, "overrides/partials/landing/en.html", "a bug or a security finding", "a bug"),
         "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
-        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "Subversion without git, and a release archive", "a fix for the board's refresh"),
+        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "the board's new look, and the probe's final prompt", "a fix for the board's refresh"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
         "the prompt back in a fold": _with(_ls, "overrides/landing.html", '<div class="probe-prompt" id="probe-prompt" data-open="false">', '<details class="probe-fold probe-prompt" id="probe-prompt" data-open="false">'),
@@ -5889,6 +5889,15 @@ _sctl = {"a word of one row changed in the German twin": _with(_ls, "docs/de/ind
 _ssaw = {name: len(_standup_problems(src)) for name, src in _sctl.items()}
 check(f"FM-006 · B1 · the stand-up lines' check is not blind: each of a word of one row changed in the German twin, or in the English words, is a "
       f"problem (problems found: {_ssaw})", all(_ssaw.values()) and len(_ssaw) == 2)
+_sw29 = [lang for lang, foot in (("en", _FOOT_EN), ("de", _FOOT_DE)) if _landing_words(_ls)[0].get(lang, {}).get("foot_fine") != foot]
+check(f"FM-006 · B1 · the footer's sentence, W29: foot_fine holds its row byte for byte in en.html and de.html, the headline after the date the board's new "
+      f"look and the probe's final prompt, its slots and every word after its first full stop as they were (saw {_sw29})",
+      not _sw29 and _FOOT_EN.split(". ", 1)[1].startswith("Licence: Apache-2.0 or MIT. ") and _FOOT_DE.split(". ", 1)[1].startswith("Lizenz: Apache-2.0 oder MIT. ")
+      and all(s in _FOOT_EN and s in _FOOT_DE for s in ("{tag}", "{date}", "{read_date}", "{read_sha}")))
+_sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "das neue Aussehen des Boards", "das alte Aussehen des Boards")
+check("FM-006 · B1 · the footer's check is not blind: a word of W29 changed in the German words is a problem",
+      _landing_words(_sw29_ctl)[0].get("de", {}).get("foot_fine") != _FOOT_DE and bool(_landing_problems(_sw29_ctl)))
+
 
 # --- the docs' stand-up lines: how it works, the start pages' fleet line, setup and the standup page, in English and in German --------------------
 _DOCS_STANDUP_ROWS = {
