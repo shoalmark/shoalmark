@@ -1,5 +1,5 @@
 # Verified by building the site both ways with docs.yml's steps: work-tracker/evidence/reviews/review-pr148-zensical-0.0.67-fd38f85.md.
-zensical==0.0.67
+zensical==0.0.71
 # CSS parser for the published font-source check; retains Python 3.9 support.
 tinycss2==1.4.0
 # The time-zone database Windows lacks: landing_facts.py reads the filing days and the build's day in Europe/Berlin.
