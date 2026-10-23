@@ -6299,6 +6299,153 @@ _drctl_saw = {name: len(_dialog_room_problems(src)) for name, src in _drctl.item
 check(f"FM-006 · the probe dialog on a desktop · the check is not blind: each of the room as it was and the room without its dvh leaves a problem (problems found: {_drctl_saw})",
       all(_drctl_saw.values()) and len(_drctl_saw) == 2)
 
+_WHY_FILES = ("docs/why-shoalmark.md", "docs/de/warum-shoalmark.md", "overrides/why.html", "overrides/partials/why/en.html", "overrides/partials/why/de.html",
+              "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
+_WHY_ROWS = {
+    "en": {
+        "W0": "Why shoalmark?",
+        "W1": "shoalmark in one page: a trust layer for AI coding agents, inside your repository. The agents keep the work; you keep the word.",
+        "W2": "Why shoalmark? · shoalmark",
+        "W3": "Why shoalmark?",
+        "W4": "**The agents keep the work; the person keeps the word.**",
+        "W5": "**TL;DR:**",
+        "W6": "**What:** shoalmark is a trust layer for AI coding agents, and it lives inside your repository. Your agents keep the work record. You keep the final word, as your own commits.",
+        "W7": "**The problem:** Agents build faster than you can decide. The bottleneck isn't the agents. It's you, pulled into small decisions in the middle of their work.",
+        "W8": "**How:** Their questions wait on the board instead of interrupting you. When it suits you, copy the stand-up prompt: it asks a session to take you through them. Each answer is a commit you can sign.",
+        "W9a": "**Simple:** One Python file. No server, no database, no account, and nothing that locks you in.",
+        "W9b": "**Status:** Open source (Apache-2.0 or MIT), in beta, and built with itself.",
+        "W9": "**Try it:** [Copy the prompt](index.md#top) and let your agent check whether shoalmark fits your project. Up to 45 minutes, and \"no fit\" is an answer too.",
+        "W10": "## The mark<br>On the Wadden Sea, a Pricke, a simple birch stake, marks the edge of a channel across the tidal flats. It doesn't steer. The person at the helm still chooses the course. That is the whole idea of shoalmark: let the marks do their work, and keep the course in human hands.",
+        "W11": "## What we saw<br>We started from what we measured. In the repository shoalmark came from, **200** pull requests were merged in **22** days, **85 %** of them within a minute of opening, and **none** with a review. Asked separately what slowed them most, three agents gave the same answer: the person's unanswered questions. One question, open for three days, held up three packages. Speed was never the problem. Small decisions, asked in the middle of the work, were.",
+        "W12": "## What it's for<br>We believe your agents should run at full speed and check back when it matters. That only your verified word should decide. And that every decision should be readable later, straight from the repository. shoalmark is built for exactly that.",
+        "W13": "A mockup of the shoalmark board of a sample repository, notes-app. Under the header, the page says when it was read from main, that it reads its file again when you come back to it, and that nothing polls, beside a button that copies the rebuild command. In the box titled yours, two decisions wait for you, the oldest first: NA-009-Q1, may the sync drop devices unseen for 90 days, which holds up NA-019 and was asked by the research session; and NA-012-Q2, ship the export as CSV only or as CSV and JSON, which holds up NA-014 and was asked by the planner session. Each has accept and reject buttons, and your answers here are signed. Below, your day: a button that copies your stand-up prompt; the three sessions with a commit in the last 24 hours, research and planner in Claude Code and builder in Codex, the two that asked you first, each with a button that copies its resume command; and a button that copies your close-out prompt. Reviews, receipts and your current path are folded.",
+        "W14": "*A mockup of the board, from a sample repository: your agents' questions wait at the top, oldest first; below, the session that asked each one, with a button that copies its resume command.*",
+        "W15": "## Why it's built this way<br>Trust starts with things you can check. So shoalmark stays small, and stays out of your way:",
+        "W16": "- **One file.** Python 3.9 or newer. No pip, no server, no database, no account. Your repo keeps a pinned, checksummed copy, and it never updates itself behind your back.",
+        "W17": "- **Your record.** Plain Markdown, one file per work item, right in your repo. shoalmark never overwrites a file it didn't write.",
+        "W18": "- **Your word.** One command per answer, recorded as your own commit. A click or a line in chat is not an answer.",
+        "W19": "- **Your stand-up.** The questions wait on the board, oldest first. The stand-up prompt is one click away, whenever it suits you.",
+        "W20": "- **Written rights.** Every agent works in a seat with its rights written down, and the gate sees every right in a diff.",
+        "W21": "- **Measured, not promised.** shoalmark is not proof that work is right. That's what a review is for.",
+        "W22": "## What it holds itself to<br>We hold shoalmark to its own intent, printed above every triage pass in its repository. It names what must never happen: a false pass, a claim without its source, an act you didn't agree to, an agent's word counted as yours.",
+        "W23": "## Your move<br>If you build with agents, try it on your own repository. Your agents set it up, and the record stays yours.<br>Let your agents run. Keep your word.<br>[Your agents set it up](index.md#start) · [Set up in ten minutes](setup.md) · [Back to shoalmark](index.md)",
+        "W24": "Built in the open: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Follow the shipyard on X: [@holgo99](https://x.com/holgo99)",
+    },
+    "de": {
+        "W0": "Warum shoalmark?",
+        "W1": "shoalmark auf einer Seite: eine Vertrauensschicht für KI-Agenten, in Ihrem Repository. Die Agenten tragen die Arbeit, Sie behalten das letzte Wort.",
+        "W2": "Warum shoalmark? · shoalmark",
+        "W3": "Warum shoalmark?",
+        "W4": "**Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.**",
+        "W5": "**TL;DR:**",
+        "W6": "**Was:** shoalmark ist eine Vertrauensschicht für KI-Agenten, und sie lebt in Ihrem Repository. Ihre Agenten führen den Arbeitsstand. Sie behalten das letzte Wort, als Ihre eigenen Commits.",
+        "W7": "**Das Problem:** Agenten bauen schneller, als Sie entscheiden können. Der Engpass sind nicht die Agenten. Der Engpass sind Sie, mitten in ihrer Arbeit in kleine Entscheidungen gezogen.",
+        "W8": "**Wie:** Die Fragen der Agenten warten auf dem Board, statt Sie zu unterbrechen. Wann es Ihnen passt, kopieren Sie den Standup-Prompt: Er bittet eine Sitzung, sie mit Ihnen durchzugehen. Jede Antwort ist ein Commit, den Sie signieren können.",
+        "W9a": "**Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das Sie bindet.",
+        "W9b": "**Stand:** Open Source (Apache-2.0 oder MIT), in der Beta, und mit sich selbst gebaut.",
+        "W9": "**Ausprobieren:** [Kopieren Sie den Prompt](index.md#top) und lassen Sie Ihren Agenten prüfen, ob shoalmark zu Ihrem Projekt passt. Bis zu 45 Minuten, und „passt nicht“ ist auch eine Antwort.",
+        "W10": "## Die Pricke<br>Eine Pricke markiert den Rand eines Fahrwassers im Watt. Den Kurs bestimmt weiterhin der Mensch am Steuer. Das ist die ganze Idee von shoalmark: Die Marken tun ihre Arbeit, und der Kurs bleibt in Menschenhand.",
+        "W11": "## Was wir gesehen haben<br>Wir sind von dem ausgegangen, was wir gemessen haben. Im Repository, aus dem shoalmark kam, wurden in **22** Tagen **200** Pull Requests gemergt, **85 %** davon innerhalb einer Minute nach dem Öffnen, und **keiner** mit einem Review. Getrennt gefragt, was sie am meisten bremst, gaben drei Agenten dieselbe Antwort: die unbeantworteten Fragen an den Menschen. Eine Frage, drei Tage offen, hielt drei Pakete auf. Das Tempo war nie das Problem. Kleine Entscheidungen mitten in der Arbeit waren es.",
+        "W12": "## Wofür shoalmark da ist<br>Wir sind überzeugt: Ihre Agenten sollen mit voller Geschwindigkeit arbeiten und nachfragen, wenn es darauf ankommt. Entscheiden soll nur Ihr geprüftes Wort. Und jede Entscheidung soll sich später nachlesen lassen, direkt aus dem Repository. Genau dafür ist shoalmark gebaut.",
+        "W13": "Ein Mockup des shoalmark-Boards eines Beispiel-Repositorys, notes-app, mit englischen Beschriftungen. Unter dem Kopf sagt die Seite, wann sie von main gelesen wurde, dass sie ihre Datei wieder liest, wenn man zu ihr zurückkehrt, und dass nichts ständig nachfragt, neben einem Knopf, der den Befehl zum Neubau kopiert. Im Kasten „yours“ warten zwei Entscheidungen, die älteste zuerst: NA-009-Q1, „May the sync drop devices unseen for 90 days?“, die NA-019 aufhält und von der Research-Sitzung gestellt wurde; und NA-012-Q2, „Ship the export as CSV only, or as CSV and JSON?“, die NA-014 aufhält und von der Planner-Sitzung gestellt wurde. Jede hat die Knöpfe „accept“ und „reject“, und die Antworten dort sind signiert. Darunter der Tag: ein Knopf, der den Standup-Prompt kopiert; die drei Sitzungen mit einem Commit in den letzten 24 Stunden, Research und Planner in Claude Code und Builder in Codex, die beiden, die gefragt haben, zuerst, jede mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert; und ein Knopf, der den Abschluss-Prompt kopiert. Reviews, Receipts und der aktuelle Pfad sind eingeklappt.",
+        "W14": "*Ein Mockup des Boards, aus einem Beispiel-Repository: Die Fragen Ihrer Agenten warten oben, die älteste zuerst; darunter die Sitzung, die jede gestellt hat, mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert.*",
+        "W15": "## Warum es so gebaut ist<br>Vertrauen beginnt mit Dingen, die man prüfen kann. Darum bleibt shoalmark klein und hält sich aus dem Weg:",
+        "W16": "- **Eine Datei.** Python 3.9 oder neuer. Kein pip, kein Server, keine Datenbank, kein Konto. Ihr Repository behält eine festgeschriebene Kopie mit Prüfsummen, und sie aktualisiert sich nie hinter Ihrem Rücken.",
+        "W17": "- **Ihr Beleg.** Schlichtes Markdown, eine Datei pro Arbeitspaket, direkt in Ihrem Repository. shoalmark überschreibt nie eine Datei, die es nicht selbst geschrieben hat.",
+        "W18": "- **Ihr Wort.** Ein Befehl pro Antwort, festgehalten als Ihr eigener Commit. Ein Klick oder eine Zeile im Chat ist keine Antwort.",
+        "W19": "- **Ihr Standup.** Die Fragen warten auf dem Board, die älteste zuerst. Der Standup-Prompt liegt einen Klick entfernt bereit, wann immer es Ihnen passt.",
+        "W20": "- **Aufgeschriebene Rechte.** Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten, und das Gate sieht jedes Recht in einem Diff.",
+        "W21": "- **Gemessen, nicht versprochen.** shoalmark ist kein Beweis, dass die Arbeit stimmt. Dafür ist ein Review da.",
+        "W22": "## Woran es sich selbst hält<br>Wir messen shoalmark an seiner eigenen Absicht, die über jedem Sichtungsdurchlauf in seinem Repository steht. Sie nennt, was nie passieren darf: ein falsches Durchwinken, eine Behauptung ohne Quelle, eine Handlung ohne Ihre Zustimmung, das Wort eines Agenten, das als Ihres zählt.",
+        "W23": "## Sie sind am Zug<br>Wenn Sie mit Agenten bauen, probieren Sie es an Ihrem eigenen Repository aus. Ihre Agenten richten es ein, und der Beleg bleibt bei Ihnen.<br>Lassen Sie Ihre Agenten laufen. Behalten Sie das letzte Wort.<br>[Ihre Agenten richten es ein](index.md#start) · [In zehn Minuten eingerichtet](setup.md) · [Zurück zu shoalmark](index.md)",
+        "W24": "Offen gebaut: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Die Werft auf X verfolgen: [@holgo99](https://x.com/holgo99)",
+    },
+}
+
+
+def _why_words(text):
+    """{key: value} of a pitch page's words partial, whose `{% set w = {…} %}` is JSON; {} where it does not read."""
+    found = re.search(r"\{% set w = (\{.*\}) %\}", text, re.S)
+    try:
+        return json.loads(found.group(1)) if found else {}
+    except ValueError:
+        return {}
+
+
+def _why_plain(text):
+    """Text as a reader meets it, Markdown's or HTML's markup aside: no heading or list mark, a link as its words, no tag, entities read, one space."""
+    text = re.sub(r"^(## |- )", "", text.strip())
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text).replace("**", "").strip("*")
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", text)).replace("\u00a0", " ").split())
+
+
+def _why_problems(src):
+    """What is wrong with the pitch page, one line each; none where every ruled row stands, in English and in German, on its Markdown page and in the
+    words its template draws, with the board picture marked MOCKUP and the German in Sie, saying Board."""
+    bad = []
+    tpl = src["overrides/why.html"]
+    for lang, page in (("en", "docs/why-shoalmark.md"), ("de", "docs/de/warum-shoalmark.md")):
+        rows, text = _WHY_ROWS[lang], src[page]
+        words = _why_words(src[f"overrides/partials/why/{lang}.html"])
+        drawn = " ".join(_why_plain(v) for v in _why_strings(words))
+        head = text.split("\n---\n", 1)[0] + "\n"
+        if f"title: {rows['W0']}\n" not in head or f'description: "{rows["W1"]}"\n' not in head or "template: why.html\n" not in head:
+            bad.append(f"{page}'s front matter does not hold W0 and W1 as ruled and choose why.html")
+        for key, cell in rows.items():
+            if key in ("W0", "W1", "W2"):
+                continue
+            for part in cell.split("<br>"):
+                on_page = f"![{part}](" in text if key == "W13" else part in text
+                if not on_page:
+                    bad.append(f"{page} does not hold {key} as ruled: {part[:60]!r}")
+                links = re.findall(r"\[([^\]]+)\]\([^)]+\)", part)
+                pieces = links if re.fullmatch(r"\[[^\]]+\]\([^)]+\)( · \[[^\]]+\]\([^)]+\))+", part.strip()) else [part]
+                if not all(_why_plain(p) in drawn for p in pieces):
+                    bad.append(f"the {lang} words the template draws do not hold {key}: {part[:60]!r}")
+        if words.get("title") != rows["W2"] or words.get("board_alt") != rows["W13"]:
+            bad.append(f"the {lang} page's <title> is not W2, or its board's alt is not W13")
+        landing = re.search(r'"og_image_alt": "((?:[^"\\]|\\.)*)"', src[f"overrides/partials/landing/{lang}.html"])
+        if not landing or words.get("og_image_alt") != landing.group(1):
+            bad.append(f"the {lang} page's link preview does not describe the image as the landing does")
+    de = src["docs/de/warum-shoalmark.md"] + json.dumps(_why_words(src["overrides/partials/why/de.html"]), ensure_ascii=False)
+    if "Board" not in de or re.search(r"\b([Dd]u|[Dd]ein\w*|[Dd]ich|[Dd]ir)\b", de):
+        bad.append("the German page does not say Board, or speaks to its reader as du")
+    if 'import "partials/why/" ~ ("de" if de else "en") ~ ".html" as L' not in tpl or tpl.count('<span class="mock" aria-hidden="true">MOCKUP</span>') != 1:
+        bad.append("the template does not take its words by the page's language, or the board picture is not marked MOCKUP once")
+    if not all(f"{{{{ 'assets/why/{name}' | url }}}}" in tpl for name in ("pricken-neuwerk.png", "board-mockup-dark.png", "board-mockup-light.png")) \
+            or re.search(r"(src|href)=\"(https?:)?//(?!shoalmark\.tools/|github\.com/shoalmark/|x\.com/holgo99)", tpl) or re.search(r"url\(", tpl):
+        bad.append("the template does not draw the site's own three pictures, or it loads something from another host")
+    return bad
+
+
+def _why_strings(value):
+    """Every string a words value holds, in order, a list's or a dict's included."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [s for v in value.values() for s in _why_strings(v)]
+    if isinstance(value, list):
+        return [s for v in value for s in _why_strings(v)]
+    return []
+
+
+_ws = _sources(_WHY_FILES)
+_wp = _why_problems(_ws)
+check(f"FM-006 · the pitch page · every ruled row stands on its page and in the words its template draws, in English and in German (Sie, Board); its "
+      f"<title>, its description and its board's alt are the rows', the board picture is marked MOCKUP, and nothing loads from another host (problems found: {_wp})",
+      _wp == [])
+_wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.md", _WHY_ROWS["en"]["W19"] + "\n", ""),
+         "a row dropped from the German words": _with(_ws, "overrides/partials/why/de.html", _WHY_ROWS["de"]["W19"].split("** ", 1)[1], ""),
+         "the German page in du": _with(_ws, "docs/de/warum-shoalmark.md", "Wann es Ihnen passt, kopieren Sie", "Wann es dir passt, kopierst du"),
+         "the board picture without its MOCKUP tag": _with(_ws, "overrides/why.html", '<span class="mock" aria-hidden="true">MOCKUP</span>', ""),
+         "the English page off its template": _with(_ws, "docs/why-shoalmark.md", "template: why.html\n", ""),
+         "the German title as the English one": _with(_ws, "overrides/partials/why/de.html", '"title": "Warum shoalmark? · shoalmark"', '"title": "Why shoalmark? · shoalmark"'),
+         "a picture from another host": _with(_ws, "overrides/why.html", "{{ 'assets/why/pricken-neuwerk.png' | url }}", "https://example.org/p.png")}
+_wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
+check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in du, "
+      f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one and a picture from another host leaves "
+      f"a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 7)
+
 # the dialog's hold and the coin, run: the probe dialog's script under a stand-in page, with a clock the harness moves
 _HOLD_HARNESS = r"""
 const vm = require("vm"), fs = require("fs"), code = fs.readFileSync(process.argv[2], "utf8");
