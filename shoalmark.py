@@ -4189,7 +4189,7 @@ function box(){
     folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG"),week=REG.verdicts||[],more=week.filter(folds);
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
         "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
-      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
+      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
     S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
@@ -4381,7 +4381,7 @@ LABELS = {
     "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
     # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
     "reviews.sessions.more": "{0} and {1} more",
-    "reviews.more": "and {0} more verdicts by another session this week",
+    "reviews.more": "and {0} more verdicts by another session this week", "reviews.more.one": "and 1 more verdict by another session this week",
     # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous*
     "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
     "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",

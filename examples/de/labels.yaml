@@ -245,6 +245,7 @@ reviews.reports: Berichte, keine Beweise
 reviews.sessions: "seine Sitzung {0}, die des Zweigs {1}"
 reviews.sessions.more: "{0} und {1} weitere"
 reviews.more: "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche"
+reviews.more.one: und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche
 reviews.word.another: von einer anderen Sitzung
 reviews.word.same: von derselben Sitzung
 reviews.word.untraced: ohne Spur

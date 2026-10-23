@@ -6130,6 +6130,13 @@ check("FM-053, BF-61, BF-62, BF-64 · the reviews section folds exactly the verd
       and 'slice(0,10)' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")]
       and _m_src.count('[page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]') == 1
       and _m_src.count('lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))') == 1 and _m_src.count('lh("reviews.branch.unnamed",cid(b[1],u))') == 1)
+_ONE = 'more.length==1?l("reviews.more.one"):l("reviews.more",more.length)'
+_one_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+check("FM-053 · the reviews' fold counts one verdict in the singular — `reviews.more.one`, picked where the count is 1 — and more in the plural, in "
+      "English and in the German table the tool ships",
+      _m_src.count(_ONE) == 1 and fm.LABELS.get("reviews.more.one") == "and 1 more verdict by another session this week"
+      and _one_de.get("reviews.more.one") == "und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche"
+      and _one_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche")
 if _browser("reviews"):
     try:
         with tempfile.TemporaryDirectory() as d:
@@ -6151,6 +6158,21 @@ if _browser("reviews"):
             flex_ = _m_faults(_header_at(wt_, page_.replace(_M_FLOW, ".rv .how{padding-left:9ch}"), 390, _M_PROBE), 390, cases_, links_)
             check(f"FM-053, BF-61, BF-62 · the check's controls: nothing folded fails it, and the row's second line drawn as it was fails it at 390 px "
                   f"(saw {flat_}, {flex_})", page_.count(_M_FOLDS) == 1 and any("wanted folds" in f_ for f_ in flat_) and any("its state starts" in f_ for f_ in flex_))
+            one_ = base_ / "one"; one_.mkdir(); out_ = lambda *a: subprocess.run(["git", "-C", str(one_), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+            git(one_, "init", "-q", "-b", "main"); run(one_, "--init", "--key", "msr"); tracker(one_, "MSR-001"); run(one_)
+            git(one_, "add", "-A"); git(one_, "commit", "-qm", "the trunk\n\nSession: t0"); git(one_, "checkout", "-q", "-b", "fm/one")
+            git(one_, "commit", "-q", "--allow-empty", "-m", "one, built\n\nSession: b1"); built_ = out_("rev-parse", "HEAD")
+            fold_ = lambda: (re.search(r'<details class="more"><summary>(.*?)</summary>', (run_safe(one_, "--html-only"), _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
+                             (one_ / "docs/work-tracker/index.html").as_uri()]).stdout)[1]) or [None, ""])[1]
+            brand_ = one_ / "docs/work-tracker/brand"; said_ = {}
+            for n_, word_ in ((1, "READY"), (2, "READY TO TAG")):
+                git(one_, "commit", "-q", "--allow-empty", "-m", f"review: {word_}\n\nReviewed: {built_}\nSession: r{n_}")
+                said_[("en", n_)] = fold_()
+                brand_.mkdir(parents=True, exist_ok=True); (brand_ / "labels.yaml").write_text((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+                said_[("de", n_)] = fold_(); (brand_ / "labels.yaml").unlink()
+            check(f"FM-053 · rendered, the fold reads one verdict in the singular and two in the plural, in English and in German (saw {said_})",
+                  said_ == {("en", 1): "and 1 more verdict by another session this week", ("de", 1): "und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche",
+                            ("en", 2): "and 2 more verdicts by another session this week", ("de", 2): "und 2 weitere Urteile von einer anderen Sitzung in dieser Woche"})
     except _ChromeFailed as e_:
         _hung("reviews", e_)
         fm.configure(HERE)
@@ -6862,6 +6884,7 @@ waiting.more: and {0} more: the oldest are above
 reviews.sessions: its session {0}, the branch's {1}
 reviews.sessions.more: {0} and {1} more
 reviews.more: and {0} more verdicts by another session this week
+reviews.more.one: und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche
 reviews.word.another: by another session
 reviews.word.same: by the same session
 reviews.word.untraced: untraced
