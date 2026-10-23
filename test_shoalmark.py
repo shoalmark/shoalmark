@@ -6468,6 +6468,8 @@ _WHY_ROWS = {
         "W22": "## What it holds itself to<br>We hold shoalmark to its own intent, printed above every triage pass in its repository. It names what must never happen: a false pass, a claim without its source, an act you didn't agree to, an agent's word counted as yours.",
         "W23": "## Your move<br>If you build with agents, try it on your own repository. Your agents set it up, and the record stays yours.<br>Let your agents run. Keep your word.<br>[Your agents set it up](index.md#start) · [Set up in ten minutes](setup.md) · [Back to shoalmark](index.md)",
         "W24": "Built in the open: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Follow the shipyard on X: [@holgo99](https://x.com/holgo99)",
+        "W38": "*\"On 13 July, I took myself out of the loop: my planner agents got gh and took over the orchestration, and the speed-up was unreal. A month later I posted ['Bottleneck removed.'](https://x.com/Holgo99/status/2088153757792043485)*<br>*But I hadn't removed myself at all. I'd become their message relay, their rubber stamp and their decision engine, and the context-switching was brutal. On 29 September my GitHub showed 9,946 contributions for the year, and I posted ['What a hell of a ride.'](https://x.com/Holgo99/status/2104854591032484007)*<br>*shoalmark is how I came back in: since 21 September its agents have made most of its commits, and mine are mostly merges and answers.\"*<br>— @holgo99, who builds portdive with shoalmark, and shoalmark with itself",
+        "W39": "A pixel-grid calendar of 10,259 GitHub contributions in 2026 on one maker's account, as of 23 October, in shoalmark's night look: quiet from January to early July, a bright band from mid-July to late September, quieter again in October. Three labels: 13 July, \"my planner agents get gh. I become their rubber stamp and message relay.\"; a bracket over the 22 days before 21 September, \"200 pull requests in 22 days, none reviewed: the repository shoalmark came from\"; and 21 and 24 September, \"shoalmark's first commit\" and \"every pull request gets a reviewer's file\". Source: github.com/holgo99.",
     },
     "de": {
         "W0": "Warum shoalmark?",
@@ -6497,6 +6499,8 @@ _WHY_ROWS = {
         "W22": "## Woran es sich selbst hält<br>Wir messen shoalmark an seiner eigenen Absicht, die über jedem Sichtungsdurchlauf in seinem Repository steht. Sie nennt, was nie passieren darf: ein falsches Durchwinken, eine Behauptung ohne Quelle, eine Handlung ohne Ihre Zustimmung, das Wort eines Agenten, das als Ihres zählt.",
         "W23": "## Sie sind am Zug<br>Wenn Sie mit Agenten bauen, probieren Sie es an Ihrem eigenen Repository aus. Ihre Agenten richten es ein, und der Beleg bleibt bei Ihnen.<br>Lassen Sie Ihre Agenten laufen. Behalten Sie das letzte Wort.<br>[Ihre Agenten richten es ein](index.md#start) · [In zehn Minuten eingerichtet](setup.md) · [Zurück zu shoalmark](index.md)",
         "W24": "Offen gebaut: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Die Werft auf X verfolgen: [@holgo99](https://x.com/holgo99)",
+        "W38": "*„Am 13. Juli habe ich mich aus der Schleife genommen: Meine Planer-Agenten bekamen gh und übernahmen die Orchestrierung, und das Tempo war unglaublich. Einen Monat später postete ich [‚Bottleneck removed.‘](https://x.com/Holgo99/status/2088153757792043485)*<br>*Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*<br>*Mit shoalmark bin ich zurückgekommen: Seit dem 21. September machen seine Agenten die meisten Commits, und meine sind vor allem Merges und Antworten.“*<br>— @holgo99, baut portdive mit shoalmark, und shoalmark mit sich selbst",
+        "W39": "Ein Pixelraster-Kalender mit 10.259 GitHub-Beiträgen in 2026 auf einem einzelnen Konto, Stand 23. Oktober, im Nachtlook von shoalmark: ruhig von Januar bis Anfang Juli, ein helles Band von Mitte Juli bis Ende September, im Oktober wieder ruhiger. Drei Beschriftungen: 13. Juli, „Meine Planer-Agenten bekommen gh. Ich werde ihr Abnicker und ihr Bote.“; eine Klammer über die 22 Tage vor dem 21. September, „200 Pull Requests in 22 Tagen, keiner mit Review: das Repository, aus dem shoalmark kam“; und der 21. und 24. September, „der erste Commit von shoalmark“ und „jeder Pull Request bekommt die Datei eines Reviewers“. Quelle: github.com/holgo99.",
     },
 }
 
@@ -6514,7 +6518,7 @@ def _why_plain(text):
     """Text as a reader meets it, Markdown's or HTML's markup aside: no heading or list mark, a link as its words, no tag, entities read, one space."""
     text = re.sub(r"^(## |- )", "", text.strip())
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text).replace("**", "").strip("*")
-    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", text)).replace("\u00a0", " ").split())
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", "", text)).replace("\u00a0", " ").split())
 
 
 def _why_problems(src):
@@ -6533,15 +6537,17 @@ def _why_problems(src):
             if key in ("W0", "W1", "W2"):
                 continue
             for part in cell.split("<br>"):
-                on_page = f"![{part}](" in text if key == "W13" else part in text
+                on_page = f"![{part}](" in text if key in ("W13", "W39") else part in text
                 if not on_page:
                     bad.append(f"{page} does not hold {key} as ruled: {part[:60]!r}")
                 links = re.findall(r"\[([^\]]+)\]\([^)]+\)", part)
                 pieces = links if re.fullmatch(r"\[[^\]]+\]\([^)]+\)( · \[[^\]]+\]\([^)]+\))+", part.strip()) else [part]
                 if not all(_why_plain(p) in drawn for p in pieces):
                     bad.append(f"the {lang} words the template draws do not hold {key}: {part[:60]!r}")
-        if words.get("title") != rows["W2"] or words.get("board_alt") != rows["W13"]:
-            bad.append(f"the {lang} page's <title> is not W2, or its board's alt is not W13")
+        if words.get("title") != rows["W2"] or words.get("board_alt") != rows["W13"] or html.unescape(words.get("card_alt", "")) != rows["W39"]:
+            bad.append(f"the {lang} page's <title> is not W2, its board's alt not W13, or its card's alt not W39")
+        if f"![{rows['W39']}](https://shoalmark.tools/assets/why/contributions-2026-{lang}.png)" not in text:
+            bad.append(f"{page} does not show its own language's contribution card")
         landing = re.search(r'"og_image_alt": "((?:[^"\\]|\\.)*)"', src[f"overrides/partials/landing/{lang}.html"])
         if not landing or words.get("og_image_alt") != landing.group(1):
             bad.append(f"the {lang} page's link preview does not describe the image as the landing does")
@@ -6550,6 +6556,9 @@ def _why_problems(src):
         bad.append("the German page does not say Board, or speaks to its reader as du")
     if 'import "partials/why/" ~ ("de" if de else "en") ~ ".html" as L' not in tpl or tpl.count('<span class="mock" aria-hidden="true">MOCKUP</span>') != 1:
         bad.append("the template does not take its words by the page's language, or the board picture is not marked MOCKUP once")
+    if tpl.count("{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }}") != 2 or "{{ ('assets/why/contributions-2026-' ~ w.lang ~ '@2x.png') | url }} 2x" not in tpl \
+            or '<figure class="said"><blockquote><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p></blockquote><figcaption>{{ w.said_by }}</figcaption></figure>' not in tpl:
+        bad.append("the template does not draw the statement as a quote with its attribution, or the card of the page's language from the site's own files")
     if not all(f"{{{{ 'assets/why/{name}' | url }}}}" in tpl for name in ("pricken-neuwerk.png", "board-mockup-dark.png", "board-mockup-light.png")) \
             or re.search(r"(src|href)=\"(https?:)?//(?!shoalmark\.tools/|github\.com/shoalmark/|x\.com/holgo99)", tpl) or re.search(r"url\(", tpl):
         bad.append("the template does not draw the site's own three pictures, or it loads something from another host")
@@ -6570,7 +6579,8 @@ def _why_strings(value):
 _ws = _sources(_WHY_FILES)
 _wp = _why_problems(_ws)
 check(f"FM-006 · the pitch page · every ruled row stands on its page and in the words its template draws, in English and in German (Sie, Board); its "
-      f"<title>, its description and its board's alt are the rows', the board picture is marked MOCKUP, and nothing loads from another host (problems found: {_wp})",
+      f"<title>, its description and its pictures' alts are the rows', the board picture is marked MOCKUP, the statement stands as a quote with its attribution, the "
+      f"contribution card is the page's language's, and nothing loads from another host (problems found: {_wp})",
       _wp == [])
 _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.md", _WHY_ROWS["en"]["W19"] + "\n", ""),
          "a row dropped from the German words": _with(_ws, "overrides/partials/why/de.html", _WHY_ROWS["de"]["W19"].split("** ", 1)[1], ""),
@@ -6578,11 +6588,13 @@ _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.m
          "the board picture without its MOCKUP tag": _with(_ws, "overrides/why.html", '<span class="mock" aria-hidden="true">MOCKUP</span>', ""),
          "the English page off its template": _with(_ws, "docs/why-shoalmark.md", "template: why.html\n", ""),
          "the German title as the English one": _with(_ws, "overrides/partials/why/de.html", '"title": "Warum shoalmark? · shoalmark"', '"title": "Why shoalmark? · shoalmark"'),
+         "the statement dropped from the German page": _with(_ws, "docs/de/warum-shoalmark.md", _WHY_ROWS["de"]["W38"].split("<br>")[1], ""),
+         "the English card on the German page": _with(_ws, "docs/de/warum-shoalmark.md", "contributions-2026-de.png", "contributions-2026-en.png"),
          "a picture from another host": _with(_ws, "overrides/why.html", "{{ 'assets/why/pricken-neuwerk.png' | url }}", "https://example.org/p.png")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
 check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in du, "
-      f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one and a picture from another host leaves "
-      f"a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 7)
+      f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one, the statement dropped from the German "
+      f"page, the English card on the German page and a picture from another host leaves a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 9)
 
 # the dialog's hold and the coin, run: the probe dialog's script under a stand-in page, with a clock the harness moves
 _HOLD_HARNESS = r"""
