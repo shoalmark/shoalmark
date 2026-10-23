@@ -1,6 +1,6 @@
-# The standup — one sitting a day
+# The standup — whenever it suits you
 
-*Humans have office hours. Agents have budgets. Between the two sits one fixed sitting.*
+*Humans have office hours. Agents have budgets. Between the two sits one sitting, whenever it suits you.*
 
 Everything that needs you is on the board's first line and in one command:
 
@@ -16,13 +16,17 @@ what you answered or did that is **on its way** to your merge.
 
 ## When
 
+Whenever it suits you: the board's stand-up prompt is one click away, or run `--standup` yourself. A fixed slot is
+optional:
+
 ```
-standup = "09:00"          # in shoalmark.toml — local time
+standup = "09:00"          # in shoalmark.toml — local time; empty, the default, sets none
 standup_minutes = 15
 ```
 
-The agenda's first line carries that time and length. The slot in your calendar is yours to make: the tool writes no
-calendar file and posts no notification (R9). **Several repositories?** One sitting can hold them: the next section.
+The agenda's first line carries the time, when one is set, and the length. A slot in your calendar, if you want one, is
+yours to make: the tool writes no calendar file and posts no notification (R9). **Several repositories?** One sitting
+can hold them: the next section.
 
 ## Several repositories, one sitting
 

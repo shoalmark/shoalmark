@@ -93,7 +93,7 @@ führen Sie `--html-only` aus.
 **Grenze:** git hat keinen Hook nach einem bloßen `git fetch`. Kommt ein Antwort-Branch allein durch Fetch an, bleibt die
 Anzeige *unterwegs* auf dem Board wie zuvor, bis zu einem Checkout, einem Merge oder `--html-only`.
 
-`standup = "09:00"` in `shoalmark.toml` setzt die Uhrzeit Ihres Standups.
+Wenn Sie eine feste Uhrzeit für Ihren Standup wollen, setzen Sie `standup = "09:00"` in `shoalmark.toml`. Ohne sie halten Sie den Standup, wann immer es Ihnen passt: siehe [Der Standup](standup.md).
 
 Das ist alles. Die Agenten legen die Arbeit an; Sie beantworten, was nur Sie können.
 

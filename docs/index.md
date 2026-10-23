@@ -16,7 +16,7 @@ See where the work stands, what waits for your word, and what the next session p
 --8<-- "start.en.md"
 
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
-sentence per question, for one sitting at the time they choose, and make their answer one command.
+sentence per question, for their stand-up, whenever it suits them, and make their answer one command.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
 questions on the board until it suits you.

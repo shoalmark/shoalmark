@@ -15,7 +15,7 @@ Sehen Sie, wo die Arbeit steht, was auf Ihr Wort wartet und was die nächste Ses
 --8<-- "start.de.md"
 
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden
-kann – ein Satz pro Frage, für ein Standup zu der Uhrzeit, die sie wählt –, und macht aus ihrer Antwort einen einzigen Befehl.
+kann – ein Satz pro Frage, für ein Standup, wann immer es ihr passt –, und macht aus ihrer Antwort einen einzigen Befehl.
 
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
 shoalmark sammelt diese Fragen auf dem Board, bis es Ihnen passt.

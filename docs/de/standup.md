@@ -1,6 +1,6 @@
-# Der Standup — einmal am Tag
+# Der Standup — wann immer es Ihnen passt
 
-*Menschen haben Sprechzeiten. Agenten haben Budgets. Dazwischen liegt ein fester Standup.*
+*Menschen haben Sprechzeiten. Agenten haben Budgets. Dazwischen liegt ein Standup, wann immer es Ihnen passt.*
 
 Alles, was auf Sie wartet, steht in der ersten Zeile des Boards und in einem Befehl:
 
@@ -17,14 +17,17 @@ haben und was **unterwegs** zu Ihrem Merge ist.
 
 ## Wann
 
+Wann immer es Ihnen passt: Der Standup-Prompt des Boards liegt einen Klick entfernt bereit, oder Sie führen `--standup`
+selbst aus. Eine feste Uhrzeit ist freiwillig:
+
 ```
-standup = "09:00"          # in shoalmark.toml — Ortszeit
+standup = "09:00"          # in shoalmark.toml — Ortszeit; leer, die Voreinstellung, setzt keine
 standup_minutes = 15
 ```
 
-Die erste Zeile der Tagesordnung trägt diese Uhrzeit und Dauer. Den Termin in Ihrem Kalender legen Sie selbst an: das
-Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Ein Standup kann
-sie alle halten: der nächste Abschnitt.
+Die erste Zeile der Tagesordnung trägt die Uhrzeit, wenn eine gesetzt ist, und die Dauer. Einen Termin in Ihrem Kalender
+legen Sie, wenn Sie einen wollen, selbst an: Das Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung
+(R9). **Mehrere Repositories?** Ein Standup kann sie alle halten: der nächste Abschnitt.
 
 ## Mehrere Repositories, ein Standup
 

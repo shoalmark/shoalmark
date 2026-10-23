@@ -12,7 +12,7 @@ shoalmark keeps your project's work as plain files inside the project, so every 
 
 1. **The agents work and record where the work stands.** Each work item is a Markdown file with what is true now and what comes next. A move to *Shipped* with no commit behind it is reported by the checks.
 2. **What only you can decide becomes a question.** When an agent needs your decision it writes it down as one sentence, with the options and its own proposal, and carries on with other work. Between standups nobody interrupts you, except for what cannot be undone.
-3. **You sit, at the time you chose.** At the time you chose, the standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes your answer as a commit, signed with your key once you turn signing on.
+3. **You sit, whenever it suits you.** The standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes your answer as a commit, signed with your key once you turn signing on.
 4. **The agents act on your answer, and a reviewer judges before the merge.** A seat that holds the right to do so records your answer in the work item and moves on. Before work reaches a merge, a reviewer checks it; the board says whether that pass was independent, meaning it came from another session than the code. That is a report, not a proof. `--queue` lists the open pull requests in the order to merge them.
 
 <figure class="week" markdown="0">
@@ -44,7 +44,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 ## Your part
 
 - **Once:** you write three lines in your own words in `TRIAGE.md` (what the repository is for, what is true when it works, and what nobody may do to get there) and the current path, what comes first. And you set up your signature, in about ten minutes.
-- **Each week:** one standup each weekday, fifteen minutes at the time you chose (the length can be set), and one command per answer.
+- **Each week:** a standup whenever it suits you, and one command per answer.
 - **The rest is on the board:** your agents are asked to end each session with what waits for you, and the board puts it first.
 
 ## What shoalmark does not do

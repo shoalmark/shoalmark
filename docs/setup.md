@@ -88,7 +88,7 @@ needs you. On Subversion it rebuilds on a commit through TortoiseSVN or when the
 **Limit:** git has no hook after a bare `git fetch`. An answer branch arriving by fetch alone leaves what the board says
 is *on its way* as it was, until a checkout, a merge or `--html-only`.
 
-Set `standup = "09:00"` in `shoalmark.toml` for the time of your one sitting: see [The standup](standup.md).
+If you want a fixed time for your standup, set `standup = "09:00"` in `shoalmark.toml`. Without it, you hold the standup whenever it suits you: see [The standup](standup.md).
 
 That is all. The agents file the work; you answer what only you can.
 

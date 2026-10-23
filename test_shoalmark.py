@@ -5890,6 +5890,57 @@ _ssaw = {name: len(_standup_problems(src)) for name, src in _sctl.items()}
 check(f"FM-006 · B1 · the stand-up lines' check is not blind: each of a word of one row changed in the German twin, or in the English words, is a "
       f"problem (problems found: {_ssaw})", all(_ssaw.values()) and len(_ssaw) == 2)
 
+# --- the docs' stand-up lines: how it works, the start pages' fleet line, setup and the standup page, in English and in German --------------------
+_DOCS_STANDUP_ROWS = {
+    "W30": ("docs/how-it-works.md", '3. **You sit, whenever it suits you.** The standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes your answer as a commit, signed with your key once you turn signing on.',
+            "docs/de/how-it-works.md", '3. **Sie sitzen, wann immer es Ihnen passt.** Das Standup gibt die Tagesordnung aus: zuerst Ihre Entscheidungen, jede mit ihrer Wartezeit und dem, was sie aufhält. Sie antworten mit einem Befehl pro Frage; er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.'),
+    "W31": ("docs/how-it-works.md", '- **Each week:** a standup whenever it suits you, and one command per answer.',
+            "docs/de/how-it-works.md", '- **Jede Woche:** ein Standup, wann immer es Ihnen passt, und ein Befehl pro Antwort.'),
+    "W32": ("docs/index.md", '**To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one sentence per question, for their stand-up, whenever it suits them, and make their answer one command.',
+            "docs/de/index.md", '**An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden kann – ein Satz pro Frage, für ein Standup, wann immer es ihr passt –, und macht aus ihrer Antwort einen einzigen Befehl.'),
+    "W33": ("docs/setup.md", 'If you want a fixed time for your standup, set `standup = "09:00"` in `shoalmark.toml`. Without it, you hold the standup whenever it suits you: see [The standup](standup.md).',
+            "docs/de/setup.md", 'Wenn Sie eine feste Uhrzeit für Ihren Standup wollen, setzen Sie `standup = "09:00"` in `shoalmark.toml`. Ohne sie halten Sie den Standup, wann immer es Ihnen passt: siehe [Der Standup](standup.md).'),
+    "W34": ("docs/standup.md", '# The standup — whenever it suits you', "docs/de/standup.md", '# Der Standup — wann immer es Ihnen passt'),
+    "W35": ("docs/standup.md", '*Humans have office hours. Agents have budgets. Between the two sits one sitting, whenever it suits you.*',
+            "docs/de/standup.md", '*Menschen haben Sprechzeiten. Agenten haben Budgets. Dazwischen liegt ein Standup, wann immer es Ihnen passt.*'),
+    "W36": ("docs/standup.md", '## When<br>Whenever it suits you: the board\'s stand-up prompt is one click away, or run `--standup` yourself. A fixed slot is optional:<br>`standup = "09:00"          # in shoalmark.toml — local time; empty, the default, sets none`<br>`standup_minutes = 15`<br>The agenda\'s first line carries the time, when one is set, and the length. A slot in your calendar, if you want one, is yours to make: the tool writes no calendar file and posts no notification (R9). **Several repositories?** One sitting can hold them: the next section.',
+            "docs/de/standup.md", '## Wann<br>Wann immer es Ihnen passt: Der Standup-Prompt des Boards liegt einen Klick entfernt bereit, oder Sie führen `--standup` selbst aus. Eine feste Uhrzeit ist freiwillig:<br>`standup = "09:00"          # in shoalmark.toml — Ortszeit; leer, die Voreinstellung, setzt keine`<br>`standup_minutes = 15`<br>Die erste Zeile der Tagesordnung trägt die Uhrzeit, wenn eine gesetzt ist, und die Dauer. Einen Termin in Ihrem Kalender legen Sie, wenn Sie einen wollen, selbst an: Das Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Ein Standup kann sie alle halten: der nächste Abschnitt.')}
+
+
+def _docs_standup_problems(src):
+    """What is wrong with the docs' stand-up lines, one line each: a row whose text a file does not hold, read with the file's line breaks as spaces.
+    A row's parts stand in order; a part in backticks is a line of a fenced block, as it stands, and the two settings share one block."""
+    bad = []
+    for row, (rel_en, en, rel_de, de) in _DOCS_STANDUP_ROWS.items():
+        for rel, text in ((rel_en, en), (rel_de, de)):
+            lines, flat, at = src[rel].split("\n"), " ".join(src[rel].split()), 0
+            parts = text.split("<br>")
+            for part in parts:
+                if part.startswith("`") and part.endswith("`"):
+                    if part.strip("`") not in lines:
+                        bad.append(f"{rel} does not hold {row}'s setting line {part[:50]!r}")
+                    continue
+                at = flat.find(" ".join(part.split()), at)
+                if at < 0:
+                    bad.append(f"{rel} does not hold {row}'s text {part[:50]!r}")
+                    at = 0
+            code = [p.strip("`") for p in parts if p.startswith("`") and p.endswith("`")]
+            if len(code) == 2 and not any(lines[i:i + 4] == ["```", *code, "```"] for i in range(len(lines))):
+                bad.append(f"{rel}: {row}'s two settings are not one fenced block")
+    return bad
+
+
+_DOCS_STANDUP_FILES = sorted({rel for row in _DOCS_STANDUP_ROWS.values() for rel in row[0::2]})
+_ds = _sources(_DOCS_STANDUP_FILES)
+_dsp = _docs_standup_problems(_ds)
+check(f"FM-006 · B1 · the docs' stand-up lines, W30 to W36: how it works, the start pages' fleet line, setup and the standup page hold their rows byte for "
+      f"byte in English and in German, read with their line breaks as spaces, the two settings one fenced block (saw {_dsp})", not _dsp)
+_dsctl = {"a word of one row changed in the German standup page": _with(_ds, "docs/de/standup.md", "freiwillig", "nötig"),
+          "a setting's comment changed in the English standup page": _with(_ds, "docs/standup.md", "empty, the default, sets none", "empty, the default, sets 09:00")}
+_dssaw = {name: len(_docs_standup_problems(src)) for name, src in _dsctl.items()}
+check(f"FM-006 · B1 · the docs' stand-up check is not blind: each of a word of one row changed in the German standup page, or a setting's comment changed in "
+      f"the English one, is a problem (problems found: {_dssaw})", all(_dssaw.values()) and len(_dssaw) == 2)
+
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
 # The switch `probe` in zensical.toml's [project.extra] and the folder "How it works" takes its words from (the snippets' base path) are two places for one
 # fact; the pages name the button as the landing labels it; and no page says that shoalmark scans.

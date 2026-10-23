@@ -12,7 +12,7 @@ shoalmark legt die Arbeit Ihres Projekts als Textdateien im Projekt selbst ab, s
 
 1. **Die Agenten arbeiten und halten fest, wo die Arbeit steht.** Jedes Arbeitspaket ist eine Markdown-Datei mit dem, was jetzt gilt, und dem nächsten Schritt. Einen Wechsel zu *Shipped* ohne Commit dahinter melden die Prüfungen.
 2. **Was nur Sie entscheiden können, wird zu einer Frage.** Braucht ein Agent Ihre Entscheidung, schreibt er sie als einen Satz auf, mit den Optionen und seinem Vorschlag, und macht mit anderer Arbeit weiter. Zwischen den Standups unterbricht Sie niemand, außer für etwas, das sich nicht rückgängig machen lässt.
-3. **Sie sitzen, zu der Uhrzeit, die Sie gewählt haben.** Zu der Uhrzeit, die Sie gewählt haben, gibt das Standup die Tagesordnung aus: zuerst Ihre Entscheidungen, jede mit ihrer Wartezeit und dem, was sie aufhält. Sie antworten mit einem Befehl pro Frage; er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.
+3. **Sie sitzen, wann immer es Ihnen passt.** Das Standup gibt die Tagesordnung aus: zuerst Ihre Entscheidungen, jede mit ihrer Wartezeit und dem, was sie aufhält. Sie antworten mit einem Befehl pro Frage; er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.
 4. **Die Agenten handeln auf Ihre Antwort, und ein Reviewer urteilt vor dem Merge.** Ein Sitz mit dem Recht dazu hält Ihre Antwort im Arbeitspaket fest und macht weiter. Bevor Arbeit zu einem Merge kommt, prüft sie ein Reviewer; das Board sagt, ob dessen Durchgang unabhängig war, also aus einer anderen Session kam als der Code. Das ist eine Meldung, kein Beweis. `--queue` zeigt die offenen Pull Requests in der Reihenfolge, in der sie zu mergen sind.
 
 <figure class="week" markdown="0">
@@ -44,7 +44,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 ## Ihr Teil
 
 - **Einmal:** Sie schreiben in die `TRIAGE.md` drei Zeilen in Ihren eigenen Worten (wofür das Repository da ist, was gilt, wenn es funktioniert, und was niemand tun darf, um dorthin zu kommen) und den aktuellen Weg, also was zuerst kommt. Dazu richten Sie einmal Ihre Signatur ein, in etwa zehn Minuten.
-- **Jede Woche:** ein Standup je Werktag, fünfzehn Minuten zu der Uhrzeit, die Sie gewählt haben (die Dauer lässt sich einstellen), und ein Befehl pro Antwort.
+- **Jede Woche:** ein Standup, wann immer es Ihnen passt, und ein Befehl pro Antwort.
 - **Der Rest steht auf dem Board:** Ihre Agenten sind angehalten, jede Session mit dem zu beenden, was auf Sie wartet, und das Board stellt es ganz oben hin.
 
 ## Was shoalmark nicht tut
