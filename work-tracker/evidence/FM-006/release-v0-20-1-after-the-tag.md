@@ -2,7 +2,7 @@
 
 This sheet begins once the Owner has signed `v0.20.1` on the release pull request's merge commit and pushed it, as [the run sheet up to the merge](release-v0-20-1-owner-run-sheet.md) ends. It holds no tag command. Run these blocks in the Owner's zsh shell on macOS, from the release clone. Replace the quoted placeholders first. A failed command or an unexpected result stops that step: paste it back before continuing. Only the Owner pushes, merges and publishes.
 
-**Main stays frozen until the switch commit's merge (step 6).** ADOPT's pins follow the tag: the tagged commit keeps v0.20.0, and every commit after it on main must pin v0.20.1. The switch commit is the first commit on main after the tag; any other merge before it would turn ADOPT's pin check red on main and on every branch cut from it.
+**Main stays frozen until step 8's `docs.yml` run from the switch commit has deployed, to GitHub Pages and to Cloudflare.** ADOPT's pins follow the tag: the tagged commit keeps v0.20.0, and every commit after it on main must pin v0.20.1. The switch commit is the first commit on main after the tag; any other merge before it would turn ADOPT's pin check red on main and on every branch cut from it. A merge after the switch and before step 8 would change what step 8 deploys.
 
 Sources: [CHANGELOG.md](../../../CHANGELOG.md), [the archive builder](../../../scripts/build_release_archive.py), [release.yml](../../../.github/workflows/release.yml), [docs.yml](../../../.github/workflows/docs.yml), [ADOPT.md's pin line](../../../ADOPT.md), and [the pin test's order, `_pinned_release`](../../../test_shoalmark.py). The site's tools are pinned by [requirements-docs.txt](../../../requirements-docs.txt); use that file, not an unpinned install.
 
@@ -20,7 +20,7 @@ git show "$MERGE_SHA:ADOPT.md" | grep '^The pin: release `v0.20.0`' &&
 printf '%s\n' "OK: v0.20.1 is signed, names the merge commit $MERGE_SHA, and its notes still pin v0.20.0"
 ```
 
-**Expect:** `git tag -v` verifies the Owner's signature. The tag names the release pull request's merge commit, here and on GitHub, and main has not moved past it. The tagged commit's notes still pin `v0.20.0`, as the order requires. The tag starts three builds: CI, `release.yml`'s draft, and `docs.yml`, which deploys the taped site, since the probe switch is still off. A probe build of the tagged commit would stop at the pins' check 5, because it names v0.20.0 while v0.20.1 is the newest release the commit holds.
+**Expect:** `git tag -v` verifies the Owner's signature. The tag names the release pull request's merge commit, here and on GitHub, and main has not moved past it. The tagged commit's notes still pin `v0.20.0`, as the order requires. The tag starts three builds: CI, `release.yml`'s draft, and `docs.yml`, which deploys the taped site to GitHub Pages and to Cloudflare, since the probe switch is still off. A probe build of the tagged commit would stop at the pins' check 5, because it names v0.20.0 while v0.20.1 is the newest release the commit holds.
 
 **Paste back:** the verification lines of `git tag -v`, `MERGE_SHA`, the pin line `grep` printed, and the `OK:` line.
 
@@ -113,7 +113,7 @@ git log -1 --format='%H %s' "$SWITCH_MERGE" &&
 printf '%s\n' "OK: the switch merged as the first commit on main after the tag: $SWITCH_MERGE"
 ```
 
-**Expect:** main still stands at the tagged commit before the merge. The switch head pins `v0.20.1`, its bounded check is READY on it, and every required check is green; verify the verdict yourself. After the merge, the switch is the first commit on main after the tag. **Main's freeze ends at this merge.** Until the `docs.yml` run of step 8, though, the site deploys from main's head, so a merge before then changes what goes live: step 8 stops if main has moved.
+**Expect:** main still stands at the tagged commit before the merge. The switch head pins `v0.20.1`, its bounded check is READY on it, and every required check is green; verify the verdict yourself. After the merge, the switch is the first commit on main after the tag. **Main stays frozen:** the freeze ends only once step 8's deploys are green. Step 8 stops if main has moved.
 
 **Paste back:** the check results, the verdict's subject and `Reviewed:` line, `SWITCH_MERGE` with its subject, and the `OK:` line.
 
@@ -159,12 +159,13 @@ gh run list --workflow docs.yml --event workflow_dispatch --limit 5 --json datab
 ```sh
 DOCS_RUN_ID='REPLACE_WITH_THE_DOCS_RUN_ID' &&
 test "$(gh run view "$DOCS_RUN_ID" --json headSha --jq .headSha)" = "$SWITCH_MERGE" &&
-gh run watch "$DOCS_RUN_ID" --exit-status
+gh run watch "$DOCS_RUN_ID" --exit-status &&
+gh run view "$DOCS_RUN_ID" --json jobs --jq '.jobs[] | "\(.name): \(.conclusion)"'
 ```
 
-**Expect:** the run builds `SWITCH_MERGE` and deploys it. As a deploy build it also runs the pins' checks 6 and 9: the commit is on main, and the published archive downloads and matches the pin line. The tape comes off, and the button and the probe go live. Only after this run may any outside run happen.
+**Expect:** the run builds `SWITCH_MERGE` once and deploys that build twice: to GitHub Pages (the job `deploy`) and to Cloudflare (the job `cloudflare`). Both deploys are green. As a deploy build it also runs the pins' checks 6 and 9: the commit is on main, and the published archive downloads and matches the pin line. The tape comes off, and the button and the probe go live. **Main's freeze ends here, once both deploys are green.** Only after this run may any outside run happen.
 
-**Paste back:** the run's URL, its `headSha` and conclusion, and the deployment's URL.
+**Paste back:** the run's URL, its `headSha` and conclusion, both deploy jobs' lines (`deploy: success` and `cloudflare: success`), and the GitHub Pages deployment's URL.
 
 ## 9. Then: `--install-hook` again in every committing clone
 
