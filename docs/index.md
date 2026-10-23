@@ -19,7 +19,7 @@ See where the work stands, what waits for your word, and what the next session p
 sentence per question, for one sitting at the time they choose, and make their answer one command.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
-questions for a sitting at the time you choose.
+questions on the board until it suits you.
 
 **Your answer is a commit, never a click or a line in chat.** In the record, an answer counts only as a commit
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as
@@ -72,7 +72,7 @@ your own commits.
 
 ## What a day costs you
 
-- **One sitting, at the time you choose**, fifteen minutes by default; the board's first lines are its agenda.
+- **One stand-up, whenever it suits you**, one click copies the stand-up prompt; the board's first lines are its agenda.
 - **One command per answer:** `--answer AP-007 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
 - **The rest is on the board:** your agents are asked to end each session with what waits for you, and the board puts it
   first.

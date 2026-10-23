@@ -5848,6 +5848,48 @@ check("FM-006 · B1 · the landing's source check is not blind: each of a German
       f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed, a top bar count typed, the prompt back in a fold, the button without aria-expanded or without aria-controls or a link, the box without its fade or above Copy again, the prompt's fold words back, a German button word changed, the approvals' fold gone, the draft badge back or its German key back, step 2's link text as it was and its address typed in the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 25)
 
 
+# --- the landing's four stand-up lines, in both words files and in their Markdown twins -------------------------------------------------------------
+_STANDUP_ROWS = {
+    "en": {"p2_text": "Your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those questions on the board until it suits you.",
+           "p2_standup": "Whenever it suits you: the board's first lines are its agenda, and the board's stand-up prompt asks a session to take you through it, "
+                         "one item at a time.",
+           "cost_1_b": "One stand-up, whenever it suits you",
+           "cost_1": "one click copies the stand-up prompt; the board's first lines are its agenda."},
+    "de": {"p2_text": "Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten. shoalmark sammelt diese Fragen auf dem Board, "
+                      "bis es Ihnen passt.",
+           "p2_standup": "Wann immer es Ihnen passt: Die ersten Zeilen des Boards sind seine Tagesordnung, und der Standup-Prompt des Boards bittet eine Sitzung, "
+                         "sie mit Ihnen durchzugehen, einen Punkt nach dem anderen.",
+           "cost_1_b": "Ein Standup, wann immer es Ihnen passt",
+           "cost_1": "ein Klick kopiert den Standup-Prompt; die ersten Zeilen des Boards sind seine Tagesordnung."}}
+_STANDUP_TWIN_LINES = {
+    "docs/index.md": ("**To the owner:** " + _STANDUP_ROWS["en"]["p2_text"][:1].lower() + _STANDUP_ROWS["en"]["p2_text"][1:],
+                      "- **" + _STANDUP_ROWS["en"]["cost_1_b"] + "**, " + _STANDUP_ROWS["en"]["cost_1"]),
+    "docs/de/index.md": ("**An den Eigner:** " + _STANDUP_ROWS["de"]["p2_text"],
+                         "- **" + _STANDUP_ROWS["de"]["cost_1_b"] + "**, " + _STANDUP_ROWS["de"]["cost_1"])}
+
+
+def _standup_problems(src):
+    """What is wrong with the landing's four stand-up lines, one line each: a key of a words file that does not hold its row, or a line of a Markdown
+    twin that does not, the twin read with its line breaks as spaces. The twins carry no line of p2_standup."""
+    words, bad = _landing_words(src)
+    for lang, rows in _STANDUP_ROWS.items():
+        bad += [f"{lang}.html's {key} is not its row" for key, row in rows.items() if words.get(lang, {}).get(key) != row]
+    for rel, lines in _STANDUP_TWIN_LINES.items():
+        text = " ".join(src[rel].split())
+        bad += [f"{rel} does not hold {line[:60]!r}" for line in lines if line not in text]
+    return bad
+
+
+_sp = _standup_problems(_ls)
+check(f"FM-006 · B1 · the landing's four stand-up lines, W25 to W28: p2_text, p2_standup, cost_1_b and cost_1 hold their rows byte for byte in en.html and "
+      f"de.html, and the Markdown twins' lines that carry them hold them too (saw {_sp})", not _sp)
+_sctl = {"a word of one row changed in the German twin": _with(_ls, "docs/de/index.md", "wann immer es Ihnen passt", "wann es Ihnen passt"),
+         "a word of one row changed in the English words": _with(_ls, "overrides/partials/landing/en.html", '"One stand-up, whenever it suits you"',
+                                                                  '"One stand-up, whenever it suits"')}
+_ssaw = {name: len(_standup_problems(src)) for name, src in _sctl.items()}
+check(f"FM-006 · B1 · the stand-up lines' check is not blind: each of a word of one row changed in the German twin, or in the English words, is a "
+      f"problem (problems found: {_ssaw})", all(_ssaw.values()) and len(_ssaw) == 2)
+
 # --- FM-006 · B1: the launch state, and "How it works" in both languages -------------------------------------------------------------
 # The switch `probe` in zensical.toml's [project.extra] and the folder "How it works" takes its words from (the snippets' base path) are two places for one
 # fact; the pages name the button as the landing labels it; and no page says that shoalmark scans.

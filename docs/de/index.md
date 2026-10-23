@@ -18,7 +18,7 @@ Sehen Sie, wo die Arbeit steht, was auf Ihr Wort wartet und was die nächste Ses
 kann – ein Satz pro Frage, für ein Standup zu der Uhrzeit, die sie wählt –, und macht aus ihrer Antwort einen einzigen Befehl.
 
 **An den Eigner:** Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten.
-shoalmark sammelt diese Fragen für ein Standup zu der Uhrzeit, die Sie wählen.
+shoalmark sammelt diese Fragen auf dem Board, bis es Ihnen passt.
 
 **Ihre Antwort ist ein Commit, nie ein Klick oder eine Zeile im Chat.** Im Beleg zählt eine Antwort nur als
 Commit, signiert mit einem Schlüssel, dem Sie vertrauen, und eine unsignierte lehnt das Gate ab: unter git, sobald Ihre
@@ -74,7 +74,7 @@ Der Beleg bleibt in Ihrem Repository, als Markdown und Ihre eigenen Commits.
 
 ## Was ein Tag Sie kostet
 
-- **Ein Standup, zur Uhrzeit Ihrer Wahl**, standardmäßig fünfzehn Minuten; die ersten Zeilen des Boards sind seine
+- **Ein Standup, wann immer es Ihnen passt**, ein Klick kopiert den Standup-Prompt; die ersten Zeilen des Boards sind seine
   Tagesordnung.
 - **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel
   signiert, sobald Sie das Signieren einschalten.
