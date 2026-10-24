@@ -40,6 +40,11 @@ PR C - RV-3487 (10e4d5e): the differential's last implementation comments
 went under the comment rule; no executable code or page bytes changed,
 and no allowance moved.
 
+**2026-10-24 — the Board's placeholder handling made order-proof (RV-3870: recorded privately).** No value the Board
+inserts can be read as a placeholder filled after it, whichever value it is. On Windows, the resume command takes the
+form of the tool's other copied commands, PowerShell's, and starts the session only where the folder change succeeds
+(RV-3871). A log that cannot be opened or read says so, in place of the "no folder" reason (RV-3872).
+
 **2026-10-23 — the Board gets a resume command per session, on the Owner's word as relayed by the Auditor; FM-023
 allocates it to v0.20.2.** For each parent session in the day, the Board's local build finds the one log whose file
 name starts with its id, under `~/.claude/projects` or `~/.codex/sessions`. It copies the harness's own resume
