@@ -19254,6 +19254,11 @@ import test_resume_command
 _module_guard(test_resume_command, check)
 _module_guard(test_resume_command, check, True)
 
+# the board page's placeholders: no value the page puts in is read as one; the class test, a program of its own so its mutants can run it
+import test_page_placeholders
+_module_guard(test_page_placeholders, check)
+_module_guard(test_page_placeholders, check, True)
+
 # Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
 import test_standup_repos
 _module_guard(test_standup_repos, check)

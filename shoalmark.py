@@ -5149,11 +5149,11 @@ def read_at_html(read, labels):
     """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it, and the fold beneath it
     that says the rest: the line names where the board was read and when, that the page reads its file again, and the rebuild command's copy button, the
     command itself hidden behind it; the fold names the history or the folder it was read from at the full time, why the commit is not a link, what
-    is changed and not committed, and on git what the day's strip reads for each session's resume command (`resume_commands`). Each part escaped; every `_` is written as a character reference, so no placeholder of the page can match inside it.
+    is changed and not committed, and on git what the day's strip reads for each session's resume command (`resume_commands`). Each part escaped.
     Each part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
     def say(key, *args):
         return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
-    esc = lambda text: html_escape(text).replace("_", "&#95;")
+    esc = html_escape
     def head(shown, commit):
         """The commit as the line shows it — a link to its page on the forge (`commit_link`), or the commit alone — and the label of why it is no link."""
         url, why = commit_link(commit)
@@ -5334,11 +5334,25 @@ def script_json(value):
             .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
 
 
+PLACEHOLDER_RE = re.compile(r"__[A-Z]+(?:_[A-Z]+)*__")      # a placeholder of `HTML_PAGE`: `__NAME__`, `__HOME_PATH__`
+
+
+def fill_page(template, values):
+    """`template` with each of its placeholders replaced by its value in `values`, in one pass over the template alone: the text a value puts in
+    is never read again, so no inserted value is read as a placeholder, whatever it holds. A placeholder with no value, or a value with no
+    placeholder, is a KeyError: the page and its values are one list."""
+    unmatched = set(PLACEHOLDER_RE.findall(template)) ^ set(values)
+    if unmatched:
+        raise KeyError(f"the page's placeholders and their values differ: {', '.join(sorted(unmatched))}")
+    return PLACEHOLDER_RE.sub(lambda m: values[m[0]], template)
+
+
 def render_html(trackers, read=None):
-    """one static page: data rows + ~25 lines of vanilla JS. No dates and no
-    counts are baked in (both are computed in the browser) but the moment the page
-    names (`read`, `read_at`, FM-057), so equal trackers read at one moment give
-    equal bytes. The row layout is documented once, in the page's script."""
+    """one static page: data rows + ~25 lines of vanilla JS, each placeholder of
+    `HTML_PAGE` filled by `fill_page`. No dates and no counts are baked in (both
+    are computed in the browser) but the moment the page names (`read`, `read_at`),
+    so equal trackers read at one moment give equal bytes. The row layout is
+    documented once, in the page's script."""
     read = read or read_at()
 
     BOARD_TRUNK.clear()                                     # FM-030: filled again by this board's own read (`on_their_way`, `answer_refs`)
@@ -5366,35 +5380,39 @@ def render_html(trackers, read=None):
     unwrap = lambda md: re.sub(r" {2,}", " ", re.sub(r"(?<!\n)\n(?!\s*\n|\s*\d+\. |\s*- )", " ", md))   # source line breaks are not the reader's
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
-    page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
-            .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
-            .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]).replace("__PROOF__", script_json(proof_page())))     # before any text of the repository's is in the page
+    # each placeholder's value, read in this order; `fill_page` puts them into the page in one pass
+    values = {"__KINDS__": "|".join(sorted(KINDS, key=len, reverse=True)), "__NAME__": html_escape(CONFIG["name"] or ROOT.name),
+              "__COLHEADS__": "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS), "__COLSPAN__": str(4 + len(BOARD_COLUMNS)),
+              "__BCOLS__": script_json(BOARD_COLUMNS), "__COLS__": script_json(DERIVED_COLUMNS),
+              "__HOME_PATH__": script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1], "__CMD__": script_json(CMD)[1:-1],
+              "__ACTS_HEAD__": script_json(HEAD["acts"])[1:-1], "__PROOF__": script_json(proof_page())}
     logo, labels, _src, warnings, gone = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
-    page = page.replace("__LANG__", labels["lang"] if re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*", labels["lang"]) else "en")
+    values["__LANG__"] = labels["lang"] if re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*", labels["lang"]) else "en"
     # never a silent loss (R10's look half): each brand file the board no longer reads, file by file, in the run's output and in one line of the page
     for path, instead, _key in gone:
         print(f"  brand: {path} is no longer read — {instead}", file=sys.stderr)
     said = lambda key, *a: html_escape(re.sub(r"\{(\d)\}", lambda m: a[int(m.group(1))] if int(m.group(1)) < len(a) else "", labels[key]))
-    page = page.replace("__GONE__", f'<p id="w" class="m">{said("brand.gone", " · ".join(f"{path} → {labels[key]}" for path, _i, key in gone))}</p>' if gone else "")
-    page = page.replace("__READAT__", read_at_html(read, labels))     # FM-057: what it read, and when — no `_` in it, so no later placeholder matches there
+    values["__GONE__"] = f'<p id="w" class="m">{said("brand.gone", " · ".join(f"{path} → {labels[key]}" for path, _i, key in gone))}</p>' if gone else ""
+    values["__READAT__"] = read_at_html(read, labels)     # what it read, and when
     name = html_escape(CONFIG["name"] or ROOT.name)
-    page = page.replace("__HEADMARK__", (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>")
-    page = page.replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
+    values["__HEADMARK__"] = (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>"
+    values["__FAVICON__"] = f'<link rel="icon" href="{logo[1]}">' if logo else ""
     # the running line: outside the board and the tracker view, so every screen shows it — the copy's own VERSION
     v = html_escape(__version__)
-    page = page.replace("__RUNNING__", f'<p id="r" class="m"><a href="{TOOL_PAGE}" target="_blank" rel="noopener" aria-label="shoalmark on GitHub">'
-                        '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
-                        f'<path d="{PRICKE}"></path></svg>shoalmark{icon("out")}</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
-                        f'aria-label="release v{v}">v{v}</a></p>')
-    page = page.replace("__LABELS__", script_json(labels)).replace("__ICONS__", script_json({k: icon(k) for k in ICONS})).replace("__PALETTE__", palette_css(PALETTE))
+    values["__RUNNING__"] = (f'<p id="r" class="m"><a href="{TOOL_PAGE}" target="_blank" rel="noopener" aria-label="shoalmark on GitHub">'
+                             '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
+                             f'<path d="{PRICKE}"></path></svg>shoalmark{icon("out")}</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
+                             f'aria-label="release v{v}">v{v}</a></p>')
+    values.update({"__LABELS__": script_json(labels), "__ICONS__": script_json({k: icon(k) for k in ICONS}), "__PALETTE__": palette_css(PALETTE)})
     day, day_text = day_html(labels)                     # FM-030: the stand-up and the close-out, their values checked here
-    # …with no `_` left raw in them: a folder named `__ROWS__` passes the plain set, and the replacements below must not read it as theirs
-    page = page.replace("__DAY__", day.replace("_", "&#95;")).replace("__DAYTEXT__", script_json(day_text).replace("_", "\\u005f"))
-    return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(read.get("branch") or "")).replace(
-        "__ROWS__", ",\n".join(rows)
-    )
+    # …put in as `day_html` writes them: no inserted value is read as a placeholder (`fill_page`)
+    values.update({"__DAY__": day, "__DAYTEXT__": script_json(day_text)})
+    values.update({"__MARKED__": MARKED.read_text(encoding="utf-8"), "__DAYS__": str(TRIAGE_DAYS), "__BOTTLE__": str(BOTTLENECK), "__HOME__": script_json(home),
+                   "__REG__": script_json(board_sessions()), "__BLOB__": script_json(board_blob()), "__BRANCH__": script_json(read.get("branch") or ""),
+                   "__ROWS__": ",\n".join(rows)})
+    return fill_page(HTML_PAGE, values)
 
 
 def identity_problems(trackers):
