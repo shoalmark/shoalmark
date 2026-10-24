@@ -17,6 +17,10 @@ is designed or built.
 
 ## What is true now
 
+**2026-10-23 — v0.20.2 gains the Board's resume command per session (FM-024), on the Owner's word as relayed by the
+Auditor.** It is built from main at `915cc57`, with the Designer's look and the Auditor's check of the new read
+before the merge.
+
 **2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately): the
 hooks that rebuild the board after a checkout, a merge and a rebase. v0.20.0 ships as built, with R11's upgrade note.
 The 15 October table below has a v0.20.1 row for it, and FM-057 holds the case it must cover.

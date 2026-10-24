@@ -4060,6 +4060,8 @@ details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}det
 .lim{white-space:pre-line;color:var(--dim);padding:2px 0 0 2ch}
 details.grp>summary{padding:3px 0}details.grp .subs{display:block;padding-left:2ch;color:var(--dim)}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
 details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
+details.grp .rsc:not([hidden]){display:block;padding-left:2ch;user-select:all;overflow-wrap:anywhere}details.grp .said{margin-left:1ch}details.grp .rw{margin-left:1ch}
+details.grp .rw:not(.hot){color:var(--dim)}details.grp .help{margin-left:4ch}details.grp .rsc:not([hidden])+.said{display:block;margin-left:0;padding-left:2ch}
 code{font:inherit}
 /* a name in a row moves to the next line whole, and breaks only where it is longer than a line (BF-11) */
 .row code{display:inline-block}
@@ -4210,6 +4212,8 @@ VERDICT={"READY":"vok","READY TO TAG":"vok","READY WITH FINDINGS":"vwarn","NOT R
 // a verb button names its act; its spoken name adds what it acts on, so a list of them never reads as one button said many times
 btn=(key,id,on)=>`<button class="act" aria-label="${l(key)} ${id}" onclick="${on}">${l(key)}</button>`,
 split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},
+rsm=id=>{const r=(REG&&REG.resume||{})[id];return !r?"":r[0]=="resume"?`<button type="button" class="act" title="${l("resume.help")}" aria-label="${l("resume.spoken",id)}" onclick="RSM(event,this)">${ICO.copy}${l("resume.button")}</button><code class="rsc" hidden onclick="event.preventDefault()">${esc(r[1])}</code><span class="said" aria-live="polite"></span>`
+  :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},
 idl=id=>`<a href="#=${id}">${id}</a>`,
 days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
@@ -4317,7 +4321,8 @@ function box(){
       w[0]=="done"||w[0]=="answer"?btn("way.revoke",t[0],`REV(T.find(x=>x[0]=='${t[0]}'))`):"",
       w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));
   {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];
-    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
+    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${rsm(g[0])}${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
+      +((REG.resume||{})[g[0]]?.[0]=="resume"?`<p class="help">${l("resume.help")}</p>`:"")
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
   const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
@@ -4340,6 +4345,9 @@ let all=false,gi=0,shut=new Set(),touched=new Set();
 // FM-030 day: R9's two quick wins — the stand-up's and the close-out's dialog, rendered by the generator with its values checked (`day_html`). It
 // FM-030 day: copies the prompt as the answer's second screen copies its command; where a value failed it holds the line that names it, and nothing to copy
 function DAYOPEN(k){const d=$("dlg");d.innerHTML=$("day-"+k).innerHTML;if(DAY[k])clip(d,DAY[k]);d.showModal();d.querySelector(".go").focus()}   // FM-030 day
+// a click inside a `<summary>` folds or unfolds its `<details>`, and a page opened from a file often has no clipboard
+function RSM(e,b){e.preventDefault();const c=b.nextElementSibling,s=c.nextElementSibling;(navigator.clipboard?.writeText?navigator.clipboard.writeText(c.textContent):Promise.reject())
+  .then(()=>{c.hidden=true;s.innerHTML=`<span class="go">${ICO.check}${l("resume.copied")}</span>`},()=>{c.hidden=false;s.innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`})}
 function draw(){
   // a whole id alone is that tracker — not every row whose body links to it (FM-020). What links to it is `~ID` (Markdown
   // links only: a chapter's `epic:` and `blocked-by:` are not in it); a story's chapters are the story view
@@ -4500,6 +4508,15 @@ LABELS = {
     # the day (the design guide, §1): what it frames, and its one fold — what a row is and what its age measures, so no resume reads as a live view
     "day.title": "the day", "day.span": "the last 24 hours",
     "sessions.recent": "sessions · {0} with a commit in the last 24 hours ({1} with their sub-sessions)",
+    "resume.button": "resume command", "resume.spoken": "copy the command that resumes session {0}",
+    "resume.help": "for a session that is no longer open: the board cannot see whether one is",
+    "resume.copied": "the command is on your clipboard · run it in a terminal, only for a session that is no longer open",
+    "resume.two": "no resume command: {0} logs on this machine start with {1}, and the board does not pick one",
+    "resume.nofolder": "no resume command: its log names no folder in its first {0} MiB",
+    "resume.refused": "no resume command: its folder {0} {1}",
+    "resume.refused.chars": "holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : -",
+    "resume.refused.chars.nt": "holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : - and the backslash",
+    "resume.refused.long": "is longer than {0} characters", "resume.refused.relative": "is not an absolute path",
     # FM-057: what the board read, and when — the page's own moment, never *current*, *live* or *up to date*
     "read.git.branch": "read from {0} @ {1} at {2}", "read.git.detached": "read from a detached HEAD @ {0} at {1}",
     "read.git.unborn": "read from {0}, which has no commit yet, at {1}",
@@ -4511,6 +4528,7 @@ LABELS = {
     "read.self": "it reads its file again when you come back to it; nothing polls", "read.copy": "rebuild command", "read.copy.spoken": "copy the rebuild command",
     "read.about": "what this page reads, and what it cannot see", "read.about.git": "read from {0}'s history at {1}",
     "read.about.svn": "read from the working copy at {0}", "read.about.none": "read from the folder at {0}",
+    "read.about.logs": "for each session's resume command: the names of the logs in ~/.claude/projects and ~/.codex/sessions, and the folder its first turn ran in: never what a session said",
     "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
     "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
     "link.noviewer": "no Subversion viewer configured (`commit_url`), so not linked", "link.nocommit": "no commit to link",
@@ -5130,8 +5148,8 @@ def svn_revision():
 def read_at_html(read, labels):
     """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it, and the fold beneath it
     that says the rest: the line names where the board was read and when, that the page reads its file again, and the rebuild command's copy button, the
-    command itself hidden behind it; the fold names the history or the folder it was read from at the full time, why the commit is not a link, and what
-    is changed and not committed. Each part escaped; every `_` is written as a character reference, so no placeholder of the page can match inside it.
+    command itself hidden behind it; the fold names the history or the folder it was read from at the full time, why the commit is not a link, what
+    is changed and not committed, and on git what the day's strip reads for each session's resume command (`resume_commands`). Each part escaped; every `_` is written as a character reference, so no placeholder of the page can match inside it.
     Each part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
     def say(key, *args):
         return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
@@ -5150,7 +5168,8 @@ def read_at_html(read, labels):
         where = say("read.git.unborn", branch or "HEAD", when) if not sha else say("read.git.detached", held, when) if branch is None else say("read.git.branch", branch, held, when)
         line = esc(where).replace(held, shown)
         about = [say("read.about.git", branch or "HEAD", full), say(why) if why else "",
-                 say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n)]
+                 say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n),
+                 say("read.about.logs")]
     elif read.get("vcs") == "svn":
         revision = read.get("revision")
         shown, why = head("r" + revision, revision) if revision else ("", "")
@@ -7898,14 +7917,15 @@ def session_cmd(words):
 
 # --- the harness's own log (FM-024, 0.19.0): what model, at what effort, ran this seat -----------------------------------
 # A seat cannot be asked what it runs on — it would answer from its prompt. The harness writes a log of every turn, and the
-# log names the model and the effort. Which log is this seat's is never a path: a transcript's `cwd` is the directory the
-# session was LAUNCHED in, on every turn, sub-agents included (measured 2026-09-30) — so a seat committing in its own
+# log names the model and the effort. Which log is this seat's is never a path: a transcript's `cwd` follows its session's
+# shell, and its first turn's is the directory the session was launched in, sub-agents' included — so a seat committing in its own
 # worktree matches no log, and one committing in the launch directory matches every sub-agent's. The match is by the id
 # the harness gave this seat, written into its worktree by whoever spawned it — `git config --worktree seat.harness <id>`:
 # Claude Code's session id for a top-level session (`<slug>/<id>.jsonl`) or the agent id of a sub-agent
 # (`<slug>/<session>/subagents/agent-<id>.jsonl`); Codex's thread id (`CODEX_THREAD_ID`, its rollout
 # `sessions/Y/M/D/rollout-<time>-<id>.jsonl`). The one file whose NAME carries the id is read, and from it only TOP-LEVEL
-# fields of the newest turn that has them — never `message.content`, never a tool's result.
+# fields: the model and the effort of the newest turn that has them, and the folder of its first turn — never `message.content`,
+# never a tool's result.
 HARNESS_ID_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z-]{7,}")                  # an id is a name: no separator, no glob character
 LOG_WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/\[\]-]{0,63}")            # a model or an effort as a trailer: one word — no space, no line break
 LOG_SCAN = 8 << 20                                                          # bytes, newest first: a log whose fields are older than this names none
@@ -7917,10 +7937,16 @@ def harness_id():
     return (git_out("config", "--get", "seat.harness") or "").strip() or os.environ.get("CODEX_THREAD_ID", "").strip()
 
 
+def harness_roots():
+    """The two folders in the home directory the harnesses write their logs to: Claude Code's `~/.claude/projects` and Codex's
+    `~/.codex/sessions`."""
+    home = pathlib.Path(os.path.expanduser("~"))
+    return home / ".claude" / "projects", home / ".codex" / "sessions"
+
+
 def harness_logs(hid):
     """Every log file whose name carries `hid`, under the harness's own folders in the home directory — sorted."""
-    home = pathlib.Path(os.path.expanduser("~"))
-    claude, codex = home / ".claude" / "projects", home / ".codex" / "sessions"
+    claude, codex = harness_roots()
     return sorted({*claude.glob(f"*/{hid}.jsonl"), *claude.glob(f"*/*/subagents/agent-{hid}.jsonl"), *codex.glob(f"*/*/*/rollout-*-{hid}.jsonl")})
 
 
@@ -7939,10 +7965,11 @@ def log_lines_newest_first(path, budget=LOG_SCAN):
 
 
 def read_harness_log(path):
-    """{model, effort, cwd} from the newest turns that carry them — top-level fields only. Claude Code: `message.model`, the
-    top-level `perTurnEffort` and `cwd`; Codex: `turn_context`'s `model` and `effort`, and `cwd`. `message.content`, a
-    tool's result and every other field are never looked at, and the values that come back are single words — a value
-    with a space or a line break is no value, so nothing a transcript says reaches a commit message as a second trailer."""
+    """{model, effort, cwd}: the model and the effort from the newest turns that carry them, and the folder of the log's first
+    turn (`first_turn_cwd`) — top-level fields only. Claude Code: `message.model` and the top-level `perTurnEffort`; Codex:
+    `turn_context`'s `model` and `effort`. `message.content`, a tool's result and every other field are never looked at, and
+    the model and the effort that come back are single words — a value with a space or a line break is no value, so nothing a
+    transcript says reaches a commit message as a second trailer. The folder is one printable line, under 400 characters."""
     got = {}
     for raw in log_lines_newest_first(path):
         try:
@@ -7954,18 +7981,150 @@ def read_harness_log(path):
         message, payload = turn.get("message"), turn.get("payload")
         found = {}
         if isinstance(message, dict):
-            found = {"model": message.get("model"), "effort": turn.get("perTurnEffort"), "cwd": turn.get("cwd")}
+            found = {"model": message.get("model"), "effort": turn.get("perTurnEffort")}
         elif turn.get("type") == "turn_context" and isinstance(payload, dict):
-            found = {"model": payload.get("model"), "effort": payload.get("effort"), "cwd": payload.get("cwd")}
-        elif turn.get("type") == "session_meta" and isinstance(payload, dict):
-            found = {"cwd": payload.get("cwd")}
+            found = {"model": payload.get("model"), "effort": payload.get("effort")}
         for key, value in found.items():
-            ok = isinstance(value, str) and (LOG_WORD_RE.fullmatch(value) if key != "cwd" else 0 < len(value) < 400 and value.isprintable())
-            if ok and key not in got:
+            if isinstance(value, str) and LOG_WORD_RE.fullmatch(value) and key not in got:
                 got[key] = value
-        if len(got) == 3:
+        if len(got) == 2:
             break
-    return {"model": got.get("model", ""), "effort": got.get("effort", ""), "cwd": got.get("cwd", "")}
+    cwd = first_turn_cwd(path, codex=harness_roots()[1] in pathlib.Path(path).parents)
+    return {"model": got.get("model", ""), "effort": got.get("effort", ""), "cwd": cwd if 0 < len(cwd) < 400 and cwd.isprintable() else ""}
+
+
+RESUME_SCAN = 1 << 20
+RESUME_ID_RE = re.compile(r"[0-9a-f]{8}")
+LOG_UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+ROLLOUT_RE = re.compile(r"rollout-.+-(" + LOG_UUID_RE.pattern + r")\.jsonl")
+
+
+def log_lines_oldest_first(path, budget=RESUME_SCAN):
+    """The lines of a file, first first, read from its start — at most `budget` bytes. A line the budget cuts is not one."""
+    with open(path, "rb") as f:
+        data, more = f.read(budget), f.read(1)
+    lines = data.split(b"\n")
+    return lines[:-1] if more else lines
+
+
+def first_turn_cwd(path, codex=False):
+    """The folder a log's first turn ran in: the first `cwd` read forward from the log's start, within RESUME_SCAN bytes (1 MiB) —
+    Claude Code's top-level `cwd` of a record; Codex's `payload.cwd` of its `session_meta` record (`codex`). "" where there is none
+    within them. A session's `cwd` follows its shell, so a later turn's names where the shell went, never where the session began.
+    No other field is looked at: never `message.content`, never a tool's result."""
+    for raw in log_lines_oldest_first(path, RESUME_SCAN):
+        try:
+            turn = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(turn, dict):
+            continue
+        payload = turn.get("payload")
+        value = (payload.get("cwd") if turn.get("type") == "session_meta" and isinstance(payload, dict) else None) if codex else turn.get("cwd")
+        if isinstance(value, str) and value:
+            return value
+    return ""
+
+
+def resume_logs(prefixes):
+    """{prefix: [(harness, full id, path), …]}: the logs whose file name starts with one of `prefixes`, from ONE listing of each folder
+    under the harnesses' roots (`harness_roots`) — Claude Code's `<project>/<uuid>.jsonl`, at a project folder's top level only, so
+    a sub-agent's `<session>/subagents/agent-<id>.jsonl` and every deeper file are never matched; Codex's
+    `<y>/<m>/<d>/rollout-<time>-<uuid>.jsonl`. A file's full id is the UUID its name holds, and a name that holds none is no log; a
+    symbolic link is neither a folder nor a log. File names alone are read here, and nothing at all where `prefixes` is empty."""
+    found = {}
+    if not prefixes:
+        return found
+    claude, codex = harness_roots()
+
+    def listing(folder, folders):
+        try:
+            with os.scandir(folder) as entries:
+                return sorted(e.name for e in entries if (e.is_dir(follow_symlinks=False) if folders else e.is_file(follow_symlinks=False)))
+        except OSError:
+            return []
+
+    def take(harness, uuid, path):
+        if uuid[:8] in prefixes:
+            found.setdefault(uuid[:8], []).append((harness, uuid, path))
+
+    for project in listing(claude, True):
+        for name in listing(claude / project, False):
+            if name.endswith(".jsonl") and LOG_UUID_RE.fullmatch(name[:-len(".jsonl")]):
+                take("claude", name[:-len(".jsonl")], claude / project / name)
+    for year in listing(codex, True):
+        for month in listing(codex / year, True):
+            for day in listing(codex / year / month, True):
+                for name in listing(codex / year / month / day, False):
+                    hit = ROLLOUT_RE.fullmatch(name)
+                    if hit:
+                        take("codex", hit[1], codex / year / month / day / name)
+    return found
+
+
+def resume_folder(cwd):
+    """`cwd` as a command is pasted with it: `~` in place of the home folder where it lies under it, cut at a path boundary — so a
+    picture of the board carries no home path —, else as it is."""
+    seps = "/\\" if os.name == "nt" else "/"
+    home = os.path.expanduser("~").rstrip(seps)
+    if not home or home == "~" or os.path.normcase(cwd[:len(home)]) != os.path.normcase(home):
+        return cwd
+    rest = cwd[len(home):]
+    return "~" + rest if not rest or rest[0] in seps else cwd
+
+
+def resume_folder_problem(cwd, folder):
+    """Why `folder` — a log's first `cwd`, as `resume_folder` writes it — may not go into a command to paste: "relative" (`cwd` is
+    no absolute path), "long" (over DAY_CAP characters), or "chars" (a character outside the day prompts' plain set, DAY_PLAIN, or
+    the space, which the pasted command would split; the backslash only where the tool runs on Windows); "" where it passes."""
+    if not os.path.isabs(cwd):
+        return "relative"
+    if len(folder) > DAY_CAP:
+        return "long"
+    if not DAY_PLAIN.fullmatch(folder) or " " in folder or ("\\" in folder and os.name != "nt"):
+        return "chars"
+    return ""
+
+
+def resume_commands(ids):
+    """{id: entry} for the sessions the day's strip shows, by `ids`, where there is something to say — nothing for the rest:
+    - ["resume", command]: the one log whose file name starts with the id (`resume_logs`) gives the harness's own command,
+      `cd <folder> && claude --resume <full id>` (Claude Code) or `cd <folder> && codex resume <full id>` (Codex), in the folder its
+      first turn ran in (`first_turn_cwd`), written with `~` (`resume_folder`);
+    - ["two", n]: n logs on this machine start with the id — Codex's ids start with the time, so their first 8 characters collide —
+      and none is picked;
+    - ["nofolder", 1]: its log names no folder in its first MiB (RESUME_SCAN);
+    - ["refused", why, the folder as it would be pasted, shown on one line and cut at 80 characters, DAY_CAP]: the folder fails
+      `resume_folder_problem` — `why` is "chars.nt" for "chars" where the tool runs on Windows, whose plain set holds the backslash.
+    Only an id of exactly 8 lower-case hex digits is looked up: a sub-session's (`<parent>/<seat>-<n>`) gets none, as resuming its
+    parent resumes it; a session no log on this machine starts with gets none, as one from another machine. The named limit: a log
+    that shares only the id's first 8 characters with the session is taken as its own — nothing here can tell."""
+    wanted = {sid for sid in ids if RESUME_ID_RE.fullmatch(sid)}
+    logs = resume_logs({sid[:8] for sid in wanted})
+    out = {}
+    for sid in sorted(wanted):
+        found = logs.get(sid[:8], [])
+        if not found:
+            continue
+        if len(found) > 1:
+            out[sid] = ["two", len(found)]
+            continue
+        harness, uuid, path = found[0]
+        try:
+            cwd = first_turn_cwd(path, codex=harness == "codex")
+        except OSError:
+            cwd = ""
+        if not cwd:
+            out[sid] = ["nofolder", RESUME_SCAN >> 20]
+            continue
+        folder = resume_folder(cwd)
+        why = resume_folder_problem(cwd, folder)
+        if why:
+            shown = "".join(c if c.isprintable() else json.dumps(c)[1:-1] for c in folder)
+            out[sid] = ["refused", why + (".nt" if why == "chars" and os.name == "nt" else ""), shown[:80] + ("…" if len(shown) > 80 else ""), DAY_CAP]
+            continue
+        out[sid] = ["resume", f"cd {folder} && " + (f"codex resume {uuid}" if harness == "codex" else f"claude --resume {uuid}")]
+    return out
 
 
 def harness_reading(hid):
@@ -9445,12 +9604,16 @@ def group_counts(groups):
 
 
 def board_sessions():
+    """The board's data for the day's strip and the week's verdicts, which only its page reads — None off git, or where there is neither.
+    Beside the strip's groups (`session_groups`), `resume`: what the strip says of each session's resume command (`resume_commands`), read
+    here alone and only where there is any — never in the digest, `--owner`, `--standup` or a file git tracks."""
     if vcs() != "git":
         return None
     groups = session_groups()
     reps = verdict_reports()
     if not groups and not reps:
         return None
+    resume = resume_commands({g["id"] for g in groups} | {m[0] for g in groups for m in g["members"]})
     count, words = collections.Counter(r[4] for r in reps), collections.Counter(r[5] for r in reps)
     parents, everyone = group_counts(groups)
     said = str(CONFIG.get("commit_url") or "")
@@ -9460,7 +9623,7 @@ def board_sessions():
             "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
             "verdicts": [[v, r, sid, list(ranged), w, word, branch, first, [page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]]
-                         for v, r, sid, ranged, w, word, branch, first in reps]}
+                         for v, r, sid, ranged, w, word, branch, first in reps], **({"resume": resume} if resume else {})}
 
 
 def sessions_digest():

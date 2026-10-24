@@ -40,6 +40,13 @@ PR C - RV-3487 (10e4d5e): the differential's last implementation comments
 went under the comment rule; no executable code or page bytes changed,
 and no allowance moved.
 
+**2026-10-23 — the Board gets a resume command per session, on the Owner's word as relayed by the Auditor; FM-023
+allocates it to v0.20.2.** For each parent session in the day, the Board's local build finds the one log whose file
+name starts with its id, under `~/.claude/projects` or `~/.codex/sessions`. It copies the harness's own resume
+command, in the folder of the log's first turn, written with `~`. Two logs give no command and say why; no log gives
+nothing; sub-sessions get none. It reads file names and that one field, never what a session said, and the command
+is in the local Board file alone. `--whoami`'s "launched in" line reads the first turn's folder too.
+
 **2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
 `--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
 brings it back.

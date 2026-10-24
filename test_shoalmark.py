@@ -34,6 +34,20 @@ Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=
 Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)
 
 
+def _suite_home():
+    """A home folder of the suite's own, for the suite and every program it starts — a board reads the harness's logs in the home folder for the
+    day's sessions, and no check reads the runner's. The runner's own home (`_RUNNER_HOME`) is kept for what keeps its state there and builds no
+    board: Chrome, and the site's rebuild through uvx. A program that runs a part of the suite again is handed the runner's home, so it keeps it too.
+    Returns the folder, held until the run ends."""
+    held = tempfile.TemporaryDirectory(prefix="shoalmark-suite-home-")
+    os.environ["HOME"] = os.environ["USERPROFILE"] = str(Path(held.name).resolve())
+    return held
+
+
+_RUNNER_HOME = {k: os.environ[k] for k in ("HOME", "USERPROFILE") if k in os.environ}
+_SUITE_HOME = _suite_home()
+
+
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location("fm", HERE / "shoalmark.py")
 fm = importlib.util.module_from_spec(_spec)
@@ -673,7 +687,7 @@ def _chrome_probe(chrome):
     t0 = time.monotonic()
     try:
         r = subprocess.run([chrome, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--dump-dom", "about:blank"],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, env=dict(os.environ, **_RUNNER_HOME))
     except OSError as e:
         return f"Chrome could not start here: {e}"
     except subprocess.TimeoutExpired:
@@ -708,7 +722,7 @@ def _chrome_run(args, timeout=60):
     for _attempt in (1, 2):
         try:
             return subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, *args],
-                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=own + timeout)
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=own + timeout, env=dict(os.environ, **_RUNNER_HOME))
         except subprocess.TimeoutExpired:
             continue
     raise _ChromeFailed(f"headless Chrome did not return {args[-1].rsplit('/', 1)[-1]} within {timeout} s beyond Chrome's own {own:.1f} s, tried twice")
@@ -2437,7 +2451,7 @@ def run(root, *a, **k):
 """
 _end = "\nprint(skipped_line())\nsys.exit(1 if FAILS else 0)\n"
 _block_run = lambda mutation, end="": subprocess.run([sys.executable, "-c", _parts + mutation + _board_block + end + _end], capture_output=True, text=True,
-                                                      encoding="utf-8", errors="replace", env=_ENV, timeout=300)
+                                                      encoding="utf-8", errors="replace", env=dict(_ENV, **_RUNNER_HOME), timeout=300)
 _none = _block_run("\n_CHROME = None\n")
 check(f"FM-035 · no Chrome here: the board block is skipped by name with the reason and its two checks, the run's end says this is not a full pass, and it exits 0 (saw {_none.stdout.strip()[-260:]!r})",
       _none.returncode == 0 and "  skip  the board, rendered in a browser — no Chrome or Chromium is installed here; 2 check(s) did not run" in _none.stdout
@@ -7860,6 +7874,17 @@ way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austa
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
+resume.button: Fortsetzungsbefehl
+resume.spoken: "den Befehl kopieren, der die Sitzung {0} fortsetzt"
+resume.help: "für eine Sitzung, die nicht mehr offen ist: das Board kann nicht sehen, ob sie es ist"
+resume.copied: "der Befehl ist in Ihrer Zwischenablage · in einem Terminal ausführen, nur für eine Sitzung, die nicht mehr offen ist"
+resume.two: "kein Fortsetzungsbefehl: {0} Protokolle auf diesem Rechner beginnen mit {1}, und das Board wählt keines aus"
+resume.nofolder: "kein Fortsetzungsbefehl: sein Protokoll nennt in seinen ersten {0} MiB keinen Ordner"
+resume.refused: "kein Fortsetzungsbefehl: sein Ordner {0} {1}"
+resume.refused.chars: "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : -"
+resume.refused.chars.nt: "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : - und der Rückstrich"
+resume.refused.long: "ist länger als {0} Zeichen"
+resume.refused.relative: ist kein absoluter Pfad
 read.git.branch: "gelesen von {0} @ {1} um {2}"
 read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
 read.git.unborn: "gelesen von {0}, noch ohne Commit, um {1}"
@@ -7879,6 +7904,7 @@ read.about: "was diese Seite liest, und was sie nicht sehen kann"
 read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
 read.about.svn: "gelesen von der Arbeitskopie um {0}"
 read.about.none: "gelesen aus dem Ordner um {0}"
+read.about.logs: "für den Fortsetzungsbefehl jeder Sitzung: die Namen der Protokolle in ~/.claude/projects und ~/.codex/sessions und der Ordner, in dem ihr erster Zug lief: nie, was eine Sitzung sagte"
 read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
 day.copied: der Prompt ist in Ihrer Zwischenablage
 day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."
@@ -16689,11 +16715,11 @@ else:
         if facts.is_file():
             subprocess.run([sys.executable, str(facts), "--repo", str(HERE), "--commit", commit, "--pulls", str(HERE / "scripts/landing_facts.pulls-1-144.json")],
                            cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
-        subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+        subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=dict(_ENV, **_RUNNER_HOME))
 
     def _checks_mjs(script, stage_dir, out, *extra):
         r = subprocess.run([_have_node, str(HERE / script), str(stage_dir), str(out), *extra], cwd=str(HERE), capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME))
+                           encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME, **_RUNNER_HOME))
         return json.loads(Path(out).read_text()) if r.returncode == 0 and Path(out).exists() else None
 
     def _same(name, got, block, derived):
@@ -16779,14 +16805,14 @@ else:
                 toml = (stage / "zensical.toml").read_text(encoding="utf-8")
                 assert "\nprobe = false\n" in toml and '"launch/interim"' in toml
                 (stage / "zensical.toml").write_text(toml.replace("\nprobe = false\n", "\nprobe = true\n").replace('"launch/interim"', '"launch/probe"'), encoding="utf-8")
-            subprocess.run([_uvx, f"zensical@{_pin}", "build", "--clean"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+            subprocess.run([_uvx, f"zensical@{_pin}", "build", "--clean"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=dict(_ENV, **_RUNNER_HOME))
             subprocess.run([sys.executable, "scripts/llms_txt.py", "site"], cwd=str(stage), check=True, capture_output=True, timeout=300, env=_ENV)
             return stage / "site"
 
         def _b1_browser(site, state, out, pages=None, sizes=None):
             """(exit code, the failing checks' names) of the browser run over `site`; the run narrowed to `pages` and `sizes` where they are named."""
             r = subprocess.run([_have_node, str(HERE / "scripts/check_landing_browser.mjs"), str(site), state, str(out)] + ([pages] + ([sizes] if sizes else []) if pages else []),
-                               capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME, CHROME_FLAGS=" ".join(_CHROME_FLAGS)))
+                               capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME, CHROME_FLAGS=" ".join(_CHROME_FLAGS), **_RUNNER_HOME))
             rows = json.loads(Path(out).read_text(encoding="utf-8"))["rows"] if Path(out).exists() else []
             return r.returncode, sorted({row["check"] for row in rows if not row["ok"]}), len(rows)
 
@@ -19223,6 +19249,10 @@ _module_guard(test_r9_removals, check)
 # FM-030, R9's two quick wins: the stand-up and close-out prompts, copied from the board — their class test, a program of its own for its mutants
 import test_day_prompts
 _module_guard(test_day_prompts, check)
+
+import test_resume_command
+_module_guard(test_resume_command, check)
+_module_guard(test_resume_command, check, True)
 
 # Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
 import test_standup_repos

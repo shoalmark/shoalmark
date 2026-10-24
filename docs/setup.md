@@ -68,8 +68,13 @@ builder builds. The seats are `planner` and `builder`; `principal` and `implemen
 **Sessions.** Beside its seat, every agent's worktree carries `seat.session`, the run it belongs to, and the hook that
 `--install-hook` wrote adds it to every commit as `Session: <id>`, with the worktree beside it. The gate refuses a
 seat's commit without a session of its own seat; `--sessions` prints who ran what, where and when from those lines
-alone, and the board lists who was at work in the last day. Your agents do this. Your own commits carry no session:
-your signature is your id.
+alone, and the board lists who was at work in the last day. Beside each session there, a button copies the command that
+resumes it in Claude Code or Codex, for a session that is no longer open: the board cannot see whether one is. For it,
+the board reads only the names of the logs in `~/.claude/projects` and `~/.codex/sessions` — one listing of each folder —
+and the folder the session's first turn ran in, from the first MiB of its one log: never what a session said. Two logs
+for one session give no command, and the board says so. The limit: a log that shares only the session id's first 8
+characters with the session is taken as its own; the board cannot tell. Your agents do this. Your own commits carry no
+session: your signature is your id.
 
 ## 5. Write two things only you can
 
