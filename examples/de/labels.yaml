@@ -129,6 +129,7 @@ resume.help: "für eine Sitzung, die nicht mehr offen ist: das Board kann nicht 
 resume.copied: "der Befehl ist in Ihrer Zwischenablage · in einem Terminal ausführen, nur für eine Sitzung, die nicht mehr offen ist"
 resume.two: "kein Fortsetzungsbefehl: {0} Protokolle auf diesem Rechner beginnen mit {1}, und das Board wählt keines aus"
 resume.nofolder: "kein Fortsetzungsbefehl: sein Protokoll nennt in seinen ersten {0} MiB keinen Ordner"
+resume.unread: "kein Fortsetzungsbefehl: sein Protokoll konnte nicht gelesen werden"
 resume.refused: "kein Fortsetzungsbefehl: sein Ordner {0} {1}"
 resume.refused.chars: "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : -"
 resume.refused.chars.nt: "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : - und der Rückstrich"

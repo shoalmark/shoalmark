@@ -73,7 +73,8 @@ Lesen der Konfiguration ab.
 und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`, daneben den Worktree. Das Gate lehnt
 den Commit eines Sitzes ohne eine Session seines eigenen Sitzes ab; `--sessions` liest allein aus diesen Zeilen ab, wer
 was wann und wo gemacht hat, und das Board zeigt, wer am letzten Tag gearbeitet hat. Neben jeder Session dort kopiert ein
-Knopf den Befehl, der sie in Claude Code oder Codex fortsetzt, für eine Session, die nicht mehr offen ist: Das Board kann
+Knopf den Befehl, der sie in Claude Code oder Codex fortsetzt — unter Windows einen Befehl für PowerShell, 5.1 oder 7 —,
+für eine Session, die nicht mehr offen ist: Das Board kann
 nicht sehen, ob sie es ist. Dafür liest das Board nur die Namen der Protokolle in `~/.claude/projects` und
 `~/.codex/sessions` — jeden Ordner einmal — und den Ordner, in dem der erste Zug der Session lief, aus dem ersten MiB ihres
 einen Protokolls: nie, was eine Session sagte. Zwei Protokolle für eine Session ergeben keinen Befehl, und das Board sagt

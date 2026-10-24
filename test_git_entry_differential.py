@@ -1029,7 +1029,7 @@ RESUME_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
     'details.grp .rsc:not([hidden]){display:block;padding-left:2ch;user-select:all;overflow-wrap:anywhere}details.grp .said{margin-left:1ch}details.grp .rw{margin-left:1ch}',
     'details.grp .rw:not(.hot){color:var(--dim)}details.grp .help{margin-left:4ch}details.grp .rsc:not([hidden])+.said{display:block;margin-left:0;padding-left:2ch}',
     'rsm=id=>{const r=(REG&&REG.resume||{})[id];return !r?"":r[0]=="resume"?`<button type="button" class="act" title="${l("resume.help")}" aria-label="${l("resume.spoken",id)}" onclick="RSM(event,this)">${ICO.copy}${l("resume.button")}</button><code class="rsc" hidden onclick="event.preventDefault()">${esc(r[1])}</code><span class="said" aria-live="polite"></span>`',
-    '  :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},',
+    '  :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):r[0]=="unread"?l("resume.unread"):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},',
     '// a click inside a `<summary>` folds or unfolds its `<details>`, and a page opened from a file often has no clipboard',
     'function RSM(e,b){e.preventDefault();const c=b.nextElementSibling,s=c.nextElementSibling;(navigator.clipboard?.writeText?navigator.clipboard.writeText(c.textContent):Promise.reject())',
     '  .then(()=>{c.hidden=true;s.innerHTML=`<span class="go">${ICO.check}${l("resume.copied")}</span>`},()=>{c.hidden=false;s.innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`})}',
@@ -1038,7 +1038,7 @@ RESUME_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
 RESUME_STRIP = (b"(${esc(g[2])})${rsm(g[0])}${g[3].length", b"(${esc(g[2])})${g[3].length")
 RESUME_READ_AT = (" · for each session's resume command: the names of the logs in ~/.claude/projects and ~/.codex/sessions, and the folder its "
                   "first turn ran in: never what a session said</p></details>".encode("utf-8"), b"</p></details>")
-RESUME_KEYS = ('resume.button', 'resume.spoken', 'resume.help', 'resume.copied', 'resume.two', 'resume.nofolder', 'resume.refused', 'resume.refused.chars', 'resume.refused.chars.nt', 'resume.refused.long', 'resume.refused.relative', 'read.about.logs')
+RESUME_KEYS = ('resume.button', 'resume.spoken', 'resume.help', 'resume.copied', 'resume.two', 'resume.nofolder', 'resume.unread', 'resume.refused', 'resume.refused.chars', 'resume.refused.chars.nt', 'resume.refused.long', 'resume.refused.relative', 'read.about.logs')
 RESUME_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in RESUME_KEYS)
 
 

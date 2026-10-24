@@ -5,15 +5,16 @@
   that start with an id and are no log — a sub-agent's, one a level deeper, one outside a project folder, a name that holds no UUID.
 - A repository's day has a parent session for each case: one Claude Code log whose first turn ran under the home folder and whose later
   turns ran elsewhere, with another model and effort; one Codex log; a log outside the home folder; two logs, one of each harness; two
-  Codex logs whose ids collide on their time; no log; a first folder with a space; a log that names no folder in its first MiB — and
-  sub-sessions, each with a log of its own.
+  Codex logs whose ids collide on their time; no log; a first folder with a space; a log that names no folder in its first MiB; a log
+  that cannot be opened — and sub-sessions, each with a log of its own.
 - Its board, built by `--html-only` with HOME that folder, read as HTML (no browser): the command or the reason in the page's data, by
   parent; nothing for a sub-session or a session with no log; the canary nowhere; the fold of what the page reads naming both folders.
   The digest (`--owner`), `--standup`, INDEX.md, the views, `built.json`, the commit hook's trailers and the history hold no command.
 - `--whoami` and the commit hook (`--session-trailer`) on the log whose first and newest turns differ in folder, model and effort: the
   first turn's folder, and the newest turn's model and effort.
 - The read, function by function: one listing of each folder, the one log of each id opened and no other file, the paste check, the
-  folder written with `~`.
+  folder written with `~`, and the command's two forms — PowerShell's where the tool runs on Windows, a POSIX shell's elsewhere — with
+  Windows read from `sys.platform` alone, as `printed_arg` reads it.
 
 Run: `python3 test_resume_command.py` — exit 1 on a failure. `SHOALMARK_RESUME_TOOL=<path>` runs it against another copy of the tool, and
 `python3 test_resume_command.py --mutants` runs it against each of `MUTANTS`, each of which must fail it. test_shoalmark.py runs both.
@@ -30,15 +31,17 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from unittest import mock
 
 from test_vcs_shared import fixture_saw
 
 
 HERE = Path(__file__).resolve().parent
 CANARY = "CANARY-b41e93f0"
-A, B, C, D, E, F, G, H = "aaaa1111", "bbbb2222", "cccc3333", "dddd4444", "eeee5555", "ffff6666", "abcd0007", "0199a1b2"
+A, B, C, D, E, F, G, H, I = "aaaa1111", "bbbb2222", "cccc3333", "dddd4444", "eeee5555", "ffff6666", "abcd0007", "0199a1b2", "abcd0009"
 UUID = {A: "aaaa1111-2c3d-4e5f-8a6b-7c8d9e0f1a2b", B: "bbbb2222-1111-4222-8333-444455556666", D: "dddd4444-0199-7a00-8b11-c22d33e44f55",
-        E: "eeee5555-1111-4222-8333-444455556666", F: "ffff6666-1111-4222-8333-444455556666", G: "abcd0007-1111-4222-8333-444455556666"}
+        E: "eeee5555-1111-4222-8333-444455556666", F: "ffff6666-1111-4222-8333-444455556666", G: "abcd0007-1111-4222-8333-444455556666",
+        I: "abcd0009-1111-4222-8333-444455556666"}
 CODEX_B = "bbbb2222-0199-7a00-8b11-c22d33e44f66"
 COLLIDE = ("0199a1b2-7c00-7d11-8e22-f33a44b55c66", "0199a1b2-9f00-7d11-8e22-f33a44b55c77")
 SUBS = (f"{A}/builder-1", f"{D}/reviewer-1")
@@ -48,11 +51,13 @@ MUTANTS = (
     ("reads the newest cwd", "for raw in log_lines_oldest_first(path, RESUME_SCAN):", "for raw in log_lines_newest_first(path, RESUME_SCAN):"),
     ("takes the first turn's model and effort", "for raw in log_lines_newest_first(path):", "for raw in log_lines_oldest_first(path, LOG_SCAN):"),
     ("picks one of two logs", "        if len(found) > 1:\n            out[sid] = [\"two\", len(found)]", "        if len(found) > 2:\n            out[sid] = [\"two\", len(found)]"),
-    ("skips the plain-set check", 'if not DAY_PLAIN.fullmatch(folder) or " " in folder or ("\\\\" in folder and os.name != "nt"):', "if False:"),
+    ("skips the plain-set check", 'if not DAY_PLAIN.fullmatch(folder) or " " in folder or ("\\\\" in folder and sys.platform != "win32"):', "if False:"),
     ("gives a sub-session a command", "wanted = {sid for sid in ids if RESUME_ID_RE.fullmatch(sid)}", "wanted = {sid for sid in ids if RESUME_ID_RE.match(sid)}"),
     ("reads message content (the canary)", 'if codex else turn.get("cwd")', 'if codex else next(iter(re.findall(r\'"cwd": "([^"]*)"\', raw.decode("utf-8", "replace"))), None)'),
     ("puts the command in the digest", '[f"  {group_line(g)}" for g in groups])', '[f"  {group_line(g)} {resume_commands([g[\'id\']]).get(g[\'id\'], \'\')}" for g in groups])'),
+    ("gives a log that cannot be read the no-folder reason", '            out[sid] = ["unread"]\n', '            out[sid] = ["nofolder", RESUME_SCAN >> 20]\n'),
 )
+UNREAD_MUTANT = MUTANTS[-1][0]
 
 
 def tool_path():
@@ -111,7 +116,8 @@ def logs(home, outside):
     write(projects / "-fixture-e" / f"{UUID[E]}.jsonl", [claude_turn(str(home / "work" / "a b")), claude_turn(first)])
     write(projects / "-fixture-f" / f"{UUID[F]}.jsonl", [claude_turn(content=CANARY + " " + "x" * (1 << 20)), claude_turn(first)])
     write(projects / "-fixture-g" / f"{UUID[G]}.jsonl", [claude_turn(outside)])
-    return [projects, *(projects / p for p in ("-fixture-a", "-fixture-b", "-fixture-e", "-fixture-f", "-fixture-g")),
+    write(projects / "-fixture-i" / f"{UUID[I]}.jsonl", [claude_turn(first)])
+    return [projects, *(projects / p for p in ("-fixture-a", "-fixture-b", "-fixture-e", "-fixture-f", "-fixture-g", "-fixture-i")),
             sessions, sessions / "2026", sessions / "2026" / "10", sessions / "2026" / "10" / "22", sessions / "2026" / "10" / "23"]
 
 
@@ -133,7 +139,7 @@ def repository(root, env):
                                                         "## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n", encoding="utf-8")
     git(root, "add", "-A", env=env)
     git(root, "commit", "-qm", "the work", env=env)
-    for sid in (A, B, C, E, F, G, H, *SUBS):
+    for sid in (A, B, C, E, F, G, H, I, *SUBS):
         git(root, "commit", "-q", "--allow-empty", "-m", f"a step of {sid}\n\nSession: {sid}\nWorktree: wt-{sid.replace('/', '-')}", env=env)
 
 
@@ -173,12 +179,49 @@ def home_of(path):
 
 
 def expected(home, outside):
-    """What the strip's data says of each parent, with this machine's separators and plain set."""
-    sep, nt = os.sep, os.name == "nt"
-    return {A: ["resume", f"cd ~{sep}work{sep}first && claude --resume {UUID[A]}"], B: ["two", 2],
-            D: ["resume", f"cd ~{sep}codex{sep}proj && codex resume {UUID[D]}"],
+    """What the strip's data says of each parent, with this machine's separators, plain set and form of the command."""
+    sep, nt = os.sep, sys.platform == "win32"
+    cmd = lambda folder, run, uuid: f"cd '{folder}'; if ($?) {{ {run} '{uuid}' }}" if nt else f"cd {folder} && {run} {uuid}"
+    return {A: ["resume", cmd(f"~{sep}work{sep}first", "claude --resume", UUID[A])], B: ["two", 2],
+            D: ["resume", cmd(f"~{sep}codex{sep}proj", "codex resume", UUID[D])],
             E: ["refused", "chars.nt" if nt else "chars", f"~{sep}work{sep}a b", 200], F: ["nofolder", 1],
-            G: ["resume", f"cd {outside} && claude --resume {UUID[G]}"], H: ["two", 2]}
+            G: ["resume", cmd(outside, "claude --resume", UUID[G])], H: ["two", 2], I: ["unread"]}
+
+
+@contextlib.contextmanager
+def unreadable(path):
+    """`path` held so that nothing can open it, and given back after: by its permissions, or on Windows by a handle of this process that
+    shares the file with no one. Yields whether that took — a user whom permissions do not bind opens it all the same, and that is said."""
+    handle = None
+    try:
+        if os.name == "nt":
+            try:
+                import _winapi
+                handle = _winapi.CreateFile(str(path), _winapi.GENERIC_READ, 0, _winapi.NULL, _winapi.OPEN_EXISTING, 0, _winapi.NULL)
+            except (ImportError, AttributeError, OSError):
+                handle = None
+        else:
+            os.chmod(path, 0)
+        try:
+            with open(path, "rb"):
+                took = False
+        except OSError:
+            took = True
+        yield took
+    finally:
+        if handle is not None:
+            _winapi.CloseHandle(handle)
+        elif os.name != "nt":
+            os.chmod(path, 0o600)
+
+
+def can_unread():
+    """Whether this machine keeps a file from being opened as `unreadable` holds it."""
+    with tempfile.TemporaryDirectory(prefix="shoalmark-resume-probe-") as tmp:
+        log = Path(tmp) / "log.jsonl"
+        log.write_text("{}\n", encoding="utf-8")
+        with unreadable(log) as took:
+            return took
 
 
 def run_checks(mutants=False, *, results=None):
@@ -191,22 +234,28 @@ def run_checks(mutants=False, *, results=None):
     fm = load(tool)
     env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "SHOALMARK_")) and k != "CODEX_THREAD_ID"}
     env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0", PYTHONIOENCODING="utf-8")
-    with tempfile.TemporaryDirectory(prefix="shoalmark-resume-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="shoalmark-resume-") as tmp, contextlib.ExitStack() as held:
         area = Path(tmp).resolve()
         home, root, outside = area / "home", area / "repo", str(area / "elsewhere" / "proj")
         env.update(HOME=str(home), USERPROFILE=str(home))
         want = expected(home, outside)
         plain_outside = not fm.resume_folder_problem(outside, outside)
+        took = False
         with step(add, "the fixture"):
             listed = logs(home, outside)
             repository(root, env)
+            took = held.enter_context(unreadable(home / ".claude" / "projects" / "-fixture-i" / f"{UUID[I]}.jsonl"))
+        if not took:
+            want.pop(I)
+            add("resume · a log that cannot be opened", None, "this machine opens the fixture's log although nothing may: its user is one permissions do not bind")
+        same = lambda d: {k: v for k, v in d.items() if k != G and (took or k != I)}
 
         with step(add, "the read"), home_of(home):
             seen = []
             watch = [True]
             sys.addaudithook(lambda event, args: seen.append((event, str(args[0]))) if watch[0] and event in ("os.scandir", "open") else None)
             try:
-                got = fm.resume_commands([A, B, C, D, E, F, G, H, *SUBS, "AAAA1111", "aaaa111", "aaaa11111"])
+                got = fm.resume_commands([A, B, C, D, E, F, G, H, I, *SUBS, "AAAA1111", "aaaa111", "aaaa11111"])
                 seen_none = len(seen)
                 fm.resume_commands([])
                 fm.resume_commands([*SUBS, "AAAA1111", "-x"])
@@ -214,14 +263,17 @@ def run_checks(mutants=False, *, results=None):
                 watch[0] = False
             scans = [p for e, p in seen[:seen_none] if e == "os.scandir"]
             opened = sorted(p for e, p in seen[:seen_none] if e == "open")
-            one = sorted(str(home / ".claude" / "projects" / f"-fixture-{k}" / f"{UUID[x]}.jsonl") for k, x in (("a", A), ("e", E), ("f", F), ("g", G)))
+            one = sorted(str(home / ".claude" / "projects" / f"-fixture-{k}" / f"{UUID[x]}.jsonl") for k, x in (("a", A), ("e", E), ("f", F), ("g", G), ("i", I)))
             one.append(str(next((home / ".codex" / "sessions" / "2026" / "10" / "23").glob(f"*{UUID[D]}.jsonl"))))
             add(f"resume · the read lists each folder once — the projects, each project folder's top level, the sessions and each year, month and day — "
                 f"and opens the one log of each id that has one, no other file; no id, or only a sub-session's, lists nothing (saw {len(scans)} listings, "
                 f"{len(opened)} files opened, {len(seen) - seen_none} events with no id)",
                 sorted(scans) == sorted(str(p) for p in listed) and opened == sorted(one) and len(seen) == seen_none)
             add(f"resume · each parent's command or reason, by its id alone: an id that is not exactly 8 lower-case hex digits, a sub-session's and one "
-                f"with no log get nothing (saw {got})", {k: v for k, v in got.items() if k != G} == {k: v for k, v in want.items() if k != G})
+                f"with no log get nothing (saw {got})", same(got) == same(want))
+            if took:
+                add(f"resume · a log that cannot be opened gets its own reason, that its log could not be read — never the one for a log that was read "
+                    f"and names no folder (saw {got.get(I)})", got.get(I) == ["unread"])
             if plain_outside:
                 add("resume · a folder outside the home folder is written as it is", got.get(G) == want[G], f"{got.get(G)}")
             else:
@@ -236,11 +288,25 @@ def run_checks(mutants=False, *, results=None):
             cases = {"plain": ("~/a.b_c/d-e:f/~g", ""), "a space": ("~/a b", "chars"), "a quote": ("~/it's", "chars"), "a double quote": ('~/a"b', "chars"),
                      "a backtick": ("~/a`b", "chars"), "`$(`": ("~/a$(id)", "chars"), "a line break": ("~/a\nb", "chars"), "a tab": ("~/a\tb", "chars"),
                      "a semicolon": ("~/a;b", "chars"), "an ampersand": ("~/a&b", "chars"), "a letter outside ASCII": ("~/grüße", "chars"),
-                     "a bidi override": ("~/a‮b", "chars"), "the backslash": ("~\\a", "" if os.name == "nt" else "chars"),
+                     "a bidi override": ("~/a‮b", "chars"), "the backslash": ("~\\a", "" if sys.platform == "win32" else "chars"),
                      "200 characters": ("~/" + "x" * 198, ""), "201 characters": ("~/" + "x" * 199, "long")}
             said = {k: fm.resume_folder_problem(absolute, v) for k, (v, _w) in cases.items()}
             add(f"resume · the paste check: the day prompts' plain set without the space, the backslash only on Windows, at most 200 characters "
                 f"(saw {said})", all(said[k] == w for k, (_v, w) in cases.items()) and fm.resume_folder_problem("work/x", "work/x") == "relative")
+            forms, on_windows = {}, {}
+            for platform in ("linux", "win32"):
+                with mock.patch.object(fm.sys, "platform", platform):
+                    forms[platform] = [fm.resume_command("~/work/first", "claude", UUID[A]), fm.resume_command("~/codex/proj", "codex", UUID[D])]
+                    if platform == "win32":
+                        on_windows = fm.resume_commands([A, D, E])
+            add(f"resume · the command's two forms: where the tool runs on Windows, PowerShell's — each argument a PowerShell literal, and the harness "
+                f"started only where the folder change succeeded —, else a POSIX shell's; Windows is read from sys.platform alone, by every step of the "
+                f"read (saw {forms}, {on_windows})",
+                forms == {"linux": [f"cd ~/work/first && claude --resume {UUID[A]}", f"cd ~/codex/proj && codex resume {UUID[D]}"],
+                          "win32": [f"cd '~/work/first'; if ($?) {{ claude --resume '{UUID[A]}' }}", f"cd '~/codex/proj'; if ($?) {{ codex resume '{UUID[D]}' }}"]}
+                and on_windows == {A: ["resume", f"cd '~{sep}work{sep}first'; if ($?) {{ claude --resume '{UUID[A]}' }}"],
+                                   D: ["resume", f"cd '~{sep}codex{sep}proj'; if ($?) {{ codex resume '{UUID[D]}' }}"],
+                                   E: ["refused", "chars.nt", f"~{sep}work{sep}a b", 200]})
 
         with step(add, "the board"):
             code, out_, err = run(tool, root, env, "--html-only")
@@ -249,8 +315,11 @@ def run_checks(mutants=False, *, results=None):
             resume = reg.get("resume") or {}
             add(f"resume · board: the page's data holds each parent's command or reason, by its id alone — none for a sub-session or a session with no "
                 f"log (saw exit {code}, {resume}, {err.strip()[-200:]!r})",
-                code == 0 and {k: v for k, v in resume.items() if k != G} == {k: v for k, v in want.items() if k != G}
+                code == 0 and same(resume) == same(want)
                 and (resume.get(G) == want[G] if plain_outside else True) and not any("/" in k for k in resume))
+            if took:
+                add("resume · board: a log that cannot be opened says so in its parent's row, in its own words",
+                    resume.get(I) == ["unread"] and 'r[0]=="unread"?l("resume.unread")' in page)
             members = [m for g in reg.get("groups", []) for m in g[4]]
             add("resume · board: the strip's groups and their members are as they were — five fields a group, four a member — and no command is in them",
                 bool(members) and all(len(g) == 5 for g in reg["groups"]) and all(len(m) == 4 for m in members)
@@ -306,7 +375,11 @@ def run_checks(mutants=False, *, results=None):
 def run_mutants(add, results):
     """Each of MUTANTS, as a copy of the tool beside its VERSION and vendored renderer, run under this test: each must fail it."""
     source = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    unread_here = can_unread()
     for name, old, new in MUTANTS:
+        if name == UNREAD_MUTANT and not unread_here:
+            add(f"resume · the mutant that {name}", None, "this machine opens a file nothing may open, so the test cannot hold a log unreadable")
+            continue
         with tempfile.TemporaryDirectory(prefix="shoalmark-resume-mutant-") as tmp:
             tool = Path(tmp).resolve() / "tool" / "shoalmark.py"
             (tool.parent / "vendor").mkdir(parents=True)

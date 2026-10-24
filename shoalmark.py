@@ -4213,7 +4213,7 @@ VERDICT={"READY":"vok","READY TO TAG":"vok","READY WITH FINDINGS":"vwarn","NOT R
 btn=(key,id,on)=>`<button class="act" aria-label="${l(key)} ${id}" onclick="${on}">${l(key)}</button>`,
 split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},
 rsm=id=>{const r=(REG&&REG.resume||{})[id];return !r?"":r[0]=="resume"?`<button type="button" class="act" title="${l("resume.help")}" aria-label="${l("resume.spoken",id)}" onclick="RSM(event,this)">${ICO.copy}${l("resume.button")}</button><code class="rsc" hidden onclick="event.preventDefault()">${esc(r[1])}</code><span class="said" aria-live="polite"></span>`
-  :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},
+  :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):r[0]=="unread"?l("resume.unread"):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},
 idl=id=>`<a href="#=${id}">${id}</a>`,
 days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
@@ -4513,6 +4513,7 @@ LABELS = {
     "resume.copied": "the command is on your clipboard · run it in a terminal, only for a session that is no longer open",
     "resume.two": "no resume command: {0} logs on this machine start with {1}, and the board does not pick one",
     "resume.nofolder": "no resume command: its log names no folder in its first {0} MiB",
+    "resume.unread": "no resume command: its log could not be read",
     "resume.refused": "no resume command: its folder {0} {1}",
     "resume.refused.chars": "holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : -",
     "resume.refused.chars.nt": "holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : - and the backslash",
@@ -8083,7 +8084,7 @@ def resume_logs(prefixes):
 def resume_folder(cwd):
     """`cwd` as a command is pasted with it: `~` in place of the home folder where it lies under it, cut at a path boundary — so a
     picture of the board carries no home path —, else as it is."""
-    seps = "/\\" if os.name == "nt" else "/"
+    seps = "/\\" if sys.platform == "win32" else "/"
     home = os.path.expanduser("~").rstrip(seps)
     if not home or home == "~" or os.path.normcase(cwd[:len(home)]) != os.path.normcase(home):
         return cwd
@@ -8099,19 +8100,32 @@ def resume_folder_problem(cwd, folder):
         return "relative"
     if len(folder) > DAY_CAP:
         return "long"
-    if not DAY_PLAIN.fullmatch(folder) or " " in folder or ("\\" in folder and os.name != "nt"):
+    if not DAY_PLAIN.fullmatch(folder) or " " in folder or ("\\" in folder and sys.platform != "win32"):
         return "chars"
     return ""
+
+
+def resume_command(folder, harness, uuid):
+    """The command that resumes the session `uuid` of `harness` in `folder`, written as the tool's other copied commands are where it runs.
+    On Windows it is PowerShell's: each argument a PowerShell literal (`printed_arg`), and the harness started only where the folder change
+    succeeded, `cd '<folder>'; if ($?) { … }`, which Windows PowerShell 5.1, which has no `&&`, and PowerShell 7 both run; `cd` (Set-Location)
+    reads a leading `~` as the home folder, quoted or not. Elsewhere it is a POSIX shell's, `cd <folder> && …`, the folder bare so that the
+    shell reads its `~`: the paste check (`resume_folder_problem`) leaves nothing else in it that the shell would split or expand."""
+    run = "codex resume" if harness == "codex" else "claude --resume"
+    if sys.platform == "win32":
+        return f"cd {printed_arg(folder)}; if ($?) {{ {run} {printed_arg(uuid)} }}"
+    return f"cd {folder} && {run} {uuid}"
 
 
 def resume_commands(ids):
     """{id: entry} for the sessions the day's strip shows, by `ids`, where there is something to say — nothing for the rest:
     - ["resume", command]: the one log whose file name starts with the id (`resume_logs`) gives the harness's own command,
       `cd <folder> && claude --resume <full id>` (Claude Code) or `cd <folder> && codex resume <full id>` (Codex), in the folder its
-      first turn ran in (`first_turn_cwd`), written with `~` (`resume_folder`);
+      first turn ran in (`first_turn_cwd`), written with `~` (`resume_folder`) — on Windows in PowerShell's form (`resume_command`);
     - ["two", n]: n logs on this machine start with the id — Codex's ids start with the time, so their first 8 characters collide —
       and none is picked;
     - ["nofolder", 1]: its log names no folder in its first MiB (RESUME_SCAN);
+    - ["unread"]: its log could not be opened or read;
     - ["refused", why, the folder as it would be pasted, shown on one line and cut at 80 characters, DAY_CAP]: the folder fails
       `resume_folder_problem` — `why` is "chars.nt" for "chars" where the tool runs on Windows, whose plain set holds the backslash.
     Only an id of exactly 8 lower-case hex digits is looked up: a sub-session's (`<parent>/<seat>-<n>`) gets none, as resuming its
@@ -8131,7 +8145,8 @@ def resume_commands(ids):
         try:
             cwd = first_turn_cwd(path, codex=harness == "codex")
         except OSError:
-            cwd = ""
+            out[sid] = ["unread"]
+            continue
         if not cwd:
             out[sid] = ["nofolder", RESUME_SCAN >> 20]
             continue
@@ -8139,9 +8154,9 @@ def resume_commands(ids):
         why = resume_folder_problem(cwd, folder)
         if why:
             shown = "".join(c if c.isprintable() else json.dumps(c)[1:-1] for c in folder)
-            out[sid] = ["refused", why + (".nt" if why == "chars" and os.name == "nt" else ""), shown[:80] + ("…" if len(shown) > 80 else ""), DAY_CAP]
+            out[sid] = ["refused", why + (".nt" if why == "chars" and sys.platform == "win32" else ""), shown[:80] + ("…" if len(shown) > 80 else ""), DAY_CAP]
             continue
-        out[sid] = ["resume", f"cd {folder} && " + (f"codex resume {uuid}" if harness == "codex" else f"claude --resume {uuid}")]
+        out[sid] = ["resume", resume_command(folder, harness, uuid)]
     return out
 
 

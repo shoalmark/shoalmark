@@ -581,7 +581,10 @@ Labels: `sessions.recent` (now with `{1}`, the count with sub-sessions) and `rev
 
 **The resume command:** beside a parent's line in the strip, a copy button, *resume command*, holds the harness's own
 command that resumes that session — `cd <folder> && claude --resume <full id>` for Claude Code, `cd <folder> && codex
-resume <full id>` for Codex — for a session that is no longer open: the board cannot see whether one is. The command is
+resume <full id>` for Codex — for a session that is no longer open: the board cannot see whether one is. Where the tool
+runs on Windows, the command takes the form of the tool's other copied commands there, for PowerShell — Windows
+PowerShell 5.1 and PowerShell 7 alike: `cd '<folder>'; if ($?) { claude --resume '<full id>' }`, and `codex resume` the
+same way, so the session is started only where the folder change succeeded. The command is
 hidden behind the button, and shows for selection where the page has no clipboard. The board's local build finds it,
 for each parent in the strip whose id is exactly 8 lower-case hex digits, from file names and one field alone:
 
@@ -598,7 +601,8 @@ carries no home path. It goes into the command only where it passes the day prom
 their cap of 200 characters — the backslash only where the tool runs on Windows; otherwise the row says which check it
 failed. Two logs or more, of either harness, give no command, and the row says so: Codex's ids start with the time, so
 their first 8 characters collide, and the board never picks one. A log that names no folder in its first MiB gives none
-and says so. No log gives nothing, as for a session from another machine; a sub-session gets none, as resuming its
+and says so; so does a log that cannot be opened or read, in words of its own. No log gives nothing, as for a session
+from another machine; a sub-session gets none, as resuming its
 parent resumes it. The command is in the local board file alone, `<tracker dir>/index.html`, which git ignores: never in
 a commit, the hook's trailers, `INDEX.md`, the digest, `--standup` or the site. *The named limit:* a log that shares
 only the id's first 8 characters with the session is taken as its own; the board cannot tell. Labels: `resume.*` and
