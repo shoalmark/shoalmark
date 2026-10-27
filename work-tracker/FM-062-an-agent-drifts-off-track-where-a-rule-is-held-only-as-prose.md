@@ -13,6 +13,8 @@ hook: "an agent drifts off track where a rule is held only as prose, two sources
 
 ## What is true now
 
+**2026-10-27 12:45:28 CET** — CI runs `test_plugin.py` after `test_core.py` under the full-suite tier condition and includes all three suites and exits in its TZ report; the CI checks and mutants cover the third suite and its tracker-read scan. Critical review next.
+
 **2026-10-19 17:22:20 CEST — `/prune-drift`'s spec and proof are built in `7983283` and `8f22b12`; nine fixtures and six mutants pass on Python 3.15.0 and 3.9.6, review next.**
 
 **Filed 2026-10-18. Judged In Progress, P2, on 2026-10-19, before the first build commit; `/find-drift`'s spec and the plugin are built, review next.** Its work
@@ -47,6 +49,7 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 | Date | Event |
 |---|---|
+| 2026-10-27 12:45:28 CET | CI adds the plugin suite in `89b7f7a`; both Python versions pass the plugin, core, CI and release-workflow slices. The plugin reads no tracker paths; a synthetic tracker-read control proves that a future read needs a records-tier exclusion. Critical review next. |
 | 2026-10-20 09:45:15 CEST | Round 2 RV-3501 addressed in `a5296ee`: the proof retains the active shebang line from the original bytes, including its terminator; executable LF/CRLF regressions verify exact committed blobs. All 17 fixtures pass and all nine scratch mutants are caught on Python 3.15.0 and 3.9.6. The Owner authorized this fix after the original final round; independent verification remains pending. |
 | 2026-10-19 21:34:00 CEST | Round 1 RV-3500 addressed in `46eff9f`: the proof compares raw-byte shebang activation, including a preceding BOM, and directive attachment to its physical code line. All 15 fixtures pass and all eight scratch mutants are caught on Python 3.15.0 and 3.9.6; round 2 next. |
 | 2026-10-19 17:22:20 CEST | `/prune-drift`'s spec and proof built on `/find-drift`'s READY head: the sort, record-before-delete steps, reader and directive safeguards, and nine-fixture class test are in `7983283` and `8f22b12`; all six scratch mutants are caught on both interpreters. Review next; suite registration waits for v0.20.2's integration branch. |
