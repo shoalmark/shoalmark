@@ -11,6 +11,8 @@ hook: "The receipts count what the record holds, and they need the Owner's defin
 
 ## What is true now
 
+**2026-10-27 — the receipts move to v0.20.3,** on the Owner's word of 27 October, as relayed by the Auditor. FM-023's ask of 27 October puts the move to the Owner.
+
 **Filed 2026-10-15, with its ask; nothing is built.** The receipts are a quick win of v0.20.1, beside R13 (FM-023's
 table of 2026-10-15): the ratio command goes, and this view counts what the record holds instead.
 
@@ -44,4 +46,5 @@ table of 2026-10-15): the ratio command goes, and this view counts what the reco
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | The receipts move to v0.20.3, on the Owner's word of 27 October; FM-023's ask puts it to the Owner. Records only. |
 | 2026-10-15 | Filed, with its ask. |

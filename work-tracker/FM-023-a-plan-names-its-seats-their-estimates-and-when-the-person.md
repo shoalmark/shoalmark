@@ -8,10 +8,10 @@ next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you amend v0.20.2's allocation of 18 October as FM-023's What is true now (27 October) sets out: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with --sessions and who asked) and quick win 11's S2 move from v0.20.1 to v0.20.2, as you said on 22 October?"
+ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (27 October, the scope) sets out: v0.20.2 keeps the work in progress and adds the Chrome flag, quick win 10, S1, FM-063 and FM-065; v0.20.3 takes S3, who asked, the receipts, S4 and the rest of 18 October's allocation?"
 ask-kind: ruling
 ask-since: 2026-10-27
-ask-options: "yes | yes, with the changes I name | no: they stay unallocated until I allocate them"
+ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as allocated on 18 October and amended on 27 October"
 ask-proposal: "yes"
 ---
 
@@ -21,6 +21,24 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-27 — v0.20.2's scope narrowed, and v0.20.3 named, on the Owner's word of 27 October, as relayed by the Auditor, for their signed answer.** The Owner said "leave them
+for v0.20.3", then "I want to also add ASK ids to v0.20.2", on the Auditor's list just before. The ask above puts it to
+them. The tables below stay as the record of what was allocated before.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2 | In progress: the CI item (`test_plugin.py` in CI), FM-068, FM-024, FM-076, and S2 (READY at `ec5d19f`). | — |
+| v0.20.2 | `/find-drift` and the plugin, in the lane; `/prune-drift` (READY at `9017ad8`), rebuilt onto the lane. | — |
+| v0.20.2 | The suite's Chrome keychain flag: the suite starts Chrome with `--use-mock-keychain` and a fresh `--user-data-dir` itself. | — |
+| v0.20.2 | Quick win 10: `--sessions` gains the harness and resume columns. | FM-024's round |
+| v0.20.2 | S1: the ask ids with R4's answer commit (FM-050). | FM-076 |
+| v0.20.2 | FM-063: the trailer step leaves a message that ends in bare links as it is (S), built in the `prepare-commit-msg` hook, so critical. | — |
+| v0.20.2 | FM-065: the skill-call contract. Its design is READY WITH FINDINGS (`4dc1910`), and its first use is `/prune-drift` calling `/find-drift`. | `/prune-drift`'s rebuild |
+| v0.20.3 | S3, who asked, the receipts and S4, from batch 3. | S1 |
+| v0.20.3 | From 18 October's allocation: the prose prune of `shoalmark.py` with the comment ratchet, FM-037's guard, the five conversions, and the text fixes. | v0.20.2's tag |
+
+- **FM-063 and FM-065 stay in v0.20.2,** on the Owner's word of 27 October: "both stay in v0.20.2".
 
 **2026-10-27 — batch 3 and quick win 11's S2 move from v0.20.1 to v0.20.2, for the Owner's signed answer.** On 22
 October, with the probe release, the Owner moved them to v0.20.2: batch 3 (S1 with the ask ids, S3, S4 the guided
@@ -350,10 +368,17 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted the proposal
 **signed** — 88bf707 · G
 
+**2026-10-27** · Do you amend v0.20.2's allocation of 18 October as FM-023's What is true now (27 October) sets out: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with --sessions and who asked) and quick win 11's S2 move from v0.20.1 to v0.20.2, as you said on 22 October?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 3996506 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
+| 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
 | 2026-10-27 | Batch 3 and quick win 11's S2 recorded as moved from v0.20.1 to v0.20.2, on the Owner's word of 22 October, with a row of the 15 October table; the ask filed for the Owner's signed answer, amending v0.20.2's allocation of 18 October. Records only. |
 | 2026-10-21 | The tags of v0.20, on the Owner's ruling of 20 October (recorded privately): lightweight for v0.20.0 and v0.20.1; the run sheet, the signed tag and the announcement for the last v0.20.x. |
 | 2026-10-19 | FM-065, the skill-call contract, allocated to v0.20.2 on the Owner's word of 19 October (recorded privately): one v0.20.2 row; nothing is designed or built. |
