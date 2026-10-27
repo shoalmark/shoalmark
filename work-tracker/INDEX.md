@@ -35,6 +35,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
 | [FM-061](FM-061-vendoring-still-takes-an-untagged-or-partial-source-a-weaker.md) | P2 | vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows | In Progress | progress | 2026-10-16 |
 | [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | P1 | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | In Progress | progress | 2026-10-17 |
