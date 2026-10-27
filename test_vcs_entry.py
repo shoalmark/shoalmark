@@ -229,7 +229,7 @@ def invoke(tool, root, argv, cwd, search=None):
     spec = {"tool": str(tool), "argv": argv}
     before = snapshot(root)
     done = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--entry-probe", json.dumps(spec)],
-                          cwd=cwd, env=env, capture_output=True, text=True, encoding="utf-8", timeout=40)
+                          cwd=cwd, env=env, capture_output=True, text=True, encoding="mbcs" if os.name == "nt" and "--tsvn-hook" in argv else "utf-8", timeout=40)
     lines = done.stderr.splitlines(keepends=True)
     marker = [line[len(MARKER):] for line in lines if line.startswith(MARKER)]
     if len(marker) != 1:

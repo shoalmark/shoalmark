@@ -10661,7 +10661,7 @@ else:
         paths.write_text(str(made) + "\n", encoding="utf-8"); message.write_text("Keep this commit message — unchanged.\n", encoding="utf-8")
         message_bytes = message.read_bytes()
         hook = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths),
-                                            *(["3"] if kind == "pre" else []), str(message), str(root)], cwd=tmp, capture_output=True, text=True, encoding="utf-8")
+                                            *(["3"] if kind == "pre" else []), str(message), str(root)], cwd=tmp, capture_output=True, text=True, encoding="mbcs" if os.name == "nt" else "utf-8")
         hook("start")                                           # the vendored copy names its own command in INDEX.md — it writes it first
         ok = hook("pre"); made.write_text(made.read_text(encoding="utf-8").replace("status: Proposed", "status: Bogus"), encoding="utf-8"); bad = hook("pre")
         made.write_text(made.read_text(encoding="utf-8").replace("status: Bogus", "status: In Progress"), encoding="utf-8"); start = hook("start")
@@ -10999,10 +10999,11 @@ else:
         _vend_release(root / "tools/shoalmark", cwd=base); fm.configure(root)          # R17: from a release of this tree
         paths6_, message6_ = base / "affected-paths.txt", base / "commit-message.txt"
         paths6_.write_text(str(p_) + "\n", encoding="utf-8"); message6_.write_text("C6-011\n", encoding="utf-8")
-        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths6_), "3", str(message6_), str(root)], cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+        hook6_ = lambda kind: subprocess.run([sys.executable, str(root / "tools/shoalmark/shoalmark.py"), "--tsvn-hook", kind, str(paths6_), "3", str(message6_), str(root)], cwd=tmp, capture_output=True, text=True, encoding="mbcs" if os.name == "nt" else "utf-8", errors="replace", env=_ENV)
         hook6_("start"); pre_ = hook6_("pre")
+        expected_pre_lines_ = [line.encode("mbcs", errors="replace").decode("mbcs") for line in lines_] if os.name == "nt" else lines_
         check(f"FM-006 · v0.19.1 · `--tsvn-hook pre`, as TortoiseSVN calls it, refuses the same tracker with the same line, exit 4 (saw {pre_.returncode})",
-              pre_.returncode == fm.EXIT_LINT and said6_(pre_.stdout + pre_.stderr, "C6-011") == lines_)
+              pre_.returncode == fm.EXIT_LINT and said6_(pre_.stdout + pre_.stderr, "C6-011") == expected_pre_lines_)
         gone6_(p_)
         # an open tracker with no protected line passes before its commit, beside one that is refused — and, committed by the Owner's account, after it
         open_, closed_ = new6_("C6-012"), new6_("C6-013", status_="Closed")

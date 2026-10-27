@@ -104,7 +104,7 @@ def notice_observations(source, base):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     def run(*args):
         return subprocess.run([sys.executable, str(tool), "--root", str(root), *args], cwd=base,
-                              env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
+                              env=env, capture_output=True, text=True, encoding="mbcs" if os.name == "nt" and "--tsvn-hook" in args else "utf-8", timeout=30)
     paths = base / "paths.txt"; message = base / "message.txt"
     paths.write_text(str(root / "work-tracker") + "\n", encoding="utf-8")
     message.write_text("local fixture\n", encoding="utf-8")
@@ -189,6 +189,18 @@ def hook_bytes(fm, codepage=1252, platform="nt"):
     return data
 
 
+def watchdog_bytes(fm):
+    raw = io.BytesIO(); stream = io.TextIOWrapper(raw, encoding="cp1252")
+    with contextlib.redirect_stderr(stream), patch.object(fm, "BOARD_RUN_SECONDS", 1), \
+            patch.object(fm.threading, "Timer") as timer, patch.object(fm.os, "write") as write, patch.object(fm.os, "_exit") as stop:
+        fm.board_watchdog(board=False)
+        timer.call_args.args[1]()
+        stop.assert_called_once_with(4)
+        data = write.call_args.args
+    stream.close()
+    return data
+
+
 class EncodingControls(unittest.TestCase):
     def test_windows_hook_uses_ansi_bytes_and_replacement(self):
         import shoalmark as fm
@@ -225,6 +237,30 @@ class EncodingControls(unittest.TestCase):
             code, out, err, read = hook_bytes(fm)
         self.assertNotEqual(err, "--tsvn-hook: sample — 漢 — nothing is written\n".encode("cp1252", errors="replace"))
         self.assertIn("—".encode("utf-8"), err)
+
+    def test_watchdog_bytes_use_configured_ansi_stream(self):
+        import shoalmark as fm
+        line = "shoalmark: the hook's run took longer than 1 s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer\n"
+        self.assertEqual(watchdog_bytes(fm), (2, line.encode("cp1252")))
+
+    def test_utf8_watchdog_mutant_fails_same_byte_contract(self):
+        import ast
+        import shoalmark as fm
+        source = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+        before = '.encode(getattr(sys.stderr, "encoding", None) or "utf-8", errors="replace")'
+        self.assertEqual(source.count(before), 1)
+        namespace = dict(fm.__dict__)
+        namespace["BOARD_RUN_SECONDS"] = 1
+        function = next(node for node in ast.parse(source.replace(before, '.encode("utf-8")')).body
+                        if isinstance(node, ast.FunctionDef) and node.name == "board_watchdog")
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(HERE / "shoalmark.py"), "exec"), namespace)
+        with patch.object(fm, "board_watchdog", namespace["board_watchdog"]):
+            fd, data = watchdog_bytes(fm)
+        self.assertEqual(fd, 2)
+        line = "shoalmark: the hook's run took longer than 1 s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer\n"
+        self.assertNotEqual(data, line.encode("cp1252"))
+        self.assertIn("—".encode("utf-8"), data)
+        self.assertNotIn(b"\x97", data)
 
 
 def run_controls(check):

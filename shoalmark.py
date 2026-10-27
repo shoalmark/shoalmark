@@ -11892,7 +11892,7 @@ def board_watchdog(board=True):
     said = (f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped" if board
             else f"shoalmark: the hook's run took longer than {BOARD_RUN_SECONDS} s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer")
     def stop():
-        os.write(2, (said + "\n").encode("utf-8"))
+        os.write(2, (said + "\n").encode(getattr(sys.stderr, "encoding", None) or "utf-8", errors="replace"))
         os._exit(EXIT_LINT)
     timer = threading.Timer(BOARD_RUN_SECONDS, stop)
     timer.daemon = True

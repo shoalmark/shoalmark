@@ -13,7 +13,7 @@ hook: "the gate's text shows as mojibake in TortoiseSVN"
 
 ## What is true now
 
-**Built 2026-10-27.** Windows TortoiseSVN runs configure stdout and stderr with the Windows ANSI code page through Python's built-in `mbcs` codec (`CP_ACP`), replacing characters it cannot encode. Both entry-time configuration diagnostics and `main` use this choice. Other modes retain UTF-8 and LF, including `--print-written`. Byte controls simulate Windows with code pages 1252, 932 and 65001, and reject a UTF-8 hook mutant. This is simulated evidence; TortoiseSVN dialog display still needs a Windows run. Critical review remains next.
+**Built 2026-10-27.** Windows TortoiseSVN runs configure stdout and stderr with the Windows ANSI code page through Python's built-in `mbcs` codec (`CP_ACP`), replacing characters it cannot encode. Both entry-time configuration diagnostics and `main` use this choice. Other modes retain UTF-8 and LF, including `--print-written`. Byte controls simulate Windows with code pages 1252, 932 and 65001, and reject a UTF-8 hook mutant. The watchdog's direct stderr bytes use that configured encoding too, with a byte control and UTF-8 mutant. Hook fixture readers decode the captured output with `mbcs` on Windows and UTF-8 elsewhere. This is simulated evidence; TortoiseSVN dialog display still needs a Windows run. Critical review remains next.
 
 Check limit found on the way: Python 3.9 source-binding controls report seven confinement failures on standard-library bytecode-cache reads outside the runtime directory. The second diagnostic attempt identifies the same cache reads; that predicate is left for a separate change.
 
