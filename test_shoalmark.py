@@ -6569,9 +6569,11 @@ def _why_problems(src):
         bad.append("the German page does not say Board, or speaks to its reader as Sie, or not as lower-case du")
     if 'import "partials/why/" ~ ("de" if de else "en") ~ ".html" as L' not in tpl or tpl.count('<span class="mock" aria-hidden="true">MOCKUP</span>') != 1:
         bad.append("the template does not take its words by the page's language, or the board picture is not marked MOCKUP once")
+    saw = tpl.split('<section class="s-saw"', 1)[-1].split("</section>", 1)[0] if tpl.count('<section class="s-saw"') == 1 else ""
     if tpl.count("{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }}") != 2 or "{{ ('assets/why/contributions-2026-' ~ w.lang ~ '@2x.png') | url }} 2x" not in tpl \
-            or '<figure class="said"><blockquote><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p></blockquote><figcaption>{{ w.said_by }}</figcaption></figure>' not in tpl:
-        bad.append("the template does not draw the statement in its figure, or the card of the page's language from the site's own files")
+            or saw.count('<div class="proof"><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p><figure class="card">') != 1 \
+            or re.search(r"<blockquote|<figcaption|said_by|class=\"said\"|<q[\s>]|<cite", saw) or saw.count("<figure") != 1 or re.search(r"(?<!\w)\.said\b", tpl):
+        bad.append("the template does not draw the story as the section's plain paragraphs, with no figure, quote, caption or rule of its own, or the card of the page's language from the site's own files")
     if ".over>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--coral);color:var(--landink);" not in tpl \
             or ".over p:not(.big):not(.t){color:var(--dim);max-width:70ch}" not in tpl or re.search(r"\.over p:not\(\.big\)\{", tpl):
         bad.append("the What we saw tab is not the ink on coral its own rule sets: a rule for the box's other lines also colours it")
@@ -6595,7 +6597,7 @@ def _why_strings(value):
 _ws = _sources(_WHY_FILES)
 _wp = _why_problems(_ws)
 check(f"FM-006 · the pitch page · every ruled row stands on its page and in the words its template draws, in English and in German (du, Board); its "
-      f"<title>, its description and its pictures' alts are the rows', the board picture is marked MOCKUP, the statement stands in its figure, the "
+      f"<title>, its description and its pictures' alts are the rows', the board picture is marked MOCKUP, the story stands as plain paragraphs, the "
       f"contribution card is the page's language's, and nothing loads from another host (problems found: {_wp})",
       _wp == [])
 _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.md", _WHY_ROWS["en"]["W19"] + "\n", ""),
@@ -6607,12 +6609,16 @@ _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.m
          "the statement dropped from the German page": _with(_ws, "docs/de/warum-shoalmark.md", _WHY_ROWS["de"]["W38"].split("<br>")[1], ""),
          "the English card on the German page": _with(_ws, "docs/de/warum-shoalmark.md", "contributions-2026-de.png", "contributions-2026-en.png"),
          "the tab coloured as the box's other lines": _with(_ws, "overrides/why.html", ".over p:not(.big):not(.t){", ".over p:not(.big){"),
-         "a picture from another host": _with(_ws, "overrides/why.html", "{{ 'assets/why/pricken-neuwerk.png' | url }}", "https://example.org/p.png")}
+         "a picture from another host": _with(_ws, "overrides/why.html", "{{ 'assets/why/pricken-neuwerk.png' | url }}", "https://example.org/p.png"),
+         "the story back in its quote's figure": _with(_ws, "overrides/why.html", '<p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p><figure class="card">',
+                                                       '<figure class="said"><blockquote><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p></blockquote>'
+                                                       '<figcaption>{{ w.said_by }}</figcaption></figure><figure class="card">'),
+         "the story's rule back": _with(_ws, "overrides/why.html", ".card{margin:36px", ".said{margin:44px auto 0;max-width:66ch}\n.card{margin:36px")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
 check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in Sie, "
       f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one, the statement dropped from the German "
-      f"page, the English card on the German page, the tab coloured as the box's other lines and a picture from another host leaves a problem "
-      f"(problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 10)
+      f"page, the English card on the German page, the tab coloured as the box's other lines, a picture from another host, the story back in its quote's "
+      f"figure and the story's rule back leaves a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 12)
 
 _WHY_ENGLISH = {
     "W40": "shoalmark — the agents do the work; you have the final word",
@@ -6674,7 +6680,7 @@ _wectl = {"the landing's h1 as it was": _with(_we, "overrides/partials/landing/e
           "the pitch page's description as it was": _with(_we, "docs/why-shoalmark.md", _WHY_ENGLISH["W43"], _WHY_ENGLISH["W43"].replace("on one page", "in one page")),
           "the closing line as it was": _with(_we, "docs/why-shoalmark.md", _WHY_ENGLISH["W54"], "Let your agents run. Keep your word."),
           "the statement's gh as it was": _with(_we, "overrides/partials/why/en.html", _WHY_ENGLISH["W55"], "my planner agents got gh and took over the orchestration"),
-          "the statement's attribution back": _with(_we, "overrides/partials/why/en.html", '"said_by": ""', '"said_by": "— @holgo99, who builds portdive with shoalmark, and shoalmark with itself"')}
+          "the statement's attribution back": _with(_we, "overrides/partials/why/en.html", "answers. I build portdive with shoalmark", "answers. — @holgo99, who builds portdive with shoalmark")}
 _wectl_saw = {name: len(_why_english_problems(src)) for name, src in _wectl.items()}
 check(f"FM-006 · the native-English pass · its check is not blind: each of the landing's h1, the start page's twin, the pitch page's description, its closing "
       f"line and the statement's gh as they were, and the statement's attribution back, leaves a problem (problems found: {_wectl_saw})", all(_wectl_saw.values()) and len(_wectl_saw) == 6)
