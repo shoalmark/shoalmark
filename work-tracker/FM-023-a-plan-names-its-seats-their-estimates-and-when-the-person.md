@@ -17,6 +17,24 @@ is designed or built.
 
 ## What is true now
 
+**2026-10-19 — FM-063 goes to v0.20.2,** the Planner's call, which the Auditor's relay of 19 October left to the
+Planner: a seat's commit message that ends in bare links has them rewritten by the trailer step. Until it ships, a seat
+ends its message with a sentence. The 18 October table below has a v0.20.2 row for it.
+
+**2026-10-19 — the skill-call contract goes to v0.20.2 (FM-065),** on the Owner's word of 19 October (recorded
+privately): one skill calls another, external skills included, through a contract that pins what it calls and checks
+what it gets back. It is prepared for from v0.20.2's first release, and no external skill runs in v0.20.2. The 18
+October table below has a v0.20.2 row for it.
+
+**2026-10-19 — the skill-call contract goes to v0.20.2 (FM-065),** on the Owner's word of 19 October (recorded
+privately): one skill calls another, external skills included, through a contract that pins what it calls and checks
+what it gets back. It is prepared for from v0.20.2's first release, and no external skill runs in v0.20.2. The 18
+October table below has a v0.20.2 row for it.
+
+**2026-10-19 — FM-063 goes to v0.20.2,** the Planner's call, which the Auditor's relay of 19 October left to the
+Planner: a seat's commit message that ends in bare links has them rewritten by the trailer step. Until it ships, a seat
+ends its message with a sentence. The 18 October table below has a v0.20.2 row for it.
+
 **2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately): the
 hooks that rebuild the board after a checkout, a merge and a rebase. v0.20.0 ships as built, with R11's upgrade note.
 The 15 October table below has a v0.20.1 row for it, and FM-057 holds the case it must cover.
@@ -43,6 +61,10 @@ the Owner's word of 18 October (recorded privately). Both ship in v0.20.2 as a C
 | v0.20.2 | Five small conversions, each a rule made a check: the ship log only grows; triage rows only grow; no line of a commit message begins with `---`; the allowed test runner; no home folder's path in public text. | The prose each one replaces | v0.20.1's tag |
 | v0.20.2 | The text fixes `/find-drift`'s first run found, in the rule files: sources that disagree, and obsolete text. The seat definitions are the Owner's to type. | The obsolete text | The second skill |
 | v0.20.2 | The suite's Chrome keychain flag: on macOS, the suite starts Chrome with `--use-mock-keychain`. | — | v0.20.1's head |
+| v0.20.2 | FM-063: the trailer step adds a seat's trailers and changes nothing else in the message, where it ends in bare links (S). | The rule that a seat ends its message with a sentence | — |
+| v0.20.2 | FM-065: the skill-call contract (M): its six parts, a registration format and a check, proven by synthetic child skills, and first used by `/prune-drift` calling `/find-drift`. No external skill runs. | — | A design round, then the Owner's ruling |
+| v0.20.2 | FM-063: the trailer step adds a seat's trailers and changes nothing else in the message, where it ends in bare links (S). | The rule that a seat ends its message with a sentence | — |
+| v0.20.2 | FM-065: the skill-call contract (M): its six parts, a registration format and a check, proven by synthetic child skills, and first used by `/prune-drift` calling `/find-drift`. No external skill runs. | — | A design round, then the Owner's ruling |
 | After v0.20.2 | R5; defects 1, 3 and 4; the four larger conversions; the broader R24 boundary work. | — | The Owner's allocation |
 
 - **When:** the work may start now.
@@ -322,6 +344,10 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-19 | FM-065, the skill-call contract, allocated to v0.20.2 on the Owner's word of 19 October (recorded privately): one v0.20.2 row; nothing is designed or built. |
+| 2026-10-19 | FM-063 filed, a bug, and allocated to v0.20.2, the Planner's call: one v0.20.2 row; nothing is built. |
+| 2026-10-19 | FM-065, the skill-call contract, allocated to v0.20.2 on the Owner's word of 19 October (recorded privately): one v0.20.2 row; nothing is designed or built. |
+| 2026-10-19 | FM-063 filed, a bug, and allocated to v0.20.2, the Planner's call: one v0.20.2 row; nothing is built. |
 | 2026-10-19 | R11's hook half comes back in v0.20.1, on the Owner's word of 19 October (recorded privately): one v0.20.1 row; v0.20.0 unchanged. |
 | 2026-10-18 | v0.20.0 cut from main as it stands, on the Owner's ruling of 18 October (recorded privately): R22, R15, R13, R11, R9 and the stand-up across repositories move from v0.20.1, with the two prompts, what the board read and FM-045's fix. The second skill is named `/prune-drift`, the Owner's word of 18 October. |
 | 2026-10-18 | v0.20.2's allocation ask filed: shoalmark's first two skills in one Claude plugin, on the Owner's rulings of 18 October. The answer of 17 October recorded under the asks, and v0.20.1's count of quick wins made the Owner's eleven, the guided answer among them. |
