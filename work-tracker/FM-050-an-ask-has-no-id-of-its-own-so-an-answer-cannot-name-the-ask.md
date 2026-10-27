@@ -1,23 +1,19 @@
 ---
 id: FM-050
-status: Proposed
+status: In Progress
 considered: FM-027, FM-008, FM-014, FM-016, FM-029, FM-030, FM-023
 tags: process
 next: build
+triaged: 2026-10-27
+tier: P2
 hook: "An ask has no id of its own, so an answer, the stand-up and the receipts cannot name the ask they mean"
-ask: "Do you adopt the ask-id design and R4's answer commit as FM-050 states them under The design in the commit that last filed this ask?"
-ask-kind: ruling
-ask-since: 2026-10-27
-ask-options: "yes | yes, with the change I name | no: R4 and ask ids wait for a release after v0.20.2"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-27
-answered-by: holgo99
 ---
 
 # FM-050 — an ask has no id of its own, so an answer cannot name the ask it answers
 
 ## What is true now
+
+**2026-10-27 — adopted by the Owner, and judged In Progress, P2, critical, for v0.20.2.** The Owner's signed answer adopts the ask-id design and R4's answer commit; it is recorded under `## Asks`. It is batch 3's S1, and it builds on FM-076 in the v0.20.2 lane, since both change the gate's answer and rights paths.
 
 **2026-10-27 — its ruling ask filed again, on today's main.** The design and its two review rounds come onto main from
 `fm/050-ask-id-design`, unchanged. The records pass of 21 October that carried them was never pushed. What changed since
@@ -553,6 +549,13 @@ for every author, the Owner included: a reused number is not a right. `changes_u
   refuses an unknown, answered or reused id, and a put ask changed under its id. One test covers the class: every way
   an id could be reused or mismatched, across two branches included.
 
+## Asks
+
+**2026-10-27** · Do you adopt the ask-id design and R4's answer commit as FM-050 states them under The design in the commit that last filed this ask?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — b7b9cac · G
+
 ## Ship log
 
 | Date | Event |
@@ -566,3 +569,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-16 | A case recorded: the board hid FM-053's re-filed ask while the first answer's `answer/fm-053` was on its way; ask ids fix it. |
 | 2026-10-16 | The Owner's word: *on their way* (FM-030), in the board's code but in neither §1 nor §7 of the guide, goes into FM-050; its design round places it in the guide, beside the case of FM-053's hidden ask. |
 | 2026-10-27 | Its ruling ask filed again by the Planner seat, on today's main, with what changed since 16 October; the design unchanged. Records only. |
+| 2026-10-27 | The Owner's signed answer adopts the design; its ask cleared; judged In Progress, P2, critical, for v0.20.2 as batch 3's S1. Records only. |
