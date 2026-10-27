@@ -5935,6 +5935,53 @@ check("FM-006 · B1 · the footer line's check is not blind: a word of the conta
       bool(_claim_problems(_cp_ctl)))
 
 
+# --- the start page's first-person line: its own short line under the two buttons, its link kept whole, and the lede that opens with whom it is for -----
+_FOUNDER = {"en": 'I built this after my agents turned me into their rubber stamp. <a href="why-shoalmark.html">Why shoalmark →</a>',
+            "de": 'Ich habe das gebaut, nachdem meine Agenten mich zu ihrem Abnicker gemacht hatten. <a href="warum-shoalmark.html">Warum shoalmark →</a>'}
+_FOUNDER_LEDE = {"en": "For one person in charge and their agent fleet. See where the work stands,",
+                 "de": "Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit steht,"}
+_FOUNDER_TWIN = {"docs/index.md": ('--8<-- "start.en.md"\n\nI built this after my agents turned me into their rubber stamp. [Why shoalmark →](why-shoalmark.md)\n', "en"),
+                 "docs/de/index.md": ('--8<-- "start.de.md"\n\nIch habe das gebaut, nachdem meine Agenten mich zu ihrem Abnicker gemacht hatten. [Warum shoalmark →](warum-shoalmark.md)\n', "de")}
+_FOUNDER_AT = ('{{ w.btn_how }}</a>\n    </div>\n    {%- if taped %}\n    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    {%- endif %}\n'
+               '    <p class="founder">{{ w.founder }}</p>\n  </div>\n</section>')
+
+
+def _founder_problems(src):
+    """What is wrong with the start page's first-person line, one line each: each words file holds it as a key of its own, the lede opens with whom the tool is
+    for and holds no part of the line, the template draws it once, under the two buttons and the taped state's reason line, as the hero's last line, with its
+    link kept on one line, and each Markdown twin holds it right after the page's action."""
+    words, bad = _landing_words(src)
+    code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
+    for lang in ("en", "de"):
+        lede = words.get(lang, {}).get("lede", "")
+        if words.get(lang, {}).get("founder") != _FOUNDER[lang]:
+            bad.append(f"{lang}.html's first-person line is not its row")
+        if not lede.startswith(_FOUNDER_LEDE[lang]) or re.search(r"<br|<a\b", lede) or _FOUNDER[lang].split(" <a ")[0] in lede:
+            bad.append(f"{lang}.html's lede does not open with whom it is for, or still holds the first-person line")
+    if code.count(_FOUNDER_AT) != 1 or code.count("{{ w.founder }}") != 1:
+        bad.append("the template does not draw the first-person line once, under the two buttons and the reason line, as the hero's last line")
+    if ".founder a{white-space:nowrap}" not in code:
+        bad.append("the first-person line's link may break across two lines")
+    for rel, (line, lang) in _FOUNDER_TWIN.items():
+        if src[rel].count(line) != 1:
+            bad.append(f"{rel} does not hold the first-person line right after the page's action")
+    return bad
+
+
+_fp = _founder_problems(_ls)
+check(f"FM-006 · the start page's first-person line stands on its own under the two buttons, its link on one line, in English and German, and the lede opens "
+      f"with whom it is for and holds no part of it; each Markdown twin holds it after the page's action (problems found: {_fp})", _fp == [])
+_fpctl = {"the line back in the lede": _with(_ls, "overrides/partials/landing/en.html", 'the evidence behind the work.",',
+                                             'the evidence behind the work.<br>I built this after my agents turned me into their rubber stamp.",'),
+          "the line above the buttons": _with(_with(_ls, "overrides/landing.html", '    <p class="founder">{{ w.founder }}</p>\n', ""), "overrides/landing.html",
+                                              '<p class="lede">{{ w.lede }}</p>', '<p class="lede">{{ w.lede }}</p><p class="founder">{{ w.founder }}</p>'),
+          "the link free to break": _with(_ls, "overrides/landing.html", ".founder a{white-space:nowrap}", ".founder a{}"),
+          "a German word of the line changed": _with(_ls, "overrides/partials/landing/de.html", "zu ihrem Abnicker gemacht", "zu ihrem Stempel gemacht")}
+_fpctl_saw = {name: len(_founder_problems(src)) for name, src in _fpctl.items()}
+check(f"FM-006 · the first-person line's check is not blind: each of the line back in the lede, the line above the buttons, its link free to break and a German "
+      f"word of it changed leaves a problem (problems found: {_fpctl_saw})", all(_fpctl_saw.values()) and len(_fpctl_saw) == 4)
+
+
 # --- the docs' stand-up lines: how it works, the start pages' fleet line, setup and the standup page, in English and in German --------------------
 _DOCS_STANDUP_ROWS = {
     "W30": ("docs/how-it-works.md", '3. **You sit, whenever it suits you.** The standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes your answer as a commit, signed with your key once you turn signing on.',
@@ -6106,7 +6153,7 @@ check("FM-006 · the taped state's check is not blind: each of the tape left off
 _GIT_FILES = ("README.md", "docs/index.md", "docs/de/index.md", "docs/setup.md", "docs/de/setup.md", "docs/how-it-works.md", "docs/de/how-it-works.md",
               "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
 _GIT_EN = "Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`."
-_GIT_DE = "Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probier es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub."
+_GIT_DE = "Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probiere es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub."
 _GIT_SVN = ("On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.",
             "Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.")
 _GIT_SETUP = ("*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. " + _GIT_SVN[0] + "*",

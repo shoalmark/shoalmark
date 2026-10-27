@@ -10,7 +10,7 @@ description: "Eine Werkbank für deine Agenten. Deine Entscheidungen belegt."
 
 ## Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.
 
-Für eine Person, die das Sagen hat, und ihre Agenten-Flotte. Sieh, wo die Arbeit steht, was auf dein Wort wartet und was die nächste Session aufgreift. Deine Agenten halten das in deinem Repository fest; deine Entscheidungen kommen als deine eigenen Commits hinzu, neben den Nachweisen für die Arbeit.
+Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit steht, was auf dein Wort wartet und was die nächste Session aufgreift. Deine Agenten halten das in deinem Repository fest; deine Entscheidungen kommen als deine eigenen Commits hinzu, neben den Nachweisen für die Arbeit.
 
 --8<-- "start.de.md"
 
@@ -95,9 +95,9 @@ Sprache geschrieben sein. Läuft mit git auf Windows, macOS und Linux. Lizenz: A
 **In dieser Beta:**
 
 - Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit deines Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
-- Für eine Person mit dem letzten Wort und ihre Agenten-Flotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
+- Für eine Person mit dem letzten Wort und ihre Agentenflotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
 - *Kein Beweis, dass die Arbeit stimmt.* Bei geprüften Änderungen in Git oder Subversion muss ein Wechsel zu `Shipped` im Abschnitt „Verlauf“ (oder „Ship log“) des Arbeitspakets einen Commit nennen, der schon in der Historie der geprüften Änderung liegt und etwas außerhalb des Belegs ändert (unter Subversion eine Revision). Diese Nachweisregel gilt nicht für `Closed`. Bei einem Verstoß meldet die Prüfung einen Fehler und endet mit einem Rückgabewert ungleich null. Ein installierter Git-Commit-Hook kann den Commit dann verweigern, ist aber optional und lässt sich umgehen. Damit die Prüfung vor dem Merge verbindlich ist, muss dein Projekt über seine CI und seine Merge-Regeln einen erfolgreichen Lauf von `--check` auf dem Branch voraussetzen; shoalmark richtet das nicht für dich ein. Ob der Commit tut, was er soll, klärt ein Review.
-- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probier es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
+- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probiere es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
 
 ## Hier anfangen
 
