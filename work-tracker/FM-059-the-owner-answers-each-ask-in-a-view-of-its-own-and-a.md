@@ -7,7 +7,7 @@ next: owner
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
 ask: "Do you adopt FM-059's guided answer design, with its open questions as your positions settle them and the one sentence G6 gains, as its body states them under *The design* in the commit that last filed this ask?"
 ask-kind: ruling
-ask-since: 2026-10-19
+ask-since: 2026-10-27
 ask-options: "yes | yes, with the changes I name | no: run sheets stop before each answer until it is designed again"
 ask-proposal: "yes"
 ---
@@ -15,6 +15,23 @@ ask-proposal: "yes"
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
 
 ## What is true now
+
+**2026-10-27 — input for the design, from the Auditor.** An ask is rendered from the repository. A link carries only the
+tracker id. The exact diff is shown before signing, and local presence, a touch or a PIN, is required.
+
+**2026-10-27 — its ruling ask filed again, on today's main.** The design, its amendments and its records re-checks come
+onto main from `fm/059-guided-answer-design`, unchanged, with FM-064, which the design filed. The records pass of 21
+October that carried them was never pushed. What changed since 19 October:
+- v0.20.1 shipped without the guided answer. On the Owner's word of 22 October it moves to v0.20.2 with batch 3, and
+  FM-023's ask of 27 October puts that to them for a signed answer. Once it is answered, the release answer of 16
+  October below (*accepted - v0.20.1*, `99b1708`) is named as superseded by it.
+- What it needs first: R4's ask ids (FM-050) move to v0.20.2 with it. FM-058's fix shipped in v0.20.1: a command a
+  person runs through the hooks' copy is not stopped.
+- In v0.20.1 an answer is the Owner's own commit, made in their terminal (FM-054). The Board's second screen gives its
+  command to copy, its steps, the result to expect, its check, and what to do if it fails. The guided view is read
+  against that screen when it is built.
+
+The ask stands as filed, at this commit.
 
 **2026-10-19 — its ruling ask filed again.** In its second round, the records re-check found the amended sections
 READY WITH FINDINGS (`e61c054`). Its one finding is fixed in this commit's message. The ask is the design's, as
@@ -689,3 +706,5 @@ Reviewer privately. This text does not state them.
 | 2026-10-19 | The design amended by the Planner seat, on the Owner's positions of 17 October (through the Designer) and of 19 October on open question 3 (through the Auditor): *decide later* in the view, the view's read-at words, no result between asks, the seat's reasons with their fallback and the record's new fields, one verb. FM-064 filed. The ask withdrawn until a records re-check. Records only. |
 | 2026-10-19 | The records re-check's four findings fixed by the Planner seat: the reasons live as long as the ask (RV-3496); a kept answer names its push destination and stays out of later pushes (RV-3497); a row and a mutant for the view's read-at contract (RV-3498); RV-3499: recorded privately. Records only. |
 | 2026-10-19 | Its ruling ask filed again by the Planner seat, after the records re-check's second round (`e61c054`): whether the Owner adopts the design as amended. Records only. |
+| 2026-10-27 | Its ruling ask filed again by the Planner seat, on today's main, with what changed since 19 October; the design unchanged. Records only. |
+| 2026-10-27 | Input for the design recorded, from the Auditor: the ask rendered from the repository, a link with only the tracker id, the exact diff before signing, and local presence required. Records only. |

@@ -5,16 +5,29 @@ considered: FM-027, FM-008, FM-014, FM-016, FM-029, FM-030, FM-023
 tags: process
 next: owner
 hook: "An ask has no id of its own, so an answer, the stand-up and the receipts cannot name the ask they mean"
-ask: "Do you adopt the ask-id design and R4's answer commit as FM-050's body states them in the commit that last filed this ask?"
+ask: "Do you adopt the ask-id design and R4's answer commit as FM-050 states them under The design in the commit that last filed this ask?"
 ask-kind: ruling
-ask-since: 2026-10-16
-ask-options: "yes | yes, with the change I name | no: R4 and ask ids wait for v0.20.2"
+ask-since: 2026-10-27
+ask-options: "yes | yes, with the change I name | no: R4 and ask ids wait for a release after v0.20.2"
 ask-proposal: "yes"
 ---
 
 # FM-050 — an ask has no id of its own, so an answer cannot name the ask it answers
 
 ## What is true now
+
+**2026-10-27 — its ruling ask filed again, on today's main.** The design and its two review rounds come onto main from
+`fm/050-ask-id-design`, unchanged. The records pass of 21 October that carried them was never pushed. What changed since
+16 October:
+- v0.20.1 shipped without ask ids and without R4's answer commit. In v0.20.1 an answer is the Owner's own commit, made
+  in their terminal and signed only where the default branch asks for it (FM-054). The ask ids move to v0.20.2 with
+  batch 3, on the Owner's word of 22 October, which FM-023's ask of 27 October puts to them for a signed answer.
+- Since v0.20.1 the board's look and words follow `brand/design-guide.md` (FM-053), so §5's lines are read against the
+  guide when they are built.
+- The design's references into `shoalmark.py` (`:942` and the rest) name the tool's lines as they stood on 16 October.
+  The build reads them again.
+
+The ask stands as filed, at this commit. Its "no" now names a release after v0.20.2, the release it is proposed for.
 
 **Filed 2026-10-15 as a design tracker. Designed 2026-10-15 (`## The design`, below); reviewed 2026-10-16 in two rounds,
 not ready (`cc9e80b`) and then READY (`ed2c82b`); put to the Owner; not ruled; nothing built.**
@@ -549,3 +562,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-16 | Round 2: READY (`ed2c82b`). The ask put to the Owner by the Planner (`next: owner`), filed at this commit so the answer binds the reviewed body. |
 | 2026-10-16 | A case recorded: the board hid FM-053's re-filed ask while the first answer's `answer/fm-053` was on its way; ask ids fix it. |
 | 2026-10-16 | The Owner's word: *on their way* (FM-030), in the board's code but in neither §1 nor §7 of the guide, goes into FM-050; its design round places it in the guide, beside the case of FM-053's hidden ask. |
+| 2026-10-27 | Its ruling ask filed again by the Planner seat, on today's main, with what changed since 16 October; the design unchanged. Records only. |
