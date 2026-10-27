@@ -35,6 +35,9 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-070](FM-070-the-gate-s-text-shows-as-mojibake-in-tortoisesvn.md) | P3 | the gate's text shows as mojibake in TortoiseSVN | In Progress | progress | 2026-10-27 |
+| [FM-069](FM-069-the-subversion-notice-prints-on-every-run-and-reads-as-the.md) | P2 | the Subversion notice prints on every run and reads as the error in TortoiseSVN's refusal | In Progress | progress | 2026-10-27 |
+| [FM-068](FM-068-tortoisesvn-drops-the-hook-properties-install-hook-writes-so.md) | P1 | TortoiseSVN drops the hook properties --install-hook writes, so no TortoiseSVN commit is gated | In Progress | progress | 2026-10-27 |
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
 | [FM-061](FM-061-vendoring-still-takes-an-untagged-or-partial-source-a-weaker.md) | P2 | vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows | In Progress | progress | 2026-10-16 |
 | [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | P1 | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | In Progress | progress | 2026-10-17 |
