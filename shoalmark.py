@@ -12038,7 +12038,7 @@ def tsvn_arguments(words, explicit_root=None, source_file=None):
     return ["--root", str(root)] + (["--check"] if kind == "pre" else [])
 
 
-SVN_VERIFY_LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
+SVN_VERIFY_LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated author identities."
 
 
 def main(argv=None, *, _notice=True):
@@ -12068,21 +12068,27 @@ def main(argv=None, *, _notice=True):
             print("--standup DIR … reads the repositories it names, and --root names the one a run reads: name that folder after --standup", file=sys.stderr)
             return 2
         return standup_across(args.standup)
+    notice = _notice and not args.tsvn_hook and cli_operation(args) in ("init", "check")
+    try:
+        return main_run(args)
+    finally:
+        if notice and vcs() == "svn":
+            print(SVN_VERIFY_LIMIT, file=sys.stderr)
+
+
+def main_run(args):
     if args.html_only:                                      # …and nothing else, whatever else was said: the board's run is read-only and stands alone
         others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
         if others:
             print(f"--html-only is the board's read-only run and stands alone, with --root: {', '.join(others)} goes with another run", file=sys.stderr)
             return 2
-        code = board_run(args.root)
-        if _notice and vcs() == "svn":
-            print(SVN_VERIFY_LIMIT, file=sys.stderr)
-        return code
+        return board_run(args.root)
     tortoise = bool(args.tsvn_hook)
     if tortoise:
         try:
             args = parse_args(tsvn_arguments(args.tsvn_hook, args.root, __file__))
         except (ValueError, OSError, UnicodeError) as error:
-            print(f"--tsvn-hook: {error} — nothing is written" + (" — " + SVN_VERIFY_LIMIT if _notice else ""), file=sys.stderr)
+            print(f"--tsvn-hook: {error} — nothing is written", file=sys.stderr)
             return EXIT_LINT
     if args.root:
         configure(args.root)
@@ -12092,15 +12098,12 @@ def main(argv=None, *, _notice=True):
         try:
             svn_local_directory(".")                      # A's validated local WC binding, never a server read
         except (SvnUnreadable, OSError) as error:
-            print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written" + (" — " + SVN_VERIFY_LIMIT if _notice else ""), file=sys.stderr)
+            print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written", file=sys.stderr)
             return EXIT_LINT
     diagnostic, code = cli_preflight(args, vcs()) if vcs() == "svn" else (None, EXIT_OK)
-    limitation = SVN_VERIFY_LIMIT if _notice and vcs() == "svn" else ""
     if diagnostic is not None:
-        print(diagnostic + (" — " + limitation if limitation else ""), file=sys.stderr)
+        print(diagnostic, file=sys.stderr)
         return code
-    if limitation and not args.vendor:                      # a --vendor run says it with its own result, below
-        print(limitation, file=sys.stderr)
     owner_refused = owner_signature_problems() if args.check else []
     for problem in owner_refused:
         print(problem, file=sys.stderr)
@@ -12114,27 +12117,7 @@ def main(argv=None, *, _notice=True):
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
-        if not limitation:
-            return vendor(args.vendor)
-        # FM-004: a --vendor refusal keeps its one line, the Subversion notice folded in (" — " + notice) as --tsvn-hook's and the
-        # preflight's are, whichever function refuses, returning or raising; any other run of it says the notice once, on its own line
-        import io
-        said, code = io.StringIO(), None
-        stderr, sys.stderr = sys.stderr, said
-        try:
-            code = vendor(args.vendor)
-        except SystemExit as stop:
-            code = stop.code
-            raise
-        finally:
-            sys.stderr = stderr
-            text = said.getvalue()
-            if code == EXIT_LINT and text.endswith("\n") and text.count("\n") == 1:
-                print(text[:-1] + " — " + limitation, file=sys.stderr)
-            else:
-                print(limitation, file=sys.stderr)
-                sys.stderr.write(text)
-        return code
+        return vendor(args.vendor)
     if args.brand is not None:
         return brand_report(args.brand or None)
     if args.init:

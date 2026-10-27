@@ -13,6 +13,8 @@ hook: "the Subversion notice prints on every run and reads as the error in Torto
 
 ## What is true now
 
+**Built 2026-10-27.** The Subversion notice is emitted once at the end of a selected `--init` or `--check`, after any violations, and is absent from all TortoiseSVN results and other modes. The old unconditional output and vendor-specific stderr capture are removed. Real local Subversion controls cover success, binding refusal and gate refusal; mutants omit either selected mode, duplicate the notice, move it before violations or leak it into hooks. Proposed words for the Owner: “Subversion: this local run cannot verify commit signatures or server-authenticated author identities.” Critical review and the wording ruling remain next.
+
 **Filed and judged 2026-10-27: In Progress, P2, for v0.20.2, in FM-068's critical round, on the Owner's word as
 relayed by the Auditor.** It comes from a field report from a Windows working copy, on v0.20.1.
 
@@ -38,3 +40,4 @@ an agent reads as a failure.
 | Date | Event |
 |---|---|
 | 2026-10-27 | Filed and judged In Progress, P2, for v0.20.2, from a field report from a Windows working copy. |
+| 2026-10-27 | Built notice placement and its real-entry controls and mutants, from a field report from a Windows working copy. |

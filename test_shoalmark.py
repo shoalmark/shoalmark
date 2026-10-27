@@ -10672,7 +10672,7 @@ else:
         check("S1 · a pass's *last worked on* comes from `svn log` — one call for the whole directory", fm.last_worked_on(made) == datetime.date.today().isoformat() or re.fullmatch(r"\d{4}-\d\d-\d\d", fm.last_worked_on(made)))
         # FM-008 · S4 · legacy account-string predicates on a local file:// fixture. Its --username strings
         # authenticate nobody; these controls supply no consumer adoption or protected SVN acceptance.
-        svn_limit_ = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
+        svn_limit_ = "Subversion: this local run cannot verify commit signatures or server-authenticated author identities."
         wt_ = root / "docs/work-tracker"
         for id_, who_, q_ in (("C2-002", "stranger", "Soll der Starter zuerst?"), ("C2-003", "principal", "Soll der Import zuerst?")):
             (wt_ / f"{id_}-x.md").write_text(f'---\nid: {id_}\nstatus: In Progress\nconsidered: none\nnext: owner\nask: "{q_}"\n'
@@ -10687,14 +10687,14 @@ else:
               and "--worktree user.email" not in err and "C2-003" not in err)
         (root / "shoalmark.toml").write_text(cfg + '\n[seats]\nprincipal = "principal@example.org signed"\n', encoding="utf-8")      # a signed identity is an email (FM-024)
         code, out, err = run(root)
-        check("S4 · a signed seat policy under Subversion is held, with the local verification limit stated exactly once",
+        check("S4 · a signed seat policy under Subversion is held, without the init/check notice in a plain run",
               code == fm.EXIT_LINT and "asks for a signature, and its signed policy is held under Subversion" in err
-              and (out + err).count(svn_limit_) == 1)
+              and (out + err).count(svn_limit_) == 0)
         (root / "shoalmark.toml").write_text('owner = "holgo@example.org signed"\n' + cfg + '\n[seats]\nprincipal = "principal"\n', encoding="utf-8")
         code, out, err = run(root)
         check(f"S4 · RV-2200 · the Owner named at the top with `signed` under Subversion is refused as `owner`, never under `[seats]` (saw {err.strip()[-200:]!r})",
               code == fm.EXIT_LINT and "shoalmark.toml: `owner` asks for a signature, and its signed policy is held under Subversion" in err
-              and (out + err).count(svn_limit_) == 1)
+              and (out + err).count(svn_limit_) == 0)
         (root / "shoalmark.toml").write_text(cfg, encoding="utf-8")
         for id_ in ("C2-002", "C2-003"):
             (wt_ / f"{id_}-x.md").unlink()

@@ -252,7 +252,7 @@ def run_board_local_controls(fm, check):
             env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
             cli = subprocess.run([sys.executable, "-B", str(HERE / "shoalmark.py"), "--root", str(root), "--html-only"], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
             check(f"A1: direct production CLI succeeds with no Git and unavailable server ({saw(cli)})",
-                  cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held.\n")
+                  cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "")
             before = board_snapshot(folder)                 # FM-057: after the last run that writes the board — each run names its own moment
             for scenario in ("malformed_xml", "failed_status"):
                 got = measured(root, search, scenario)

@@ -23,7 +23,7 @@ import time
 import traceback
 
 HERE = Path(__file__).resolve().parent
-LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
+LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated author identities."
 MARKER = "__ENTRY_OBSERVATION__"
 STATUS = ["svn", "status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", "--xml"]
 TOOL_FILES = ("VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md", "vendor/marked-18.0.13.umd.js")
@@ -281,7 +281,7 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
             observations.append(got)
             return got
         def checks(name, got, code=0, readonly=False, local=False):
-            check("entry: " + name + " emits the complete verification limit exactly once", got["notice_count"] == 1)
+            check("entry: " + name + " limits its notice to init and check", got["notice_count"] == int(name in ("init", "check")))
             check("entry: " + name + " has its deliberate result and no exception", got["code"] == code and got["exception"] is None)
             processes = [e for e in got["events"] if e["event"] == "subprocess.Popen"]
             check("entry: " + name + " attempts no Git or alternate network/process API", got["git_absent"] and all(e["argv"][0] == "svn" for e in processes) and not any(e.get("alternate_process_or_network") for e in got["events"]))

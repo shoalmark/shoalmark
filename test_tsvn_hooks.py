@@ -95,6 +95,78 @@ class PropertyControls(unittest.TestCase):
             self.assertFalse(property_contract(properties))
 
 
+NOTICE = "Subversion: this local run cannot verify commit signatures or server-authenticated author identities."
+
+
+def notice_observations(source, base):
+    root, tool, install, properties = installed_properties(source, base)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    def run(*args):
+        return subprocess.run([sys.executable, str(tool), "--root", str(root), *args], cwd=base,
+                              env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    paths = base / "paths.txt"; message = base / "message.txt"
+    paths.write_text(str(root / "work-tracker") + "\n", encoding="utf-8")
+    message.write_text("local fixture\n", encoding="utf-8")
+    hook = lambda kind: run("--tsvn-hook", kind, str(paths), *(["3"] if kind == "pre" else []), str(message), str(root))
+    results = {"init": run("--init"), "write": run()}
+    results["check"] = run("--check")
+    results["start"] = hook("start")
+    results["pre"] = hook("pre")
+    results["binding-refusal"] = run("--tsvn-hook", "pre", "not-an-absolute-path")
+    results["board"] = run("--html-only")
+    results["schema"] = run("--schema")
+    tracker = root / "work-tracker" / "WORK-001-local.md"
+    tracker.write_text(tracker.read_text(encoding="utf-8").replace("status: Proposed", "status: Broken"), encoding="utf-8")
+    results["check-refusal"] = run("--check")
+    results["start-refusal"] = hook("start")
+    results["pre-refusal"] = hook("pre")
+    results["init-refusal"] = run("--init", "--key", "!bad")
+    return results
+
+
+def notice_contract(results):
+    for name, result in results.items():
+        wanted = name in ("init", "check", "check-refusal", "init-refusal")
+        if (result.stdout + result.stderr).count(NOTICE) != int(wanted):
+            return False
+        if wanted and (not result.stderr.endswith(NOTICE + "\n") or NOTICE in result.stdout):
+            return False
+        if result.returncode != (4 if "refusal" in name else 0):
+            return False
+    return True
+
+
+@unittest.skipUnless(shutil.which("svn") and shutil.which("svnadmin"), "svn and svnadmin are required")
+class NoticeControls(unittest.TestCase):
+    def test_notice_modes_and_order_after_refusals(self):
+        with tempfile.TemporaryDirectory(prefix="tsvn-notice-") as temp:
+            self.assertTrue(notice_contract(notice_observations(HERE / "shoalmark.py", Path(temp).resolve())))
+
+    def test_notice_mutants_fail_same_contract(self):
+        source = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+        selection = 'notice = _notice and not args.tsvn_hook and cli_operation(args) in ("init", "check")'
+        final = '''    try:
+        return main_run(args)
+    finally:
+        if notice and vcs() == "svn":
+            print(SVN_VERIFY_LIMIT, file=sys.stderr)'''
+        mutants = {
+            "missing-init": (selection, selection.replace('("init", "check")', '("check",)')),
+            "missing-check": (selection, selection.replace('("init", "check")', '("init",)')),
+            "hook-notice": (selection, selection + ' or bool(args.tsvn_hook)'),
+            "duplicate": ('            print(SVN_VERIFY_LIMIT, file=sys.stderr)', '            print(SVN_VERIFY_LIMIT, file=sys.stderr)\n            print(SVN_VERIFY_LIMIT, file=sys.stderr)'),
+            "before-violations": (final, '''    if notice and vcs() == "svn":
+        print(SVN_VERIFY_LIMIT, file=sys.stderr)
+    return main_run(args)'''),
+        }
+        for name, (before, after) in mutants.items():
+            with self.subTest(mutant=name), tempfile.TemporaryDirectory(prefix="tsvn-notice-mutant-") as temp:
+                self.assertEqual(source.count(before), 1)
+                base = Path(temp).resolve(); mutant = base / "mutant.py"
+                mutant.write_text(source.replace(before, after), encoding="utf-8")
+                self.assertFalse(notice_contract(notice_observations(mutant, base)))
+
+
 def run_controls(check):
     for test in unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__]):
         for case in test:
