@@ -13,6 +13,8 @@ hook: "The Owner answers each ask in a Board view that holds only its dialog; a 
 
 ## What is true now
 
+**2026-10-27 — judged for v0.20.3, S2 excepted,** on the Owner's word of 27 October, as relayed by the Auditor. S3 and S4 move to v0.20.3. S2, READY at `ec5d19f`, stays in v0.20.2. FM-023's ask of 27 October puts the move to the Owner.
+
 **2026-10-27 — adopted by the Owner, and judged In Progress, P2, critical, for v0.20.2.** The Owner's signed answer adopts the guided answer view's design; it is recorded under `## Asks`. It is batch 3's S2 (READY at `ec5d19f`), S3 and S4. FM-023's signed answer of 27 October moves batch 3 to v0.20.2, so this tracker's release answer of 16 October (*accepted - v0.20.1*, `99b1708`) is superseded by it.
 
 **2026-10-27 — input for the design, from the Auditor.** An ask is rendered from the repository. A link carries only the
@@ -713,3 +715,4 @@ Reviewer privately. This text does not state them.
 | 2026-10-27 | Its ruling ask filed again by the Planner seat, on today's main, with what changed since 19 October; the design unchanged. Records only. |
 | 2026-10-27 | Input for the design recorded, from the Auditor: the ask rendered from the repository, a link with only the tracker id, the exact diff before signing, and local presence required. Records only. |
 | 2026-10-27 | The Owner's signed answer adopts the design; its ask cleared; judged In Progress, P2, critical, for v0.20.2 (S2, S3, S4 of batch 3); the release answer of 16 October superseded by FM-023's answer of 27 October. Records only. |
+| 2026-10-27 | Judged for v0.20.3, S2 excepted (S2 stays in v0.20.2), on the Owner's word of 27 October; FM-023's ask puts it to the Owner. Records only. |

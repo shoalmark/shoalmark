@@ -11,6 +11,8 @@ hook: "an agent drifts off track where a rule is held only as prose, two sources
 
 ## What is true now
 
+**2026-10-27 — `/prune-drift` stays in v0.20.2; its outputs move to v0.20.3,** on the Owner's word of 27 October, as relayed by the Auditor: the prose prune of `shoalmark.py` with the comment ratchet, the five conversions, and the text fixes. FM-023's ask of 27 October puts the move to the Owner.
+
 **2026-10-27 — `/find-drift`'s next round: decisions, the record against git, and stranded work, each finding with its
 evidence chain.** This comes from v0.20.1's debrief and a user's question, as relayed by the Auditor. It is briefed after
 the v0.20.2 lane is pushed, and the lane as it stands is unchanged. A user asked: "Will /find-drift link each stale
@@ -70,6 +72,7 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | `/prune-drift` stays in v0.20.2; the prose prune with the comment ratchet, the five conversions and the text fixes move to v0.20.3, on the Owner's word of 27 October. Records only. |
 | 2026-10-27 | Its next round recorded, from v0.20.1's debrief and a user's question, as relayed by the Auditor: decisions as sources, the record against git, stranded work, and an evidence chain for each finding. Briefed after the v0.20.2 lane is pushed. Records only. |
 | 2026-10-18 | The second skill named `/prune-drift`, the Owner's word of 18 October (recorded privately); v0.20.2's allocation accepted (`88bf707`). |
 | 2026-10-18 | Filed, with v0.20.2's allocation ask on FM-023. |
