@@ -5855,11 +5855,11 @@ _STANDUP_ROWS = {
                          "one item at a time.",
            "cost_1_b": "One stand-up, whenever it suits you",
            "cost_1": "one click copies the stand-up prompt; the board's first lines are its agenda."},
-    "de": {"p2_text": "Ihre Agenten fragen mitten im Lauf, und Sie nicken ab, was Sie nicht in Ruhe lesen konnten. shoalmark sammelt diese Fragen auf dem Board, "
-                      "bis es Ihnen passt.",
-           "p2_standup": "Wann immer es Ihnen passt: Die ersten Zeilen des Boards sind seine Tagesordnung, und der Standup-Prompt des Boards bittet eine Sitzung, "
-                         "sie mit Ihnen durchzugehen, einen Punkt nach dem anderen.",
-           "cost_1_b": "Ein Standup, wann immer es Ihnen passt",
+    "de": {"p2_text": "Deine Agenten fragen mitten im Lauf, und du nickst ab, was du nicht in Ruhe lesen konntest. shoalmark sammelt diese Fragen auf dem Board, "
+                      "bis es dir passt.",
+           "p2_standup": "Wann immer es dir passt: Die ersten Zeilen des Boards sind seine Tagesordnung, und der Standup-Prompt des Boards bittet eine Sitzung, "
+                         "sie mit dir durchzugehen, einen Punkt nach dem anderen.",
+           "cost_1_b": "Ein Standup, wann immer es dir passt",
            "cost_1": "ein Klick kopiert den Standup-Prompt; die ersten Zeilen des Boards sind seine Tagesordnung."}}
 _STANDUP_TWIN_LINES = {
     "docs/index.md": ("**To the owner:** " + _STANDUP_ROWS["en"]["p2_text"][:1].lower() + _STANDUP_ROWS["en"]["p2_text"][1:],
@@ -5883,7 +5883,7 @@ def _standup_problems(src):
 _sp = _standup_problems(_ls)
 check(f"FM-006 · B1 · the landing's four stand-up lines, W25 to W28: p2_text, p2_standup, cost_1_b and cost_1 hold their rows byte for byte in en.html and "
       f"de.html, and the Markdown twins' lines that carry them hold them too (saw {_sp})", not _sp)
-_sctl = {"a word of one row changed in the German twin": _with(_ls, "docs/de/index.md", "wann immer es Ihnen passt", "wann es Ihnen passt"),
+_sctl = {"a word of one row changed in the German twin": _with(_ls, "docs/de/index.md", "wann immer es dir passt", "wann es dir passt"),
          "a word of one row changed in the English words": _with(_ls, "overrides/partials/landing/en.html", '"One stand-up, whenever it suits you"',
                                                                   '"One stand-up, whenever it suits"')}
 _ssaw = {name: len(_standup_problems(src)) for name, src in _sctl.items()}
@@ -5899,11 +5899,11 @@ check("FM-006 · B1 · the footer's check is not blind: a word of W29 changed in
       _landing_words(_sw29_ctl)[0].get("de", {}).get("foot_fine") != _FOOT_DE and bool(_landing_problems(_sw29_ctl)))
 
 _CLAIM_PARTS = {"en": ('<a href="why-shoalmark.html">Why shoalmark?</a>', 'Built in the open: <a href="https://github.com/shoalmark/shoalmark">github.com/shoalmark/shoalmark</a>',
-                       'Follow the shipyard on X: <a href="https://x.com/holgo99">@holgo99</a>'),
+                       'Follow me building it on X: <a href="https://x.com/holgo99">@holgo99</a>'),
                 "de": ('<a href="warum-shoalmark.html">Warum shoalmark?</a>', 'Offen gebaut: <a href="https://github.com/shoalmark/shoalmark">github.com/shoalmark/shoalmark</a>',
-                       'Die Werft auf X verfolgen: <a href="https://x.com/holgo99">@holgo99</a>')}
-_CLAIM_SEEN = {"en": "Why shoalmark? · Built in the open: github.com/shoalmark/shoalmark · Follow the shipyard on X: @holgo99",
-               "de": "Warum shoalmark? · Offen gebaut: github.com/shoalmark/shoalmark · Die Werft auf X verfolgen: @holgo99"}
+                       'Folge mir beim Bauen auf X: <a href="https://x.com/holgo99">@holgo99</a>')}
+_CLAIM_SEEN = {"en": "Why shoalmark? · Built in the open: github.com/shoalmark/shoalmark · Follow me building it on X: @holgo99",
+               "de": "Warum shoalmark? · Offen gebaut: github.com/shoalmark/shoalmark · Folge mir beim Bauen auf X: @holgo99"}
 _CLAIM_CSS = (".foot-band .claim>span:not(.sep){white-space:nowrap}",
               "@media (max-width:640px){.foot-band .claim>span:not(.sep){display:block;white-space:normal}.foot-band .claim .sep{display:none}}")
 
@@ -5930,7 +5930,7 @@ def _claim_problems(src):
 _cp = _claim_problems(_ls)
 check(f"FM-006 · B1 · the landing footer's first line: the pitch page's link, then W24's contact line, its words and links as the Owner gave them, each part "
       f"whole and stacked on a phone as on the pitch page (saw {_cp})", not _cp)
-_cp_ctl = _with(_ls, "overrides/partials/landing/en.html", "Follow the shipyard on X", "Follow the yard on X")
+_cp_ctl = _with(_ls, "overrides/partials/landing/en.html", "Follow me building it on X", "Follow me on X")
 check("FM-006 · B1 · the footer line's check is not blind: a word of the contact line changed in the English words is a problem",
       bool(_claim_problems(_cp_ctl)))
 
@@ -6106,7 +6106,7 @@ check("FM-006 · the taped state's check is not blind: each of the tape left off
 _GIT_FILES = ("README.md", "docs/index.md", "docs/de/index.md", "docs/setup.md", "docs/de/setup.md", "docs/how-it-works.md", "docs/de/how-it-works.md",
               "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
 _GIT_EN = "Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`."
-_GIT_DE = "Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub."
+_GIT_DE = "Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probier es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub."
 _GIT_SVN = ("On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.",
             "Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.")
 _GIT_SETUP = ("*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. " + _GIT_SVN[0] + "*",
@@ -6459,8 +6459,8 @@ _WHY_ROWS = {
         "W9b": "**Status:** Open source (Apache-2.0 or MIT), in beta, and built with shoalmark itself.",
         "W9": "**Try it:** [Copy the prompt](index.md#top) and let your agent check whether shoalmark fits your project. It takes up to 45 minutes, and \"no fit\" is an answer too.",
         "W10": "## The mark<br>In the Wadden Sea, a Pricke, a simple birch stake, marks the edge of a channel across the tidal flats. It doesn't steer. The person at the helm still chooses the course. That is the whole idea of shoalmark: let the marks do their work, and keep the course in human hands.",
-        "W11": "## What we saw<br>We started with what we measured. In the repository shoalmark came from, **200** pull requests were merged in **22** days, **85 %** of them within a minute of opening, and **none** of them reviewed. Asked separately what slowed them down most, three agents gave the same answer: questions still waiting on their human. One question, open for three days, held up three pieces of work. Speed was never the problem. Small decisions, asked in the middle of the work, were.",
-        "W12": "## What it's for<br>We believe your agents should run at full speed and check in with you when it matters, that only your verified word should decide, and that every decision should be readable later, straight from the repository. shoalmark is built for exactly that.",
+        "W11": "## What I saw<br>I started with what I measured. In my last repository, **200** pull requests were merged in **22** days, **85 %** of them within a minute of opening, and **none** of them reviewed. Asked separately what slowed them down most, three agents gave the same answer: questions still waiting on their human. One question, open for three days, held up three pieces of work. Speed was never the problem. Small decisions, asked in the middle of the work, were.",
+        "W12": "## What it's for<br>I believe your agents should run at full speed and check in with you when it matters, that only your verified word should decide, and that every decision should be readable later, straight from the repository. shoalmark is built for exactly that.",
         "W13": "A mockup of the shoalmark board of a sample repository, notes-app. Under the header, the page says when it was read from main, that it reads its file again when you come back to it, and that nothing polls, beside a button that copies the rebuild command. In the box titled yours, two decisions wait for you, the oldest first: NA-009-Q1, may the sync drop devices unseen for 90 days, which holds up NA-019 and was asked by the research session; and NA-012-Q2, ship the export as CSV only or as CSV and JSON, which holds up NA-014 and was asked by the planner session. Each has accept and reject buttons, and your answers here are signed. Below, your day: a button that copies your stand-up prompt; the three sessions with a commit in the last 24 hours, research and planner in Claude Code and builder in Codex, the two that asked you first, each with a button that copies its resume command; and a button that copies your close-out prompt. Reviews, receipts and your current path are folded.",
         "W14": "*A mockup of the board, from a sample repository: your agents' questions wait at the top, oldest first; below, the session that asked each one, with a button that copies its resume command.*",
         "W15": "## Why it's built this way<br>Trust starts with things you can check. So shoalmark stays small, and stays out of your way:",
@@ -6470,41 +6470,41 @@ _WHY_ROWS = {
         "W19": "- **Your stand-up.** The questions wait on the board, oldest first. The stand-up prompt is one click away, whenever it suits you.",
         "W20": "- **Written rights.** Each agent takes a seat: a role with its permissions written down. The checks see every permission used, in the diff.",
         "W21": "- **Measured, not promised.** shoalmark is not proof that work is right. That's what a review is for.",
-        "W22": "## What it holds itself to<br>We hold shoalmark to its own stated intent, printed at the top of every triage pass in its repository. It names what must never happen: a false pass, a claim without a source, an act you didn't agree to, an agent's word counted as yours.",
+        "W22": "## What it holds itself to<br>I hold shoalmark to its own stated intent, printed at the top of every triage pass in its repository. It names what must never happen: a false pass, a claim without a source, an act you didn't agree to, an agent's word counted as yours.",
         "W23": "## Your move<br>If you build with agents, try it on your own repository. Your agents set it up, and the record stays yours.<br>Let your agents run. The final word is yours.<br>[Your agents set it up](index.md#start) · [Set up in ten minutes](setup.md) · [Back to shoalmark](index.md)",
-        "W24": "Built in the open: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Follow the shipyard on X: [@holgo99](https://x.com/holgo99)",
-        "W38": "*\"On 13 July, I took myself out of the loop: my planner agents got access to gh and took over the orchestration, and the speed-up was unreal. A month later I posted ['Bottleneck removed.'](https://x.com/Holgo99/status/2088153757792043485)*<br>*But I hadn't removed myself at all. I'd become their message relay, their rubber stamp and their decision engine, and the context-switching was brutal. On 29 September my GitHub showed 9,946 contributions for the year, and I posted ['What a hell of a ride.'](https://x.com/Holgo99/status/2104854591032484007)*<br>*shoalmark is how I came back in: since 21 September its agents have made most of its commits, and mine are mostly merges and answers.\"*<br>— @holgo99, who builds portdive with shoalmark, and shoalmark with itself",
+        "W24": "Built in the open: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Follow me building it on X: [@holgo99](https://x.com/holgo99)",
+        "W38": "On 13 July, I took myself out of the loop: my planner agents got access to gh and took over the orchestration, and the speed-up was unreal. A month later I posted ['Bottleneck removed.'](https://x.com/Holgo99/status/2088153757792043485)<br>But I hadn't removed myself at all. I'd become their message relay, their rubber stamp and their decision engine, and the context-switching was brutal. On 29 September my GitHub showed 9,946 contributions for the year, and I posted ['What a hell of a ride.'](https://x.com/Holgo99/status/2104854591032484007)<br>shoalmark is how I came back in: since 21 September its agents have made most of its commits, and mine are mostly merges and answers. I build portdive with shoalmark, and shoalmark with itself.",
         "W39": "A pixel-grid calendar of 10,259 GitHub contributions in 2026 on one maker's account, as of 23 October, in shoalmark's night look: quiet from January to early July, a bright band from mid-July to late September, quieter again in October. Three labels: 13 July, \"my planner agents get gh. I become their rubber stamp and message relay.\"; a bracket over the 22 days before 21 September, \"200 pull requests in 22 days, none reviewed: the repository shoalmark came from\"; and 21 and 24 September, \"shoalmark's first commit\" and \"every pull request gets a reviewer's file\". Source: github.com/holgo99.",
     },
     "de": {
         "W0": "Warum shoalmark?",
-        "W1": "shoalmark auf einer Seite: eine Vertrauensschicht für KI-Agenten, in Ihrem Repository. Die Agenten tragen die Arbeit, Sie behalten das letzte Wort.",
+        "W1": "shoalmark auf einer Seite: eine Vertrauensschicht für KI-Agenten, in deinem Repository. Die Agenten tragen die Arbeit, du behältst das letzte Wort.",
         "W2": "Warum shoalmark? · shoalmark",
         "W3": "Warum shoalmark?",
         "W4": "**Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.**",
         "W5": "**TL;DR:**",
-        "W6": "**Was:** shoalmark ist eine Vertrauensschicht für KI-Agenten, und sie lebt in Ihrem Repository. Ihre Agenten führen den Arbeitsstand. Sie behalten das letzte Wort, als Ihre eigenen Commits.",
-        "W7": "**Das Problem:** Agenten bauen schneller, als Sie entscheiden können. Der Engpass sind nicht die Agenten. Der Engpass sind Sie, mitten in ihrer Arbeit in kleine Entscheidungen gezogen.",
-        "W8": "**Wie:** Die Fragen der Agenten warten auf dem Board, statt Sie zu unterbrechen. Wann es Ihnen passt, kopieren Sie den Standup-Prompt: Er bittet eine Sitzung, sie mit Ihnen durchzugehen. Jede Antwort ist ein Commit, den Sie signieren können.",
-        "W9a": "**Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das Sie bindet.",
+        "W6": "**Was:** shoalmark ist eine Vertrauensschicht für KI-Agenten, und sie lebt in deinem Repository. Deine Agenten führen den Arbeitsstand. Du behältst das letzte Wort, als deine eigenen Commits.",
+        "W7": "**Das Problem:** Agenten bauen schneller, als du entscheiden kannst. Der Engpass sind nicht die Agenten. Der Engpass bist du, mitten in ihrer Arbeit in kleine Entscheidungen gezogen.",
+        "W8": "**Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.",
+        "W9a": "**Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das dich bindet.",
         "W9b": "**Stand:** Open Source (Apache-2.0 oder MIT), in der Beta, und mit sich selbst gebaut.",
-        "W9": "**Ausprobieren:** [Kopieren Sie den Prompt](index.md#top) und lassen Sie Ihren Agenten prüfen, ob shoalmark zu Ihrem Projekt passt. Bis zu 45 Minuten, und „passt nicht“ ist auch eine Antwort.",
+        "W9": "**Ausprobieren:** [Kopier den Prompt](index.md#top) und lass deinen Agenten prüfen, ob shoalmark zu deinem Projekt passt. Bis zu 45 Minuten, und „passt nicht“ ist auch eine Antwort.",
         "W10": "## Die Pricke<br>Eine Pricke markiert den Rand eines Fahrwassers im Watt. Den Kurs bestimmt weiterhin der Mensch am Steuer. Das ist die ganze Idee von shoalmark: Die Marken tun ihre Arbeit, und der Kurs bleibt in Menschenhand.",
-        "W11": "## Was wir gesehen haben<br>Wir sind von dem ausgegangen, was wir gemessen haben. Im Repository, aus dem shoalmark kam, wurden in **22** Tagen **200** Pull Requests gemergt, **85 %** davon innerhalb einer Minute nach dem Öffnen, und **keiner** mit einem Review. Getrennt gefragt, was sie am meisten bremst, gaben drei Agenten dieselbe Antwort: die unbeantworteten Fragen an den Menschen. Eine Frage, drei Tage offen, hielt drei Pakete auf. Das Tempo war nie das Problem. Kleine Entscheidungen mitten in der Arbeit waren es.",
-        "W12": "## Wofür shoalmark da ist<br>Wir sind überzeugt: Ihre Agenten sollen mit voller Geschwindigkeit arbeiten und nachfragen, wenn es darauf ankommt. Entscheiden soll nur Ihr geprüftes Wort. Und jede Entscheidung soll sich später nachlesen lassen, direkt aus dem Repository. Genau dafür ist shoalmark gebaut.",
+        "W11": "## Was ich gesehen habe<br>Ich bin von dem ausgegangen, was ich gemessen habe. In meinem letzten Repository wurden in **22** Tagen **200** Pull Requests gemergt, **85 %** davon innerhalb einer Minute nach dem Öffnen, und **keiner** mit einem Review. Getrennt gefragt, was sie am meisten bremst, gaben drei Agenten dieselbe Antwort: die unbeantworteten Fragen an den Menschen. Eine Frage, drei Tage offen, hielt drei Pakete auf. Das Tempo war nie das Problem. Kleine Entscheidungen mitten in der Arbeit waren es.",
+        "W12": "## Wofür shoalmark da ist<br>Ich bin überzeugt: Deine Agenten sollen mit voller Geschwindigkeit arbeiten und nachfragen, wenn es darauf ankommt. Entscheiden soll nur dein geprüftes Wort. Und jede Entscheidung soll sich später nachlesen lassen, direkt aus dem Repository. Genau dafür ist shoalmark gebaut.",
         "W13": "Ein Mockup des shoalmark-Boards eines Beispiel-Repositorys, notes-app, mit englischen Beschriftungen. Unter dem Kopf sagt die Seite, wann sie von main gelesen wurde, dass sie ihre Datei wieder liest, wenn man zu ihr zurückkehrt, und dass nichts ständig nachfragt, neben einem Knopf, der den Befehl zum Neubau kopiert. Im Kasten „yours“ warten zwei Entscheidungen, die älteste zuerst: NA-009-Q1, „May the sync drop devices unseen for 90 days?“, die NA-019 aufhält und von der Research-Sitzung gestellt wurde; und NA-012-Q2, „Ship the export as CSV only, or as CSV and JSON?“, die NA-014 aufhält und von der Planner-Sitzung gestellt wurde. Jede hat die Knöpfe „accept“ und „reject“, und die Antworten dort sind signiert. Darunter der Tag: ein Knopf, der den Standup-Prompt kopiert; die drei Sitzungen mit einem Commit in den letzten 24 Stunden, Research und Planner in Claude Code und Builder in Codex, die beiden, die gefragt haben, zuerst, jede mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert; und ein Knopf, der den Abschluss-Prompt kopiert. Reviews, Receipts und der aktuelle Pfad sind eingeklappt.",
-        "W14": "*Ein Mockup des Boards, aus einem Beispiel-Repository: Die Fragen Ihrer Agenten warten oben, die älteste zuerst; darunter die Sitzung, die jede gestellt hat, mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert.*",
+        "W14": "*Ein Mockup des Boards, aus einem Beispiel-Repository: Die Fragen deiner Agenten warten oben, die älteste zuerst; darunter die Sitzung, die jede gestellt hat, mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert.*",
         "W15": "## Warum es so gebaut ist<br>Vertrauen beginnt mit Dingen, die man prüfen kann. Darum bleibt shoalmark klein und hält sich aus dem Weg:",
-        "W16": "- **Eine Datei.** Python 3.9 oder neuer. Kein pip, kein Server, keine Datenbank, kein Konto. Ihr Repository behält eine festgeschriebene Kopie mit Prüfsummen, und sie aktualisiert sich nie hinter Ihrem Rücken.",
-        "W17": "- **Ihr Beleg.** Schlichtes Markdown, eine Datei pro Arbeitspaket, direkt in Ihrem Repository. shoalmark überschreibt nie eine Datei, die es nicht selbst geschrieben hat.",
-        "W18": "- **Ihr Wort.** Ein Befehl pro Antwort, festgehalten als Ihr eigener Commit. Ein Klick oder eine Zeile im Chat ist keine Antwort.",
-        "W19": "- **Ihr Standup.** Die Fragen warten auf dem Board, die älteste zuerst. Der Standup-Prompt liegt einen Klick entfernt bereit, wann immer es Ihnen passt.",
+        "W16": "- **Eine Datei.** Python 3.9 oder neuer. Kein pip, kein Server, keine Datenbank, kein Konto. Dein Repository behält eine festgeschriebene Kopie mit Prüfsummen, und sie aktualisiert sich nie hinter deinem Rücken.",
+        "W17": "- **Dein Beleg.** Schlichtes Markdown, eine Datei pro Arbeitspaket, direkt in deinem Repository. shoalmark überschreibt nie eine Datei, die es nicht selbst geschrieben hat.",
+        "W18": "- **Dein Wort.** Ein Befehl pro Antwort, festgehalten als dein eigener Commit. Ein Klick oder eine Zeile im Chat ist keine Antwort.",
+        "W19": "- **Dein Standup.** Die Fragen warten auf dem Board, die älteste zuerst. Der Standup-Prompt liegt einen Klick entfernt bereit, wann immer es dir passt.",
         "W20": "- **Aufgeschriebene Rechte.** Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten, und das Gate sieht jedes Recht in einem Diff.",
         "W21": "- **Gemessen, nicht versprochen.** shoalmark ist kein Beweis, dass die Arbeit stimmt. Dafür ist ein Review da.",
-        "W22": "## Woran es sich selbst hält<br>Wir messen shoalmark an seiner eigenen Absicht, die über jedem Sichtungsdurchlauf in seinem Repository steht. Sie nennt, was nie passieren darf: ein falsches Durchwinken, eine Behauptung ohne Quelle, eine Handlung ohne Ihre Zustimmung, das Wort eines Agenten, das als Ihres zählt.",
-        "W23": "## Sie sind am Zug<br>Wenn Sie mit Agenten bauen, probieren Sie es an Ihrem eigenen Repository aus. Ihre Agenten richten es ein, und der Beleg bleibt bei Ihnen.<br>Lassen Sie Ihre Agenten laufen. Behalten Sie das letzte Wort.<br>[Ihre Agenten richten es ein](index.md#start) · [In zehn Minuten eingerichtet](setup.md) · [Zurück zu shoalmark](index.md)",
-        "W24": "Offen gebaut: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Die Werft auf X verfolgen: [@holgo99](https://x.com/holgo99)",
-        "W38": "*„Am 13. Juli habe ich mich aus der Schleife genommen: Meine Planer-Agenten bekamen gh und übernahmen die Orchestrierung, und das Tempo war unglaublich. Einen Monat später postete ich [‚Bottleneck removed.‘](https://x.com/Holgo99/status/2088153757792043485)*<br>*Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*<br>*Mit shoalmark bin ich zurückgekommen: Seit dem 21. September machen seine Agenten die meisten Commits, und meine sind vor allem Merges und Antworten.“*<br>— @holgo99, baut portdive mit shoalmark, und shoalmark mit sich selbst",
+        "W22": "## Woran es sich selbst hält<br>Ich messe shoalmark an seiner eigenen Absicht, die über jedem Sichtungsdurchlauf in seinem Repository steht. Sie nennt, was nie passieren darf: ein falsches Durchwinken, eine Behauptung ohne Quelle, eine Handlung ohne deine Zustimmung, das Wort eines Agenten, das als deines zählt.",
+        "W23": "## Du bist am Zug<br>Wenn du mit Agenten baust, probier es an deinem eigenen Repository aus. Deine Agenten richten es ein, und der Beleg bleibt bei dir.<br>Lass deine Agenten laufen. Behalte das letzte Wort.<br>[Deine Agenten richten es ein](index.md#start) · [In zehn Minuten eingerichtet](setup.md) · [Zurück zu shoalmark](index.md)",
+        "W24": "Offen gebaut: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Folge mir beim Bauen auf X: [@holgo99](https://x.com/holgo99)",
+        "W38": "Am 13. Juli habe ich mich aus der Schleife genommen: Meine Planer-Agenten bekamen gh und übernahmen die Orchestrierung, und das Tempo war unglaublich. Einen Monat später postete ich [‚Bottleneck removed.‘](https://x.com/Holgo99/status/2088153757792043485)<br>Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)<br>Mit shoalmark bin ich zurückgekommen: Seit dem 21. September machen seine Agenten die meisten Commits, und meine sind vor allem Merges und Antworten. Ich baue portdive mit shoalmark, und shoalmark mit sich selbst.",
         "W39": "Ein Pixelraster-Kalender mit 10.259 GitHub-Beiträgen in 2026 auf einem einzelnen Konto, Stand 23. Oktober, im Nachtlook von shoalmark: ruhig von Januar bis Anfang Juli, ein helles Band von Mitte Juli bis Ende September, im Oktober wieder ruhiger. Drei Beschriftungen: 13. Juli, „Meine Planer-Agenten bekommen gh. Ich werde ihr Abnicker und ihr Bote.“; eine Klammer über die 22 Tage vor dem 21. September, „200 Pull Requests in 22 Tagen, keiner mit Review: das Repository, aus dem shoalmark kam“; und der 21. und 24. September, „der erste Commit von shoalmark“ und „jeder Pull Request bekommt die Datei eines Reviewers“. Quelle: github.com/holgo99.",
     },
 }
@@ -6526,9 +6526,13 @@ def _why_plain(text):
     return " ".join(html.unescape(re.sub(r"<[^>]+>", "", text)).replace("\u00a0", " ").split())
 
 
+# the German pitch page's two capitals that do not speak to its reader: the intent's "Sie nennt", and the preview image's own words, which its alt quotes
+_WHY_DE_NOT_YOU = ("Sie nennt, was nie passieren darf", "„Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt.“")
+
+
 def _why_problems(src):
     """What is wrong with the pitch page, one line each; none where every ruled row stands, in English and in German, on its Markdown page and in the
-    words its template draws, with the board picture marked MOCKUP and the German in Sie, saying Board."""
+    words its template draws, with the board picture marked MOCKUP and the German in du, saying Board."""
     bad = []
     tpl = src["overrides/why.html"]
     for lang, page in (("en", "docs/why-shoalmark.md"), ("de", "docs/de/warum-shoalmark.md")):
@@ -6557,13 +6561,17 @@ def _why_problems(src):
         if not landing or words.get("og_image_alt") != landing.group(1):
             bad.append(f"the {lang} page's link preview does not describe the image as the landing does")
     de = src["docs/de/warum-shoalmark.md"] + json.dumps(_why_words(src["overrides/partials/why/de.html"]), ensure_ascii=False)
-    if "Board" not in de or re.search(r"\b([Dd]u|[Dd]ein\w*|[Dd]ich|[Dd]ir)\b", de):
-        bad.append("the German page does not say Board, or speaks to its reader as du")
+    you = de
+    for kept in _WHY_DE_NOT_YOU:
+        you = you.replace(kept, "")
+    if ("Board" not in de or re.search(r"\b(Sie|Ihnen|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres)\b", you) or not re.search(r"\b(du|dein\w*|dich|dir)\b", de)
+            or re.search(r"(?<=[a-zäöüß,] )(Du|Dein\w*|Dich|Dir)\b", de)):
+        bad.append("the German page does not say Board, or speaks to its reader as Sie, or not as lower-case du")
     if 'import "partials/why/" ~ ("de" if de else "en") ~ ".html" as L' not in tpl or tpl.count('<span class="mock" aria-hidden="true">MOCKUP</span>') != 1:
         bad.append("the template does not take its words by the page's language, or the board picture is not marked MOCKUP once")
     if tpl.count("{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }}") != 2 or "{{ ('assets/why/contributions-2026-' ~ w.lang ~ '@2x.png') | url }} 2x" not in tpl \
             or '<figure class="said"><blockquote><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p></blockquote><figcaption>{{ w.said_by }}</figcaption></figure>' not in tpl:
-        bad.append("the template does not draw the statement as a quote with its attribution, or the card of the page's language from the site's own files")
+        bad.append("the template does not draw the statement in its figure, or the card of the page's language from the site's own files")
     if ".over>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--coral);color:var(--landink);" not in tpl \
             or ".over p:not(.big):not(.t){color:var(--dim);max-width:70ch}" not in tpl or re.search(r"\.over p:not\(\.big\)\{", tpl):
         bad.append("the What we saw tab is not the ink on coral its own rule sets: a rule for the box's other lines also colours it")
@@ -6586,13 +6594,13 @@ def _why_strings(value):
 
 _ws = _sources(_WHY_FILES)
 _wp = _why_problems(_ws)
-check(f"FM-006 · the pitch page · every ruled row stands on its page and in the words its template draws, in English and in German (Sie, Board); its "
-      f"<title>, its description and its pictures' alts are the rows', the board picture is marked MOCKUP, the statement stands as a quote with its attribution, the "
+check(f"FM-006 · the pitch page · every ruled row stands on its page and in the words its template draws, in English and in German (du, Board); its "
+      f"<title>, its description and its pictures' alts are the rows', the board picture is marked MOCKUP, the statement stands in its figure, the "
       f"contribution card is the page's language's, and nothing loads from another host (problems found: {_wp})",
       _wp == [])
 _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.md", _WHY_ROWS["en"]["W19"] + "\n", ""),
          "a row dropped from the German words": _with(_ws, "overrides/partials/why/de.html", _WHY_ROWS["de"]["W19"].split("** ", 1)[1], ""),
-         "the German page in du": _with(_ws, "docs/de/warum-shoalmark.md", "Wann es Ihnen passt, kopieren Sie", "Wann es dir passt, kopierst du"),
+         "the German page in Sie": _with(_ws, "docs/de/warum-shoalmark.md", "Wann es dir passt, kopierst du", "Wann es Ihnen passt, kopieren Sie"),
          "the board picture without its MOCKUP tag": _with(_ws, "overrides/why.html", '<span class="mock" aria-hidden="true">MOCKUP</span>', ""),
          "the English page off its template": _with(_ws, "docs/why-shoalmark.md", "template: why.html\n", ""),
          "the German title as the English one": _with(_ws, "overrides/partials/why/de.html", '"title": "Warum shoalmark? · shoalmark"', '"title": "Why shoalmark? · shoalmark"'),
@@ -6601,7 +6609,7 @@ _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.m
          "the tab coloured as the box's other lines": _with(_ws, "overrides/why.html", ".over p:not(.big):not(.t){", ".over p:not(.big){"),
          "a picture from another host": _with(_ws, "overrides/why.html", "{{ 'assets/why/pricken-neuwerk.png' | url }}", "https://example.org/p.png")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
-check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in du, "
+check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in Sie, "
       f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one, the statement dropped from the German "
       f"page, the English card on the German page, the tab coloured as the box's other lines and a picture from another host leaves a problem "
       f"(problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 10)
@@ -6616,15 +6624,17 @@ _WHY_ENGLISH = {
     "W46": "**Status:** Open source (Apache-2.0 or MIT), in beta, and built with shoalmark itself.",
     "W47": "**Try it:** [Copy the prompt](index.md#top) and let your agent check whether shoalmark fits your project. It takes up to 45 minutes, and \"no fit\" is an answer too.",
     "W48": "In the Wadden Sea, a Pricke, a simple birch stake, marks the edge of a channel across the tidal flats. It doesn't steer. The person at the helm still chooses the course. That is the whole idea of shoalmark: let the marks do their work, and keep the course in human hands.",
-    "W49": "tab: *We started with what we measured.*<br>In the repository shoalmark came from, **200** pull requests were merged in **22** days, **85 %** of them within a minute of opening, and **none** of them reviewed. Asked separately what slowed them down most, three agents gave the same answer: questions still waiting on their human. One question, open for three days, held up three pieces of work. Speed was never the problem. Small decisions, asked in the middle of the work, were.",
-    "W50": "We believe your agents should run at full speed and check in with you when it matters, that only your verified word should decide, and that every decision should be readable later, straight from the repository. shoalmark is built for exactly that.",
+    "W49": "tab: *I started with what I measured.*<br>In my last repository, **200** pull requests were merged in **22** days, **85 %** of them within a minute of opening, and **none** of them reviewed. Asked separately what slowed them down most, three agents gave the same answer: questions still waiting on their human. One question, open for three days, held up three pieces of work. Speed was never the problem. Small decisions, asked in the middle of the work, were.",
+    "W50": "I believe your agents should run at full speed and check in with you when it matters, that only your verified word should decide, and that every decision should be readable later, straight from the repository. shoalmark is built for exactly that.",
     "W51": "- **Your word.** One command per answer, recorded as your own commit. A click or a chat message doesn't count.",
     "W52": "- **Written rights.** Each agent takes a seat: a role with its permissions written down. The checks see every permission used, in the diff.",
-    "W53": "We hold shoalmark to its own stated intent, printed at the top of every triage pass in its repository. It names what must never happen: a false pass, a claim without a source, an act you didn't agree to, an agent's word counted as yours.",
+    "W53": "I hold shoalmark to its own stated intent, printed at the top of every triage pass in its repository. It names what must never happen: a false pass, a claim without a source, an act you didn't agree to, an agent's word counted as yours.",
     "W54": "Let your agents run. The final word is yours.",
     "W55": "my planner agents got access to gh and took over the orchestration",
 }
-_WHY_ENGLISH_GONE = ("keep the work;", "keeps the word", "Keep your word", "got gh and", "We started from what", "check back when", "built with itself", "On the Wadden Sea")
+_WHY_ENGLISH_GONE = ("keep the work;", "keeps the word", "Keep your word", "got gh and", "We started from what", "check back when", "built with itself", "On the Wadden Sea",
+                     "What we saw", "We started with what we measured", "We believe your agents", "We hold shoalmark", "who builds portdive", "Follow the shipyard",
+                     '">our form</a>', "the Owner's unanswered questions", "the repository it came from")
 
 
 def _why_english_problems(src):
@@ -6663,10 +6673,11 @@ _wectl = {"the landing's h1 as it was": _with(_we, "overrides/partials/landing/e
           "the start page's twin as it was": _with(_we, "docs/index.md", "## " + _WHY_ENGLISH["W42"], "## The agents keep the work; the person keeps the word."),
           "the pitch page's description as it was": _with(_we, "docs/why-shoalmark.md", _WHY_ENGLISH["W43"], _WHY_ENGLISH["W43"].replace("on one page", "in one page")),
           "the closing line as it was": _with(_we, "docs/why-shoalmark.md", _WHY_ENGLISH["W54"], "Let your agents run. Keep your word."),
-          "the statement's gh as it was": _with(_we, "overrides/partials/why/en.html", _WHY_ENGLISH["W55"], "my planner agents got gh and took over the orchestration")}
+          "the statement's gh as it was": _with(_we, "overrides/partials/why/en.html", _WHY_ENGLISH["W55"], "my planner agents got gh and took over the orchestration"),
+          "the statement's attribution back": _with(_we, "overrides/partials/why/en.html", '"said_by": ""', '"said_by": "— @holgo99, who builds portdive with shoalmark, and shoalmark with itself"')}
 _wectl_saw = {name: len(_why_english_problems(src)) for name, src in _wectl.items()}
 check(f"FM-006 · the native-English pass · its check is not blind: each of the landing's h1, the start page's twin, the pitch page's description, its closing "
-      f"line and the statement's gh as they were leaves a problem (problems found: {_wectl_saw})", all(_wectl_saw.values()) and len(_wectl_saw) == 5)
+      f"line and the statement's gh as they were, and the statement's attribution back, leaves a problem (problems found: {_wectl_saw})", all(_wectl_saw.values()) and len(_wectl_saw) == 6)
 
 # the dialog's hold and the coin, run: the probe dialog's script under a stand-in page, with a clock the harness moves
 _HOLD_HARNESS = r"""
@@ -6765,7 +6776,7 @@ _RULED_WORDS = {"en": {"cue_taped": "— after v0.20.1 —",
                        "pd_3": "pull requests {c3_first}–{c3_last}, from {cohort_end} to {read_date}", "pd_2_b": "before the rule"},
                 "de": {"cue_taped": "— nach v0.20.1 —",
                        "taped_why": "Nicht defekt, nur noch nicht offen: Der Prompt hinter diesem Knopf geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind. "
-                                    "Bis dahin geben Sie Ihren Agenten <a href=\"{adopt}\">die Notiz</a>.",
+                                    "Bis dahin gibst du deinen Agenten <a href=\"{adopt}\">die Notiz</a>.",
                        "board_t": "Pull Requests mit festgehaltenem Review beim Öffnen", "rk_3": "3.", "pd_3_b": "per Commit geprüft",
                        "pd_3": "Pull Requests {c3_first}–{c3_last}, vom {cohort_end} bis {read_date}", "pd_2_b": "vor der Regel"}}
 
@@ -18121,12 +18132,12 @@ for _what, _ok in _docs_wf_properties(_docs_text) + _docs_wf_regressions(_docs_t
 # --- FM-049: the probe dialog's one opt-in line, after its third step and under the start section's coin lines, leads to an issue form in this repository
 #     (the Owner's answer of 2026-10-15). The form asks, in English and German, what the visitor's agent found, even "no fit", and says the issue is public;
 #     the line states the prompt's words, never an agent's conduct. Read with _docs_yaml, after it: the form keeps to the shapes that reader knows.
-_TELL = ('Tried it? At the end, the prompt asks your agent to fill in <a href="{discuss}">our form</a> with what it found, even "no fit", and to open it for you '
+_TELL = ('Tried it? At the end, the prompt asks your agent to fill in <a href="{discuss}">my form</a> with what it found, even "no fit", and to open it for you '
          'on your yes. You read it and send it, or not: the prompt never asks your agent to post.',
-         'Ausprobiert? Am Ende bittet der Prompt Ihren Agenten, <a href="{discuss}">unser Formular</a> mit dem auszufüllen, was er gefunden hat, auch „passt nicht“, '
-         'und es auf Ihr Ja für Sie zu öffnen. Sie lesen es und senden es ab, oder nicht: Der Prompt bittet Ihren Agenten nie, etwas zu posten.')
+         'Ausprobiert? Am Ende bittet der Prompt deinen Agenten, <a href="{discuss}">mein Formular</a> mit dem auszufüllen, was er gefunden hat, auch „passt nicht“, '
+         'und es auf dein Ja für dich zu öffnen. Du liest es und sendest es ab, oder nicht: Der Prompt bittet deinen Agenten nie, etwas zu posten.')
 _TELL_AP9 = ("Only at the end, and only on your yes: opening shoalmark's feedback form in your browser, with the agent's text in it. You send it, or not.",
-             "Nur am Ende und nur auf Ihr Ja: das Rückmeldeformular von shoalmark in Ihrem Browser öffnen, mit dem Text des Agenten darin. Sie senden es ab, oder nicht.")
+             "Nur am Ende und nur auf dein Ja: das Rückmeldeformular von shoalmark in deinem Browser öffnen, mit dem Text des Agenten darin. Du sendest es ab, oder nicht.")
 _TELL_INTRO = ("**This issue is public, under your GitHub name. Leave out anything private:** names, paths, code and credentials. Your agent may have filled it in; "
                "you read it, change it and send it. The prompt never asks your agent to post.",
                "**Dieses Issue ist öffentlich, unter Ihrem GitHub-Namen. Lassen Sie Privates weg:** Namen, Pfade, Code und Zugangsdaten. Ihr Agent hat es vielleicht "
@@ -18184,7 +18195,7 @@ def _tell_problems(src):
     if [b.get("id") for b in asks] != ["found"]:
         bad.append("the issue form's answer is not the field `found`, which the notes' link fills")
     for path in ("overrides/partials/landing/en.html", "overrides/partials/landing/de.html", _TELL_FORM):
-        if "never posts for you" in src[path] or "postet nie für Sie" in src[path]:
+        if "never posts for you" in src[path] or "postet nie für Sie" in src[path] or "postet nie für dich" in src[path]:
             bad.append(f"{path} promises an agent's conduct: that it never posts")
     return bad
 
@@ -18195,7 +18206,7 @@ check(f"FM-049 · the probe dialog's line after its third step and its approvals
       f"leads to the issue form in this repository, which asks it as one required answer and says the issue is public; the line states the prompt, not the "
       f"agent's conduct (problems found: {_tp})", _tp == [])
 _tctl = {"the English line as go-to-market first wrote it": _with(_ts, "overrides/partials/landing/en.html", "the prompt never asks your agent to post.", "your agent never posts for you."),
-         "the German line without its link": _with(_ts, "overrides/partials/landing/de.html", '<a href=\\"{discuss}\\">unser Formular</a>', "unser Formular"),
+         "the German line without its link": _with(_ts, "overrides/partials/landing/de.html", '<a href=\\"{discuss}\\">mein Formular</a>', "mein Formular"),
          "the line to a Discussions category": _with(_ts, "overrides/partials/landing/en.html", '"discuss": "' + _TELL_PAGE, '"discuss": "https://github.com/shoalmark/shoalmark/discussions'),
          "{discuss} back at the form's address": _with(_ts, "overrides/partials/landing/de.html", '"discuss": "' + _TELL_PAGE, '"discuss": "' + _TELL_URL),
          "the ninth approval left out of the dialog": _with(_ts, "overrides/landing.html", '          <li class="cond">{{ w.dlg_ap_9 }}</li>\n', ""),
