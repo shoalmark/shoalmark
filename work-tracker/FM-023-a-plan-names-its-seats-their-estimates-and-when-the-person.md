@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (27 October, the scope) sets out: v0.20.2 keeps the work in progress and adds the Chrome flag, quick win 10, S1, FM-063 and FM-065; v0.20.3 takes S3, who asked, the receipts, S4 and the rest of 18 October's allocation?"
-ask-kind: ruling
-ask-since: 2026-10-27
-ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as allocated on 18 October and amended on 27 October"
-ask-proposal: "yes"
-answer: "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills"
-answered: 2026-10-27
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -376,10 +368,16 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted the proposal
 **signed** — 3996506 · G
 
+**2026-10-27** · Do you amend v0.20.2's allocation as FM-023's What is true now (27 October, the scope) sets out: v0.20.2 keeps the work in progress and adds the Chrome flag, quick win 10, S1, FM-063 and FM-065; v0.20.3 takes S3, who asked, the receipts, S4 and the rest of 18 October's allocation?
+**answered** — accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills · holgo99
+**relation** — accepted with a change
+**signed** — 62ac263 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
 | 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
 | 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
 | 2026-10-27 | Batch 3 and quick win 11's S2 recorded as moved from v0.20.1 to v0.20.2, on the Owner's word of 22 October, with a row of the 15 October table; the ask filed for the Owner's signed answer, amending v0.20.2's allocation of 18 October. Records only. |
