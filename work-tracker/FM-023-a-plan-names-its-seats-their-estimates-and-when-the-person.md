@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you amend v0.20.2's allocation of 18 October as FM-023's What is true now (27 October) sets out: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with --sessions and who asked) and quick win 11's S2 move from v0.20.1 to v0.20.2, as you said on 22 October?"
-ask-kind: ruling
-ask-since: 2026-10-27
-ask-options: "yes | yes, with the changes I name | no: they stay unallocated until I allocate them"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-27
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -352,6 +344,11 @@ arc has run on it with its estimate–actual gap in the record.
 **answered** — accepted - yes · holgo99
 **relation** — accepted the proposal
 **signed** — 88bf707 · G
+
+**2026-10-27** · Do you amend v0.20.2's allocation of 18 October as FM-023's What is true now (27 October) sets out: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with --sessions and who asked) and quick win 11's S2 move from v0.20.1 to v0.20.2, as you said on 22 October?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 3996506 · G
 
 ## Ship log
 
