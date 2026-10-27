@@ -12045,8 +12045,7 @@ def configure_output(argv):
     encoding = "utf-8"
     if os.name == "nt" and "--tsvn-hook" in argv:
         # TortoiseSVN converts captured hook bytes through the Windows ANSI code page, regardless of Python's UTF-8 mode.
-        import ctypes
-        encoding = f"cp{ctypes.windll.kernel32.GetACP()}"
+        encoding = "mbcs"
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding=encoding, errors="replace", newline="\n")

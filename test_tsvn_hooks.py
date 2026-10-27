@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -171,17 +170,21 @@ class NoticeControls(unittest.TestCase):
 
 def hook_bytes(fm, codepage=1252, platform="nt"):
     out_bytes, err_bytes = io.BytesIO(), io.BytesIO()
-    out = io.TextIOWrapper(out_bytes, encoding="utf-8")
-    err = io.TextIOWrapper(err_bytes, encoding="utf-8")
-    get_acp = unittest.mock.Mock(return_value=codepage)
-    ctypes = SimpleNamespace(windll=SimpleNamespace(kernel32=SimpleNamespace(GetACP=get_acp)))
-    with patch.object(fm.os, "name", platform), patch.dict(sys.modules, ctypes=ctypes), \
+    class AnsiStream(io.TextIOWrapper):
+        # The Windows-only mbcs codec maps CP_ACP; simulate that mapping on hosts without the codec.
+        requested = None
+        def reconfigure(self, *, encoding, **kwargs):
+            self.requested = encoding
+            return super().reconfigure(encoding="cp" + str(codepage) if encoding == "mbcs" else encoding, **kwargs)
+    out = AnsiStream(out_bytes, encoding="utf-8")
+    err = AnsiStream(err_bytes, encoding="utf-8")
+    with patch.object(fm.os, "name", platform), \
             contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
             patch.object(fm, "tsvn_arguments", side_effect=ValueError("sample — 漢")):
         code = fm.main(["--tsvn-hook", "pre"])
         print("sample — 漢")
         out.flush(); err.flush()
-    data = code, out_bytes.getvalue(), err_bytes.getvalue(), get_acp.called
+    data = code, out_bytes.getvalue(), err_bytes.getvalue(), out.requested == err.requested == "mbcs"
     out.close(); err.close()
     return data
 
@@ -201,8 +204,7 @@ class EncodingControls(unittest.TestCase):
         import shoalmark as fm
         for platform, argv in (("nt", ["--print-written"]), ("nt", ["--check"]), ("posix", ["--tsvn-hook", "pre"])):
             raw = io.BytesIO(); stream = io.TextIOWrapper(raw, encoding="ascii")
-            ctypes = SimpleNamespace()
-            with patch.object(fm.os, "name", platform), patch.dict(sys.modules, ctypes=ctypes), contextlib.redirect_stdout(stream):
+            with patch.object(fm.os, "name", platform), contextlib.redirect_stdout(stream):
                 fm.configure_output(argv)
                 print("path — 漢")
                 stream.flush()
@@ -212,7 +214,7 @@ class EncodingControls(unittest.TestCase):
     def test_utf8_hook_mutant_fails_same_byte_contract(self):
         import shoalmark as fm
         source = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-        before = 'encoding = f"cp{ctypes.windll.kernel32.GetACP()}"'
+        before = 'encoding = "mbcs"'
         self.assertEqual(source.count(before), 1)
         namespace = dict(fm.__dict__)
         import ast
