@@ -12041,10 +12041,19 @@ def tsvn_arguments(words, explicit_root=None, source_file=None):
 SVN_VERIFY_LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated author identities."
 
 
+def configure_output(argv):
+    encoding = "utf-8"
+    if os.name == "nt" and "--tsvn-hook" in argv:
+        # TortoiseSVN converts captured hook bytes through the Windows ANSI code page, regardless of Python's UTF-8 mode.
+        import ctypes
+        encoding = f"cp{ctypes.windll.kernel32.GetACP()}"
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding=encoding, errors="replace", newline="\n")
+
+
 def main(argv=None, *, _notice=True):
-    for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
-        if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
-            stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+    configure_output(sys.argv[1:] if argv is None else argv)
     removed = r17_removed(r17_given(sys.argv[1:] if argv is None else list(argv)))     # before argparse: its --help and --version end the run (RV-3367)
     if removed:                                             # R17: a removed flag is named, never silently ignored — before anything is read or written
         print(removed, file=sys.stderr)
@@ -12348,10 +12357,8 @@ def main_run(args):
     return EXIT_DRIFT if drifted else EXIT_OK
 
 
-if __name__ == "__main__":                                  # what is said while the configuration is read, here, is in UTF-8 too — as `main` says
-    for _stream in (sys.stdout, sys.stderr):                # everything after: a Windows console in cp1252 would say `—` in its own code page
-        if hasattr(_stream, "reconfigure"):
-            _stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+if __name__ == "__main__":
+    configure_output(sys.argv[1:])
 SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
 WATCHDOG_MODE = watchdog_mode(sys.argv[1:]) if __name__ == "__main__" else None
 if WATCHDOG_MODE is not None:

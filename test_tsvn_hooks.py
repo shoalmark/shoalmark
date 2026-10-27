@@ -6,7 +6,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import test_vcs_entry as entry
 
@@ -165,6 +167,62 @@ class NoticeControls(unittest.TestCase):
                 base = Path(temp).resolve(); mutant = base / "mutant.py"
                 mutant.write_text(source.replace(before, after), encoding="utf-8")
                 self.assertFalse(notice_contract(notice_observations(mutant, base)))
+
+
+def hook_bytes(fm, codepage=1252, platform="nt"):
+    out_bytes, err_bytes = io.BytesIO(), io.BytesIO()
+    out = io.TextIOWrapper(out_bytes, encoding="utf-8")
+    err = io.TextIOWrapper(err_bytes, encoding="utf-8")
+    get_acp = unittest.mock.Mock(return_value=codepage)
+    ctypes = SimpleNamespace(windll=SimpleNamespace(kernel32=SimpleNamespace(GetACP=get_acp)))
+    with patch.object(fm.os, "name", platform), patch.dict(sys.modules, ctypes=ctypes), \
+            contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
+            patch.object(fm, "tsvn_arguments", side_effect=ValueError("sample — 漢")):
+        code = fm.main(["--tsvn-hook", "pre"])
+        print("sample — 漢")
+        out.flush(); err.flush()
+    data = code, out_bytes.getvalue(), err_bytes.getvalue(), get_acp.called
+    out.close(); err.close()
+    return data
+
+
+class EncodingControls(unittest.TestCase):
+    def test_windows_hook_uses_ansi_bytes_and_replacement(self):
+        import shoalmark as fm
+        for cp in (1252, 932, 65001):
+            with self.subTest(codepage=cp):
+                code, out, err, read = hook_bytes(fm, cp)
+                self.assertEqual(code, 4)
+                self.assertTrue(read)
+                self.assertEqual(out, "sample — 漢\n".encode("cp" + str(cp), errors="replace"))
+                self.assertEqual(err, "--tsvn-hook: sample — 漢 — nothing is written\n".encode("cp" + str(cp), errors="replace"))
+
+    def test_other_modes_keep_utf8(self):
+        import shoalmark as fm
+        for platform, argv in (("nt", ["--print-written"]), ("nt", ["--check"]), ("posix", ["--tsvn-hook", "pre"])):
+            raw = io.BytesIO(); stream = io.TextIOWrapper(raw, encoding="ascii")
+            ctypes = SimpleNamespace()
+            with patch.object(fm.os, "name", platform), patch.dict(sys.modules, ctypes=ctypes), contextlib.redirect_stdout(stream):
+                fm.configure_output(argv)
+                print("path — 漢")
+                stream.flush()
+            self.assertEqual(raw.getvalue(), "path — 漢\n".encode("utf-8"))
+            stream.close()
+
+    def test_utf8_hook_mutant_fails_same_byte_contract(self):
+        import shoalmark as fm
+        source = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+        before = 'encoding = f"cp{ctypes.windll.kernel32.GetACP()}"'
+        self.assertEqual(source.count(before), 1)
+        namespace = dict(fm.__dict__)
+        import ast
+        function = next(node for node in ast.parse(source.replace(before, 'encoding = "utf-8"')).body
+                        if isinstance(node, ast.FunctionDef) and node.name == "configure_output")
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(HERE / "shoalmark.py"), "exec"), namespace)
+        with patch.object(fm, "configure_output", namespace["configure_output"]):
+            code, out, err, read = hook_bytes(fm)
+        self.assertNotEqual(err, "--tsvn-hook: sample — 漢 — nothing is written\n".encode("cp1252", errors="replace"))
+        self.assertIn("—".encode("utf-8"), err)
 
 
 def run_controls(check):

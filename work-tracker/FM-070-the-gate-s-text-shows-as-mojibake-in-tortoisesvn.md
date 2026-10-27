@@ -13,6 +13,10 @@ hook: "the gate's text shows as mojibake in TortoiseSVN"
 
 ## What is true now
 
+**Built 2026-10-27.** Windows TortoiseSVN runs configure stdout and stderr with the ANSI code page returned by `GetACP()`, replacing characters it cannot encode. Both entry-time configuration diagnostics and `main` use this choice. Other modes retain UTF-8 and LF, including `--print-written`. Byte controls simulate Windows with code pages 1252, 932 and 65001, and reject a UTF-8 hook mutant. This is simulated evidence; TortoiseSVN dialog display still needs a Windows run. Critical review remains next.
+
+Check limit found on the way: Python 3.9 source-binding controls report seven confinement failures on standard-library bytecode-cache reads outside the runtime directory. The second diagnostic attempt identifies the same cache reads; that predicate is left for a separate change.
+
 **Filed and judged 2026-10-27: In Progress, P3, for v0.20.2, in FM-068's critical round, on the Owner's word as
 relayed by the Auditor.** It comes from a field report from a Windows working copy, on v0.20.1.
 
@@ -33,3 +37,4 @@ A refusal a person cannot read is a refusal they cannot act on.
 | Date | Event |
 |---|---|
 | 2026-10-27 | Filed and judged In Progress, P3, for v0.20.2, from a field report from a Windows working copy. |
+| 2026-10-27 | Built ANSI hook output and byte controls, from a field report from a Windows working copy. |
