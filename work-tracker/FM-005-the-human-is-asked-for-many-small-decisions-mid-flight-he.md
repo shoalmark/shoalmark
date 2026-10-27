@@ -13,6 +13,8 @@ hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after 
 
 ## What is true now
 
+**2026-10-27 — design input, not ruled, from the Auditor's relay of 27 October: the digest's settled half.** `--owner`'s digest shows what has been settled beside what needs the Owner. A seat's correction of the record is shown there as an item of its own, *corrected: …*, and is never folded into another line. It is the settled half of the digest in [`evidence/FM-005/design.md`](evidence/FM-005/design.md) §3.4, split off from FM-082's Board section of 27 October. Nothing is built, and it is not allocated.
+
 **2026-10-01 — evidence-checked done, its first slice: built, judged once, fixed, waiting for the Reviewer's verification (v0.19.0).** The
 Owner's ruling is filed below, in *A shipped tracker names its commit — v0.19.0*. Built on `fm/005-a-shipped-tracker-names-its-commit`,
 cut from main `1197e80`, by one Builder: the rule (`ship_problems`, on git and on Subversion, with its checks and their controls), the
@@ -109,3 +111,4 @@ it, so a new tracker filed as `Shipped` moves to it.
 | 2026-09-30 | **A shipped tracker names its commit — filed** by the Planner on the Owner's ruling of that day, a must for v0.19.0: the claim *a gate that refuses a false done* is untrue at `1197e80` (a `Shipped` tracker with nothing built passes the hook and `--check`, reproduced in a scratch repository), so a move to `Shipped` is refused unless the ship log names a commit in the history that changes a path outside the records — every author, git and Subversion, judged on the commit that changes the status. |
 | 2026-10-01 | **Built and pushed for the Reviewer** by one Builder on `fm/005-a-shipped-tracker-names-its-commit`, in four commits and this record: `047d3e1` (`changes_under_review` read once per run, outputs unchanged), `5562476` (the rule and its tests, git and Subversion), `3bb9251` (the board counts `Closed` apart), `1467792` (the claim, §5's row, the CHANGELOG). Nothing on the branch moves a tracker to `Shipped`; one Reviewer at code tier, then the Owner opens the pull request. |
 | 2026-10-01 | **Fixed after the Reviewer's pass** (RV-2150…2159 on `6890292`, NOT READY): `4324476` (RV-2150, Subversion at the repository's root, and the corrections to two earlier messages), `a36cf2e` (RV-2151, NUL-separated path lists), `d6ed788` (RV-2156…2159), `b3fbbc9` (RV-2152…2155). Nothing on the branch moves a tracker to `Shipped`; one Reviewer verifies, then the Owner opens the pull request. |
+| 2026-10-27 | Design input, not ruled: the digest's settled half, with a seat's correction shown as an item of its own (*corrected: …*), from FM-082's Board section of 27 October. |
