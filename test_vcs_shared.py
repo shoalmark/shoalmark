@@ -508,7 +508,7 @@ def run_svn_setup_controls(fm, check):
             got = measured(install, search, "setup:install")
             fm.configure(install)
             props = fm.svn_local_properties(".")
-            check("A2: actual no-Git/server-free property install retains generated format", got["code"] == 0 and got["git_absent"] and props == {prop: f"python %REPOROOT%/tools/shoalmark/shoalmark.py --tsvn-hook {kind}\ntrue\nhide\n" for prop, kind in fm.TSVN_HOOKS.items()})
+            check("A2: actual no-Git/server-free property install uses type/command/true/hide format", got["code"] == 0 and got["git_absent"] and props == {prop: f'{kind}_commit_hook\npython "%REPOROOT%/tools/shoalmark/shoalmark.py" --tsvn-hook {kind}\ntrue\nhide\n' for prop, kind in fm.TSVN_HOOKS.items()})
             got = measured(install, search, "setup:install")
             check("A2: repeat installed properties perform no mutation", got["code"] == 0 and not any(e[0] == "subprocess.Popen" and e[2][1:2] in (["add"], ["propset"]) for e in got["events"]))
             for name, fault in (("install-info-fail", "info"), ("install-proplist-fail", "proplist"), ("install-propset-fail", "propset")):

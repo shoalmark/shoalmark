@@ -99,8 +99,10 @@ trial into the throwaway repository: run the tool first, then `svn add --force .
   2. Tries a change the gate refuses: a tracker moved to `Shipped` with no revision in its ship log. TortoiseSVN
      refuses the commit and shows the gate's line. Then `svn revert` it.
 
-  Record what the Owner saw. No human has yet seen, on Windows, TortoiseSVN run the two hook properties as described;
-  only the command line is checked in CI. Where it differs, that is a finding, and the report and the feedback say so.
+  Record what the Owner saw. A field report from a Windows working copy showed that TortoiseSVN asked for approval
+  after the hook properties were corrected by hand, and the start-commit hook refused a tracker moved to `Shipped`
+  with no revision. The installer now writes that format; path quoting is based on TortoiseSVN's source and has not
+  been tried on Windows. Where it differs, that is a finding, and the report and the feedback say so.
   On macOS and Linux there is no TortoiseSVN: the step is left out.
 
 ## Step 9: the server

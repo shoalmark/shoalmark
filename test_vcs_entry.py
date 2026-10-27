@@ -333,13 +333,13 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
         check("entry: install really sets local properties without changing tracker bytes", any(e["argv"][1] == "propset" for e in processes) and not got["changed"])
         properties = {kind: command(root, "svn", "propget", "--strict", prop, ".")
                       for kind, prop in (("start", "tsvn:startcommithook"), ("pre", "tsvn:precommithook"))}
-        check("entry: installed Tortoise properties retain command/true/hide format", all(value.splitlines()[1:] == ["true", "hide"] and value.endswith("\n") for value in properties.values()))
+        check("entry: installed Tortoise properties use type/command/true/hide format", all(value.splitlines()[0] == kind + "_commit_hook" and value.splitlines()[2:] == ["true", "hide"] and value.endswith("\n") for kind, value in properties.items()))
         paths, message = base / "paths.txt", base / "message.txt"
         paths.write_text(str(root / "documents" / "O'Neil & ü.txt") + "\n", encoding="utf-8")
         message.write_text("Keep this message exactly unchanged.\n", encoding="utf-8")
         message_bytes = message.read_bytes()
         for kind in ("start", "pre"):
-            words = shlex.split(properties[kind].splitlines()[0])
+            words = shlex.split(properties[kind].splitlines()[1])
             installed_tool = Path(words[1].replace("%REPOROOT%", str(root)))
             check("entry: installed " + kind + " command names the actual local source and handler", words[0] == "python" and installed_tool == tool and words[2:] == ["--tsvn-hook", kind])
             appended = [str(paths), str(message), str(root)] if kind == "start" else [str(paths), "3", str(message), str(root)]

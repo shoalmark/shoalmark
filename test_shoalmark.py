@@ -10649,9 +10649,9 @@ else:
         svn("update", cwd=root); code, out, _ = run(root, "--install-hook")
         props = {p_: svn("propget", "--strict", p_, ".", cwd=root).stdout for p_ in fm.TSVN_HOOKS}
         again = run(root, "--install-hook")[1]
-        check("S2 · --install-hook wires the actual installed tool in the two repository-relative TortoiseSVN properties, command/true/hide form — says the command line runs no hook, and is idempotent",
-              code == 0 and all(v.splitlines()[1:] == ["true", "hide"] and v.endswith("\n")
-                                and shlex.split(v.splitlines()[0]) == ["python", "%REPOROOT%/trunk/tools/shoalmark/shoalmark.py", "--tsvn-hook", k]
+        check("S2 · --install-hook wires the actual installed tool in the two repository-relative TortoiseSVN properties, type/command/true/hide form — says the command line runs no hook, and is idempotent",
+              code == 0 and all(v.splitlines()[0] == k + "_commit_hook" and v.splitlines()[2:] == ["true", "hide"] and v.endswith("\n")
+                                and shlex.split(v.splitlines()[1]) == ["python", "%REPOROOT%/trunk/tools/shoalmark/shoalmark.py", "--tsvn-hook", k]
                                 for (p_, k), v in zip(fm.TSVN_HOOKS.items(), props.values()))
               and (root / "tools/shoalmark/shoalmark.py").is_file() and "runs no hook" in out and "set tsvn" not in again)
         svn("propset", "tsvn:precommithook", "wscript theirs.js\ntrue\nhide\n", ".", cwd=root)

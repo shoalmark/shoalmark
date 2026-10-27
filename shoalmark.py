@@ -11189,11 +11189,13 @@ def install_hook_svn():
             raise SvnUnreadable(f"the consumer tool {tool} is not a regular local file; vendor it before installing properties")
         base = "%REPOROOT%" + url.strip().lstrip("^").rstrip("/")
         for prop, kind in TSVN_HOOKS.items():
-            # The retained Tortoise format: command, wait, hidden window; it still asks its user before running.
-            value = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
+            # TortoiseSVN consumes the type before the command, and a quoted repository path ends at its closing quote.
+            command = f'python "{base}/{tool}" --tsvn-hook {kind}'
+            value = f"{kind}_commit_hook\n{command}\ntrue\nhide\n"
             have = have_properties.get(prop, "")
-            if have.strip() and "--tsvn-hook" not in have:
-                print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `python {base}/{tool} --tsvn-hook {kind}`", file=sys.stderr)
+            legacy = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
+            if have.strip() and have.strip() not in (legacy.strip(), value.strip()):
+                print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `{command}`", file=sys.stderr)
                 code = EXIT_LINT
                 continue
             if have.strip() != value.strip():

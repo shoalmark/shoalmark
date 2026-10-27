@@ -105,9 +105,11 @@ Probe ins Wegwerf-Repository: zuerst das Werkzeug laufen lassen, dann `svn add -
   2. Er versucht eine Änderung, die das Gate ablehnt: einen Eintrag, auf `Shipped` gesetzt, ohne Revision im
      *Verlauf*. TortoiseSVN lehnt den Commit ab und zeigt die Zeile des Gates. Danach `svn revert`.
 
-  Haltet fest, was der Owner gesehen hat. Dass TortoiseSVN die beiden Hook-Properties wie beschrieben ausführt, hat
-  noch kein Mensch unter Windows gesehen; nur die Kommandozeile ist in CI geprüft. Ist es anders, ist das ein Befund,
-  und Bericht und Rückmeldung sagen es. Unter macOS und Linux gibt es kein TortoiseSVN: Der Schritt entfällt.
+  Haltet fest, was der Owner gesehen hat. Ein Feldbericht aus einer Windows-Arbeitskopie zeigte: Nach der Korrektur
+  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte einen Eintrag ab,
+  der ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um
+  den Pfad beruhen auf TortoiseSVNs Quellcode und wurden unter Windows noch nicht erprobt. Ist es anders, ist das ein
+  Befund, und Bericht und Rückmeldung sagen es. Unter macOS und Linux gibt es kein TortoiseSVN: Der Schritt entfällt.
 
 ## Schritt 9: der Server
 
