@@ -3,13 +3,27 @@ id: FM-062
 status: Proposed
 considered: FM-042, FM-037, FM-026, FM-023
 tags: process
-next: wait
+next: owner
 hook: "an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live"
+ask: "Do /find-drift's five layers keep your order of 18 October, with a skill below a rule a reviewer checks, as FM-062's section The layer order, for the Owner sets out?"
+ask-kind: ruling
+ask-since: 2026-10-27
+ask-options: "yes, the order stays | no: a skill ranks above a rule a reviewer checks"
+ask-proposal: "yes, the order stays"
 ---
 
 # FM-062 — an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live
 
 ## What is true now
+
+**2026-10-27 — its layer-order ask filed on main.** It was put on 19 October on `fm/062-prune-drift`, a branch main
+never received, so the Board never showed it. It comes to main now, so the Owner can answer it before `/find-drift`
+ships, with the section *The layer order, for the Owner* below. The rest of that branch's records go with
+`/prune-drift`'s rebuild onto the v0.20.2 lane.
+
+**2026-10-19 — one ask, on the layer order.** `/find-drift`'s spec keeps the five layers in the order the Owner
+accepted. Whether a skill should rank above a rule a reviewer checks is put to the Owner, under *The layer order, for
+the Owner* below. The build goes on meanwhile.
 
 **2026-10-27 — `/prune-drift` stays in v0.20.2; its outputs move to v0.20.3,** on the Owner's word of 27 October, as relayed by the Auditor: the prose prune of `shoalmark.py` with the comment ratchet, the five conversions, and the text fixes. FM-023's ask of 27 October puts the move to the Owner.
 
@@ -57,6 +71,24 @@ The second skill is named `/prune-drift`, the Owner's word of 18 October (record
   - Both skills ship in one Claude plugin.
 - **Its first run,** on shoalmark at `5dcdcc5`, is recorded privately.
 
+## The layer order, for the Owner
+
+- **The question:** does a skill rank above a rule a reviewer checks?
+- **Today's order,** which the Owner accepted with v0.20.2's allocation on 18 October (FM-023, `88bf707`):
+  1. impossible to break;
+  2. the build fails;
+  3. a rule or a review;
+  4. a skill;
+  5. a style guide.
+- **Why it is asked:** the spec's second run, on a codebase shoalmark did not shape, met fixes that are a command or a
+  skill carrying a rule. By today's order such a fix ranks below a rule a reviewer checks. The seat that ran it
+  proposed putting a skill third and a reviewed rule fourth, at 55 %.
+- **Already settled in the spec:** a generator that writes the result is layer 1, so a command that writes what the
+  rule asks for is not graded as a skill.
+- **The proposal: the order stays (65 %).** A review stands on every merge's path (the current path's line 2), while a
+  skill acts only where an agent invokes it. A rule moved into a skill stops no break that nobody invokes it for.
+- **If the order changes,** only step 5 of the spec changes, the grading.
+
 ## Why
 
 A check refuses a break every time it runs, but prose works only when it is read and kept. The places where a rule is
@@ -72,6 +104,7 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | Its layer-order ask of 19 October filed on main, from `fm/062-prune-drift`, which main never received; the section *The layer order, for the Owner* with it. Records only. |
 | 2026-10-27 | `/prune-drift` stays in v0.20.2; the prose prune with the comment ratchet, the five conversions and the text fixes move to v0.20.3, on the Owner's word of 27 October. Records only. |
 | 2026-10-27 | Its next round recorded, from v0.20.1's debrief and a user's question, as relayed by the Auditor: decisions as sources, the record against git, stranded work, and an evidence chain for each finding. Briefed after the v0.20.2 lane is pushed. Records only. |
 | 2026-10-18 | The second skill named `/prune-drift`, the Owner's word of 18 October (recorded privately); v0.20.2's allocation accepted (`88bf707`). |
