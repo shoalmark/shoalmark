@@ -3,13 +3,16 @@ id: FM-050
 status: Proposed
 considered: FM-027, FM-008, FM-014, FM-016, FM-029, FM-030, FM-023
 tags: process
-next: owner
+next: build
 hook: "An ask has no id of its own, so an answer, the stand-up and the receipts cannot name the ask they mean"
 ask: "Do you adopt the ask-id design and R4's answer commit as FM-050 states them under The design in the commit that last filed this ask?"
 ask-kind: ruling
 ask-since: 2026-10-27
 ask-options: "yes | yes, with the change I name | no: R4 and ask ids wait for a release after v0.20.2"
 ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-27
+answered-by: holgo99
 ---
 
 # FM-050 — an ask has no id of its own, so an answer cannot name the ask it answers
