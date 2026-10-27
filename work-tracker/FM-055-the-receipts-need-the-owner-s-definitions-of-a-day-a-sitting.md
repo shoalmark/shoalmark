@@ -3,16 +3,8 @@ id: FM-055
 status: Proposed
 considered: FM-032, FM-023, FM-050, FM-004
 tags: process
-next: build
+next: wait
 hook: "The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories counted together"
-ask: "Do the receipts count a day in the machine's time zone, a sitting as answers at most 30 minutes apart, and the repositories you name together as one count?"
-ask-kind: ruling
-ask-since: 2026-10-15
-ask-options: "yes | yes, but each repository counted apart | no: I give the three definitions in my answer"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-17
-answered-by: holgo99
 ---
 
 # FM-055 — the receipts need the Owner's definitions of a day, a sitting and repositories counted together
@@ -40,6 +32,13 @@ table of 2026-10-15): the ratio command goes, and this view counts what the reco
 - The Owner's answer defines the three terms.
 - Built: `--receipts` and the board's folded receipts section read the counts above from git, each with its
   definition, never a total in a heading; the class test covers a day's edge, a sitting's gap and two repositories.
+
+## Asks
+
+**2026-10-17** · Do the receipts count a day in the machine's time zone, a sitting as answers at most 30 minutes apart, and the repositories you name together as one count?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 33e4f3b · G
 
 ## Ship log
 
