@@ -3,13 +3,16 @@ id: FM-059
 status: Proposed
 considered: FM-050, FM-007, FM-054, FM-058
 tags: process
-next: owner
+next: build
 hook: "The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes only the line the Owner chose"
 ask: "Do you adopt FM-059's guided answer design, with its open questions as your positions settle them and the one sentence G6 gains, as its body states them under *The design* in the commit that last filed this ask?"
 ask-kind: ruling
 ask-since: 2026-10-27
 ask-options: "yes | yes, with the changes I name | no: run sheets stop before each answer until it is designed again"
 ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-27
+answered-by: holgo99
 ---
 
 # FM-059 — the Owner answers each ask in a view of its own, and a prepared run signs only what they chose
