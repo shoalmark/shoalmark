@@ -35,6 +35,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
 | [FM-061](FM-061-vendoring-still-takes-an-untagged-or-partial-source-a-weaker.md) | P2 | vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows | In Progress | progress | 2026-10-16 |
 | [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | P1 | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | In Progress | progress | 2026-10-17 |
@@ -61,6 +62,20 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-082](FM-082-the-board-and-standup-do-not-list-an-ask-that-sits-on-a.md) | — | the Board and --standup do not list an ask that sits on a branch not on main | Proposed | triage | — |
+| [FM-081](FM-081-a-tracker-names-no-release-in-its-front-matter-so-the.md) | — | a tracker names no release in its front matter, so the release commit cannot check what it holds | Proposed | triage | — |
+| [FM-080](FM-080-the-docs-do-not-say-an-answer-needs-a-merge-commit-a-squash.md) | — | the docs do not say an answer needs a merge commit: a squash merge or a forge's web-editor commit breaks it | Proposed | triage | — |
+| [FM-079](FM-079-check-does-not-say-when-the-session-rule-is-still-dormant.md) | — | --check does not say when the session rule is still dormant | Proposed | triage | — |
+| [FM-078](FM-078-model-and-effort-have-no-harness-neutral-record.md) | — | model and effort have no harness-neutral record | Proposed | triage | — |
+| [FM-077](FM-077-an-owner-signed-commit-that-carries-a-seat-s-session-line.md) | — | an Owner-signed commit that carries a seat's Session: line passes silently | Proposed | triage | — |
+| [FM-075](FM-075-seven-source-binding-controls-fail-on-apple-s-python-3-9-6.md) | — | seven source-binding controls fail on Apple's Python 3.9.6, whose bytecode cache is redirected | Proposed | triage | — |
+| [FM-074](FM-074-the-docs-do-not-name-two-subversion-limits-first-no-gate-on.md) | — | the docs do not name two Subversion limits first: no gate on the svn command line, and one shared account | Proposed | triage | — |
+| [FM-073](FM-073-adopt-s-time-budget-leaves-out-the-time-spent-waiting-for.md) | — | ADOPT's time budget leaves out the time spent waiting for the person | Proposed | triage | — |
+| [FM-072](FM-072-adopt-s-read-rule-for-an-extension-can-be-taken-to-skip-a.md) | — | ADOPT's read rule for an extension can be taken to skip a folder whose name ends that way | Proposed | triage | — |
+| [FM-071](FM-071-blocked-by-owner-refuses-a-comma-in-its-reason.md) | — | blocked-by: Owner refuses a comma in its reason | Proposed | triage | — |
+| [FM-065](FM-065-a-skill-calls-another-skill-external-ones-included-through-a.md) | — | a skill calls another skill, external ones included, through a contract that pins what it calls and checks what it gets… | Proposed | triage | — |
+| [FM-064](FM-064-a-signed-answer-the-guided-run-pushes-is-out-of-the-board-s.md) | — | a signed answer the guided run pushes is out of the board's sight until its branch is merged | Proposed | triage | — |
+| [FM-063](FM-063-a-seat-s-commit-message-that-ends-in-bare-links-has-them.md) | — | a seat's commit message that ends in bare links has them rewritten by the trailer step | Proposed | triage | — |
 | [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | — | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | Proposed | triage | — |
 | [FM-060](FM-060-the-answer-s-refusal-record-is-committed-unsigned-under-the.md) | — | --answer's refusal record is committed unsigned under the Owner's name, and R14 then refuses every branch that carries… | Proposed | triage | — |
 | [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | — | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | Proposed | triage | — |
