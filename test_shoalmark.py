@@ -8909,6 +8909,117 @@ check("R10 · the German triage home carries the lead-in (the repository as a wh
       and all(x in de_home for x in (getattr(fm, "INTENT_NOTE_DE", "\0"), getattr(fm, "INTENT_LEAD_DE", "\0"), *getattr(fm, "INTENT_EXAMPLES_DE", ("\0",))))
       and untouched["intent"] == "" and untouched["path"] == "" and one == "- **für** — die Ausleihe unserer Bücherei")
 
+# --- the German triage home as v0.20.1 copies it and as it ships now: each reads only the Owner's own words as the Owner's -----------
+_DE_HOME_0201 = """# Sichtung
+
+Hier wohnt die wiederkehrende Sichtung: `python tools/shoalmark/shoalmark.py --triage`. Der Befehl druckt die Regeln
+und die beiden Abschnitte darunter; seine Arbeitsblätter sind das Protokoll, in `evidence/triage/`.
+
+## Die Absicht
+
+*Die eigenen Worte des Owners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*
+
+*Drei Zeilen in Ihren eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
+Repository, all das, da ist · was gilt, wenn es funktioniert · was keine Sichtung und kein Agent tun darf, um dorthin zu
+kommen. Das Beispiel ist ein ganzes Produkt; überschreiben Sie es — eine Sichtung liest alles, was Sie hier schreiben, und
+lässt nur diese Einleitung und die unveränderten Beispiele aus.*
+
+- **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*
+- **damit** — *z. B. ein Mitglied ein Buch und die Bibliothekarin ein Mitglied mit einem Blick findet, und nichts Verliehenes verloren geht*
+- **niemals** — *z. B. verleihen, was der Katalog nicht führt, oder die Akte eines Mitglieds löschen, bevor seine letzte Ausleihe zurück ist*
+
+## Der aktuelle Weg
+
+*Gehört dem Owner. Eine Sichtung misst jede Stufe daran; nur der Owner ändert ihn.*
+
+1.
+
+## Durchgänge
+
+Neueste zuerst — ein Absatz je Durchgang: sein Datum, was er geändert hat, sein Arbeitsblatt.
+
+*Noch keiner.*
+"""
+_DE_OWNER = ("- **für** — die Ausleihe unserer Bücherei\n- **damit** — jedes Mitglied findet, was es sucht\n"
+             "- **niemals** — ein Buch verleihen, das der Katalog nicht führt")
+_DE_NONE = "  (none is written — the Owner writes it in the triage home)"
+_DE_PATH_0201 = "*Gehört dem Owner. Eine Sichtung misst jede Stufe daran; nur der Owner ändert ihn.*"
+_DE_PATH_NOW = "*Gehört dem Eigner. Eine Sichtung misst jede Stufe daran; nur der Eigner ändert ihn.*"
+
+
+def _de_owned(home):
+    """The home with the Owner's three lines in place of the examples, and one line of path."""
+    examples = re.search(r"(?m)^- \*\*für\*\* — \*z\. B\. .*\n- \*\*damit\*\* — .*\n- \*\*niemals\*\* — .*$", home).group(0)
+    return home.replace(examples, _DE_OWNER).replace("\n\n1.\n\n", "\n\n1. Erst die Ausleihe, dann die Rückgabe.\n\n")
+
+
+def _de_read(mod, home):
+    """What `mod` reads of a German triage home in a scratch folder: the intent `--triage` prints (None where it refused), and
+    whether the intent and the path read as unwritten."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "shoalmark.toml").write_text((HERE / "examples/de/shoalmark.toml").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "docs/work-tracker").mkdir(parents=True)
+        (root / "docs/work-tracker/TRIAGE.md").write_text(home, encoding="utf-8")
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            try:
+                mod.main(["--root", str(root), "--triage"])
+            except SystemExit:
+                pass
+        said = re.search(r"this decides it:\n(.*?)\n\n  1\. Fill", out.getvalue(), re.S)
+        secs = {s.split("\n", 1)[0].strip(): "## " + s for s in re.split(r"(?m)^## ", home)[1:]}
+        return said.group(1) if said else None, mod.unwritten("intent", secs["Die Absicht"]), mod.unwritten("path", secs["Der aktuelle Weg"])
+
+
+def _de_scaffold_controls(mod):
+    """(the home as v0.20.1 copies it reads as before, the home as it ships reads only its own words, a line one character off a
+    scaffold form is the Owner's in both) — each read by `mod`."""
+    old = _de_read(mod, _DE_HOME_0201.replace("\n\n1.\n\n", "\n\n1. Erst die Ausleihe, dann die Rückgabe.\n\n")), _de_read(mod, _de_owned(_DE_HOME_0201))
+    first = old[0][0] == _DE_NONE and old[0][1] and old[1][0] == _DE_OWNER
+    now = _de_read(mod, _DE_HOME_NOW), _de_read(mod, _de_owned(_DE_HOME_NOW))
+    second = now[0][1] and now[0][2] and now[1][0] == _DE_OWNER
+    third = True
+    for home in (_DE_HOME_0201, _DE_HOME_NOW):
+        note = re.search(r"(?m)^\*Die eigenen Worte des .*Regeln\.\*$", home).group(0)
+        lead = re.search(r"(?ms)^\*Drei Zeilen in .*?unveränderten Beispiele aus\.\*$", home).group(0)
+        pathnote = _DE_PATH_0201 if _DE_PATH_0201 in home else _DE_PATH_NOW
+        for was, now_ in ((note, note[:-2] + "!*"), (lead, lead[:-2] + "!*")):
+            said = _de_read(mod, _de_owned(home).replace(was, now_))[0]
+            third = third and said is not None and now_ in said and _DE_OWNER in said
+        third = third and _de_read(mod, home.replace(pathnote, pathnote[:-2] + "!*"))[2] is False
+    return first, second, third
+
+
+def _de_scaffold_mutant(*changes):
+    """The tool with each (old, new) applied to its source once, loaded as a module of its own; None where a change does not apply."""
+    src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    for old, new in changes:
+        if src.count(old) != 1:
+            return None
+        src = src.replace(old, new)
+    mod = importlib.util.module_from_spec(importlib.util.spec_from_loader("fm_scaffold_mutant", loader=None))
+    mod.__file__ = str(HERE / "shoalmark.py")
+    exec(compile(src, mod.__file__, "exec"), mod.__dict__)
+    return mod
+
+
+_DE_HOME_NOW = (HERE / "examples/de/TRIAGE.md").read_text(encoding="utf-8")
+_de_first, _de_second, _de_third = _de_scaffold_controls(fm)
+fm.configure(HERE)
+check("the German triage home as v0.20.1 copies it reads its intent as before: untouched, --triage prints none of the Owner's; with the "
+      "Owner's three lines, it prints exactly those lines", _de_first)
+check("the German triage home as it ships now reads only its own words as the Owner's: untouched, neither its intent nor its path is "
+      "written; with the Owner's three lines, --triage prints exactly those lines", _de_second)
+check("a line one character off a scaffold form is the Owner's, in both German homes: the note and the lead-in are printed as the "
+      "Owner's words, and the path note reads as written", _de_third)
+_de_mutant_old = _de_scaffold_mutant((",\n                   *INTENT_SCAFFOLD_DE_BEFORE)", ")"), (",\n                 \"" + _DE_PATH_0201 + "\")", ")"))
+_de_mutant_new = _de_scaffold_mutant(("\"" + _DE_PATH_NOW + "\", \"1.\",", "\"1.\","))
+_de_red = (_de_mutant_old is not None and not _de_scaffold_controls(_de_mutant_old)[0],
+           _de_mutant_new is not None and not _de_scaffold_controls(_de_mutant_new)[1])
+check(f"the German triage home's controls are not blind: the old forms dropped from the scaffold turn the first red, and the path note "
+      f"as it ships dropped turns the second red (red: {_de_red})", all(_de_red))
+
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
