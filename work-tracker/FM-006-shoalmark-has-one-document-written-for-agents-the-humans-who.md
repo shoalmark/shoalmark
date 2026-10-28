@@ -75,6 +75,21 @@ button.** On the Owner's word of 28 October, as the Auditor relays it:
 - the critical review of the probe prompts' German is READY WITH FINDINGS. RV-3951: two words now agree with
   *Arbeitspaket*, *Jedes bekommt* and *mit denen es* (`cebbcd2`). RV-3952: recorded privately.
 
+**2026-10-28 — the German rewrite: its standard review, the fix round, and the retired terms in full.** The lane's
+standard review is READY WITH FINDINGS (`a699baf`):
+- RV-3960: the feedback page and the issue form speak to the reader as *du*. The form's file name and keys stay as they
+  were, and the check against formal German now reads both (`2871c5a`). The entry above said it read every German source
+  whole, which holds only from here: it reads 27;
+- RV-3961, RV-3962 and RV-3963: the check reads inflected and compound retired terms, and four kinds of markup no longer
+  hide prose from it (`984453d`);
+- RV-3964: retired in German prose, as ruled, are *Sitz*, *Sitzung* (for a sitting and for a session), *Owner*, *Tafel*,
+  *der Standup*, *Prüfer* and *Nachweis*; *lass*, *sieh* and *lies* stay. The entry above that started the lane left out
+  *Sitzung*;
+- RV-3965: the English seats page's line that German pages address the Owner as *Sie* (`docs/seats/index.md:59`) is
+  a leftover. This lane changes no English, so the line waits for the Owner's word;
+- RV-3966 needed no change in the repository, and RV-3967, the wording of three German lines, waits for the Owner's
+  word.
+
 **2026-10-28 — the why page, on the Owner's word on the live site:** the story stands as a quote again, in its figure with its blockquote, left rule and caption and their rules on screen, on a phone and in print, where BF-86 and RV-3930 had made it running text; its words stay in the first person. Its caption is the Owner's attribution in their own words, after its dash and linked to the X profile, and the portdive sentence is said there once. Its last paragraph tells the timeline from shoalmark's first commit on 21 September. The tile *Measured, not promised.* reads *Reports, not proofs.*, the Board's own words, and the TL;DR's Try-it line says what the prompt asks: to try the setup on a copy in a throwaway folder, and to change nothing in the repository without the reader's yes. The German says the same in the page's *du* voice.
 
 **2026-10-28 — the why page prints on one page again, and its caption balances its lines:** BF-90 sets the print's running text, the quote, the TL;DR's Try-it row and the card a little smaller, so the page prints on one page in English and German, and BF-91 balances the caption's lines on screen, as the Designer measured them.
@@ -1215,6 +1230,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-28 22:52:17 CET | **The German rewrite's standard review, READY WITH FINDINGS** (`a699baf`), and its fix round: the feedback page and the issue form in *du*, read by the check (`2871c5a`, RV-3960); inflected and compound retired terms refused, and four kinds of markup read through (`984453d`, RV-3961 to RV-3963); the retired terms named in full (RV-3964); an English leftover named (RV-3965). Records only. |
 | 2026-10-28 21:53:10 CET | **The German rewrite: the why page's German in *du*, and the guard read whole** after #228 joined the lane (`b8581fd`): the hero line in its two places, nine texts by the glossary, and the preview's alt in its three places (BF-94), with the guard's pending set empty (`a531131`). From the critical review of the probe prompts' German, READY WITH FINDINGS: RV-3951 (`cebbcd2`); RV-3952: recorded privately. Records only. |
 | 2026-10-28 19:22:59 CET | **The German rewrite: the Owner's words** on the hero line (*du hast das letzte Wort*, changing A2), the inspector (*der Gutachter*), the probe template's two named exceptions, the landing's button, *Arbeitspaket* in the probe prompts, and the old German Board picture removed. Records only. |
 | 2026-10-28 16:15:38 CET | **The German rewrite's glossary ruled, and its lane started** on `release/v0.20.2-signed`, on the Owner's word: every German line of v0.20.2 moves to *du*, by the glossary this file's entry of 28 October records. Records only. |
