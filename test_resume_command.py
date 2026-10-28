@@ -160,6 +160,25 @@ def page_data(page, name="REG"):
         return None
 
 
+def page_form(cmd):
+    """A command as the page's script holds it: a JSON string, its letters as they are, `&` written `\\u0026`."""
+    return json.dumps(cmd, ensure_ascii=False).replace("&", "\\u0026")
+
+
+def in_page_once(page, cmd):
+    return page.count(page_form(cmd)) == 1
+
+
+# Each form of the command, with forward slashes and with backslashes, and the JSON string a page's script holds it as, written out by hand;
+# ID stands for the session's full id.
+COUNTED = (
+    ("POSIX, forward slashes", "cd ~/work/first && claude --resume ID", '"cd ~/work/first \\u0026\\u0026 claude --resume ID"'),
+    ("POSIX, backslashes", "cd ~\\work\\first && claude --resume ID", '"cd ~\\\\work\\\\first \\u0026\\u0026 claude --resume ID"'),
+    ("PowerShell, forward slashes", "cd '~/work/first'; if ($?) { claude --resume 'ID' }", "\"cd '~/work/first'; if ($?) { claude --resume 'ID' }\""),
+    ("PowerShell, backslashes", "cd '~\\work\\first'; if ($?) { codex resume 'ID' }", "\"cd '~\\\\work\\\\first'; if ($?) { codex resume 'ID' }\""),
+)
+
+
 def rows_drawn(page, script, env, area):
     """[[id, what `rsm` gives, the row as the strip draws it, the same row drawn with no resume parts]] for each group of the page's data, by
     the page's own script run in Node outside any browser: its `esc`, `l`, `lh`, `rse` and `rsm`, and the strip's row, with the page's labels
@@ -224,23 +243,26 @@ def expected(home, outside):
 @contextlib.contextmanager
 def unreadable(path):
     """`path` held so that nothing can open it, and given back after: by its permissions, or on Windows by a handle of this process that
-    shares the file with no one. Yields whether that took — a user whom permissions do not bind opens it all the same, and that is said."""
-    handle = None
+    shares the file with no one. Yields (took, error): whether that took, and where the Windows handle could not be made, the error that
+    stopped it. Where the handle was made, or the permissions set, and the file opens all the same, its user is one permissions do not bind."""
+    handle, error = None, None
     try:
         if os.name == "nt":
             try:
                 import _winapi
                 handle = _winapi.CreateFile(str(path), _winapi.GENERIC_READ, 0, _winapi.NULL, _winapi.OPEN_EXISTING, 0, _winapi.NULL)
-            except (ImportError, AttributeError, OSError):
-                handle = None
+            except (ImportError, AttributeError, OSError) as failed:
+                error = failed
         else:
             os.chmod(path, 0)
-        try:
-            with open(path, "rb"):
-                took = False
-        except OSError:
-            took = True
-        yield took
+        took = False
+        if error is None:
+            try:
+                with open(path, "rb"):
+                    pass
+            except OSError:
+                took = True
+        yield took, error
     finally:
         if handle is not None:
             _winapi.CloseHandle(handle)
@@ -248,13 +270,19 @@ def unreadable(path):
             os.chmod(path, 0o600)
 
 
+def no_handle(error):
+    """The words for a log the test could not hold unreadable, as the Windows handle that holds it could not be made."""
+    return f"the test could not make the handle that holds the log unreadable ({type(error).__name__}: {error})"
+
+
 def can_unread():
-    """Whether this machine keeps a file from being opened as `unreadable` holds it."""
+    """(took, error) for a file of its own, held as `unreadable` holds it: whether this machine keeps it from being opened, and the error
+    where the handle could not be made."""
     with tempfile.TemporaryDirectory(prefix="shoalmark-resume-probe-") as tmp:
         log = Path(tmp) / "log.jsonl"
         log.write_text("{}\n", encoding="utf-8")
-        with unreadable(log) as took:
-            return took
+        with unreadable(log) as held:
+            return held
 
 
 def run_checks(mutants=False, *, results=None):
@@ -273,14 +301,15 @@ def run_checks(mutants=False, *, results=None):
         env.update(HOME=str(home), USERPROFILE=str(home))
         want = expected(home, outside)
         plain_outside = not fm.resume_folder_problem(outside, outside)
-        took = False
+        took, error = False, None
         with step(add, "the fixture"):
             listed = logs(home, outside)
             repository(root, env)
-            took = held.enter_context(unreadable(home / ".claude" / "projects" / "-fixture-i" / f"{UUID[I]}.jsonl"))
+            took, error = held.enter_context(unreadable(home / ".claude" / "projects" / "-fixture-i" / f"{UUID[I]}.jsonl"))
         if not took:
             want.pop(I)
-            add("resume · a log that cannot be opened", None, "this machine opens the fixture's log although nothing may: its user is one permissions do not bind")
+            add("resume · a log that cannot be opened", None, no_handle(error) if error else
+                "this machine opens the fixture's log although nothing may: its user is one permissions do not bind")
         same = lambda d: {k: v for k, v in d.items() if k != G and (took or k != I)}
 
         with step(add, "the read"), home_of(home):
@@ -341,6 +370,17 @@ def run_checks(mutants=False, *, results=None):
                                    D: ["resume", f"cd '~{sep}codex{sep}proj'; if ($?) {{ codex resume '{UUID[D]}' }}"],
                                    E: ["refused", "chars.nt", f"~{sep}work{sep}a b", 200]})
 
+        with step(add, "the count"):
+            counts = {}
+            for name, cmd, form in COUNTED:
+                cmd, form = cmd.replace("ID", UUID[A]), form.replace("ID", UUID[A])
+                once = f',REG={{"resume": {{"{A}": ["resume", {form}]}}}};'
+                pages = (once, ',REG={"resume": {}};', f',REG={{"resume": {{"{A}": ["resume", {form}], "{B}": ["resume", {form}]}}}};')
+                counts[name] = [in_page_once(p, cmd) for p in pages]
+            add(f"resume · the count itself: a command is counted as the page's script holds it, for the POSIX and the PowerShell form, each with "
+                f"forward slashes and with backslashes — a page holding it once passes, a page holding it 0 or 2 times is refused (saw {counts})",
+                len(counts) == 4 and all(v == [True, False, False] for v in counts.values()))
+
         with step(add, "the board"):
             code, out_, err = run(tool, root, env, "--html-only")
             page = (root / "docs/work-tracker/index.html").read_text(encoding="utf-8")
@@ -357,8 +397,8 @@ def run_checks(mutants=False, *, results=None):
             add("resume · board: the strip's groups and their members are as they were — five fields a group, four a member — and no command is in them",
                 bool(members) and all(len(g) == 5 for g in reg["groups"]) and all(len(m) == 4 for m in members)
                 and not any(mark in json.dumps(reg["groups"]) for mark in MARKS))
-            add("resume · board: each command is in the page once, in its parent's data", all(page.count(v[1].replace("&", "\\u0026")) + page.count(v[1]) == 1
-                                                                                             for k, v in resume.items() if v[0] == "resume") and resume)
+            add("resume · board: each command is in the page once, in its parent's data, as the page's script holds it",
+                all(in_page_once(page, v[1]) for k, v in resume.items() if v[0] == "resume") and resume)
             fold = (re.search(r'<details class="about"><summary>.*?</details>', page, re.S) or [""])[0]
             add("resume · board: the fold of what the page reads names both folders, and that it reads file names and the first turn's folder, never what a "
                 "session said", "~/.claude/projects" in fold and "~/.codex/sessions" in fold and html.escape(fm.LABELS["read.about.logs"], quote=False) in fold)
@@ -423,10 +463,11 @@ def run_checks(mutants=False, *, results=None):
 def run_mutants(add, results):
     """Each of MUTANTS, as a copy of the tool beside its VERSION and vendored renderer, run under this test: each must fail it."""
     source = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-    unread_here = can_unread()
+    unread_here, unread_error = can_unread()
     for name, old, new in MUTANTS:
         if name == UNREAD_MUTANT and not unread_here:
-            add(f"resume · the mutant that {name}", None, "this machine opens a file nothing may open, so the test cannot hold a log unreadable")
+            add(f"resume · the mutant that {name}", None, no_handle(unread_error) if unread_error else
+                "this machine opens a file nothing may open, so the test cannot hold a log unreadable")
             continue
         with tempfile.TemporaryDirectory(prefix="shoalmark-resume-mutant-") as tmp:
             tool = Path(tmp).resolve() / "tool" / "shoalmark.py"

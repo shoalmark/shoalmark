@@ -1037,10 +1037,38 @@ RESUME_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
     '      +(rse(g[0])?.[0]=="resume"?`<p class="help">${l("resume.help")}</p>`:"")',
 ))
 RESUME_STRIP = (b"(${esc(g[2])})${rsm(g[0])}${g[3].length", b"(${esc(g[2])})${g[3].length")
-RESUME_READ_AT = (" · for each session's resume command: the names of the logs in ~/.claude/projects and ~/.codex/sessions, and the folder its "
-                  "first turn ran in: never what a session said</p></details>".encode("utf-8"), b"</p></details>")
-RESUME_KEYS = ('resume.button', 'resume.spoken', 'resume.help', 'resume.copied', 'resume.two', 'resume.nofolder', 'resume.unread', 'resume.refused', 'resume.refused.chars', 'resume.refused.chars.nt', 'resume.refused.long', 'resume.refused.relative', 'read.about.logs')
-RESUME_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in RESUME_KEYS)
+# The resume command's words, each key with its English text and its German one (examples/de/labels.yaml), written out here and never read
+# from the tool. A key is taken out with one of its two texts, as the page's script holds it: a JSON string, its letters as they are (no
+# text holds `<`, `>` or `&`).
+RESUME_WORDS = {
+    "resume.button": ("resume command", "Fortsetzungsbefehl"),
+    "resume.spoken": ("copy the command that resumes session {0}", "den Befehl kopieren, der die Sitzung {0} fortsetzt"),
+    "resume.help": ("for a session that is no longer open: the board cannot see whether one is",
+                    "für eine Sitzung, die nicht mehr offen ist: das Board kann nicht sehen, ob sie es ist"),
+    "resume.copied": ("the command is on your clipboard · run it in a terminal, only for a session that is no longer open",
+                      "der Befehl ist in Ihrer Zwischenablage · in einem Terminal ausführen, nur für eine Sitzung, die nicht mehr offen ist"),
+    "resume.two": ("no resume command: {0} logs on this machine start with {1}, and the board does not pick one",
+                   "kein Fortsetzungsbefehl: {0} Protokolle auf diesem Rechner beginnen mit {1}, und das Board wählt keines aus"),
+    "resume.nofolder": ("no resume command: its log names no folder in its first {0} MiB",
+                        "kein Fortsetzungsbefehl: sein Protokoll nennt in seinen ersten {0} MiB keinen Ordner"),
+    "resume.unread": ("no resume command: its log could not be read", "kein Fortsetzungsbefehl: sein Protokoll konnte nicht gelesen werden"),
+    "resume.refused": ("no resume command: its folder {0} {1}", "kein Fortsetzungsbefehl: sein Ordner {0} {1}"),
+    "resume.refused.chars": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : -",
+                             "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : -"),
+    "resume.refused.chars.nt": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : - and the backslash",
+                                "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : - "
+                                "und der Rückstrich"),
+    "resume.refused.long": ("is longer than {0} characters", "ist länger als {0} Zeichen"),
+    "resume.refused.relative": ("is not an absolute path", "ist kein absoluter Pfad"),
+    "read.about.logs": ("for each session's resume command: the names of the logs in ~/.claude/projects and ~/.codex/sessions, and the folder its "
+                        "first turn ran in: never what a session said",
+                        "für den Fortsetzungsbefehl jeder Sitzung: die Namen der Protokolle in ~/.claude/projects und ~/.codex/sessions und der "
+                        "Ordner, in dem ihr erster Zug lief: nie, was eine Sitzung sagte"),
+}
+RESUME_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": (?:'
+                                 + b"|".join(re.escape(json.dumps(text, ensure_ascii=False).encode("utf-8")) for text in texts) + rb")")
+                      for k, texts in RESUME_WORDS.items())
+RESUME_READ_AT = ((" · " + RESUME_WORDS["read.about.logs"][0] + "</p></details>").encode("utf-8"), b"</p></details>")
 
 
 def resume_dropped(data):
@@ -1735,12 +1763,19 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             "one of its style lines twice": new_page.replace(RESUME_PAGE_LINES[0] + b"\n", RESUME_PAGE_LINES[0] + RESUME_PAGE_LINES[0] + b"\n", 1),
             "a word it does not name, beside its own": new_page.replace(b'"resume.button": "resume command"', b'"resume.button": "resume command", "resume.more": "more"', 1),
             "its item in the fold twice": new_page.replace(RESUME_READ_AT[0], RESUME_READ_AT[0][:-len(RESUME_READ_AT[1])] + RESUME_READ_AT[0], 1),
+            "one character of one of its words changed": new_page.replace(b'"resume.unread": "no resume command: its log could not be read"',
+                                                                          b'"resume.unread": "no resume command: its log could not be reed"', 1),
         }
         made_r = {name: page != new_page for name, page in variants_r.items()}
+        unread_in = lambda lang: b'"resume.unread": ' + json.dumps(RESUME_WORDS["resume.unread"][lang], ensure_ascii=False).encode("utf-8")
+        german = new_page.replace(unread_in(0), unread_in(1), 1)
         assert_control(resume + "the default run's page holds each of the resume command's parts once, and the baseline's none; a page with one of its "
-                       f"style lines twice, a word it does not name, or its item in the fold twice does not match (each variant made: {made_r})",
+                       "style lines twice, a word it does not name, its item in the fold twice, or one character of one of its words changed does not "
+                       f"match, and one with a word in German in place of the English still does (each variant made: {made_r}, "
+                       f"the German one: {german != new_page})",
                        resume_dropped(new_page) is not None and resume_dropped(old_page) is None and all(made_r.values())
-                       and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants_r.values()))
+                       and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants_r.values())
+                       and german != new_page and snapshots_match(old, with_board(new, PAGE_PATH, german)))
         settings = "Git entry board settings allowance: "
         raw = new["starts_raw"]
         reads = [i for i, row in enumerate(raw) if "GIT_CONFIG_PARAMETERS" in (row.get("environment") or {}) and git_words(row)[:1] == ("log",)

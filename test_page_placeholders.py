@@ -55,29 +55,26 @@ UNREACHED = {
 # puts it back, and with it the read-at line's `_` written as a character reference.
 OLD_CHAIN = r'''    page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
-            .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]).replace("__PROOF__", script_json(proof_page())))     # before any text of the repository's is in the page
+            .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]).replace("__PROOF__", script_json(proof_page())))
     logo, labels, _src, warnings, gone = brand()
     for w in warnings:
         print(f"  brand: {w}", file=sys.stderr)
     page = page.replace("__LANG__", labels["lang"] if re.fullmatch(r"[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*", labels["lang"]) else "en")
-    # never a silent loss (R10's look half): each brand file the board no longer reads, file by file, in the run's output and in one line of the page
     for path, instead, _key in gone:
         print(f"  brand: {path} is no longer read — {instead}", file=sys.stderr)
     said = lambda key, *a: html_escape(re.sub(r"\{(\d)\}", lambda m: a[int(m.group(1))] if int(m.group(1)) < len(a) else "", labels[key]))
     page = page.replace("__GONE__", f'<p id="w" class="m">{said("brand.gone", " · ".join(f"{path} → {labels[key]}" for path, _i, key in gone))}</p>' if gone else "")
-    page = page.replace("__READAT__", read_at_html(read, labels))     # FM-057: what it read, and when — no `_` in it, so no later placeholder matches there
+    page = page.replace("__READAT__", read_at_html(read, labels))
     name = html_escape(CONFIG["name"] or ROOT.name)
     page = page.replace("__HEADMARK__", (f'<img alt="" src="{logo[1]}">' if logo else "") + f"<b>{name}</b>")
     page = page.replace("__FAVICON__", f'<link rel="icon" href="{logo[1]}">' if logo else "")
-    # the running line: outside the board and the tracker view, so every screen shows it — the copy's own VERSION
     v = html_escape(__version__)
     page = page.replace("__RUNNING__", f'<p id="r" class="m"><a href="{TOOL_PAGE}" target="_blank" rel="noopener" aria-label="shoalmark on GitHub">'
                         '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">'
                         f'<path d="{PRICKE}"></path></svg>shoalmark{icon("out")}</a> · <a href="{TOOL_PAGE}/releases/tag/v{v}" target="_blank" rel="noopener" '
                         f'aria-label="release v{v}">v{v}</a></p>')
     page = page.replace("__LABELS__", script_json(labels)).replace("__ICONS__", script_json({k: icon(k) for k in ICONS})).replace("__PALETTE__", palette_css(PALETTE))
-    day, day_text = day_html(labels)                     # FM-030: the stand-up and the close-out, their values checked here
-    # …with no `_` left raw in them: a folder named `__ROWS__` passes the plain set, and the replacements below must not read it as theirs
+    day, day_text = day_html(labels)
     page = page.replace("__DAY__", day.replace("_", "&#95;")).replace("__DAYTEXT__", script_json(day_text).replace("_", "\\u005f"))
     return page.replace("__MARKED__", MARKED.read_text(encoding="utf-8")).replace("__DAYS__", str(TRIAGE_DAYS)).replace("__BOTTLE__", str(BOTTLENECK)).replace("__HOME__", script_json(home)).replace("__REG__", script_json(board_sessions())).replace("__BLOB__", script_json(board_blob())).replace("__BRANCH__", script_json(read.get("branch") or "")).replace(
         "__ROWS__", ",\n".join(rows)
