@@ -9020,6 +9020,217 @@ _de_red = (_de_mutant_old is not None and not _de_scaffold_controls(_de_mutant_o
 check(f"the German triage home's controls are not blind: the old forms dropped from the scaffold turn the first red, and the path note "
       f"as it ships dropped turns the second red (red: {_de_red})", all(_de_red))
 
+# --- the lane's German prose speaks as du: no formal address and no retired term, each exception and each pending place named by its text -----
+def _de_prose_files():
+    """Every German prose source of the lane, by its path."""
+    return tuple(sorted(p_.relative_to(HERE).as_posix() for p_ in (HERE / "docs/de").glob("*.md"))
+                 + ["ADOPT.de.md", "ADOPT.svn.de.md"]
+                 + sorted(p_.relative_to(HERE).as_posix() for p_ in HERE.glob("launch/*/*.de.md"))
+                 + ["examples/de/TRIAGE.md", "examples/de/TEMPLATE.md", "examples/de/labels.yaml", "examples/de/shoalmark.toml",
+                    "overrides/partials/landing/de.html", "overrides/partials/why/de.html", "overrides/main.html", "zensical.toml",
+                    "shoalmark.py", "brand/social/link-preview-de.svg"])
+
+
+_DE_FORMAL = re.compile(r"\b(Sie|Ihnen|Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres)\b")
+_DE_RETIRED = re.compile(r"\b(Sitz|Sitze|Sitzes|Sitzung|Sitzungen|Owner|Owners|Tafel|Standup|Prüfer\w*|Nachweis\w*)\b")
+# What is not prose, by kind. Config keys are not read at all: each reader takes only the values of its file's keys.
+_DE_NOT_PROSE = (
+    ("code blocks", re.compile(r"(?ms)^[ \t]*```.*?^[ \t]*```[ \t]*$|<pre\b.*?</pre>")),
+    ("inline code", re.compile(r"`[^`\n]+`|<code>.*?</code>", re.S)),
+    ("URLs", re.compile(r"https?://[^\s)\"'<>`]+")),
+    ("commands", re.compile(r"(?<![\w-])--?[A-Za-z][\w-]*")),
+    ("file names", re.compile(r"(?<![\w-])[\w./~<>-]*[\w>]\.(?:md|py|toml|yaml|yml|html|png|svg|json|txt|zip|ics|css|js)\b")),
+)
+# Allowed, each by file and exact text: a third-person Sie or Ihr ("it", "she", "they", "its") or the plural ihr to the agents, each
+# at a sentence's start; and quoted English, a refusal or the record's own words, as the tool or the record has them.
+_DE_ALLOWED = (
+    ("docs/de/index.md", "Ihr wartet nicht auf Werkzeuge", "the plural of du, to the fleet"),
+    ("docs/de/index.md", "Sie holen shoalmark beim Git-Tag eines Releases", "third person: the agents"),
+    ("docs/de/signing.md", "*… the Owner's email, unsigned*", "quoted English refusal"),
+    ("docs/de/triage.md", "Sie hat drei Abschnitte", "third person: the file"),
+    ("docs/de/triage.md", "Sie sagen, wofür es da ist", "third person: the three lines"),
+    ("docs/de/triage.md", "Sie lässt nur die Einleitung aus", "third person: the pass"),
+    ("docs/de/triage.md", "Sie sammelt die Nummern", "third person: the check"),
+    ("docs/de/triage.md", "Ihr Reviewer hat bemerkt", "third person: the pass's reviewer"),
+    ("docs/de/triage.md", "Sie nannte also zwei signierte Regeln", "third person: the line"),
+    ("docs/de/triage.md", "Sie kommen aus der Signierer-Datei", "third person: the keys"),
+    ("docs/de/triage.md", "Sie ändert keine Prüfung.", "third person: the edit"),
+    ("docs/de/triage.md", "Sie verschiebt von sich aus weder Stufe noch Rang.", "third person: the edit"),
+    ("docs/de/triage.md", "Sie beantwortet keine Frage.", "third person: the edit"),
+    ("docs/de/triage.md", "Sie erreicht keinen älteren Branch.", "third person: the edit"),
+    ("docs/de/triage.md", "Sie schreibt keine frühere Sichtung um.", "third person: the edit"),
+    ("docs/de/triage.md", "tiers cannot be judged; the Owner writes it first", "quoted English refusal"),
+    ("docs/de/triage.md", "a review of the Owner's own answers and TRIAGE lines reports and never blocks", "quoted English: the record's path line"),
+    ("docs/de/triage.md", "The Owner merges on a ready line, or over any other verdict with a signed reason.", "quoted English: the record's path line"),
+    ("docs/de/triage.md", "the Owner's line 3 names a release critical", "quoted English: a pass's own words"),
+    ("docs/de/triage.md", "a commit signed with the Owner's key passes", "quoted English refusal: its limit line"),
+    ("ADOPT.de.md", "Ihr ändert nichts am Projekt", "the plural of du, to the agents"),
+    ("ADOPT.de.md", "Sie sagt, was er braucht.", "third person: the line"),
+    ("ADOPT.de.md", "Sie ist in der Festlegung und im Prompt dieselbe", "third person: the address"),
+    ("ADOPT.de.md", "Sie ist genau", "third person: the address"),
+    ("ADOPT.de.md", "Ihr müsst sie nicht ganz lesen", "the plural of du, to the agents"),
+    ("ADOPT.de.md", "Sie ist keine Suche nach solchen Daten", "third person: the rule"),
+    ("ADOPT.de.md", "Sie läuft auf einer Kopie außerhalb der Arbeitskopie", "third person: the reproduction"),
+    ("ADOPT.de.md", "Ihr lauft unter dem Benutzerkonto", "the plural of du, to the agents"),
+    ("ADOPT.de.md", "Ihre Ids bleiben.", "third person: the work items'"),
+    ("ADOPT.de.md", "Sie enthält keine Namen, Pfade oder Code", "third person: the feedback"),
+    ("ADOPT.de.md", "Ihr sendet ihn nie", "the plural of du, to the agents"),
+    ("ADOPT.de.md", "Ihr lest diesen Text", "the plural of du, to the agents"),
+    ("ADOPT.svn.de.md", "Sie nennt, was er braucht.", "third person: the line"),
+    ("ADOPT.svn.de.md", "Ihr Gate prüft eine Revision", "third person: the packages'"),
+    ("launch/interim/how-it-works.de.md", "Sie lädt zu einer Messung ein", "third person: the note"),
+)
+_DE_ALT_BEFORE = ("Der Schriftzug shoalmark mit „Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt.“ und shoalmark.tools, neben einer nächtlichen "
+                  "Seekarte der Deutschen Bucht, auf deren Watt shoalmarks eigene Fehler als Wracks liegen.")
+_DE_WHY_BEFORE = ("Sie nennt, was nie passieren darf", "kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen",
+                  "das ständige Umschalten zwischen den Sitzungen war zermürbend", "von der Research-Sitzung gestellt wurde",
+                  "von der Planner-Sitzung gestellt wurde", "ein Knopf, der den Standup-Prompt kopiert; die drei Sitzungen mit einem Commit",
+                  "darunter die Sitzung, die jede gestellt hat", "Dein Standup.", "Der Standup-Prompt liegt einen Klick entfernt bereit",
+                  "Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten")
+# Pending, each by file and exact text: the why page's German until its own lane joins, and the three German alternative texts of the link
+# preview. The set empties in the commit that brings them; nothing else is exempt by its path.
+_DE_PENDING = (tuple(("docs/de/warum-shoalmark.md", t_) for t_ in _DE_WHY_BEFORE)
+               + tuple(("overrides/partials/why/de.html", t_) for t_ in _DE_WHY_BEFORE)
+               + (("overrides/partials/why/de.html", _DE_ALT_BEFORE), ("overrides/partials/landing/de.html", _DE_ALT_BEFORE),
+                  ("overrides/main.html", _DE_ALT_BEFORE)))
+_DE_CONSTANTS = {}
+
+
+def _de_parts(rel, text):
+    """The German prose a source holds, as the strings it reads: a page whole, a partial's word values and its prompt, the German preview's
+    alternative text, the German menu's titles, the labels' and the settings' values and comments, the tool's German constants, the preview's
+    lines."""
+    if rel.endswith(".md"):
+        return [text]
+    if rel.endswith("/de.html"):
+        start = text.index("{% set w = {")
+        block = text[start:text.index("} %}", start)]
+        parts = [re.sub(r"<[^>]+>", " ", re.sub(r"<code>.*?</code>", " ", m_.group(1).replace('\\"', '"')))
+                 for m_ in re.finditer(r'"((?:[^"\\]|\\.)*)"(\s*:)?', block) if not m_.group(2)]
+        prompt = re.search(r"\{% set probe_prompt %\}(.*?)\{% endset %\}", text, re.S)
+        return parts + ([re.sub(r"\{\{.*?\}\}", " ", prompt.group(1))] if prompt else [])
+    if rel == "overrides/main.html":
+        return [re.search(r'<meta property="og:image:alt" content="([^"]*)"', text[text.index("assets/preview-de.png"):]).group(1)]
+    if rel == "zensical.toml":
+        menu = text[text.index('{ "Deutsch" = ['):]
+        return re.findall(r'\{ "([^"]+)" = "de/', menu[:menu.index("] },")])
+    if rel == "examples/de/labels.yaml":
+        parts = []
+        for line_ in text.splitlines():
+            s_ = line_.strip()
+            if s_.startswith("#"):
+                parts.append(s_[1:])
+            elif ":" in s_:
+                v_ = s_.split(":", 1)[1].strip()
+                parts.append(v_[1:-1] if len(v_) > 1 and v_[0] == v_[-1] and v_[0] in "\"'" else v_)
+        return parts
+    if rel == "examples/de/shoalmark.toml":
+        parts = []
+        for line_ in text.splitlines():
+            code_, _, comment_ = line_.partition("#")
+            parts.append(comment_)
+            if "=" in code_:
+                parts += re.findall(r'"([^"]*)"', code_.split("=", 1)[1])
+        return parts
+    if rel == "shoalmark.py":
+        key_ = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        if key_ not in _DE_CONSTANTS:
+            _DE_CONSTANTS[key_] = [n_.value for node_ in ast.parse(text).body if isinstance(node_, ast.Assign)
+                                   and any(isinstance(t_, ast.Name) and t_.id.endswith("_DE") for t_ in node_.targets)
+                                   for n_ in ast.walk(node_.value) if isinstance(n_, ast.Constant) and isinstance(n_.value, str)]
+        return _DE_CONSTANTS[key_]
+    if rel.endswith(".svg"):
+        return re.findall(r"<text\b[^>]*>([^<]*)</text>", text)
+    raise AssertionError("no reader for " + rel)
+
+
+def _de_prose(rel, text):
+    """The source's German prose, what is not prose taken out by kind, its whitespace read as one space."""
+    out_ = []
+    for part_ in _de_parts(rel, text):
+        for _kind, rx_ in _DE_NOT_PROSE:
+            part_ = rx_.sub(" ", part_)
+        out_.append(" ".join(part_.split()))
+    return " ¶ ".join(out_)
+
+
+def _de_guard(src):
+    """What the guard refuses, one line each: a formal form or a retired term left in a source's German prose once its allowed and
+    pending texts are taken out, and an allowed or pending text its source no longer holds."""
+    bad = []
+    named = [(rel_, text_, "allowed") for rel_, text_, _why in _DE_ALLOWED] + [(rel_, text_, "pending") for rel_, text_ in _DE_PENDING]
+    for rel_ in sorted(src):
+        prose_ = _de_prose(rel_, src[rel_])
+        for nrel_, text_, what_ in named:
+            if nrel_ == rel_:
+                if text_ not in prose_:
+                    bad.append(f"{rel_}: its {what_} text is not there: {text_[:60]!r}")
+                prose_ = prose_.replace(text_, " ")
+        for rx_, what_ in ((_DE_FORMAL, "a formal form"), (_DE_RETIRED, "a retired term")):
+            for m_ in rx_.finditer(prose_):
+                bad.append(f"{rel_}: {what_}, {m_.group(0)!r}: …{prose_[max(0, m_.start() - 40):m_.end() + 30]}…")
+    return bad
+
+
+def _de_inject(src, rel, word):
+    """The sources with `word` put into the German prose of `rel`, where its reader reads."""
+    text_ = src[rel]
+    if rel.endswith(".md"):
+        new_ = text_ + "\n\n" + word + " gehört das.\n"
+    elif rel == "examples/de/labels.yaml":
+        new_ = text_ + "\nzz.probe: " + word + " gehört das\n"
+    elif rel == "examples/de/shoalmark.toml":
+        new_ = text_ + "\n# " + word + " gehört das\n"
+    elif rel.endswith("/de.html"):
+        new_ = text_.replace('": "', '": "' + word + " ", 1)
+    elif rel == "overrides/main.html":
+        new_ = text_.replace('content="Der Schriftzug shoalmark mit', 'content="' + word + ' Der Schriftzug shoalmark mit', 1)
+    elif rel == "zensical.toml":
+        new_ = text_.replace('{ "Start" = "de/index.md" }', '{ "' + word + ' Start" = "de/index.md" }', 1)
+    elif rel == "shoalmark.py":
+        new_ = text_.replace('INTENT_NOTE_DE = "*', 'INTENT_NOTE_DE = "*' + word + " ", 1)
+    else:
+        new_ = text_.replace(">Eine Werkbank", ">" + word + " Eine Werkbank", 1)
+    assert new_ != text_, rel
+    return {**src, rel: new_}
+
+
+_DE_FILES = _de_prose_files()
+_ds_de = _sources(_DE_FILES)
+_dg = _de_guard(_ds_de)
+check(f"the lane's German prose speaks as du: in {len(_DE_FILES)} sources, no formal address and no retired term is left outside "
+      f"{len(_DE_ALLOWED)} allowed texts and {len(_DE_PENDING)} pending ones, each named by its file and exact text, and each still there "
+      f"(saw {_dg[:6]})", not _dg)
+_de_pending_files = {rel_ for rel_, _t in _DE_PENDING}
+_de_outside = [rel_ for rel_ in _DE_FILES if rel_ not in _de_pending_files]
+_de_blind = {"a formal form": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
+             "a retired term": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Owner"))]}
+check(f"the guard is not blind outside the pending set: a formal form, and a retired term, put into each of the {len(_de_outside)} German "
+      f"sources outside it turns it red (sources where it stayed green: {_de_blind})", not any(_de_blind.values()) and len(_de_outside) >= 20)
+_de_pending_blind = {word_: [rel_ for rel_ in sorted(_de_pending_files) if not _de_guard(_de_inject(_ds_de, rel_, word_))] for word_ in ("Ihnen", "Owner")}
+check(f"the guard is not blind in the pending set: a formal form, and a retired term, put into each pending source outside its named texts "
+      f"turns it red (sources where it stayed green: {_de_pending_blind})", not any(_de_pending_blind.values()) and len(_de_pending_files) == 4)
+_de_kinds = {
+    "code blocks": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "```\nIhnen gehört das Owner-Board\n```\n\nDas ist alles."),
+    "inline code": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist `Ihnen Owner` alles."),
+    "config keys": {**_ds_de, "examples/de/labels.yaml": _ds_de["examples/de/labels.yaml"] + "\nOwner.Ihnen: Rolle\n"},
+    "commands": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist --Owner -Ihnen alles."),
+    "URLs": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist https://example.org/Ihnen/Owner alles."),
+    "file names": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist Ihnen-Owner.md alles."),
+    "quoted English refusals": _with(_ds_de, "docs/de/signing.md", "*… the Owner's email, unsigned*", "*… the Owner's email, unsigned* *… the Owner's email, unsigned*"),
+}
+_de_kinds_read = [kind_ for kind_, src_ in _de_kinds.items() if _de_guard(src_)]
+check(f"what is not prose is not read as prose: a formal form or a retired term in each of {len(_de_kinds)} kinds — code blocks, inline code, "
+      f"config keys, commands, URLs, file names and quoted English refusals — leaves the guard green (kinds read as prose: {_de_kinds_read})",
+      not _de_kinds_read and len(_de_kinds) == 7)
+_de_more = {"a sentence-initial Sie no entry names": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Sie ist alles."),
+            "an allowed text gone from its file": _with(_ds_de, "docs/de/triage.md", "Sie hat drei", "Die Datei hat drei"),
+            "a pending text gone from its file": _with(_ds_de, "overrides/main.html", "Eine Werkbank für Ihre Agenten", "Eine Werkbank für deine Agenten")}
+_de_more_green = [name_ for name_, src_ in _de_more.items() if not _de_guard(src_)]
+check(f"no form passes by where it stands, and the named texts stay true: a sentence-initial Sie that no entry names, an allowed text gone from "
+      f"its file, and a pending text gone from its file each turn the guard red (stayed green: {_de_more_green})", not _de_more_green)
+
+
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
