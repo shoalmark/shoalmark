@@ -9064,11 +9064,11 @@ def _de_prose_files():
 
 
 _DE_FORMAL = re.compile(r"\b(Sie|Ihnen|Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres)\b")
-_DE_RETIRED = re.compile(r"\b(Sitz|Sitze|Sitzes|Sitzung|Sitzungen|Owner|Owners|Tafel|Standup|Prüfer\w*|Nachweis\w*)\b")
+_DE_RETIRED = re.compile(r"\b(?:\w*(?<![Bb]e)[Ss]itz(?:e|es)?|\w*[Ss]itzung\w*|Owners?|\w*[Tt]afel\w*|\w*[Ss]tandup\w*|Prüfer\w*|Nachweis\w*)\b")
 # What is not prose, by kind. Config keys are not read at all: each reader takes only the values of its file's keys.
 _DE_NOT_PROSE = (
-    ("code blocks", re.compile(r"(?ms)^[ \t]*```.*?^[ \t]*```[ \t]*$|<pre\b.*?</pre>")),
-    ("inline code", re.compile(r"`[^`\n]+`|<code>.*?</code>", re.S)),
+    ("code blocks", re.compile(r"(?ms)^[ \t]*(`{3,})[^`\n]*$.*?^[ \t]*\1`*[ \t]*$|<pre\b.*?</pre>")),
+    ("inline code", re.compile(r"(?<!`)(`+)(?!`)(?:(?!\1)[^\n])+?(?<!`)\1(?!`)|<code>.*?</code>", re.S)),
     ("URLs", re.compile(r"https?://[^\s)\"'<>`]+")),
     ("commands", re.compile(r"(?<![\w-])--?[A-Za-z][\w-]*")),
     ("file names", re.compile(r"(?<![\w-])[\w./~<>-]*[\w>]\.(?:md|py|toml|yaml|yml|html|png|svg|json|txt|zip|ics|css|js)\b")),
@@ -9120,6 +9120,11 @@ _DE_PENDING = ()
 _DE_CONSTANTS = {}
 
 
+def _de_tag_words(tag):
+    """What a reader reads of an HTML tag: the values of its title, alt, aria-label and placeholder, each between spaces."""
+    return " " + " ".join(re.findall(r'(?:title|alt|aria-label|placeholder)="([^"]*)"', tag.group(0))) + " "
+
+
 def _de_parts(rel, text):
     """The German prose a source holds, as the strings it reads: a page whole, a partial's word values and its prompt, the German preview's
     alternative text, the German menu's titles, the labels' and the settings' values and comments, the tool's German constants, the preview's
@@ -9129,7 +9134,7 @@ def _de_parts(rel, text):
     if rel.endswith("/de.html"):
         start = text.index("{% set w = {")
         block = text[start:text.index("} %}", start)]
-        parts = [re.sub(r"<[^>]+>", " ", re.sub(r"<code>.*?</code>", " ", m_.group(1).replace('\\"', '"')))
+        parts = [re.sub(r"<[^>]+>", _de_tag_words, re.sub(r"<code>.*?</code>", " ", m_.group(1).replace('\\"', '"')))
                  for m_ in re.finditer(r'"((?:[^"\\]|\\.)*)"(\s*:)?', block) if not m_.group(2)]
         prompt = re.search(r"\{% set probe_prompt %\}(.*?)\{% endset %\}", text, re.S)
         return parts + ([re.sub(r"\{\{.*?\}\}", " ", prompt.group(1))] if prompt else [])
@@ -9191,7 +9196,7 @@ def _de_guard(src, pending=None):
             if nrel_ == rel_:
                 if text_ not in prose_:
                     bad.append(f"{rel_}: its {what_} text is not there: {text_[:60]!r}")
-                prose_ = prose_.replace(text_, " ")
+                prose_ = prose_.replace(text_, " ", 1)
         for rx_, what_ in ((_DE_FORMAL, "a formal form"), (_DE_RETIRED, "a retired term")):
             for m_ in rx_.finditer(prose_):
                 bad.append(f"{rel_}: {what_}, {m_.group(0)!r}: …{prose_[max(0, m_.start() - 40):m_.end() + 30]}…")
@@ -9231,7 +9236,7 @@ _de_pending_files = {rel_ for rel_, _t in _DE_PENDING}
 _de_outside = [rel_ for rel_ in _DE_FILES if rel_ not in _de_pending_files]
 check(f"nothing in the German prose is pending: the pending set holds no text, so each of the {len(_DE_FILES)} sources is read whole "
       f"outside it (pending: {[(rel_, text_[:40]) for rel_, text_ in _DE_PENDING][:4]})", not _DE_PENDING and len(_de_outside) == len(_DE_FILES))
-_de_blind ={"a formal form": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
+_de_blind = {"a formal form": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
              "a retired term": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Owner"))]}
 check(f"the guard is not blind outside the pending set: a formal form, and a retired term, put into each of the {len(_de_outside)} German "
       f"sources outside it turns it red (sources where it stayed green: {_de_blind})", not any(_de_blind.values()) and len(_de_outside) >= 20)
@@ -9252,7 +9257,8 @@ _de_kinds = {
     "commands": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist --Owner -Ihnen alles."),
     "URLs": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist https://example.org/Ihnen/Owner alles."),
     "file names": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist Ihnen-Owner.md alles."),
-    "quoted English refusals": _with(_ds_de, "docs/de/signing.md", "*… the Owner's email, unsigned*", "*… the Owner's email, unsigned* *… the Owner's email, unsigned*"),
+    "quoted English refusals": {**_ds_de, "docs/de/signing.md": _ds_de["docs/de/signing.md"].replace("*… the Owner's email, unsigned*", " ", 1)
+                                + "\n\n*… the Owner's email, unsigned*\n"},
 }
 _de_kinds_read = [kind_ for kind_, src_ in _de_kinds.items() if _de_guard(src_)]
 check(f"what is not prose is not read as prose: a formal form or a retired term in each of {len(_de_kinds)} kinds — code blocks, inline code, "
@@ -9265,6 +9271,30 @@ _de_more = {"a sentence-initial Sie no entry names": (_with(_ds_de, "docs/de/set
 _de_more_green = [name_ for name_, (src_, pending_) in _de_more.items() if not _de_guard(src_, pending_)]
 check(f"no form passes by where it stands, and the named texts stay true: a sentence-initial Sie that no entry names, an allowed text gone from "
       f"its file, and a pending text gone from its file each turn the guard red (stayed green: {_de_more_green})", not _de_more_green)
+# A retired term inflected or in a compound is read as one; a word that only holds its letters is not.
+_de_forms = {term_: bool(_de_guard(_de_inject(_ds_de, "docs/de/setup.md", term_)))
+             for term_ in ("Standups", "Testsitz", "Untersitzungen", "Sitzungsende", "Tafeln", "Besitz", "besitzen")}
+_de_forms_wrong = [term_ for term_, red_ in _de_forms.items() if red_ != (term_ not in ("Besitz", "besitzen"))]
+check(f"the guard reads a retired term inflected or in a compound: each of Standups, Testsitz, Untersitzungen, Sitzungsende and Tafeln put "
+      f"into a source turns it red, and Besitz and besitzen leave it green (wrong: {_de_forms_wrong})", not _dg and not _de_forms_wrong)
+# Prose the guard must still read, each case beside the code or the markup that stands next to it: red on the case, and the code itself unread.
+_de_spans = (_with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Mit ``git log`` sehen Sie es in `--check`. Das ist alles."),
+             _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Mit ``Sie log`` und `Owner` siehst du es. Das ist alles."))
+check("the guard reads the prose between a double-backtick code span and a single one on the same line: „Mit ``git log`` sehen Sie es in "
+      "`--check`.“ turns it red, and a form inside either span leaves it green",
+      not _dg and bool(_de_guard(_de_spans[0])) and not _de_guard(_de_spans[1]))
+_de_fences = ({**_ds_de, "docs/de/setup.md": _ds_de["docs/de/setup.md"] + "\n\n```\nx\n````\n\nIhnen gehört das.\n\n```\ny\n```\n"},
+              {**_ds_de, "docs/de/setup.md": _ds_de["docs/de/setup.md"] + "\n\n```\nIhnen gehört das.\n````\n"})
+check("the guard reads the prose after a code block whose closing fence is longer than three backticks: a form there turns it red, and a "
+      "form inside that block leaves it green", not _dg and bool(_de_guard(_de_fences[0])) and not _de_guard(_de_fences[1]))
+_de_attrs = {attr_: _with(_ds_de, "overrides/partials/landing/de.html", '"dlg_less": "Weniger anzeigen"',
+                       '"dlg_less": "<span ' + attr_ + '=\\"für Sie\\">Weniger</span> anzeigen"') for attr_ in ("title", "alt", "aria-label", "placeholder", "class")}
+_de_attrs_wrong = [attr_ for attr_, src_ in _de_attrs.items() if bool(_de_guard(src_)) != (attr_ != "class")]
+check(f"the guard reads what a tag in a words partial says to its reader: a form in its title, alt, aria-label or placeholder turns it red, "
+      f"and one in its class leaves it green (wrong: {_de_attrs_wrong})", not _dg and not _de_attrs_wrong)
+_de_twice = {**_ds_de, "ADOPT.de.md": _ds_de["ADOPT.de.md"] + "\n\nIhr lest diesen Text.\n"}
+check("an allowed text is allowed once, where it stands: „Ihr lest diesen Text“ a second time in ADOPT.de.md turns the guard red",
+      not _dg and bool(_de_guard(_de_twice)))
 # Each old text of the why page's German and of the link preview's German alt, beside its text now: put back, each turns the guard red.
 _de_old_why = (
     ("kopierst du den Stand-up-Prompt: Er bittet eine Session, sie mit dir durchzugehen",
@@ -9288,6 +9318,13 @@ _de_back_green = [name_ for name_, src_ in _de_back.items() if not _de_guard(src
 check(f"no old text comes back: each of the why page's {len(_de_old_why)} old texts put back into each of its two German files, and the German "
       f"alt's old quote put back into each of its three places, turns the guard red ({len(_de_back)} mutants; stayed green: {_de_back_green})",
       not _de_back_green and len(_de_back) == 21)
+# A pending text exempts its own forms, and only where it stands: the German alt's old quote back in its place, under a set of its own.
+_de_alt_back = _with(_ds_de, "overrides/main.html", *_de_old_alt)
+_de_alt_set = (("overrides/main.html", _de_old_alt[1]),)
+check("a pending text exempts its own forms, and only those: with the German alt's old quote back in overrides/main.html, the guard is red "
+      "with no set, green with a set naming that quote, and red again with „Ihnen“ put beside it",
+      bool(_de_guard(_de_alt_back)) and not _de_guard(_de_alt_back, _de_alt_set)
+      and bool(_de_guard(_de_inject(_de_alt_back, "overrides/main.html", "Ihnen"), _de_alt_set)))
 
 
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
