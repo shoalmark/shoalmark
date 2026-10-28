@@ -1042,17 +1042,17 @@ RESUME_STRIP = (b"(${esc(g[2])})${rsm(g[0])}${g[3].length", b"(${esc(g[2])})${g[
 # text holds `<`, `>` or `&`).
 RESUME_WORDS = {
     "resume.button": ("resume command", "Fortsetzungsbefehl"),
-    "resume.spoken": ("copy the command that resumes session {0}", "den Befehl kopieren, der die Sitzung {0} fortsetzt"),
+    "resume.spoken": ("copy the command that resumes session {0}", "den Befehl kopieren, der die Session {0} fortsetzt"),
     "resume.help": ("for a session that is no longer open: the board cannot see whether one is",
-                    "für eine Sitzung, die nicht mehr offen ist: das Board kann nicht sehen, ob sie es ist"),
+                    "für eine Session, die nicht mehr offen ist: das Board kann nicht sehen, ob sie es ist"),
     "resume.copied": ("the command is on your clipboard · run it in a terminal, only for a session that is no longer open",
-                      "der Befehl ist in Ihrer Zwischenablage · in einem Terminal ausführen, nur für eine Sitzung, die nicht mehr offen ist"),
+                      "der Befehl ist in deiner Zwischenablage · führe ihn in einem Terminal aus, nur für eine Session, die nicht mehr offen ist"),
     "resume.two": ("no resume command: {0} logs on this machine start with {1}, and the board does not pick one",
                    "kein Fortsetzungsbefehl: {0} Protokolle auf diesem Rechner beginnen mit {1}, und das Board wählt keines aus"),
     "resume.nofolder": ("no resume command: its log names no folder in its first {0} MiB",
-                        "kein Fortsetzungsbefehl: sein Protokoll nennt in seinen ersten {0} MiB keinen Ordner"),
-    "resume.unread": ("no resume command: its log could not be read", "kein Fortsetzungsbefehl: sein Protokoll konnte nicht gelesen werden"),
-    "resume.refused": ("no resume command: its folder {0} {1}", "kein Fortsetzungsbefehl: sein Ordner {0} {1}"),
+                        "kein Fortsetzungsbefehl: ihr Protokoll nennt in seinen ersten {0} MiB keinen Ordner"),
+    "resume.unread": ("no resume command: its log could not be read", "kein Fortsetzungsbefehl: ihr Protokoll konnte nicht gelesen werden"),
+    "resume.refused": ("no resume command: its folder {0} {1}", "kein Fortsetzungsbefehl: ihr Ordner {0} {1}"),
     "resume.refused.chars": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : -",
                              "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : -"),
     "resume.refused.chars.nt": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : - and the backslash",
@@ -1062,8 +1062,8 @@ RESUME_WORDS = {
     "resume.refused.relative": ("is not an absolute path", "ist kein absoluter Pfad"),
     "read.about.logs": ("for each session's resume command: the names of the logs in ~/.claude/projects and ~/.codex/sessions, and the folder its "
                         "first turn ran in: never what a session said",
-                        "für den Fortsetzungsbefehl jeder Sitzung: die Namen der Protokolle in ~/.claude/projects und ~/.codex/sessions und der "
-                        "Ordner, in dem ihr erster Zug lief: nie, was eine Sitzung sagte"),
+                        "für den Fortsetzungsbefehl jeder Session: die Namen der Protokolle in ~/.claude/projects und ~/.codex/sessions und der "
+                        "Ordner, in dem ihr erster Zug lief: nie, was eine Session sagte"),
 }
 RESUME_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": (?:'
                                  + b"|".join(re.escape(json.dumps(text, ensure_ascii=False).encode("utf-8")) for text in texts) + rb")")
