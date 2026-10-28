@@ -72,7 +72,15 @@ p{margin:0 0 14px}
 .big strong{font-weight:inherit;color:var(--coral)}
 .over p:not(.big):not(.t){color:var(--dim);max-width:70ch}
 .for{font-size:clamp(17px,1.8vw,20px);line-height:1.55;color:var(--land);max-width:62ch;margin:0 auto;text-align:center}
-.proof{margin-top:36px}.proof>p{max-width:70ch}
+.proof{margin-top:36px}
+.said{margin:44px auto 0;max-width:66ch}
+.said blockquote{margin:0;padding:2px 0 2px 22px;border-left:4px solid var(--land)}
+.said blockquote p{margin:0;color:var(--land);font-size:clamp(16px,1.55vw,19px);line-height:1.65}
+.said blockquote p+p{margin-top:.85em}
+.said blockquote a{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}.said blockquote a:focus-visible{outline:2px solid var(--land);outline-offset:2px}
+.said figcaption{margin:12px 0 0 26px;color:var(--dim);font-size:14px}
+.said figcaption a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--contour);text-underline-offset:3px}
+.said figcaption a:hover{text-decoration-color:currentColor}.said figcaption a:focus-visible{outline:2px solid var(--watt);outline-offset:2px}
 .card{margin:36px calc(50% - 50vw) 0;padding:0;background:var(--deep);border-block:1px solid var(--band)}
 .card img{display:block;width:100%;max-width:1200px;height:auto;margin:0 auto}
 .board{margin:56px calc(50% - 50vw) 0;padding:44px 20px 30px;background:var(--deep);border-block:1px solid var(--band)}
@@ -104,7 +112,7 @@ p{margin:0 0 14px}
 @media (max-width:760px){.mark{grid-template-columns:1fr;gap:22px}}
 @media (max-width:640px){
  .proof{margin-top:28px}
- .card{margin-top:28px}
+ .said{margin-top:32px}.said blockquote{padding-left:14px;border-left-width:3px}.said figcaption{margin-left:17px}.card{margin-top:28px}
  .contact>span{display:block;white-space:normal}.contact .sep{display:none}
  .hud .in{height:40px}
  .hero{padding-top:14px}
@@ -140,7 +148,11 @@ p{margin:0 0 14px}
  .s-saw{display:contents}.s-saw>h2.cue{grid-column:1;grid-row:2}.s-saw>.over{grid-column:1;grid-row:3}.s-for{grid-column:1;grid-row:4}
  .proof{grid-column:2;grid-row:2/span 3}.s-why{grid-row:5}.s-move{grid-column:1;grid-row:6}.s-never{grid-column:2;grid-row:6}
  .proof{margin-top:0}
- .proof>p{font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt}
+ .said{margin:4pt 0 0;max-width:none}.said blockquote{padding:0 0 0 6pt;border-left-width:1.5pt}
+ .said blockquote p{font-size:7.4pt;line-height:1.3;color:var(--land)}.said blockquote p+p{margin-top:2.5pt}.said figcaption{margin:2pt 0 0 7.5pt;font-size:7.4pt}
+ .said figcaption a{color:var(--ink);text-decoration:none}.said blockquote a{text-decoration:none}
+ .said{border-left:1.5pt solid var(--land);padding-left:6pt}.said blockquote{display:inline;border:0;padding:0}
+ .said blockquote p:last-child{display:inline}.said blockquote p:nth-last-child(2){margin-bottom:2.5pt}.said figcaption{display:inline;margin:0 0 0 3pt}
  .card{margin:5pt 0 0;padding:0;background:none;border:0;break-inside:avoid}
  .card img{max-width:none;width:66%;margin:0}
  .hero{padding:0}
@@ -175,8 +187,8 @@ p{margin:0 0 14px}
  .btn.alt,.btn.ghost{background:none;border:0;box-shadow:none}
  html[lang=de] body,html[lang=de] .tldr dl,html[lang=de] .lead,html[lang=de] .for,html[lang=de] .never,html[lang=de] .intro{font-size:8pt}
  html[lang=de] .tiles li{font-size:7pt}
+ html[lang=de] .said blockquote p{font-size:7.2pt}
  html[lang=de] .card img{width:60%}
- html[lang=de] .proof>p{font-size:7.2pt}
  html[lang=de] .tldr dl,html[lang=de] .tldr dl>div.try{grid-template-columns:15.5ch 1fr}
  html[lang=de] .tldr dl>div.try a{font-size:8pt}
  a{text-decoration:none}
@@ -195,7 +207,7 @@ p{margin:0 0 14px}
 </section>
 <section class="s-saw" aria-labelledby="s1"><h2 class="cue" id="s1">{{ w.saw_h }}</h2>
 <div class="over"><p class="t">{{ w.saw_t }}</p><p class="big">{{ w.saw_big }}</p><p>{{ w.saw }}</p></div>
-<div class="proof"><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p><figure class="card"><img src="{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }}" srcset="{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }} 1x, {{ ('assets/why/contributions-2026-' ~ w.lang ~ '@2x.png') | url }} 2x" alt="{{ w.card_alt }}" width="1200" height="675"></figure></div>
+<div class="proof"><figure class="said"><blockquote><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p></blockquote><figcaption>{{ w.said_by }}</figcaption></figure><figure class="card"><img src="{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }}" srcset="{{ ('assets/why/contributions-2026-' ~ w.lang ~ '.png') | url }} 1x, {{ ('assets/why/contributions-2026-' ~ w.lang ~ '@2x.png') | url }} 2x" alt="{{ w.card_alt }}" width="1200" height="675"></figure></div>
 </section>
 <section class="s-for" aria-labelledby="s2"><h2 class="cue" id="s2">{{ w.for_h }}</h2>
 <p class="for">{{ w.for_text }}</p>
