@@ -251,7 +251,7 @@ class Taped(unittest.TestCase):
             old = '<a class="btn" href="%s">%s</a>' % (note, "Hand your agents the note" if en else "Agenten die Notiz geben")
             new = ('<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">%s</span></button>'
                    % (LABELS["en" if en else "de"], "not yet" if en else "noch nicht"))
-            why = '<p class="taped-why" id="taped-why">%s <a href="%s">%s</a>.</p>' % ("Not open yet. Until then, hand your agents" if en else "Noch nicht offen. Bis dahin geben Sie Ihren Agenten",
+            why = '<p class="taped-why" id="taped-why">%s <a href="%s">%s</a>.</p>' % ("Not open yet. Until then, hand your agents" if en else "Noch nicht offen. Bis dahin gibst du deinen Agenten",
                                                                                      note, "the note" if en else "die Notiz")
             text = (site / name).read_text(encoding="utf-8")
             self.assertIn(old, text)

@@ -5857,10 +5857,10 @@ _STANDUP_ROWS = {
            "cost_1": "one click copies the stand-up prompt; the board's first lines are its agenda."},
     "de": {"p2_text": "Deine Agenten fragen mitten im Lauf, und du nickst ab, was du nicht in Ruhe lesen konntest. shoalmark sammelt diese Fragen auf dem Board, "
                       "bis es dir passt.",
-           "p2_standup": "Wann immer es dir passt: Die ersten Zeilen des Boards sind seine Tagesordnung, und der Standup-Prompt des Boards bittet eine Sitzung, "
+           "p2_standup": "Wann immer es dir passt: Die ersten Zeilen des Boards sind seine Tagesordnung, und der Stand-up-Prompt des Boards bittet eine Session, "
                          "sie mit dir durchzugehen, einen Punkt nach dem anderen.",
-           "cost_1_b": "Ein Standup, wann immer es dir passt",
-           "cost_1": "ein Klick kopiert den Standup-Prompt; die ersten Zeilen des Boards sind seine Tagesordnung."}}
+           "cost_1_b": "Ein Stand-up, wann immer es dir passt",
+           "cost_1": "ein Klick kopiert den Stand-up-Prompt; die ersten Zeilen des Boards sind seine Tagesordnung."}}
 _STANDUP_TWIN_LINES = {
     "docs/index.md": ("**To the owner:** " + _STANDUP_ROWS["en"]["p2_text"][:1].lower() + _STANDUP_ROWS["en"]["p2_text"][1:],
                       "- **" + _STANDUP_ROWS["en"]["cost_1_b"] + "**, " + _STANDUP_ROWS["en"]["cost_1"]),

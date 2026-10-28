@@ -78,7 +78,7 @@ Der Beleg bleibt in deinem Repository, als Markdown und deine eigenen Commits.
 
 ## Was ein Tag dich kostet
 
-- **Ein Standup, wann immer es dir passt**, ein Klick kopiert den Standup-Prompt; die ersten Zeilen des Boards sind seine
+- **Ein Stand-up, wann immer es dir passt**, ein Klick kopiert den Stand-up-Prompt; die ersten Zeilen des Boards sind seine
   Tagesordnung.
 - **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt deine Antwort als Commit, mit deinem Schlüssel
   signiert, sobald du das Signieren einschaltest.
