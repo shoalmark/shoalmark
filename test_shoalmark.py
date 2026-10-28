@@ -18604,7 +18604,7 @@ def _ci_reads_hold(tier_run, root, sources, lazy=False):
     return bool(reads) and len(runs) == len(shapes) and not records, (len(reads), len(shapes), records)
 
 
-_CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py") if (HERE / n).is_file()}
+_CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py", "test_plugin.py") if (HERE / n).is_file()}
 
 
 def _ci_step_runs(step, records, entry):
@@ -18637,7 +18637,7 @@ def _ci_job_paths(steps, include):
     passes = [s for s in steps if "Records validation was not run in this job." in str(s.get("run") or "")]
     installs = [s for s in steps if s.get("name") in ("Subversion (Linux)", "Subversion (macOS)", "Subversion (Windows)")]
     svn = [s for s in steps if str(s.get("run") or "").strip() == "svn --version --quiet"]
-    suites = [s for s in steps if str(s.get("run") or "").strip() in ("python -u test_shoalmark.py", "python -u test_core.py")]
+    suites = [s for s in steps if str(s.get("run") or "").strip() in ("python -u test_shoalmark.py", "python -u test_core.py", "python -u test_plugin.py")]
     zones = [s for s in steps if "TZ" in (s.get("env") or {})]
     out = []
     for records in ("true", "false", "", "uncertain"):
@@ -18646,7 +18646,7 @@ def _ci_job_paths(steps, include):
             for system, python in entries:
                 entry = next(e for e in include if (e.get("system"), e.get("python")) == (system, python))
                 counts = tuple(sum(_ci_step_runs(s, records, entry) for s in group) for group in (gate, passes, installs, svn, suites, zones))
-                want = (int((system, python) == ("ubuntu", "3.9")), int((system, python) != ("ubuntu", "3.9")), 0, 0, 0, 0) if records == "true" else (1, 0, 1, 1, 2, int(system == "ubuntu"))
+                want = (int((system, python) == ("ubuntu", "3.9")), int((system, python) != ("ubuntu", "3.9")), 0, 0, 0, 0) if records == "true" else (1, 0, 1, 1, 3, int(system == "ubuntu"))
                 seen.append((system, python, counts, want))
             ok = all(got == want for _, _, got, want in seen)
         except (ValueError, SyntaxError, StopIteration, TypeError):
@@ -18763,11 +18763,13 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
     svn = [s for s in steps if run_of(s).strip() == "svn --version --quiet"]
     suite_at, core_at = at(lambda s: run_of(s) == "python -u test_shoalmark.py\n" or run_of(s) == "python -u test_shoalmark.py"), \
         at(lambda s: run_of(s).strip() == "python -u test_core.py")
+    plugin_at = at(lambda s: run_of(s).strip() == "python -u test_plugin.py")
     zone_at = at(lambda s: s.get("continue-on-error") is not None or "TZ" in (s.get("env") or {}))
     zone = steps[zone_at] if zone_at is not None else {}
     full = "steps.tier.outputs.records != 'true'"
     want = {shape: "true" if shape in _CI_RECORDS else "false" for shape in shapes}
     text_props = [
+        ("the tracker-read scan includes all three suites", set(sources or _CI_SOURCES) == {"test_shoalmark.py", "test_core.py", "test_plugin.py"}),
         ("the five check names stand: one job, `suites`, named by `suites (${{ matrix.system }}, ${{ matrix.python }})`, over ubuntu 3.9 and 3.12, "
          "macos 3.12, windows 3.9 and 3.12 on their pinned images" + refused,
          set(jobs) == {"suites"} and job.get("name") == "suites (${{ matrix.system }}, ${{ matrix.python }})"
@@ -18804,17 +18806,22 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
              'choco install sliksvn -y --no-progress\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n'
              'echo "C:\\Program Files\\SlikSvn\\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append']
          and len(svn) == 1 and svn[0].get("continue-on-error") is None),
-        ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
-         None not in (suite_at, core_at) and all(steps[i].get("if") == full for i in (suite_at, core_at))
+        ("all three UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them; the plugin suite follows core",
+         None not in (suite_at, core_at, plugin_at) and plugin_at == core_at + 1
+         and all(steps[i].get("if") == full and steps[i].get("continue-on-error") is None for i in (suite_at, core_at, plugin_at))
          and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
         ("the Ubuntu 3.9 entry carries the zone Pacific/Kiritimati, UTC+14, the Ubuntu 3.12 entry Pacific/Pago_Pago, UTC−11, and no other entry a zone",
          [e.get("tz") for e in include] == ["Pacific/Kiritimati", "Pacific/Pago_Pago", None, None, None]),
-        ("after the UTC suites, the entry's zone runs both suites again under TZ, with continue-on-error, where there is a zone and the tier is not records, "
-         "and writes its result to the run's summary",
-         zone_at is not None and None not in (suite_at, core_at) and zone_at > max(suite_at, core_at) and zone.get("continue-on-error") is True
+        ("after the UTC suites, the entry's zone runs all three suites again under TZ, with continue-on-error, where there is a zone and the tier is not records, "
+         "and writes all three exits on failure to the run's summary",
+         zone_at is not None and None not in (suite_at, core_at, plugin_at) and zone_at > max(suite_at, core_at, plugin_at) and zone.get("continue-on-error") is True
          and zone.get("if") == "matrix.tz && " + full and zone.get("env") == {"TZ": "${{ matrix.tz }}"} and zone.get("shell") == "bash"
          and "python -u test_shoalmark.py && suite=0 || suite=$?" in run_of(zone) and "python -u test_core.py && core=0 || core=$?" in run_of(zone)
-         and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone) and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ]')),
+         and "python -u test_plugin.py && plugin=0 || plugin=$?" in run_of(zone)
+         and 'if [ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]; then said="all three suites passed"; '
+             'else said="FAILED — test_shoalmark.py exit $suite, test_core.py exit $core, test_plugin.py exit $plugin"; fi' in run_of(zone)
+         and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone)
+         and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]')),
     ] + _ci_job_paths(steps, include)
     if lazy and not all(ok for _, ok in text_props):
         return text_props
@@ -18837,7 +18844,7 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          runs.get("INDEX.md and TRIAGE.md edited") == runs.get("an evidence file no suite reads") == "true"
          and all(runs.get(n) == "false" for n in ("allowed_signers edited", "a brand font edited", "the landing mock edited",
                                                   "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry"))),
-        (f"…every path under the tracker folder that test_shoalmark.py or test_core.py reads in this repository — found in their syntax — gives the "
+        (f"…every path under the tracker folder that test_shoalmark.py, test_core.py or test_plugin.py reads in this repository — found in their syntax — gives the "
          f"full suites beside a tracker edit, and so does each with the case of its letters swapped (saw {reads_saw[0]} reads, {reads_saw[1]} paths, "
          f"these giving records: {reads_saw[2]})", reads_ok),
         (f"…RV-2966 and RV-2968: a case variant of a path the suites read, a path holding a byte outside printable ASCII — a ligature, a combining "
@@ -18875,6 +18882,21 @@ def _ci_wf_regressions(text, root, shapes):
         ("records only also runs the suites", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", "      - run: python -u test_shoalmark.py\n", 1)),
         ("the suites skip where the tier is unset", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n",
                                                                         "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
+        ("the plugin UTC step is absent", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_plugin.py\n", "", 1)),
+        ("the plugin UTC step skips an unset tier", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_plugin.py\n",
+                                                                                 "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_plugin.py\n", 1)),
+        ("the plugin UTC step runs for records", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_plugin.py\n",
+                                                                                   "      - run: python -u test_plugin.py\n", 1)),
+        ("the plugin UTC step may fail without stopping CI", lambda t: t.replace("        run: python -u test_plugin.py\n",
+                                                                                               "        continue-on-error: true\n        run: python -u test_plugin.py\n", 1)),
+        ("the plugin UTC step comes before core", lambda t: t.replace("        run: python -u test_core.py\n", "        run: python -u plugin-placeholder.py\n", 1)
+            .replace("        run: python -u test_plugin.py\n", "        run: python -u test_core.py\n", 1)
+            .replace("        run: python -u plugin-placeholder.py\n", "        run: python -u test_plugin.py\n", 1)),
+        ("the plugin TZ run is absent", lambda t: t.replace("          python -u test_plugin.py && plugin=0 || plugin=$?\n", "", 1)),
+        ("the plugin TZ exit is absent from the summary", lambda t: t.replace(", test_plugin.py exit $plugin", "", 1)),
+        ("the plugin TZ exit is ignored by the summary", lambda t: t.replace(' && [ "$plugin" -eq 0 ]; then', '; then', 1)),
+        ("the plugin TZ exit is ignored by the final status", lambda t: t.replace('          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]\n',
+                                                                                              '          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]\n', 1)),
         ("the signers setting is removed", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\n', "", 1)),
         ("the gate command changes to the platform's default", lambda t: t.replace(', SHOALMARK_CMD: python3 shoalmark.py', "", 1)),
         ("records repeat the gate in all five jobs", lambda t: t.replace("        if: steps.tier.outputs.records != 'true' || (matrix.system == 'ubuntu' && matrix.python == '3.9')\n", "", 1)),
@@ -18891,7 +18913,7 @@ def _ci_wf_regressions(text, root, shapes):
         ("the zone's run says nothing in the summary", lambda t: t.replace('(reported, not yet required)." >> "$GITHUB_STEP_SUMMARY"', '(reported, not yet required)."', 1)),
         ("the zone's run comes before the UTC suites", lambda t: (lambda m: t if not m else t.replace(m.group(0), "", 1).replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n",
                                                                   m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
-            re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
+            re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \] && \[ \"\$plugin\" -eq 0 \]\n", t))),
     )
     rows += tuple((f"{system}'s SVN installation has no timeout", lambda t, system=system:
                    re.sub(r"(      - name: Subversion \(" + re.escape(system) + r"\)\n.*?)(        timeout-minutes: 15\n)", r"\1", t, count=1, flags=re.S))
@@ -18919,6 +18941,17 @@ def _ci_wf_regressions(text, root, shapes):
     added = {**_CI_SOURCES, "test_shoalmark.py": _CI_SOURCES.get("test_shoalmark.py", "") + '\n_x = (HERE / "work-tracker/evidence/FM-010/read-by-a-suite.md").read_text()\n'}
     out.append(("a suite that reads a file of the allowlist — evidence/FM-010/read-by-a-suite.md, added to test_shoalmark.py — fails the reads property",
                 not _ci_reads_hold(next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier"), root, added)[0]))
+    without_plugin = {name: source for name, source in _CI_SOURCES.items() if name != "test_plugin.py"}
+    out.append(("omitting test_plugin.py from the tracker-read scan fails a property",
+                not all(ok for _, ok in _ci_wf_properties(text, root, shapes, sources=without_plugin, lazy=True))))
+    plugin_read = "work-tracker/evidence/plugin/read-by-a-suite.md"
+    added = {**_CI_SOURCES, "test_plugin.py": _CI_SOURCES.get("test_plugin.py", "") + '\n_x = (HERE / "' + plugin_read + '").read_text()\n'}
+    tier_run = next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier")
+    protected = tier_run.replace('case "$path" in\n', 'case "$path" in\n                "$dir"/evidence/plugin/*) records=false ;;\n', 1)
+    out.append(("a tracker path added to test_plugin.py is detected and requires a full-suite exclusion from records",
+                plugin_read in _suite_reads(added) and protected != tier_run and _ci_reads_hold(protected, root, added)[0]))
+    out.append(("without that exclusion a tracker path added to test_plugin.py fails the reads property",
+                not _ci_reads_hold(tier_run, root, added)[0]))
     for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
         out.append((f"a ci.yml in which {what} passes every property above", all(ok for _, ok in _ci_wf_properties(change(text), root, shapes))))
     return out
