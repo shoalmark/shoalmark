@@ -63,6 +63,18 @@ button.** On the Owner's word of 28 October, as the Auditor relays it:
 - *Arbeitspaket* is the work item in the probe prompts too, and *Eintrag* only a line in a list;
 - the unused picture of the German Board, `examples/de/tafel.png`, is removed.
 
+**2026-10-28 — the German rewrite: the why page's German in *du*, the preview's alt, and the guard read whole.** After
+#228 joined the lane (`b8581fd`):
+- the why page's German says *du hast das letzte Wort* in its two places, as the hero line above has it;
+- nine of its texts move by the glossary, to *Stand-up*, *Session* and *Rolle*. In the maker's quote only *Sitzungen*
+  becomes *Sessions*, and the timeline sentence, *zurück in der Schleife* and *lass* stay word for word;
+- the German link preview's alt quotes *Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.* in its three
+  places (BF-94);
+- the check against formal German and retired terms now reads every German source whole. Its pending set is empty, and
+  a control keeps it so (`a531131`);
+- the critical review of the probe prompts' German is READY WITH FINDINGS. RV-3951: two words now agree with
+  *Arbeitspaket*, *Jedes bekommt* and *mit denen es* (`cebbcd2`). RV-3952: recorded privately.
+
 **2026-10-28 — the why page, on the Owner's word on the live site:** the story stands as a quote again, in its figure with its blockquote, left rule and caption and their rules on screen, on a phone and in print, where BF-86 and RV-3930 had made it running text; its words stay in the first person. Its caption is the Owner's attribution in their own words, after its dash and linked to the X profile, and the portdive sentence is said there once. Its last paragraph tells the timeline from shoalmark's first commit on 21 September. The tile *Measured, not promised.* reads *Reports, not proofs.*, the Board's own words, and the TL;DR's Try-it line says what the prompt asks: to try the setup on a copy in a throwaway folder, and to change nothing in the repository without the reader's yes. The German says the same in the page's *du* voice.
 
 **2026-10-28 — the why page prints on one page again, and its caption balances its lines:** BF-90 sets the print's running text, the quote, the TL;DR's Try-it row and the card a little smaller, so the page prints on one page in English and German, and BF-91 balances the caption's lines on screen, as the Designer measured them.
@@ -1203,6 +1215,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-28 21:53:10 CET | **The German rewrite: the why page's German in *du*, and the guard read whole** after #228 joined the lane (`b8581fd`): the hero line in its two places, nine texts by the glossary, and the preview's alt in its three places (BF-94), with the guard's pending set empty (`a531131`). From the critical review of the probe prompts' German, READY WITH FINDINGS: RV-3951 (`cebbcd2`); RV-3952: recorded privately. Records only. |
 | 2026-10-28 19:22:59 CET | **The German rewrite: the Owner's words** on the hero line (*du hast das letzte Wort*, changing A2), the inspector (*der Gutachter*), the probe template's two named exceptions, the landing's button, *Arbeitspaket* in the probe prompts, and the old German Board picture removed. Records only. |
 | 2026-10-28 16:15:38 CET | **The German rewrite's glossary ruled, and its lane started** on `release/v0.20.2-signed`, on the Owner's word: every German line of v0.20.2 moves to *du*, by the glossary this file's entry of 28 October records. Records only. |
 | 2026-10-28 12:12:39 CET | **The why page, on the Owner's word on the live site,** on `fm/006-why-page-fixes` from `bc5da4e`: the quote back around the story, with its rules on screen, on a phone and in print, its caption the Owner's attribution linked to the X profile, the timeline from the first commit, the tile *Reports, not proofs.* and the Try-it line, in English and German; the story's `.proof>p` rules, which match nothing with the quote back, went. The suite's pins move with the quote and the words. The Designer looks next, on screen, on a phone and in print. |
