@@ -9060,7 +9060,8 @@ def _de_prose_files():
                  + sorted(p_.relative_to(HERE).as_posix() for p_ in HERE.glob("launch/*/*.de.md"))
                  + ["examples/de/TRIAGE.md", "examples/de/TEMPLATE.md", "examples/de/labels.yaml", "examples/de/shoalmark.toml",
                     "overrides/partials/landing/de.html", "overrides/partials/why/de.html", "overrides/main.html", "zensical.toml",
-                    "shoalmark.py", "brand/social/link-preview-de.svg"])
+                    "shoalmark.py", "brand/social/link-preview-de.svg", "docs/feedback/index.html",
+                    ".github/ISSUE_TEMPLATE/what-your-agent-found.yml"])
 
 
 _DE_FORMAL = re.compile(r"\b(Sie|Ihnen|Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres)\b")
@@ -9128,7 +9129,7 @@ def _de_tag_words(tag):
 def _de_parts(rel, text):
     """The German prose a source holds, as the strings it reads: a page whole, a partial's word values and its prompt, the German preview's
     alternative text, the German menu's titles, the labels' and the settings' values and comments, the tool's German constants, the preview's
-    lines."""
+    lines, the feedback page's German section, and the issue form's German halves and German paragraphs."""
     if rel.endswith(".md"):
         return [text]
     if rel.endswith("/de.html"):
@@ -9170,6 +9171,32 @@ def _de_parts(rel, text):
         return _DE_CONSTANTS[key_]
     if rel.endswith(".svg"):
         return re.findall(r"<text\b[^>]*>([^<]*)</text>", text)
+    if rel == "docs/feedback/index.html":
+        return [re.sub(r"<[^>]+>", _de_tag_words, s_) for s_ in re.findall(r'<section lang="de">(.*?)</section>', text, re.S)]
+    if rel.startswith(".github/ISSUE_TEMPLATE/"):
+        parts, block_ = [], None
+        for line_ in text.split("\n") + ["~"]:
+            if block_ is not None and (not line_.strip() or len(line_) - len(line_.lstrip()) > block_[0]):
+                block_[1].append(line_.strip())
+                continue
+            if block_ is not None:
+                paras_ = [p_.strip() for p_ in "\n".join(block_[1]).split("\n\n") if p_.strip()]
+                parts += paras_[1::2]                   # its paragraphs run English, then German
+                block_ = None
+            m_ = re.match(r"^(\s*)(?:- )?(name|description|title|label|placeholder|value):\s*(.*)$", line_)
+            if not m_:
+                continue
+            value_ = m_.group(3).strip()
+            if value_ == "|":
+                block_ = (len(m_.group(1)), [])
+                continue
+            if len(value_) > 1 and value_[0] == value_[-1] == "'":
+                value_ = value_[1:-1].replace("''", "'")
+            elif len(value_) > 1 and value_[0] == value_[-1] == '"':
+                value_ = value_[1:-1]
+            if " · " in value_:
+                parts.append(value_.split(" · ", 1)[1])
+        return parts
     raise AssertionError("no reader for " + rel)
 
 
@@ -9220,6 +9247,10 @@ def _de_inject(src, rel, word):
         new_ = text_.replace('{ "Start" = "de/index.md" }', '{ "' + word + ' Start" = "de/index.md" }', 1)
     elif rel == "shoalmark.py":
         new_ = text_.replace('INTENT_NOTE_DE = "*', 'INTENT_NOTE_DE = "*' + word + " ", 1)
+    elif rel == "docs/feedback/index.html":
+        new_ = text_.replace('<section lang="de">\n<p>', '<section lang="de">\n<p>' + word + " ", 1)
+    elif rel.startswith(".github/ISSUE_TEMPLATE/"):
+        new_ = text_.replace(" · ", " · " + word + " ", 1)
     else:
         new_ = text_.replace(">Eine Werkbank", ">" + word + " Eine Werkbank", 1)
     assert new_ != text_, rel
@@ -18674,9 +18705,9 @@ _TELL_AP9 = ("Only at the end, and only on your yes: opening shoalmark's feedbac
              "Nur am Ende und nur auf dein Ja: das Rückmeldeformular von shoalmark in deinem Browser öffnen, mit dem Text des Agenten darin. Du sendest es ab, oder nicht.")
 _TELL_INTRO = ("**This issue is public, under your GitHub name. Leave out anything private:** names, paths, code and credentials. Your agent may have filled it in; "
                "you read it, change it and send it. The prompt never asks your agent to post.",
-               "**Dieses Issue ist öffentlich, unter Ihrem GitHub-Namen. Lassen Sie Privates weg:** Namen, Pfade, Code und Zugangsdaten. Ihr Agent hat es vielleicht "
-               "ausgefüllt; Sie lesen es, ändern es und senden es ab. Der Prompt bittet Ihren Agenten nie, etwas zu posten.")
-_TELL_DESC = ('Tried it? Tell us what your agent found, even "no fit". One line is enough. · Ausprobiert? Sagen Sie uns, was Ihr Agent gefunden hat, auch „passt nicht“. '
+               "**Dieses Issue ist öffentlich, unter deinem GitHub-Namen. Lass Privates weg:** Namen, Pfade, Code und Zugangsdaten. Dein Agent hat es vielleicht "
+               "ausgefüllt; du liest es, änderst es und sendest es ab. Der Prompt bittet deinen Agenten nie, etwas zu posten.")
+_TELL_DESC = ('Tried it? Tell us what your agent found, even "no fit". One line is enough. · Ausprobiert? Sage uns, was dein Agent gefunden hat, auch „passt nicht“. '
               'Eine Zeile genügt.')
 _TELL_FORM = ".github/ISSUE_TEMPLATE/what-your-agent-found.yml"
 _TELL_URL = "https://github.com/shoalmark/shoalmark/issues/new?template=what-your-agent-found.yml"
@@ -18753,7 +18784,7 @@ _tctl = {"the English line as go-to-market first wrote it": _with(_ts, "override
          "the line only in the dialog": _with(_ts, "overrides/landing.html", '<p class="small" style="margin-top:16px">{{ T(w.dlg_tell) }}</p>', ""),
          "no form": {**_ts, _TELL_FORM: ""},
          "the form's answer not required": _with(_ts, _TELL_FORM, "required: true", "required: false"),
-         "the form without its German note on privacy": _with(_ts, _TELL_FORM, "Lassen Sie Privates weg:", "")}
+         "the form without its German note on privacy": _with(_ts, _TELL_FORM, "Lass Privates weg:", "")}
 _tctl_saw = {name: len(_tell_problems(src)) for name, src in _tctl.items()}
 check("FM-049 · the tell line's check is not blind: each of the English line as go-to-market first wrote it, the German one without its link, the line to a "
       "Discussions category, {discuss} back at the form's address, the ninth approval left out of the dialog, the form's description as it was, its answer "
@@ -18764,7 +18795,7 @@ _FEEDBACK = "docs/feedback/index.html"
 _FEEDBACK_WORDS = ("<title>shoalmark · feedback · Rückmeldung</title>", "<p>Taking you to shoalmark's feedback form on GitHub.</p>",
                    f'<p>If nothing happens: <a href="{_TELL_URL}">open the form</a>.</p>', "<p>What you send there is public, under your GitHub name.</p>",
                    "<p>Weiter zum Rückmeldeformular von shoalmark auf GitHub.</p>", f'<p>Falls nichts passiert: <a href="{_TELL_URL}">Formular öffnen</a>.</p>',
-                   "<p>Was Sie dort absenden, ist öffentlich, unter Ihrem GitHub-Namen.</p>")
+                   "<p>Was du dort absendest, ist öffentlich, unter deinem GitHub-Namen.</p>")
 
 
 def _feedback_problems(page):
