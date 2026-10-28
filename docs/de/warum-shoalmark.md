@@ -15,7 +15,7 @@ template: why.html
 - **Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.
 - **Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das dich bindet.
 - **Stand:** Open Source (Apache-2.0 oder MIT), in der Beta, und mit sich selbst gebaut.
-- **Ausprobieren:** [Kopiere den Prompt](index.md#top) und lass deinen Agenten prüfen, ob shoalmark zu deinem Projekt passt. Er probiert die Einrichtung an einer Kopie aus, in einem Wegwerf-Ordner außerhalb deines Repositorys: Dein Repository selbst wird nur gelesen, nie geändert. In bis zu 45 Minuten sagt dir dein Agent, ob shoalmark passt, und „passt nicht“ ist auch eine Antwort. Danach entscheidest du.
+- **Ausprobieren:** [Kopiere den Prompt](index.md#top) und lass deinen Agenten prüfen, ob shoalmark zu deinem Projekt passt. Der Prompt bittet ihn, die Einrichtung an einer Kopie auszuprobieren, in einem Wegwerf-Ordner außerhalb deines Repositorys, und dein Repository selbst nur zu lesen und ohne dein Ja nichts daran zu ändern. In bis zu 45 Minuten sagt dir dein Agent, ob shoalmark passt, und „passt nicht“ ist auch eine Antwort. Danach entscheidest du.
 
 ## Die Pricke
 
