@@ -6535,7 +6535,7 @@ _WHY_ROWS = {
         "W8": "**Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.",
         "W9a": "**Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das dich bindet.",
         "W9b": "**Stand:** Open Source (Apache-2.0 oder MIT), in der Beta, und mit sich selbst gebaut.",
-        "W9": "**Ausprobieren:** [Kopier den Prompt](index.md#top) und lass deinen Agenten prüfen, ob shoalmark zu deinem Projekt passt. Bis zu 45 Minuten, und „passt nicht“ ist auch eine Antwort.",
+        "W9": "**Ausprobieren:** [Kopiere den Prompt](index.md#top) und lass deinen Agenten prüfen, ob shoalmark zu deinem Projekt passt. Bis zu 45 Minuten, und „passt nicht“ ist auch eine Antwort.",
         "W10": "## Die Pricke<br>Eine Pricke markiert den Rand eines Fahrwassers im Watt. Den Kurs bestimmt weiterhin der Mensch am Steuer. Das ist die ganze Idee von shoalmark: Die Marken tun ihre Arbeit, und der Kurs bleibt in Menschenhand.",
         "W11": "## Was ich gesehen habe<br>Ich bin von dem ausgegangen, was ich gemessen habe. In meinem letzten Repository wurden in **22** Tagen **200** Pull Requests gemergt, **85 %** davon innerhalb einer Minute nach dem Öffnen, und **keiner** mit einem Review. Getrennt gefragt, was sie am meisten bremst, gaben drei Agenten dieselbe Antwort: die unbeantworteten Fragen an den Menschen. Eine Frage, drei Tage offen, hielt drei Pakete auf. Das Tempo war nie das Problem. Kleine Entscheidungen mitten in der Arbeit waren es.",
         "W12": "## Wofür shoalmark da ist<br>Ich bin überzeugt: Deine Agenten sollen mit voller Geschwindigkeit arbeiten und nachfragen, wenn es darauf ankommt. Entscheiden soll nur dein geprüftes Wort. Und jede Entscheidung soll sich später nachlesen lassen, direkt aus dem Repository. Genau dafür ist shoalmark gebaut.",
@@ -6549,7 +6549,7 @@ _WHY_ROWS = {
         "W20": "- **Aufgeschriebene Rechte.** Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten, und das Gate sieht jedes Recht in einem Diff.",
         "W21": "- **Gemessen, nicht versprochen.** shoalmark ist kein Beweis, dass die Arbeit stimmt. Dafür ist ein Review da.",
         "W22": "## Woran es sich selbst hält<br>Ich messe shoalmark an seiner eigenen Absicht, die über jedem Sichtungsdurchlauf in seinem Repository steht. Sie nennt, was nie passieren darf: ein falsches Durchwinken, eine Behauptung ohne Quelle, eine Handlung ohne deine Zustimmung, das Wort eines Agenten, das als deines zählt.",
-        "W23": "## Du bist am Zug<br>Wenn du mit Agenten baust, probier es an deinem eigenen Repository aus. Deine Agenten richten es ein, und der Beleg bleibt bei dir.<br>Lass deine Agenten laufen. Behalte das letzte Wort.<br>[Deine Agenten richten es ein](index.md#start) · [In zehn Minuten eingerichtet](setup.md) · [Zurück zu shoalmark](index.md)",
+        "W23": "## Du bist am Zug<br>Wenn du mit Agenten baust, probiere es an deinem eigenen Repository aus. Deine Agenten richten es ein, und der Beleg bleibt bei dir.<br>Lass deine Agenten laufen. Behalte das letzte Wort.<br>[Deine Agenten richten es ein](index.md#start) · [In zehn Minuten eingerichtet](setup.md) · [Zurück zu shoalmark](index.md)",
         "W24": "Offen gebaut: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Folge mir beim Bauen auf X: [@holgo99](https://x.com/holgo99)",
         "W38": "Am 13. Juli habe ich mich aus der Schleife genommen: Meine Planer-Agenten bekamen gh und übernahmen die Orchestrierung, und das Tempo war unglaublich. Einen Monat später postete ich [‚Bottleneck removed.‘](https://x.com/Holgo99/status/2088153757792043485)<br>Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)<br>Mit shoalmark bin ich zurückgekommen: Seit dem 21. September machen seine Agenten die meisten Commits, und meine sind vor allem Merges und Antworten. Ich baue portdive mit shoalmark, und shoalmark mit sich selbst.",
         "W39": "Ein Pixelraster-Kalender mit 10.259 GitHub-Beiträgen in 2026 auf einem einzelnen Konto, Stand 23. Oktober, im Nachtlook von shoalmark: ruhig von Januar bis Anfang Juli, ein helles Band von Mitte Juli bis Ende September, im Oktober wieder ruhiger. Drei Beschriftungen: 13. Juli, „Meine Planer-Agenten bekommen gh. Ich werde ihr Abnicker und ihr Bote.“; eine Klammer über die 22 Tage vor dem 21. September, „200 Pull Requests in 22 Tagen, keiner mit Review: das Repository, aus dem shoalmark kam“; und der 21. und 24. September, „der erste Commit von shoalmark“ und „jeder Pull Request bekommt die Datei eines Reviewers“. Quelle: github.com/holgo99.",
@@ -6575,6 +6575,27 @@ def _why_plain(text):
 
 # the German pitch page's two capitals that do not speak to its reader: the intent's "Sie nennt", and the preview image's own words, which its alt quotes
 _WHY_DE_NOT_YOU = ("Sie nennt, was nie passieren darf", "„Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt.“")
+# the story's column and its print size: each rule once, as a rule of its own, in its scope ("" is the screen, outside every @media block)
+_WHY_STORY_CSS = ((".proof{margin-top:36px}.proof>p{max-width:70ch}", ""), (".proof{margin-top:28px}", "@media (max-width:640px)"),
+                  (".proof{margin-top:0}", "@media print"), (".proof>p{font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt}", "@media print"),
+                  ("html[lang=de] .proof>p{font-size:7.2pt}", "@media print"))
+
+
+def _css_scope(css, at):
+    """The head of the @media block that holds the character at `at` of a stylesheet, or "" outside every @media block."""
+    heads, depth = [], 0
+    for m in re.finditer(r"@media[^{]*\{|\{|\}", css[:at]):
+        token = m.group(0)
+        if token.startswith("@media"):
+            heads.append((depth, token[:-1].strip()))
+            depth += 1
+        elif token == "{":
+            depth += 1
+        else:
+            depth -= 1
+            if heads and heads[-1][0] == depth:
+                heads.pop()
+    return heads[-1][1] if heads else ""
 
 
 def _why_problems(src):
@@ -6621,6 +6642,11 @@ def _why_problems(src):
             or saw.count('<div class="proof"><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p><figure class="card">') != 1 \
             or re.search(r"<blockquote|<figcaption|said_by|class=\"said\"|<q[\s>]|<cite", saw) or saw.count("<figure") != 1 or re.search(r"(?<!\w)\.said\b", tpl):
         bad.append("the template does not draw the story as the section's plain paragraphs, with no figure, quote, caption or rule of its own, or the card of the page's language from the site's own files")
+    css = re.sub(r"/\*.*?\*/", "", tpl.split("<style>", 1)[-1].split("</style>", 1)[0], flags=re.S)
+    for rule, scope in _WHY_STORY_CSS:
+        at = [m.start() for m in re.finditer(r"(?<![^\s}])" + re.escape(rule), css)]
+        if len(at) != 1 or _css_scope(css, at[0]) != scope:
+            bad.append(f"the story's rule {rule} is not there once, as a rule of its own, {'in ' + scope if scope else 'outside every @media block'}")
     if ".over>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--coral);color:var(--landink);" not in tpl \
             or ".over p:not(.big):not(.t){color:var(--dim);max-width:70ch}" not in tpl or re.search(r"\.over p:not\(\.big\)\{", tpl):
         bad.append("the What we saw tab is not the ink on coral its own rule sets: a rule for the box's other lines also colours it")
@@ -6644,7 +6670,8 @@ def _why_strings(value):
 _ws = _sources(_WHY_FILES)
 _wp = _why_problems(_ws)
 check(f"FM-006 · the pitch page · every ruled row stands on its page and in the words its template draws, in English and in German (du, Board); its "
-      f"<title>, its description and its pictures' alts are the rows', the board picture is marked MOCKUP, the story stands as plain paragraphs, the "
+      f"<title>, its description and its pictures' alts are the rows', the board picture is marked MOCKUP, the story stands as plain paragraphs, with its "
+      f"column's and its print size's five rules each a rule of its own in its scope, the "
       f"contribution card is the page's language's, and nothing loads from another host (problems found: {_wp})",
       _wp == [])
 _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.md", _WHY_ROWS["en"]["W19"] + "\n", ""),
@@ -6660,12 +6687,22 @@ _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.m
          "the story back in its quote's figure": _with(_ws, "overrides/why.html", '<p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p><figure class="card">',
                                                        '<figure class="said"><blockquote><p>{{ w.said[0] }}</p><p>{{ w.said[1] }}</p><p>{{ w.said[2] }}</p></blockquote>'
                                                        '<figcaption>{{ w.said_by }}</figcaption></figure><figure class="card">'),
-         "the story's rule back": _with(_ws, "overrides/why.html", ".card{margin:36px", ".said{margin:44px auto 0;max-width:66ch}\n.card{margin:36px")}
+         "the story's rule back": _with(_ws, "overrides/why.html", ".card{margin:36px", ".said{margin:44px auto 0;max-width:66ch}\n.card{margin:36px"),
+         "the story's gap changed": _with(_ws, "overrides/why.html", ".proof{margin-top:36px}", ".proof{margin-top:44px}"),
+         "the story's measure gone": _with(_ws, "overrides/why.html", ".proof{margin-top:36px}.proof>p{max-width:70ch}", ".proof{margin-top:36px}"),
+         "the phone's gap removed": _with(_ws, "overrides/why.html", " .proof{margin-top:28px}\n", ""),
+         "the phone's gap outside its block": _with(_with(_ws, "overrides/why.html", " .proof{margin-top:28px}\n", ""), "overrides/why.html",
+                                                    ".card{margin:36px", ".proof{margin-top:28px}\n.card{margin:36px"),
+         "the print gap merged into the print block's rule": _with(_with(_ws, "overrides/why.html", " .proof{margin-top:0}\n", ""), "overrides/why.html",
+                                                                   ".proof{grid-column:2;grid-row:2/span 3}", ".proof{grid-column:2;grid-row:2/span 3;margin-top:0}"),
+         "the print size changed": _with(_ws, "overrides/why.html", "font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt", "font-size:8.3pt;line-height:1.3;margin:0 0 2.5pt"),
+         "the German print size removed": _with(_ws, "overrides/why.html", " html[lang=de] .proof>p{font-size:7.2pt}\n", "")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
 check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in Sie, "
       f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one, the statement dropped from the German "
       f"page, the English card on the German page, the tab coloured as the box's other lines, a picture from another host, the story back in its quote's "
-      f"figure and the story's rule back leaves a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 12)
+      f"figure, the story's rule back, its gap changed, its measure gone, the phone's gap removed or outside its block, the print gap merged into the print "
+      f"block's rule, the print size changed and the German print size removed leaves a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 19)
 
 _WHY_ENGLISH = {
     "W40": "shoalmark — the agents do the work; you have the final word",

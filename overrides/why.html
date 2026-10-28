@@ -72,6 +72,7 @@ p{margin:0 0 14px}
 .big strong{font-weight:inherit;color:var(--coral)}
 .over p:not(.big):not(.t){color:var(--dim);max-width:70ch}
 .for{font-size:clamp(17px,1.8vw,20px);line-height:1.55;color:var(--land);max-width:62ch;margin:0 auto;text-align:center}
+.proof{margin-top:36px}.proof>p{max-width:70ch}
 .card{margin:36px calc(50% - 50vw) 0;padding:0;background:var(--deep);border-block:1px solid var(--band)}
 .card img{display:block;width:100%;max-width:1200px;height:auto;margin:0 auto}
 .board{margin:56px calc(50% - 50vw) 0;padding:44px 20px 30px;background:var(--deep);border-block:1px solid var(--band)}
@@ -102,6 +103,7 @@ p{margin:0 0 14px}
 @media (max-width:1023px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.mark{grid-template-columns:1fr;gap:22px}}
 @media (max-width:640px){
+ .proof{margin-top:28px}
  .card{margin-top:28px}
  .contact>span{display:block;white-space:normal}.contact .sep{display:none}
  .hud .in{height:40px}
@@ -137,6 +139,8 @@ p{margin:0 0 14px}
  .board{display:none}
  .s-saw{display:contents}.s-saw>h2.cue{grid-column:1;grid-row:2}.s-saw>.over{grid-column:1;grid-row:3}.s-for{grid-column:1;grid-row:4}
  .proof{grid-column:2;grid-row:2/span 3}.s-why{grid-row:5}.s-move{grid-column:1;grid-row:6}.s-never{grid-column:2;grid-row:6}
+ .proof{margin-top:0}
+ .proof>p{font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt}
  .card{margin:5pt 0 0;padding:0;background:none;border:0;break-inside:avoid}
  .card img{max-width:none;width:66%;margin:0}
  .hero{padding:0}
@@ -172,6 +176,7 @@ p{margin:0 0 14px}
  html[lang=de] body,html[lang=de] .tldr dl,html[lang=de] .lead,html[lang=de] .for,html[lang=de] .never,html[lang=de] .intro{font-size:8pt}
  html[lang=de] .tiles li{font-size:7pt}
  html[lang=de] .card img{width:60%}
+ html[lang=de] .proof>p{font-size:7.2pt}
  html[lang=de] .tldr dl,html[lang=de] .tldr dl>div.try{grid-template-columns:15.5ch 1fr}
  html[lang=de] .tldr dl>div.try a{font-size:8pt}
  a{text-decoration:none}
