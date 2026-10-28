@@ -7424,8 +7424,8 @@ _one_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="ut
 check("FM-053 · the reviews' fold counts one verdict in the singular — `reviews.more.one`, picked where the count is 1 — and more in the plural, in "
       "English and in the German table the tool ships",
       _m_src.count(_ONE) == 1 and fm.LABELS.get("reviews.more.one") == "and 1 more verdict by another session this week"
-      and _one_de.get("reviews.more.one") == "und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche"
-      and _one_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche")
+      and _one_de.get("reviews.more.one") == "und 1 weiteres Urteil von einer anderen Session in dieser Woche"
+      and _one_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Session in dieser Woche")
 if _browser("reviews"):
     try:
         with tempfile.TemporaryDirectory() as d:
@@ -7460,8 +7460,8 @@ if _browser("reviews"):
                 brand_.mkdir(parents=True, exist_ok=True); (brand_ / "labels.yaml").write_text((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"), encoding="utf-8")
                 said_[("de", n_)] = fold_(); (brand_ / "labels.yaml").unlink()
             check(f"FM-053 · rendered, the fold reads one verdict in the singular and two in the plural, in English and in German (saw {said_})",
-                  said_ == {("en", 1): "and 1 more verdict by another session this week", ("de", 1): "und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche",
-                            ("en", 2): "and 2 more verdicts by another session this week", ("de", 2): "und 2 weitere Urteile von einer anderen Sitzung in dieser Woche"})
+                  said_ == {("en", 1): "and 1 more verdict by another session this week", ("de", 1): "und 1 weiteres Urteil von einer anderen Session in dieser Woche",
+                            ("en", 2): "and 2 more verdicts by another session this week", ("de", 2): "und 2 weitere Urteile von einer anderen Session in dieser Woche"})
     except _ChromeFailed as e_:
         _hung("reviews", e_)
         fm.configure(HERE)
@@ -7926,9 +7926,9 @@ waiting.days: seit {0} Tagen
 waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
 waiting.bottleneck: "du bist der Engpass — {0} Fragen, {1} Vorgänge warten"
-waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
-waiting.malformed.one: 1 Frage zurückgegeben — nicht für Sie
-acts.title: Ihre Handlungen, mit ihrer Zeit
+waiting.malformed: "{0} Fragen zurückgegeben — nicht für dich"
+waiting.malformed.one: 1 Frage zurückgegeben — nicht für dich
+acts.title: deine Handlungen, mit ihrer Zeit
 acts.promised: zugesagt {0}
 acts.asked: "gefragt: {0}"
 acts.due: fällig {0}
@@ -7941,12 +7941,12 @@ act.done.title: Erledigt — wo ist das Ergebnis?
 act.done.hint: der Pfad zum Ergebnis, oder wo es liegt
 act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
-act.sign.title: Ihre Handlung signieren
-act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
-act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
+act.sign.title: deine Handlung signieren
+act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Beleg unter {1}"
+act.sign.step.due: "schreibt das neue {0}, und das alte in den Beleg unter {1} — das Board zeigt es verschoben, unterwegs, bis zu deinem Merge"
 way.title: unterwegs
-way.merge: Ihr Merge ist als Nächstes dran
-way.held: "Ihr Merge wartet: {0}"
+way.merge: dein Merge ist als Nächstes dran
+way.held: "dein Merge wartet: {0}"
 way.done: erledigt, unterwegs
 way.answer: beantwortet, unterwegs
 way.revoked: zurückgenommen, unterwegs
@@ -7956,11 +7956,11 @@ way.signed: signiert
 way.unverified: "hier nicht geprüft: {0}"
 way.revoke: zurücknehmen
 way.revoke.title: Zurücknehmen — warum?
-way.revoke.hint: "warum Sie es zurücknehmen — der Eintrag hält es neben dem fest, was es zurücknimmt"
+way.revoke.hint: "warum du es zurücknimmst — der Beleg hält es neben dem fest, was es zurücknimmt"
 way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austausch"
 act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
 act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
-sessions.recent: Sitzungen · {0} am letzten Tag
+sessions.recent: Sessions · {0} am letzten Tag
 read.git.branch: "gelesen von {0} @ {1} um {2}"
 read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
 read.git.unborn: "gelesen von {0}, noch ohne Commit, um {1}"
@@ -7973,7 +7973,7 @@ read.svn.unread: "gelesen von der Arbeitskopie um {0}: ihre Revision wird hier n
 read.svn.new: "gelesen von der Arbeitskopie, noch ohne Revision, um {0}"
 read.none: "gelesen aus dem Ordner {0} um {1}"
 read.none.why: "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"
-read.self: sie liest ihre Datei wieder, wenn Sie zu ihr zurückkehren; nichts fragt ständig nach
+read.self: sie liest ihre Datei wieder, wenn du zu ihr zurückkehrst; nichts fragt ständig nach
 read.copy: Neubau-Befehl
 read.copy.spoken: den Neubau-Befehl kopieren
 read.about: "was diese Seite liest, und was sie nicht sehen kann"
@@ -7981,7 +7981,7 @@ read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
 read.about.svn: "gelesen von der Arbeitskopie um {0}"
 read.about.none: "gelesen aus dem Ordner um {0}"
 read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
-day.copied: der Prompt ist in Ihrer Zwischenablage
+day.copied: der Prompt ist in deiner Zwischenablage
 day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
 link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
@@ -7993,20 +7993,20 @@ reviews.counts: {0} by another session · {1} by the same session
 reviews.untraced: {0} ohne Spur
 reviews.trunk: {0} auf dem Stamm
 ask.ruling: eine Entscheidung
-ask.action: nur Ihre Hände
+ask.action: nur deine Hände
 ask.determination: ließe sich durch einen Versuch klären
 ask.ceremony: ein Knopfdruck
 answer.accept: annehmen
 answer.reject: ablehnen
-answer.proposal: "der Vorschlag der Sitzung:"
+answer.proposal: "die Rolle schlägt vor:"
 answer.other: "Andere:"
 answer.recommended: empfohlen
-answer.change.hint: "Ihre Änderung, in einer Zeile — mehr gehört in den Text des Eintrags"
+answer.change.hint: "deine Änderung, in einer Zeile — mehr gehört in den Text des Arbeitspakets"
 answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
 answer.ok: "OK — den Befehl geben"
 answer.abort: abbrechen
-answer.sign.title: Ihre Antwort signieren
-answer.sign.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht signieren — Ihr Terminal tut es, mit Ihrem Schlüssel. Diesen Befehl ausführen:"
+answer.sign.title: deine Antwort signieren
+answer.sign.intro: "Deine Entscheidung steht. Ein Browser kann sie nicht signieren — dein Terminal tut es, mit deinem Schlüssel. Diesen Befehl ausführen:"
 answer.sign.copy: nochmals kopieren
 answer.sign.copied: Kopiert.
 answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Befehl markieren und kopieren."
@@ -8016,31 +8016,31 @@ answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zwei
 answer.sign.does: Was er tut
 answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
-answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
+answer.sign.step.commit: "committet sie, signiert mit deinem Schlüssel — er fragt vielleicht nach einer Bestätigung"
 answer.sign.step.push: pusht den Zweig
-answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
+answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Arbeitspakete laufen."
 answer.sign.success: Wenn es geklappt hat
 answer.sign.check: Zur Kontrolle
 answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem Schlüssel, dem dieses Repository vertraut."
 answer.sign.fail: Wenn es scheitert
 answer.sign.fail.text: "Kein Signierschlüssel gesetzt, oder die Signatur lässt sich nicht prüfen: den Schlüssel einmal einrichten — {0}."
-answer.sign.page: "die Seite „Ihre Antwort ist Ihr Commit“"
+answer.sign.page: "die Seite „Deine Antwort ist dein Commit“"
 answer.sign.url: "https://shoalmark.github.io/shoalmark/de/signing.html"
-answer.give.title: Ihre Antwort geben
-act.give.title: Ihre Handlung festhalten
-answer.give.intro: "Ihre Entscheidung steht. Ein Browser kann sie nicht ins Repository schreiben — Ihr Terminal tut es, unter Ihrem Namen. Diesen Befehl ausführen:"
-answer.give.step.commit: "committet sie unter Ihrem Namen: dieses Repository verlangt keine Signatur, also belegt der Commit nur den Autor"
-answer.give.step.commit.login: "Autor des Commits ist Ihre Server-Anmeldung, wie Subversion sie festhält — ohne Signatur"
+answer.give.title: deine Antwort geben
+act.give.title: deine Handlung festhalten
+answer.give.intro: "Deine Entscheidung steht. Ein Browser kann sie nicht ins Repository schreiben — dein Terminal tut es, unter deinem Namen. Diesen Befehl ausführen:"
+answer.give.step.commit: "committet sie unter deinem Namen: dieses Repository verlangt keine Signatur, also belegt der Commit nur den Autor"
+answer.give.step.commit.login: "Autor des Commits ist deine Server-Anmeldung, wie Subversion sie festhält — ohne Signatur"
 answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"
-answer.give.check.text: "{0} gibt Ihren Namen aus — den Autor, den git meldet, eine Zeichenkette, die jeder eintippen kann."
-answer.give.fail.text: "Er meldet, was ihn abgewiesen hat, und nimmt zurück, was er geschrieben hat; Ihre Worte werden erneut ausgegeben, mit dem Befehl, der sie wieder gibt."
-proof.here: "Ihre Antworten hier: {0}"
-proof.dialog: "Ihre Antwort hier: {0}"
+answer.give.check.text: "{0} gibt deinen Namen aus — den Autor, den git meldet, eine Zeichenkette, die jeder eintippen kann."
+answer.give.fail.text: "Er meldet, was ihn abgewiesen hat, und nimmt zurück, was er geschrieben hat; deine Worte werden erneut ausgegeben, mit dem Befehl, der sie wieder gibt."
+proof.here: "deine Antworten hier: {0}"
+proof.dialog: "deine Antwort hier: {0}"
 proof.signed: signiert
 proof.author: nur der Autor
 proof.login: Server-Anmeldung
 proof.none: kein Autor
-proof.author.why: "eine Antwort hier belegt nur den Autor: jede Sitzung, die hier committen kann, kann eine in Ihrem Namen schreiben"
+proof.author.why: "eine Antwort hier belegt nur den Autor: jede Session, die hier committen kann, kann eine in deinem Namen schreiben"
 answer.done: Fertig
 col.id: Id
 col.tier: Stufe
@@ -8075,7 +8075,7 @@ count.blocked: blockiert
 count.untriaged: ungesichtet
 owner.title: für den Eigner
 path.title: der aktuelle Kurs
-waiting.title: wartet auf Sie
+waiting.title: wartet auf dich
 waiting.detail: offene Arbeit, deren nächster Schritt beim Eigner liegt
 story.chapter: Kapitel
 story.chapters: Kapitel
@@ -8116,22 +8116,22 @@ viewer.from_move: aus dem Schritt
 viewer.true_now: was jetzt gilt
 viewer.no_move: ohne benannten Schritt
 viewer.none_in_progress: nichts in Arbeit
-day.standup.title: Standup
-day.standup.row: "ein Prompt, der eine Sitzung bittet, Ihren Standup nach der Tagesordnung oben zu halten, einen Punkt nach dem anderen"
-day.standup.button: Standup-Prompt
-day.standup.spoken: den Standup-Prompt kopieren
+day.standup.title: Stand-up
+day.standup.row: "ein Prompt, der eine Session bittet, deine Runde nach der Tagesordnung oben zu halten, einen Punkt nach dem anderen"
+day.standup.button: Stand-up-Prompt
+day.standup.spoken: den Stand-up-Prompt kopieren
 day.closeout.title: Tagesabschluss
-day.closeout.row: "ein Prompt, der eine Sitzung bittet, den Tag aus dem Verlauf vorzulesen und nichts zu ändern"
+day.closeout.row: "ein Prompt, der eine Session bittet, den Tag aus dem Verlauf vorzulesen und nichts zu ändern"
 day.closeout.button: Abschluss-Prompt
 day.closeout.spoken: den Abschluss-Prompt kopieren
-day.standup.dialog: Der Standup-Prompt
+day.standup.dialog: Der Stand-up-Prompt
 day.closeout.dialog: Der Abschluss-Prompt
-day.paste: "Fügen Sie ihn in die Sitzung ein, die Sie für dieses Repository nutzen — Claude Code, Codex oder eine andere —, auf dem Rechner, auf dem das Repository liegt."
+day.paste: "Füge ihn in die Session ein, die du für dieses Repository nutzt — Claude Code, Codex oder eine andere —, auf dem Rechner, auf dem das Repository liegt."
 day.copy: Prompt
 day.asks: Worum er bittet
-day.standup.asks: "Er bittet die Sitzung, einen Punkt nach dem anderen zu nehmen und auf Ihr Wort zu warten. Ein Prompt bittet; er kann keine Sitzung zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Ihre Entscheidung hält der Befehl fest, den Sie in Ihrem eigenen Terminal ausführen."
-day.closeout.asks: "Er bittet die Sitzung, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Sitzung über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält Ihre Zahl getragener Nachrichten aus den Händen der Sitzung. Eine Nachricht ist nie eine Antwort."
-day.runs: Was die Sitzung ausführen soll
+day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält der Befehl fest, den du in deinem eigenen Terminal ausführst."
+day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."
+day.runs: Was die Session ausführen soll
 day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
 day.closeout.runs: "{0} und {1}, und ein git log des Standardzweigs. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
 day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standardzweigs füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
@@ -8174,7 +8174,7 @@ waiting.more: and {0} more: the oldest are above
 reviews.sessions: its session {0}, the branch's {1}
 reviews.sessions.more: {0} and {1} more
 reviews.more: and {0} more verdicts by another session this week
-reviews.more.one: und 1 weiteres Urteil von einer anderen Sitzung in dieser Woche
+reviews.more.one: und 1 weiteres Urteil von einer anderen Session in dieser Woche
 reviews.word.another: by another session
 reviews.word.same: by the same session
 reviews.word.untraced: untraced
@@ -8298,8 +8298,8 @@ with tempfile.TemporaryDirectory() as d:
               set(fm.LABELS) - set(_shipped_de) <= {"tagline"} and not set(_shipped_de) - set(fm.LABELS))
         _en_de = sorted(k_ for k_, v_ in fm.LABELS.items() if v_ and _shipped_de.get(k_) == v_)
         check(f"FM-053 · the German table the tool ships carries the go-to-market seat's words rows: no label in it keeps its English but one whose German "
-              f"is the same word, `brand.gone.theme`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Sitzung in dieser Woche* (saw {_en_de})",
-              _en_de == ["brand.gone.theme"] and _shipped_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Sitzung in dieser Woche"
+              f"is the same word, `brand.gone.theme`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Session in dieser Woche* (saw {_en_de})",
+              _en_de == ["brand.gone.theme"] and _shipped_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Session in dieser Woche"
               and fm.LABELS["reviews.more"] == "and {0} more verdicts by another session this week")
         if _browser("german"):
             try:
