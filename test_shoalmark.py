@@ -6529,11 +6529,11 @@ _WHY_ROWS = {
         "W1": "shoalmark auf einer Seite: eine Vertrauensschicht für KI-Agenten, in deinem Repository. Die Agenten tragen die Arbeit, du behältst das letzte Wort.",
         "W2": "Warum shoalmark? · shoalmark",
         "W3": "Warum shoalmark?",
-        "W4": "**Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.**",
+        "W4": "**Die Agenten tragen die Arbeit, du hast das letzte Wort.**",
         "W5": "**TL;DR:**",
         "W6": "**Was:** shoalmark ist eine Vertrauensschicht für KI-Agenten, und sie lebt in deinem Repository. Deine Agenten führen den Arbeitsstand. Du behältst das letzte Wort, als deine eigenen Commits.",
         "W7": "**Das Problem:** Agenten bauen schneller, als du entscheiden kannst. Der Engpass sind nicht die Agenten. Der Engpass bist du, mitten in ihrer Arbeit in kleine Entscheidungen gezogen.",
-        "W8": "**Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.",
+        "W8": "**Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Stand-up-Prompt: Er bittet eine Session, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.",
         "W9a": "**Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das dich bindet.",
         "W9b": "**Stand:** Open Source (Apache-2.0 oder MIT), in der Beta, und mit sich selbst gebaut.",
         "W9c": "**Nicht:** Ein Agenten-Runner (deine Agenten bringst du selbst mit), ein Werkzeug für mehrere Personen, die das Sagen haben (noch nicht), ein Import aus deinem Ticketsystem oder ein Beweis, dass die Arbeit stimmt (dafür ist ein Review da).",
@@ -6541,19 +6541,19 @@ _WHY_ROWS = {
         "W10": "## Die Pricke<br>Eine Pricke markiert den Rand eines Fahrwassers im Watt. Den Kurs bestimmt weiterhin der Mensch am Steuer. Das ist die ganze Idee von shoalmark: Die Marken tun ihre Arbeit, und der Kurs bleibt in Menschenhand.",
         "W11": "## Was ich gesehen habe<br>Ich bin von dem ausgegangen, was ich gemessen habe. In meinem letzten Repository wurden in **22** Tagen **200** Pull Requests gemergt, **85 %** davon innerhalb einer Minute nach dem Öffnen, und **keiner** mit einem Review. Getrennt gefragt, was sie am meisten bremst, gaben drei Agenten dieselbe Antwort: die unbeantworteten Fragen an den Menschen. Eine Frage, drei Tage offen, hielt drei Pakete auf. Das Tempo war nie das Problem. Kleine Entscheidungen mitten in der Arbeit waren es.",
         "W12": "## Wofür shoalmark da ist<br>Ich bin überzeugt: Deine Agenten sollen mit voller Geschwindigkeit arbeiten und nachfragen, wenn es darauf ankommt. Entscheiden soll nur dein geprüftes Wort. Und jede Entscheidung soll sich später nachlesen lassen, direkt aus dem Repository. Genau dafür ist shoalmark gebaut.",
-        "W13": "Ein Mockup des shoalmark-Boards eines Beispiel-Repositorys, notes-app, mit englischen Beschriftungen. Unter dem Kopf sagt die Seite, wann sie von main gelesen wurde, dass sie ihre Datei wieder liest, wenn man zu ihr zurückkehrt, und dass nichts ständig nachfragt, neben einem Knopf, der den Befehl zum Neubau kopiert. Im Kasten „yours“ warten zwei Entscheidungen, die älteste zuerst: NA-009-Q1, „May the sync drop devices unseen for 90 days?“, die NA-019 aufhält und von der Research-Sitzung gestellt wurde; und NA-012-Q2, „Ship the export as CSV only, or as CSV and JSON?“, die NA-014 aufhält und von der Planner-Sitzung gestellt wurde. Jede hat die Knöpfe „accept“ und „reject“, und die Antworten dort sind signiert. Darunter der Tag: ein Knopf, der den Standup-Prompt kopiert; die drei Sitzungen mit einem Commit in den letzten 24 Stunden, Research und Planner in Claude Code und Builder in Codex, die beiden, die gefragt haben, zuerst, jede mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert; und ein Knopf, der den Abschluss-Prompt kopiert. Reviews, Receipts und der aktuelle Pfad sind eingeklappt.",
-        "W14": "*Ein Mockup des Boards, aus einem Beispiel-Repository: Die Fragen deiner Agenten warten oben, die älteste zuerst; darunter die Sitzung, die jede gestellt hat, mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert.*",
+        "W13": "Ein Mockup des shoalmark-Boards eines Beispiel-Repositorys, notes-app, mit englischen Beschriftungen. Unter dem Kopf sagt die Seite, wann sie von main gelesen wurde, dass sie ihre Datei wieder liest, wenn man zu ihr zurückkehrt, und dass nichts ständig nachfragt, neben einem Knopf, der den Befehl zum Neubau kopiert. Im Kasten „yours“ warten zwei Entscheidungen, die älteste zuerst: NA-009-Q1, „May the sync drop devices unseen for 90 days?“, die NA-019 aufhält und von der Research-Session gestellt wurde; und NA-012-Q2, „Ship the export as CSV only, or as CSV and JSON?“, die NA-014 aufhält und von der Planner-Session gestellt wurde. Jede hat die Knöpfe „accept“ und „reject“, und die Antworten dort sind signiert. Darunter der Tag: ein Knopf, der den Stand-up-Prompt kopiert; die drei Sessions mit einem Commit in den letzten 24 Stunden, Research und Planner in Claude Code und Builder in Codex, die beiden, die gefragt haben, zuerst, jede mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert; und ein Knopf, der den Abschluss-Prompt kopiert. Reviews, Receipts und der aktuelle Pfad sind eingeklappt.",
+        "W14": "*Ein Mockup des Boards, aus einem Beispiel-Repository: Die Fragen deiner Agenten warten oben, die älteste zuerst; darunter die Session, die jede gestellt hat, mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert.*",
         "W15": "## Warum es so gebaut ist<br>Vertrauen beginnt mit Dingen, die man prüfen kann. Darum bleibt shoalmark klein und hält sich aus dem Weg:",
         "W16": "- **Eine Datei.** Python 3.9 oder neuer. Kein pip, kein Server, keine Datenbank, kein Konto. Dein Repository behält eine festgeschriebene Kopie mit Prüfsummen, und sie aktualisiert sich nie hinter deinem Rücken.",
         "W17": "- **Dein Beleg.** Schlichtes Markdown, eine Datei pro Arbeitspaket, direkt in deinem Repository. shoalmark überschreibt nie eine Datei, die es nicht selbst geschrieben hat.",
         "W18": "- **Dein Wort.** Ein Befehl pro Antwort, festgehalten als dein eigener Commit. Ein Klick oder eine Zeile im Chat ist keine Antwort.",
-        "W19": "- **Dein Standup.** Die Fragen warten auf dem Board, die älteste zuerst. Der Standup-Prompt liegt einen Klick entfernt bereit, wann immer es dir passt.",
-        "W20": "- **Aufgeschriebene Rechte.** Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten, und das Gate sieht jedes Recht in einem Diff.",
+        "W19": "- **Dein Stand-up.** Die Fragen warten auf dem Board, die älteste zuerst. Der Stand-up-Prompt liegt einen Klick entfernt bereit, wann immer es dir passt.",
+        "W20": "- **Aufgeschriebene Rechte.** Jeder Agent arbeitet in einer Rolle mit aufgeschriebenen Rechten, und das Gate sieht jedes Recht in einem Diff.",
         "W21": "- **Berichte, keine Beweise.** shoalmark ist kein Beweis, dass die Arbeit stimmt. Dafür ist ein Review da.",
         "W22": "## Woran es sich selbst hält<br>Ich messe shoalmark an seiner eigenen Absicht, die über jedem Sichtungsdurchlauf in seinem Repository steht. Sie nennt, was nie passieren darf: ein falsches Durchwinken, eine Behauptung ohne Quelle, eine Handlung ohne deine Zustimmung, das Wort eines Agenten, das als deines zählt.",
         "W23": "## Du bist am Zug<br>Wenn du mit Agenten baust, probiere es an deinem eigenen Repository aus. Deine Agenten richten es ein, und der Beleg bleibt bei dir.<br>Lass deine Agenten laufen. Behalte das letzte Wort.<br>[Deine Agenten richten es ein](index.md#start) · [In zehn Minuten eingerichtet](setup.md) · [Zurück zu shoalmark](index.md)",
         "W24": "Offen gebaut: [github.com/shoalmark/shoalmark](https://github.com/shoalmark/shoalmark) · Folge mir beim Bauen auf X: [@holgo99](https://x.com/holgo99)",
-        "W38": "*„Am 13. Juli habe ich mich aus der Schleife genommen: Meine Planer-Agenten bekamen gh und übernahmen die Orchestrierung, und das Tempo war unglaublich. Einen Monat später postete ich [‚Bottleneck removed.‘](https://x.com/Holgo99/status/2088153757792043485)*<br>*Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*<br>*Mit shoalmark bin ich zurück in der Schleife. Seit dem ersten Commit von shoalmark am 21. September stammen die meisten Commits von meinen Agenten. Von mir kommen vor allem Merges und Antworten.“*<br>— [@Holgo99](https://x.com/holgo99), ich baue portdive mit shoalmark und shoalmark mit sich selbst",
+        "W38": "*„Am 13. Juli habe ich mich aus der Schleife genommen: Meine Planer-Agenten bekamen gh und übernahmen die Orchestrierung, und das Tempo war unglaublich. Einen Monat später postete ich [‚Bottleneck removed.‘](https://x.com/Holgo99/status/2088153757792043485)*<br>*Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sessions war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*<br>*Mit shoalmark bin ich zurück in der Schleife. Seit dem ersten Commit von shoalmark am 21. September stammen die meisten Commits von meinen Agenten. Von mir kommen vor allem Merges und Antworten.“*<br>— [@Holgo99](https://x.com/holgo99), ich baue portdive mit shoalmark und shoalmark mit sich selbst",
         "W39": "Ein Pixelraster-Kalender mit 10.259 GitHub-Beiträgen in 2026 auf einem einzelnen Konto, Stand 23. Oktober, im Nachtlook von shoalmark: ruhig von Januar bis Anfang Juli, ein helles Band von Mitte Juli bis Ende September, im Oktober wieder ruhiger. Drei Beschriftungen: 13. Juli, „Meine Planer-Agenten bekommen gh. Ich werde ihr Abnicker und ihr Bote.“; eine Klammer über die 22 Tage vor dem 21. September, „200 Pull Requests in 22 Tagen, keiner mit Review: das Repository, aus dem shoalmark kam“; und der 21. und 24. September, „der erste Commit von shoalmark“ und „jeder Pull Request bekommt die Datei eines Reviewers“. Quelle: github.com/holgo99.",
     },
 }
@@ -6575,8 +6575,8 @@ def _why_plain(text):
     return " ".join(html.unescape(re.sub(r"<[^>]+>", "", text)).replace("\u00a0", " ").split())
 
 
-# the German pitch page's two capitals that do not speak to its reader: the intent's "Sie nennt", and the preview image's own words, which its alt quotes
-_WHY_DE_NOT_YOU = ("Sie nennt, was nie passieren darf", "„Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt.“")
+# the German pitch page's one capital that does not speak to its reader: the intent's "Sie nennt"
+_WHY_DE_NOT_YOU = ("Sie nennt, was nie passieren darf",)
 # the story's quote, its column and its print size: each rule once, as a rule of its own, in its scope ("" is the screen, outside every @media block)
 _WHY_STORY_CSS = (
     ('.proof{margin-top:36px}', ''),
@@ -9096,6 +9096,7 @@ _DE_ALLOWED = (
     ("docs/de/triage.md", "The Owner merges on a ready line, or over any other verdict with a signed reason.", "quoted English: the record's path line"),
     ("docs/de/triage.md", "the Owner's line 3 names a release critical", "quoted English: a pass's own words"),
     ("docs/de/triage.md", "a commit signed with the Owner's key passes", "quoted English refusal: its limit line"),
+    ("docs/de/warum-shoalmark.md", "Sie nennt, was nie passieren darf", "third person: the intent"),
     ("ADOPT.de.md", "Ihr ändert nichts am Projekt", "the plural of du, to the agents"),
     ("ADOPT.de.md", "Sie sagt, was er braucht.", "third person: the line"),
     ("ADOPT.de.md", "Sie ist in der Festlegung und im Prompt dieselbe", "third person: the address"),
@@ -9111,20 +9112,11 @@ _DE_ALLOWED = (
     ("ADOPT.svn.de.md", "Sie nennt, was er braucht.", "third person: the line"),
     ("ADOPT.svn.de.md", "Ihr Gate prüft eine Revision", "third person: the packages'"),
     ("launch/interim/how-it-works.de.md", "Sie lädt zu einer Messung ein", "third person: the note"),
+    ("overrides/partials/why/de.html", "Sie nennt, was nie passieren darf", "third person: the intent"),
 )
-_DE_ALT_BEFORE = ("Der Schriftzug shoalmark mit „Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt.“ und shoalmark.tools, neben einer nächtlichen "
-                  "Seekarte der Deutschen Bucht, auf deren Watt shoalmarks eigene Fehler als Wracks liegen.")
-_DE_WHY_BEFORE = ("Sie nennt, was nie passieren darf", "kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen",
-                  "das ständige Umschalten zwischen den Sitzungen war zermürbend", "von der Research-Sitzung gestellt wurde",
-                  "von der Planner-Sitzung gestellt wurde", "ein Knopf, der den Standup-Prompt kopiert; die drei Sitzungen mit einem Commit",
-                  "darunter die Sitzung, die jede gestellt hat", "Dein Standup.", "Der Standup-Prompt liegt einen Klick entfernt bereit",
-                  "Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten")
-# Pending, each by file and exact text: the why page's German until its own lane joins, and the three German alternative texts of the link
-# preview. The set empties in the commit that brings them; nothing else is exempt by its path.
-_DE_PENDING = (tuple(("docs/de/warum-shoalmark.md", t_) for t_ in _DE_WHY_BEFORE)
-               + tuple(("overrides/partials/why/de.html", t_) for t_ in _DE_WHY_BEFORE)
-               + (("overrides/partials/why/de.html", _DE_ALT_BEFORE), ("overrides/partials/landing/de.html", _DE_ALT_BEFORE),
-                  ("overrides/main.html", _DE_ALT_BEFORE)))
+# Pending, each by file and exact text: a German text not yet rewritten. The set is empty, and a check below keeps it so; nothing is
+# exempt by its path.
+_DE_PENDING = ()
 _DE_CONSTANTS = {}
 
 
@@ -9186,11 +9178,13 @@ def _de_prose(rel, text):
     return " ¶ ".join(out_)
 
 
-def _de_guard(src):
+def _de_guard(src, pending=None):
     """What the guard refuses, one line each: a formal form or a retired term left in a source's German prose once its allowed and
-    pending texts are taken out, and an allowed or pending text its source no longer holds."""
+    pending texts are taken out, and an allowed or pending text its source no longer holds. The pending set is the suite's, or the one
+    given."""
     bad = []
-    named = [(rel_, text_, "allowed") for rel_, text_, _why in _DE_ALLOWED] + [(rel_, text_, "pending") for rel_, text_ in _DE_PENDING]
+    pending = _DE_PENDING if pending is None else pending
+    named = [(rel_, text_, "allowed") for rel_, text_, _why in _DE_ALLOWED] + [(rel_, text_, "pending") for rel_, text_ in pending]
     for rel_ in sorted(src):
         prose_ = _de_prose(rel_, src[rel_])
         for nrel_, text_, what_ in named:
@@ -9235,13 +9229,22 @@ check(f"the lane's German prose speaks as du: in {len(_DE_FILES)} sources, no fo
       f"(saw {_dg[:6]})", not _dg)
 _de_pending_files = {rel_ for rel_, _t in _DE_PENDING}
 _de_outside = [rel_ for rel_ in _DE_FILES if rel_ not in _de_pending_files]
-_de_blind = {"a formal form": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
+check(f"nothing in the German prose is pending: the pending set holds no text, so each of the {len(_DE_FILES)} sources is read whole "
+      f"outside it (pending: {[(rel_, text_[:40]) for rel_, text_ in _DE_PENDING][:4]})", not _DE_PENDING and len(_de_outside) == len(_DE_FILES))
+_de_blind ={"a formal form": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
              "a retired term": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Owner"))]}
 check(f"the guard is not blind outside the pending set: a formal form, and a retired term, put into each of the {len(_de_outside)} German "
       f"sources outside it turns it red (sources where it stayed green: {_de_blind})", not any(_de_blind.values()) and len(_de_outside) >= 20)
-_de_pending_blind = {word_: [rel_ for rel_ in sorted(_de_pending_files) if not _de_guard(_de_inject(_ds_de, rel_, word_))] for word_ in ("Ihnen", "Owner")}
-check(f"the guard is not blind in the pending set: a formal form, and a retired term, put into each pending source outside its named texts "
-      f"turns it red (sources where it stayed green: {_de_pending_blind})", not any(_de_pending_blind.values()) and len(_de_pending_files) == 4)
+# The suite's pending set is empty, so the pending controls give the guard one of their own: a text each of four sources holds now.
+_de_try_pending = (("docs/de/warum-shoalmark.md", "du hast das letzte Wort"), ("overrides/partials/why/de.html", "du hast das letzte Wort"),
+                   ("overrides/partials/landing/de.html", "„Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.“"),
+                   ("overrides/main.html", "„Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.“"))
+_de_try_files = {rel_ for rel_, _t in _de_try_pending}
+_de_pending_blind = {word_: [rel_ for rel_ in sorted(_de_try_files) if not _de_guard(_de_inject(_ds_de, rel_, word_), _de_try_pending)]
+                     for word_ in ("Ihnen", "Owner")}
+check(f"the guard is not blind in a pending set: with a set of its own, green as the sources stand, a formal form, and a retired term, put into "
+      f"each of its {len(_de_try_files)} sources outside its named texts turns it red (sources where it stayed green: {_de_pending_blind})",
+      not _de_guard(_ds_de, _de_try_pending) and not any(_de_pending_blind.values()) and len(_de_try_files) == 4)
 _de_kinds = {
     "code blocks": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "```\nIhnen gehört das Owner-Board\n```\n\nDas ist alles."),
     "inline code": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Das ist `Ihnen Owner` alles."),
@@ -9255,12 +9258,36 @@ _de_kinds_read = [kind_ for kind_, src_ in _de_kinds.items() if _de_guard(src_)]
 check(f"what is not prose is not read as prose: a formal form or a retired term in each of {len(_de_kinds)} kinds — code blocks, inline code, "
       f"config keys, commands, URLs, file names and quoted English refusals — leaves the guard green (kinds read as prose: {_de_kinds_read})",
       not _de_kinds_read and len(_de_kinds) == 7)
-_de_more = {"a sentence-initial Sie no entry names": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Sie ist alles."),
-            "an allowed text gone from its file": _with(_ds_de, "docs/de/triage.md", "Sie hat drei", "Die Datei hat drei"),
-            "a pending text gone from its file": _with(_ds_de, "overrides/main.html", "Eine Werkbank für Ihre Agenten", "Eine Werkbank für deine Agenten")}
-_de_more_green = [name_ for name_, src_ in _de_more.items() if not _de_guard(src_)]
+_de_more = {"a sentence-initial Sie no entry names": (_with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Sie ist alles."), None),
+            "an allowed text gone from its file": (_with(_ds_de, "docs/de/triage.md", "Sie hat drei", "Die Datei hat drei"), None),
+            "a pending text gone from its file": (_with(_ds_de, "overrides/main.html", "Eine Werkbank für deine Agenten", "Eine Werkbank für die Agenten"),
+                                                  _de_try_pending)}
+_de_more_green = [name_ for name_, (src_, pending_) in _de_more.items() if not _de_guard(src_, pending_)]
 check(f"no form passes by where it stands, and the named texts stay true: a sentence-initial Sie that no entry names, an allowed text gone from "
       f"its file, and a pending text gone from its file each turn the guard red (stayed green: {_de_more_green})", not _de_more_green)
+# Each old text of the why page's German and of the link preview's German alt, beside its text now: put back, each turns the guard red.
+_de_old_why = (
+    ("kopierst du den Stand-up-Prompt: Er bittet eine Session, sie mit dir durchzugehen",
+     "kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen"),
+    ("das ständige Umschalten zwischen den Sessions war zermürbend", "das ständige Umschalten zwischen den Sitzungen war zermürbend"),
+    ("von der Research-Session gestellt wurde", "von der Research-Sitzung gestellt wurde"),
+    ("von der Planner-Session gestellt wurde", "von der Planner-Sitzung gestellt wurde"),
+    ("ein Knopf, der den Stand-up-Prompt kopiert; die drei Sessions mit einem Commit",
+     "ein Knopf, der den Standup-Prompt kopiert; die drei Sitzungen mit einem Commit"),
+    ("darunter die Session, die jede gestellt hat", "darunter die Sitzung, die jede gestellt hat"),
+    ("Dein Stand-up.", "Dein Standup."),
+    ("Der Stand-up-Prompt liegt einen Klick entfernt bereit", "Der Standup-Prompt liegt einen Klick entfernt bereit"),
+    ("Jeder Agent arbeitet in einer Rolle mit aufgeschriebenen Rechten", "Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten"),
+)
+_de_old_alt = ("„Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.“", "„Eine Werkbank für Ihre Agenten. Ihre Entscheidungen belegt.“")
+_de_back = {f"{rel_}: {old_}": _with(_ds_de, rel_, now_, old_)
+            for rel_ in ("docs/de/warum-shoalmark.md", "overrides/partials/why/de.html") for now_, old_ in _de_old_why}
+_de_back.update({f"{rel_}: {_de_old_alt[1]}": _with(_ds_de, rel_, *_de_old_alt)
+                 for rel_ in ("overrides/main.html", "overrides/partials/landing/de.html", "overrides/partials/why/de.html")})
+_de_back_green = [name_ for name_, src_ in _de_back.items() if not _de_guard(src_)]
+check(f"no old text comes back: each of the why page's {len(_de_old_why)} old texts put back into each of its two German files, and the German "
+      f"alt's old quote put back into each of its three places, turns the guard red ({len(_de_back)} mutants; stayed green: {_de_back_green})",
+      not _de_back_green and len(_de_back) == 21)
 
 
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
