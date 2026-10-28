@@ -3,13 +3,16 @@ id: FM-084
 status: Proposed
 considered: FM-031, FM-082
 tags: process
-next: owner
+next: build
 hook: "--queue does not show a pull request's CI, so a failing check is found on the forge by hand"
 ask: "Is FM-084's check word in --queue allocated to v0.20.3, as FM-084's section The allocation, for the Owner sets out?"
 ask-kind: ruling
 ask-since: 2026-10-27
 ask-options: "yes, v0.20.3 | no: a later release"
 ask-proposal: "yes, v0.20.3"
+answer: "accepted - yes, v0.20.3"
+answered: 2026-10-28
+answered-by: holgo99
 ---
 
 # FM-084 — --queue does not show a pull request's CI, so a failing check is found on the forge by hand
