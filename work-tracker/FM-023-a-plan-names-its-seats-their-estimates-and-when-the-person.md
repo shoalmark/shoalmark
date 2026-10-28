@@ -4,10 +4,15 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: build
+next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
+ask: "Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now (28 October, the German rewrite) sets out: every German docs page moved to du and written from its meaning, after a glossary you rule, and read by a German native reader before it merges?"
+ask-kind: ruling
+ask-since: 2026-10-28
+ask-options: "yes | yes, with the changes I name | no: the rewrite waits for v0.20.3"
+ask-proposal: "yes"
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -16,6 +21,16 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-28 — the German rewrite, for the Owner's signed answer.** The move of every German docs page to *du* was
+ruled for v0.20.2 on 22 October, as the Auditor relays it. [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md)
+records it under *What is true now* (27 and 28 October):
+- each page is written from its meaning, not sentence by sentence;
+- first, a short glossary goes to the Owner to rule;
+- a German native reader reads each page before it merges;
+- the probe prompt's mixed German forms go with it.
+
+The 27 October table below does not list it. The ask above puts it to the Owner, on the Auditor's relay of 28 October.
 
 **2026-10-27 — v0.20.2's scope narrowed, and v0.20.3 named, on the Owner's word of 27 October, as relayed by the Auditor, for their signed answer.** The Owner said "leave them
 for v0.20.3", then "I want to also add ASK ids to v0.20.2", on the Auditor's list just before. The ask above puts it to
