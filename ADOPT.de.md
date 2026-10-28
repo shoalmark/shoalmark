@@ -270,9 +270,9 @@ nichts. Die Meldungen des Werkzeugs auf der Kommandozeile bleiben englisch.
 
 **Das Ergebnis eintragen** mit `<py> tools/shoalmark/shoalmark.py --new "…"`. Tragt ein Arbeitspaket für den Plan als
 Ganzes ein und höchstens vier für das, was der Stand verlangt, die offene Arbeit zuerst: zusammen höchstens fünf.
-Jeder bekommt:
+Jedes bekommt:
 
-- `considered:`, die Ids, mit denen er verglichen wurde, oder `none`;
+- `considered:`, die Ids, mit denen es verglichen wurde, oder `none`;
 - `epic:`, mit dem Arbeitspaket des Plans;
 - einen ehrlichen `status:`;
 - `next:` (`build` · `review` · `owner` · `wait` …);
