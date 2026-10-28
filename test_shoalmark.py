@@ -6584,7 +6584,7 @@ _WHY_STORY_CSS = (
     ('.said blockquote p+p{margin-top:.85em}', ''),
     ('.said blockquote a{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}', ''),
     ('.said blockquote a:focus-visible{outline:2px solid var(--land);outline-offset:2px}', ''),
-    ('.said figcaption{margin:12px 0 0 26px;color:var(--dim);font-size:14px}', ''),
+    ('.said figcaption{margin:12px 0 0 26px;color:var(--dim);font-size:14px;text-wrap:balance}', ''),
     ('.said figcaption a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--contour);text-underline-offset:3px}', ''),
     ('.said figcaption a:hover{text-decoration-color:currentColor}', ''),
     ('.said figcaption a:focus-visible{outline:2px solid var(--watt);outline-offset:2px}', ''),
@@ -6595,9 +6595,9 @@ _WHY_STORY_CSS = (
     ('.proof{margin-top:0}', '@media print'),
     ('.said{margin:4pt 0 0;max-width:none}', '@media print'),
     ('.said blockquote{padding:0 0 0 6pt;border-left-width:1.5pt}', '@media print'),
-    ('.said blockquote p{font-size:7.4pt;line-height:1.3;color:var(--land)}', '@media print'),
+    ('.said blockquote p{font-size:7.2pt;line-height:1.3;color:var(--land)}', '@media print'),
     ('.said blockquote p+p{margin-top:2.5pt}', '@media print'),
-    ('.said figcaption{margin:2pt 0 0 7.5pt;font-size:7.4pt}', '@media print'),
+    ('.said figcaption{margin:2pt 0 0 7.5pt;font-size:7.2pt}', '@media print'),
     ('.said figcaption a{color:var(--ink);text-decoration:none}', '@media print'),
     ('.said blockquote a{text-decoration:none}', '@media print'),
     ('.said{border-left:1.5pt solid var(--land);padding-left:6pt}', '@media print'),
@@ -6605,7 +6605,7 @@ _WHY_STORY_CSS = (
     ('.said blockquote p:last-child{display:inline}', '@media print'),
     ('.said blockquote p:nth-last-child(2){margin-bottom:2.5pt}', '@media print'),
     ('.said figcaption{display:inline;margin:0 0 0 3pt}', '@media print'),
-    ('html[lang=de] .said blockquote p{font-size:7.2pt}', '@media print'),
+    ('html[lang=de] .said blockquote p{font-size:7pt}', '@media print'),
 )
 
 
@@ -6725,8 +6725,8 @@ _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.m
                                                     ".card{margin:36px", ".proof{margin-top:28px}\n.card{margin:36px"),
          "the print gap merged into the print block's rule": _with(_with(_ws, "overrides/why.html", " .proof{margin-top:0}\n", ""), "overrides/why.html",
                                                                    ".proof{grid-column:2;grid-row:2/span 3}", ".proof{grid-column:2;grid-row:2/span 3;margin-top:0}"),
-         "the print size changed": _with(_ws, "overrides/why.html", "font-size:7.4pt;line-height:1.3;color:var(--land)", "font-size:8.3pt;line-height:1.3;color:var(--land)"),
-         "the German print size removed": _with(_ws, "overrides/why.html", " html[lang=de] .said blockquote p{font-size:7.2pt}\n", "")}
+         "the print size changed": _with(_ws, "overrides/why.html", "font-size:7.2pt;line-height:1.3;color:var(--land)", "font-size:8.3pt;line-height:1.3;color:var(--land)"),
+         "the German print size removed": _with(_ws, "overrides/why.html", " html[lang=de] .said blockquote p{font-size:7pt}\n", "")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
 check(f"FM-006 · the pitch page · its check is not blind: each of a row dropped from the English page or from the German words, the German page in Sie, "
       f"the board picture without its MOCKUP tag, the English page off its template, the German title as the English one, the statement dropped from the German "
