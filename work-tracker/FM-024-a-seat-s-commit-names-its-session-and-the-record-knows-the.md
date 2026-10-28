@@ -40,6 +40,11 @@ PR C - RV-3487 (10e4d5e): the differential's last implementation comments
 went under the comment rule; no executable code or page bytes changed,
 and no allowance moved.
 
+**2026-10-28 — the critical review's fix round.** The resume test counts each command once, as the page holds it, on
+every system (RV-3940). The old chain's mutant holds no comments of its own (RV-3941). The differential pins the resume
+labels to their English and German words (RV-3942). A test that cannot make the handle that holds a log unreadable says
+so, with the error (RV-3944). RV-3943: recorded privately.
+
 **2026-10-24 — the Board's placeholder handling made order-proof (RV-3870: recorded privately).** No value the Board
 inserts can be read as a placeholder filled after it, whichever value it is. On Windows, the resume command takes the
 form of the tool's other copied commands, PowerShell's, and starts the session only where the folder change succeeds
