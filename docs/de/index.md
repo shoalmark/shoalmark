@@ -1,6 +1,6 @@
 ---
 template: landing.html
-title: Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort
+title: Die Agenten tragen die Arbeit, du hast das letzte Wort
 description: "Eine Werkbank für deine Agenten. Deine Entscheidungen belegt."
 ---
 
@@ -8,7 +8,7 @@ description: "Eine Werkbank für deine Agenten. Deine Entscheidungen belegt."
 
 *Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.*
 
-## Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.
+## Die Agenten tragen die Arbeit, du hast das letzte Wort.
 
 Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit steht, was auf dein Wort wartet und was die nächste Session aufgreift. Deine Agenten halten das in deinem Repository fest; deine Entscheidungen kommen als deine eigenen Commits hinzu, neben den Belegen für die Arbeit.
 
