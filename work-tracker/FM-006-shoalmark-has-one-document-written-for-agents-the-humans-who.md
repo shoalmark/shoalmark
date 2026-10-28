@@ -52,6 +52,17 @@ Retired in German prose: *Sitz*, *Owner*, *Tafel*, *der Standup*, *Prüfer* and 
 each formal form and each retired term in German prose. The lane's German pages go live only with v0.20.2's tag's own
 docs build. A German native reader reads the lane twice before it merges: the site first, then the Board and the probe.
 
+**2026-10-28 — the German rewrite: the Owner's words on the hero line, the inspector, the probe's template and its
+button.** On the Owner's word of 28 October, as the Auditor relays it:
+- the German hero line is *Die Agenten tragen die Arbeit, du hast das letzte Wort.* in all seven places, each in its own
+  form. It changes A2's *der Mensch hat das letzte Wort* (below). The why page's two places follow with its German;
+- the landing's inspector is *der Gutachter*, the marine surveyor, beside *der Skipper* and *der Schiffbauer*;
+- the German probe prompt's report template says *der Eigner* and *Arbeitspakete*: the two named exceptions to the rule
+  that the prompts' code blocks stay byte for byte;
+- the landing's button and the interim dialog read *Gib deinen Agenten die Notiz*;
+- *Arbeitspaket* is the work item in the probe prompts too, and *Eintrag* only a line in a list;
+- the unused picture of the German Board, `examples/de/tafel.png`, is removed.
+
 **2026-10-23 08:18:29 CEST — v0.20.1's release commit, on `fm/006-release-b2` from `7200c8d`:** `VERSION` reads 0.20.1, CHANGELOG's `## 0.20.1 — 2026-10-23` holds every lane's lines, and both setup pages clone `--branch v0.20.1`. ADOPT's pins stay on v0.20.0, as the pin's order requires until the switch commit. The landing's tag and day follow VERSION and the CHANGELOG heading; the footer's sentence for v0.20.1 waits for the go-to-market seat's row.
 
 **2026-10-23 00:44:51 CEST — v0.20.1's landing, its fix round on `fm/006-b1-landing` after `022c7ef`:** the review-commit cohort counts every `Reviewed:` trailer, an empty one too, before it asks for exactly one (`79e4a46`, RV-3820); the C4 check lets the German board say *Board* and still finds *open* (`5e4f1cf`, RV-3821); two comments that named their rulings are gone (`f943e9d`, RV-3822); the B1 block's excerpt part runs on a fixed excerpt (`a963d7f`); the door's tape is peeled off from one end (`5479436`, `fad7feb`, BF-70); the copy icon stands under the door's label (`6674d74`, BF-71); the high scores stack on a phone (`c817de4`, BF-72); the door keeps still on hover (`df4f1e1`, BF-73); the approvals come before the tell line in the dialog (`c7d1aae`, BF-74); the German dialog fits at 1024 × 768 (`0f863ca`, BF-75); and the B1 dialog check asks what a phone shows of it (`be57ac8`). The B1 browser block and the German board's block pass at `fad7feb`. The same Reviewer's re-check and the Designer's look come next.
@@ -1182,6 +1193,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-28 19:22:59 CET | **The German rewrite: the Owner's words** on the hero line (*du hast das letzte Wort*, changing A2), the inspector (*der Gutachter*), the probe template's two named exceptions, the landing's button, *Arbeitspaket* in the probe prompts, and the old German Board picture removed. Records only. |
 | 2026-10-28 16:15:38 CET | **The German rewrite's glossary ruled, and its lane started** on `release/v0.20.2-signed`, on the Owner's word: every German line of v0.20.2 moves to *du*, by the glossary this file's entry of 28 October records. Records only. |
 | 2026-10-28 05:51:22 CET | **RV-3931 and BF-88, the why page's story column and print size, and the Owner's long German forms** on `fm/006-founder-voice-site` after the verdict `e9df669` (READY WITH FINDINGS) and the Designer's re-check, recorded privately: five rules in `overrides/why.html`, each a rule of its own, `.proof{margin-top:36px}.proof>p{max-width:70ch}` on screen, `.proof{margin-top:28px}` up to 640 px, and in print `.proof{margin-top:0}`, `.proof>p{font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt}` and `html[lang=de] .proof>p{font-size:7.2pt}`, each pinned with a control; and the Owner's long forms *Kopiere den Prompt*, *probiere es … aus* and *wähle eines*. The probe prompt does not change. |
 | 2026-10-27 23:23:47 CET | **A native reader's feedback on the German, recorded for v0.20.2** on the Owner's word: the how-it-works page's week in four steps reads as English translated sentence by sentence. v0.20.2's move to *du* writes every German docs page from its meaning, after the Owner rules a short glossary, and a German native reader reads each page before it merges. The how-it-works page stays as it is this round. |
