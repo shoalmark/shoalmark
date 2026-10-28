@@ -29,7 +29,7 @@ Ich bin von dem ausgegangen, was ich gemessen habe. In meinem letzten Repository
 >
 > *Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*
 >
-> *Mit shoalmark bin ich zurückgekommen. Seit seinem ersten Commit am 21. September haben seine Agenten die meisten seiner Commits gemacht, und meine sind vor allem Merges und Antworten.“*
+> *Mit shoalmark bin ich zurückgekommen. Seit dem ersten Commit von shoalmark am 21. September stammen die meisten Commits von meinen Agenten. Von mir kommen vor allem Merges und Antworten.“*
 >
 > — [@Holgo99](https://x.com/holgo99), ich baue portdive mit shoalmark und shoalmark mit sich selbst
 
