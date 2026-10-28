@@ -3,13 +3,16 @@ id: FM-083
 status: Proposed
 considered: FM-062, FM-065
 tags: research
-next: owner
+next: build
 hook: "nothing measures how well a skill does its work, only its structure and its proof"
 ask: "Is FM-083's suite for skills allocated to v0.20.3, as FM-083's section The allocation, for the Owner sets out?"
 ask-kind: ruling
 ask-since: 2026-10-27
 ask-options: "yes, v0.20.3 | no: a later release"
 ask-proposal: "yes, v0.20.3"
+answer: "accepted - yes, v0.20.3"
+answered: 2026-10-28
+answered-by: holgo99
 ---
 
 # FM-083 — nothing measures how well a skill does its work, only its structure and its proof
