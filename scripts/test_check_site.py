@@ -50,7 +50,7 @@ def good_site(site, probe=False):
              "de/how-it-works/index.md": '# So funktioniert\'s\n\n„%s“ ist der Knopf.\n' % (LABELS["de"] if probe else "Agenten die Notiz geben"),
              "index.md": "# shoalmark\n\n**[%s](%s)**\n" % ((LABELS["en"], SITE_URL + "probe.txt") if probe else ("Hand your agents the note", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md")),
              "de/index.md": "# shoalmark\n\n**[%s](%s)**\n\n[Einrichtung](setup/index.md), [Vertrag](../agents/README/index.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n"
-                            % ((LABELS["de"], SITE_URL + "de/probe.txt") if probe else ("Geben Sie Ihren Agenten die Notiz", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md")),
+                            % ((LABELS["de"], SITE_URL + "de/probe.txt") if probe else ("Gib deinen Agenten die Notiz", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md")),
              "de/setup/index.md": "# Einrichtung\n", "agents/README/index.md": "# README\n",
              "llms.txt": "- [How it works](how-it-works/index.md)\n- [shoalmark](de/index.md)\n- [So funktioniert's](de/how-it-works/index.md)\n",
              "stylesheets/x.css": "body{color:#fff}", "assets/preview.png": "png", "assets/preview-de.png": "png"}
@@ -375,7 +375,7 @@ class Twins(unittest.TestCase):
         files = {"docs/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n--8<-- \"start.en.md\"\n[Set up](setup.md)\n",
                  "docs/de/index.md": "---\ntemplate: landing.html\n---\n# shoalmark\n--8<-- \"start.de.md\"\n[Einrichtung](setup.md), [Vertrag](../agents/README.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n",
                  "launch/%s/start.en.md" % ("probe" if probe else "interim"): "**[Copy the prompt](https://x.example/probe.txt)**\n" if probe else "**[Hand your agents the note](https://x.example/ADOPT.md)**\n",
-                 "launch/%s/start.de.md" % ("probe" if probe else "interim"): "**[Prompt kopieren](https://x.example/de/probe.txt)**\n" if probe else "**[Geben Sie Ihren Agenten die Notiz](https://x.example/ADOPT.de.md)**\n",
+                 "launch/%s/start.de.md" % ("probe" if probe else "interim"): "**[Prompt kopieren](https://x.example/de/probe.txt)**\n" if probe else "**[Gib deinen Agenten die Notiz](https://x.example/ADOPT.de.md)**\n",
                  "docs/how-it-works.md": how or "# How it works\n\n" + FIGURE + "\n\n## Try it\n\n--8<-- \"how-it-works.en.md\"\n\n[Set up](setup.md)\n",
                  "docs/de/how-it-works.md": "# So funktioniert's\n\n--8<-- \"how-it-works.de.md\"\n\n[Einrichtung](setup.md)\n",
                  "docs/setup.md": "# Set up\n", "docs/de/setup.md": "# Einrichtung\n", "docs/agents/README.md": '--8<-- "README.md"\n', "README.md": "# README\n",
@@ -383,7 +383,7 @@ class Twins(unittest.TestCase):
                  "launch/%s/how-it-works.de.md" % ("probe" if probe else "interim"): "Der Knopf kopiert.\n" if probe else "Der Knopf führt zur Notiz.\n",
                  "zensical.toml": '[project]\n[project.extra]\nprobe = %s\n[project.markdown_extensions]\npymdownx.snippets.base_path = [".", "launch/%s"]\n' % ("true" if probe else "false", "probe" if probe else "interim"),
                  "site/index.html": '<textarea id="probe-text">Say &quot;no fit&quot;.\nI decide.\n</textarea>' if landing_has_prompt else "<p>no prompt</p>",
-                 "site/de/index.html": '<textarea id="probe-text">Sagen Sie „passt nicht“.\n</textarea>' if landing_has_prompt else "<p>no prompt</p>"}
+                 "site/de/index.html": '<textarea id="probe-text">Sage „passt nicht“.\n</textarea>' if landing_has_prompt else "<p>no prompt</p>"}
         for name, text in files.items():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             (root / name).write_text(text, encoding="utf-8", newline="")
@@ -425,7 +425,7 @@ class Twins(unittest.TestCase):
         site, result = self.written(probe=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((site / "probe.txt").read_bytes(), 'Say "no fit".\nI decide.\n'.encode("utf-8"))
-        self.assertEqual((site / "de/probe.txt").read_bytes(), "Sagen Sie „passt nicht“.\n".encode("utf-8"))
+        self.assertEqual((site / "de/probe.txt").read_bytes(), "Sage „passt nicht“.\n".encode("utf-8"))
         site, result = self.written(probe=True, landing_has_prompt=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("shows no prompt", result.stderr)
