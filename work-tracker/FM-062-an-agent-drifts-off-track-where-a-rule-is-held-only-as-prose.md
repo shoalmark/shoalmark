@@ -3,13 +3,16 @@ id: FM-062
 status: Proposed
 considered: FM-042, FM-037, FM-026, FM-023
 tags: process
-next: owner
+next: build
 hook: "an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live"
 ask: "Do /find-drift's five layers keep your order of 18 October, with a skill below a rule a reviewer checks, as FM-062's section The layer order, for the Owner sets out?"
 ask-kind: ruling
 ask-since: 2026-10-27
 ask-options: "yes, the order stays | no: a skill ranks above a rule a reviewer checks"
 ask-proposal: "yes, the order stays"
+answer: "accepted - yes, the order stays"
+answered: 2026-10-28
+answered-by: holgo99
 ---
 
 # FM-062 — an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live
