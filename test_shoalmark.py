@@ -6726,7 +6726,7 @@ _wctl = {"a row dropped from the English page": _with(_ws, "docs/why-shoalmark.m
          "the phone's gap outside its block": _with(_with(_ws, "overrides/why.html", " .proof{margin-top:28px}\n", ""), "overrides/why.html",
                                                     ".card{margin:36px", ".proof{margin-top:28px}\n.card{margin:36px"),
          "the print gap merged into the print block's rule": _with(_with(_ws, "overrides/why.html", " .proof{margin-top:0}\n", ""), "overrides/why.html",
-                                                                   ".proof{grid-column:2;grid-row:2/span 3}", ".proof{grid-column:2;grid-row:2/span 3;margin-top:0}"),
+                                                                   ".proof{grid-column:2/4;grid-row:2/span 3}", ".proof{grid-column:2/4;grid-row:2/span 3;margin-top:0}"),
          "the print size changed": _with(_ws, "overrides/why.html", "font-size:7.2pt;line-height:1.3;color:var(--land)", "font-size:8.3pt;line-height:1.3;color:var(--land)"),
          "the German print size removed": _with(_ws, "overrides/why.html", " html[lang=de] .said blockquote p{font-size:7pt}\n", "")}
 _wctl_saw = {name: len(_why_problems(src)) for name, src in _wctl.items()}
