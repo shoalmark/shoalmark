@@ -15,6 +15,7 @@ template: why.html
 - **Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.
 - **Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das dich bindet.
 - **Stand:** Open Source (Apache-2.0 oder MIT), in der Beta, und mit sich selbst gebaut.
+- **Nicht:** Ein Agenten-Runner (deine Agenten bringst du selbst mit), ein Werkzeug für mehrere Personen, die das Sagen haben (noch nicht), ein Import aus deinem Ticketsystem oder ein Beweis, dass die Arbeit stimmt (dafür ist ein Review da).
 - **Ausprobieren:** [Kopiere den Prompt](index.md#top) und lass deinen Agenten prüfen, ob shoalmark zu deinem Projekt passt. Der Prompt bittet ihn, die Einrichtung an einer Kopie auszuprobieren, in einem Wegwerf-Ordner außerhalb deines Repositorys, und dein Repository selbst nur zu lesen und ohne dein Ja nichts daran zu ändern. In bis zu 45 Minuten sagt dir dein Agent, ob shoalmark passt, und „passt nicht“ ist auch eine Antwort. Danach entscheidest du.
 
 ## Die Pricke
@@ -29,7 +30,7 @@ Ich bin von dem ausgegangen, was ich gemessen habe. In meinem letzten Repository
 >
 > *Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*
 >
-> *Mit shoalmark bin ich zurückgekommen. Seit dem ersten Commit von shoalmark am 21. September stammen die meisten Commits von meinen Agenten. Von mir kommen vor allem Merges und Antworten.“*
+> *Mit shoalmark bin ich zurück in der Schleife. Seit dem ersten Commit von shoalmark am 21. September stammen die meisten Commits von meinen Agenten. Von mir kommen vor allem Merges und Antworten.“*
 >
 > — [@Holgo99](https://x.com/holgo99), ich baue portdive mit shoalmark und shoalmark mit sich selbst
 

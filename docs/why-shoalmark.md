@@ -15,6 +15,7 @@ template: why.html
 - **How:** Their questions wait on the board instead of interrupting you. When it suits you, copy the stand-up prompt: it asks a session to take you through them. Each answer is a commit you can sign.
 - **Simple:** One Python file. No server, no database, no account, and nothing that locks you in.
 - **Status:** Open source (Apache-2.0 or MIT), in beta, and built with shoalmark itself.
+- **Not:** An agent runner (you bring your own agents), a tool for several people in charge (not yet), an import from your ticket system, or proof that the work is right (that's a review's job).
 - **Try it:** [Copy the prompt](index.md#top) and let your agent check whether shoalmark fits your project. The prompt asks it to try the setup on a copy, in a throwaway folder outside your repo, and only to read your repo itself, changing nothing in it without your yes. In up to 45 minutes your agent tells you whether shoalmark fits, and "no fit" is an answer too. You decide from there.
 
 ## The mark
