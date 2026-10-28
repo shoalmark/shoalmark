@@ -35,6 +35,23 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 **2026-10-28 — B1's skip counts the seven checks it runs:** the launch form, the interim and the probe state, the controls, and the three excerpt checks. It had counted its two-state loop once.
 
+**2026-10-28 — the German rewrite to *du*: the glossary ruled, and the lane started.** On the Owner's word of 28
+October, as the Auditor relays it, every German line of v0.20.2 moves to lower-case *du* in one lane,
+`fm/006-german-du`, on the v0.20.2 lane `release/v0.20.2-signed`. The glossary, as ruled:
+- seat: *die Rolle*; the config's `[seats]` stays code, and one sentence links the two;
+- sitting: *die Runde*, or a verb where it reads better;
+- the person who owns a repository: *der Eigner*, as ruled on 23 September; the seat name `owner`, the `[seats]` key,
+  commands and quoted refusals stay English;
+- *das Board*; *das Stand-up*, and the menu reads "Das Stand-up"; *die Frage*; *die Antwort*; *ausgeliefert* and *das
+  Release*; *die Session*, which frees *Sitzung*;
+- *das Arbeitspaket*, and *Eintrag* only for a line in a list; *die Sichtung*; *das Review*, *der Reviewer*, *das
+  Urteil*; *der Beleg*, and *der Verlauf* for the history; *der Abschluss*;
+- *du* in lower case everywhere, and the long imperatives everywhere (*prüfe*, *sage*, *schreibe*).
+
+Retired in German prose: *Sitz*, *Owner*, *Tafel*, *der Standup*, *Prüfer* and *Nachweis*. A check in the suite refuses
+each formal form and each retired term in German prose. The lane's German pages go live only with v0.20.2's tag's own
+docs build. A German native reader reads the lane twice before it merges: the site first, then the Board and the probe.
+
 **2026-10-23 08:18:29 CEST — v0.20.1's release commit, on `fm/006-release-b2` from `7200c8d`:** `VERSION` reads 0.20.1, CHANGELOG's `## 0.20.1 — 2026-10-23` holds every lane's lines, and both setup pages clone `--branch v0.20.1`. ADOPT's pins stay on v0.20.0, as the pin's order requires until the switch commit. The landing's tag and day follow VERSION and the CHANGELOG heading; the footer's sentence for v0.20.1 waits for the go-to-market seat's row.
 
 **2026-10-23 00:44:51 CEST — v0.20.1's landing, its fix round on `fm/006-b1-landing` after `022c7ef`:** the review-commit cohort counts every `Reviewed:` trailer, an empty one too, before it asks for exactly one (`79e4a46`, RV-3820); the C4 check lets the German board say *Board* and still finds *open* (`5e4f1cf`, RV-3821); two comments that named their rulings are gone (`f943e9d`, RV-3822); the B1 block's excerpt part runs on a fixed excerpt (`a963d7f`); the door's tape is peeled off from one end (`5479436`, `fad7feb`, BF-70); the copy icon stands under the door's label (`6674d74`, BF-71); the high scores stack on a phone (`c817de4`, BF-72); the door keeps still on hover (`df4f1e1`, BF-73); the approvals come before the tell line in the dialog (`c7d1aae`, BF-74); the German dialog fits at 1024 × 768 (`0f863ca`, BF-75); and the B1 dialog check asks what a phone shows of it (`be57ac8`). The B1 browser block and the German board's block pass at `fad7feb`. The same Reviewer's re-check and the Designer's look come next.
@@ -1165,6 +1182,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-28 16:15:38 CET | **The German rewrite's glossary ruled, and its lane started** on `release/v0.20.2-signed`, on the Owner's word: every German line of v0.20.2 moves to *du*, by the glossary this file's entry of 28 October records. Records only. |
 | 2026-10-28 05:51:22 CET | **RV-3931 and BF-88, the why page's story column and print size, and the Owner's long German forms** on `fm/006-founder-voice-site` after the verdict `e9df669` (READY WITH FINDINGS) and the Designer's re-check, recorded privately: five rules in `overrides/why.html`, each a rule of its own, `.proof{margin-top:36px}.proof>p{max-width:70ch}` on screen, `.proof{margin-top:28px}` up to 640 px, and in print `.proof{margin-top:0}`, `.proof>p{font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt}` and `html[lang=de] .proof>p{font-size:7.2pt}`, each pinned with a control; and the Owner's long forms *Kopiere den Prompt*, *probiere es … aus* and *wähle eines*. The probe prompt does not change. |
 | 2026-10-27 23:23:47 CET | **A native reader's feedback on the German, recorded for v0.20.2** on the Owner's word: the how-it-works page's week in four steps reads as English translated sentence by sentence. v0.20.2's move to *du* writes every German docs page from its meaning, after the Owner rules a short glossary, and a German native reader reads each page before it merges. The how-it-works page stays as it is this round. |
 | 2026-10-27 23:23:47 CET | **RV-3930, BF-84, BF-85 and BF-86, the fix round** on `fm/006-founder-voice-site` after the verdict `132ff58` (READY WITH FINDINGS) and the Designer's check: `da4504b` draws the pitch page's story as the section's plain paragraphs, with no figure, quote, caption or `.said` rule left (RV-3930, BF-86); `670c064` moves the first-person line out of the lede to its own short line under the two buttons, its link on one line (BF-84, BF-85), and sets the Owner's German: *Deine* in `cost_3`, *Agentenflotte*, *Wähle*, *Füge … ein* and *Probiere*. The suite's pins move with the markup and the words, with new controls. The Designer re-checks the first screen and the pitch page, and the reviewer the commits. |

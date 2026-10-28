@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?"
-ask-kind: ruling
-ask-since: 2026-10-28
-ask-options: "yes | yes, with the changes I name | no: the rewrite waits for v0.20.3"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-28
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -24,6 +16,25 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-28 — the German rewrite ruled and started, and the v0.20.2 lane rebuilt, signed.** The Owner's signed
+answer (`558ec59`, #227) accepts the ask of the entry below. The same day, as the Auditor relays it, the Owner ruled the
+rewrite's glossary, which [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) records, and its plan:
+- the lane, `fm/006-german-du`, is built on the v0.20.2 lane now, and goes into it by pull request;
+- FM-024, FM-068 and FM-076 each move their own German lines to *du* by the glossary before they join, and the check
+  below catches what is left;
+- the probe prompts' part gets a critical review;
+- a check in the suite refuses, in German prose, each formal form and each term the glossary retires, with each allowed
+  exception named and a control;
+- a German native reader reads the lane twice before it merges, and the German of the other v0.20.2 lanes once before
+  the release sitting;
+- the lane's German pages go live only with v0.20.2's tag's own docs build, and no docs build runs on main between the
+  release's merge into main and its tag.
+
+The v0.20.2 lane is rebuilt as `release/v0.20.2-signed`: the same trees, with the merges of #219 and #220 made again by
+the Owner in their own checkout and signed (`c4d211b`, `8b24e91`). The earlier branch, whose two merges GitHub's merge
+button had made, is retired. Every merge into a base other than main is the Owner's, made in their checkout and signed,
+and every v0.20.2 lane takes the signed branch as its base and its target.
 
 **2026-10-28 — the German rewrite, for the Owner's signed answer.** Every German line moves to *du* in v0.20.2, at
 once and in one lane: the Owner's ruling of 22 October, as the Auditor relays it.
@@ -54,6 +65,7 @@ them. The tables below stay as the record of what was allocated before.
 | v0.20.2 | S1: the ask ids with R4's answer commit (FM-050). | FM-076 |
 | v0.20.2 | FM-063: the trailer step leaves a message that ends in bare links as it is (S), built in the `prepare-commit-msg` hook, so critical. | — |
 | v0.20.2 | FM-065: the skill-call contract. Its design is READY WITH FINDINGS (`4dc1910`), and its first use is `/prune-drift` calling `/find-drift`. | `/prune-drift`'s rebuild |
+| v0.20.2 | The German rewrite: every German line moves to *du*, in one lane (`fm/006-german-du`), by the glossary of 28 October (FM-006). | — |
 | v0.20.3 | S3, who asked, the receipts and S4, from batch 3. | S1 |
 | v0.20.3 | From 18 October's allocation: the prose prune of `shoalmark.py` with the comment ratchet, FM-037's guard, the five conversions, and the text fixes. | v0.20.2's tag |
 
@@ -397,10 +409,16 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted with a change
 **signed** — 62ac263 · G
 
+**2026-10-28** · Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 558ec59 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-28 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The glossary and the plan ruled the same day, the lane started, a v0.20.2 row, and the v0.20.2 lane rebuilt as `release/v0.20.2-signed`, signed. Records only. |
 | 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
 | 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
 | 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
