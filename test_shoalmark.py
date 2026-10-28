@@ -16852,21 +16852,38 @@ _B1_NAME = "FM-006 · B1 · the landings in a real browser"
 _why = ("SHOALMARK_REGENERATE=1 is not set (the browser run builds the site twice and takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
         else "no Node here" if not _have_node else "no scripts/landing_facts.py here, so the landing's figures cannot be written" if not (HERE / "scripts/landing_facts.py").is_file() else "")
 if _why:
-    _regen_skip(_B1_NAME, 5, _why)
+    _regen_skip(_B1_NAME, 6, _why)
 else:
     _node_ok = subprocess.run([_have_node, "-e", "process.exit(typeof WebSocket == 'function' && typeof fetch == 'function' ? 0 : 1)"], capture_output=True, env=_ENV).returncode == 0
     if not _node_ok:
-        _regen_skip(_B1_NAME, 5, "this Node has no WebSocket (Node 22 or newer has)")
+        _regen_skip(_B1_NAME, 6, "this Node has no WebSocket (Node 22 or newer has)")
     else:
         _pin = re.search(r"(?m)^zensical==(\S+)", (HERE / "requirements-docs.txt").read_text(encoding="utf-8")).group(1)
         _head = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
 
+        _B1_FORMS = {"interim": ("probe = false\ntaped = false\n", 'pymdownx.snippets.base_path = [".", "launch/interim"]\n'),
+                     "probe": ("probe = true\ntaped = false\n", 'pymdownx.snippets.base_path = [".", "launch/probe"]\n')}
+
+        def _b1_form(toml):
+            """The launch state a zensical.toml holds, "interim" or "probe", when it holds exactly one of the two forms: its switch with the tape off, and its
+            launch folder alone in the snippets' base path, each line once. None when it holds neither form, or both."""
+            text = "\n" + toml
+            held = [state for state, (switch, folder) in _B1_FORMS.items() if text.count("\n" + switch) == 1 and text.count("\n" + folder) == 1]
+            return held[0] if len(held) == 1 else None
+
         def _b1_site(work, state, name=None, facts_edit=None, template_edit=None):
-            """This tree built as docs.yml builds it, in the launch state `state`: the figures first (scripts/landing_facts.py, read from this history at HEAD, the
-            pull requests from the response recorded to #211, the probe switch as it stands, off), then the switch and its launch folder turned, Zensical, then llms_txt.py.
-            `facts_edit` and `template_edit` change what was written or what the landing is, for a control."""
+            """This tree built as docs.yml would build it in the launch state `state`, whichever state zensical.toml holds. The stage's zensical.toml is set to
+            that state first (its probe switch, the tape off, and its launch folder in the snippets' base path), since the figures follow the switch; then the
+            figures (scripts/landing_facts.py, read from this history at HEAD, the pull requests from the response recorded to #211), Zensical, then llms_txt.py.
+            The file must hold exactly one of the two forms. `facts_edit` and `template_edit` change what was written or what the landing is, for a control."""
             stage = work / (name or state)
             shutil.copytree(HERE, stage, ignore=shutil.ignore_patterns(".git", "site", "__pycache__", ".cache", "work-tracker"))
+            toml = (stage / "zensical.toml").read_text(encoding="utf-8")
+            held = _b1_form(toml)
+            assert held, "zensical.toml holds neither launch form, or both: the probe switch with the tape off and its one launch folder"
+            for have, want in zip(_B1_FORMS[held], _B1_FORMS[state]):
+                toml = toml.replace(have, want)
+            (stage / "zensical.toml").write_text(toml, encoding="utf-8")
             run_ = subprocess.run([sys.executable, "scripts/landing_facts.py", "--repo", str(HERE), "--commit", _head, "--pulls", str(HERE / "scripts/landing_facts.pulls-1-211.json")],
                                   cwd=str(stage), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900, env=_ENV)
             assert run_.returncode == 0, run_.stderr[-300:]
@@ -16876,10 +16893,6 @@ else:
             if template_edit:
                 tpl_file = stage / "overrides/landing.html"
                 tpl_file.write_text(template_edit(tpl_file.read_text(encoding="utf-8")), encoding="utf-8")
-            if state == "probe":
-                toml = (stage / "zensical.toml").read_text(encoding="utf-8")
-                assert "\nprobe = false\n" in toml and '"launch/interim"' in toml
-                (stage / "zensical.toml").write_text(toml.replace("\nprobe = false\n", "\nprobe = true\n").replace('"launch/interim"', '"launch/probe"'), encoding="utf-8")
             subprocess.run([_uvx, f"zensical@{_pin}", "build", "--clean"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
             subprocess.run([sys.executable, "scripts/llms_txt.py", "site"], cwd=str(stage), check=True, capture_output=True, timeout=300, env=_ENV)
             return stage / "site"
@@ -16890,6 +16903,19 @@ else:
                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME, CHROME_FLAGS=" ".join(_CHROME_FLAGS)))
             rows = json.loads(Path(out).read_text(encoding="utf-8"))["rows"] if Path(out).exists() else []
             return r.returncode, sorted({row["check"] for row in rows if not row["ok"]}), len(rows)
+
+        # the build's launch state: zensical.toml holds exactly one form, and a file that holds neither, or both, is refused
+        _b1_toml = (HERE / "zensical.toml").read_text(encoding="utf-8")
+        _b1_held = _b1_form(_b1_toml)
+        _b1_other = "interim" if _b1_held == "probe" else "probe"
+        _b1_ctl = {} if _b1_held is None else {
+            "the tape on beside the switch": _b1_toml.replace("\ntaped = false\n", "\ntaped = true\n", 1),
+            "the switch with the other state's folder": _b1_toml.replace(_B1_FORMS[_b1_held][1], _B1_FORMS[_b1_other][1], 1),
+            "both forms": _b1_toml + "".join(_B1_FORMS[_b1_other])}
+        _b1_ctl_saw = {name: _b1_form(text) for name, text in _b1_ctl.items()}
+        check(f"FM-006 · B1 · the site is built in each launch state from the one form zensical.toml holds ({_b1_held}), and the reading is not blind: each of "
+              f"the tape on beside the switch, the switch with the other state's folder and both forms holds no form (saw {_b1_ctl_saw})",
+              _b1_held in _B1_FORMS and len(_b1_ctl_saw) == 3 and all(v is None for v in _b1_ctl_saw.values()))
 
         with tempfile.TemporaryDirectory() as d:
             _work = Path(d).resolve()
