@@ -92,17 +92,17 @@ Probe ins Wegwerf-Repository: zuerst das Werkzeug laufen lassen, dann `svn add -
 - **Die Kopie für eine Nachstellung** kommt aus der Arbeitskopie, ohne den Server zu fragen:
   `svn export <pfad> <probe>/copy/<pfad>`. Legt die übergeordneten Zielordner vorher an.
 - **Abgeschlossene Pakete bleiben aus der Probe heraus.** Ihr Gate prüft eine Revision gegen die Historie des
-  Wegwerf-Repositorys, und die enthält die Revisionen des Projekts nicht. Nennt sie im Eintrag des Plans, jedes mit
+  Wegwerf-Repositorys, und die enthält die Revisionen des Projekts nicht. Nennt sie im Arbeitspaket des Plans, jedes mit
   der Revision, die es gebaut hat (`svn log` zeigt sie). `Shipped` werden sie, mit diesem `r<N>` im *Verlauf*, erst
   beim Umzug ins Projekt (Schritt 12).
 - **Der TortoiseSVN-Schritt, unter Windows, im Beisein des Eigners.** Führt in der Probe
   `<py> tools/shoalmark/shoalmark.py --install-hook` aus. Es setzt `tsvn:startcommithook` und `tsvn:precommithook`
   auf den Ordner. Führt `svn update` aus und committet die Änderung der Properties auf der Kommandozeile. Dann der
   Eigner, an diesem Rechner:
-  1. Der Eigner bereitet eine Änderung vor, die ihr nennt, etwa eine Zeile unter *Was jetzt gilt* in einem Eintrag. Im
+  1. Der Eigner bereitet eine Änderung vor, die ihr nennt, etwa eine Zeile unter *Was jetzt gilt* in einem Arbeitspaket. Im
      Explorer klickt der Eigner mit rechts auf den Ordner der Probe, wählt *SVN Commit…*, liest die Hook-Skripte, nach denen
      TortoiseSVN fragt, und erlaubt sie. Der Commit geht durch.
-  2. Dann versucht der Eigner eine Änderung, die das Gate ablehnt: einen Eintrag, auf `Shipped` gesetzt, ohne Revision im
+  2. Dann versucht der Eigner eine Änderung, die das Gate ablehnt: ein Arbeitspaket, auf `Shipped` gesetzt, ohne Revision im
      *Verlauf*. TortoiseSVN lehnt den Commit ab und zeigt die Zeile des Gates. Danach `svn revert`.
 
   Haltet fest, was der Eigner gesehen hat. Dass TortoiseSVN die beiden Hook-Properties wie beschrieben ausführt, hat
@@ -113,7 +113,7 @@ Probe ins Wegwerf-Repository: zuerst das Werkzeug laufen lassen, dann `svn add -
 
 Unter Subversion liest das Gate die Historie über svn. Ohne Server lehnt eine Prüfung ab, die die Historie braucht,
 im Hook von TortoiseSVN wie in `--check`. Solche Prüfungen sind ein Wechsel auf `Shipped` und eine Antwort. Es geht
-weiterhin, Einträge anzulegen und zu bearbeiten, ebenso `INDEX.md`, das Board, `--next` und ein `--check` auf
+weiterhin, Arbeitspakete anzulegen und zu bearbeiten, ebenso `INDEX.md`, das Board, `--next` und ein `--check` auf
 Änderungen, die keine Historie brauchen.
 
 Ein Repository im Rechner selbst (`file://`) ist immer erreichbar; Schritt 10 sagt, was das kostet.
@@ -146,7 +146,7 @@ Dieselben Schritte wie in `ADOPT.de.md`, in der Arbeitskopie des Projekts, ausge
 
 - `--vendor`, die aus der Probe kopierten Dateien und `--init --key <KEY>` mit demselben Schlüssel. In einer
   Arbeitskopie setzt `--init` `svn:ignore` für das Board.
-- Kopiert die Einträge hinein. Abgeschlossene Pakete werden jetzt `Shipped`, jedes mit seinem `r<N>` im *Verlauf*;
+- Kopiert die Arbeitspakete hinein. Abgeschlossene Pakete werden jetzt `Shipped`, jedes mit seinem `r<N>` im *Verlauf*;
   hier prüft sie das Gate.
 - Lasst das Werkzeug laufen, bis es mit 0 endet, dann `svn add` für die neuen Dateien.
 - **Vor dem ersten Commit fragen.** Lasst vor jedem `svn commit` das Werkzeug laufen und checkt die `INDEX.md` mit

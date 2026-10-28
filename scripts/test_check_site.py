@@ -17,7 +17,7 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
     """A landing as the template builds it, as little of it as the checks read."""
     en = lang == "en"
     where, other = (SITE_URL, SITE_URL + "de/") if en else (SITE_URL + "de/", SITE_URL)
-    label = LABELS[lang] if probe else ("Hand your agents the note" if en else "Agenten die Notiz geben")
+    label = LABELS[lang] if probe else ("Hand your agents the note" if en else "Gib deinen Agenten die Notiz")
     primary = (f'<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">{label}</a>' if probe else
                f'<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT{"" if en else ".de"}.md">{label}</a>')
     short = SITE_URL + ("" if en else "de/") + "probe.txt"
@@ -45,9 +45,9 @@ def good_site(site, probe=False):
              "setup.html": "Get a better-performing human Owner.", "signing.html": "", "de/signing.html": "",
              "agents/index.html": "Get a better-performing human Owner.",
              "how-it-works.html": '<html lang="en"><body>"%s" is the button.</body></html>' % (LABELS["en"] if probe else "Hand your agents the note"),
-             "de/how-it-works.html": '<html lang="de"><body>„%s“ ist der Knopf.</body></html>' % (LABELS["de"] if probe else "Agenten die Notiz geben"),
+             "de/how-it-works.html": '<html lang="de"><body>„%s“ ist der Knopf.</body></html>' % (LABELS["de"] if probe else "Gib deinen Agenten die Notiz"),
              "how-it-works/index.md": TWIN_TEXT.replace("Hand your agents the note", LABELS["en"] if probe else "Hand your agents the note"),
-             "de/how-it-works/index.md": '# So funktioniert\'s\n\n„%s“ ist der Knopf.\n' % (LABELS["de"] if probe else "Agenten die Notiz geben"),
+             "de/how-it-works/index.md": '# So funktioniert\'s\n\n„%s“ ist der Knopf.\n' % (LABELS["de"] if probe else "Gib deinen Agenten die Notiz"),
              "index.md": "# shoalmark\n\n**[%s](%s)**\n" % ((LABELS["en"], SITE_URL + "probe.txt") if probe else ("Hand your agents the note", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md")),
              "de/index.md": "# shoalmark\n\n**[%s](%s)**\n\n[Einrichtung](setup/index.md), [Vertrag](../agents/README/index.md), [Notiz](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md)\n"
                             % ((LABELS["de"], SITE_URL + "de/probe.txt") if probe else ("Gib deinen Agenten die Notiz", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md")),
@@ -198,7 +198,7 @@ class Landings(unittest.TestCase):
 
     def test_how_it_works_names_the_button_as_the_landing_labels_it(self):
         self.refused(self.edit("how-it-works.html", '"Hand your agents the note"', '"Run probe prompt"'), "does not name the primary button")
-        self.refused(self.edit("de/how-it-works/index.md", "„Agenten die Notiz geben“", "„Probe-Prompt starten“"), "does not name the primary button")
+        self.refused(self.edit("de/how-it-works/index.md", "„Gib deinen Agenten die Notiz“", "„Probe-Prompt starten“"), "does not name the primary button")
         self.refused(self.edit("de/how-it-works.html", '„Prompt kopieren“', '„Probe-Prompt starten“'), "does not name the primary button", probe=True)
         self.refused(self.edit("de/how-it-works.html", '<html lang="de">', '<html lang="en">'), "says lang='en'")
 
@@ -248,7 +248,7 @@ class Taped(unittest.TestCase):
         good_site(site)
         for name, en in (("index.html", True), ("de/index.html", False)):
             note = "https://github.com/shoalmark/shoalmark/blob/main/ADOPT%s.md" % ("" if en else ".de")
-            old = '<a class="btn" href="%s">%s</a>' % (note, "Hand your agents the note" if en else "Agenten die Notiz geben")
+            old = '<a class="btn" href="%s">%s</a>' % (note, "Hand your agents the note" if en else "Gib deinen Agenten die Notiz")
             new = ('<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">%s</span></button>'
                    % (LABELS["en" if en else "de"], "not yet" if en else "noch nicht"))
             why = '<p class="taped-why" id="taped-why">%s <a href="%s">%s</a>.</p>' % ("Not open yet. Until then, hand your agents" if en else "Noch nicht offen. Bis dahin gibst du deinen Agenten",
@@ -257,7 +257,7 @@ class Taped(unittest.TestCase):
             self.assertIn(old, text)
             (site / name).write_text(text.replace(old, new).replace("<footer>", why + "<footer>"), encoding="utf-8")
         for name, old, new in (("how-it-works.html", "Hand your agents the note", LABELS["en"]), ("how-it-works/index.md", "Hand your agents the note", LABELS["en"]),
-                               ("de/how-it-works.html", "Agenten die Notiz geben", LABELS["de"]), ("de/how-it-works/index.md", "Agenten die Notiz geben", LABELS["de"])):
+                               ("de/how-it-works.html", "Gib deinen Agenten die Notiz", LABELS["de"]), ("de/how-it-works/index.md", "Gib deinen Agenten die Notiz", LABELS["de"])):
             text = (site / name).read_text(encoding="utf-8")       # How it works names the taped button, as the taped state's words do
             self.assertIn(old, text)
             (site / name).write_text(text.replace(old, new), encoding="utf-8")

@@ -256,31 +256,31 @@ Vor `--init` kommen die vier deutschen Dateien aus `<probe>/shoalmark/examples/d
 SHA-256 passt. Sonst lehnt es in einer Zeile ab und schreibt nichts. Die erste Zeile der PIN nennt nur diese
 Prüfungen, zum Beispiel:
 `# shoalmark 0.20.1 · vendored from an archive whose manifest names v0.20.1, commit <sha>, every file matched · <date>`.
-Damit sind Einträge und Board deutsch. Dann:
+Damit sind Arbeitspakete und Board deutsch. Dann:
 
 ```
 <py> tools/shoalmark/shoalmark.py --init --key <KEY>
 ```
 
 `<KEY>` ist der Schlüssel, den das Projekt für seine Arbeitspakete schon benutzt (`AP-12` ergibt `AP`), sonst zwei
-bis fünf Großbuchstaben aus seinem Namen. Jede Id trägt ihn, so behalten die Einträge ihre Ids, wenn sie ins Projekt
+bis fünf Großbuchstaben aus seinem Namen. Jede Id trägt ihn, so behalten die Arbeitspakete ihre Ids, wenn sie ins Projekt
 umziehen (Schritt 12). Der Bericht nennt den Schlüssel, und der Eigner kann einen anderen wählen, bevor etwas umzieht.
 `--init` schreibt dann den Vertrag der Agenten in `AGENTS.md` und einen Verweis in `CLAUDE.md`; es überschreibt
 nichts. Die Meldungen des Werkzeugs auf der Kommandozeile bleiben englisch.
 
-**Das Ergebnis eintragen** mit `<py> tools/shoalmark/shoalmark.py --new "…"`. Tragt einen Eintrag für den Plan als
+**Das Ergebnis eintragen** mit `<py> tools/shoalmark/shoalmark.py --new "…"`. Tragt ein Arbeitspaket für den Plan als
 Ganzes ein und höchstens vier für das, was der Stand verlangt, die offene Arbeit zuerst: zusammen höchstens fünf.
 Jeder bekommt:
 
 - `considered:`, die Ids, mit denen er verglichen wurde, oder `none`;
-- `epic:`, mit dem Eintrag des Plans;
+- `epic:`, mit dem Arbeitspaket des Plans;
 - einen ehrlichen `status:`;
 - `next:` (`build` · `review` · `owner` · `wait` …);
 - die Abschnitte *Was jetzt gilt* und *Fertig, wenn*.
 
 `tools/shoalmark/README.md` beschreibt den Kopf; seine Schlüssel bleiben englisch.
 
-- *In der Planung:* die Arbeitspakete des Plans als Einträge, und was auf den Eigner wartet. Jedes davon bekommt
+- *In der Planung:* die Arbeitspakete des Plans und was auf den Eigner wartet. Jedes davon bekommt
   `next: owner`, eine Frage in `ask:` (ein `?`, am Ende, höchstens 300 Zeichen), `ask-kind:`, `ask-since:` und in
   `ask-proposal:` den Schritt, den ihr empfehlt.
 - *Im Bau:* die Arbeitspakete mit ihrem Status, mit dem, was sie blockiert (`blocked-by:`), und mit dem nächsten
@@ -288,8 +288,8 @@ Jeder bekommt:
   - Ein abgeschlossenes Paket ist `Shipped` nur mit dem Commit, der es gebaut hat, genannt in seinem *Verlauf*;
     `git log` zeigt ihn.
   - Der Ordner `trial/` ist kein Repository, also kann das Gate dort ein `Shipped` nicht prüfen. Es prüft es, wenn
-    die Einträge ins Projekt umziehen.
-  - Könnt ihr den Commit nicht nennen, lasst das Paket weg und nennt es im Eintrag des Plans.
+    die Arbeitspakete ins Projekt umziehen.
+  - Könnt ihr den Commit nicht nennen, lasst das Paket weg und nennt es im Arbeitspaket des Plans.
 - *Im Einsatz:* Fehler, jeder mit `--tags bug` eingetragen, und jeder nur mit einer Nachstellung, die ihr ausgeführt
   habt: ihr Befehl und ihre Ausgabe, zitiert unter *Was jetzt gilt*.
   - Eine Nachstellung schreibt nie Daten, spricht nie einen laufenden Dienst an und ändert nie die Arbeitskopie.
@@ -299,7 +299,7 @@ Jeder bekommt:
   - Fragt die Person, bevor ihr den Code des Projekts ausführt. Bräuchte eine Nachstellung mehr, beschreibt den Fehler
     und markiert ihn als „nicht nachgestellt“.
 
-Dann `<py> tools/shoalmark/shoalmark.py`: Das Gate sagt, was fehlt. Bessert die Einträge nach, bis es mit 0 endet.
+Dann `<py> tools/shoalmark/shoalmark.py`: Das Gate sagt, was fehlt. Bessert die Arbeitspakete nach, bis es mit 0 endet.
 `<py> tools/shoalmark/shoalmark.py --next` sagt, woran zu arbeiten ist. Das Board ist
 `<probe>/trial/docs/work-tracker/index.html`; gebt der Person den Pfad, damit sie es im Browser öffnet. Das ist die
 Sicht eures Eigners.
@@ -359,7 +359,7 @@ Eine Anforderung ist eine Tabellenzeile:
 - `source`: wer oder was sie verlangt;
 - `accept`: was ein Test beobachtet.
 
-Ein Eintrag nennt sie in einer Zeile seines Textes, `Satisfies: REQ-001`; im Kopf lehnt das Gate den Schlüssel ab. Ein
+Ein Arbeitspaket nennt sie in einer Zeile seines Textes, `Satisfies: REQ-001`; im Kopf lehnt das Gate den Schlüssel ab. Ein
 Test nennt sie in seinem Namen. Eine Zeile ändert nur der Eigner. Unter git gibt der Eigner eine signierte Antwort über das Board. Bei einer Norm nennt die Zeile die Fundstelle (Norm, Ausgabe, Abschnitt) und leitet daraus einen eigenen Satz
 des Unternehmens ab. *Nicht anwendbar* ist die Antwort des Eigners mit Begründung; unter git ist sie signiert.
 `requirements/README.md` in `<probe>/shoalmark/` beschreibt die Konvention.
@@ -375,7 +375,7 @@ ADOPT.svn.de.md, Schritt 4, versucht nicht selbst, den Server des Projekts zu er
 Zugangsdaten der Person. Wo die Arbeitskopie ihren Server nicht erreicht, etwa in einer abgeschotteten Sandbox,
 sagt der Bericht, was dort geht und was nicht. In einem git-Repository:
 
-- *Geht ohne Server:* die Einträge, das Gate bei einem Commit, `INDEX.md`, das Board, `--next`, `--owner` und
+- *Geht ohne Server:* die Arbeitspakete, das Gate bei einem Commit, `INDEX.md`, das Board, `--next`, `--owner` und
   `--standup`.
 - *Braucht den Server:* `--queue`, das Pull-Requests über `gh` von GitHub liest, und die Antwort des Eigners, die
   `--answer` committet und pusht.
@@ -432,10 +432,10 @@ Identität: …
 Der Server: erreichbar · nicht erreichbar · unbekannt. Was hier geht und was nicht: …
 Datenregeln als Anforderungen: … (oder: keine aufgeschrieben). Der Test für jede: … Für die Konvention gibt es noch keine automatischen Prüfungen.
 Der gezeigte Nutzen: …
-Was eine Übernahme verlangt: die Umstellung: … Die Einrichtung: … Der Anteil des Owners je Woche: …
+Was eine Übernahme verlangt: die Umstellung: … Die Einrichtung: … Der Anteil des Eigners je Woche: …
 Was der Wechsel kostet: umzuziehende Pakete: … Offene Arbeit: … Risiko mitten im Plan: …
 Das Ergebnis: jetzt übernehmen · später, an einer Paketgrenze · passt nicht — weil …
-Der Owner entscheidet.
+Der Eigner entscheidet.
 ```
 
 Der Anteil des Eigners je Woche ist mit shoalmark dieser:
@@ -451,9 +451,9 @@ Wo die Kosten den Nutzen übersteigen oder nichts passt, ist das das Ergebnis: S
 
 ### 12. Falls der Eigner Ja sagt
 
-Die Einträge der Probe ziehen an einer Paketgrenze ins Projekt um. Vor dem ersten Commit fragt ihr.
+Die Arbeitspakete der Probe ziehen an einer Paketgrenze ins Projekt um. Vor dem ersten Commit fragt ihr.
 
-- **Ersetzen, nicht ergänzen.** Der Plan wandert in die Einträge; das alte Plandokument wird zum Verweis oder
+- **Ersetzen, nicht ergänzen.** Der Plan wandert in die Arbeitspakete; das alte Plandokument wird zum Verweis oder
   gelöscht, wie der Eigner sagt. Zwei Quellen der Wahrheit sind der Fehler, den das Werkzeug verhindern soll.
 - **An einer Paketgrenze umstellen,** nicht mitten in einem Paket. Schlagt den Zeitpunkt vor; der Eigner legt ihn
   fest.
@@ -465,7 +465,7 @@ Die Einträge der Probe ziehen an einer Paketgrenze ins Projekt um. Vor dem erst
      `<py> tools/shoalmark/shoalmark.py --init --key <KEY>`, mit demselben Schlüssel. Es überschreibt nichts: Einer
      vorhandenen `AGENTS.md` fügt es seinen Block zwischen Markierungen hinzu, eine vorhandene `CLAUDE.md` lässt es,
      wie sie ist.
-  3. Kopiert die Einträge, `<probe>/trial/docs/work-tracker/<KEY>-*.md`, nach `docs/work-tracker/` und bringt jeden
+  3. Kopiert die Arbeitspakete, `<probe>/trial/docs/work-tracker/<KEY>-*.md`, nach `docs/work-tracker/` und bringt jedes
      auf den Stand dessen, was sich seit der Probe geändert hat. Ihre Ids bleiben.
   4. `<py> tools/shoalmark/shoalmark.py`, bis es mit 0 endet, dann `--check`.
   5. **Vor dem ersten Commit fragen.** Zeigt der Person die Dateien und die Commit-Nachricht, und committet erst auf
@@ -502,7 +502,7 @@ Rückmeldung an shoalmark an.
 2. **Prüft ihn.** Lest den Text darauf noch einmal durch, und nehmt jedes davon heraus:
    - Code;
    - Pfade, Dateinamen, Hostnamen und Adressen (Web, Mail, Server);
-   - den Inhalt von Dateien oder Einträgen sowie Befehlsausgaben, Logs und Fehlermeldungen, zitiert oder umschrieben;
+   - den Inhalt von Dateien oder Arbeitspaketen sowie Befehlsausgaben, Logs und Fehlermeldungen, zitiert oder umschrieben;
    - Ids und den Schlüssel des Projekts;
    - die Namen des Projekts, der Firma, von Menschen oder Kunden und den eigenen Namen oder Benutzernamen der Person;
    - Zugangsdaten jeder Art;
