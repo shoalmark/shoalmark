@@ -5985,18 +5985,18 @@ check(f"FM-006 · the first-person line's check is not blind: each of the line b
 # --- the docs' stand-up lines: how it works, the start pages' fleet line, setup and the standup page, in English and in German --------------------
 _DOCS_STANDUP_ROWS = {
     "W30": ("docs/how-it-works.md", '3. **You sit, whenever it suits you.** The standup prints the agenda: your decisions first, each with how long it has waited and what it holds up. You answer with one command per question; it writes your answer as a commit, signed with your key once you turn signing on.',
-            "docs/de/how-it-works.md", '3. **Sie sitzen, wann immer es Ihnen passt.** Das Standup gibt die Tagesordnung aus: zuerst Ihre Entscheidungen, jede mit ihrer Wartezeit und dem, was sie aufhält. Sie antworten mit einem Befehl pro Frage; er schreibt Ihre Antwort als Commit, mit Ihrem Schlüssel signiert, sobald Sie das Signieren einschalten.'),
+            "docs/de/how-it-works.md", '3. **Du setzt dich dran, wann immer es dir passt.** Das Stand-up gibt die Tagesordnung aus: zuerst deine Entscheidungen, jede mit ihrer Wartezeit und dem, was sie aufhält. Du antwortest mit einem Befehl pro Frage; er schreibt deine Antwort als Commit, mit deinem Schlüssel signiert, sobald du das Signieren einschaltest.'),
     "W31": ("docs/how-it-works.md", '- **Each week:** a standup whenever it suits you, and one command per answer.',
-            "docs/de/how-it-works.md", '- **Jede Woche:** ein Standup, wann immer es Ihnen passt, und ein Befehl pro Antwort.'),
+            "docs/de/how-it-works.md", '- **Jede Woche:** ein Stand-up, wann immer es dir passt, und ein Befehl pro Antwort.'),
     "W32": ("docs/index.md", '**To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one sentence per question, for their stand-up, whenever it suits them, and make their answer one command.',
-            "docs/de/index.md", '**An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden kann – ein Satz pro Frage, für ein Standup, wann immer es ihr passt –, und macht aus ihrer Antwort einen einzigen Befehl.'),
+            "docs/de/index.md", '**An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden kann – ein Satz pro Frage, für ihr Stand-up, wann immer es ihr passt –, und macht aus ihrer Antwort einen einzigen Befehl.'),
     "W33": ("docs/setup.md", 'If you want a fixed time for your standup, set `standup = "09:00"` in `shoalmark.toml`. Without it, you hold the standup whenever it suits you: see [The standup](standup.md).',
-            "docs/de/setup.md", 'Wenn Sie eine feste Uhrzeit für Ihren Standup wollen, setzen Sie `standup = "09:00"` in `shoalmark.toml`. Ohne sie halten Sie den Standup, wann immer es Ihnen passt: siehe [Der Standup](standup.md).'),
-    "W34": ("docs/standup.md", '# The standup — whenever it suits you', "docs/de/standup.md", '# Der Standup — wann immer es Ihnen passt'),
+            "docs/de/setup.md", 'Wenn du eine feste Uhrzeit für dein Stand-up willst, setze `standup = "09:00"` in `shoalmark.toml`. Ohne sie hältst du das Stand-up, wann immer es dir passt: siehe [Das Stand-up](standup.md).'),
+    "W34": ("docs/standup.md", '# The standup — whenever it suits you', "docs/de/standup.md", '# Das Stand-up — wann immer es dir passt'),
     "W35": ("docs/standup.md", '*Humans have office hours. Agents have budgets. Between the two sits one sitting, whenever it suits you.*',
-            "docs/de/standup.md", '*Menschen haben Sprechzeiten. Agenten haben Budgets. Dazwischen liegt ein Standup, wann immer es Ihnen passt.*'),
+            "docs/de/standup.md", '*Menschen haben Sprechzeiten. Agenten haben Budgets. Dazwischen liegt eine Runde, wann immer es dir passt.*'),
     "W36": ("docs/standup.md", '## When<br>Whenever it suits you: the board\'s stand-up prompt is one click away, or run `--standup` yourself. A fixed slot is optional:<br>`standup = "09:00"          # in shoalmark.toml — local time; empty, the default, sets none`<br>`standup_minutes = 15`<br>The agenda\'s first line carries the time, when one is set, and the length. A slot in your calendar, if you want one, is yours to make: the tool writes no calendar file and posts no notification (R9). **Several repositories?** One sitting can hold them: the next section.',
-            "docs/de/standup.md", '## Wann<br>Wann immer es Ihnen passt: Der Standup-Prompt des Boards liegt einen Klick entfernt bereit, oder Sie führen `--standup` selbst aus. Eine feste Uhrzeit ist freiwillig:<br>`standup = "09:00"          # in shoalmark.toml — Ortszeit; leer, die Voreinstellung, setzt keine`<br>`standup_minutes = 15`<br>Die erste Zeile der Tagesordnung trägt die Uhrzeit, wenn eine gesetzt ist, und die Dauer. Einen Termin in Ihrem Kalender legen Sie, wenn Sie einen wollen, selbst an: Das Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Ein Standup kann sie alle halten: der nächste Abschnitt.')}
+            "docs/de/standup.md", '## Wann<br>Wann immer es dir passt: Der Stand-up-Prompt des Boards liegt einen Klick entfernt bereit, oder du führst `--standup` selbst aus. Eine feste Uhrzeit ist freiwillig:<br>`standup = "09:00"          # in shoalmark.toml — Ortszeit; leer, die Voreinstellung, setzt keine`<br>`standup_minutes = 15`<br>Die erste Zeile der Tagesordnung trägt die Uhrzeit, wenn eine gesetzt ist, und die Dauer. Einen Termin in deinem Kalender legst du, wenn du einen willst, selbst an: Das Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung (R9). **Mehrere Repositories?** Eine Runde kann sie alle halten: der nächste Abschnitt.')}
 
 
 def _docs_standup_problems(src):
@@ -6039,7 +6039,7 @@ check(f"FM-006 · B1 · the docs' stand-up check is not blind: each of a word of
 _LAUNCH_FILES = (*_LANDING_FILES, "docs/how-it-works.md", "docs/de/how-it-works.md",
                  *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")),
                  "launch/taped/how-it-works.en.md", "launch/taped/how-it-works.de.md")
-_SCAN_FREE = ("It does not scan your code for security problems or data leaks.", "Es prüft Ihren Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.")
+_SCAN_FREE = ("It does not scan your code for security problems or data leaks.", "Es prüft deinen Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.")
 
 
 def _launch_problems(src):
@@ -6074,7 +6074,7 @@ def _launch_problems(src):
         prose = prose.replace(allowed, "")
     if re.search(r"(?i)\bscan|scannt|durchsucht|\bleak|datenleck|security (problem|issue|hole|check)|sicherheits(prüfung|problem|lücke)", prose):
         bad.append("a page says or implies that shoalmark scans for security problems or data leaks")
-    if "one person in charge" not in src["docs/how-it-works.md"] or "standup" not in " ".join(map(str, words["en"].values())).lower() or "Standup" not in src["docs/de/how-it-works.md"]:
+    if "one person in charge" not in src["docs/how-it-works.md"] or "standup" not in " ".join(map(str, words["en"].values())).lower() or "Stand-up" not in src["docs/de/how-it-works.md"]:
         bad.append("'It fits one person in charge' or 'Standup' is gone")
     return bad
 

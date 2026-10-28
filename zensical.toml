@@ -28,9 +28,9 @@ nav = [
     { "Warum shoalmark?" = "de/warum-shoalmark.md" },
     { "So funktioniert's" = "de/how-it-works.md" },
     { "In zehn Minuten eingerichtet" = "de/setup.md" },
-    { "Ihre Antwort ist Ihr Commit" = "de/signing.md" },
-    { "Ihr Wort in der TRIAGE.md" = "de/triage.md" },
-    { "Der Standup" = "de/standup.md" },
+    { "Deine Antwort ist dein Commit" = "de/signing.md" },
+    { "Dein Wort in der TRIAGE.md" = "de/triage.md" },
+    { "Das Stand-up" = "de/standup.md" },
     { "Anforderungen" = "de/requirements.md" },
   ] },
 ]
