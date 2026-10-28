@@ -9,7 +9,9 @@
   that cannot be opened — and sub-sessions, each with a log of its own.
 - Its board, built by `--html-only` with HOME that folder, read as HTML (no browser): the command or the reason in the page's data, by
   parent; nothing for a sub-session or a session with no log; the canary nowhere; the fold of what the page reads naming both folders.
-  The digest (`--owner`), `--standup`, INDEX.md, the views, `built.json`, the commit hook's trailers and the history hold no command.
+  The strip's rows are drawn by the page's own script in Node, where Node is installed: a session with no entry draws none of the resume
+  parts, and each entry its own. The digest (`--owner`), `--standup`, INDEX.md, the views, `built.json`, the commit hook's trailers and
+  the history hold no command.
 - `--whoami` and the commit hook (`--session-trailer`) on the log whose first and newest turns differ in folder, model and effort: the
   first turn's folder, and the newest turn's model and effort.
 - The read, function by function: one listing of each folder, the one log of each id opened and no other file, the paste check, the
@@ -149,13 +151,44 @@ def run(tool, root, env, *a):
     return r.returncode, r.stdout, r.stderr
 
 
-def page_data(page):
-    """The page's REG — the strip's data — as JSON, or None."""
-    at = page.find(",REG=")
+def page_data(page, name="REG"):
+    """One of the page's script values — REG, the strip's data, by default — as JSON, or None."""
+    at = page.find(f",{name}=")
     try:
-        return json.JSONDecoder().raw_decode(page, at + len(",REG="))[0] if at >= 0 else None
+        return json.JSONDecoder().raw_decode(page, at + len(name) + 2)[0] if at >= 0 else None
     except ValueError:
         return None
+
+
+def rows_drawn(page, script, env, area):
+    """[[id, what `rsm` gives, the row as the strip draws it, the same row drawn with no resume parts]] for each group of the page's data, by
+    the page's own script run in Node outside any browser: its `esc`, `l`, `lh`, `rse` and `rsm`, and the strip's row, with the page's labels
+    and icons. A string where it cannot run: no Node here, a part not in the page once, or the run's error."""
+    node = shutil.which("node")
+    if not node:
+        return "no Node here"
+    lines = script.split("\n")
+    def line(start, n=1):
+        at = [i for i, text in enumerate(lines) if text.startswith(start)]
+        return "\n".join(lines[at[0]:at[0] + n]).rstrip(",") if len(at) == 1 else None
+    a = script.find("REG.groups.map(g=>")
+    b = script.find('+"</details>")', a) if a >= 0 and script.count("REG.groups.map(g=>") == 1 else -1
+    parts = {"esc": line("esc=s=>"), "l": line("l=(k,...a)=>"), "lh": line("lh=(k,...a)=>"), "rse": line("rse=id=>"), "rsm": line("rsm=id=>", 2),
+             "the row": script[a + len("REG.groups.map("):b + len('+"</details>"')] if b >= 0 else None}
+    data = {k: page_data(page, k) for k in ("REG", "L", "ICO")}
+    missing = [k for k, v in {**parts, **data}.items() if v is None]
+    if missing:
+        return f"not in the page once: {missing}"
+    js = area / "rows.js"
+    js.write_text("".join(f"const {k}={json.dumps(v)};\n" for k, v in data.items())
+                  + "".join(f"const {parts[k]};\n" for k in ("esc", "l", "lh", "rse", "rsm"))
+                  + f"const drawn=(rsm,rse)=>{parts['the row']};\nconst row=drawn(rsm,rse),plain=drawn(()=>\"\",()=>null);\n"
+                  + "console.log(JSON.stringify(REG.groups.map(g=>[g[0],rsm(g[0]),row(g),plain(g)])));\n", encoding="utf-8")
+    r = subprocess.run([node, str(js)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=60)
+    try:
+        return json.loads(r.stdout)
+    except ValueError:
+        return f"exit {r.returncode}: {r.stderr.strip()[-300:]}"
 
 
 @contextlib.contextmanager
@@ -335,6 +368,21 @@ def run_checks(mutants=False, *, results=None):
                 '${esc(g[2])})${rsm(g[0])}' in script and 'onclick="RSM(event,this)"' in script and '<code class="rsc" hidden onclick="event.preventDefault()">' in script
                 and "function RSM(e,b){e.preventDefault();" in script and 'title="${l("resume.help")}"' in script and 'aria-label="${l("resume.spoken",id)}"' in script
                 and "rsm(m[" not in script and 'l("answer.sign.nocopy")' in script.split("function RSM")[1][:900])
+            drawn = rows_drawn(page, script, env, area)
+            label = ("resume · board, the page's own script run by Node: a session with no entry draws its row with no button, no reason and no help "
+                     "line, as the strip draws a row with none; each entry the build wrote draws its button and help line, or its reason alone")
+            if drawn == "no Node here":
+                add(label, None, drawn)
+            else:
+                rows = {g[0]: g[1:] for g in drawn} if isinstance(drawn, list) else {}
+                kind = lambda k: (resume.get(k) or [None])[0]
+                shown = {k: [v[0][:40], v[1][-120:]] for k, v in rows.items()} or drawn
+                add(f"{label} (saw {shown})",
+                    {A, B, C, E, F, H} <= set(rows)
+                    and rows[C][0] == "" and rows[C][1] == rows[C][2] and rows[C][1].startswith(f'<details class="grp"><summary>{C} planner@seat (wt-{C})</summary>')
+                    and all(v[0] == "" and v[1] == v[2] for k, v in rows.items() if kind(k) is None)
+                    and all('onclick="RSM(event,this)"' in v[0] and '<p class="help">' in v[1] for k, v in rows.items() if kind(k) == "resume")
+                    and all(v[0].startswith('<i class="rw') and '<p class="help">' not in v[1] for k, v in rows.items() if kind(k) not in (None, "resume")))
             add("resume · CANARY: no word of what a session said — its first turn's message content — is in the page", CANARY not in page)
 
         with step(add, "everywhere else"):

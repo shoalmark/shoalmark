@@ -4212,7 +4212,8 @@ VERDICT={"READY":"vok","READY TO TAG":"vok","READY WITH FINDINGS":"vwarn","NOT R
 // a verb button names its act; its spoken name adds what it acts on, so a list of them never reads as one button said many times
 btn=(key,id,on)=>`<button class="act" aria-label="${l(key)} ${id}" onclick="${on}">${l(key)}</button>`,
 split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},
-rsm=id=>{const r=(REG&&REG.resume||{})[id];return !r?"":r[0]=="resume"?`<button type="button" class="act" title="${l("resume.help")}" aria-label="${l("resume.spoken",id)}" onclick="RSM(event,this)">${ICO.copy}${l("resume.button")}</button><code class="rsc" hidden onclick="event.preventDefault()">${esc(r[1])}</code><span class="said" aria-live="polite"></span>`
+rse=id=>{const m=REG&&REG.resume,r=m&&Object.prototype.hasOwnProperty.call(m,id)?m[id]:null;return Array.isArray(r)&&["resume","two","nofolder","unread","refused"].includes(r[0])?r:null},
+rsm=id=>{const r=rse(id);return !r?"":r[0]=="resume"?`<button type="button" class="act" title="${l("resume.help")}" aria-label="${l("resume.spoken",id)}" onclick="RSM(event,this)">${ICO.copy}${l("resume.button")}</button><code class="rsc" hidden onclick="event.preventDefault()">${esc(r[1])}</code><span class="said" aria-live="polite"></span>`
   :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):r[0]=="unread"?l("resume.unread"):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},
 idl=id=>`<a href="#=${id}">${id}</a>`,
 days=t=>(d=>d==d?d:null)(ago(t[29][2])),
@@ -4322,7 +4323,7 @@ function box(){
       w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));
   {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];
     S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${rsm(g[0])}${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
-      +((REG.resume||{})[g[0]]?.[0]=="resume"?`<p class="help">${l("resume.help")}</p>`:"")
+      +(rse(g[0])?.[0]=="resume"?`<p class="help">${l("resume.help")}</p>`:"")
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
   const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
