@@ -1,6 +1,6 @@
 # Impressum
 
-Stand: 29.10.2026 · v1.0 · shoalmark.tools · <a href="../imprint.html" hreflang="en" lang="en">English</a>
+Stand: 29.10.2026 · v1.0 · shoalmark.tools · [English](../imprint.md)
 
 ## Angaben gemäß § 5 DDG
 
@@ -32,7 +32,10 @@ teilzunehmen. Die frühere EU-Plattform zur Online-Streitbeilegung wurde am 20. 
 Wir sind für eigene Inhalte nach den allgemeinen Gesetzen verantwortlich. Für Inhalte externer Links ist der jeweilige
 Anbieter verantwortlich. Bei konkreten Hinweisen auf Rechtsverletzungen entfernen wir solche Links unverzüglich.
 
-## Urheberrecht
+## Urheberrecht und Lizenz
 
-Die von uns erstellten Inhalte und Werke unterliegen dem deutschen Urheberrecht. Jede darüber hinausgehende Verwendung
-bedarf der vorherigen schriftlichen Zustimmung, soweit nicht gesetzlich erlaubt.
+Code und Dokumentation von shoalmark, darunter die Texte dieser Webseite, stehen nach Ihrer Wahl unter der Apache
+License 2.0 oder der MIT License: siehe [NOTICE](https://github.com/shoalmark/shoalmark/blob/main/NOTICE),
+[LICENSE-APACHE](https://github.com/shoalmark/shoalmark/blob/main/LICENSE-APACHE) und
+[LICENSE-MIT](https://github.com/shoalmark/shoalmark/blob/main/LICENSE-MIT) im Repository. Inhalte Dritter behalten ihre
+eigene Lizenz.

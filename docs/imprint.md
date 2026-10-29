@@ -1,6 +1,6 @@
 # Imprint
 
-As of 29 October 2026 · v1.0 · shoalmark.tools · <a href="de/impressum.html" hreflang="de" lang="de">Deutsch</a>
+As of 29 October 2026 · v1.0 · shoalmark.tools · [Deutsch](de/impressum.md)
 
 ## Information under § 5 DDG
 
@@ -32,7 +32,10 @@ The former EU platform for online dispute resolution was discontinued on 20 July
 We are responsible for our own content under the general laws. The provider of an external link's content is
 responsible for that content. Where we are told of a specific infringement, we remove such links without delay.
 
-## Copyright
+## Copyright and licence
 
-The content and works we create are subject to German copyright law. Any use beyond that requires prior written
-consent, unless the law permits it.
+shoalmark's code and documentation, the texts of this website among them, are licensed under the Apache License 2.0 or
+the MIT License, at your option: see [NOTICE](https://github.com/shoalmark/shoalmark/blob/main/NOTICE),
+[LICENSE-APACHE](https://github.com/shoalmark/shoalmark/blob/main/LICENSE-APACHE) and
+[LICENSE-MIT](https://github.com/shoalmark/shoalmark/blob/main/LICENSE-MIT) in the repository. Third-party content keeps
+its own licence.
