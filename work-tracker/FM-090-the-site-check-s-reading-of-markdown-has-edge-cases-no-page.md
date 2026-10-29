@@ -11,10 +11,10 @@ hook: "The site check that BF-95 added reads Markdown the way the site's build d
 ## What is true now
 
 **Filed 2026-10-29 for v0.20.3; nothing is built.** BF-95 (`fm/006-bf95-code-blocks`, FM-006) gave
-`scripts/check_site.py` a check that every fenced block builds to a `<pre>` and that no built page shows a literal fence.
-Its standard review ran four rounds. On the Auditor's word of 29 October, the last round set a stop rule: an edge case
-in the check's reading of Markdown that no page of the site holds comes here, with its fixture, and opens no new round.
-Only a P2 or higher, or a case a real page holds, reopens the lane.
+`scripts/check_site.py` a check that every fenced block builds to a `<pre>` and that no built page shows a literal
+fence. Its standard review ran four rounds. On the Auditor's word of 29 October, the last round set a stop rule: an edge
+case in the check's reading of Markdown that no page of the site holds comes here, with its fixture, and opens no new
+round. Only a P2 or higher, or a case a real page holds, reopens the lane.
 
 **The cases so far:**
 - **RV-3991 (P3):** no control tests that the include patterns end at the line's end. A mutant that allows trailing
