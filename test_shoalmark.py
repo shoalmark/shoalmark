@@ -4101,7 +4101,7 @@ with tempfile.TemporaryDirectory() as d:
 # the default branch: `--install-hook` names the commit and the branch it took the copy from, and warns — still installing — where that is not the default branch, or where that cannot be told
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve(); git(root, "init", "-q"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); git(root, "add", "-A"); git(root, "commit", "-qm", "base")
-    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); sha_ = subprocess.run(["git", "-C", str(root), "rev-parse", "--short", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+    trunk_ = subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip(); sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
     c0_, o0_, e0_ = _tool_run(HERE / "shoalmark.py", root, "--install-hook")
     git(root, "update-ref", "refs/remotes/origin/main", "HEAD"); git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
     git(root, "switch", "-q", "-c", "feature"); shutil.rmtree(root / ".git/shoalmark-trusted")
@@ -4138,6 +4138,10 @@ with tempfile.TemporaryDirectory() as d:
           and not any((root / ".git/hooks" / n_).exists() for n_ in fm.HOOK_LINES)
           and sw_[0] == 0 and (root / "docs/work-tracker/index.html").is_file() and cm_[0] == 0)
     rm_git(root)
+
+# --- the hooks' COPY records the tool's full commit and its file comparison: its rows and mutants ------------------------------
+from test_copy_provenance import run_copy_provenance_controls
+run_copy_provenance_controls(check)
 
 # --- the refresh hooks' install class: over the refresh hooks `_REFRESH_OLD`'s `--install-hook` wrote, or over none, as `_REFRESH_CLEANED`'s left them, this tool's
 #     `--install-hook` writes each as `COPY_HOOKS` gives it, with a line each; a person's own `post-merge` and a `post-rewrite` changed since are kept byte for byte and
