@@ -5,11 +5,11 @@ und die beiden Abschnitte darunter; seine Arbeitsblätter sind das Protokoll, in
 
 ## Die Absicht
 
-*Die eigenen Worte des Owners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*
+*Die eigenen Worte des Eigners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*
 
-*Drei Zeilen in Ihren eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
+*Drei Zeilen in deinen eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
 Repository, all das, da ist · was gilt, wenn es funktioniert · was keine Sichtung und kein Agent tun darf, um dorthin zu
-kommen. Das Beispiel ist ein ganzes Produkt; überschreiben Sie es — eine Sichtung liest alles, was Sie hier schreiben, und
+kommen. Das Beispiel ist ein ganzes Produkt; überschreibe es — eine Sichtung liest alles, was du hier schreibst, und
 lässt nur diese Einleitung und die unveränderten Beispiele aus.*
 
 - **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*
@@ -18,7 +18,7 @@ lässt nur diese Einleitung und die unveränderten Beispiele aus.*
 
 ## Der aktuelle Weg
 
-*Gehört dem Owner. Eine Sichtung misst jede Stufe daran; nur der Owner ändert ihn.*
+*Gehört dem Eigner. Eine Sichtung misst jede Stufe daran; nur der Eigner ändert ihn.*
 
 1.
 
