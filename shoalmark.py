@@ -11200,7 +11200,7 @@ def install_hook_svn():
             legacy = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
             unquoted = f"{kind}_commit_hook\n{legacy}"
             if have.strip() and have.strip() not in (legacy.strip(), unquoted.strip(), value.strip()):
-                print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `{command}`", file=sys.stderr)
+                print(f"{prop} is set and is not shoalmark's — left alone.", file=sys.stderr)
                 code = EXIT_LINT
                 continue
             if have.strip() != value.strip():

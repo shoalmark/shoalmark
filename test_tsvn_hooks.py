@@ -108,7 +108,9 @@ class PropertyControls(unittest.TestCase):
             entry.command(root, "svn", "propset", "--", "tsvn:precommithook", foreign, ".")
             refusal = install()
             self.assertEqual(refusal.returncode, 4)
-            self.assertIn("left alone", refusal.stderr)
+            self.assertIn("tsvn:precommithook is set and is not shoalmark's — left alone.", refusal.stderr)
+            self.assertNotIn("Add to it", refusal.stderr)
+            self.assertNotIn("--tsvn-hook", refusal.stderr)
             self.assertEqual(entry.command(root, "svn", "propget", "--strict", "tsvn:precommithook", "."), foreign)
 
     def test_three_line_installer_mutant_fails_same_contract(self):

@@ -11253,7 +11253,8 @@ else:
               and (root / "tools/shoalmark/shoalmark.py").is_file() and "runs no hook" in out and "set tsvn" not in again)
         svn("propset", "tsvn:precommithook", "wscript theirs.js\ntrue\nhide\n", ".", cwd=root)
         code, _, err = run(root, "--install-hook")
-        check("S2 · a TortoiseSVN hook that is not ours is left alone, with the line to add", code == fm.EXIT_LINT and "left alone" in err and "theirs.js" in svn("propget", "tsvn:precommithook", ".", cwd=root).stdout)
+        check("S2 · a TortoiseSVN hook that is not ours is preserved: left alone, with no advice to append a command to it", code == fm.EXIT_LINT and "left alone" in err
+              and "Add to it" not in err and "--tsvn-hook" not in err and "theirs.js" in svn("propget", "tsvn:precommithook", ".", cwd=root).stdout)
         paths = base / "affected-paths.txt"; message = base / "commit-message.txt"
         paths.write_text(str(made) + "\n", encoding="utf-8"); message.write_text("Keep this commit message — unchanged.\n", encoding="utf-8")
         message_bytes = message.read_bytes()
