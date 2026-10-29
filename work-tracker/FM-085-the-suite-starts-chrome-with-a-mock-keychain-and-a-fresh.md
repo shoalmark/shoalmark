@@ -22,6 +22,11 @@ allocation. On the Owner's word of 29 October, it goes to a Builder of the Plann
 - **The change:** every Chrome the suite starts, in process or as a child process, gets `--use-mock-keychain` and a
   fresh `--user-data-dir` in a temporary folder the suite makes, and removes after the run. A runner's own flags are no
   longer needed.
+- **Built 2026-10-29, test-only, in `51cc442`:** the suite gives every Chrome it starts `--use-mock-keychain` and a
+  profile folder made fresh in its own temporary folder, which the run removes: in process, in the child programs
+  that carry the browser helpers, and in the three Node scripts through `_chrome_node`'s launcher. A runner's own two
+  flags are left out. A stand-in test holds each launch path, and sixteen mutants turn it red. Windows starts no
+  launcher, so there the two opt-in Node blocks skip by name.
 
 ## Why
 
@@ -42,3 +47,4 @@ holds only while every runner remembers it, one forgotten flag breaks it.
 | Date | Event |
 |---|---|
 | 2026-10-29 | Filed, and judged In Progress, P2, for v0.20.2, before the first build commit. Records only. |
+| 2026-10-29 | Built, test-only: every launch path of Chrome in the suite passes both flags itself, with a stand-in test and its mutants. |
