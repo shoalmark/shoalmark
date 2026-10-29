@@ -3,12 +3,15 @@ id: FM-088
 status: Proposed
 considered: FM-086, FM-062, FM-083, FM-030, FM-037, FM-078
 tags: process, seamanship
-next: owner
+next: build
 ask: "In which release does shared memory land, as FM-088's What is true now sets out: the team's and each seat's memory in the repository, the four ways a lesson leaves harness memory, review by scope, the evals and staleness?"
 ask-kind: ruling
 ask-since: 2026-10-29
 ask-options: "v0.20.3 | v0.20.4, after FM-086's signals | later, when I name it"
 ask-proposal: "v0.20.4, after FM-086's signals"
+answer: "accepted - v0.20.3"
+answered: 2026-10-29
+answered-by: holgo99
 hook: "What the team learns lives only in each harness's local memory, on one machine. Another seat, another harness and every new user of the product start without it, and nothing moves a lesson from a session's scratchpad into the record where every seat can read it."
 ---
 
