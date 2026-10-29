@@ -47,8 +47,8 @@ relayed commits are optional", and "cut-off Fri 14:00 approved".
 
 - **S1, the ask ids with R4's answer commit, must land in v0.20.2:**
   [FM-050](FM-050-an-ask-has-no-id-of-its-own-so-an-answer-cannot-name-the-ask.md). It builds on the release branch as
-  it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3 follow S1's answer commit. If S1 is not in by the cut-off, A
-  ships with the steps that describe answer branches.
+  it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3
+  follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
 - **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
 - **FM-065, quick win 10, and the class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
   29 October, 20:00.
