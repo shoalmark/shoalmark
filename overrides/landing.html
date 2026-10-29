@@ -318,6 +318,8 @@ section.band{padding-block:72px 40px}
 .foot-band .mk a{color:var(--drying);text-decoration:none;display:flex;align-items:center;gap:6px}
 .foot-band .mk svg{width:16px;height:16px}
 .foot-band .fine{flex-basis:100%;font-size:11px;color:#8ea3b6}
+.foot-band .legal{flex-basis:100%;margin:0;font-size:11px;color:#8ea3b6}
+.foot-band .legal a{color:var(--drying)}
 
 /* B1 — THE TOP BAR: the release label is a link (its hover is an outline, so it takes no room), the language switch sits after the
    score in the room the bar has; nothing else in the bar changes */
@@ -778,6 +780,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     <p class="claim">{{ w.foot_claim }}</p>
     <span class="mk"><a href="https://github.com/shoalmark/shoalmark"><svg viewBox="0 0 16 16" aria-hidden="true"><use href="#pricke" fill="currentColor"/></svg>shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}</a></span>
     <p class="fine">{{ T(w.foot_fine) }}</p>
+    <p class="legal"><a href="{{ urls.imprint }}">{{ w.foot_imprint }}</a> · <a href="{{ urls.privacy }}">{{ w.foot_privacy }}</a></p>
   </div>
 </footer>
 {# The footer: the release's tag is facts.html's (`release`), the same value as the top bar's label and link; the sentence after its day is set by hand for each release in the words files (`foot_fine`); the date and the commit the figures were read at are facts.html's (`read`) #}
