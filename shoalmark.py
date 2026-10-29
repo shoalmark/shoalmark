@@ -2135,6 +2135,89 @@ def svn_id_problems(trackers):
         return [f"Subversion's working copy could not be read, so the ask ids of the change in front of this run are not judged — and not passed unread. svn said: {e}"]
 
 
+def held_ids(text):
+    """What one copy of a tracker holds of its ids: (its open ask's id, that ask's put ask, {a record's id: [(its date, its question)]})."""
+    fm_, body = parse_frontmatter(text or "")
+    records = {}
+    for s_, e_ in record_spans(body):
+        m = RECORD_ID_RE.match(body[s_:e_].lstrip())
+        if m:
+            records.setdefault(m.group(1), []).append((m.group(2), body[s_:e_].lstrip()[m.end():].split("\n", 1)[0].strip()))
+    return (fm_.get("ask-id") or "").strip(), put_ask_of(fm_), records
+
+
+def proposed_id_findings(copies, trunk):
+    """THE IDS A BRANCH PROPOSES, one reading for `lint` and `--queue`: for each tracker (its id, its copy on the branch, at the branch's merge base with the
+    default branch, and on the default branch), the ids the branch proposes — those its copy holds, open or in a record, that the
+    merge base's copy does not — held against the default branch's numbers, its open ask and every record. A proposed id passes where
+    it is above every number of the default branch's copy, or where the default branch's open ask holds it with an equal put ask (one ask
+    put on both branches). Every other one is a finding: (tracker id, the id, what holds it, the next number above both copies)."""
+    out = []
+    for tid, branch, base, there in copies:
+        b_open, b_put, b_records = held_ids(branch)
+        m_open, _m_put, m_records = held_ids(base)
+        t_open, t_put, t_records = held_ids(there)
+        mine = ([b_open] if b_open else []) + list(b_records)
+        proposed = [aid for aid in dict.fromkeys(mine) if aid != m_open and aid not in m_records]
+        theirs = {n for n in (ask_number(a, tid) for a in [t_open, *t_records]) if n}
+        both = theirs | {n for n in (ask_number(a, tid) for a in mine) if n}
+        for aid in proposed:
+            n = ask_number(aid, tid)
+            if n is None or n > max(theirs, default=0) or (aid == t_open and aid == b_open and b_put == t_put):
+                continue
+            if aid == t_open:
+                what = "its open ask, another put ask"
+            elif aid in t_records:
+                day, question = t_records[aid][-1]
+                what = f'its record of {day}: "{first_words(question, 80)}"'
+            else:
+                what = f"a higher number, {tid}-Q{max(theirs)}"
+            out.append((tid, aid, what, f"{tid}-Q{max(both) + 1}"))
+    return out
+
+
+def proposed_id_problems(trackers):
+    """`proposed_id_findings` in `lint`, on git where this clone holds the default branch: each tracker's copy here — the working tree, as this run reads it —
+    against its copy at the merge base with the default branch and on the default branch (one `git merge-base`; the copies read by one
+    `cat_blobs`). Refused on the branch, naming what holds the id and the next number; the default branch keeps its number. Where no tracker
+    carries an id, nothing is read: git is asked nothing."""
+    asking = [t for t in trackers if (t.get("ask_id") or t.get("asks_ids")) and t.get("file")]
+    if vcs() != "git" or not asking:
+        return []
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    held = (git("rev-parse", "--verify", "--quiet", f"{trunk}^{{commit}}").stdout.strip() if trunk else "")
+    if not held:
+        return []
+    base = git("merge-base", "HEAD", trunk).stdout.strip()
+    if not base:
+        return []
+    rels = {t["id"]: (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix() for t in asking}
+    blobs = cat_blobs([f"{rev}:{rel}" for rel in rels.values() for rev in (base, trunk)])
+    copies = [(t["id"], (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"), blobs.get(f"{base}:{rels[t['id']]}") or "", blobs.get(f"{trunk}:{rels[t['id']]}") or "")
+              for t in asking]
+    return [f"{tid}: {aid} is taken on {ref_name(trunk)} — {what} — so a merge would make one number two asks: renumber this branch's ask as {nxt}, "
+            f"its put ask unchanged; {ref_name(trunk)} keeps its number" for tid, aid, what, nxt in proposed_id_findings(copies, trunk)]
+
+
+def proposed_id_reading(head, base):
+    """`proposed_id_findings` in `--queue`: a pull request's head against its base, as `proposed_id_problems` reads the branch — the trackers its head changes
+    since the merge base (one `git diff`), their three copies read by one `cat_blobs`. `wait: <id> is taken on <base> — renumber` for the
+    first finding, else None."""
+    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    mb = (git_out("merge-base", head, base) or "").strip()
+    if not mb:
+        return None
+    names = [x for x in (git_out("-c", "core.quotePath=false", "diff", "--name-only", "-z", "--no-renames", mb, head, "--", rel) or "").split("\0")
+             if x and KIND_RE.match(pathlib.PurePosixPath(x).name) and pathlib.PurePosixPath(x).parent.as_posix() == rel]
+    if not names:
+        return None
+    blobs = cat_blobs([f"{rev}:{x}" for x in names for rev in (head, mb, base)])
+    tid = lambda x: "-".join(pathlib.PurePosixPath(x).name.split("-")[:2])
+    found = proposed_id_findings([(tid(x), blobs.get(f"{head}:{x}") or "", blobs.get(f"{mb}:{x}") or "", blobs.get(f"{base}:{x}") or "") for x in names], base)
+    return (f"wait: {found[0][1]} is taken on {ref_name(base)} — renumber", "") if found else None
+
+
 def id_backend_note(trackers):
     """`--check`'s one line where a tracker carries an id and the backend cannot show every number used: on Subversion the file and its
     log, with no version control the file alone — each with what it cannot see. "" on git, and where no tracker carries an id."""
@@ -2892,6 +2975,8 @@ def queue_actions(prs, branches=()):
     - `wait: conflict in <paths>` — `git merge-tree --write-tree origin/<base> <head>` does not merge clean;
     - `wait: TRIAGE.md changed unsigned` — a commit of its own changes the Owner's intent or current path and is not their
       signed commit (`triage_reading`: the walk `--check` makes on the branch);
+    - `wait: <ITEM>-Q<n> is taken on <base> — renumber` — an ask id its head proposes is held on its base, open with another put ask or
+      in a record, or below its base's highest number (`proposed_id_reading`, the reading `--check` makes on the branch);
     - `merge: yours — signed` — every commit of its own is the Owner's signed commit, and it changes the tracker directory alone:
       no verdict is asked of it (`owner_reading`);
     - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
@@ -2995,6 +3080,8 @@ def queue_actions(prs, branches=()):
             rows.append((p, "wait", "wait: conflict in " + ", ".join(paths), ""))
         elif (guarded := triage_reading(head(p), base(p))):
             rows.append((p, "wait", *guarded))
+        elif (taken := proposed_id_reading(head(p), base(p))):
+            rows.append((p, "wait", *taken))
         elif (mine := owner_reading(head(p), base(p), own(p)[0])):
             rows.append((p, *mine))
         elif last is None:
@@ -9639,6 +9726,7 @@ def lint(trackers, committing=False):
     problems += triage_guard()[0]                    # FM-037: only the Owner changes their intent and their current path
     problems += duplicate_record_problems(trackers)   # two records that carry one id, where they can still be stopped
     problems += id_walk_problems(trackers)            # a put with no id, a put ask changed under its id, an id gone with no record, a number reused
+    problems += proposed_id_problems(trackers)        # an id this branch proposes that the default branch already holds
     if id_backend_note(trackers):
         print(f"  {id_backend_note(trackers)}", file=sys.stderr)
     by_ask = asks_by_key(trackers)

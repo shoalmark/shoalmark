@@ -342,7 +342,101 @@ def rows_minting(area, add):
         and "note: ask ids are checked against the file alone — a number removed without its record" in said[2], seen(said))
 
 
-ROWS = (rows_form, rows_records, rows_minting)
+# --- two branches that each mint the same number ------------------------------------------------------------------------------------
+
+def two(area, name, start=None):
+    """A repository and its two branches, A and B, cut from one commit of `main`."""
+    r = Repo(area / name, {"FM-001": start or text("FM-001")})
+    git(r.root, "branch", "A")
+    git(r.root, "branch", "B")
+    return r
+
+
+def rows_branches(area, add):
+    r = two(area, "c5-both")
+    for b, q in (("A", "Ship A?"), ("B", "Ship B?")):
+        r.switch(b)
+        r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q=q)))
+        r.commit(f"FM-001: put on {b}")
+    r.land("A")
+    r.switch("B")
+    said, waits = r.check(), r.queue("B")
+    add("C5 · both mint Q1 and A merges: B refused by `--check`, naming what holds it and the next number, and in `--queue`",
+        refused(said, "FM-001-Q1 is taken on origin/main — its open ask, another put ask", "renumber this branch's ask as FM-001-Q2")
+        and waits[0].startswith("wait: ") and waits[1] == "wait: FM-001-Q1 is taken on origin/main — renumber", seen(said) + f" · {waits}")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q2", q="Ship B?")))
+    r.commit("FM-001: B's ask renumbered")
+    said = r.check()
+    add("C5 · …B renumbered Q2: accepted", accepted(said, "is taken on"), seen(said))
+    r = two(area, "c5-record")
+    r.switch("A")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q="Ship A?")))
+    r.commit("FM-001: put on A")
+    r.write("FM-001", text("FM-001", asks=record("FM-001-Q1", "Ship A?")))
+    r.commit("FM-001: cleared on A")
+    r.land("A")
+    r.switch("B")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q="Ship B?")))
+    r.commit("FM-001: put on B")
+    said, waits = r.check(), r.queue("B")
+    add("C5 · A clears Q1 and B's open Q1 would merge clean beside A's record: refused on B before the merge — C5 reads the default branch's records — by `--check` and in `--queue`",
+        refused(said, "FM-001-Q1 is taken on origin/main — its record of", '"Ship A?"') and waits[0] == waits[1] == "wait: FM-001-Q1 is taken on origin/main — renumber", seen(said) + f" · {waits}")
+    r.land("B")
+    said = r.check()
+    add("C5 · …and by F3 after a merge made without the check", refused(said, "`ask-id: FM-001-Q1` is also the id of the record of"), seen(said))
+    r = two(area, "c5-twice")
+    for b, q in (("A", "Ship A?"), ("B", "Ship B?")):
+        r.switch(b)
+        r.write("FM-001", text("FM-001", asks=record("FM-001-Q1", q, day=SINCE if b == "A" else TODAY)))
+        r.commit(f"FM-001: an ask put and cleared on {b}")
+    r.land("A")
+    r.switch("B")
+    said, waits = r.check(), r.queue("B")
+    add("C5 · A and B each clear a Q1 of their own — duplicate archived ids: refused on B by C5, in `--check` and in `--queue`",
+        refused(said, "FM-001-Q1 is taken on origin/main") and waits[0].startswith("wait: ") and waits[1].startswith("wait: FM-001-Q1 is taken"), seen(said) + f" · {waits}")
+    r.switch("main")
+    git(r.root, "merge", "-q", "--no-ff", "--no-edit", "B", check=False)
+    r.write("FM-001", text("FM-001", asks=record("FM-001-Q1", "Ship A?") + "\n" + record("FM-001-Q1", "Ship B?", day=TODAY)))
+    r.commit("the merge, made against the gate")
+    git(r.root, "push", "-q", "origin", "main")
+    git(r.root, "fetch", "-q", "origin")
+    said = r.check()
+    add("C5 · …after a merge made against the gate, a note on the default branch naming both, and the next number above both",
+        "note: FM-001: two records under `## Asks` carry FM-001-Q1" in said[2] and "the next ask is FM-001-Q2" in said[2] and "FM-001-Q1 is taken" not in said[2], seen(said))
+    r = two(area, "c5-carried", text("FM-001", ask(aid="FM-001-Q1")))
+    r.switch("A")
+    r.write("FM-001", text("FM-001", "next: build\n", asks=record("FM-001-Q1", "Ship it?")))
+    r.commit("FM-001: cleared on A")
+    r.land("A")
+    r.switch("B")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1"), body="\nB's line.\n"))
+    r.commit("FM-001: B's own line")
+    said, waits = r.check(), r.queue("B")
+    add("C5 · B carries Q1 from its merge base while A clears it: not proposed — accepted, and `--queue` waits on nothing of it",
+        accepted(said, "is taken on") and "taken" not in waits[0] and not waits[1], seen(said) + f" · {waits}")
+    r = two(area, "c5-higher")
+    r.switch("A")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q3")))
+    r.commit("FM-001: put on A as Q3")
+    r.land("A")
+    r.switch("B")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q2", q="Ship B?")))
+    r.commit("FM-001: put on B as Q2")
+    said = r.check()
+    add("C5 · B proposes Q2 while the default branch's highest is Q3 and holds no Q2: refused, naming Q4", refused(said, "FM-001-Q2 is taken on origin/main", "FM-001-Q4"), seen(said))
+    r = two(area, "c5-cherry")
+    r.switch("A")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1")))
+    pick = r.commit("FM-001: put")
+    r.switch("B")
+    git(r.root, "cherry-pick", pick)
+    r.land("A")
+    r.switch("B")
+    said = r.check()
+    add("C5 · one ask cherry-picked to both branches: accepted", accepted(said, "is taken on"), seen(said))
+
+
+ROWS = (rows_form, rows_records, rows_minting, rows_branches)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
