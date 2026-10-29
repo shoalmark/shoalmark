@@ -1,6 +1,7 @@
 """Regression controls for the published site's checks: font sources, link previews, the landing in two languages with its launch state, How it
 works, the Markdown twins and the requests a page makes, and fenced code; run with requirements-docs installed."""
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -63,10 +64,39 @@ def good_site(site, probe=False):
     (site.parent / "docs/index.md").write_text("# shoalmark\n", encoding="utf-8")
 
 
-def run(site, probe=False):
+LEGAL_PAGES = {"en": ("imprint.html", "privacy.html"), "de": ("de/impressum.html", "de/datenschutz.html")}
+
+
+def footer(rel, links=None):
+    """The footer of the page at `rel`: its language's imprint and privacy notice, linked from where the page stands, or the `links` given."""
+    up = "../" * rel.count("/")
+    links = links or [up + target for target in LEGAL_PAGES["de" if rel.startswith("de/") else "en"]]
+    return "<footer>" + "".join(f'<a href="{href}">{href}</a>' for href in links) + "</footer>"
+
+
+def footed(site):
+    """The four legal pages, where they are missing, and every page of the site with its footer."""
+    for lang, pair in LEGAL_PAGES.items():
+        for rel in pair:
+            if not (site / rel).is_file():
+                (site / rel).parent.mkdir(parents=True, exist_ok=True)
+                (site / rel).write_text(f'<html lang="{lang}"><body><h1>{rel}</h1></body></html>', encoding="utf-8")
+    for page in sorted(site.rglob("*.html")):
+        text = page.read_text(encoding="utf-8")
+        foot = footer(page.relative_to(site).as_posix())
+        page.write_text(text.replace("</body>", foot + "</body>", 1) if "</body>" in text else text + foot, encoding="utf-8")
+
+
+def checked_site(site, toml):
+    return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+
+
+def run(site, probe=False, foot=True):
+    if foot:
+        footed(site)
     toml = site.parent / ("zensical-%s.toml" % ("on" if probe else "off"))
     toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\n" % ("true" if probe else "false"), encoding="utf-8")
-    return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+    return checked_site(site, toml)
 
 
 class FontSources(unittest.TestCase):
@@ -232,6 +262,119 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("how-it-works.html", "<body>", '<body><iframe src="http://example.org/"></iframe>'), "(iframe), from outside the site")
 
 
+class EveryPage(unittest.TestCase):
+    """Three rules every built page keeps: its footer links its language's imprint and privacy notice, none of its elements carries the theme's
+    source component, and nothing it loads comes from another host. A site that passes, and controls that each change one thing in it."""
+
+    def checked(self, change=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            good_site(site)
+            for rel, text in (("seats/index.html", '<html lang="en"><body><h1>Seats</h1></body></html>'),
+                              ("404.html", '<html lang="en"><body><h1>404</h1></body></html>')):
+                (site / rel).parent.mkdir(parents=True, exist_ok=True)
+                (site / rel).write_text(text, encoding="utf-8")
+            footed(site)
+            if change:
+                change(site)
+            toml = Path(tmp) / "zensical.toml"
+            toml.write_text('[project]\nsite_name = "x"\n\n[project.extra]\nprobe = false\n', encoding="utf-8")
+            return checked_site(site, toml)
+
+    def put(self, name, old, new):
+        def change(site):
+            text = (site / name).read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
+        return change
+
+    def rows(self, passing, refused):
+        for name, change in passing:
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for name, change, message in refused:
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+    def test_a_good_site_passes(self):
+        result = self.checked()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("site check: each of the 14 pages links its language's imprint and privacy notice in its footer", result.stdout)
+
+    def test_each_footer_links_its_languages_imprint_and_privacy_notice(self):
+        self.rows(
+            (("root-relative links, as the 404 page writes them", self.put("404.html", footer("404.html"), footer("404.html", ["/imprint.html", "/privacy.html"]))),
+             ("the site's own address, and a link with a fragment", self.put("de/signing.html", footer("de/signing.html"),
+                                                                             footer("de/signing.html", ["https://shoalmark.tools/de/impressum.html", "datenschutz.html#rechte"])))),
+            (("an English page's footer without its privacy link", self.put("setup.html", '<a href="privacy.html">privacy.html</a>', ""), "setup.html lacks privacy.html"),
+             ("a German page's footer with the English pair", self.put("de/signing.html", footer("de/signing.html"), footer("de/signing.html", ["../imprint.html", "../privacy.html"])),
+              "de/signing.html lacks de/impressum.html, de/datenschutz.html"),
+             ("the links outside the footer", self.put("how-it-works.html", footer("how-it-works.html"), footer("how-it-works.html").replace("footer>", "p>")),
+              "how-it-works.html lacks imprint.html, privacy.html"),
+             ("a page in a folder without its footer", self.put("seats/index.html", footer("seats/index.html"), ""), "seats/index.html lacks imprint.html, privacy.html"),
+             ("a link to a page of the same name in the page's own folder", self.put("seats/index.html", '<a href="../privacy.html">', '<a href="privacy.html">'),
+              "seats/index.html lacks privacy.html"),
+             ("the German landing's footer without the links", self.put("de/index.html", footer("de/index.html"), ""), "de/index.html lacks de/impressum.html, de/datenschutz.html"),
+             ("a footer link to another host's imprint", self.put("setup.html", '<a href="imprint.html">', '<a href="https://example.org/imprint.html">'), "setup.html lacks imprint.html"),
+             ("the imprint without its own footer", self.put("imprint.html", footer("imprint.html"), ""), "imprint.html lacks imprint.html, privacy.html"),
+             ("the German privacy notice not built, and no page linking it", self.unbuilt("de/datenschutz.html"), "missing de/datenschutz.html, which every page's footer links")))
+
+    def unbuilt(self, rel):
+        def change(site):
+            (site / rel).unlink()
+            for page in site.rglob("*.html"):
+                text = page.read_text(encoding="utf-8")
+                page.write_text(re.sub(r'<a href="[^"]*%s">[^<]*</a>' % re.escape(rel.rsplit("/", 1)[-1]), "", text), encoding="utf-8")
+        return change
+
+    def test_no_element_carries_the_source_component(self):
+        self.rows(
+            (("the repository link drawn without it", self.put("setup.html", "Get", '<a href="https://github.com/shoalmark/shoalmark" title="Go to repository" class="md-source">'
+                                                                                   '<div class="md-source__repository">shoalmark/shoalmark</div></a>Get')),
+             ("another component", self.put("setup.html", "Get", '<form class="md-header__option" data-md-component="palette"></form>Get')),
+             ("its name shown in code", self.put("setup.html", "Get", "<code>data-md-component=&quot;source&quot;</code>Get"))),
+            (("double-quoted, on an English page", self.put("setup.html", "Get", '<a class="md-source" data-md-component="source" href="https://github.com/shoalmark/shoalmark">x</a>Get'),
+              "setup.html lets the theme's script ask api.github.com"),
+             ("single-quoted, on a German page", self.put("de/signing.html", "<footer>", "<a class='md-source' data-md-component='source' href='https://github.com/shoalmark/shoalmark'>x</a><footer>"),
+              "de/signing.html lets the theme's script ask api.github.com"),
+             ("unquoted, on a page in a folder", self.put("seats/index.html", "<h1>", "<div data-md-component=source></div><h1>"),
+              "seats/index.html lets the theme's script ask api.github.com")))
+
+    def test_nothing_loads_from_another_host(self):
+        local = ('<img src="assets/a.png" srcset="assets/a.png 1x, /assets/a@2x.png 2x"><img src="data:image/png;base64,AAAA"><svg><use href="#pricke"/></svg>'
+                 '<iframe src="about:blank"></iframe><p style="background:url(&quot;data:image/svg+xml;utf8,&lt;svg xmlns=\'http://www.w3.org/2000/svg\'/&gt;&quot;)">x</p>Get')
+        elsewhere = ('<a href="https://github.com/shoalmark/shoalmark">repo</a><link rel="canonical" href="https://shoalmark.tools/setup.html">'
+                     '<meta http-equiv="refresh" content="0; url=https://github.com/shoalmark/shoalmark/issues/new">Get')
+        put = lambda markup: self.put("setup.html", "Get", markup + "Get")
+        self.rows(
+            (("relative and root-relative loads, a data: image, the mark's own symbol and a blank frame", self.put("setup.html", "Get", local)),
+             ("a link, the canonical address and a forward to another host, none of them a load", self.put("setup.html", "Get", elsewhere))),
+            (("a script", put('<script src="https://example.org/x.js"></script>'), "setup.html loads https://example.org/x.js (script), from outside the site"),
+             ("a stylesheet by a protocol-relative address, its rel capitalised", put('<link rel="Stylesheet" href="//example.org/x.css">'), "loads //example.org/x.css (link)"),
+             ("a connection opened ahead", put('<link rel="preconnect" href="https://fonts.example.org">'), "loads https://fonts.example.org (link)"),
+             ("an image's second srcset candidate", put('<img src="a.png" srcset="a.png 1x,https://example.org/b.png 2x">'), "loads https://example.org/b.png (img)"),
+             ("a picture's source", put('<picture><source srcset="https://example.org/c.webp"><img src="c.png"></picture>'), "loads https://example.org/c.webp (source)"),
+             ("a video's poster", put('<video poster="https://example.org/p.jpg"></video>'), "loads https://example.org/p.jpg (video)"),
+             ("a frame", put('<frame src="https://example.org/">'), "(frame), from outside the site"),
+             ("an iframe whose address a tab splits", put('<iframe src="/&#9;/example.org/"></iframe>'), "(iframe), from outside the site"),
+             ("an image addressed with backslashes", put('<img src="\\\\example.org\\x.png">'), "(img), from outside the site"),
+             ("an SVG image", put('<svg><image href="https://example.org/i.png"/></svg>'), "loads https://example.org/i.png (image)"),
+             ("an SVG symbol from another file", put('<svg><use xlink:href="https://example.org/s.svg#a"/></svg>'), "loads https://example.org/s.svg#a (use)"),
+             ("an image button", put('<input type="image" src="https://example.org/go.png">'), "loads https://example.org/go.png (input)"),
+             ("a base address", put('<base href="https://example.org/">'), "loads https://example.org/ (base)"),
+             ("an image from the site's own host by its absolute address", put('<img src="https://shoalmark.tools/assets/x.png">'), "loads https://shoalmark.tools/assets/x.png (img)"),
+             ("a style attribute's background", put('<p style="background:url(https://example.org/a.png)">x</p>'), "setup.html loads a stylesheet resource from outside the site"),
+             ("an image-set's second image in a style element", put('<style>body{background:image-set("a.png" 1x, "https://example.org/b.png" 2x)}</style>'),
+              "setup.html loads a stylesheet resource from outside the site: https://example.org/b.png"),
+             ("an image-set in a stylesheet", lambda site: (site / "stylesheets/x.css").write_text("body{background:-webkit-image-set(url(a.png) 1x, 'https://example.org/b.png' 2x)}"),
+              "stylesheets/x.css loads a stylesheet resource from outside the site: https://example.org/b.png"),
+             ("an inline module's import", put('<script type="module">import {a} from "https://example.org/m.js";</script>'),
+              "an inline script of setup.html imports https://example.org/m.js, from outside the site")))
+
+
 LLMS = Path(__file__).with_name("llms_txt.py")
 FIGURE = ('<figure class="week" markdown="0">\n<div class="week-card"><h3 class="t">FM-024</h3><p class="src">work-tracker/FM-024-….md · 2026-09-28</p>\n'
           '<pre lang="en">next: owner\nask: "x"</pre></div>\n<p class="week-arrow" aria-hidden="true">↓</p>\n'
@@ -270,6 +413,7 @@ class Taped(unittest.TestCase):
             self.taped_site(site)
             if change:
                 change(site)
+            footed(site)
             toml = Path(tmp) / "zensical-taped.toml"
             toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = true\n" % ("true" if probe else "false"), encoding="utf-8")
             return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
@@ -330,6 +474,7 @@ class Ceremony(unittest.TestCase):
                 (site / name).write_text(text, encoding="utf-8")
             if change:
                 change(site)
+            footed(site)
             toml = Path(tmp) / "zensical-ceremony.toml"
             toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = %s\n" % ("true" if probe else "false", "true" if taped else "false"), encoding="utf-8")
             return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
@@ -500,6 +645,7 @@ class FencedBlocks(unittest.TestCase):
                 (root / name).write_text(text, encoding="utf-8")
             if change:
                 change(site)
+            footed(site)
             toml = root / "zensical-fenced.toml"
             toml.write_text('[project]\nsite_name = "x"\ndocs_dir = "%s"\nuse_directory_urls = false\n\n[project.extra]\nprobe = false\n\n'
                             "[project.markdown_extensions]\npymdownx.superfences = {}\npymdownx.snippets.base_path = %s\n" % (named, bases), encoding="utf-8")
