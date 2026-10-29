@@ -9,6 +9,7 @@ hook: "A commit names the session that made it, but nothing leads from the commi
 # FM-098 — nothing leads from a commit to the conversation behind it
 
 ## What is true now
+
 **Filed 2026-10-29 for v0.20.x, as a decision; nothing is built.** On the Owner's word of 29 October: a tracker of its
 own, for agentic seamanship, so that it is revisited in more detail with its own Planner session. It is considered for
 every v0.20 release and pulled into one when it fits. [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter,
@@ -26,6 +27,7 @@ names it as a candidate, not a part.
 - **It is a decision tracker, sized to one decision.** A build, if one is chosen, is a tracker of its own.
 
 ## Why
+
 A reviewer, an auditor or the person in charge may need to read why a change was made, not only what it changed. The
 session's name says who made it. The conversation says why.
 [FM-078](FM-078-model-and-effort-have-no-harness-neutral-record.md) and

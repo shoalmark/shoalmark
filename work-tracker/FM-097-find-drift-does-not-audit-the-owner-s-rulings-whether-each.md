@@ -9,6 +9,7 @@ hook: "/find-drift reads decisions against git, but not the Owner's rulings. It 
 # FM-097 — /find-drift does not audit the Owner's rulings: whether each holds, drifted or was broken, and where
 
 ## What is true now
+
 **Filed 2026-10-29 for v0.20.x; nothing is built.** On the Owner's word of 29 October: `/find-drift` must include
 rulings, and trace where they were broken, so that it becomes the full audit trail. It is considered for every v0.20
 release and pulled into one when it fits. [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter, names it as
@@ -35,6 +36,7 @@ a candidate, not a part.
   is the larger part.
 
 ## Why
+
 A ruling's record says what was decided, not whether it was kept.
 [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md)'s `/find-drift` already reads decisions
 and the record against git. The rulings are the decisions that bind every seat, so they belong in the same audit.

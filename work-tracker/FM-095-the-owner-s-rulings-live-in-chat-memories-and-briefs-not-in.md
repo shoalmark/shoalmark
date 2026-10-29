@@ -9,6 +9,7 @@ hook: "A rule the Owner gives in chat lives in dated messages, in each seat's me
 # FM-095 — the Owner's rulings live in chat, memories and briefs, not in one register that names what enforces each
 
 ## What is true now
+
 **Filed 2026-10-29 for v0.20.x; nothing is built.** On the Owner's word of 29 October, "file those", for agentic
 seamanship. It is considered for every v0.20 release and pulled into one when it fits: "we consider all, but we only
 pull in what fits". [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter, names it as a candidate, not a
@@ -57,6 +58,7 @@ part.
   [FM-097](FM-097-find-drift-does-not-audit-the-owner-s-rulings-whether-each.md) both read the register.
 
 ## Why
+
 A rule given in chat binds only the sessions that heard it, and only for as long as their memory holds it.
 [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) found the same drift where a rule is
 held only as prose. A register that names each ruling's enforcement and proof makes the rulings auditable, and shows
