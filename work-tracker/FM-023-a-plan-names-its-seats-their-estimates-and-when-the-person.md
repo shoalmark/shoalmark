@@ -41,6 +41,7 @@ as the Auditor relays it.
   [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md), shared memory, which joined on the
   Owner's signed answer (febbed9). The theme's trackers carry the tag `seamanship`, in the configuration's vocabulary
   since the Owner's #229, and each release that carries it gets one chapter.
+- **Candidates for v0.20.3's chapter:** FM-095 to FM-098, filed for v0.20.x. The allocation pulls in what fits.
 
 **2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
 Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
@@ -471,6 +472,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | FM-095 to FM-098 are named as candidates for v0.20.3's chapter, filed for v0.20.x. Records only. |
 | 2026-10-29 | The Auditor's re-check of 6fd3099, which fixed RV-3994, is READY, and #240 merged it into main (8fbdf0c). Records only. |
 | 2026-10-29 | The Owner's signed answer to the amended allocation (`0fbd74b`, #235): "accepted - yes". v0.20.2's allocation of 29 October binds, and the ask is cleared. Records only. |
 | 2026-10-29 | FM-086 to FM-089 carry the tag `seamanship`, in the vocabulary since the Owner's #229. Records only. |
