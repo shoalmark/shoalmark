@@ -22,6 +22,17 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-29 — BF-95: fenced code builds to a code block again, in English and German.** Since `e0a21dd` the site's
+`[project.markdown_extensions]` table held only the snippets extension. Setting that table replaces Zensical's
+default extensions, all but `toc` and `tables`, so every fenced block built as inline code inside a paragraph.
+Its line breaks were lost, a block with a blank line split in two and showed its fences, and setup's step 1, copied,
+ran only `git clone`.
+- `pymdownx.superfences` joins the table, and it is the only extension the pages were missing (`ccf5cd1`).
+- `scripts/check_site.py` now checks that every fenced block in the docs, and in what the snippets include, builds
+  to a `<pre>`, and that no built page shows a literal fence, in both languages. A build without the extension
+  fails it (`67ba698`).
+- No words, no CSS and no template change.
+
 **2026-10-27 — the German preview image still says "Ihre Agenten":** `docs/assets/preview-de.png` and its source `brand/social/link-preview-de.svg` read *Eine Werkbank für Ihre Agenten.*, while the start page's German claim and description now say *deine*, and both German `og_image_alt`s quote the image as it stands. The image goes with v0.20.2's move of the remaining German pages to *du*.
 
 **2026-10-27 — a native reader's feedback on the German, for v0.20.2's move to "du",** on the Owner's word of 27 October. A German native reader, with no name to record, wrote: *"Die Übersetzung hier ist sehr holprig: https://shoalmark.tools/de/how-it-works.html Im Abschnitt eine Woche in vier Schritten"*. It holds: the section reads as English translated sentence by sentence (*"Was Ihr Wort braucht, wartet darauf"*, *"Sie sitzen, wann immer es Ihnen passt"*, *"Nicht alles braucht Sie"*, *"Ein Sitz mit dem Recht dazu"*, *"Die Agenten handeln auf Ihre Antwort"*). For v0.20.2:
@@ -1253,6 +1264,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-29 09:30:19 CET | **BF-95: fenced code builds to a code block again**, in English and German (`ccf5cd1`), and the site check refuses a fenced block that does not (`67ba698`). Records only. |
 | 2026-10-29 07:48:56 CET | **The German rewrite: the Owner's three ruled lines pinned** (`a9064f1`, RV-3970), and the Designer's look: the lane fits; BF-96 and BF-97 seen, with no fix. Records only. |
 | 2026-10-29 07:20:53 CET | **The German rewrite: the Owner's words for the lane.** The quote's *Sessions* stands. The English seats page's line on the German pages (RV-3965) and three German lines (RV-3967) take the Owner's words (`5194717`), and RV-3960's new lines stand as written. The check reads the issue form's values and paragraphs whole (`4661793`, RV-3968), and the earlier entry's count of markup kinds is corrected (RV-3969). Records only. |
 | 2026-10-28 22:52:17 CET | **The German rewrite's standard review, READY WITH FINDINGS** (`a699baf`), and its fix round: the feedback page and the issue form in *du*, read by the check (`2871c5a`, RV-3960); inflected and compound retired terms refused, and four kinds of markup read through (`984453d`, RV-3961 to RV-3963); the retired terms named in full (RV-3964); an English leftover named (RV-3965). Records only. |
