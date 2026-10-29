@@ -13,6 +13,10 @@ hook: "TortoiseSVN drops the hook properties --install-hook writes, so no Tortoi
 
 ## What is true now
 
+**Fix round built 2026-10-29.** RV-3900 now upgrades the exact unquoted four-line values for both hook properties after outer-whitespace normalization; a real Subversion control verifies the quoted bytes, exit 0 and an unchanged repeat, and its mutant rejects the former behavior. RV-3901 corrects the seven notice-frequency lines, with the changed German prose in du. RV-3902 adds the local signature and author-verification limit to the Board’s Subversion proof explanation in English and German. The obsolete proof-page docstring is removed. The upgrade note below stands. The independent bounded re-check and the Owner’s wording ruling remain next; native Windows evidence is still limited as recorded below.
+
+Outside this fix’s seven-line documentation scope: the two landing beta lists still say the notice prints on each run.
+
 **Built 2026-10-27.** The installer writes type/quoted-command/true/hide values, upgrades its former three-line values and preserves other properties. A real scratch Subversion installer test applies the 1.14.9 parser's token and quoted-path rules; its three-line installer mutant fails the same contract. Both adoption guides record what a field report from a Windows working copy showed. Quoting is source-based and has not been tried on Windows.
 
 For the 0.20.2 CHANGELOG: TortoiseSVN hook properties now include their type and quote the script path; run `--install-hook` again after upgrading.
@@ -51,3 +55,4 @@ was wrong. The gate a person relies on in TortoiseSVN has not run.
 |---|---|
 | 2026-10-27 | Filed and judged In Progress, P1, critical tier, for v0.20.2, from a field report from a Windows working copy. |
 | 2026-10-27 | Built the hook-property correction and its parser-based installer control; critical review remains next. |
+| 2026-10-29 | Built RV-3900, RV-3901 and RV-3902 from the critical review of a field report from a Windows working copy; the bounded re-check and wording ruling remain next. |
