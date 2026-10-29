@@ -9366,6 +9366,40 @@ check("a pending text exempts its own forms, and only those: with the German alt
       and bool(_de_guard(_de_inject(_de_alt_back, "overrides/main.html", "Ihnen"), _de_alt_set)))
 
 
+# --- three lines in the Owner's own words, on the requirements, setup and seats pages: each stands once, as written ---------------------
+_DE_OWNER_LINES = (
+    ("docs/de/requirements.md", "— nie dadurch, dass eine Rolle sie ändert."),
+    ("docs/de/setup.md", "Das Gate lehnt den Commit einer Rolle ab, der keine Session dieser Rolle trägt;"),
+    ("docs/seats/index.md", "German pages keep the English seat names but call the Owner *der Eigner*, and speak to the reader as *du*."),
+)
+
+
+def _owner_lines_problems(src):
+    """What is wrong with the three lines, one line each: a text its page does not hold exactly once, read with every run of whitespace
+    as one space."""
+    bad = []
+    for rel_, text_ in _DE_OWNER_LINES:
+        n_ = " ".join(src[rel_].split()).count(text_)
+        if n_ != 1:
+            bad.append(f"{rel_} holds {text_!r} {n_} time(s), not once")
+    return bad
+
+
+_ol_src = _sources(sorted({rel_ for rel_, _t in _DE_OWNER_LINES}))
+_ol_bad = _owner_lines_problems(_ol_src)
+check(f"the three lines in the Owner's own words stand once each, as written, read with their line breaks as spaces: the requirements page's "
+      f"„— nie dadurch, dass eine Rolle sie ändert.“, the setup page's „Das Gate lehnt den Commit einer Rolle ab, der keine Session dieser "
+      f"Rolle trägt;“ and the seats page's English line on the German pages (problems found: {_ol_bad})", not _ol_bad and len(_DE_OWNER_LINES) == 3)
+# Each line's words as they stood before, put back in turn: each turns the check red.
+_ol_before = {"docs/de/requirements.md": "— nie durch die Änderung einer Rolle.",
+              "docs/de/setup.md": "Das Gate lehnt den Commit einer Rolle ohne eine Session ihrer eigenen Rolle ab;",
+              "docs/seats/index.md": "German pages keep the English name and address the Owner as *Sie*."}
+_ol_back = {rel_: len(_owner_lines_problems({**_ol_src, rel_: " ".join(_ol_src[rel_].split()).replace(text_, _ol_before[rel_], 1)}))
+            for rel_, text_ in _DE_OWNER_LINES}
+check(f"the three lines' check is not blind: each line's words as they stood before, put back in its page, leave a problem "
+      f"(problems found: {_ol_back})", all(_ol_back.values()) and len(_ol_back) == 3)
+
+
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp); subprocess.run(["git", "init", "-q", str(root)], check=True, env=_ENV)
