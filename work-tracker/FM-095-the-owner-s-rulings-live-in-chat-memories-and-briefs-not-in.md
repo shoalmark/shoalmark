@@ -9,6 +9,7 @@ hook: "A rule the Owner gives in chat lives in dated messages, in each seat's me
 # FM-095 — the Owner's rulings live in chat, memories and briefs, not in one register that names what enforces each
 
 ## What is true now
+
 **Filed 2026-10-29 for v0.20.x; nothing is built.** On the Owner's word of 29 October, "file those", for agentic
 seamanship. It is considered for every v0.20 release and pulled into one when it fits: "we consider all, but we only
 pull in what fits". [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter, names it as a candidate, not a
@@ -17,9 +18,10 @@ part.
 - **Where a rule said in chat lives today:** in dated messages kept outside this repository, in each seat's memory and
   brief templates on one machine, and nowhere in this repository. A new session, or one on another harness, reads none
   of it unless someone pastes it.
-- **The pattern this repository already has:** R1 to R15 are the Owner's signed answers.
+- **The pattern this repository already has:** R1 to R28 are the Owner's signed answers of 12 October (2d62fa1).
   - Their record is [rulings-2026-10-12.md](evidence/rulings-2026-10-12.md).
-  - `AGENTS.md`'s "How the loop runs" states the ones in force.
+  - `AGENTS.md`'s "How the loop runs" states the loop's signed answers in force, and names R15, which removed the filing
+    freeze.
   - A class test holds each one that is mechanical, as `test_r9_removals.py` holds R9.
   - `AGENTS.md` also says that a word in chat changes none of them until the Owner signs it. So a rule given in chat
     is not a ruling yet.
@@ -56,6 +58,7 @@ part.
   [FM-097](FM-097-find-drift-does-not-audit-the-owner-s-rulings-whether-each.md) both read the register.
 
 ## Why
+
 A rule given in chat binds only the sessions that heard it, and only for as long as their memory holds it.
 [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) found the same drift where a rule is
 held only as prose. A register that names each ruling's enforcement and proof makes the rulings auditable, and shows
@@ -63,7 +66,7 @@ which ones only words hold.
 
 ## Done when
 
-- [ ] The register exists, with R1 to R15 and the commit of each signed answer.
+- [ ] The register exists, with R1 to R28 and the commit of each signed answer.
 - [ ] `--check` refuses a change to the register that is not the Owner's signed commit.
 - [ ] Every ruling names its enforcement and its proof.
 - [ ] The seven proposals of 29 October are listed as proposed, until the Owner signs or drops each.
@@ -72,4 +75,5 @@ which ones only words hold.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The pattern and the Done when name R1 to R28, as the record of 12 October holds them (RV-4056). Records only. |
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |

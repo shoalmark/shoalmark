@@ -9,6 +9,7 @@ hook: "Nothing measures whether a session follows the rules and lessons it is gi
 # FM-096 — nothing measures whether a session follows the rules and lessons it is given
 
 ## What is true now
+
 **Filed 2026-10-29 for v0.20.x; nothing is built.** On the Owner's word of 29 October, "file those", for agentic
 seamanship. It is considered for every v0.20 release and pulled into one when it fits.
 [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter, names it as a candidate, not a part.
@@ -57,6 +58,7 @@ seamanship. It is considered for every v0.20 release and pulled into one when it
 - **The order:** after FM-095.
 
 ## Why
+
 A rule or a lesson that no check can hold is only as good as the sessions that follow it, and nothing measures that
 today. [FM-083](FM-083-nothing-measures-how-well-a-skill-does-its-work-only-its.md) found the same gap for skills: their
 structure and proof are checked, but not how well they do their work.
