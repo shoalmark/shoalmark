@@ -133,7 +133,7 @@ class CopyProvenanceControls(unittest.TestCase):
         self.install()
         prefix = self.head[:10]
         self.assertEqual(self.git("rev-parse", prefix).strip(), self.head)
-        self.marker.write_text(f"source: working tree\ncommit: {prefix}\ncmd: python3 shoalmark.py\n", encoding="utf-8")
+        self.marker.write_text(f"source: working tree\ncommit: {prefix}\ncmd: {self.fm.CMD}\n", encoding="utf-8")
         record = self.read()
         self.assertEqual(record["commit"], prefix)
         self.assertIn("short", record["incomplete"])
