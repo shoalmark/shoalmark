@@ -1,5 +1,5 @@
-"""Regression controls for the published site's checks: font sources, link previews, and the landing in two languages with its launch state, How it
-works, the Markdown twins and the requests a page makes; run with requirements-docs installed."""
+"""Regression controls for the published site's checks: font sources, link previews, the landing in two languages with its launch state, How it
+works, the Markdown twins and the requests a page makes, and fenced code; run with requirements-docs installed."""
 from pathlib import Path
 import subprocess
 import sys
@@ -59,6 +59,8 @@ def good_site(site, probe=False):
     for name, text in files.items():
         (site / name).parent.mkdir(parents=True, exist_ok=True)
         (site / name).write_bytes(text.encode("utf-8"))
+    (site.parent / "docs").mkdir(parents=True, exist_ok=True)       # the docs folder beside the site, where zensical.toml's docs_dir points by default
+    (site.parent / "docs/index.md").write_text("# shoalmark\n", encoding="utf-8")
 
 
 def run(site, probe=False):
@@ -439,6 +441,93 @@ class Twins(unittest.TestCase):
         site, result = self.written(probe=False, how='# How it works\n\n--8<-- "missing.md"\n')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("none of the snippet base paths", result.stderr)
+
+
+# a fenced block in a list item, one with a blank line inside, inline code that holds a fence, a German page, and a block an include brings in from the
+# second folder of the snippets' base path
+FENCED_DOCS = {
+    "signing.md": "# Signing\n\n1. Turn it on:\n\n    ```\n    git config gpg.format ssh\n    git config user.signingkey ~/.ssh/signing.pub\n    ```\n\n"
+                  "2. Name your seats:\n\n```toml\n[seats]\n\nplanner = \"planner@seat\"\n```\n\nWrite ` ``` ` to open a block.\n",
+    "de/signing.md": "# Signieren\n\n```\ngit config gpg.format ssh\ngit config user.signingkey ~/.ssh/signing.pub\n```\n",
+    "agents/README.md": '--8<-- "README.md"\n',
+}
+FENCED_INCLUDED = {"launch/x/README.md": "# README\n\n~~~bash\nshoalmark --next\n~~~\n"}
+TWO_LINES = '<div class="highlight"><pre><span></span><code>git config gpg.format ssh\ngit config user.signingkey ~/.ssh/signing.pub\n</code></pre></div>'
+SEATS = ('<div class="highlight"><pre><span></span><code><span class="k">[seats]</span>\n\n<span class="n">planner</span><span class="w"> </span>=<span class="w"> </span>'
+         '<span class="s2">"planner@seat"</span>\n</code></pre></div>')
+NEXT = '<div class="highlight"><pre><span></span><code>shoalmark<span class="w"> </span>--next\n</code></pre></div>'
+FENCED_PAGES = {
+    "signing.html": ('<html lang="en"><body><h1 id="signing">Signing</h1><ol><li><p>Turn it on:</p>' + TWO_LINES + '</li><li><p>Name your seats:</p></li></ol>'
+                     + SEATS + "<p>Write <code>```</code> to open a block.</p></body></html>"),
+    "de/signing.html": '<html lang="de"><body><h1 id="signieren">Signieren</h1>' + TWO_LINES + "</body></html>",
+    "agents/index.html": "Get a better-performing human Owner." + NEXT,
+}
+
+
+class FencedBlocks(unittest.TestCase):
+    """Fenced code: each fenced block of the docs, and of what an include brings in, builds to a <pre> that holds its text, and no built page shows a fence
+    as text, in English and in German. The docs folder, the snippets' base path and the pages' addresses are read from zensical.toml. Each control changes
+    one thing in a site that passes, and the check names the page."""
+
+    def checked(self, change=None, docs="docs", named="docs", bases='[".", "launch/x"]'):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site = root / "site"
+            good_site(site)
+            for name, text in [*((docs + "/" + n, t) for n, t in FENCED_DOCS.items()), *FENCED_INCLUDED.items(), *(("site/" + n, t) for n, t in FENCED_PAGES.items())]:
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(text, encoding="utf-8")
+            if change:
+                change(site)
+            toml = root / "zensical-fenced.toml"
+            toml.write_text('[project]\nsite_name = "x"\ndocs_dir = "%s"\nuse_directory_urls = false\n\n[project.extra]\nprobe = false\n\n'
+                            "[project.markdown_extensions]\npymdownx.superfences = {}\npymdownx.snippets.base_path = %s\n" % (named, bases), encoding="utf-8")
+            return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+
+    def put(self, name, old, new):
+        def change(site):
+            text = (site / name).read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
+        return change
+
+    def test_a_good_site_passes(self):
+        for docs in ("docs", "pages"):
+            with self.subTest(docs=docs):
+                result = self.checked(docs=docs, named=docs)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("the 4 fenced block(s) of the docs, in both languages, build to code blocks", result.stdout)
+
+    def test_each_control_is_refused(self):
+        collapsed = "<p><code>git config gpg.format ssh\ngit config user.signingkey ~/.ssh/signing.pub</code></p>"
+        rows = (
+            ("an English block built as inline code in a paragraph", dict(change=self.put("signing.html", TWO_LINES, collapsed)),
+             ["signing.html: 1 fenced block(s) do not build to a code block, the first opening 'git config gpg.format ssh'"]),
+            ("a German block built as inline code in a paragraph", dict(change=self.put("de/signing.html", TWO_LINES, collapsed)),
+             ["de/signing.html: 1 fenced block(s) do not build to a code block, the first opening 'git config gpg.format ssh'"]),
+            ("an English block split at its blank line, a fence shown in each half",
+             dict(change=self.put("signing.html", SEATS, '<p>```toml\n[seats]</p>\n<p>planner = "planner@seat"\n```</p>')),
+             ["signing.html: 1 fenced block(s) do not build to a code block, the first opening '[seats]'", "signing.html shows a fence as text: '```toml [seats]'"]),
+            ("an English fence shown as a heading, every block built", dict(change=self.put("signing.html", "</body>", '<h2 id="yaml">```yaml</h2></body>')),
+             ["signing.html shows a fence as text: '```yaml'"]),
+            ("a German fence shown as text, every block built", dict(change=self.put("de/signing.html", "</body>", "<p>~~~</p></body>")),
+             ["de/signing.html shows a fence as text: '~~~'"]),
+            ("a German block's text cut short in its code block", dict(change=self.put("de/signing.html", "ssh\ngit config user.signingkey ~/.ssh/signing.pub\n", "ssh\n")),
+             ["de/signing.html: 1 fenced block(s) do not build to a code block"]),
+            ("the included block not built", dict(change=self.put("agents/index.html", NEXT, "<p><code>bash\nshoalmark --next</code></p>")),
+             ["agents/index.html: 1 fenced block(s) do not build to a code block, the first opening 'shoalmark --next'"]),
+            ("the included file in no folder of the base path zensical.toml names", dict(bases='["."]'),
+             ["includes README.md, which none of the snippets' base paths"]),
+            ("the docs folder zensical.toml names holds no page", dict(docs="pages", named="docs-elsewhere"), ["docs_dir", "holds no page"]),
+            ("the docs read from the folder zensical.toml names, a block there not built", dict(docs="pages", named="pages", change=self.put("signing.html", TWO_LINES, collapsed)),
+             ["signing.html: 1 fenced block(s) do not build to a code block"]),
+        )
+        for name, args, messages in rows:
+            with self.subTest(name):
+                result = self.checked(**args)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                for message in messages:
+                    self.assertIn(message, result.stderr)
 
 
 if __name__ == "__main__":

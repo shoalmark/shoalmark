@@ -410,3 +410,133 @@ for css in [*site.rglob("*.css"), *site.rglob("*.html")]:
     if re.search(r"url\(\s*['\"]?(?:https?:)?//", re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)):
         fail(f"{css.relative_to(site)} loads a stylesheet resource from outside the site")
 print("site check: the landings in two languages, their launch state, How it works, the Markdown twins and requests to no other host passed")
+
+
+# --- fenced code: every fenced block of the docs, and of what their includes bring in, builds to a code block, and no page shows a fence as text ----------
+# The pages are read where zensical.toml puts them: its docs_dir, its snippets' base_path for each `--8<-- "name"` line, and use_directory_urls for the page
+# each one builds to. Both languages are pages of the same docs folder.
+project = tomllib.loads(config_path.read_text(encoding="utf-8"))["project"]
+docs_dir = config_path.parent / project.get("docs_dir", "docs")
+snippets = ((project.get("markdown_extensions") or {}).get("pymdownx") or {}).get("snippets") or {}
+snippet_bases = [config_path.parent / base for base in (snippets.get("base_path") or ["."])]
+directory_urls = project.get("use_directory_urls", True)
+INCLUDE = re.compile(r"""^([ \t]*)-+8<-+[ \t]+(["'])(.+?)\2[ \t]*$""")
+FENCE = re.compile(r"^([ \t]*)(`{3,}(?=[^`]*$)|~{3,})")
+FENCE_TEXT = ("```", "~~~")
+if not docs_dir.is_dir() or not any(docs_dir.rglob("*.md")):
+    fail(f"zensical.toml's docs_dir, {docs_dir}, holds no page: the fenced blocks are read from it")
+
+
+def included(name, page):
+    found = next((base / name for base in snippet_bases if (base / name).is_file()), None)
+    if found is None:
+        fail(f"{page} includes {name}, which none of the snippets' base paths {[str(base) for base in snippet_bases]} holds")
+    return found
+
+
+def source_lines(path, page, depth=0):
+    """A page's lines as the build reads them: each include line replaced by the lines of the file it names, at its indentation."""
+    lines = []
+    for line in path.read_text(encoding="utf-8").expandtabs(4).split("\n"):
+        m = INCLUDE.match(line)
+        if m and depth < 8:
+            lines += [m.group(1) + inner for inner in source_lines(included(m.group(3), page), page, depth + 1)]
+        else:
+            lines.append(line)
+    return lines
+
+
+def trimmed(lines):
+    """A block's lines as a reader compares them: no trailing spaces, no blank line before the first or after the last."""
+    lines = [line.rstrip() for line in lines]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    return tuple(lines)
+
+
+def fenced_blocks(lines):
+    """The body of each fenced block, with its fence's own indentation taken off; a fence that is never closed runs to the end of the page."""
+    blocks, i = [], 0
+    while i < len(lines):
+        m = FENCE.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        indent, fence = len(m.group(1)), m.group(2)
+        close = re.compile(r"^[ \t]*%s{%d,}[ \t]*$" % (re.escape(fence[0]), len(fence)))
+        j = i + 1
+        while j < len(lines) and not close.match(lines[j]):
+            j += 1
+        blocks.append(trimmed(line[indent:] if not line[:indent].strip() else line.lstrip() for line in lines[i + 1:j]))
+        i = j + 1
+    return blocks
+
+
+def built_page(rel):
+    if rel.name in ("index.md", "README.md"):
+        return (rel.parent / "index.html").as_posix()
+    return (rel.with_suffix("") / "index.html").as_posix() if directory_urls else rel.with_suffix(".html").as_posix()
+
+
+class CodeBlocks(HTMLParser):
+    """A built page's code blocks, each <pre>'s text, and the fences it shows as text: outside every <pre> and <code>, script, style and textarea."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack, self.pres, self.fences = [], [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "pre":
+            self.pres.append([])
+        if tag not in VOID:
+            self.stack.append(tag)
+
+    def handle_endtag(self, tag):
+        if tag in VOID or tag not in self.stack:
+            return
+        while self.stack and self.stack.pop() != tag:
+            pass
+
+    def handle_data(self, data):
+        if "pre" in self.stack and self.pres:
+            self.pres[-1].append(data)
+        elif not {"code", "script", "style", "textarea"} & set(self.stack) and any(f in data for f in FENCE_TEXT):
+            self.fences.append(" ".join(data.split())[:60])
+
+
+def code_blocks(rel):
+    found = CodeBlocks()
+    found.feed((site / rel).read_text(encoding="utf-8"))
+    found.close()
+    return found
+
+
+lost, shown, held = {}, {}, 0
+for md in sorted(docs_dir.rglob("*.md")):
+    rel = md.relative_to(docs_dir)
+    if md.name == "README.md" and (md.parent / "index.md").is_file():
+        continue                                              # the folder's index.md is its page; the build leaves this README out
+    blocks = fenced_blocks(source_lines(md, rel.as_posix()))
+    if not blocks:
+        continue
+    page = built_page(rel)
+    if not (site / page).is_file():
+        fail(f"{rel.as_posix()} holds {len(blocks)} fenced block(s), and no {page} is built from it")
+    pres = [trimmed("".join(text).split("\n")) for text in code_blocks(page).pres]
+    for body in blocks:
+        if body in pres:
+            pres.remove(body)
+        else:
+            lost.setdefault(page, []).append(body[0] if body else "(an empty block)")
+    held += len(blocks)
+for path in sorted(site.rglob("*.html")):
+    fences = code_blocks(path.relative_to(site).as_posix()).fences
+    if fences:
+        shown[path.relative_to(site).as_posix()] = fences
+if lost or shown:
+    fail("; ".join(
+        [f"{page}: {len(firsts)} fenced block(s) do not build to a code block, the first opening {firsts[0][:60]!r}" for page, firsts in sorted(lost.items())]
+        + [f"{page} shows a fence as text: {fences[0]!r}" for page, fences in sorted(shown.items())]))
+print(f"site check: the {held} fenced block(s) of the docs, in both languages, build to code blocks, and no page shows a fence as text")
