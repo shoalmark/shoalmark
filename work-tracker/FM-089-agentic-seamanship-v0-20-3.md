@@ -21,9 +21,8 @@ lessons every seat can read.
   - [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md): a tracker states one deliverable
     and closes when it ships, by shoalmark's definition of done;
   - [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md): evidence comes in three classes.
-- **Not in this chapter:** [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md), shared
-  memory for every seat and for the team. It takes the tag with the others, and joins the chapter of the release its
-  own ask names.
+- **Its third part:** [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md), shared memory for
+  every seat and for the team, on the Owner's signed answer of 29 October (`febbed9`).
 - **Its allocation:** v0.20.3's allocation is the Owner's, and this chapter waits for it (`next: wait`). It asks
   nothing of its own: the allocation's ask will name it, once it is filed.
 
@@ -36,11 +35,13 @@ alive and each step of it finishable: the chapter ships when its parts do, and t
 
 - [ ] FM-086 is shipped in v0.20.3.
 - [ ] FM-087 is shipped in v0.20.3.
+- [ ] FM-088 is shipped in v0.20.3.
 - [ ] The next chapter of agentic seamanship is filed as a new tracker, and names this one in `considered:`.
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | FM-088 joins the chapter on the Owner's signed answer (`febbed9`), and its Done when gains FM-088's item. Records only. |
 | 2026-10-29 | The tag `seamanship` is in the vocabulary since #229, and the theme's four trackers carry it. Records only. |
 | 2026-10-29 | Filed, on the Owner's word of 29 October, as v0.20.3's chapter of agentic seamanship. Records only. |
