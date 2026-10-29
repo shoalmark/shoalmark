@@ -90,6 +90,21 @@ standard review is READY WITH FINDINGS (`a699baf`):
 - RV-3966 needed no change in the repository, and RV-3967, the wording of three German lines, waits for the Owner's
   word.
 
+**2026-10-29 — the German rewrite: the Owner's words for the lane, and the issue form read whole.** On the Owner's word
+of 29 October, as the Auditor relays it:
+- in the maker's quote, *Sitzungen* → *Sessions* stands as it is at `a531131`;
+- RV-3965: the English seats page now says that German pages keep the English seat names but call the Owner *der
+  Eigner*, and speak to the reader as *du* (`5194717`). It is the lane's one English change;
+- RV-3967: three German lines take the Owner's words (`5194717`). On the requirements page: *nie dadurch, dass eine
+  Rolle sie ändert*. On the stand-up page: *Eine Runde reicht für alle*. On the setup page: *Das Gate lehnt den Commit
+  einer Rolle ab, der keine Session dieser Rolle trägt*;
+- RV-3960's new German lines stand as written, *Sage uns* included: the long imperative, with no new exception.
+
+The re-check of the fix round is READY WITH FINDINGS (`fa1819c`):
+- RV-3968: the check against formal German reads the issue form's values and paragraphs whole (`4661793`);
+- RV-3969: where the entry above says four kinds of markup, read: three kinds of markup, and a second copy of an
+  allowed text, no longer hide prose from it.
+
 **2026-10-28 — the why page, on the Owner's word on the live site:** the story stands as a quote again, in its figure with its blockquote, left rule and caption and their rules on screen, on a phone and in print, where BF-86 and RV-3930 had made it running text; its words stay in the first person. Its caption is the Owner's attribution in their own words, after its dash and linked to the X profile, and the portdive sentence is said there once. Its last paragraph tells the timeline from shoalmark's first commit on 21 September. The tile *Measured, not promised.* reads *Reports, not proofs.*, the Board's own words, and the TL;DR's Try-it line says what the prompt asks: to try the setup on a copy in a throwaway folder, and to change nothing in the repository without the reader's yes. The German says the same in the page's *du* voice.
 
 **2026-10-28 — the why page prints on one page again, and its caption balances its lines:** BF-90 sets the print's running text, the quote, the TL;DR's Try-it row and the card a little smaller, so the page prints on one page in English and German, and BF-91 balances the caption's lines on screen, as the Designer measured them.
@@ -1230,6 +1245,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-29 07:20:53 CET | **The German rewrite: the Owner's words for the lane.** The quote's *Sessions* stands. The English seats page's line on the German pages (RV-3965) and three German lines (RV-3967) take the Owner's words (`5194717`), and RV-3960's new lines stand as written. The check reads the issue form's values and paragraphs whole (`4661793`, RV-3968), and the earlier entry's count of markup kinds is corrected (RV-3969). Records only. |
 | 2026-10-28 22:52:17 CET | **The German rewrite's standard review, READY WITH FINDINGS** (`a699baf`), and its fix round: the feedback page and the issue form in *du*, read by the check (`2871c5a`, RV-3960); inflected and compound retired terms refused, and four kinds of markup read through (`984453d`, RV-3961 to RV-3963); the retired terms named in full (RV-3964); an English leftover named (RV-3965). Records only. |
 | 2026-10-28 21:53:10 CET | **The German rewrite: the why page's German in *du*, and the guard read whole** after #228 joined the lane (`b8581fd`): the hero line in its two places, nine texts by the glossary, and the preview's alt in its three places (BF-94), with the guard's pending set empty (`a531131`). From the critical review of the probe prompts' German, READY WITH FINDINGS: RV-3951 (`cebbcd2`); RV-3952: recorded privately. Records only. |
 | 2026-10-28 19:22:59 CET | **The German rewrite: the Owner's words** on the hero line (*du hast das letzte Wort*, changing A2), the inspector (*der Gutachter*), the probe template's two named exceptions, the landing's button, *Arbeitspaket* in the probe prompts, and the old German Board picture removed. Records only. |
