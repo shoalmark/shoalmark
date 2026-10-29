@@ -22,6 +22,19 @@ is designed or built.
 
 ## What is true now
 
+**2026-10-29 — the release branch rebuilt, and the CI class fix moved to v0.20.3.** On the Owner's word of 29 October,
+as the Auditor relays it:
+- **`release/v0.20.2-signed` is retired.** #230, J's pull request, was merged into it with GitHub's merge button
+  (`d872dd7`), and the gate refuses that on a base that is not main.
+  - The Owner redid it as a signed merge of their own, on a new branch: `release/v0.20.2-rebuilt` at `9f1843b`, from
+    `8b24e91` and J's verdict `6e0a9ab`, with J's tree.
+  - Every v0.20.2 lane now targets the new branch. The retired branch stays as it is: no one deletes it.
+  - A pull request into a base that is not main now opens as a draft, titled "[signed merge only] …".
+- **The CI class fix moves to v0.20.3 whole,** its three findings RV-3920 to RV-3922 with it. The ask above already
+  names the class fix whole, moving unless READY by Thursday 20:00, and no lane builds it, so the ask's "yes" covers
+  it. No change to the ask is needed. The entry below that says "beyond its three findings" no longer holds for those
+  three.
+
 **2026-10-29 — from v0.20.3, each release's allocation is a tracker of its own,** on the Owner's word of 29 October,
 as the Auditor relays it.
 - **The tracker:** each release's allocation is filed as its own tracker, which ships at that release's tag.
@@ -456,6 +469,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | `release/v0.20.2-signed` retired after #230's button merge; `release/v0.20.2-rebuilt` at `9f1843b`, the Owner's signed merge of J, is v0.20.2's base. The CI class fix moves to v0.20.3 whole, its three findings with it. Records only. |
 | 2026-10-29 | The CI class fix is described in this entry, not named as FM-062's: no tracker holds it yet (RV-3988). Records only. |
 | 2026-10-29 | The records review's six findings fixed (RV-3982 to RV-3987): the CI class fix is named as FM-062's, an ask option cites its source, the tag waits for the vocabulary, the count of trackers is corrected, and what is not yet filed or done says so. Records only. |
 | 2026-10-29 | From v0.20.3, each release's allocation is a tracker of its own, on the Owner's word of 29 October. FM-086 and FM-087 are filed for v0.20.3. Records only. |
