@@ -457,6 +457,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .btn.taped .tape{position:absolute;left:-7px;right:-7px;bottom:5px;padding:3px 0 2px;font:700 10px/1.2 var(--pix);letter-spacing:.12em;text-align:center;text-transform:uppercase;white-space:nowrap;color:var(--landink);background:var(--land);transform:rotate(-2deg);box-shadow:0 2px 0 rgba(5,11,18,.45);clip-path:polygon(0 0,100% 0,98.6% 25%,100% 50%,98.6% 75%,100% 100%,0 100%,1.4% 75%,0 50%,1.4% 25%)}
 .taped-why{margin:14px 0 0;max-width:54ch;font-size:13px;line-height:1.55;color:var(--mute)}
 .taped-why a{color:var(--blue)}
+.founder{margin:14px 0 0;max-width:54ch;font-size:13px;line-height:1.55;color:var(--dim)}.founder a{white-space:nowrap}
 @media (max-width:700px){.btn.taped{padding-bottom:30px}.btn.taped .tape{bottom:6px;font-size:11px}}
 /* beside the taller taped button, the second button keeps its place */
 @media (min-width:701px){.cta.is-taped>.btn.alt{margin-bottom:14px}}
@@ -588,6 +589,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     {%- if taped %}
     <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>
     {%- endif %}
+    <p class="founder">{{ w.founder }}</p>
   </div>
 </section>
 
