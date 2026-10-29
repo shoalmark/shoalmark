@@ -621,7 +621,6 @@ NEVER_IN_BOARD_RUN = {
     "push": "writes to a server: an act's alone",
     "status": "refreshes the index and may write it: an act's and `--vendor`'s alone",
     "tag": "`--vendor`'s alone, reading the tool's own tag",
-    "interpret-trailers": "locates the message trailer block: `--session-trailer`'s alone",
     "--exec-path": "`--install-hook`'s alone, finding an include its configuration names",
     "check-attr": "tells which filter driver stores a path, where a read compares the working tree (`driver_paths`): the board's run compares none",
 }
@@ -8119,11 +8118,112 @@ def whoami():
     return EXIT_OK
 
 
+GIT_TRAILER_PREFIXES = (b"Signed-off-by: ", b"(cherry picked from commit ")      # lines git writes itself: one makes a paragraph a trailer block
+SCISSORS_LINE = b" ------------------------ >8 ------------------------\n"         # after the comment string, where `commit -v` cuts the message
+
+
+def _line_end(buf, at):
+    """Where the line at `at` ends, its newline included: the start of the next line."""
+    nl = buf.find(b"\n", at)
+    return len(buf) if nl < 0 else nl + 1
+
+
+def _line_before(buf, end):
+    """Where the last line before `end` starts; -1 where `end` is 0."""
+    return -1 if end == 0 else buf.rfind(b"\n", 0, end - 1) + 1
+
+
+def _blank_at(buf, at):
+    """Whether the line at `at` holds nothing but spaces, tabs and carriage returns."""
+    return not buf[at:_line_end(buf, at)].strip(b" \t\r\n")
+
+
+def trailer_line_key(buf, at):
+    """The key of the trailer line at `at`, lower-cased: `Key: value`, its key letters, digits and dashes, with spaces or tabs at most between it
+    and the colon. None where the line is no trailer line."""
+    i, spaced = at, False
+    while i < len(buf) and buf[i:i + 1] != b":":
+        c = buf[i:i + 1]
+        if not spaced and (c.isalnum() or c == b"-"):
+            pass
+        elif i > at and c in (b" ", b"\t"):
+            spaced = True
+        else:
+            return None
+        i += 1
+    if i == at or i == len(buf):
+        return None
+    # Git versions differ on a colon followed directly by another byte, such as `https://…`: one reads the line as a trailer, a later one as
+    # none. It is no trailer line here, so the seat's lines join only a block that every git reads as one.
+    if buf[i + 1:i + 2] not in (b"", b" ", b"\t", b"\r", b"\n"):
+        return None
+    return buf[at:i].rstrip(b" \t").lower()
+
+
+def message_trailer_block(message, comment):
+    """Where a commit message's trailer block lies, as git finds it, on the message with its last line completed: (that message, the block's
+    start, its end). The end is where the log message ends: before a `---` divider, and before the comment lines, blank lines, old `Conflicts:`
+    block and scissors section that close it. The block is the paragraph that ends there, where all its lines are trailer lines, or where one is
+    a line git writes itself and a quarter are trailer lines. Where there is none, the start is the end."""
+    buf = message + (b"\n" if message and not message.endswith(b"\n") else b"")
+    end, at = len(buf), 0
+    while at < len(buf):
+        if buf.startswith(b"---", at) and buf[at + 3:at + 4] in (b" ", b"\t", b"\r", b"\n"):
+            end = at
+            break
+        at = _line_end(buf, at)
+    cut = b"\n" + comment + SCISSORS_LINE
+    found = buf.find(cut)
+    cutoff = 0 if buf.startswith(cut[1:]) else min(end, found + 1) if found >= 0 else end
+    boc, bol, conflicts = 0, 0, False
+    while bol < cutoff:
+        nl = buf.find(b"\n", bol, end)
+        nxt = end if nl < 0 else nl + 1
+        if buf.startswith(comment, bol, cutoff) or buf[bol:bol + 1] == b"\n":
+            boc = boc or bol
+        elif buf.startswith(b"Conflicts:\n", bol):
+            conflicts, boc = True, boc or bol
+        elif conflicts and buf[bol:bol + 1] == b"\t":
+            pass
+        elif boc:
+            boc, conflicts = 0, False
+        bol = nxt
+    end = boc or cutoff
+    title_end = 0
+    while title_end < end and (buf.startswith(comment, title_end, end) or not _blank_at(buf, title_end)):
+        title_end = _line_end(buf, title_end)
+    trailers, others, maybe, recognized, spaces_only = 0, 0, 0, False, True
+    at = _line_before(buf, end)
+    while at >= title_end:
+        if buf.startswith(comment, at, end):
+            others, maybe = others + maybe, 0
+        elif _blank_at(buf, at):
+            if not spaces_only:
+                others += maybe
+                if (recognized and trailers * 3 >= others) or (trailers and not others):
+                    return buf, _line_end(buf, at), end
+                return buf, end, end
+        else:
+            spaces_only = False
+            if buf.startswith(GIT_TRAILER_PREFIXES, at):
+                trailers, maybe, recognized = trailers + 1, 0, True
+            elif trailer_line_key(buf, at) is not None:
+                trailers, maybe = trailers + 1, 0
+            elif buf[at:at + 1] in (b" ", b"\t", b"\r"):
+                maybe += 1
+            else:
+                others, maybe = others + 1 + maybe, 0
+        at = _line_before(buf, at)
+    return buf, end, end
+
+
 def session_trailer(message_file):
     """What the prepare-commit-msg hook calls: append `Session: <seat.session>` and `Worktree: <the checkout's directory>`
     to the message being written — and `Model:` and `Effort:` where the harness's log, found by `seat.harness`, names them
     (`whoami`'s reading). Nothing when this worktree has no `seat.session` (the Owner's checkout, a person's clone); a
-    trailer the message carries already is left alone — an amend, a rebase, a seat that typed it. A log that cannot be
+    trailer the message carries already is left alone — an amend, a rebase, a seat that typed it. The trailer block is read here, as git finds it
+    (`message_trailer_block`), and the missing lines are added at its end, or in a paragraph of their own where there is none: every byte the
+    message had stays as it was, and the same message gets the same bytes on every git. A log that cannot be
     read, or two that carry the id, costs the commit its two trailers and a line on stderr — never the commit. Another
     worktree that carries this one's harness id under another identity costs a line on stderr each (`shared_harness_lines`),
     and nothing else."""
@@ -8144,37 +8244,20 @@ def session_trailer(message_file):
     trailers = [f"Session: {sid}", f"Worktree: {worktree}"] + [f"{key}: {reading[k]}" for key, k in (("Model", "model"), ("Effort", "effort")) if reading and reading[k]]
     message = pathlib.Path(message_file)
     original = message.read_bytes()
-    parsed = vcs_process("git", "interpret-trailers", "--parse", input=original,
-                         cwd=ROOT, capture_output=True, env=nested_git_env())
-    if parsed.returncode:
-        print(f"--session-trailer: {parsed.stderr.decode('utf-8', 'replace').strip()}", file=sys.stderr)
-        return parsed.returncode
-    keys = {line.partition(b":")[0].strip().lower() for line in parsed.stdout.splitlines()}
+    comment = (git_out("config", "--get", "core.commentString") or git_out("config", "--get", "core.commentChar") or "").rstrip("\n")
+    comment = ("#" if comment.lower() in ("", "auto") else comment).encode("utf-8")
+    buf, start, end = message_trailer_block(original, comment)
+    keys, at = set(), start
+    while at < end:
+        if not buf.startswith(comment, at, end):
+            keys.add(trailer_line_key(buf, at))
+        at = _line_end(buf, at)
     missing = [t for t in trailers if t.partition(":")[0].lower().encode() not in keys]
     if not missing:
         return EXIT_OK
-    import secrets
-    marker = ("Shoalmark" + secrets.token_hex(16)).encode()
-    while marker in original:
-        marker = ("Shoalmark" + secrets.token_hex(16)).encode()
-    r = vcs_process("git", "interpret-trailers", "--where", "end", "--if-exists", "add", "--if-missing", "add",
-                    "--trailer", marker.decode() + ": boundary", input=original,
-                    cwd=ROOT, capture_output=True, env=nested_git_env())
-    if r.returncode:
-        print(f"--session-trailer: {r.stderr.decode('utf-8', 'replace').strip()}", file=sys.stderr)
-        return r.returncode
-    _, found, after = r.stdout.partition(marker)
-    _, newline, suffix = after.partition(b"\n")
-    if not found or r.stdout.count(marker) != 1 or not newline or not original.endswith(suffix):
-        print("--session-trailer: Git's trailer boundary could not be located; message left unchanged", file=sys.stderr)
-        return EXIT_LINT
-    # Git normalizes the trailer block; only its untouched suffix locates the insertion in the original bytes.
-    offset = len(original) - len(suffix)
-    prefix = original[:offset]
-    separator = b"" if prefix.endswith(b"\n") else b"\n"
-    if not parsed.stdout and not (prefix + separator).endswith(b"\n\n"):
-        separator += b"\n"
-    message.write_bytes(prefix + separator + ("\n".join(missing) + "\n").encode("utf-8") + suffix)
+    before = _line_before(buf, start)
+    separator = b"" if before >= 0 and _blank_at(buf, before) else b"\n"
+    message.write_bytes(buf[:end] + separator + ("\n".join(missing) + "\n").encode("utf-8") + original[end:])
     return EXIT_OK
 
 

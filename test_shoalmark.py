@@ -841,6 +841,16 @@ with tempfile.TemporaryDirectory() as d:
           code == 0 and out.strip() == "0b0b0b0b" and re.fullmatch(r"[0-9a-f]{8}", fresh) is not None and "seat.session" in init_out and "user.email" in init_out)
 
 # --- Session trailer insertion preserves the message bytes and Git's trailer reading -------------------------
+_LINK_COLON = re.compile(rb"(?m)^([A-Za-z0-9-]+[ \t]*):(?![ \t\r\n]|$)")
+
+
+def _as_git_256(data):
+    """`data` as git 2.56 reads it, for this Mac's git 2.50.1 to read: where a line's colon is followed directly by another byte, as in
+    `https://…`, the colon is hidden, so the line is no trailer line. 2.50.1 reads such a line as a trailer, 2.56 does not."""
+    assert b"\x7f" not in data
+    return _LINK_COLON.sub(lambda m: m.group(1) + b"\x7f", data)
+
+
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
     git(root, "init", "-q")
@@ -852,8 +862,8 @@ with tempfile.TemporaryDirectory() as d:
     git(root, "config", "seat.harness", "fixture-harness")
     additions = (f"Session: fixture-seat\nWorktree: {root.name}\nModel: fixture-model\nEffort: xhigh\n").encode()
     cases = [
-        ("sources links", b"A merge subject\n\nBring in the recorded merge.\n\nSources:\nhttps://example.org/commit/abc\nhttps://example.org/commit/def\n", b"", additions),
-        ("bare links", b"Subject\n\nhttps://example.org/a\nhttps://example.org/b\n", b"", additions),
+        ("sources links", b"A merge subject\n\nBring in the recorded merge.\n\nSources:\nhttps://example.org/commit/abc\nhttps://example.org/commit/def\n", b"", b"\n" + additions),
+        ("bare links", b"Subject\n\nhttps://example.org/a\nhttps://example.org/b\n", b"", b"\n" + additions),
         ("typed trailer spacing", b"Subject\n\nCo-Authored-By:\t Someone <a@b>  \n", b"", additions),
         ("partial keys", b"Subject\n\nsEsSiOn:  typed  \nModel:\tcustom\n", b"", (f"Worktree: {root.name}\nEffort: xhigh\n").encode()),
         ("all keys", b"Subject\n\nsession:  typed\nWorktree: elsewhere\nModel: custom\nEffort: low\n", b"", b""),
@@ -863,27 +873,66 @@ with tempfile.TemporaryDirectory() as d:
         ("trailing comments", b"Subject\n\nNote:  value\n", b"\n# keep this comment\n", additions),
         ("patch suffix", b"Subject\n\nNote:  value\n", b"\n---\nfile | 1 +\n", additions),
         ("empty value", b"Subject\n\nSession:   \n", b"", additions.split(b"\n", 1)[1]),
+        ("links and a typed key", b"Subject\n\nhttps://example.org/a\nSession: typed\n", b"", b"\n" + additions),
+        ("no final newline after a comment", b"Subject\n\nNote:  value\n", b"\n# keep this comment", additions),
+        ("no final newline after a divider", b"Subject\n\nNote:  value\n", b"\n---", additions),
+        ("no final newline after scissors", b"Subject\n\nNote:  value\n", b"\n# ------------------------ >8 ------------------------", additions),
+        ("no final newline after Conflicts", b"Subject\n\nNote:  value\n", b"\nConflicts:\n\tfile.txt", additions),
+        ("cherry-pick line", b"Subject\n\nBody.\n\n(cherry picked from commit 0123456789abcdef0123456789abcdef01234567)\n", b"", additions),
+        ("signed-off among prose", b"Subject\n\nBody.\n\nA note in prose\nSigned-off-by: A U Thor <a@example.org>\n", b"", additions),
+        ("folded value", b"Subject\n\nNote: a value\n  folded on\n", b"", additions),
+        ("comment character from the configuration", b"Subject\n\nNote:  value\n", b"\n; keep this comment\n", additions),
     ]
+    real_process, starts, differ = fm.vcs_process, [], []
+
+    def as_git_256(*argv, **kw):
+        """The tool's start of git, where `git interpret-trailers` reads its input as `_as_git_256` gives it, and prints it back unhidden."""
+        if argv[:2] == ("git", "interpret-trailers"):
+            starts.append(argv)
+            if isinstance(kw.get("input"), bytes):
+                r = real_process(*argv, **dict(kw, input=_as_git_256(kw["input"])))
+                r.stdout = r.stdout.replace(b"\x7f", b":") if isinstance(r.stdout, bytes) else r.stdout
+                return r
+        return real_process(*argv, **kw)
+
+    def commit_of(data):
+        tree = subprocess.run(["git", "-C", str(root), "mktree"], input=b"", capture_output=True, env=_ENV, check=True).stdout.strip().decode()
+        return subprocess.run(["git", "-C", str(root), "commit-tree", tree], input=data, capture_output=True, env=_ENV, check=True).stdout.strip().decode()
+
     try:
         for label, prefix, suffix, added in cases:
+            if label == "comment character from the configuration":
+                git(root, "config", "core.commentChar", ";")
             msg = root / "MSG"
             original = prefix + suffix
             msg.write_bytes(original)
             code = fm.session_trailer(str(msg))
             got = msg.read_bytes()
-            check(f"FM-063 · {label}: adds only missing trailers, preserving every original byte", code == 0 and got == prefix + added + suffix)
-            tree = subprocess.run(["git", "-C", str(root), "mktree"], input=b"", capture_output=True, env=_ENV, check=True).stdout.strip().decode()
-            commit = subprocess.run(["git", "-C", str(root), "commit-tree", tree], input=got, capture_output=True, env=_ENV, check=True).stdout.strip().decode()
-            values = {k: fm.trailers_of(commit, k) for k in ("Session", "Worktree", "Model", "Effort")}
+            check(f"FM-063 · {label}: adds only missing trailers, preserving every original byte (saw {got!r})", code == 0 and got == prefix + added + suffix)
             expected = {"Session": ["typed"] if label in ("partial keys", "all keys") else [] if label == "empty value" else ["fixture-seat"],
                         "Worktree": ["elsewhere" if label == "all keys" else root.name],
                         "Model": ["custom" if label in ("partial keys", "all keys") else "fixture-model"],
                         "Effort": ["low" if label == "all keys" else "xhigh"]}
-            if label == "patch suffix":
+            if label in ("patch suffix", "no final newline after a divider"):
                 expected = {k: [] for k in expected}
+            values = {k: fm.trailers_of(commit_of(got), k) for k in ("Session", "Worktree", "Model", "Effort")}
             check(f"FM-063 · {label}: Git reads exactly the trailers present, never a body key (saw {values})", values == expected)
+            values = {k: fm.trailers_of(commit_of(_as_git_256(got)), k) for k in ("Session", "Worktree", "Model", "Effort")}
+            check(f"FM-063 · {label}: read as git 2.56 reads a link line, the commit still carries exactly the trailers present (saw {values})", values == expected)
             again = fm.session_trailer(str(msg))
             check(f"FM-063 · {label}: a second hook call changes no byte", again == 0 and msg.read_bytes() == got)
+            msg.write_bytes(original)
+            fm.vcs_process = as_git_256
+            try:
+                code_256 = fm.session_trailer(str(msg))
+            finally:
+                fm.vcs_process = real_process
+            if (code_256, msg.read_bytes()) != (code, got):
+                differ.append(label)
+            if label == "comment character from the configuration":
+                git(root, "config", "--unset", "core.commentChar")
+        check(f"FM-063 · the same bytes on every git: each message gets the same bytes when git reads its link lines as 2.56 does (saw {differ} differ)", not differ)
+        check(f"FM-063 · the step reads the trailer block itself: it starts no `git interpret-trailers` (saw {len(starts)} starts)", not starts)
         git(root, "config", "--unset", "seat.session")
         msg.write_bytes(b"Subject\n\nhttps://example.org/a\n")
         original = msg.read_bytes()
