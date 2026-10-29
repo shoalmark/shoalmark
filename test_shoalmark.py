@@ -18387,7 +18387,7 @@ def _feedback_problems(page):
     feet = re.findall(r"<footer>(.*?)</footer>", page, re.S)
     legal = re.findall(r'<a [^>]*href="([^"]*)"', feet[0]) if len(feet) == 1 else []
     rest = re.sub(r"<footer>.*?</footer>", "", page, count=1, flags=re.S) if len(feet) == 1 else page
-    targets = re.findall(r'<a [^>]*href="([^"]*)"', rest) + re.findall(r'<meta http-equiv="refresh" content="0; url=([^"]*)">', rest)
+    targets = re.findall(r'<a [^>]*href="([^"]*)"', rest) + re.findall(r'<meta http-equiv="refresh" content="0; url=([^"]*)">', page)
     if len(targets) != 3 or set(targets) != {_TELL_URL}:
         bad.append(f"the page does not lead to the issue form alone, by its refresh and its two links: {targets}")
     if legal != _FEEDBACK_LEGAL:
@@ -18407,10 +18407,11 @@ _fbctl = {"the refresh to another address": _fbp.replace("content=\"0; url=" + _
           "a link to the discussions": _fbp.replace(f'href="{_TELL_URL}">Formular', 'href="https://github.com/shoalmark/shoalmark/discussions">Formular', 1),
           "a script that carries a query on": _fbp.replace("</body>", "<script>location.replace(location.search)</script></body>", 1),
           "the page indexed": _fbp.replace('<meta name="robots" content="noindex">\n', "", 1),
-          "the German privacy link gone from the footer": _fbp.replace(' · <a href="../de/datenschutz.html">Datenschutz</a>', "", 1)}
+          "the German privacy link gone from the footer": _fbp.replace(' · <a href="../de/datenschutz.html">Datenschutz</a>', "", 1),
+          "a refresh inside the footer": _fbp.replace("</footer>", '<meta http-equiv="refresh" content="0; url=https://github.com/shoalmark/shoalmark/discussions">\n</footer>', 1)}
 _fbctl_saw = {name: len(_feedback_problems(page)) for name, page in _fbctl.items()}
 check("FM-006 · the feedback page · its check is not blind: each of the refresh to another address, a link to the discussions, a script that carries a query on, "
-      f"the page indexed and the German privacy link gone from the footer leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 5)
+      f"the page indexed, the German privacy link gone from the footer and a refresh inside the footer leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 6)
 
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:

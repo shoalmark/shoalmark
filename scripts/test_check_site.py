@@ -371,6 +371,10 @@ class EveryPage(unittest.TestCase):
               "setup.html loads a stylesheet resource from outside the site: https://example.org/b.png"),
              ("an image-set in a stylesheet", lambda site: (site / "stylesheets/x.css").write_text("body{background:-webkit-image-set(url(a.png) 1x, 'https://example.org/b.png' 2x)}"),
               "stylesheets/x.css loads a stylesheet resource from outside the site: https://example.org/b.png"),
+             ("an image-set in a style attribute", put('<p style="background:image-set(&quot;https://example.org/b.png&quot; 1x)">x</p>'),
+              "setup.html loads a stylesheet resource from outside the site: https://example.org/b.png"),
+             ("an image by its scheme with no slashes, which a page served over https loads from that host", put('<img src="http:example.org/x.png">'),
+              "loads http:example.org/x.png (img)"),
              ("an inline module's import", put('<script type="module">import {a} from "https://example.org/m.js";</script>'),
               "an inline script of setup.html imports https://example.org/m.js, from outside the site")))
 
