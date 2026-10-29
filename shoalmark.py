@@ -621,7 +621,7 @@ NEVER_IN_BOARD_RUN = {
     "push": "writes to a server: an act's alone",
     "status": "refreshes the index and may write it: an act's and `--vendor`'s alone",
     "tag": "`--vendor`'s alone, reading the tool's own tag",
-    "interpret-trailers": "writes the message file (`--in-place`): `--session-trailer`'s alone",
+    "interpret-trailers": "locates the message trailer block: `--session-trailer`'s alone",
     "--exec-path": "`--install-hook`'s alone, finding an include its configuration names",
     "check-attr": "tells which filter driver stores a path, where a read compares the working tree (`driver_paths`): the board's run compares none",
 }
@@ -8142,11 +8142,40 @@ def session_trailer(message_file):
     for line in shared_harness_lines(hid, top or str(ROOT)):
         print(f"--session-trailer: {line}", file=sys.stderr)
     trailers = [f"Session: {sid}", f"Worktree: {worktree}"] + [f"{key}: {reading[k]}" for key, k in (("Model", "model"), ("Effort", "effort")) if reading and reading[k]]
-    r = vcs_process("git", "interpret-trailers", "--in-place", "--if-exists", "doNothing", *itertools.chain.from_iterable(("--trailer", t) for t in trailers), message_file,
-                       cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    message = pathlib.Path(message_file)
+    original = message.read_bytes()
+    parsed = vcs_process("git", "interpret-trailers", "--parse", input=original,
+                         cwd=ROOT, capture_output=True, env=nested_git_env())
+    if parsed.returncode:
+        print(f"--session-trailer: {parsed.stderr.decode('utf-8', 'replace').strip()}", file=sys.stderr)
+        return parsed.returncode
+    keys = {line.partition(b":")[0].strip().lower() for line in parsed.stdout.splitlines()}
+    missing = [t for t in trailers if t.partition(":")[0].lower().encode() not in keys]
+    if not missing:
+        return EXIT_OK
+    import secrets
+    marker = ("Shoalmark" + secrets.token_hex(16)).encode()
+    while marker in original:
+        marker = ("Shoalmark" + secrets.token_hex(16)).encode()
+    r = vcs_process("git", "interpret-trailers", "--where", "end", "--if-exists", "add", "--if-missing", "add",
+                    "--trailer", marker.decode() + ": boundary", input=original,
+                    cwd=ROOT, capture_output=True, env=nested_git_env())
     if r.returncode:
-        print(f"--session-trailer: {r.stderr.strip()}", file=sys.stderr)
-    return r.returncode
+        print(f"--session-trailer: {r.stderr.decode('utf-8', 'replace').strip()}", file=sys.stderr)
+        return r.returncode
+    _, found, after = r.stdout.partition(marker)
+    _, newline, suffix = after.partition(b"\n")
+    if not found or r.stdout.count(marker) != 1 or not newline or not original.endswith(suffix):
+        print("--session-trailer: Git's trailer boundary could not be located; message left unchanged", file=sys.stderr)
+        return EXIT_LINT
+    # Git normalizes the trailer block; only its untouched suffix locates the insertion in the original bytes.
+    offset = len(original) - len(suffix)
+    prefix = original[:offset]
+    separator = b"" if prefix.endswith(b"\n") else b"\n"
+    if not parsed.stdout and not (prefix + separator).endswith(b"\n\n"):
+        separator += b"\n"
+    message.write_bytes(prefix + separator + ("\n".join(missing) + "\n").encode("utf-8") + suffix)
+    return EXIT_OK
 
 
 # A commit's trailers as git prints them — one `Name: value` per trailer, the trailer block only, each separated by \x03 —

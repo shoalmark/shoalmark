@@ -840,6 +840,57 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-024 S1 · `--session new` prints an id no commit's `Session:` carries — eight hex characters, for a harness with none of its own; `--init` names `seat.session` beside `user.email` (saw {out.strip()!r}, {fresh!r})",
           code == 0 and out.strip() == "0b0b0b0b" and re.fullmatch(r"[0-9a-f]{8}", fresh) is not None and "seat.session" in init_out and "user.email" in init_out)
 
+# --- Session trailer insertion preserves the message bytes and Git's trailer reading -------------------------
+with tempfile.TemporaryDirectory() as d:
+    root = Path(d).resolve()
+    git(root, "init", "-q")
+    git(root, "config", "seat.session", "fixture-seat")
+    fm.configure(root)
+    saved_reading, saved_shared = fm.harness_reading, fm.shared_harness_lines
+    fm.harness_reading = lambda hid: ({"model": "fixture-model", "effort": "xhigh"}, "")
+    fm.shared_harness_lines = lambda *args: []
+    git(root, "config", "seat.harness", "fixture-harness")
+    additions = (f"Session: fixture-seat\nWorktree: {root.name}\nModel: fixture-model\nEffort: xhigh\n").encode()
+    cases = [
+        ("sources links", b"A merge subject\n\nBring in the recorded merge.\n\nSources:\nhttps://example.org/commit/abc\nhttps://example.org/commit/def\n", b"", additions),
+        ("bare links", b"Subject\n\nhttps://example.org/a\nhttps://example.org/b\n", b"", additions),
+        ("typed trailer spacing", b"Subject\n\nCo-Authored-By:\t Someone <a@b>  \n", b"", additions),
+        ("partial keys", b"Subject\n\nsEsSiOn:  typed  \nModel:\tcustom\n", b"", (f"Worktree: {root.name}\nEffort: xhigh\n").encode()),
+        ("all keys", b"Subject\n\nsession:  typed\nWorktree: elsewhere\nModel: custom\nEffort: low\n", b"", b""),
+        ("body key is not trailer", b"Subject\n\nSession: body-only\nThis is prose.\n", b"", b"\n" + additions),
+        ("no final newline", b"Subject", b"", b"\n\n" + additions),
+        ("crlf and non-utf8", b"Subject \xff\r\n\r\nNote:\tvalue  \r\n", b"", additions),
+        ("trailing comments", b"Subject\n\nNote:  value\n", b"\n# keep this comment\n", additions),
+        ("patch suffix", b"Subject\n\nNote:  value\n", b"\n---\nfile | 1 +\n", additions),
+        ("empty value", b"Subject\n\nSession:   \n", b"", additions.split(b"\n", 1)[1]),
+    ]
+    try:
+        for label, prefix, suffix, added in cases:
+            msg = root / "MSG"
+            original = prefix + suffix
+            msg.write_bytes(original)
+            code = fm.session_trailer(str(msg))
+            got = msg.read_bytes()
+            check(f"FM-063 · {label}: adds only missing trailers, preserving every original byte", code == 0 and got == prefix + added + suffix)
+            tree = subprocess.run(["git", "-C", str(root), "mktree"], input=b"", capture_output=True, env=_ENV, check=True).stdout.strip().decode()
+            commit = subprocess.run(["git", "-C", str(root), "commit-tree", tree], input=got, capture_output=True, env=_ENV, check=True).stdout.strip().decode()
+            values = {k: fm.trailers_of(commit, k) for k in ("Session", "Worktree", "Model", "Effort")}
+            expected = {"Session": ["typed"] if label in ("partial keys", "all keys") else [] if label == "empty value" else ["fixture-seat"],
+                        "Worktree": ["elsewhere" if label == "all keys" else root.name],
+                        "Model": ["custom" if label in ("partial keys", "all keys") else "fixture-model"],
+                        "Effort": ["low" if label == "all keys" else "xhigh"]}
+            if label == "patch suffix":
+                expected = {k: [] for k in expected}
+            check(f"FM-063 · {label}: Git reads exactly the trailers present, never a body key (saw {values})", values == expected)
+            again = fm.session_trailer(str(msg))
+            check(f"FM-063 · {label}: a second hook call changes no byte", again == 0 and msg.read_bytes() == got)
+        git(root, "config", "--unset", "seat.session")
+        msg.write_bytes(b"Subject\n\nhttps://example.org/a\n")
+        original = msg.read_bytes()
+        check("FM-063 · a person without seat.session keeps the entire message", fm.session_trailer(str(msg)) == 0 and msg.read_bytes() == original)
+    finally:
+        fm.harness_reading, fm.shared_harness_lines = saved_reading, saved_shared
+
 # --- FM-032 S2: the registry is a report — generated from the `Session:` and `Worktree:` trailers, kept in no file ------
 AS = lambda who: {"GIT_AUTHOR_NAME": who, "GIT_AUTHOR_EMAIL": who, "GIT_COMMITTER_NAME": who, "GIT_COMMITTER_EMAIL": who}
 SEATS_TOML = '\n[seats]\nowner = "owner@example.org"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\nreviewer = "reviewer@seat"\n'
