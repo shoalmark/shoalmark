@@ -27,7 +27,7 @@ standup_minutes = 15
 
 Die erste Zeile der Tagesordnung trägt die Uhrzeit, wenn eine gesetzt ist, und die Dauer. Einen Termin in deinem Kalender
 legst du, wenn du einen willst, selbst an: Das Werkzeug schreibt keine Kalenderdatei und zeigt keine Benachrichtigung
-(R9). **Mehrere Repositories?** Eine Runde kann sie alle halten: der nächste Abschnitt.
+(R9). **Mehrere Repositories?** Eine Runde reicht für alle: der nächste Abschnitt.
 
 ## Mehrere Repositories, eine Runde
 

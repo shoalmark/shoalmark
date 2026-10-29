@@ -71,7 +71,7 @@ Lesen der Konfiguration ab.
 
 **Sessions.** Neben seiner Rolle trägt jeder Worktree eines Agenten `seat.session`, also den Lauf, zu dem er gehört,
 und der Hook von `--install-hook` hängt ihn an jeden Commit an: `Session: <id>`, daneben den Worktree. Das Gate lehnt
-den Commit einer Rolle ohne eine Session ihrer eigenen Rolle ab; `--sessions` liest allein aus diesen Zeilen ab, wer
+den Commit einer Rolle ab, der keine Session dieser Rolle trägt; `--sessions` liest allein aus diesen Zeilen ab, wer
 was wann und wo gemacht hat, und das Board zeigt, wer am letzten Tag gearbeitet hat. Das erledigen deine Agenten.
 Deine eigenen Commits tragen keine Session: Deine Signatur ist dein Ausweis.
 

@@ -19,8 +19,8 @@ Diese Seite wiederholt sie nicht.
 
 ## Dein Teil
 
-Eine Anforderung ändert sich nur durch deine signierte Antwort über das Board — nie durch die Änderung einer Rolle. Die
-Id bleibt, die Zeile ändert sich, Git bewahrt den Verlauf. Findet ein Agent eine Zeile falsch, stellt er dir eine
+Eine Anforderung ändert sich nur durch deine signierte Antwort über das Board — nie dadurch, dass eine Rolle sie ändert.
+Die Id bleibt, die Zeile ändert sich, Git bewahrt den Verlauf. Findet ein Agent eine Zeile falsch, stellt er dir eine
 Frage. *Nicht anwendbar* ist eine signierte Antwort mit ihrer Begründung, nie die einer Rolle.
 
 ## Eine regulatorische Anforderung
