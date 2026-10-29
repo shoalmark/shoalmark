@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?"
-ask-kind: ruling
-ask-since: 2026-10-28
-ask-options: "yes | yes, with the changes I name | no: the rewrite waits for v0.20.3"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-28
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -397,10 +389,16 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted with a change
 **signed** — 62ac263 · G
 
+**2026-10-28** · Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 558ec59 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The rewrite is in v0.20.2's allocation, in one lane, as the ask set it out. Records only. |
 | 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
 | 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
 | 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
