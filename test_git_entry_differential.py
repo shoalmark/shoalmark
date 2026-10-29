@@ -60,7 +60,8 @@ DAY_KEYS = ("day.standup.title", "day.standup.row", "day.standup.button", "day.s
             "day.closeout.button", "day.closeout.spoken", "day.standup.dialog", "day.closeout.dialog", "day.paste", "day.asks", "day.standup.asks",
             "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.fixed", "day.refused",
             "day.refused.chars", "day.refused.long", "day.refused.none", "day.refused.split", "day.value.name", "day.value.path", "day.value.cmd",
-            "day.value.branch", "day.copied", "day.nocopy", "day.copy")
+            "day.value.branch", "day.copied", "day.nocopy", "day.copy", "day.standup.asks.svn", "day.standup.asks.folder", "day.standup.runs.git",
+            "day.standup.runs.svn", "day.standup.runs.folder")
 DAY_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in DAY_KEYS)
 DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
             b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
