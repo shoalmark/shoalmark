@@ -2,7 +2,7 @@
 id: FM-088
 status: Proposed
 considered: FM-086, FM-062, FM-083, FM-030, FM-037, FM-078
-tags: process
+tags: process, seamanship
 next: owner
 ask: "In which release does shared memory land, as FM-088's What is true now sets out: the team's and each seat's memory in the repository, the four ways a lesson leaves harness memory, review by scope, the evals and staleness?"
 ask-kind: ruling
