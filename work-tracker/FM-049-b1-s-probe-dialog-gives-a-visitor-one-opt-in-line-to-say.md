@@ -5,14 +5,6 @@ epic: FM-006
 considered: FM-006, FM-004, FM-026
 tags: process
 next: build
-ask: "Does B1's probe dialog gain one opt-in line after its third step, in English and German, asking a visitor to say in one line what their agent found, even no fit, and where does that line lead?"
-ask-kind: ruling
-ask-since: 2026-10-14
-ask-options: "yes, to an issue form in this repository | yes, to a Discussions category, which you turn on | not now"
-ask-proposal: "yes, to an issue form in this repository"
-answer: "accepted - yes, to an issue form in this repository"
-answered: 2026-10-15
-answered-by: holgo99
 hook: "B1's probe dialog gives a visitor one opt-in line to say what their agent found"
 ---
 
@@ -46,6 +38,13 @@ words freeze.
 - The Owner has ruled whether the line is added and where `{discuss}` leads.
 - If it is added: B1's integration carries `dlg_tell` in English and German before the words freeze, and the Reviewer
   finds both texts as ruled.
+
+## Asks
+
+**2026-10-15** · Does B1's probe dialog gain one opt-in line after its third step, in English and German, asking a visitor to say in one line what their agent found, even no fit, and where does that line lead?
+**answered** — accepted - yes, to an issue form in this repository · holgo99
+**relation** — accepted the proposal
+**signed** — 54e6dd4 · G
 
 ## Ship log
 

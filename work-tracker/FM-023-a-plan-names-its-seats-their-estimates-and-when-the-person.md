@@ -8,6 +8,14 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
+ask: "Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?"
+ask-kind: ruling
+ask-since: 2026-10-28
+ask-options: "yes | yes, with the changes I name | no: the rewrite waits for v0.20.3"
+ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-28
+answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -16,6 +24,64 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-28 — the German rewrite, for the Owner's signed answer.** Every German line moves to *du* in v0.20.2, at
+once and in one lane: the Owner's ruling of 22 October, as the Auditor relays it.
+[FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) records its docs part under *What is
+true now* (27 and 28 October). The lane covers:
+- the German docs pages, each written from its meaning, not sentence by sentence;
+- the tool's German strings, [`examples/de/labels.yaml`](../examples/de/labels.yaml), and so the Board, with FM-024's
+  new German labels;
+- both German probe prompts, [`ADOPT.de.md`](../ADOPT.de.md) and [`ADOPT.svn.de.md`](../ADOPT.svn.de.md), which
+  re-pins the probe, with the probe dialog's [`launch/probe/start.de.md`](../launch/probe/start.de.md) and
+  [`launch/probe/how-it-works.de.md`](../launch/probe/how-it-works.de.md); the prompt's mixed German forms go with it;
+- the German link preview, [`brand/social/link-preview-de.svg`](../brand/social/link-preview-de.svg) and
+  [`docs/assets/preview-de.png`](../docs/assets/preview-de.png).
+
+First, a short glossary goes to the Owner to rule. A German native reader reads each part before it merges. The 27
+October table below does not list the rewrite. The ask above puts it to the Owner, on the Auditor's relay of 28 October.
+
+**2026-10-27 — v0.20.2's scope narrowed, and v0.20.3 named, on the Owner's word of 27 October, as relayed by the Auditor, for their signed answer.** The Owner said "leave them
+for v0.20.3", then "I want to also add ASK ids to v0.20.2", on the Auditor's list just before. The ask above puts it to
+them. The tables below stay as the record of what was allocated before.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2 | In progress: the CI item (`test_plugin.py` in CI), FM-068, FM-024, FM-076, and S2 (READY at `ec5d19f`). | — |
+| v0.20.2 | `/find-drift` and the plugin, in the lane; `/prune-drift` (READY at `9017ad8`), rebuilt onto the lane. | — |
+| v0.20.2 | The suite's Chrome keychain flag: the suite starts Chrome with `--use-mock-keychain` and a fresh `--user-data-dir` itself. | — |
+| v0.20.2 | Quick win 10: `--sessions` gains the harness and resume columns. | FM-024's round |
+| v0.20.2 | S1: the ask ids with R4's answer commit (FM-050). | FM-076 |
+| v0.20.2 | FM-063: the trailer step leaves a message that ends in bare links as it is (S), built in the `prepare-commit-msg` hook, so critical. | — |
+| v0.20.2 | FM-065: the skill-call contract. Its design is READY WITH FINDINGS (`4dc1910`), and its first use is `/prune-drift` calling `/find-drift`. | `/prune-drift`'s rebuild |
+| v0.20.3 | S3, who asked, the receipts and S4, from batch 3. | S1 |
+| v0.20.3 | From 18 October's allocation: the prose prune of `shoalmark.py` with the comment ratchet, FM-037's guard, the five conversions, and the text fixes. | v0.20.2's tag |
+
+- **FM-063 and FM-065 stay in v0.20.2,** on the Owner's word of 27 October: "both stay in v0.20.2".
+
+**2026-10-27 — batch 3 and quick win 11's S2 move from v0.20.1 to v0.20.2, for the Owner's signed answer.** On 22
+October, with the probe release, the Owner moved them to v0.20.2: batch 3 (S1 with the ask ids, S3, S4 the guided
+answer, the receipts, and the sessions with `--sessions` and who asked) and quick win 11's S2. The record never said
+so. This entry and the 15 October table's new row say it, and the ask above puts it to the Owner for a signed answer.
+- **It amends** v0.20.2's allocation of 18 October (answered at `88bf707`).
+- **Once it is answered,** FM-059's release answer of 16 October (*accepted - v0.20.1*, `99b1708`) is named as
+  superseded by it.
+- **What they need first** is unchanged: FM-050's ask ids and FM-059's guided answer are designed and reviewed, and
+  their ruling asks are filed again on today's main.
+
+**2026-10-21 — the tags of v0.20,** on the Owner's ruling of 20 October (recorded privately):
+- v0.20.0 and v0.20.1 take lightweight tags, with no release run sheet;
+- the last v0.20.x tag, the officially announced release, takes the run sheet, the signed tag and the announcement;
+- each lane built on `be19828` takes main's site commits before its pull request.
+
+**2026-10-19 — FM-063 goes to v0.20.2,** the Planner's call, which the Auditor's relay of 19 October left to the
+Planner: a seat's commit message that ends in bare links has them rewritten by the trailer step. Until it ships, a seat
+ends its message with a sentence. The 18 October table below has a v0.20.2 row for it.
+
+**2026-10-19 — the skill-call contract goes to v0.20.2 (FM-065),** on the Owner's word of 19 October (recorded
+privately): one skill calls another, external skills included, through a contract that pins what it calls and checks
+what it gets back. It is prepared for from v0.20.2's first release, and no external skill runs in v0.20.2. The 18
+October table below has a v0.20.2 row for it.
 
 **2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately): the
 hooks that rebuild the board after a checkout, a merge and a rebase. v0.20.0 ships as built, with R11's upgrade note.
@@ -43,6 +109,8 @@ the Owner's word of 18 October (recorded privately). Both ship in v0.20.2 as a C
 | v0.20.2 | Five small conversions, each a rule made a check: the ship log only grows; triage rows only grow; no line of a commit message begins with `---`; the allowed test runner; no home folder's path in public text. | The prose each one replaces | v0.20.1's tag |
 | v0.20.2 | The text fixes `/find-drift`'s first run found, in the rule files: sources that disagree, and obsolete text. The seat definitions are the Owner's to type. | The obsolete text | The second skill |
 | v0.20.2 | The suite's Chrome keychain flag: on macOS, the suite starts Chrome with `--use-mock-keychain`. | — | v0.20.1's head |
+| v0.20.2 | FM-063: the trailer step adds a seat's trailers and changes nothing else in the message, where it ends in bare links (S). | The rule that a seat ends its message with a sentence | — |
+| v0.20.2 | FM-065: the skill-call contract (M): its six parts, a registration format and a check, proven by synthetic child skills, and first used by `/prune-drift` calling `/find-drift`. No external skill runs. | — | A design round, then the Owner's ruling |
 | After v0.20.2 | R5; defects 1, 3 and 4; the four larger conversions; the broader R24 boundary work. | — | The Owner's allocation |
 
 - **When:** the work may start now.
@@ -77,6 +145,7 @@ proposes stays parked. The rows that read v0.20.0 moved there on 18 October, by 
 | v0.20.1 | Receipts, read from git (M): counts the record holds, each with its definition, never a total in a heading. | — (R13 went ahead, in v0.20.0) | R4; FM-055's definitions |
 | v0.20.1 | R17: partial and untagged vendoring go. Defect 5's class fix. | — | — |
 | v0.20.1 | R11's hook half comes back: the hooks that rebuild the board after a checkout, a merge and a rebase (FM-057), on the Owner's word of 19 October (recorded privately). | — | v0.20.0's tag |
+| v0.20.2 | Moved from v0.20.1 on the Owner's word of 22 October, with the probe release: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with `--sessions` and who asked) and quick win 11's S2. Their v0.20.1 rows above stay as the record of where they were. | — | This tracker's ask of 27 October; FM-050 and FM-059 ruled first |
 | After v0.20.1 | R5; defects 1, 3 and 4; the harness plugin; broader R24 boundary work. | — | As on 12 October |
 | v0.21.x | Research and complex work, each from a round the Owner allocates, as line 6 says. | — | The Owner's allocation |
 | Unchanged | The held rows R6, R7, R8, R16, R20, D3 and D4, looked at on 20 October; R25–R27 kept; #154's prerequisite wording as replaced by the Owner's signed answer of 12 October in adaec88 (#168). | — | As on 12 October |
@@ -318,10 +387,27 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted the proposal
 **signed** — 88bf707 · G
 
+**2026-10-27** · Do you amend v0.20.2's allocation of 18 October as FM-023's What is true now (27 October) sets out: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with --sessions and who asked) and quick win 11's S2 move from v0.20.1 to v0.20.2, as you said on 22 October?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 3996506 · G
+
+**2026-10-27** · Do you amend v0.20.2's allocation as FM-023's What is true now (27 October, the scope) sets out: v0.20.2 keeps the work in progress and adds the Chrome flag, quick win 10, S1, FM-063 and FM-065; v0.20.3 takes S3, who asked, the receipts, S4 and the rest of 18 October's allocation?
+**answered** — accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills · holgo99
+**relation** — accepted with a change
+**signed** — 62ac263 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
+| 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
+| 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
+| 2026-10-27 | Batch 3 and quick win 11's S2 recorded as moved from v0.20.1 to v0.20.2, on the Owner's word of 22 October, with a row of the 15 October table; the ask filed for the Owner's signed answer, amending v0.20.2's allocation of 18 October. Records only. |
+| 2026-10-21 | The tags of v0.20, on the Owner's ruling of 20 October (recorded privately): lightweight for v0.20.0 and v0.20.1; the run sheet, the signed tag and the announcement for the last v0.20.x. |
+| 2026-10-19 | FM-065, the skill-call contract, allocated to v0.20.2 on the Owner's word of 19 October (recorded privately): one v0.20.2 row; nothing is designed or built. |
+| 2026-10-19 | FM-063 filed, a bug, and allocated to v0.20.2, the Planner's call: one v0.20.2 row; nothing is built. |
 | 2026-10-19 | R11's hook half comes back in v0.20.1, on the Owner's word of 19 October (recorded privately): one v0.20.1 row; v0.20.0 unchanged. |
 | 2026-10-18 | v0.20.0 cut from main as it stands, on the Owner's ruling of 18 October (recorded privately): R22, R15, R13, R11, R9 and the stand-up across repositories move from v0.20.1, with the two prompts, what the board read and FM-045's fix. The second skill is named `/prune-drift`, the Owner's word of 18 October. |
 | 2026-10-18 | v0.20.2's allocation ask filed: shoalmark's first two skills in one Claude plugin, on the Owner's rulings of 18 October. The answer of 17 October recorded under the asks, and v0.20.1's count of quick wins made the Owner's eleven, the guided answer among them. |

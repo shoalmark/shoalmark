@@ -35,15 +35,19 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
 | [FM-070](FM-070-the-gate-s-text-shows-as-mojibake-in-tortoisesvn.md) | P3 | the gate's text shows as mojibake in TortoiseSVN | In Progress | progress | 2026-10-27 |
 | [FM-069](FM-069-the-subversion-notice-prints-on-every-run-and-reads-as-the.md) | P2 | the Subversion notice prints on every run and reads as the error in TortoiseSVN's refusal | In Progress | progress | 2026-10-27 |
 | [FM-068](FM-068-tortoisesvn-drops-the-hook-properties-install-hook-writes-so.md) | P1 | TortoiseSVN drops the hook properties --install-hook writes, so no TortoiseSVN commit is gated | In Progress | progress | 2026-10-27 |
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
+| [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | P2 | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | In Progress | progress | 2026-10-19 |
 | [FM-061](FM-061-vendoring-still-takes-an-untagged-or-partial-source-a-weaker.md) | P2 | vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows | In Progress | progress | 2026-10-16 |
+| [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | P2 | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | In Progress | progress | 2026-10-27 |
 | [FM-058](FM-058-a-command-a-person-runs-through-the-hooks-copy-is-stopped-at.md) | P1 | A command a person runs through the hooks' copy is stopped after the hook's 35 s, and an answer's PIN, touch and push c… | In Progress | progress | 2026-10-17 |
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |
 | [FM-053](FM-053-the-board-s-design-for-v0-20-1-is-the-owner-s-word.md) | P2 | The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word | In Progress | progress | 2026-10-15 |
+| [FM-050](FM-050-an-ask-has-no-id-of-its-own-so-an-answer-cannot-name-the-ask.md) | P2 | An ask has no id of its own, so an answer, the stand-up and the receipts cannot name the ask they mean | In Progress | progress | 2026-10-27 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
 | [FM-037](FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md) | P1 | a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through | In Progress | progress | 2026-09-25 |
 | [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md) | P2 | On 2026-09-24 the board showed the day's release work under triage and four idle trackers under progress: code for four… | In Progress | progress | 2026-10-13 |
@@ -64,14 +68,27 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
-| [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | — | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | Proposed | triage | — |
+| [FM-084](FM-084-queue-does-not-show-a-pull-request-s-ci-so-a-failing-check.md) | — | --queue does not show a pull request's CI, so a failing check is found on the forge by hand | Proposed | triage | — |
+| [FM-083](FM-083-nothing-measures-how-well-a-skill-does-its-work-only-its.md) | — | nothing measures how well a skill does its work, only its structure and its proof | Proposed | triage | — |
+| [FM-082](FM-082-the-board-and-standup-do-not-list-an-ask-that-sits-on-a.md) | — | the Board and --standup do not list an ask that sits on a branch not on main | Proposed | triage | — |
+| [FM-081](FM-081-a-tracker-names-no-release-in-its-front-matter-so-the.md) | — | a tracker names no release in its front matter, so the release commit cannot check what it holds | Proposed | triage | — |
+| [FM-080](FM-080-the-docs-do-not-say-an-answer-needs-a-merge-commit-a-squash.md) | — | the docs do not say an answer needs a merge commit: a squash merge or a forge's web-editor commit breaks it | Proposed | triage | — |
+| [FM-079](FM-079-check-does-not-say-when-the-session-rule-is-still-dormant.md) | — | --check does not say when the session rule is still dormant | Proposed | triage | — |
+| [FM-078](FM-078-model-and-effort-have-no-harness-neutral-record.md) | — | model and effort have no harness-neutral record | Proposed | triage | — |
+| [FM-077](FM-077-an-owner-signed-commit-that-carries-a-seat-s-session-line.md) | — | an Owner-signed commit that carries a seat's Session: line passes silently | Proposed | triage | — |
+| [FM-075](FM-075-seven-source-binding-controls-fail-on-apple-s-python-3-9-6.md) | — | seven source-binding controls fail on Apple's Python 3.9.6, whose bytecode cache is redirected | Proposed | triage | — |
+| [FM-074](FM-074-the-docs-do-not-name-two-subversion-limits-first-no-gate-on.md) | — | the docs do not name two Subversion limits first: no gate on the svn command line, and one shared account | Proposed | triage | — |
+| [FM-073](FM-073-adopt-s-time-budget-leaves-out-the-time-spent-waiting-for.md) | — | ADOPT's time budget leaves out the time spent waiting for the person | Proposed | triage | — |
+| [FM-072](FM-072-adopt-s-read-rule-for-an-extension-can-be-taken-to-skip-a.md) | — | ADOPT's read rule for an extension can be taken to skip a folder whose name ends that way | Proposed | triage | — |
+| [FM-071](FM-071-blocked-by-owner-refuses-a-comma-in-its-reason.md) | — | blocked-by: Owner refuses a comma in its reason | Proposed | triage | — |
+| [FM-065](FM-065-a-skill-calls-another-skill-external-ones-included-through-a.md) | — | a skill calls another skill, external ones included, through a contract that pins what it calls and checks what it gets… | Proposed | triage | — |
+| [FM-064](FM-064-a-signed-answer-the-guided-run-pushes-is-out-of-the-board-s.md) | — | a signed answer the guided run pushes is out of the board's sight until its branch is merged | Proposed | triage | — |
+| [FM-063](FM-063-a-seat-s-commit-message-that-ends-in-bare-links-has-them.md) | — | a seat's commit message that ends in bare links has them rewritten by the trailer step | Proposed | triage | — |
 | [FM-060](FM-060-the-answer-s-refusal-record-is-committed-unsigned-under-the.md) | — | --answer's refusal record is committed unsigned under the Owner's name, and R14 then refuses every branch that carries… | Proposed | triage | — |
-| [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | — | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | Proposed | triage | — |
 | [FM-056](FM-056-the-gate-can-name-the-commit-that-removed-a-line-as-the-one.md) | — | The gate names who set a tracker's line with a pickaxe that also matches the commit that removed it, so a line a merge… | Proposed | triage | — |
 | [FM-055](FM-055-the-receipts-need-the-owner-s-definitions-of-a-day-a-sitting.md) | — | The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories co… | Proposed | triage | — |
 | [FM-052](FM-052-a-fixture-that-watches-git-lets-git-s-own-housekeeping-run.md) | — | A fixture that watches .git lets git's own housekeeping run inside the watch, so a green commit can fail once | Proposed | triage | — |
 | [FM-051](FM-051-dependency-updates-have-no-path-the-gate-refuses-every.md) | — | Dependency updates have no path: the gate refuses every Dependabot pull request, and the site's dependencies are first… | Proposed | triage | — |
-| [FM-050](FM-050-an-ask-has-no-id-of-its-own-so-an-answer-cannot-name-the-ask.md) | — | An ask has no id of its own, so an answer, the stand-up and the receipts cannot name the ask they mean | Proposed | triage | — |
 | [FM-049](FM-049-b1-s-probe-dialog-gives-a-visitor-one-opt-in-line-to-say.md) | — | B1's probe dialog gives a visitor one opt-in line to say what their agent found | Proposed | triage | — |
 | [FM-043](FM-043-the-upgrade-notes-leave-an-adopter-with-a-hook-runner-short.md) | — | the upgrade notes leave an adopter with a hook runner short of 0.19.0 | Proposed | triage | — |
 | [FM-038](FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md) | P3 | the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time | Proposed | backlog | 2026-09-27 |
