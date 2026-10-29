@@ -3589,9 +3589,9 @@ def _signers_repo(base):
     return root
 
 
-# --- FM-045's shape: the signers file in the working tree, origin's default branch known, an answer on its way on origin. The board's run, in process and as a
-#     program — what a hook starts —, with origin/HEAD set and unset: exit 0, the board written, no "stopped" line, the answer shown on its way, and none of the
-#     commands named as never started in the board's run started
+# --- the signers file in the working tree, origin's default branch known, an answer branch on origin that the board does not read. The
+#     board's run, in process and as a program — what a hook starts —, with origin/HEAD set and unset: exit 0, the board written, no "stopped" line, no
+#     answer branch named, and none of the commands named as never started in the board's run started
 with tempfile.TemporaryDirectory() as tmp:
     base = Path(tmp).resolve(); root = _signers_repo(base); page_ = root / "docs/work-tracker/index.html"
     tip_ = subprocess.run(["git", "-C", str(root), "rev-parse", "origin/answer/ap-001"], capture_output=True, text=True, env=_ENV).stdout.strip()
@@ -3603,10 +3603,10 @@ with tempfile.TemporaryDirectory() as tmp:
             page_.unlink(missing_ok=True); from_ = len(_BOARD_GIT)
             code_, out_, err_ = go_(); shown_ = page_.read_text(encoding="utf-8") if page_.is_file() else ""
             saw_[f"origin/HEAD {head_}, {how_}"] = (code_, err_.strip()[-200:])
-            ok_.append(code_ == 0 and out_.startswith("board: file:") and "stopped" not in out_ + err_ and f'["answer", "answer/ap-001", "{tip_}", ' in shown_
+            ok_.append(code_ == 0 and out_.startswith("board: file:") and "stopped" not in out_ + err_ and "answer/ap-001" not in shown_ and tip_ not in shown_
                        and not _started_never(_BOARD_GIT[from_:], getattr(fm, "NEVER_IN_BOARD_RUN", {})))
-    check(f"FM-045 · the board's refresh where the signers file lies in the working tree, origin's default branch is known and an answer is on its way on origin: `--html-only`, "
-          f"in process and as a program, with origin/HEAD set and unset, exits 0, writes the board, says no \"stopped\" line and shows the answer on its way (saw {saw_})",
+    check(f"FM-045 · the board's refresh where the signers file lies in the working tree, origin's default branch is known and an answer branch is on origin: `--html-only`, "
+          f"in process and as a program, with origin/HEAD set and unset, exits 0, writes the board, says no \"stopped\" line and names no answer branch (saw {saw_})",
           len(ok_) == 4 and all(ok_))
     rm_git(root)
 fm.configure(HERE)
@@ -7974,22 +7974,6 @@ act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
 act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
-way.title: unterwegs
-way.merge: Ihr Merge ist als Nächstes dran
-way.held: "Ihr Merge wartet: {0}"
-way.done: erledigt, unterwegs
-way.answer: beantwortet, unterwegs
-way.revoked: zurückgenommen, unterwegs
-way.undone: Erledigung zurückgenommen, unterwegs
-way.due: verschoben, unterwegs
-way.signed: signiert
-way.unverified: "hier nicht geprüft: {0}"
-way.revoke: zurücknehmen
-way.revoke.title: Zurücknehmen — warum?
-way.revoke.hint: "warum Sie es zurücknehmen — der Eintrag hält es neben dem fest, was es zurücknimmt"
-way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austausch"
-act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
-act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
 sessions.recent: Sitzungen · {0} am letzten Tag
 read.git.branch: "gelesen von {0} @ {1} um {2}"
 read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
@@ -8828,10 +8812,10 @@ def _accept(source):
     # 1 · the five-second test: with the icons and every colour gone, each row still says what it is, its type, its state and its actions, in that order
     row_tpl = ('<div class="row${cls?" "+cls:""}"><div class="what">${id}<span>${what}</span></div><div class="how">${ty?`<span class="ty">${ty}</span> `:""}'
                '${st?`<span class="st">${st}</span> `:""}${acts?`<span class="acts">${acts}</span>`:""}</div>')
-    types_ = [e_ for e_ in ('t[29][1]?l("ask."+t[29][1]):""', 'l("type.act")', 'l(w[0]=="answer"||w[0]=="revoked"?"type.answer":"type.act")', 'v[5]?l("verdict."+v[5]):l("type.verdict")')
+    types_ = [e_ for e_ in ('t[29][1]?l("ask."+t[29][1]):""', 'l("type.act")', 'v[5]?l("verdict."+v[5]):l("type.verdict")')
               if box_src.count(e_) == 1]
     buttons_ = re.findall(r"<button[^>]*>([^<]*?)</button>", script)
-    out[1] = (row_tpl in script and box_src.count("row(") == 5 and len(types_) == 4
+    out[1] = (row_tpl in script and box_src.count("row(") == 4 and len(types_) == 3
               and all(labels[k] for k in ("ask.ruling", "ask.action", "ask.determination", "ask.ceremony", "type.act", "type.answer", "type.verdict", "verdict.READY", "verdict.NOT READY"))
               and all(b_.strip() for b_ in buttons_) and '${ICO.copy}${l("answer.sign.copy")}</button>' in script and labels["answer.sign.copy.name"].startswith("copy ")
               and labels["answer.sign.copy.name"].endswith(labels["answer.sign.copy"])
@@ -8870,7 +8854,7 @@ def _accept(source):
               and box_src.index('S.push(sec(hd("h2",`${l("waiting.title")}') < box_src.index("const acts=") and not re.search(r"(?<![\w-])order:", css.replace("#sb{flex-basis:100%;order:1}", "", 1))
               and not any(s.startswith("#p") and d_.get("display") == "none" for m, s, d_ in rules), "")
     # 6 · no duplicates: a count in a heading is not said again on a row, and each section's heading is said once
-    out[6] = (all(box_src.count(f'l("{k}"') == 1 for k in ("waiting.title", "waiting.oldest", "waiting.holds", "acts.title", "way.title", "day.title", "sessions.recent",
+    out[6] = (all(box_src.count(f'l("{k}"') == 1 for k in ("waiting.title", "waiting.oldest", "waiting.holds", "acts.title", "day.title", "sessions.recent",
                                                            "reviews.title", "reviews.counts", "reviews.notready", "reviews.findings", "path.title"))
               and box_src.count('l("waiting.holds.ids"') == 1 and box_src.count('l("ask."+t[29][1])') == 1, "")
     # 7 · the first screen: the box holds one fold open on a desktop — the day's sessions — and every other part that can wait folded
@@ -11677,12 +11661,6 @@ def _bm_row(tid, status):
     return f"{tid} {status}", r'\["' + tid + r'", "[^"]*", "' + status + r'", '
 
 
-def _bm_way(at, tid):
-    """(what it is, what the board's page holds for it): `tid`'s answer on its way — its row of `on_their_way`, with `origin/answer/<tid>`'s tip."""
-    tip_ = subprocess.run(["git", "-C", str(at), "rev-parse", "-q", "--verify", f"refs/remotes/origin/answer/{tid.lower()}"], capture_output=True, text=True, env=_ENV).stdout.strip()
-    return f"{tid}'s answer on its way", re.escape(f'["answer", "answer/{tid.lower()}", "{tip_ or "no such branch"}", ')
-
-
 def _bm_fire(at, trace, *a):
     """git with the hooks running, as a person's own command runs them, its trace2 events written to `trace`: (its exit, what it and its hooks said)."""
     r_ = subprocess.run(["git", "-C", str(at), *a], capture_output=True, text=True, encoding="utf-8", errors="replace", env=dict(_BM_ENV, GIT_TRACE2_EVENT=str(trace)))
@@ -11779,7 +11757,7 @@ def _bm_repo(base, signers="beside", more=0, head=True, runner=False, moved=Fals
     return root, inst_
 
 
-def _bm_events(base, at, home, also=(), drop=False, only=("answer", "switch", "merge", "rebase")):
+def _bm_events(base, at, home, drop=False, only=("answer", "switch", "merge", "rebase")):
     hand_ = _BM_PLAIN.pop(str(at), None)
     seen_, way_ = ({"by hand": hand_} if hand_ and not drop else {}), []
     def one_(name_, hook_, fire_, shows_, says_=("board: file:",)):
@@ -11788,7 +11766,7 @@ def _bm_events(base, at, home, also=(), drop=False, only=("answer", "switch", "m
         before_ = _bm_board(at); code_, said_ = fire_(trace_); after_ = _bm_board(at)
         page_ = (after_ or b"").decode("utf-8", "replace")
         seen_[name_] = dict(code=code_, said=said_, hooks=_bm_trace(trace_), hook=hook_, changed=after_ is not None and after_ != before_,
-                            missing=[w_ for w_, rx_ in shows_() + way_ + [_bm_way(at, t_) for t_ in also] if not re.search(rx_, page_)]
+                            missing=[w_ for w_, rx_ in shows_() + way_ if not re.search(rx_, page_)] + (["an answer branch named"] if "answer/ap-50" in page_ else [])
                             + [f"said {s_!r}" for s_ in says_ if s_ not in said_], **_bm_watched(_bm_record(_bm_watch(trace_, "act" if name_ == "answer" else "hooks")), hook_))
     if "answer" in only and not drop:
         def answer_(trace_):
@@ -12181,7 +12159,7 @@ with tempfile.TemporaryDirectory() as d:
     rm_git(root)
 fm.configure(HERE)
 
-# the board's run in a fresh partial clone that lacks what it reads — an answer on its way on origin, and origin's signers file, which origin moved since
+# the board's run in a fresh partial clone that lacks what it reads — origin's signers file, which origin moved since — beside an answer branch on origin it does not read
 if not _BW_NEW_GIT:
     _skipped("FM-045 · the board's run in a partial clone that lacks what it reads", 8, "git here is older than 2.44 and cannot keep a read from fetching — the checks where git is older than 2.44 run here")
 for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless clone")) if _BW_NEW_GIT else ():
@@ -12190,7 +12168,7 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
         _h, common_ = _bw_paths(part_)
         c_, o_, e_, w_ = _bw_program(base_, part_, "fresh", "--html-only")
         line_ = [l_ for l_ in e_.splitlines() if l_.startswith("board: not read — ")]
-        check(f"FM-045 · the board's run in {shape_} that lacks what it reads — an answer on its way on origin, and origin's signers file, moved since —: exit 0, "
+        check(f"FM-045 · the board's run in {shape_} that lacks what it reads — origin's signers file, moved since —: exit 0, "
               f"the board written, no traceback; one line says what it could not read and the command that reads it; nothing is fetched — {_BW_ASSERT}; and it read "
               f"whether the clone is partial, from its configuration (saw exit {c_}, {line_[:1]}, {_bw_saw(w_)}, commands {w_['commands']})",
               c_ == 0 and o_.startswith("board: file:") and "Traceback" not in o_ + e_ and len(line_) == 1 and "fetching what the clone lacks" in line_[0]
@@ -12198,12 +12176,11 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
         c2_, o2_, e2_ = run(part_, "--html-only", git_env={"GIT_TRACE2_EVENT": str(base_ / "trace-fresh-in.json")})
         unread_, page_ = list(getattr(fm, "BOARD_UNREAD", [])), (_bm_board(part_) or b"").decode("utf-8", "replace")
         g2_, k2_, x2_, _c, _n = _bw_trace(base_ / "trace-fresh-in.json")
-        check(f"FM-045 · the board's run in process, in {shape_} that lacks what it reads: what it could not read is named — what is on its way on "
-              f"origin/answer/ap-507; where the board reads who set an ask, as it can in the blobless clone, the signers file on origin/main —, and nothing that "
-              f"rests on it is said: AP-507's answer is not shown on its way, and no ask is refused for who set it; nothing is fetched (saw exit {c2_}, {unread_}, "
-              f"started by themselves {x2_[:2]})",
-              c2_ == 0 and "what is on its way on origin/answer/ap-507" in unread_ and ("the signers file on origin/main" in unread_ or filt_ != "blob:none")
-              and not re.search(_bm_way(part_, "AP-507")[1], page_) and "version control names no commit for this line" not in page_ and g2_ > 0 and not x2_)
+        check(f"FM-045 · the board's run in process, in {shape_} that lacks what it reads: what it could not read is named — where the board reads who set an "
+              f"ask, as it can in the blobless clone, the signers file on origin/main —, nothing of the answer branch on origin, which it does not read, and nothing "
+              f"that rests on what it lacks is said: no ask is refused for who set it; nothing is fetched (saw exit {c2_}, {unread_}, started by themselves {x2_[:2]})",
+              c2_ == 0 and not any("answer/" in u_ for u_ in unread_) and ("the signers file on origin/main" in unread_ or filt_ != "blob:none")
+              and "answer/ap-507" not in page_ and "version control names no commit for this line" not in page_ and g2_ > 0 and not x2_)
         b3_, t3_ = _bw_state(common_), base_ / "trace-control.json"
         subprocess.run(["git", "-C", str(part_), "cat-file", "-p", "refs/remotes/origin/cold:cold.txt"], capture_output=True,
                        env=dict(_ENV, GIT_TRACE2_EVENT=str(t3_)))
@@ -12215,10 +12192,10 @@ for filt_, shape_ in (("blob:none", "a blobless clone"), ("tree:0", "a treeless 
         c4_ = _tool_run(HERE / "shoalmark.py", part_)[0]            # the command the line names: the default run, whose reads keep git's own default
         c5_, o5_, e5_, w5_ = _bw_program(base_, part_, "after", "--html-only")
         page5_ = (_bm_board(part_) or b"").decode("utf-8", "replace")
-        check(f"FM-045 · in {shape_}, the command the line names reads what the clone lacks, and the board's next run reads it: AP-507's answer on its way, no "
-              f"line, nothing fetched by the board's run (saw the default run's exit {c4_}, the board's {c5_}, {[l_ for l_ in e5_.splitlines() if 'not read' in l_][:1]}, "
+        check(f"FM-045 · in {shape_}, the command the line names reads what the clone lacks, and the board's next run reads it: no line, still no answer branch "
+              f"named, nothing fetched by the board's run (saw the default run's exit {c4_}, the board's {c5_}, {[l_ for l_ in e5_.splitlines() if 'not read' in l_][:1]}, "
               f"{_bw_saw(w5_)})",
-              c5_ == 0 and not any(l_.startswith("board: not read") for l_ in e5_.splitlines()) and bool(re.search(_bm_way(part_, "AP-507")[1], page5_)) and _bw_ok(w5_))
+              c5_ == 0 and not any(l_.startswith("board: not read") for l_ in e5_.splitlines()) and "answer/ap-507" not in page5_ and _bw_ok(w5_))
         rm_git(part_); rm_git(root_)
 fm.configure(HERE)
 
@@ -12375,9 +12352,9 @@ with tempfile.TemporaryDirectory() as d:
             git(root_, "config", "--unset", k_)
     page_ = (_bm_board(root_) or b"").decode("utf-8", "replace")
     read_ = {tid_: re.search(r'\["done", "answer/' + tid_ + r'", "[0-9a-f]+", "[0-9a-f]+", "[^"]*", "([A-Z])", "([^"]*)"', page_) for tid_ in ("ap-502", "ap-503")}
-    check(f"FM-045 · with the signature programs fixed, the board reads an OpenPGP- and an X.509-signed answer as it always has: no good signature (`N`), and "
-          f"waiting on a signature with SSH (saw {[(t_, m_.groups() if m_ else None) for t_, m_ in read_.items()]})",
-          all(m_ and m_.group(1) == "N" and m_.group(2).startswith("wait: sign with SSH") for m_ in read_.values()))
+    check(f"FM-045 · with the signature programs fixed, the board reads no answer branch: neither the OpenPGP- nor the X.509-signed answer on origin is "
+          f"on its page (saw {[(t_, m_.groups() if m_ else None) for t_, m_ in read_.items()]})",
+          not any(read_.values()) and "answer/ap-502" not in page_ and "answer/ap-503" not in page_)
     rm_git(root_)
 fm.configure(HERE)
 
@@ -12463,8 +12440,8 @@ with tempfile.TemporaryDirectory() as d:
 fm.configure(HERE)
 
 # a commit shaped as the tool's own refusal record, in the Owner's name and unsigned, below their signed answer, that carries one more change — each kind git
-# prints no `+++` line for: `--queue` (`gh` stubbed, origin a local bare repository) and the board's run read the branch as waiting on it; the record alone,
-# as the tool writes it, still reads as theirs to merge
+# prints no `+++` line for: `--queue` (`gh` stubbed, origin a local bare repository) reads the branch as waiting on it; the record alone, as the tool
+# writes it, still reads as theirs to merge; the board's run reads no answer branch, and shows none
 _BW_NO_PLUS = {     # what each carries beside the record's line: (add a path with mode and content | remove a path | the same content at mode 100755)
     "a binary file, added": [("add", "100644", b"\x00payload\x00" * 8, "payload.bin")],
     "a binary file, changed": [("add", "100644", b"\x00other\x00" * 8, "old.bin")],
@@ -12541,22 +12518,23 @@ with tempfile.TemporaryDirectory() as d:
     head_ = _bw_refusal_shaped(root_, rel_, [])
     q0_, b0_ = queue_(head_), board_()
     check(f"FM-045 · a refusal record as the tool writes it — the Owner's name, unsigned, one line under `## Acts` — below their signed answer still reads as "
-          f"theirs: `--queue` and the board both read `merge: your answer` (saw `--queue` {q0_!r}, the board {b0_})",
-          q0_ == "merge: your answer" and b0_ == ("merge: your answer", ""))
+          f"theirs: `--queue` reads `merge: your answer`, and the board, which reads no answer branch, shows none (saw `--queue` {q0_!r}, the board {b0_})",
+          q0_ == "merge: your answer" and b0_ == ("not shown", ""))
     for shape_, ops_ in _BW_NO_PLUS.items():
         head_ = _bw_refusal_shaped(root_, rel_, ops_)
         q_, b_ = queue_(head_), board_()
         below_ = subprocess.run(["git", "-C", str(root_), "rev-parse", head_ + "~1"], capture_output=True, text=True, env=_ENV).stdout.strip()
         want_ = f"wait: an unverified commit in your name on your answer branch ({below_[:7]})"
         check(f"FM-045 · a commit shaped as the tool's refusal record, in the Owner's name and unsigned, below their signed answer, that also carries {shape_} — a "
-              f"change git prints no `+++` line for —: `--queue` and the board read the branch as waiting on it, `{want_[:51]}…` (saw `--queue` {q_!r}, the board {b_})",
-              q_ == want_ and b_[1] == want_)
+              f"change git prints no `+++` line for —: `--queue` reads the branch as waiting on it, `{want_[:51]}…`, and the board shows no answer branch (saw "
+              f"`--queue` {q_!r}, the board {b_})",
+              q_ == want_ and b_ == ("not shown", ""))
     rm_git(root_)
 fm.configure(HERE)
 
 # a submodule whose `.gitmodules` on the default branch says `ignore = all`: a commit below the Owner's signed answer that also moves its pointer — shaped as
-# the tool's refusal record, or a seat's commit beside a review file, or a seat's commit that moves the pointer alone — is waited on in `--queue` and on the
-# board, as it is where `.gitmodules` says `ignore = none`; the tool's own record and a seat's review file alone still read as theirs to merge
+# the tool's refusal record, or a seat's commit beside a review file, or a seat's commit that moves the pointer alone — is waited on in `--queue`, as it is
+# where `.gitmodules` says `ignore = none`; the tool's own record and a seat's review file alone still read as theirs to merge; the board shows no answer branch
 def _bw_below_answer(root, rel, ops, author=("owner", "o@x"), record=True, subject="AP-501: --answer refused — the push was refused"):
     """`answer/ap-501` on origin: one commit by `author` below the Owner's signed answer — with `record`, shaped as the tool's refusal record on `rel` —
     that also makes the changes `ops`: ("link", None, <a commit id>, path) a submodule's pointer, ("add", mode, data, path) a file; made with a separate
@@ -12636,13 +12614,13 @@ with tempfile.TemporaryDirectory() as d:
         git(root_, "commit", "-qm", f"the trunk vendors a submodule, `ignore = {ignore_}`"); git(root_, "push", "-q", "origin", "main")
         head_ = _bw_below_answer(root_, rel_, []); q_, b_ = queue_(head_), board_()
         check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a refusal record as the tool writes it, below the Owner's signed answer, "
-              f"still reads as theirs: `merge: your answer` in `--queue` and on the board (saw `--queue` {q_!r}, the board {b_})",
-              q_ == "merge: your answer" and b_ == ("merge: your answer", ""))
+              f"still reads as theirs: `merge: your answer` in `--queue`; no answer branch on the board (saw `--queue` {q_!r}, the board {b_})",
+              q_ == "merge: your answer" and b_ == ("not shown", ""))
         head_ = _bw_below_answer(root_, rel_, [("add", "100644", b"# a review\n", review_)], author=("seat", "seat@x"), record=False, subject="review: a note")
         q_, b_ = queue_(head_), board_()
         check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a seat's commit of a review file alone, below the Owner's signed "
-              f"answer, is a review addendum: `merge: your answer` in `--queue` and on the board (saw `--queue` {q_!r}, the board {b_})",
-              q_ == "merge: your answer" and b_ == ("merge: your answer", ""))
+              f"answer, is a review addendum: `merge: your answer` in `--queue`; no answer branch on the board (saw `--queue` {q_!r}, the board {b_})",
+              q_ == "merge: your answer" and b_ == ("not shown", ""))
         for shape_, ops_, author_, record_, subject_, wait_ in (
                 ("a commit shaped as the tool's refusal record, in the Owner's name and unsigned, that also moves the submodule's pointer", moved_, ("owner", "o@x"), True,
                  "AP-501: --answer refused — the push was refused", "wait: an unverified commit in your name on your answer branch ({})"),
@@ -12652,16 +12630,16 @@ with tempfile.TemporaryDirectory() as d:
                  "wait: a seat's commit on your answer branch ({}, seat@x)")):
             head_ = _bw_below_answer(root_, rel_, ops_, author=author_, record=record_, subject=subject_)
             want_ = wait_.format(below_(head_)); q_, b_ = queue_(head_), board_()
-            check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, below the Owner's signed answer, {shape_}: `--queue` and the board "
-                  f"wait on it, `{want_.split(' (')[0]}` (saw `--queue` {q_!r}, the board {b_})",
-                  q_ == want_ and b_[1] == want_)
+            check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, below the Owner's signed answer, {shape_}: `--queue` "
+                  f"waits on it, `{want_.split(' (')[0]}`; no answer branch on the board (saw `--queue` {q_!r}, the board {b_})",
+                  q_ == want_ and b_ == ("not shown", ""))
         head_ = _bw_above_answer(root_, _bw_below_answer(root_, rel_, [], record=False, author=("owner", "o@x"), subject="AP-501: an empty step"),
                                  moved_ + [("add", "100644", b"# a review\n", review_)], ("seat", "seat@x"))
         q_, b_ = queue_(head_), board_()
         check(f"FM-045 · beside a submodule whose `.gitmodules` says `ignore = {ignore_}`, a seat's commit of a review file that also moves the submodule's pointer, "
-              f"on top of the Owner's signed answer, is no review addendum: `--queue` and the board read the head, `wait: not an answerer (seat@x)` (saw `--queue` "
-              f"{q_!r}, the board {b_})",
-              q_ == "wait: not an answerer (seat@x)" and b_[1] == "wait: not an answerer (seat@x)")
+              f"on top of the Owner's signed answer, is no review addendum: `--queue` reads the head, `wait: not an answerer (seat@x)`; no answer branch on the "
+              f"board (saw `--queue` {q_!r}, the board {b_})",
+              q_ == "wait: not an answerer (seat@x)" and b_ == ("not shown", ""))
     rm_git(root_)
 fm.configure(HERE)
 
@@ -12809,8 +12787,8 @@ with tempfile.TemporaryDirectory() as d:
 
 with tempfile.TemporaryDirectory() as d:
     t0_ = time.monotonic(); base_ = Path(d).resolve(); root_, inst_ = _bm_repo(base_, answers=True)
-    for said_, ok_, saw_ in _bm_done("answer branches", t0_, _bm_events(base_, root_, "main", also=("AP-507",))):
-        check(f"FM-045 · the board matrix · answer branches, local and on origin — AP-507's on origin only on its way throughout · {said_} (saw {saw_})", ok_)
+    for said_, ok_, saw_ in _bm_done("answer branches", t0_, _bm_events(base_, root_, "main")):
+        check(f"FM-045 · the board matrix · answer branches, local and on origin — branches the board does not read, none named throughout · {said_} (saw {saw_})", ok_)
     rm_git(root_)
 
 with tempfile.TemporaryDirectory() as d:
@@ -12913,8 +12891,10 @@ with tempfile.TemporaryDirectory() as d:
     named_ = {ev_: sorted({_git_command(a_) for a_ in seen_[ev_]["starts"]}) for ev_ in ("answer", "switch")}
     runs_ = {ev_: [(k_, len(a_)) for k_, a_ in seen_[ev_]["runs"]] for ev_ in ("answer", "switch")}
     check(f"FM-045 · the board matrix · the watch's control · a board's run is seen: `git switch`'s hook and `--answer`'s rebuild each start a non-zero, "
-          f"named list of git — `for-each-ref` on origin's answer branches among them — every one a read `read_only_git` admits (saw runs {runs_}; named {named_})",
-          all(_bm_ok(seen_[ev_]) and seen_[ev_]["starts"] and "for-each-ref" in named_[ev_] for ev_ in ("answer", "switch"))
+          f"named list of git — `log` and `ls-tree` among them, and no `for-each-ref`, since the board reads no answer branch — every one a read `read_only_git` "
+          f"admits (saw runs {runs_}; named {named_})",
+          all(_bm_ok(seen_[ev_]) and seen_[ev_]["starts"] and {"log", "ls-tree"} <= set(named_[ev_]) and "for-each-ref" not in named_[ev_]
+              for ev_ in ("answer", "switch"))
           and any(k_ == "--answer · board_after_act" and n_ for k_, n_ in runs_["answer"]) and any(k_ == "post-checkout" and n_ for k_, n_ in runs_["switch"]))
     nothing_ = {**seen_["switch"], **_bm_watched([], None)}
     before_ = _bm_board(root_)
@@ -14007,8 +13987,8 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# --- FM-045, 0.19.2 — C's read-only half, as the Owner ruled it on 2026-10-08 (option 1): the board records what it was built from — the tracker folder,
-#     the configuration, the answer branches it reads — in `view/built.json`, written last through the board's own write, and `--owner` and `--standup`
+# --- the board records what it was built from — the tracker folder and the configuration — in `view/built.json`, written last through the
+#     board's own write, and `--owner` and `--standup`
 #     say in one line when any of it differs now. HEAD moving alone is never said. On Subversion and in a plain folder nothing is recorded or said.
 def _bj(root):
     """`view/built.json` as a run left it, parsed — None where there is none, or it is no JSON object."""
@@ -14035,7 +14015,7 @@ with tempfile.TemporaryDirectory() as tmp:
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "A"); a_ = _bj_rev(root)
     code_, _o, _e = run(root, "--html-only"); bj_ = _bj(root)
     stamps_ = [p_.stat().st_mtime_ns for p_ in [t_ / "index.html", *(t_ / "view").glob("*.js")]]
-    check(f"FM-045 · C · the board built by `--html-only` at commit A records what it was built from in `view/built.json` — a SHA-256 each for the tracker folder, the configuration and the answer branches, and A for the line's wording — written after the page and every view (saw {bj_})",
+    check(f"FM-045 · C · the board built by `--html-only` at commit A records what it was built from in `view/built.json` — a SHA-256 each for the tracker folder and the configuration, the part an older reader requires, and A for the line's wording — written after the page and every view (saw {bj_})",
           code_ == 0 and bj_ is not None and sorted(bj_) == ["answers", "branch", "built_at", "changes", "commit", "configuration", "trackers", "vcs"] and bj_["commit"] == a_
           and all(re.fullmatch(r"[0-9a-f]{64}", str(bj_[k_])) for k_ in ("trackers", "configuration", "answers"))
           and all((t_ / "view/built.json").stat().st_mtime_ns >= m_ for m_ in stamps_))
@@ -14057,8 +14037,8 @@ with tempfile.TemporaryDirectory() as tmp:
     run(root, "--html-only"); cleared_ = _bj_says(root)
     git(root, "update-ref", "refs/remotes/origin/answer/msr-001", s2_); moved_ = _bj_says(root)
     run(root, "--html-only"); again_ = _bj_says(root)
-    check(f"FM-045 · C · the Owner's check 2: an answer branch on origin, new and then moved, the board not refreshed — `--owner` and `--standup` each print the line once, naming the answer branches; a refresh clears it each time (saw {new_} · {moved_})",
-          quiet_ == cleared_ == again_ == ((0, 0), [], []) and new_ == moved_ == ((0, 0), [_bj_line("the answer branches", d_)], [_bj_line("the answer branches", d_)]))
+    check(f"FM-045 · C · an answer branch on origin, new and then moved, the board not refreshed: the board reads no answer branch, so `--owner` and `--standup` print no line for it (saw {new_} · {moved_})",
+          quiet_ == cleared_ == again_ == new_ == moved_ == ((0, 0), [], []))
     cfg_ = root / "shoalmark.toml"; cfg_.write_text(re.sub(r'(?m)^name = "[^"]*"', 'name = "renamed"', cfg_.read_text(encoding="utf-8")), encoding="utf-8")
     tracker(root, "MSR-001", title="changed beside the configuration")
     codes_, o_, s_ = _bj_says(root)
@@ -14610,7 +14590,7 @@ with tempfile.TemporaryDirectory() as d_old_:
             check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool that configuration is read (saw exit {c_})", c_ != 1)
     c_, e_ = _sig_cfg('name = "s"\nowner = ["holgo", "h@x signed"]\n[kinds]\nSG = "Work"\n[seats]\nplanner = "planner"\n', HERE / "shoalmark.py")
     check(f"FM-024 · the signed identity · an identity without `signed` stays as it is, a name included (saw exit {c_})", c_ != 1 and "signed identity is an email" not in e_)
-    # the readings of a signed line outside the lint: FM-037's guard, `--queue`'s, the board's and `--owner`'s (`on_their_way`), and `--answer`'s own check
+    # the readings of a signed line outside the lint: the triage guard's, `--queue`'s, and `--answer`'s own check — and, in a tool that has it, the board's
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp).resolve(); root = _way_repo(base)
         extra_ = {p_: base / f"x{i_}" for i_, p_ in enumerate(("o@x", "xh@x"))}
@@ -14628,16 +14608,18 @@ with tempfile.TemporaryDirectory() as d_old_:
         def _readings(mod):
             mod.configure(root)
             queue_ = {tid_: mod.answer_reading(h_)[0] for tid_, h_ in heads_.items()}
-            way_ = mod.on_their_way(mod.load_trackers()); board_ = {tid_: way_.get(tid_, {}).get("said", "")[:5] for tid_ in heads_}
+            way_ = mod.on_their_way(mod.load_trackers()) if hasattr(mod, "on_their_way") else None
+            board_ = {tid_: way_.get(tid_, {}).get("said", "")[:5] for tid_ in heads_} if way_ is not None else None
             guard_ = {tid_: mod.guard_verdicts([(h_, "s", "TRIAGE.md", [("intent", "")])], mod.owners_at(None))[0][4] for tid_, h_ in heads_.items()}
             return queue_, board_, guard_
         q_, b_, g_ = _readings(fm); owner_ = run(root, "--owner")[1]
-        _read_ok = lambda q, b, g: (q == {"AP-501": "merge", "AP-502": "wait", "AP-504": "wait"} and b == {"AP-501": "merge", "AP-502": "wait:", "AP-504": "wait:"}
+        _read_ok = lambda q, b, g: (q == {"AP-501": "merge", "AP-502": "wait", "AP-504": "wait"} and b in (None, {"AP-501": "merge", "AP-502": "wait:", "AP-504": "wait:"})
                                     and g == {"AP-501": "signed", "AP-502": "refused", "AP-504": "refused"})
-        check(f"FM-024 · a private security report · the signed identity · `--queue`'s reading of an answer, the board's and `--owner`'s *signed* (`on_their_way`) and FM-037's guard each take the "
-              f"exact principal only — not another trusted signer under the identity as the author's name, not a principal that contains it (saw {q_}, {b_}, {g_})", _read_ok(q_, b_, g_))
-        check("FM-024 · a private security report · the signed identity · `--owner` shows only the exact principal's answer as signed",
-              re.search(r"AP-501 .*· signed ·", owner_) is not None and not re.search(r"AP-50[24] .*· signed ·", owner_))
+        check(f"FM-024 · a private security report · the signed identity · `--queue`'s reading of an answer and the triage guard each take the "
+              f"exact principal only — not another trusted signer under the identity as the author's name, not a principal that contains it — and the board reads no answer branch (saw {q_}, {b_}, {g_})",
+              _read_ok(q_, b_, g_) and b_ is None)
+        check("FM-024 · a private security report · the signed identity · `--owner` names no answer branch's answer as signed — it reads none",
+              not re.search(r"AP-50[124] .*· signed ·", owner_))
         if old_fm_:
             q_, b_, g_ = _readings(old_fm_); fm.configure(root)
             check(f"FM-024 · a private security report · the signed identity · …the control: beside {_SIG_REV}'s tool those readings take the others too (saw {q_}, {b_}, {g_})", not _read_ok(q_, b_, g_))

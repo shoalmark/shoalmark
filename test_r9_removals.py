@@ -7,8 +7,9 @@
   `--standup` and `--owner`, each piece, and stays byte for byte as it was: nothing is removed, nothing is added. A calendar
   file of a person's own, at the top or nested, and one reached through a symlinked file or folder, are not named.
 - `--standup`, `--owner`, `--due` and `--done` print, on a fixture with nothing left over, what they printed at 36d4961, the
-  tool R9 joins in PR B (the d-batch's head), and `--due` and `--done` write the same record — the acts as they are said since
-  each commits on the branch the Owner stands on and pushes nothing, where the base cut `answer/<id>` and pushed it.
+  tool R9 joins in PR B (the d-batch's head), and `--due` and `--done` write the same record.
+- The acts are compared as they are said now that each commits on the branch the Owner stands on and pushes nothing, where the
+  base cut `answer/<id>` and pushed it.
 
 Run: `python3 test_r9_removals.py` — exit 1 on a failure. `SHOALMARK_R9_TOOL=<path>` runs it against another copy of the tool:
 that is how its mutants are run (a leftover deleted; a leftover not named), and each must fail it. test_shoalmark.py runs it at
@@ -38,14 +39,17 @@ R4_STEPS = ((re.compile(r" — 1/4 reading the trackers"), " — 1/3 reading the
 
 
 FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
+# the board reads no answer branch: the base's line that the board was older than what it shows, where the answer branches alone had changed
+R4_BASIS = re.compile(r"\nthe board is older than what it shows — the answer branches changed since it was built: `[^`\n]*` rebuilds it\n\Z")
 
 
 def as_proved(entry):
     """A base run's (flag, exit, stdout, stderr) as the joined tool says it: for `--due` and `--done`, the one line naming how the commit is
-    proved, once; for `--standup`, the two kinds the board renames; anything else as it was."""
-    if entry[0] == "--standup" and isinstance(entry[2], str):
-        out = entry[2]
-        for old, new in FM053_AGENDA:
+    proved, once; for `--standup`, the two kinds the board renames; for `--standup` and `--owner`, the line naming the answer branches alone
+    as what changed since the board was built, which the board no longer reads; anything else as it was."""
+    if entry[0] in ("--standup", "--owner") and isinstance(entry[2], str):
+        out = R4_BASIS.sub("", entry[2], count=1)
+        for old, new in FM053_AGENDA if entry[0] == "--standup" else ():
             out = out.replace(old, new) if out.count(old) == 1 else out
         return entry[:2] + (out,) + entry[3:]
     if entry[0] not in ("--due", "--done") or not isinstance(entry[2], str) or entry[2].count(FM054_SAID[0]) != 1:

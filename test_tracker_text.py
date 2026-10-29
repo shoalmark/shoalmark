@@ -115,9 +115,6 @@ def git_readings(fm, root, ending):
     parsed = [fm.extract(root / REL / (tid + "-x.md"), at(after, tid)) for tid in initial]
     answer_lint = stable([p for p in fm.lint(parsed) if "an answer counts only from a seat" in p])
     judged = fm.judge_commits([(after, before, {"product.py"}, "TX-007: build")], "tx/007-text")
-    git(root, "update-ref", "refs/remotes/origin/answer/tx-003", after)
-    fm.configure(root)
-    travelling = fm.on_their_way(trackers)
     fm.configure(root)
     write(root / REL / "TX-007-x.md", initial["TX-007"].replace("One reading.", "A staged reading."), ending)
     git(root, "add", REL + "TX-007-x.md")
@@ -141,7 +138,6 @@ def git_readings(fm, root, ending):
         "index": fm.render(parsed, "Work"),
         "answer gate": answer_lint,
         "judgement": judged,
-        "answer branches": {tid: (r["kind"], r["answered"]) for tid, r in travelling.items()},
         "staged trackers": [(t["id"], t["status"], t.get("triaged")) for t in staged.values()],
     }
 
