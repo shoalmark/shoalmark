@@ -61,7 +61,7 @@ DAY_KEYS = ("day.standup.title", "day.standup.row", "day.standup.button", "day.s
             "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.fixed", "day.refused",
             "day.refused.chars", "day.refused.long", "day.refused.none", "day.refused.split", "day.value.name", "day.value.path", "day.value.cmd",
             "day.value.branch", "day.copied", "day.nocopy", "day.copy", "day.standup.asks.svn", "day.standup.asks.folder", "day.standup.runs.git",
-            "day.standup.runs.svn", "day.standup.runs.folder")
+            "day.standup.runs.svn", "day.standup.runs.folder", "day.standup.runs.local")
 DAY_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in DAY_KEYS)
 DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
             b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
@@ -1060,7 +1060,8 @@ def fm054_own(rows):
     return [row for row in rows if not {"proof_reading", "day_vcs"} & set(row.get("product_stack") or [])]
 
 
-DAY_READ = ("config", "--get", "remote.origin.url")      # which stand-up the board copies: its one read, origin's URL as configured
+DAY_READ = ("config", "--local", "--get", "remote.origin.url")
+DAY_READ_CASES = ("clean-default-origin", "dirty-default-fallback")
 
 
 def day_reads(rows):
@@ -1553,13 +1554,15 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                            "reads of the default branch's configuration, each a read, are set aside, and the stand-up's one read of origin's URL",
                            rows_match(origin_undone(before["starts"]), fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
                            and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"]))
-                           and not day_reads(before["starts"]) and all(day_read(row["argv"]) for row in day_reads(after["starts"])))
+                           and not day_reads(before["starts"]) and all(day_read(row["argv"]) for row in day_reads(after["starts"]))
+                           and len(day_reads(after["starts"])) == (1 if label in DAY_READ_CASES else 0))
             assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
                            "reads, each a read, are set aside, and the stand-up's one read of origin's URL",
                            rows_match(origin_undone(before["run_calls"]), fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"]))
                            and not day_reads(before["run_calls"])
-                           and all(isinstance(row.get("args"), list) and row["args"] and day_read(row["args"][0]) for row in day_reads(after["run_calls"])))
+                           and all(isinstance(row.get("args"), list) and row["args"] and day_read(row["args"][0]) for row in day_reads(after["run_calls"]))
+                           and len(day_reads(after["run_calls"])) == (1 if label in DAY_READ_CASES else 0))
             assert_control(label_prefix + "the candidate reads the working tree's edits once where the baseline reads them, and not where it does not",
                            edit_reads(after["starts_raw"]) == (1 if edit_reads(before["starts_raw"]) else 0))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
@@ -1749,11 +1752,10 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
         assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
                        bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))
-        # the stand-up's allowance, held the same way: one read of origin's URL inside `day_vcs`, and nothing else set aside for it
         day = "Git entry stand-up allowance: "
         said = day_reads(new["starts"])
-        assert_control(day + "the default run's board reads origin's URL inside `day_vcs`, `git config --get remote.origin.url` and no other start, "
-                       "which the baseline never makes", bool(said) and all(day_read(row["argv"]) for row in said) and not day_reads(old["starts"]))
+        assert_control(day + "the default run's board reads origin's URL once inside `day_vcs`, `git config --local --get remote.origin.url`, and no "
+                       "other start there, which the baseline never makes", len(said) == 1 and day_read(said[0]["argv"]) and not day_reads(old["starts"]))
         unday = [dict(row, product_stack=[s for s in row["product_stack"] if s != "day_vcs"]) for row in new["starts"]]
         assert_control(day + "the same read made outside `day_vcs` is not set aside, and does not match the baseline's starts",
                        not rows_match(origin_undone(old["starts"]), fm054_own(unday)) and rows_match(origin_undone(old["starts"]), fm054_own(new["starts"])))

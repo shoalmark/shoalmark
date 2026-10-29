@@ -52,9 +52,12 @@ eigenes `--standup` dort sagt den Rest.
 
 Auf dem Board trägt der Kasten mit dem, was auf Sie wartet, zwei Knöpfe: **Standup-Prompt** vor den Sitzungen des letzten Tages
 und **Abschluss-Prompt** an seinem Ende. Jeder kopiert einen festen Prompt für die Sitzung, die Sie nutzen — Claude Code, Codex
-oder eine andere: der eine bittet sie, Ihren Standup nach dieser Tagesordnung zu halten, einen Punkt nach dem anderen; der andere,
-den Tag aus dem Verlauf vorzulesen und nichts zu ändern. Keiner führt etwas aus, und eine Nachricht ist nie eine Antwort: Ihre
-Entscheidung hält der Befehl fest, den Sie selbst ausführen. Die Prompts sind englisch.
+oder eine andere: der eine bittet sie, Ihren Standup nach dieser Tagesordnung zu halten, einen Punkt nach dem anderen, Ihnen dann die
+Blocker und den geordneten Plan des Tages vorzulegen und auf Ihr Zeichen die Arbeit der Builder und Reviewer nach dem Vertrag für
+Agenten zu lenken, jeder Merge der Ihre; der andere, den Tag aus dem Verlauf vorzulesen und nichts zu ändern. Keiner der Knöpfe
+führt etwas aus, und eine Nachricht ist nie eine Antwort: Jede Entscheidung halten Sie selbst fest — unter git mit dem Befehl, den
+die Sitzung Ihnen zum Ausführen ausgibt, unter Subversion mit den Zeilen, die Sie schreiben und committen, in einem einfachen Ordner
+mit den Zeilen, die Sie schreiben. Die Prompts sind englisch.
 
 ## Was die Agenten damit tun
 

@@ -49,8 +49,11 @@ the rest.
 
 On the board, the box of what waits for you carries two buttons: **stand-up prompt**, before the sessions of the last day, and
 **close-out prompt**, at its end. Each copies a fixed prompt for the session you use — Claude Code, Codex or another: one asks it
-to hold your sitting from this agenda, one item at a time; the other, to read the day back from the record and change nothing.
-Neither runs anything, and a message is never an answer: what records your decision is the command you run yourself.
+to hold your sitting from this agenda, one item at a time, then to put the blockers and the day's ranked plan to you, and on your
+go to direct the builder and reviewer work under the agents' contract, every merge yours; the other, to read the day back from
+the record and change nothing. Neither button runs anything, and a message is never an answer: you record each decision
+yourself — on git with the command the session prints for you to run, on Subversion with the lines you write and commit, in a
+plain folder with the lines you write.
 
 ## What agents do with it
 
