@@ -1,9 +1,9 @@
 ---
 id: FM-086
 status: Proposed
-considered: FM-006, FM-023, FM-081, FM-027, FM-083
+considered: FM-006, FM-023, FM-081, FM-027, FM-083, FM-055
 tags: process
-hook: "A tracker here states a standing truth about the product, so every later piece of work fits under it and none of it ends it. Nothing makes a tracker finish: its Done when may be open-ended, reusing it is always the cheaper filing, and no point in a release asks it to ship or split."
+hook: "Done here has meant a merged pull request, and a tracker has meant a theme, so trackers never finish: every later piece of work fits under a standing truth, and nothing asks it to end. When agents merge many pull requests a day, a done that matches one pull request or one tracker tells nothing. Done must be an outcome on the default branch, checked by the commits that met it."
 ---
 
 # FM-086 — a tracker states one deliverable and closes when it ships, instead of collecting every later piece of work
@@ -11,7 +11,8 @@ hook: "A tracker here states a standing truth about the product, so every later 
 ## What is true now
 
 **Filed 2026-10-29; nothing is built. Allocated to v0.20.3 on the Owner's word of 29 October, as the Auditor relays
-it;** v0.20.3's allocation records it for the Owner's signed answer.
+it;** v0.20.3's allocation records it for the Owner's signed answer. **Its heart is shoalmark's definition of done.**
+The Owner calls it the most valuable part of this work.
 
 **The case, measured at main `d526547`:**
 - [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) has been In Progress since
@@ -20,56 +21,87 @@ it;** v0.20.3's allocation records it for the Owner's signed answer.
 - [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) is the same case for the plan: it
   holds every release's allocation, 40 KB in five tables.
 - Of 80 trackers, 22 are In Progress. Five of them have been In Progress since 22 September.
+- **The Owner's reason:** in a project where people ship, the merged pull request was the done. With agents it is not:
+  they ship too fast, and repositories that merge a thousand pull requests a week show that done must not match a
+  single pull request or a single tracker.
 
-**What it costs:** an agent that reads such a tracker spends its budget on history, and the Board's *In Progress*
-says little about what is moving. The intent names "work that circles instead of finishing" among what the work must
-never become.
+### The definition of done
 
-**The design, on the Owner's word of 29 October:**
-1. **A finite *Done when*.** Every tracker already has the section. Judging a tracker In Progress needs that section
-   filled with observable states, and the release's closing pass reads it.
-2. **A bound on reuse:** a part of an existing tracker only while that tracker is In Progress and its *Done when*
-   already covers the part. Anything else is a new tracker that names the old one in `considered:`. This repository's
-   contract adds one more condition: the part ships in the same release.
-3. **Themes are tags, not epics.** The site or the German line is a theme: `tags:` marks it. `epic:` stays for a
-   story that has its own *Done when*.
-4. **The closing pass:** at each release, before its tag, every tracker with a commit in the release's range ships or
-   splits.
-   - **It ships** when its *Done when* holds, and its *What is true now* ends in a short final state. Its history stays
-     in its ship log and in git.
-   - **It splits** when work is left: the open part becomes a new tracker that names the old one, and the old one
-     ships for what it delivered. Work already built ships under the tracker that built it, since its commits were
-     judged under that one.
-   - This repository's release run sheet stops on a touched tracker that does neither.
-5. **Soft signals, never a refusal.**
-   - The Board, `--triage` and `--next` raise one line where a tracker looks due to:
-     - be split;
-     - become an epic;
-     - be closed and refiled as a new tracker;
-     - or be parked.
-   - Each signal has a default trigger, kept as a key in `shoalmark.toml`. Examples: *What is true now* past a size,
-     In Progress past an age counted from when it was judged, many parts with no shipped one. The ship log, which only
-     grows, triggers nothing.
-   - The triaging seat answers in one line, *split*, *epic*, *close and new*, *park* or *keep*, with its reason. That
-     line silences the signal until its cause changes.
+1. **Done is an outcome, not a merge,** at three levels:
+   - **a tracker** is done when every item of its *Done when* holds on the default branch;
+   - **a lane** is done when it is merged;
+   - **a pull request or a commit** is done when it is merged, and nobody counts them.
+2. **The *Done when* is a checklist of observable states.**
+   - Each item is met by the commit that met it, written `- [x] <state> · <sha>`. An open item is `- [ ] <state>`.
+   - `--check` verifies that each named commit is on the default branch, so a false claim is refused. That is a check
+     of a fact, not a limit.
+3. **Many lanes per tracker, shown as progress.** The Board and `--next` show "Done when: 2 of 3 · 1 lane open", and
+   never a count of pull requests.
+4. **No reopening.** What comes back after a tracker shipped is a new tracker, naming the old one in `considered:`.
+5. **A tracker is sized to a decision.**
+   - What one pull request would finish in an hour is a task in a lane, not a tracker.
+   - *Done* (every item met on the default branch) comes before *Shipped* (in a tagged release). Each release's closing
+     pass turns *Done* into *Shipped*.
+
+### How a tracker stays one deliverable
+
+- **The reuse bound:** a part of an existing tracker only while that tracker is In Progress and its *Done when*
+  already holds an item for the part. Anything else is a new tracker that names the old one in `considered:`. This
+  repository's contract adds one condition: the part ships in the same release.
+- **Themes are tags, not epics.** The site or the German line is a theme: `tags:` marks it. `epic:` stays for a story
+  with a *Done when* of its own.
+- **The closing pass:** at each release, before its tag, every tracker with a commit in the release's range ships or
+  splits. This is the one hard rule.
+  - **It ships** when it is done. Its *What is true now* ends in a short final state, and its history stays in its ship
+    log and in git.
+  - **It splits** when items are open: they become a new tracker that names the old one, and the old one ships for the
+    items it met. Work already built ships under the tracker that built it, since its commits were judged under that
+    one.
+  - This repository's release run sheet stops on a touched tracker that does neither.
+
+### The signals, never a refusal
+
+The Board, `--triage` and `--next` raise one line where a tracker looks due for a move. Each signal has a default
+trigger, kept as a key in `shoalmark.toml`. The ship log, which only grows, triggers none of them.
+
+| Signal | What raises it, by default |
+|---|---|
+| **close, it's done** | every *Done when* item is met with a commit on the default branch, and no open branch or pull request names the tracker |
+| **split** | its *Done when* holds items that ship in different releases, or its *What is true now* has grown past a size |
+| **epic** | its parts each carry a *Done when* of their own |
+| **close and new** | it has been In Progress past an age, counted from when it was judged, and its *Done when* has been rewritten since |
+| **park** | no commit has named it for a while, and nothing it holds is blocked on someone else |
+
+The triaging seat answers in one line: *done*, *split*, *epic*, *close and new*, *park* or *keep*, with its reason.
+That line silences the signal until its cause changes. No signal ever refuses.
 
 ## Why
 
-A record that can be read back is one that finishes. Trackers that close keep each one short enough to read, keep
-*In Progress* true, and give every release a list of what it delivered.
+A record that can be read back is one that finishes. A done that is an outcome, met by named commits on the default
+branch, keeps each tracker short, keeps *In Progress* true, and gives every release a list of what it delivered. It
+also holds when agents merge more pull requests than anyone reads.
 
 ## Done when
 
-- `--check` refuses a tracker judged In Progress with an empty *Done when*, and its test shows the refusal and the way
-  through.
-- The README's filing section states the reuse bound, and the contract states this repository's release condition.
-- `--triage`, `--next` and the Board raise the soft signals with their default keys.
-  - A one-line answer silences each signal, with its reason recorded, and each signal has a test.
-  - No size or age ever refuses.
-- v0.20.3's closing pass runs by these rules, and its records commit lists each touched tracker as shipped or split.
+- [ ] `--check` reads every tracker's *Done when* as a checklist, and refuses an item marked met whose commit is not on
+  the default branch. A test shows the refusal and the way through.
+- [ ] `--check` refuses a tracker judged In Progress whose *Done when* holds no item.
+- [ ] The Board and `--next` show each tracker's progress, as in "Done when: 2 of 3 · 1 lane open", and no count of
+  pull requests anywhere.
+- [ ] A tracker whose every item is met reads as done on the Board, and the closing pass turns it to Shipped at the
+  release that carries it.
+- [ ] The Board, `--triage` and `--next` raise the five signals, each with its default key in `shoalmark.toml`.
+  - A one-line answer (*done*, *split*, *epic*, *close and new*, *park*, *keep*) silences each signal until its cause
+    changes.
+  - Each signal has a test, and none refuses.
+- [ ] The README and the agents' contract state the definition of done at its three levels, the checklist, no
+  reopening, the reuse bound and themes as tags.
+- [ ] v0.20.3's closing pass lists each tracker the release touched as shipped or split, and its run sheet stops on
+  one that is neither.
 
 ## Ship log
 
 | Date | Event |
 |---|---|
 | 2026-10-29 | Filed, on the Owner's word of 29 October, for v0.20.3. Records only. |
+| 2026-10-29 | The definition of done, its heart, and the whole signal list, on the Owner's word of 29 October. Records only. |

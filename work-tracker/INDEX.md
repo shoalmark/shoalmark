@@ -65,7 +65,7 @@
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
 | [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md) | — | Every round files its proof as files, and nothing tells what decides a verdict from what was worked with, or retires ei… | Proposed | triage | — |
-| [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md) | — | A tracker here states a standing truth about the product, so every later piece of work fits under it and none of it end… | Proposed | triage | — |
+| [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md) | — | Done here has meant a merged pull request, and a tracker has meant a theme, so trackers never finish: every later piece… | Proposed | triage | — |
 | [FM-084](FM-084-queue-does-not-show-a-pull-request-s-ci-so-a-failing-check.md) | — | --queue does not show a pull request's CI, so a failing check is found on the forge by hand | Proposed | triage | — |
 | [FM-083](FM-083-nothing-measures-how-well-a-skill-does-its-work-only-its.md) | — | nothing measures how well a skill does its work, only its structure and its proof | Proposed | triage | — |
 | [FM-082](FM-082-the-board-and-standup-do-not-list-an-ask-that-sits-on-a.md) | — | the Board and --standup do not list an ask that sits on a branch not on main | Proposed | triage | — |
