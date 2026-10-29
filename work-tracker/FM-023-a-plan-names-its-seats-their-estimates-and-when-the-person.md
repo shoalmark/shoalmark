@@ -8,13 +8,13 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?"
+ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the CI class fix move unless READY by Thursday 20:00?"
 ask-kind: ruling
-ask-since: 2026-10-28
-ask-options: "yes | yes, with the changes I name | no: the rewrite waits for v0.20.3"
+ask-since: 2026-10-29
+ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as FM-023's What is true now (27 October, the scope) sets out"
 ask-proposal: "yes"
 answer: "accepted - yes"
-answered: 2026-10-28
+answered: 2026-10-29
 answered-by: holgo99
 ---
 
@@ -24,6 +24,72 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-29 — the release branch rebuilt, and the CI class fix moved to v0.20.3.** On the Owner's word of 29 October,
+as the Auditor relays it:
+- **`release/v0.20.2-signed` is retired.** #230, J's pull request, was merged into it with GitHub's merge button
+  (`d872dd7`), and the gate refuses that on a base that is not main.
+  - The Owner redid it as a signed merge of their own, on a new branch: `release/v0.20.2-rebuilt` at `9f1843b`, from
+    `8b24e91` and J's verdict `6e0a9ab`, with J's tree.
+  - Every v0.20.2 lane now targets the new branch. The retired branch stays as it is: no one deletes it.
+  - A pull request into a base that is not main now opens as a draft, titled "[signed merge only] …".
+- **The CI class fix moves to v0.20.3 whole,** its three findings RV-3920 to RV-3922 with it. The ask above already
+  names the class fix whole, moving unless READY by Thursday 20:00, and no lane builds it, so the ask's "yes" covers
+  it. No change to the ask is needed. The entry below that says "beyond its three findings" no longer holds for those
+  three.
+
+**2026-10-29 — from v0.20.3, each release's allocation is a tracker of its own,** on the Owner's word of 29 October,
+as the Auditor relays it.
+- **The tracker:** each release's allocation is filed as its own tracker, which ships at that release's tag.
+- **This tracker** keeps the research question it was filed for, and holds no allocation after v0.20.2's.
+- **v0.20.3's allocation** will hold [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter of agentic
+  seamanship, with its two parts: [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
+  trackers that close, and [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md), evidence in
+  three classes, all filed today. The theme's trackers carry the tag `seamanship`, in the configuration's vocabulary
+  since the Owner's #229, and each release that carries it gets one chapter.
+
+**2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
+Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
+relayed commits are optional", and "cut-off Fri 14:00 approved".
+[FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) holds the work.
+- **A, in v0.20.2, after BF-95:** the stand-up prompt built into the tool takes a new text. It checks first, read only,
+  that the Owner's folder is not behind. It takes the agenda one item at a time, and prints the command that records
+  each answer for the Owner to run. Then it brings the answers to the default branch, puts every blocker in one
+  exchange, and lays out the day's path. On the Owner's go it drives that path to the end of the day, by the
+  repository's own agent contract.
+  - A new value names the lead seat's worktree, the one whose identity `[seats]` maps to the planner.
+  - The text follows what holds the files: git with a forge that `gh` can read, git with none, Subversion, or a plain
+    folder.
+  - It is critical: an Opus Builder, a standard review, then a critical review. The prompt stays English on every
+    board.
+- **B, in v0.20.3:** the Board copies the tracker folder's `standup.md` where it exists, and names which text it copied.
+  The file is guarded like the Owner's two sections of [`TRIAGE.md`](TRIAGE.md): only the Owner's signed commit changes
+  it.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2 | A: the stand-up prompt's new built-in text, with the lead seat's worktree, by version control (FM-030). Critical. | BF-95 |
+| v0.20.3 | B: the Board copies the tracker folder's `standup.md`, guarded like the Owner's two sections, and names the text it copied (FM-030). | A |
+
+- **S1, the ask ids with R4's answer commit, must land in v0.20.2:**
+  [FM-050](FM-050-an-ask-has-no-id-of-its-own-so-an-answer-cannot-name-the-ask.md). It builds on the release branch as
+  it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3
+  follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
+- **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
+- **FM-065, quick win 10, and the CI class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
+  29 October, 20:00. The CI class fix makes every root `test_*.py` run in CI, directly or through `test_core.py`, or
+  be named as excluded. Its three findings are RV-3920 to RV-3922, from the review of the CI item that #219 merged. It
+  is not filed as a tracker yet.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2, must land | S1: the ask ids with R4's answer commit (FM-050). Critical. | — |
+| v0.20.2, optional | FM-076: relayed commits. | — |
+| v0.20.2, unless not READY by Thursday 20:00 | FM-065; quick win 10; the CI class fix beyond its three findings (RV-3920 to RV-3922). Otherwise v0.20.3. | — |
+
+**The cut-off is Friday 30 October, 14:00 CET,** on the Owner's word of 29 October. After it, only the release's own
+commits go into its release branch, and the sitting follows. What is not READY and merged by then moves to v0.20.3, by
+the Owner's signed answer. The ask above puts all of this to the Owner.
 
 **2026-10-28 — the German rewrite, for the Owner's signed answer.** Every German line moves to *du* in v0.20.2, at
 once and in one lane: the Owner's ruling of 22 October, as the Auditor relays it.
@@ -397,10 +463,23 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted with a change
 **signed** — 62ac263 · G
 
+**2026-10-28** · Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 558ec59 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | FM-086 to FM-089 carry the tag `seamanship`, in the vocabulary since the Owner's #229. Records only. |
+| 2026-10-29 | `release/v0.20.2-signed` retired after #230's button merge; `release/v0.20.2-rebuilt` at `9f1843b`, the Owner's signed merge of J, is v0.20.2's base. The CI class fix moves to v0.20.3 whole, its three findings with it. Records only. |
+| 2026-10-29 | The CI class fix is described in this entry, not named as FM-062's: no tracker holds it yet (RV-3988). Records only. |
+| 2026-10-29 | The records review's six findings fixed (RV-3982 to RV-3987): the CI class fix is named as FM-062's, an ask option cites its source, the tag waits for the vocabulary, the count of trackers is corrected, and what is not yet filed or done says so. Records only. |
+| 2026-10-29 | From v0.20.3, each release's allocation is a tracker of its own, on the Owner's word of 29 October. FM-086 and FM-087 are filed for v0.20.3. Records only. |
+| 2026-10-29 | v0.20.2's allocation amended, on the Owner's words of 29 October: S1 must land, FM-076 is optional, FM-065, quick win 10 and the class fix beyond its three findings move unless READY by Thursday 20:00, and the cut-off is Friday 14:00. The ask is amended to put all of it, with A and B, to the Owner. Records only. |
+| 2026-10-29 | The stand-up prompt's growth filed, on the Owner's word of 29 October: A, its new built-in text, in v0.20.2, and B, the Board copying the tracker folder's `standup.md` under the Owner's signed guard, in v0.20.3, with the ask for the Owner's signed answer. v0.20.2's release sitting named: Friday 30 October, at the end of the day. Records only. |
+| 2026-10-29 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The rewrite is in v0.20.2's allocation, in one lane, as the ask set it out. Records only. |
 | 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
 | 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
 | 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
