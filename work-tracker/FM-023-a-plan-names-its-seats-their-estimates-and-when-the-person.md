@@ -471,6 +471,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The Auditor's re-check of 6fd3099, which fixed RV-3994, is READY, and #240 merged it into main (8fbdf0c). Records only. |
 | 2026-10-29 | The Owner's signed answer to the amended allocation (`0fbd74b`, #235): "accepted - yes". v0.20.2's allocation of 29 October binds, and the ask is cleared. Records only. |
 | 2026-10-29 | FM-086 to FM-089 carry the tag `seamanship`, in the vocabulary since the Owner's #229. Records only. |
 | 2026-10-29 | `release/v0.20.2-signed` retired after #230's button merge; `release/v0.20.2-rebuilt` at `9f1843b`, the Owner's signed merge of J, is v0.20.2's base. The CI class fix moves to v0.20.3 whole, its three findings with it. Records only. |
