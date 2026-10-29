@@ -790,7 +790,7 @@ TRIAGE_KEYS = ("kind-of-problem", "tier", "rank", "triaged")     # `considered:`
 # THE KEYS A RIGHT IS JUDGED ON (the Owner's ruling of 2026-10-04, v0.19.1): `status` (`close`), `next` (`ask`), the three answer lines
 # (`answer`, and `ask`'s clearing move), `considered` and the triage keys (`triage`). Each is read from ONE line, written in lower case
 # (`guarded_key_problems`): a second line, or one in capitals, would be a line the reader keeps and another one judged
-GUARDED_KEYS = ("status", "next", "answer", "answered", "answered-by", "considered", *TRIAGE_KEYS)
+GUARDED_KEYS = ("status", "next", "ask-id", "answer", "answered", "answered-by", "considered", *TRIAGE_KEYS)
 
 
 def tracker_folder(cfg, prefix=""):
@@ -940,6 +940,10 @@ MOVES = ("review", "run", "wait", "owner", "script", "build")
 # waits for its run); `--clear-ask <id> <move>` sets the real one when the answer is acted on. An action's yes is a promise
 # of the Owner's own hands, not the act: `next: owner` stays. An ask of no known kind keeps the move it had.
 ANSWER_MOVE = {"ruling": "build", "determination": "build", "ceremony": "build", "action": "owner"}
+# AN ASK'S OWN ID: its tracker's id, `-Q`, and the number of that tracker's asks put with an id, from 1 with no leading zero
+ASK_ID_RE = re.compile(r"([A-Z][A-Z0-9]*-\d+)-Q([1-9]\d*)")
+ASK_ID_ANY_RE = re.compile(r"([A-Z][A-Z0-9]*-\d+)-Q(\d+)")         # the shape an id is read in where it may be wrong — a record's, a trailer's
+RECORD_ID_RE = re.compile(r"\*\*([A-Z][A-Z0-9]*-\d+-Q\d+)\*\* · (\d{4}-\d{2}-\d{2}) · ")      # a record's first line, where it carries its ask's id
 MOVE_RE = re.compile(r"\b(%s)\b" % "|".join(MOVES), re.I)
 # `kind-of-problem:` — the second try at that word, built on what took the first
 # one out. A cold pass never judges it: it is left, like `next:`, by a seat that has the tracker OPEN. And it is
@@ -985,6 +989,17 @@ def front_matter_schema():
         "blocked-by":      (rf"(?:{_IDS}|{_OWNER})(?:\s*,\s*(?:{_IDS}|{_OWNER}))*", False, "any seat",
                             "what this open work waits on — tracker ids, and `Owner` or `Owner — <the ruling awaited>`. *Blocked* is derived from it and clears itself; it orders nothing"),
         "considered":      (rf"none|{_IDS}(?:\s*,\s*{_IDS})*", False, "the filing seat", "the existing trackers this filing was held against — listed means LOOKED AT, not merged — or none. Triage at intake: run `--related` first; the gate refuses a new tracker without this line"),
+        "ask-id":          (None, False, "the seat that puts the ask to the Owner — minted with `next: owner`; a draft (`next: review`) has none",
+                            "the put ask's own id, `<ITEM>-Q<n>` — this tracker's id, then `-Q` and a number from 1 with no leading zero — on the line above "
+                            "`ask:`. An answer names it, and binds the whole put ask: `ask:`, `ask-proposal:`, `ask-options:` and `ask-kind:` never change "
+                            "under it. To change a put ask, `--clear-ask` writes the old id's record and the changed ask is put under the next number. "
+                            "Never reused: the next number is one more than the highest the tracker has used — in its front matter, in its records under "
+                            "`## Asks`, and on git in the file's history. What *never reused* can claim: on git, the file, its history reachable from HEAD, "
+                            "and the default branch's copy, its open ask and its records — a number minted on a branch this clone has not fetched is not "
+                            "seen until it is; on Subversion, the file and the log of its path, whose messages are read for the id — name it in the "
+                            "message that puts the ask — and a number written and removed in revisions whose messages do not name it is not seen; with "
+                            "no version control, the file alone — a number removed without its record, and two copies of the folder that each mint a "
+                            "number, are not seen. An ask open without an id is an ask before ask ids, answered by its tracker's id as before"),
         "ask":             (None, False, "the seat that needs the Owner", "what is asked of the Owner, as ONE sentence they can answer — with `next: owner`. The board's first line is built from these; an ask buried in the body waits longest"),
         "ask-kind":        ("ruling|action|determination|ceremony", False, "the seat that needs the Owner", "ruling — a decision of intent · action — hands only the Owner has · determination — evidence could settle it · ceremony — reserved by rule, not by risk. "
                                                                         "An ask whose yes needs the Owner's hands is `action`, whatever else it decides"),
@@ -1616,6 +1631,7 @@ def extract(path, text=None):
         "key_problems": guarded_key_problems(tracker_id, text),    # a key a right is judged on, repeated or in capitals (`lint` refuses it)
         "next": (fm.get("next") or "").strip().lower(),
         "ask_kind": (fm.get("ask-kind") or "").strip().lower(), "ask_since": (fm.get("ask-since") or "").strip(),
+        "ask_id": (fm.get("ask-id") or "").strip(),
         **answer_fields(fm),                            # ask · ask_proposal · ask_options · answer
         "answered": (fm.get("answered") or "").strip(),
         # an act owed to the Owner (FM-030): when it falls due, its window, its result
@@ -1640,6 +1656,8 @@ def extract(path, text=None):
         "asks_block": bool(ASKS_HEAD_RE.search(body)),
         # the relation the newest of those records carries (FM-029) — what `--answered` says an acted-on answer was
         "asks_relation": recorded_relation(body),
+        # …and the id and the date of every record that carries its ask's id, oldest first
+        "asks_ids": record_ids(body),
         # …and, where that record carries none (written before 0.18.1), its answer: what `recover_relations` looks up in
         # git when the relation is printed — never here, where every load passes (FM-012)
         "asks_answer": unrelated_answer(body),
@@ -1738,17 +1756,18 @@ def stated_ask(t):
     return t.get("status") in OPEN_STATUSES and not t.get("answer") and (t.get("ask") or t.get("next") == "owner")
 
 
-def ask_problems(t, by_ask=None, provenance=True):
+def ask_problems(t, by_ask=None, provenance=True, ids=True):
     """WHAT AN ASK MUST BE, in one place — the reasons this tracker's ask is not one, without its id.
 
     `lint` refuses on them, and `owner_queue` keeps them out of the Owner's sight: the seat that asks is the seat that
     wants an answer, so no seat polices its own asks. `by_ask` maps a normalised ask to the ids carrying it (the
     duplicate test); `provenance` runs the `seats` check, which costs a version-control call and is skipped where the
     line cannot have changed. A DRAFT — an `ask:` with `next: review` — is held to the form rules and to nothing else:
-    any seat may write one, the Principal turns it into an ask the Owner sees."""
+    any seat may write one, the Principal turns it into an ask the Owner sees. `ids`: the rules of its id too (`ask_id_problems`) —
+    `lint` reads those for every tracker itself."""
     if not stated_ask(t):
         return []
-    out, ask, draft = [], (t.get("ask") or "").strip(), t.get("next") == "review"
+    out, ask, draft = (ask_id_problems(t) if ids else []), (t.get("ask") or "").strip(), t.get("next") == "review"
     if t.get("next") == "owner":
         # 1. NO ASK WITHOUT A RECOMMENDATION. An ask that only asks moves the decision and none of the work.
         if not ask:
@@ -1911,6 +1930,72 @@ def newest_record(body):
     return spans[-1] if spans else (0, 0)
 
 
+def record_ids(body):
+    """The ids of the records under the body's `## Asks` that carry one — `**<ITEM>-Q<n>** · <date> · <question>` — with each record's
+    date, oldest first, as [(id, date)]. A record of an ask before ask ids carries none and is not listed."""
+    return [(m.group(1), m.group(2)) for m in (RECORD_ID_RE.match(body[s_:e_].lstrip()) for s_, e_ in record_spans(body)) if m]
+
+
+def put_ask_of(fm):
+    """THE PUT ASK, one reader: from a front matter (its keys as `parse_frontmatter` reads them), the question, the proposal, the
+    options as their list and the kind — each through `answer_norm`. An answer binds all four; `ask-since:` is not among them."""
+    fields = answer_fields(fm)
+    return (answer_norm(fields["ask"]), answer_norm(fields["ask_proposal"]), tuple(answer_norm(o) for o in fields["ask_options"]),
+            answer_norm((fm.get("ask-kind") or "").strip().lower()))
+
+
+def put_ask(t):
+    """`put_ask_of` for a tracker as the loader reads it."""
+    return put_ask_of(t.get("fm") or {})
+
+
+def ask_number(aid, tid):
+    """The number of `aid` where it is one of `tid`'s ids in its own shape — `<ITEM>-Q2` of `<ITEM>` is 2 — else None."""
+    m = ASK_ID_RE.fullmatch(aid or "")
+    return int(m.group(2)) if m and m.group(1) == tid else None
+
+
+def file_numbers(t):
+    """The numbers the file itself shows as used: its open ask's and its records' (any shape that reads as one of its ids)."""
+    out = set()
+    for aid in [t.get("ask_id") or ""] + [i for i, _d in t.get("asks_ids") or []]:
+        m = ASK_ID_ANY_RE.fullmatch(aid)
+        if m and m.group(1) == t["id"] and int(m.group(2)) > 0:
+            out.add(int(m.group(2)))
+    return out
+
+
+def next_ask_id(t, used=None):
+    """The id the next ask put on this tracker takes: one more than the highest number used — `used` where the caller read the
+    history, else what the file shows."""
+    numbers = set(used if used is not None else file_numbers(t))
+    return f"{t['id']}-Q{max(numbers) + 1 if numbers else 1}"
+
+
+def ask_id_problems(t, keys=True):
+    """WHAT AN ASK'S ID MUST BE, read from the file — the rules every backend reads, without the tracker's id:
+    - its shape: `<this tracker's id>-Q<n>`, n from 1 with no leading zero; with `keys`, the key on one line, in lower case
+      (`lint` names that from `key_problems` itself);
+    - an id names a put ask: no `ask-id:` without an `ask:`;
+    - a number is never reused in one copy: the open ask's id is no record's.
+    Two records that carry one id are judged against the default branch's copy (`duplicate_record_problems`)."""
+    out, aid = [], t.get("ask_id") or ""
+    if keys:
+        out += [w.split(": ", 1)[-1] for w in t.get("key_problems") or [] if "`ask-id:`" in w]
+    if not aid:
+        return out
+    if ask_number(aid, t["id"]) is None:
+        out.append(f"`ask-id: {aid}` is not an id of {t['id']}'s — an ask's id is `{t['id']}-Q<n>`, n from 1 with no leading zero: "
+                   f"put this ask as {next_ask_id(t)}")
+    if not t.get("ask"):
+        out.append(f"`ask-id: {aid}` stands with no `ask:` — an id names a put ask; with no question it names nothing. Remove it, or put the ask")
+    held = [d for i, d in t.get("asks_ids") or [] if i == aid]
+    if held:
+        out.append(f"`ask-id: {aid}` is also the id of the record of {held[0]} under `## {HEAD['asks']}` — a number is never reused: "
+                   f"put this ask as {next_ask_id(t)}, its put ask unchanged")
+    return out
+
+
 def record_answer(record):
     """The answer of one record under `## Asks` when it has no `**relation** —` line — a record `--clear-ask` wrote before
     0.18.1 — else "": the text the commit that wrote it is found by. Its line is `**answered** — <answer> · <answered-by>`."""
@@ -1945,8 +2030,9 @@ def record_key(record):
     answer = record_answer(record)
     if not answer:
         return None
-    m = re.match(r"\s*\*\*[^*\n]+\*\* · (.+)$", record, re.M)
-    return (answer_norm(m.group(1)) if m else "", answer_norm(answer))
+    m = re.match(r"\s*\*\*([^*\n]+)\*\* · (.+)$", record, re.M)
+    question = (m.group(2).split(" · ", 1)[-1] if ASK_ID_ANY_RE.fullmatch(m.group(1)) else m.group(2)) if m else ""
+    return (answer_norm(question), answer_norm(answer))
 
 
 def unrelated_records(body):
@@ -8975,7 +9061,43 @@ def sessions_digest():
     return "\n".join([f"SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · {parents} ({everyone} with their sub-sessions)"] + [f"  {group_line(g)}" for g in groups])
 
 
-ASK_LINES = ("ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
+ASK_LINES = ("ask-id:", "ask:", "ask-kind:", "ask-since:", "ask-proposal:", "ask-options:", "answer:", "answered:", "answered-by:")
+
+
+def duplicate_record_problems(trackers):
+    """DUPLICATE ARCHIVED IDS — two records under one tracker's `## Asks` that carry one id. On git, refused where the default branch's
+    copy does not hold both, the one place they can still be stopped; where both have landed there, neither is rewritten — each names
+    its answer's commit — and `--check` notes them, naming both records by their dates and the merge that brought the second, with the
+    next number above both. On Subversion and with no version control, the file is all that is read: noted the same way."""
+    twice = []
+    for t in trackers:
+        seen = {}
+        for aid, day in t.get("asks_ids") or []:
+            seen.setdefault(aid, []).append(day)
+        twice += [(t, aid, days) for aid, days in seen.items() if len(days) > 1]
+    if not twice:
+        return []
+    trunk = None
+    if vcs() == "git":
+        trunk = default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
+    rels = {id(t): (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix() for t, _a, _d in twice}
+    there = cat_blobs([f"{trunk}:{rels[id(t)]}" for t, _a, _d in twice]) if trunk else {}
+    out = []
+    for t, aid, days in twice:
+        rel = rels[id(t)]
+        landed = [i for i, _d in record_ids(parse_frontmatter(there.get(f"{trunk}:{rel}") or "")[1])].count(aid) >= len(days) if trunk else vcs() != "git"
+        named = " and ".join(f"{aid} of {d}" for d in days)
+        if not landed:
+            out.append(f"{t['id']}: two records under `## {HEAD['asks']}` carry {aid} — {named} — and {ref_name(trunk) if trunk else 'the default branch'} does not hold "
+                       f"both: a number is never reused. The record this branch brings is another ask's: put that ask under {next_ask_id(t)}, its record cleared there")
+            continue
+        merge = ""
+        if trunk:
+            line = next((l for l in (there.get(f"{trunk}:{rel}") or "").split("\n") if l.startswith(f"**{aid}** · {days[-1]} · ")), "")
+            merge = (git_out("log", "-1", "--first-parent", "--format=%h", "-G", exact_line_regex(line), trunk, "--", rel) or "").strip() if line else ""
+        print(f"  note: {t['id']}: two records under `## {HEAD['asks']}` carry {aid} — {named}"
+              + (f", the second brought by {merge}" if merge else "") + f"; each is kept as signed, and the next ask is {next_ask_id(t)}", file=sys.stderr)
+    return out
 
 
 def record_problems(t):
@@ -9340,11 +9462,13 @@ def lint(trackers, committing=False):
     problems += walk_problems()                      # v0.19.1: a walk of those commits git could not make is refused, never read as nothing
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     problems += triage_guard()[0]                    # FM-037: only the Owner changes their intent and their current path
+    problems += duplicate_record_problems(trackers)   # two records that carry one id, where they can still be stopped
     by_ask = asks_by_key(trackers)
     for t in trackers:
         problems += t.get("key_problems") or []         # each key a right is judged on is read from one line, in lower case (v0.19.1)
-        # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first (FM-008)
-        problems += [f'{t["id"]}: {why}' for why in ask_problems(t, by_ask)]
+        # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first; and what its id must be, on every tracker
+        problems += [f'{t["id"]}: {why}' for why in ask_problems(t, by_ask, ids=False)]
+        problems += [f'{t["id"]}: {why}' for why in ask_id_problems(t, keys=False)]
         problems += record_problems(t) if committing else []
         if t.get("answer"):
             # the pre-mortem's rule: an answer counts only from the account it is filed from. Who that may be comes

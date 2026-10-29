@@ -787,13 +787,22 @@ R4_SCHEMA_EDITS = (
 )
 
 
+# an ask carries its own id: `--schema` names the `ask-id:` key in a row of its own, right after `considered:`'s, whatever kinds that row names
+ASK_ID_SCHEMA_ROW = "| `ask-id:` | free text | the seat that puts the ask to the Owner — minted with `next: owner`; a draft (`next: review`) has none | the put ask's own id, `<ITEM>-Q<n>` — this tracker's id, then `-Q` and a number from 1 with no leading zero — on the line above `ask:`. An answer names it, and binds the whole put ask: `ask:`, `ask-proposal:`, `ask-options:` and `ask-kind:` never change under it. To change a put ask, `--clear-ask` writes the old id's record and the changed ask is put under the next number. Never reused: the next number is one more than the highest the tracker has used — in its front matter, in its records under `## Asks`, and on git in the file's history. What *never reused* can claim: on git, the file, its history reachable from HEAD, and the default branch's copy, its open ask and its records — a number minted on a branch this clone has not fetched is not seen until it is; on Subversion, the file and the log of its path, whose messages are read for the id — name it in the message that puts the ask — and a number written and removed in revisions whose messages do not name it is not seen; with no version control, the file alone — a number removed without its record, and two copies of the folder that each mint a number, are not seen. An ask open without an id is an ask before ask ids, answered by its tracker's id as before |"
+
+
 def r4_schema(stdout):
-    """The baseline's stdout with R4_SCHEMA_EDITS applied in order, each to text that occurs exactly once — else None."""
+    """The baseline's stdout with this lane's schema edits applied: R4_SCHEMA_EDITS in order, each to text that occurs exactly once, then
+    ASK_ID_SCHEMA_ROW after the one row of the `considered:` key — else None."""
     for old, new in R4_SCHEMA_EDITS:
         if stdout is None or stdout.count(old) != 1:
             return None
         stdout = stdout.replace(old, new)
-    return stdout
+    lines = stdout.split("\n")
+    at = [i for i, line in enumerate(lines) if line.startswith("| `considered:` |")]
+    if len(at) != 1:
+        return None
+    return "\n".join(lines[:at[0] + 1] + [ASK_ID_SCHEMA_ROW] + lines[at[0] + 1:])
 
 
 def schema_matches(before, after):
