@@ -6,7 +6,11 @@
 
 ```
 git clone --branch v0.20.1 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
-cd <Ihr Repository>
+```
+
+Wechseln Sie dann im Terminal in den Ordner Ihres Repositorys.
+
+```
 python3 ~/shoalmark/shoalmark.py --vendor tools/shoalmark
 ```
 

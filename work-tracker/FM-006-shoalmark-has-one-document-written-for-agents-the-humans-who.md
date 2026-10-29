@@ -22,6 +22,17 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-29 — BF-95: fenced code builds to a code block again, in English and German.** Since `e0a21dd` the site's
+`[project.markdown_extensions]` table held only the snippets extension. Setting that table replaces Zensical's
+default extensions, all but `toc` and `tables`, so every fenced block built as inline code inside a paragraph.
+Its line breaks were lost, a block with a blank line split in two and showed its fences, and setup's step 1, copied,
+ran only `git clone`.
+- `pymdownx.superfences` joins the table, and it is the only extension the pages were missing (`ccf5cd1`).
+- `scripts/check_site.py` now checks that every fenced block in the docs, and in what the snippets include, builds
+  to a `<pre>`, and that no built page shows a literal fence, in both languages. A build without the extension
+  fails it (`67ba698`).
+- No words, no CSS and no template change.
+
 **2026-10-27 — the German preview image still says "Ihre Agenten":** `docs/assets/preview-de.png` and its source `brand/social/link-preview-de.svg` read *Eine Werkbank für Ihre Agenten.*, while the start page's German claim and description now say *deine*, and both German `og_image_alt`s quote the image as it stands. The image goes with v0.20.2's move of the remaining German pages to *du*.
 
 **2026-10-27 — a native reader's feedback on the German, for v0.20.2's move to "du",** on the Owner's word of 27 October. A German native reader, with no name to record, wrote: *"Die Übersetzung hier ist sehr holprig: https://shoalmark.tools/de/how-it-works.html Im Abschnitt eine Woche in vier Schritten"*. It holds: the section reads as English translated sentence by sentence (*"Was Ihr Wort braucht, wartet darauf"*, *"Sie sitzen, wann immer es Ihnen passt"*, *"Nicht alles braucht Sie"*, *"Ein Sitz mit dem Recht dazu"*, *"Die Agenten handeln auf Ihre Antwort"*). For v0.20.2:
@@ -1175,6 +1186,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-29 09:30:19 CET | **BF-95: fenced code builds to a code block again**, in English and German (`ccf5cd1`), and the site check refuses a fenced block that does not (`67ba698`). Records only. |
 | 2026-10-28 12:12:39 CET | **The why page, on the Owner's word on the live site,** on `fm/006-why-page-fixes` from `bc5da4e`: the quote back around the story, with its rules on screen, on a phone and in print, its caption the Owner's attribution linked to the X profile, the timeline from the first commit, the tile *Reports, not proofs.* and the Try-it line, in English and German; the story's `.proof>p` rules, which match nothing with the quote back, went. The suite's pins move with the quote and the words. The Designer looks next, on screen, on a phone and in print. |
 | 2026-10-28 05:51:22 CET | **RV-3931 and BF-88, the why page's story column and print size, and the Owner's long German forms** on `fm/006-founder-voice-site` after the verdict `e9df669` (READY WITH FINDINGS) and the Designer's re-check, recorded privately: five rules in `overrides/why.html`, each a rule of its own, `.proof{margin-top:36px}.proof>p{max-width:70ch}` on screen, `.proof{margin-top:28px}` up to 640 px, and in print `.proof{margin-top:0}`, `.proof>p{font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt}` and `html[lang=de] .proof>p{font-size:7.2pt}`, each pinned with a control; and the Owner's long forms *Kopiere den Prompt*, *probiere es … aus* and *wähle eines*. The probe prompt does not change. |
 | 2026-10-27 23:23:47 CET | **A native reader's feedback on the German, recorded for v0.20.2** on the Owner's word: the how-it-works page's week in four steps reads as English translated sentence by sentence. v0.20.2's move to *du* writes every German docs page from its meaning, after the Owner rules a short glossary, and a German native reader reads each page before it merges. The how-it-works page stays as it is this round. |

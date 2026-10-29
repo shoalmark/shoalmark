@@ -410,3 +410,219 @@ for css in [*site.rglob("*.css"), *site.rglob("*.html")]:
     if re.search(r"url\(\s*['\"]?(?:https?:)?//", re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)):
         fail(f"{css.relative_to(site)} loads a stylesheet resource from outside the site")
 print("site check: the landings in two languages, their launch state, How it works, the Markdown twins and requests to no other host passed")
+
+
+# --- fenced code: every fenced block of the docs, and of what their includes bring in, builds to a code block, and no page shows a fence as text ----------
+# The pages are read where zensical.toml puts them: its docs_dir, its snippets' base_path for each include, in its one-line or its block form, and
+# use_directory_urls for the page each one builds to. Both languages are pages of the same docs folder.
+project = tomllib.loads(config_path.read_text(encoding="utf-8"))["project"]
+docs_dir = config_path.parent / project.get("docs_dir", "docs")
+snippets = ((project.get("markdown_extensions") or {}).get("pymdownx") or {}).get("snippets") or {}
+snippet_bases = [config_path.parent / base for base in (snippets.get("base_path") or ["."])]
+directory_urls = project.get("use_directory_urls", True)
+INCLUDE = re.compile(r"""^([ \t]*)(;*)-+8<-+[ \t]+(["'])(.+?)\3$""")
+INCLUDE_BLOCK = re.compile(r"^[ \t]*(;*)-+8<-+$")
+SECTION_MARK = re.compile(r"(?i)^.*?(;*)-+8<-+[ \t]+\[[ \t]*(start|end)[ \t]*:[ \t]*([a-z][-_0-9a-z]*)[ \t]*\].*$")
+PART = re.compile(r"(?i)(.*?)(?:((?::-?[0-9]*){1,2}(?:(?:,(?=[-0-9:])-?[0-9]*)(?::-?[0-9]*)?)*)|(:[a-z][-_0-9a-z]*))?$")
+QUOTE = re.compile(r"^[ \t]{0,3}(?:>[ \t]?)+")
+FENCE = re.compile(r"^([ \t]*)(`{3,}(?=[^`]*$)|~{3,})")
+FENCE_TEXT = ("```", "~~~")
+if not docs_dir.is_dir() or not any(docs_dir.rglob("*.md")):
+    fail(f"zensical.toml's docs_dir, {docs_dir}, holds no page: the fenced blocks are read from it")
+
+
+def section_of(lines, name, page, include):
+    """The lines between a file's `--8<-- [start:name]` and `--8<-- [end:name]`, as snippets extracts them: another section's markers left out, an
+    escaped marker kept with one `;` taken off."""
+    picked, inside, found = [], False, False
+    for line in lines:
+        mark = SECTION_MARK.match(line)
+        if mark and inside and mark.group(1):
+            line = line[:mark.start(1)] + line[mark.start(1) + 1:]
+        elif mark and mark.group(3) == name:
+            if not inside and mark.group(2) == "start":
+                inside = found = True
+                continue
+            if inside and mark.group(2) == "start":
+                continue
+            break
+        elif mark and inside:
+            continue
+        if inside:
+            picked.append(line)
+    if not found:
+        fail(f"{page} includes {include}, and that file holds no section {name}")
+    return picked
+
+
+def included(name, page):
+    """What an include brings in: (the file, its lines, whether they are a section). A trailing `:start:end` (or several, by commas) or `:name` is
+    split off before the file is looked for in the base paths, and only those lines or that section are taken, as snippets takes them."""
+    part = PART.match(name.strip())
+    file, ranges, section = part.group(1).strip(), part.group(2), part.group(3)
+    found = next((base / file for base in snippet_bases if file and (base / file).is_file()), None)
+    if found is None:
+        fail(f"{page} includes {name}, which none of the snippets' base paths {[str(base) for base in snippet_bases]} holds")
+    lines = found.read_text(encoding="utf-8").expandtabs(4).split("\n")
+    if ranges:
+        picked = []
+        for span in (piece.split(":") for piece in ranges[1:].split(",")):
+            start = int(span[0]) if span[0] else None
+            start = start if start is None or start < 0 else max(0, start - 1)
+            end = int(span[1]) if len(span) > 1 and span[1] else None
+            start = min(max(len(lines) + start, 0), len(lines)) if start and start < 0 else start
+            end = min(max(len(lines) + 1 + end, 0), len(lines)) if end and end < 0 else end
+            picked += lines[start:end]
+        return found, picked, False
+    if section:
+        return found, section_of(lines, section[1:], page, name), True
+    return found, lines, False
+
+
+def expanded(name, page, depth):
+    found, lines, section = included(name, page)
+    return source_lines(found, page, depth + 1, lines, section)
+
+
+def source_lines(path, page, depth=0, lines=None, section=False):
+    """A page's lines as the build reads them: each include, a `--8<-- "name"` line or a block of names between two `--8<--` lines, replaced by the lines
+    it brings in at its indentation; an include marker escaped with `;` kept as text with one `;` taken off, inside a block of names too; outside a section,
+    a section's marker lines left out, as snippets leaves them out."""
+    if lines is None:
+        lines = path.read_text(encoding="utf-8").expandtabs(4).split("\n")
+    out, names = [], False
+    for line in lines:
+        m, block = INCLUDE.match(line), INCLUDE_BLOCK.match(line)
+        if m and m.group(2) or block and block.group(1):
+            out.append(line.replace(";", "", 1))
+            continue
+        if names:
+            if block:
+                names = False
+            elif not m and not line.strip():
+                out.append("")
+            elif not m and not line.strip().startswith(";") and depth < 8:
+                out += [line[:len(line) - len(line.lstrip())] + inner for inner in expanded(line.strip(), page, depth)]
+            continue
+        if block:
+            names = True
+            continue
+        if m and depth < 8:
+            out += [m.group(1) + inner for inner in expanded(m.group(4).strip(), page, depth)]
+            continue
+        mark = None if section else SECTION_MARK.match(line)
+        if mark and not mark.group(1):
+            continue
+        out.append(line[:mark.start(1)] + line[mark.start(1) + 1:] if mark else line)
+    return out
+
+
+def trimmed(lines):
+    """A block's lines as a reader compares them: no trailing spaces, no blank line before the first or after the last."""
+    lines = [line.rstrip() for line in lines]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    return tuple(lines)
+
+
+def unquoted(line, depth):
+    """`line` with `depth` blockquote markers taken off, as its blockquote hands it on; None where the line holds none, so the quote has ended."""
+    if not depth:
+        return line
+    m = re.match(r"^[ \t]{0,3}(?:>[ \t]?){%d}" % depth, line)
+    return line[m.end():] if m else "" if not line.strip() else None
+
+
+def fenced_blocks(lines):
+    """The body of each fenced block, in a blockquote or not, with its quote's markers and its fence's own indentation taken off; a fence that is never
+    closed runs to the end of the page, or of its blockquote."""
+    blocks, i = [], 0
+    while i < len(lines):
+        quote = QUOTE.match(lines[i])
+        depth = quote.group(0).count(">") if quote else 0
+        m = FENCE.match(lines[i][quote.end():] if quote else lines[i])
+        if not m:
+            i += 1
+            continue
+        indent, fence = len(m.group(1)), m.group(2)
+        close = re.compile(r"^[ \t]*%s{%d,}[ \t]*$" % (re.escape(fence[0]), len(fence)))
+        body, j = [], i + 1
+        while j < len(lines):
+            inner = unquoted(lines[j], depth)
+            if inner is None or close.match(inner):
+                break
+            body.append(inner)
+            j += 1
+        blocks.append(trimmed(line[indent:] if not line[:indent].strip() else line.lstrip() for line in body))
+        i = j + 1 if j < len(lines) and unquoted(lines[j], depth) is not None else j
+    return blocks
+
+
+def built_page(rel):
+    if rel.name in ("index.md", "README.md"):
+        return (rel.parent / "index.html").as_posix()
+    return (rel.with_suffix("") / "index.html").as_posix() if directory_urls else rel.with_suffix(".html").as_posix()
+
+
+class CodeBlocks(HTMLParser):
+    """A built page's code blocks, each <pre>'s text, and the fences it shows as text: outside every <pre> and <code>, script, style and textarea."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack, self.pres, self.fences = [], [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "pre":
+            self.pres.append([])
+        if tag not in VOID:
+            self.stack.append(tag)
+
+    def handle_endtag(self, tag):
+        if tag in VOID or tag not in self.stack:
+            return
+        while self.stack and self.stack.pop() != tag:
+            pass
+
+    def handle_data(self, data):
+        if "pre" in self.stack and self.pres:
+            self.pres[-1].append(data)
+        elif not {"code", "script", "style", "textarea"} & set(self.stack) and any(f in data for f in FENCE_TEXT):
+            self.fences.append(" ".join(data.split())[:60])
+
+
+def code_blocks(rel):
+    found = CodeBlocks()
+    found.feed((site / rel).read_text(encoding="utf-8"))
+    found.close()
+    return found
+
+
+lost, shown, held = {}, {}, 0
+for md in sorted(docs_dir.rglob("*.md")):
+    rel = md.relative_to(docs_dir)
+    if md.name == "README.md" and (md.parent / "index.md").is_file():
+        continue                                              # the folder's index.md is its page; the build leaves this README out
+    blocks = fenced_blocks(source_lines(md, rel.as_posix()))
+    if not blocks:
+        continue
+    page = built_page(rel)
+    if not (site / page).is_file():
+        fail(f"{rel.as_posix()} holds {len(blocks)} fenced block(s), and no {page} is built from it")
+    pres = [trimmed("".join(text).split("\n")) for text in code_blocks(page).pres]
+    for body in blocks:
+        if body in pres:
+            pres.remove(body)
+        else:
+            lost.setdefault(page, []).append(body[0] if body else "(an empty block)")
+    held += len(blocks)
+for path in sorted(site.rglob("*.html")):
+    fences = code_blocks(path.relative_to(site).as_posix()).fences
+    if fences:
+        shown[path.relative_to(site).as_posix()] = fences
+if lost or shown:
+    fail("; ".join(
+        [f"{page}: {len(firsts)} fenced block(s) do not build to a code block, the first opening {firsts[0][:60]!r}" for page, firsts in sorted(lost.items())]
+        + [f"{page} shows a fence as text: {fences[0]!r}" for page, fences in sorted(shown.items())]))
+print(f"site check: the {held} fenced block(s) of the docs, in both languages, build to code blocks, and no page shows a fence as text")
