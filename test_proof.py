@@ -126,7 +126,8 @@ def said_lines(fm, word):
         fm.done_cmd(["AP-001", "the result"], [t])
         fm.due_cmd(["AP-001", "2026-10-14T12:00Z"], [t])
         fm.revoke_cmd(["AP-001", "the wrong result"], [{**t, "done": "2026-10-13T12:00Z · result"}])
-    return {flag: how["said"]("answer/ap-001", ", pushed", word) for flag, how in got.items()}
+    return {flag: how["said"]("committed on `pd/001` as 0000000\n  it counts once this commit is on origin/main: push it, or merge the branch that carries it", word)
+            for flag, how in got.items()}
 
 
 def state(root):
@@ -145,7 +146,7 @@ def table(fm, rows=((True, True), (True, False), (False, True), (False, False)))
     screen's lines, `--answer`'s step and last line, its commit's signature, its one line where the two differ — against
     the default branch's reading alone. Where the checkout asks for a signature its default branch does not (RV-3309),
     `--answer` is refused before anything changes: HEAD, the trackers, the branches and the remote are as they were. Where it
-    reports an answer given, `--check` on that answer's branch finds no signing or rights refusal. Returns every mismatch,
+    reports an answer given, `--check` on the branch it committed on finds no signing or rights refusal. Returns every mismatch,
     as a line; [] where the table holds."""
     german = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
     bad = []
@@ -175,32 +176,32 @@ def table(fm, rows=((True, True), (True, False), (False, True), (False, False)))
             before = state(root)
             code, out, err = run(fm, root, "--answer", "AP-001", "accept")
             word = fm.PROOF_SAID[want]
-            if here_signed and not trunk_signed:            # RV-3309: refused in the shared preflight, before any branch, switch or write
+            if here_signed and not trunk_signed:            # refused in the shared preflight, before any write
                 after = state(root)
                 if code != fm.EXIT_LINT or out or "the signing configuration must reach origin/main first" not in err or after != before:
                     bad.append(f"{name}: --answer was not refused before any change (exit {code}, said {out[:80]!r}, {err.strip()[-200:]!r}; "
                                f"changed: {[k for k in before if before[k] != after[k]]})")
             else:
-                if code != 0 or not out.startswith(f"AP-001 answered: accepted\n  {word}, on `answer/ap-001`, pushed\n"):
+                sha = git(root, "rev-parse", "--short", "HEAD").strip()
+                if code != 0 or not out.startswith(f"AP-001 answered: accepted\n  {word}, committed on `pd/001` as {sha}\n"
+                                                   "  it counts once this commit is on origin/main: push it, or merge the branch that carries it\n"):
                     bad.append(f"{name}: --answer ended {code} and said {out[:120]!r} ({err.strip()[-200:]!r})")
-                if ("3/4 committing, signed" in err) != trunk_signed:
-                    bad.append(f"{name}: --answer's commit step reads {[l for l in err.splitlines() if '3/4' in l]}")
-                head = git(root, "cat-file", "commit", "refs/heads/answer/ap-001") if code == 0 else ""
+                if ("3/3 committing, signed" in err) != trunk_signed:
+                    bad.append(f"{name}: --answer's commit step reads {[l for l in err.splitlines() if '3/3' in l]}")
+                head = git(root, "cat-file", "commit", "HEAD") if code == 0 else ""
                 if ("\ngpgsig" in head) != trunk_signed:
                     bad.append(f"{name}: the answer's commit is {'signed' if 'gpgsig' in head else 'not signed'}")
                 differs = [l for l in err.splitlines() if "and this checkout's does not" in l]
                 if len(differs) != (trunk_signed and not here_signed) or (differs and not differs[0].rstrip().endswith("signed, as the gate reads origin/main")):
                     bad.append(f"{name}: the line where the checkout differs reads {differs}")
-                if code == 0:                               # the answer it reports given passes the signing and rights checks on its branch
-                    git(root, "switch", "-q", "answer/ap-001")
+                if code == 0:                               # the answer it reports given passes the signing and rights checks on the branch it is on
                     c2, _o2, e2 = run(fm, root, "--check")
-                    git(root, "switch", "-q", "pd/001")
                     lint = [l.strip()[:160] for l in e2.splitlines() if "lint:" in l]
                     if c2 not in (0, fm.EXIT_DRIFT) or lint:     # drift: INDEX.md, which no hook here regenerates; any lint or refusal ends 4
                         said = lint or [l.strip()[:160] for l in e2.splitlines() if "refused" in l]
-                        bad.append(f"{name}: the answer --answer reported pushed fails --check on its branch (exit {c2}: {said[:2]})")
+                        bad.append(f"{name}: the answer --answer reported committed fails --check on its branch (exit {c2}: {said[:2]})")
             for flag, text in said_lines(fm, word).items():
-                if f"\n  {word}, on `answer/ap-001`, pushed" not in text or (bool(SIGNED_WORDS.search(text)) != trunk_signed):
+                if f"\n  {word}, committed on `pd/001` as " not in text or (bool(SIGNED_WORDS.search(text)) != trunk_signed):
                     bad.append(f"{name}: {flag} would say {text[:120]!r}")
     return bad
 
@@ -314,8 +315,8 @@ def unread_row(fm):
         if code != 0 or not proof or proof["state"] != "signed":
             bad.append(f"refused on origin/main, signed here: the page reads {proof} ({code}, {err.strip()[-160:]!r})")
         code, out, err = run(fm, root, "--answer", "AP-001", "accept")
-        head = git(root, "cat-file", "commit", "refs/heads/answer/ap-001") if code == 0 else ""
-        if code != 0 or "\n  signed, on `answer/ap-001`, pushed" not in out or "\ngpgsig" not in head \
+        head = git(root, "cat-file", "commit", "HEAD") if code == 0 else ""
+        if code != 0 or "\n  signed, committed on `pd/001` as " not in out or "\ngpgsig" not in head \
                 or "origin/main's `shoalmark.toml` cannot be read here — " not in err or "the commit is made as this checkout's reads it: signed" not in err:
             bad.append(f"refused on origin/main, signed here: --answer ended {code}, said {out[:100]!r} ({err.strip()[-240:]!r})")
     return bad

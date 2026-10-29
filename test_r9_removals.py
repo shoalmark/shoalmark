@@ -7,7 +7,8 @@
   `--standup` and `--owner`, each piece, and stays byte for byte as it was: nothing is removed, nothing is added. A calendar
   file of a person's own, at the top or nested, and one reached through a symlinked file or folder, are not named.
 - `--standup`, `--owner`, `--due` and `--done` print, on a fixture with nothing left over, what they printed at 36d4961, the
-  tool R9 joins in PR B (the d-batch's head), and `--due` and `--done` write the same record.
+  tool R9 joins in PR B (the d-batch's head), and `--due` and `--done` write the same record — the acts as they are said since
+  each commits on the branch the Owner stands on and pushes nothing, where the base cut `answer/<id>` and pushed it.
 
 Run: `python3 test_r9_removals.py` — exit 1 on a failure. `SHOALMARK_R9_TOOL=<path>` runs it against another copy of the tool:
 that is how its mutants are run (a leftover deleted; a leftover not named), and each must fail it. test_shoalmark.py runs it at
@@ -27,6 +28,13 @@ import tempfile
 HERE = Path(__file__).resolve().parent
 BASE = "36d4961"                    # the tool R9 joins in PR B: the d-batch's head, before R9 as b84b8af was, which R9 was built on
 FM054_SAID = ("\n  signed, on `answer/", "\n  author only, on `answer/")
+# an act commits on the branch the Owner stands on and pushes nothing — the base's cut, push and switch back, as the joined tool says each
+R4_SAID = (re.compile(r"\n  author only, on `answer/[a-z0-9-]+`, pushed\n"),
+           "\n  author only, committed on `main` as <SHA>\n  it counts once this commit is on origin/main: push it, or merge the branch that carries it\n")
+R4_STEPS = ((re.compile(r" — 1/4 reading the trackers"), " — 1/3 reading the trackers"),
+            (re.compile(r" — 2/4 cutting `answer/[a-z0-9-]+` from `main` …\n"), None),
+            (re.compile(r" — 3/4 committing"), " — 3/3 committing"),
+            (re.compile(r"[^\n]* — 4/4 pushing to `origin` …\n"), ""))
 
 
 FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
@@ -42,7 +50,12 @@ def as_proved(entry):
         return entry[:2] + (out,) + entry[3:]
     if entry[0] not in ("--due", "--done") or not isinstance(entry[2], str) or entry[2].count(FM054_SAID[0]) != 1:
         return entry
-    return entry[:2] + (entry[2].replace(*FM054_SAID),) + entry[3:]
+    out = R4_SAID[0].sub(R4_SAID[1], entry[2].replace(*FM054_SAID), count=1)
+    out = out.replace("\n  back on `main`\n", "\n").replace("the board is rebuilt — it reads the branch just pushed", "the board is rebuilt")
+    err, tid = entry[3], entry[4]
+    for rx, new in R4_STEPS:
+        err = rx.sub(new if new is not None else f" — 2/3 writing docs/work-tracker/{tid}-x.md on `main` …\n", err, count=1)
+    return entry[:2] + (out, err) + entry[4:]
 OWNER = "owner@example.invalid"
 REMOVED = (("--invite", ["--invite", "AP-001"]), ("--notify", ["--notify"]), ("--standup FILE.ics", ["--standup", "cal.ics"]))
 ACT_ICS = (b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//shoalmark//act//EN\r\nBEGIN:VEVENT\r\nUID:act-ap-001-0000000000000000@shoalmark\r\n"
@@ -270,16 +283,19 @@ def run_checks(*, results=None):
         for name, t in (("then", old), ("now", tool)):
             base = area / f"same-{name}"
             r = fixture(base, t, cenv, clock)
-            seq = (["--standup"], ["--owner"], ["--due", "AP-002", clock[1](120)], ["--done", "AP-001", "evidence/AP-001/read.md"], ["--standup"], ["--owner"])
-            got = [(argv[0],) + tuple(normal(x, base) if isinstance(x, str) else x for x in run(t, r, cenv, *argv)) for argv in seq]
-            got.append(("records",) + tuple(normal(git(r, "show", f"origin/answer/{tid}:docs/work-tracker/{tid.upper()}-x.md", env=cenv), base)
+            # the base cut `answer/<id>` and pushed each act there, and its digests read those branches; this tool commits each act on `main`:
+            # the digests before the acts are compared, the acts as this tool says them, and each record where each tool committed it
+            seq = (["--standup"], ["--owner"], ["--due", "AP-002", clock[1](120)], ["--done", "AP-001", "evidence/AP-001/read.md"])
+            got = [(argv[0],) + tuple(normal(x, base) if isinstance(x, str) else x for x in run(t, r, cenv, *argv)) + ((argv[1],) if argv[0] in ("--due", "--done") else ())
+                   for argv in seq]
+            got.append(("records",) + tuple(normal(git(r, "show", f"{f'origin/answer/{tid}' if name == 'then' else 'HEAD'}:docs/work-tracker/{tid.upper()}-x.md", env=cenv), base)
                                             for tid in ("ap-002", "ap-001")))
             pair[name] = got
         for a, b in zip(pair["then"], pair["now"]):
             a = as_proved(a)
             add(f"R9 · {a[0]} prints what it printed at {BASE} — exit, both streams" + (", its proof as FM-054 says it" if a[0] in ("--due", "--done") else
                                                                                          ", its kinds as A2 names them" if a[0] == "--standup" else "")
-                if a[0] != "records" else f"R9 · `--due` and `--done` write the record they wrote at {BASE}, on `answer/<id>`", a == b,
+                if a[0] != "records" else f"R9 · `--due` and `--done` write the record they wrote at {BASE} — there on `answer/<id>`, here on `main`", a == b,
                 "" if a == b else f"then {a!r}\nnow  {b!r}")
         acted = pair["now"][3]
         add("R9 · …and on that fixture `--done` did its act — the control that the comparison compared a run that worked",

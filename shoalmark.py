@@ -614,11 +614,9 @@ NEVER_IN_BOARD_RUN = {
     "remote": "reads origin's address, to find its forge: the queue's alone",
     "merge-tree": "writes objects (`--write-tree`): the queue's alone, telling a conflict",
     "patch-id": "the queue's alone, telling one patch on two branches",
-    "switch": "writes the working tree: an act's alone (`--answer`, `--done`, `--due`, `--revoke`), to its branch and back",
     "restore": "writes the working tree: an act's alone, undoing itself",
     "add": "writes the index: an act's alone",
     "commit": "writes a commit: an act's alone",
-    "push": "writes to a server: an act's alone",
     "status": "refreshes the index and may write it: an act's and `--vendor`'s alone",
     "tag": "`--vendor`'s alone, reading the tool's own tag",
     "interpret-trailers": "writes the message file (`--in-place`): `--session-trailer`'s alone",
@@ -3149,18 +3147,17 @@ def queue_section():
 def answer_step(tid, n, text, verb="answering"):
     """`--answer` says what it is doing AS EACH STEP STARTS — on stderr, flushed, before the wait and not after it. It
     reads the trackers, and the pre-commit gate and the board's rebuild read them again; silent for that long, it was
-    stopped by an Owner who took it for hung (FM-012). What it prints at the end is unchanged. `--done` and `--due` say
-    theirs the same way, with their own word."""
-    print(f"{verb} {tid} — {n}/4 {text} …", file=sys.stderr, flush=True)
+    stopped by an Owner who took it for hung. What it prints at the end is unchanged. `--done` and `--due` say theirs the
+    same way, with their own word."""
+    print(f"{verb} {tid} — {n}/3 {text} …", file=sys.stderr, flush=True)
 
 
-def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", verb="answering"):
-    """`--answer <id> accept|reject [text]` — the Owner's one command. It does what they did by hand the first time: cuts
-    `answer/<id>` from the branch that carries the ask, writes the three lines, commits SIGNED under their name, pushes,
-    and goes back to the branch it started on. It refuses before touching anything when it cannot end in a verified answer.
-    An answer they take back or change (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`) is never lost:
-    the answer it replaces moves into the ship log, with the commit that wrote it. `onto` (FM-030, `--revoke`): the ref of an
-    `answer/<id>` not merged, whose tip `t` was read from — the answer is taken back there, on top of it."""
+def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answering"):
+    """`--answer <id> accept|reject [text]` — the Owner's one command: on the branch they stand on, it writes the three lines and
+    commits them SIGNED under their name. It pushes nothing and switches no branch: the answer counts once that commit is on the
+    default branch, pushed there or merged with the branch that carries it. It refuses before touching anything when it cannot
+    end in a verified answer. An answer they take back or change (`revoke "<reason>"`, or `accept|reject "<option>" --supersede`)
+    is never lost: the answer it replaces moves into the ship log, with the commit that wrote it."""
     refused = cli_git_refusal('answer')
     if refused is not None:
         return refused
@@ -3206,13 +3203,12 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
     def check_ask():
         # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
         # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal.
-        # Asked before the branch is cut — nothing is touched for an answer that cannot be written
+        # Asked before anything is written — nothing is touched for an answer that cannot be written
         if not any(l.startswith("ask:") for l in path.read_text(encoding="utf-8").split("\n")):
             return (f"{tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
                     f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer")
         if t.get("answer"):
-            wrote = (git_out("log", "-1", "--format=%h", "-G", line_regex("answer:"), onto, "--", path.relative_to(ROOT).as_posix()) or "").strip() if onto else ""
-            replaced.append((t["answer"], t.get("answered", ""), wrote or (line_author(path, "answer:")[3] or "")[:7] or "not committed"))
+            replaced.append((t["answer"], t.get("answered", ""), (line_author(path, "answer:")[3] or "")[:7] or "not committed"))
         return ""
 
     def write(lines, me, branch):
@@ -3239,12 +3235,12 @@ def answer_cmd(words, trackers, supersede=False, onto=None, flag="--answer", ver
         return lines, ""
 
     return owner_change(tid, t, dict(
-        flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write, onto=bool(onto),
+        flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write,
         subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
         again=f'{CMD} --answer {printed_arg(tid)} {verdict}' + (f' {printed_arg(text)}' if text else "") + (" --supersede" if supersede else ""),
-        said=lambda branch, pushed, proof: (f"{tid} answered: {answer}\n  {proof}, on `{branch}`" + pushed + f"\n  it has left your queue; the seat sees it under --answered"
-                                     + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
-                                     + seed_said(tid, seed))))
+        said=lambda where, proof: (f"{tid} answered: {answer}\n  {proof}, {where}" + f"\n  it has left your queue; the seat sees it under --answered"
+                                   + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
+                                   + seed_said(tid, seed))))
 
 
 def seed_said(tid, seed):
@@ -3259,38 +3255,6 @@ def seed_said(tid, seed):
     if parse_due(seed["had"]) == parse_due(seed["when"]):
         return f"\n  due: {seed['had']} — your answer names the same time"
     return f"\n  your answer names {seed['when']} (`{seed['words']}`); `due:` is {seed['had']} already and is left — `{CMD} --due {printed_arg(tid)} {printed_arg(seed['when'])}` moves it"
-
-
-def unmerged_advice(git, branch, trunk, rel, tid, how, me, email):
-    """What an unmerged `answer/<id>` asks of the Owner, read from what is on it. Its own commits — those not in `trunk`,
-    or with no trunk, on no other branch — that are THEIRS (their name or their email) are never deleted for them: where the
-    tracker's act is open there, `--done`/`--due` are run on it; otherwise it is merged first. `git branch -D` is named
-    only where nothing of theirs is on it (FM-030 C, as ruled). Where `--queue` waits on it for a commit not theirs —
-    `answer_branch_reading`, its own line — the advice says how that clears: the commit lands on the trunk first, by its
-    own pull request; theirs are kept (RV-713)."""
-    span = [f"refs/heads/{branch}", "--not", trunk] if trunk else [f"refs/heads/{branch}", "--not", f"--exclude={branch}", "--branches", f"--exclude=*/{branch}", "--remotes"]
-    own = [l.split("\t") for l in git("log", "--format=%h%x09%an%x09%ae%x09%s", *span).stdout.splitlines() if l.count("\t") >= 3]
-    his = [(sha, subject) for sha, name, mail, subject in own if name == me or (email and mail == email)]
-    if not his:
-        return (f"it may hold work, and nothing is deleted for you; nothing of yours is on it — clear it with `git branch -D {printed_arg(branch)}`, "
-                f"then `{how['again']}`")
-    said = "; ".join(f"`{sha}` {subject[:60]}" for sha, subject in his[:3]) + (f"; and {len(his) - 3} more" if len(his) > 3 else "")
-    tip = (git("rev-parse", "--verify", "--quiet", branch).stdout or "").strip()
-    reading = answer_branch_reading(tip, trunk)[1] if trunk and tip else ""            # `--queue`'s own line for it
-    stray = reading if reading.startswith(STRAY_WAITS) else ""
-    held = (f"; `--queue` holds its merge on {stray[len('wait: '):]} — that commit lands on `{ref_name(trunk)}` first, by its own pull request, "
-            f"never through yours" if stray else "")
-    if how["flag"] in ("--done", "--due"):
-        there = cat_blobs([f"{branch}:{rel}"]).get(f"{branch}:{rel}")
-        t_ = extract(ROOT / rel, there) if there is not None else None
-        if t_ and (act_of(t_) if how["flag"] == "--done" else t_.get("status") in OPEN_STATUSES):
-            return (f"it carries your commit(s) — {said} — and {tid}'s act is open there: `git switch {printed_arg(branch)}`, then "
-                    f"`{how['again']}` — it commits on top, and nothing of yours is deleted" + held)
-    if stray:
-        return (f"it carries your commit(s) — {said} — and nothing of yours is deleted{held}; then merge it (its pull request), "
-                f"then `{how['again']}`; or `git switch {printed_arg(branch)}` and run it there")
-    return (f"it carries your commit(s) — {said} — and nothing of yours is deleted: merge it first (its pull request), then `{how['again']}`; "
-            f"or `git switch {printed_arg(branch)}` and run it there")
 
 
 # R9 — the ruling signed on 2026-10-12: invites, notifications and their scheduler state go; owed acts, `due:`, `done:` and their
@@ -3483,17 +3447,14 @@ def proof_page():
 
 
 def owner_change(tid, t, how):
-    """THE OWNER'S OWN CHANGE ON A TRACKER, the one flow `--answer`, `--done` and `--due` share: who may make it — the
-    seats that hold `answer`, or `answerers` — is asked first; then `answer/<id>` is cut from the branch that carries the
-    tracker (a spent one deleted and cut fresh, an unmerged one refused), `how["write"]` writes the lines, and the commit
-    is made SIGNED where the default branch's configuration marks them `signed` — the gate's reading, `answer_signing` (FM-054) —,
-    verified, pushed, and they are put back on the branch they started on. A failure
-    after anything was written undoes all of it and prints what they gave with the command that gives it again (FM-017).
+    """THE OWNER'S OWN CHANGE ON A TRACKER, the one flow `--answer`, `--done`, `--due` and `--revoke` share: who may make it — the
+    seats that hold `answer`, or `answerers` — is asked first; then, on the branch they stand on, `how["write"]` writes the lines, and
+    the commit is made SIGNED where the default branch's configuration marks them `signed` — the gate's reading, `answer_signing` —
+    and verified. Nothing is pushed and no branch is cut or switched: the change counts once its commit is on the default branch.
+    A failure after anything was written restores what it wrote and prints what they gave with the command that gives it again.
     `how`: flag · verb (the steps' word) · noun · right (why it is an `answer` change) · check() → why not, before anything
-    is touched · write(lines, me, branch) → (lines, why not) · subject · kept (its name, its text) · again · said(branch,
-    ", pushed" or why not, how the commit is proved — `PROOF_SAID`'s word) → what it prints · onto (FM-030, `--revoke`):
-    `answer/<id>` is not merged — their act on its way — and
-    the change commits on top of it there, one branch per exchange, where every other flow refuses it."""
+    is touched · write(lines, me, branch) → (lines, why not) · subject · kept (its name, its text) · again · said(where, how the
+    commit is proved — `PROOF_SAID`'s word) → what it prints, `where` naming the branch, the commit and when it counts."""
     refused = cli_git_refusal(how["flag"][2:])
     if refused is not None:
         return refused
@@ -3520,9 +3481,9 @@ def owner_change(tid, t, how):
     signed, claimed, trunk, unread = answer_signing(pend_name or me, pend_email)
     proof = PROOF_SAID["signed" if signed else "author"]
     if trunk and not unread and here_signed and not signed:
-        # FM-054, RV-3309: this checkout asks for a signature its default branch does not. Unsigned, as the default branch reads it,
-        # the change fails this branch's own gate (`lint` reads this checkout); signed, it is said where the default branch asks
-        # for nothing. Refused here, in the preflight every flow shares — before any branch is cut or switched and before any write
+        # this checkout asks for a signature its default branch does not. Unsigned, as the default branch reads it, the change
+        # fails this branch's own gate (`lint` reads this checkout); signed, it is said where the default branch asks for
+        # nothing. Refused here, in the preflight every flow shares — before any write
         print(f"{flag}: this checkout's `{CONFIG_NAME}` asks for a signed {noun}, and {ref_name(trunk)}'s does not — the signing configuration "
               f"must reach {ref_name(trunk)} first: merge the change that asks for it there, then run this again. Nothing was changed", file=sys.stderr)
         return EXIT_LINT
@@ -3553,97 +3514,25 @@ def owner_change(tid, t, how):
     if why:
         print(f"{flag}: {why}", file=sys.stderr)
         return EXIT_LINT
-    branch, here, start = f"answer/{tid.lower()}", git("branch", "--show-current").stdout.strip(), git("rev-parse", "HEAD").stdout.strip()
-    created = switched = False
-    cut_at = start                                           # where a branch this run made stood when it was made — undo deletes it only there
+    here = git("branch", "--show-current").stdout.strip()
+    on = f"`{here}`" if here else "a detached HEAD"
 
     def undo(what, said=""):
-        """FM-017: a run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked
-        change (refused above otherwise), so every tracked path that differs now is its own — the tracker it wrote, the
-        INDEX.md a hook regenerated — and is restored. Then it goes back to the branch it started on, and an
-        `answer/<id>` it cut and never committed to is deleted. Left behind, those made the Owner's next `--answer`, on
-        another ask, refuse as a dirty tree without saying why. What they gave is printed with the command that gives it
-        again: a refusal never costs them the words."""
+        """A run that fails after it has written anything leaves NOTHING behind. It began on a tree with no tracked change
+        (refused above otherwise), so every tracked path that differs now is its own — the tracker it wrote, the INDEX.md a
+        hook regenerated — and is restored. Left behind, those made the Owner's next `--answer`, on another ask, refuse as a
+        dirty tree without saying why. What they gave is printed with the command that gives it again: a refusal never costs
+        them the words."""
         restored = changed_paths(git)
         if restored:
             git("restore", "--staged", "--worktree", "--", *[f":(top){p_}" for p_ in restored])
-        recorded = record_refusal(what, said)
-        back = gone = ""
-        if switched:
-            s_ = git("switch", here) if here else git("switch", "--detach", start)
-            back = f"back on `{here or start[:10]}`" if s_.returncode == 0 else f"could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}"
-            if created and s_.returncode == 0 and git("rev-parse", "--verify", "-q", branch).stdout.strip() == cut_at and git("branch", "-D", branch).returncode == 0:
-                gone = f"`{branch}` deleted — it carried no commit"
         print(f"{flag}: {what}" + ("".join(f"\n    {l_}" for l_ in said.splitlines()) if said else ""), file=sys.stderr)
-        print("  undone: " + " · ".join(x for x in (f"restored {', '.join(restored)}" if restored else "", back, gone) if x) if restored or back else "  nothing was changed", file=sys.stderr)
-        if recorded:
-            print(f"  {recorded}", file=sys.stderr)
+        print(f"  undone: restored {', '.join(restored)}" if restored else "  nothing was changed", file=sys.stderr)
         print(f"  {how['kept'][0]}, not lost: {how['kept'][1]}\n  to give it again: {how['again']}", file=sys.stderr)
         return EXIT_LINT
 
-    def record_refusal(what, said):
-        """FM-030, the E0 counter's row 20: one `--due` of theirs was refused after its cut and left nothing — the undo took
-        it all back, and only their clone's reflog knew. A refusal on `answer/<id>`, the tree restored, leaves ONE line under
-        `## Acts` there — `**<date> <time>** · <the command> refused — <why>` — committed and pushed, so the record and the
-        forge show the attempt; their next run on this tracker names the branch and its commit, and commits on top of it.
-        UNSIGNED, whoever runs the command, and honest so: the line changes no front-matter key and rules or records no act —
-        the tool's report of one that did not happen — so the gate reads no right in it, a signature would prove nothing it
-        needs, and the refusal may be the signing key's own.
-        Refused itself, the line is taken back and the refusal is printed only; before the cut, it is printed only."""
-        if git("branch", "--show-current").stdout.strip() != branch or not path.is_file():
-            return ""
-        command = how["again"][len(CMD) + 1:] if how["again"].startswith(CMD + " ") else how["again"]
-        reason = refusal_reason(what, said)
-        try:
-            text = path.read_text(encoding="utf-8")
-            body = parse_frontmatter(text)[1]
-            put(path, text[: len(text) - len(body)] + append_record(body, ACTS_HEAD_RE, HEAD["acts"],
-                                                                    f"**{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}** · {command} refused — {reason}"))
-        except OSError as e:
-            return f"NOT recorded: {rel} could not be written — {e}"
-        r = git("add", "--", rel)
-        c = git("commit", "--no-gpg-sign", "-m", f"{tid}: {flag} refused — {first_words(reason, 60)}") if r.returncode == 0 else r
-        if c.returncode:
-            left = changed_paths(git)
-            if left:
-                git("restore", "--staged", "--worktree", "--", *[f":(top){p_}" for p_ in left])
-            tail = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (c.stdout.strip() + "\n" + c.stderr.strip()).strip()).splitlines()
-            return f"NOT recorded: the line's own commit was refused too — {(tail or ['git said nothing'])[-1].strip()[:160]}"
-        sha = git("rev-parse", "--short", "HEAD").stdout.strip()
-        p = git("push", "-u", "origin", branch)
-        return (f"recorded under `## {HEAD['acts']}` on `{branch}`: `{sha}`, unsigned — " + ("pushed" if p.returncode == 0 else f"NOT pushed: {p.stderr.strip()[-160:]}")
-                + f"; your next `{flag}` on {tid} names this branch — run it there, and it commits on top")
-
-    if here != branch and how.get("onto"):
-        # FM-030, `--revoke`: their act or answer is on its way on `answer/<id>`, not merged — the revocation commits on top of it,
-        # on that branch; where this clone has only `origin`'s, a local one is made from it, tracking it
-        step(2, f"switching to `{branch}` — your act is on its way there, and this commits on top of it")
-        had = git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0
-        r = git("switch", branch) if had else git("switch", "-c", branch, "--track", f"refs/remotes/origin/{branch}")
-        if r.returncode:
-            return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
-        created, cut_at, switched = not had, git("rev-parse", "HEAD").stdout.strip(), True
-    elif here != branch:
-        if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0:
-            # an `answer/<id>` left from an earlier answer on this tracker: merged, it is spent — deleted and cut fresh from
-            # the branch that carries the ask; not merged, it may hold work, and nothing unmerged is ever deleted for them
-            trunk = default_trunk(git)
-            if not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0:
-                print(f"{flag}: `{branch}` exists and is not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(git, branch, trunk, rel, tid, how, me, pend_email), file=sys.stderr)
-                return EXIT_LINT
-            if git("branch", "-D", branch).returncode != 0:
-                print(f"{flag}: `{branch}` is merged into `{ref_name(trunk)}`, and could not be deleted — `git branch -D {printed_arg(branch)}`, then answer again", file=sys.stderr)
-                return EXIT_LINT
-            print(f"{flag}: `{branch}` was left by an earlier answer and is merged into `{ref_name(trunk)}` — deleted, and cut fresh", file=sys.stderr)
-        step(2, f"cutting `{branch}` from `{here or 'a detached HEAD'}`")
-        r = git("switch", "-c", branch)                        # from the branch that carries the ask: this one
-        created = r.returncode == 0
-        if r.returncode:
-            return undo(f"could not switch to `{branch}` — {r.stderr.strip()[-300:]}")
-        switched = True
-    else:
-        step(2, f"on `{branch}` already")
-    lines, why = how["write"](path.read_text(encoding="utf-8").split("\n"), me, branch)
+    step(2, f"writing {rel} on {on}")
+    lines, why = how["write"](path.read_text(encoding="utf-8").split("\n"), me, here or "HEAD")
     if why:
         return undo(why)
     try:
@@ -3659,23 +3548,16 @@ def owner_change(tid, t, how):
         # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
         said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
         return undo("the commit was refused — nothing is committed. What refused it:", "\n".join(said.splitlines()[-20:]) or "(git said nothing)")
+    sha = git("rev-parse", "--short", "HEAD").stdout.strip()
     if signed and not verified_as("HEAD", claimed):
-        # the gate's own test, `verified_as`, asked here so the change is never pushed under one the gate will refuse: a good
-        # signature under a key the DEFAULT branch's signers file trusts, for the author's email (FM-037's cold re-review, R1:
-        # this read the clone's own file, so mid key rotation it said *pushed*, and the gate refused the answer after)
-        print(f"{flag}: committed, but the signature does not verify as `{me}` — "
-              + unverified("HEAD", "`git commit --amend -S`, or check the signers file") + f"; NOT pushed, and the gate would refuse this {noun}", file=sys.stderr)
+        # the gate's own test, `verified_as`, asked here so the change is never left as if it counted: a good signature under a key
+        # the DEFAULT branch's signers file trusts, for the author's email
+        print(f"{flag}: committed on {on} as {sha}, but the signature does not verify as `{me}` — "
+              + unverified("HEAD", "`git commit --amend -S`, or check the signers file") + f"; the gate would refuse this {noun}: do not push it", file=sys.stderr)
         return EXIT_LINT
-    step(4, "pushing to `origin`")
-    r = git("push", "-u", "origin", branch)
-    print(how["said"](branch, ", pushed" if r.returncode == 0 else f" — NOT pushed: {r.stderr.strip()[-160:]}", proof))
-    if r.returncode != 0:
-        return EXIT_LINT
-    stamp = board_stamp()                                   # the board as the push left it: whatever writes it from here on, it is read below
-    if switched:                                             # pushed: back where they started, so their next command does not begin on this one's branch
-        s_ = git("switch", here) if here else git("switch", "--detach", start)
-        print(f"  back on `{here or start[:10]}`" if s_.returncode == 0 else f"  could NOT switch back to `{here or start[:10]}` — {s_.stderr.strip()[-160:]}")
-    said = board_after_act(stamp)
+    lands = ref_name(trunk) if trunk else "the default branch"
+    print(how["said"](f"committed on {on} as {sha}\n  it counts once this commit is on {lands}: push it, or merge the branch that carries it", proof))
+    said = board_after_act(board_stamp())
     if said:
         print(f"  {said}")
     return EXIT_OK
@@ -3691,13 +3573,11 @@ def board_stamp():
 
 
 def board_after_act(stamp):
-    """FM-030, their signed answer 920970b7 — *right after the act* the board shows it: they pressed the button, ran the command,
-    and the page they return to must say *done, on its way* (their words of 13:57:50). Put back where they started — or on `answer/<id>`
-    itself, where they ran it — the command rebuilds the board itself: `--html-only`, in its own process, which reads the branch just
-    pushed (`on_their_way`). The act does, every time, whatever a refresh hook did. Never where the board is tracked by git —
-    `--init` ignores it, and written, a committed board would leave the tree changed and refuse their next command. `stamp` is the
-    board's file as the push left it — its modification time and size: the rebuild is known by its change. What it says of it, one
-    line; "" where there is no tracker directory."""
+    """Right after the act the board shows it: the command rebuilds the board itself — `--html-only`, in its own process, which
+    reads the branch the commit was made on. The act does, every time, whatever a refresh hook did. Never where the board is
+    tracked by git — `--init` ignores it, and written, a committed board would leave the tree changed and refuse their next
+    command. `stamp` is the board's file as the commit left it — its modification time and size: the rebuild is known by its
+    change. What it says of it, one line; "" where there is no tracker directory."""
     if not TRACKER_DIR.is_dir():
         return ""
     tracked = (git_out("ls-files", "--", HTML_OUT.relative_to(ROOT).as_posix(), VIEW_DIR.relative_to(ROOT).as_posix()) or "").split()
@@ -3710,22 +3590,12 @@ def board_after_act(stamp):
         return f"the board was NOT rebuilt ({type(e).__name__}) — `{CMD} --html-only` rebuilds it"
     if r.returncode != 0 or board_stamp() == stamp:
         return f"the board was NOT rebuilt — `{CMD} --html-only` rebuilds it" + (f": {(r.stderr.strip().splitlines() or [''])[-1][:160]}" if r.stderr.strip() else "")
-    return "the board is rebuilt — it reads the branch just pushed"
-
-
-def refusal_reason(what, said=""):
-    """The one line a refused act command's record keeps (FM-030, E0 row 20): the undo's own words — `the commit was refused`,
-    `could not write …` — and, from what refused the commit, the line that says so: the first that names a refusal, a
-    failure or an error, else the last with words in it. Quoted as printed, flattened to one line, cut between two words."""
-    head = re.sub(r"\s*(?:—\s*)?nothing is committed\.\s*What refused it:\s*$", "", what).strip()
-    lines = [l_.strip() for l_ in (said or "").splitlines() if re.search(r"[A-Za-z]{2}", l_)]
-    pick = next((l_ for l_ in lines if re.search(r"refus|fail|error|denied", l_, re.I)), lines[-1] if lines else "")
-    return first_words(" ".join((head + (f": {pick}" if pick else "")).split()), 240)
+    return "the board is rebuilt"
 
 
 def default_trunk(git, ask=None):
-    """`origin`'s default branch, by its FULL ref — `origin/HEAD`'s target — or None: what an earlier `answer/<id>` must be merged
-    into before `--answer` deletes it, and what the gate reads the branch, the Owner and their signers against. Never the short
+    """`origin`'s default branch, by its FULL ref — `origin/HEAD`'s target — or None: what the gate reads the branch, the Owner
+    and their signers against, and where `--answer` says its commit counts. Never the short
     name: git reads a tag or a branch called `origin/main` before the remote-tracking ref (v0.19.1). `origin/HEAD`'s target is
     returned as it names it, held here or not: a walk from a ref this clone lacks fails, and says so (`read_changes`). No run of
     the tool asks origin for it: the trunk is read from this clone's cached refs. Where `origin/HEAD` is absent, a reader gets
@@ -9663,22 +9533,13 @@ def result_facts(where):
 def done_cmd(words, trackers):
     """`--done <id> "<where the result is>"` — the Owner's act is done: `done:` gets the time and where its result is, the
     act leaves their list, and its record goes under `## Acts`. Their own change, made as `--answer` makes their answer: on
-    `answer/<id>`, signed where their seat is `signed`, pushed (`owner_change`). The seats that hold `answer` may run it."""
+    the branch they stand on, signed where their seat is `signed` (`owner_change`). The seats that hold `answer` may run it."""
     refused = cli_git_refusal('done')
     if refused is not None:
         return refused
     tid, where = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
     t = next((x for x in trackers if x["id"] == tid), None)
     act = act_of(t) if t else None
-    if not act and t and vcs() == "git":                    # R3: their answer — the act — may be on `answer/<id>`, not merged yet
-        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-        branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
-        if git("rev-parse", "--verify", "-q", f"refs/heads/{branch}").returncode == 0 and (not trunk or git("merge-base", "--is-ancestor", f"refs/heads/{branch}", trunk).returncode != 0):
-            there = cat_blobs([f"refs/heads/{branch}:{rel}"]).get(f"refs/heads/{branch}:{rel}")
-            if there is not None and act_of(extract(ROOT / rel, there)):
-                print(f"--done: {tid}'s act is on `{branch}`, not merged into `{ref_name(trunk) or 'origin'}` — " + unmerged_advice(
-                    git, branch, trunk, rel, tid, dict(flag="--done", again=f"{CMD} --done {printed_arg(tid)} {printed_arg(where)}"), git_user(), pending_author()[1]), file=sys.stderr)
-                return EXIT_LINT
     if not act:
         print(f"--done: {tid} owes the Owner no act — an accepted action ask is one, and so is a `due:`; "
               + (f"`done:` is written already ({t.get('done')})" if t and t.get("done") else "there is nothing to record"), file=sys.stderr)
@@ -9699,7 +9560,7 @@ def done_cmd(words, trackers):
                                                     f"**{today}** · done — {where}" + (f" ({facts})" if facts else "") + f" · {what}"
                                                     + (f" · due {due}" if due else "") + f" · {me}"), ""),
         subject=f"{tid}: done — {where[:50]}", kept=("your record", f"done — {where}"), again=f'{CMD} --done {printed_arg(tid)} {printed_arg(where)}',
-        said=lambda branch, pushed, proof: f"{tid} done: {where}\n  {proof}, on `{branch}`{pushed}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
+        said=lambda where_, proof: f"{tid} done: {where}\n  {proof}, {where_}\n  the act has left your list; its record is under `## {HEAD['acts']}`"
                                      + (f" — with what the repository says of it: {facts}" if facts else "")
                                      + ("\n  next: build — the seat's move follows" if "next" in fields else "")))
 
@@ -9734,18 +9595,16 @@ def due_cmd(words, trackers):
                                                     f"**{today}** · " + (f"rescheduled — was due {old}, now due {when}" if old else f"scheduled — due {when}{before}")
                                                     + f" · {what} · {me}"), ""),
         subject=f"{tid}: due {when}", kept=("the new time", when), again=f"{CMD} --due {printed_arg(tid)} {printed_arg(when)}",
-        said=lambda branch, pushed, proof: f"{tid} due: {when}\n  {proof}, on `{branch}`{pushed}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
+        said=lambda where_, proof: f"{tid} due: {when}\n  {proof}, {where_}\n  " + (f"was due {old} — the old time is in the record under `## {HEAD['acts']}`" if old else f"its record is under `## {HEAD['acts']}`")))
 
 
 def revoke_cmd(words, trackers):
-    """`--revoke <id> "<why>"` (FM-030, their signed answer 920970b7: *revoke* in the place of the buttons) — the Owner takes
-    back what they last did on a tracker, as a new signed commit, never an overwrite. An act done: `done:` leaves the front
-    matter, the revocation is recorded under `## Acts` beside what it revokes, and where their accepted action answer had
-    `--done` hand the move to the seat, `next: owner` is theirs again — the act is owed. Else their answer, taken back as
-    `--answer <id> revoke` takes it: `revoked - <why>`, the answer it replaces into the ship log with its commit. Where
-    `answer/<id>` is not merged — here or on `origin` — the act is on its way there: the tracker is read at its tip and
-    the revocation commits on top of it, on that branch (one branch per exchange); else `answer/<id>` is cut as for any
-    act of theirs. Made as `--answer` makes their answer (`owner_change`); the seats that hold `answer` may run it."""
+    """`--revoke <id> "<why>"` — the Owner takes back what they last did on a tracker, as a new signed commit, never an
+    overwrite. An act done: `done:` leaves the front matter, the revocation is recorded under `## Acts` beside what it revokes,
+    and where their accepted action answer had `--done` hand the move to the seat, `next: owner` is theirs again — the act is
+    owed. Else their answer, taken back as `--answer <id> revoke` takes it: `revoked - <why>`, the answer it replaces into the
+    ship log with its commit. The tracker is read as the branch they stand on holds it. Made as `--answer` makes their answer
+    (`owner_change`); the seats that hold `answer` may run it."""
     refused = cli_git_refusal('revoke')
     if refused is not None:
         return refused
@@ -9757,29 +9616,22 @@ def revoke_cmd(words, trackers):
     if not why:
         print("--revoke: a revocation carries its reason — the record keeps it beside what it revokes", file=sys.stderr)
         return EXIT_LINT
-    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    branch, trunk, rel = f"answer/{tid.lower()}", default_trunk(git), (TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()
-    tip = next((ref for ref in (f"refs/heads/{branch}", f"refs/remotes/origin/{branch}") if git("rev-parse", "--verify", "-q", ref).returncode == 0), None)
-    onto = tip if tip and git("branch", "--show-current").stdout.strip() != branch and (not trunk or git("merge-base", "--is-ancestor", tip, trunk).returncode != 0) else None
-    if onto:
-        there = cat_blobs([f"{onto}:{rel}"]).get(f"{onto}:{rel}")
-        t = extract(ROOT / rel, there) if there is not None else t
     if not t.get("done"):
         if not t.get("answer"):
-            print(f"--revoke: {tid} carries neither `done:` nor `answer:`" + (f" on `{branch}`" if onto else "") + " — there is nothing of yours to revoke", file=sys.stderr)
+            print(f"--revoke: {tid} carries neither `done:` nor `answer:` — there is nothing of yours to revoke", file=sys.stderr)
             return EXIT_LINT
-        return answer_cmd([tid, "revoke", why], [t if x["id"] == tid else x for x in trackers], onto=onto, flag="--revoke", verb="revoking")
+        return answer_cmd([tid, "revoke", why], trackers, flag="--revoke", verb="revoking")
     today, (was, _, where) = datetime.date.today().isoformat(), t["done"].partition(" · ")
     act = act_of({**t, "done": ""})
     what = act[0] if act else t.get("title") or tid
     # `--done` handed the move to the seat where their accepted action answer had left it theirs (`next: owner`): taken back, it is theirs again
     fields = {"done": None, **({"next": "owner"} if act and act[1] and t.get("next") == "build" else {})}
     return owner_change(tid, t, dict(
-        flag="--revoke", verb="revoking", noun="revocation", right="taking back the Owner's act is an `answer` change", check=lambda: "", onto=bool(onto),
+        flag="--revoke", verb="revoking", noun="revocation", right="taking back the Owner's act is an `answer` change", check=lambda: "",
         write=lambda lines, me, branch_: (act_record(lines, fields, f"**{today}** · done revoked — {why} · it was done {was} · {where} · {what} · {me}"), ""),
         subject=REVOKE_DONE_SUBJECT.format(tid) + why[:50], kept=("your revocation", why), again=f'{CMD} --revoke {printed_arg(tid)} {printed_arg(why)}',
-        said=lambda branch_, pushed, proof: f"{tid} done revoked: {why}\n  {proof}, on `{branch_}`{pushed}\n  the act is owed again — it is back on your list; "
-                                     f"the revocation is under `## {HEAD['acts']}`" + ("\n  next: owner — the act is yours again" if "next" in fields else "")))
+        said=lambda where_, proof: f"{tid} done revoked: {why}\n  {proof}, {where_}\n  the act is owed again — it is back on your list; "
+                                   f"the revocation is under `## {HEAD['acts']}`" + ("\n  next: owner — the act is yours again" if "next" in fields else "")))
 
 
 def acted_on(trackers):
@@ -10140,9 +9992,9 @@ def cli_parser():
                                                      "then what invites and notifications left here, each named, never removed (R9). With DIR …: one agenda across the repositories named, each "
                                                      "read as it stands — its branch and commit, a Subversion working copy's revision, or the folder — running nothing of theirs and writing "
                                                      "nothing; a folder it cannot read is named with why and counted in nothing (Q7). A name ending in .ics: removed by R9 — one line, exit 2")
-    add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — cuts answer/<id> from this branch, writes the three lines, commits signed, pushes, "
-             "naming each step as it starts, and goes back to the branch it started on. An answer/<id> left from an earlier answer is cut fresh when it is merged into "
-             "origin's default branch, and refused, naming `git branch -D`, when it is not. An answer given already: `--answer <id> revoke \"<reason>\"`, or "
+    add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — on the branch you stand on, writes the three lines and "
+             "commits them signed, naming each step as it starts; it pushes nothing and switches no branch: the answer counts once its commit is on origin's default branch. "
+             "An answer given already: `--answer <id> revoke \"<reason>\"`, or "
              "`--answer <id> accept|reject \"<option>\" --supersede` — the old one moves into the ship log. A failure after it wrote anything undoes it all and "
              "prints the answer and the command to give it again. The word it writes stays the button's; every reading names the answer's relation to the proposal")
     add("--supersede", action="store_true", help="with --answer, on a tracker they have answered already: the new answer replaces the old one, which moves into the ship log "
@@ -10152,14 +10004,13 @@ def cli_parser():
                                               "the log and the launchd agent it left")
     add("--done", nargs=2, metavar=("ID", "WHERE"), help="the Owner's act is done (FM-030): `--done <id> \"<where the result is>\"` writes `done:` — the time and "
                                                         "where its result is — and its record under `## Acts`; the act leaves their list. Made as --answer makes their answer: on "
-                                                        "`answer/<id>`, signed where their `owner` is `signed`, pushed. The board's *done* button copies it")
+                                                        "the branch they stand on, signed where their `owner` is `signed`. The board's *done* button copies it")
     add("--due", nargs=2, metavar=("ID", "TIME"), help="the Owner's act moves (FM-030): `--due <id> 2026-09-26T07:30:00+02:00` writes the new `due:` and records the "
                                                        "old one under `## Acts`; on an act that was done, a new act. Made as --answer makes their answer. The board's "
                                                        "*reschedule* button copies it")
     add("--revoke", nargs=2, metavar=("ID", "WHY"), help="the Owner takes back what they last did on a tracker (FM-030): `--revoke <id> \"<why>\"` — an act done: "
                                                           "`done:` leaves the front matter, the revocation is recorded under `## Acts`, the act is owed again; else their "
-                                                          "answer, as `--answer <id> revoke`. Where `answer/<id>` is not merged — on its way — it commits on top of it there. "
-                                                          "Made as --answer makes their answer. The board's *revoke* button copies it")
+                                                          "answer, as `--answer <id> revoke`. Made as --answer makes their answer. The board's *revoke* button copies it")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
                                                "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since their last sitting, by commit, with the relation its record carries — "
                                                "for a record written before 0.18.1, the one the commit that wrote its answer gives")
