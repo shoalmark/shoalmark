@@ -3,6 +3,7 @@ id: FM-086
 status: Proposed
 considered: FM-006, FM-023, FM-081, FM-027, FM-083, FM-055
 tags: process
+epic: FM-089
 hook: "Done here has meant a merged pull request, and a tracker has meant a theme, so trackers never finish: every later piece of work fits under a standing truth, and nothing asks it to end. When agents merge many pull requests a day, a done that matches one pull request or one tracker tells nothing. Done must be an outcome on the default branch, checked by the commits that met it."
 ---
 

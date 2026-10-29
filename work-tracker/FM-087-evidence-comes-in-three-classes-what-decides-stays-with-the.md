@@ -3,6 +3,7 @@ id: FM-087
 status: Proposed
 considered: FM-006, FM-086, FM-024, FM-021, FM-027
 tags: process
+epic: FM-089
 hook: "Every round files its proof as files, and nothing tells what decides a verdict from what was worked with, or retires either. The evidence grows with every round: clones get slower for adopters, noise hides what decides, and each extra file is more surface for a leak."
 ---
 

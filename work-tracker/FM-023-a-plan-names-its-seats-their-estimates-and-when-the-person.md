@@ -26,9 +26,11 @@ is designed or built.
 as the Auditor relays it.
 - **The tracker:** each release's allocation is filed as its own tracker, which ships at that release's tag.
 - **This tracker** keeps the research question it was filed for, and holds no allocation after v0.20.2's.
-- **v0.20.3's allocation** will hold [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
+- **v0.20.3's allocation** will hold [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter of agentic
+  seamanship, with its two parts: [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
   trackers that close, and [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md), evidence
-  in three classes, both filed today.
+  in three classes, all filed today. The theme is the tag `seamanship`, and each release that carries it gets one
+  chapter.
 
 **2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
 Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
