@@ -42,8 +42,8 @@ as the Auditor relays it.
 - **v0.20.3's allocation** will hold [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter of agentic
   seamanship, with its two parts: [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
   trackers that close, and [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md), evidence in
-  three classes, all filed today. The theme's trackers take the tag `seamanship` once the Owner adds it to the
-  configuration's vocabulary, and each release that carries it gets one chapter.
+  three classes, all filed today. The theme's trackers carry the tag `seamanship`, in the configuration's vocabulary
+  since the Owner's #229, and each release that carries it gets one chapter.
 
 **2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
 Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
@@ -469,6 +469,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | FM-086 to FM-089 carry the tag `seamanship`, in the vocabulary since the Owner's #229. Records only. |
 | 2026-10-29 | `release/v0.20.2-signed` retired after #230's button merge; `release/v0.20.2-rebuilt` at `9f1843b`, the Owner's signed merge of J, is v0.20.2's base. The CI class fix moves to v0.20.3 whole, its three findings with it. Records only. |
 | 2026-10-29 | The CI class fix is described in this entry, not named as FM-062's: no tracker holds it yet (RV-3988). Records only. |
 | 2026-10-29 | The records review's six findings fixed (RV-3982 to RV-3987): the CI class fix is named as FM-062's, an ask option cites its source, the tag waits for the vocabulary, the count of trackers is corrected, and what is not yet filed or done says so. Records only. |

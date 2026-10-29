@@ -2,7 +2,7 @@
 id: FM-089
 status: Proposed
 considered: FM-086, FM-087, FM-088, FM-023
-tags: process
+tags: process, seamanship
 next: wait
 hook: "Agentic seamanship, the chapter for v0.20.3: trackers that close by a definition of done, and evidence that stays small. It is an epic by the rule FM-086 sets: a story with a Done when of its own, which ships at its release. The theme it belongs to never closes; the next chapter opens as a new tracker."
 ---
@@ -14,8 +14,8 @@ hook: "Agentic seamanship, the chapter for v0.20.3: trackers that close by a def
 **Filed 2026-10-29; nothing is built.** On the Owner's word of 29 October, as the Auditor relays it: the theme is
 *agentic seamanship*, the craft of a team of agents whose records finish, whose evidence stays small, and whose
 lessons every seat can read.
-- **The theme is never closed.** Every tracker of it carries the tag `seamanship`, once the configuration's tag
-  vocabulary holds it. That is a change to the configuration, which the Owner makes.
+- **The theme is never closed.** Every tracker of it carries the tag `seamanship`, which the configuration's tag
+  vocabulary holds since the Owner's #229.
 - **Each release that carries the theme gets one chapter,** an epic like this one, which ships at that release.
 - **This chapter is v0.20.3's.** Its parts:
   - [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md): a tracker states one deliverable
@@ -42,4 +42,5 @@ alive and each step of it finishable: the chapter ships when its parts do, and t
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The tag `seamanship` is in the vocabulary since #229, and the theme's four trackers carry it. Records only. |
 | 2026-10-29 | Filed, on the Owner's word of 29 October, as v0.20.3's chapter of agentic seamanship. Records only. |
