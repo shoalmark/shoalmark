@@ -31,7 +31,8 @@ a candidate, not a part.
   - A ruling whose breach cannot be seen there says so in the register, and its eval scenario in
     [FM-096](FM-096-nothing-measures-whether-a-session-follows-the-rules-and.md) is its only proof.
   - Private findings appear only as "RV-…: recorded privately".
-- **The order:** after FM-095. The drift half needs only the register; the breach half is the larger part.
+- **The order:** the last of the three, after FM-095 and FM-096. Its drift half needs only the register; the breach half
+  is the larger part.
 
 ## Why
 A ruling's record says what was decided, not whether it was kept.
@@ -48,4 +49,5 @@ and the record against git. The rulings are the decisions that bind every seat, 
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The order names FM-097 last of the three, after FM-096. Records only. |
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |

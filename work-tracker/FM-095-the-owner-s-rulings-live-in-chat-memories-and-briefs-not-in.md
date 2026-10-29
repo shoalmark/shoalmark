@@ -17,9 +17,10 @@ part.
 - **Where a rule said in chat lives today:** in dated messages kept outside this repository, in each seat's memory and
   brief templates on one machine, and nowhere in this repository. A new session, or one on another harness, reads none
   of it unless someone pastes it.
-- **The pattern this repository already has:** R1 to R15 are the Owner's signed answers.
+- **The pattern this repository already has:** R1 to R28 are the Owner's signed answers of 12 October (2d62fa1).
   - Their record is [rulings-2026-10-12.md](evidence/rulings-2026-10-12.md).
-  - `AGENTS.md`'s "How the loop runs" states the ones in force.
+  - `AGENTS.md`'s "How the loop runs" states the loop's signed answers in force, and names R15, which removed the filing
+    freeze.
   - A class test holds each one that is mechanical, as `test_r9_removals.py` holds R9.
   - `AGENTS.md` also says that a word in chat changes none of them until the Owner signs it. So a rule given in chat
     is not a ruling yet.
@@ -63,7 +64,7 @@ which ones only words hold.
 
 ## Done when
 
-- [ ] The register exists, with R1 to R15 and the commit of each signed answer.
+- [ ] The register exists, with R1 to R28 and the commit of each signed answer.
 - [ ] `--check` refuses a change to the register that is not the Owner's signed commit.
 - [ ] Every ruling names its enforcement and its proof.
 - [ ] The seven proposals of 29 October are listed as proposed, until the Owner signs or drops each.
@@ -72,4 +73,5 @@ which ones only words hold.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The pattern and the Done when name R1 to R28, as the record of 12 October holds them (RV-4056). Records only. |
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |

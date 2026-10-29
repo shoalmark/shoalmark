@@ -29,8 +29,8 @@ Owner's rulings of 29 October, as the Auditor relays them, db88e34 sets the four
   [FM-094](FM-094-a-link-written-as-html-in-a-docs-page-does-not-lead-to-its.md) takes both.
 - **A second contact channel** in the imprint is not filed. The Owner decides it later.
 - **A correction:** this tracker's filing said the theme's repository widget calls GitHub from every visitor's browser.
-  It has called no one since 2ecdc16, on 9 October. This lane's site check holds that now, and the hook, the title and
-  the bullet below say so.
+  It has called no one since v0.20.1, tagged on 23 October, the first release to carry 2ecdc16 of 9 October. This lane's
+  site check holds that now, and the hook, the title and the bullet below say so.
 
 **Filed 2026-10-29, and judged In Progress, P2, before the first build commit,** on the Owner's word of 29 October:
 "bring those in now", on main, as with the landing page's update: a branch, the merge to main, and a deploy.
@@ -70,5 +70,6 @@ notice would otherwise have to explain.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The correction dates the widget's end to v0.20.1, tagged on 23 October, the first release to carry 2ecdc16 (RV-4055). Records only. |
 | 2026-10-29 | Filed, and judged In Progress, P2, before the first build commit, on the Owner's word of 29 October. Records only. |
 | 2026-10-29 | The texts take the Owner's rulings (db88e34), and both addresses deliver. The hook and title are corrected: the widget has called no one since 9 October. FM-093 and FM-094 are filed for v0.20.3. Records only. |
