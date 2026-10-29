@@ -12,7 +12,7 @@ hook: "Every round files its proof as files, and nothing tells what decides a ve
 ## What is true now
 
 **Filed 2026-10-29; nothing is built. Allocated to v0.20.3 on the Owner's word of 29 October, as the Auditor relays
-it;** v0.20.3's allocation records it for the Owner's signed answer.
+it;** v0.20.3's allocation, once it is filed, records it for the Owner's signed answer.
 
 **The case, measured at main `d526547`:**
 - `work-tracker/evidence/` holds 466 files, 23.7 MB.
@@ -59,12 +59,12 @@ with is proof that the work happened, and a manifest keeps that proof without ke
 
 ## Done when
 
-- The contract and the README name the three classes, and where each one lives.
-- A check refuses caches in evidence, and its test shows the refusal.
-- The soft budget's line is raised with its default keys, and has its test.
-- The setup page clones with `--depth 1`, in English and German.
-- The worktree rule is in the contract, and `--check` names the count it reads.
-- v0.20.3's own reviews file their supports the new way.
+- [ ] The contract and the README name the three classes, and where each one lives.
+- [ ] A check refuses caches in evidence, and its test shows the refusal.
+- [ ] The soft budget's line is raised with its default keys, and has its test.
+- [ ] The setup page clones with `--depth 1`, in English and German.
+- [ ] The worktree rule is in the contract, and `--check` names the count it reads.
+- [ ] v0.20.3's own reviews file their supports the new way.
 
 ## Ship log
 

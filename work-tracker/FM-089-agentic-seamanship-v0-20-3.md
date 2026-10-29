@@ -25,7 +25,7 @@ lessons every seat can read.
   memory for every seat and for the team. It takes the tag with the others, and joins the chapter of the release its
   own ask names.
 - **Its allocation:** v0.20.3's allocation is the Owner's, and this chapter waits for it (`next: wait`). It asks
-  nothing of its own: the allocation's ask names it.
+  nothing of its own: the allocation's ask will name it, once it is filed.
 
 ## Why
 

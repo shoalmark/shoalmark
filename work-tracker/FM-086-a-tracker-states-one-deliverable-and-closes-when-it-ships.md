@@ -12,8 +12,8 @@ hook: "Done here has meant a merged pull request, and a tracker has meant a them
 ## What is true now
 
 **Filed 2026-10-29; nothing is built. Allocated to v0.20.3 on the Owner's word of 29 October, as the Auditor relays
-it;** v0.20.3's allocation records it for the Owner's signed answer. **Its heart is shoalmark's definition of done.**
-The Owner calls it the most valuable part of this work.
+it;** v0.20.3's allocation, once it is filed, records it for the Owner's signed answer. **Its heart is shoalmark's
+definition of done.** The Owner calls it the most valuable part of this work.
 
 **The case, measured at main `d526547`:**
 - [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) has been In Progress since
@@ -21,7 +21,7 @@ The Owner calls it the most valuable part of this work.
   rewrite all went in as parts of it. It ships at v0.20.2 for what it delivered, and stops growing.
 - [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) is the same case for the plan: it
   holds every release's allocation, 40 KB in five tables.
-- Of 80 trackers, 22 are In Progress. Five of them have been In Progress since 22 September.
+- Of 78 trackers, 21 are In Progress. Five of them have been In Progress since 22 September.
 - **The Owner's reason:** in a project where people ship, the merged pull request was the done. With agents it is not:
   they ship too fast, and repositories that merge a thousand pull requests a week show that done must not match a
   single pull request or a single tracker.
@@ -48,7 +48,7 @@ The Owner calls it the most valuable part of this work.
 
 - **The reuse bound:** a part of an existing tracker only while that tracker is In Progress and its *Done when*
   already holds an item for the part. Anything else is a new tracker that names the old one in `considered:`. This
-  repository's contract adds one condition: the part ships in the same release.
+  repository's contract will add one condition: the part ships in the same release.
 - **Themes are tags, not epics.** The site or the German line is a theme: `tags:` marks it. `epic:` stays for a story
   with a *Done when* of its own.
 - **The closing pass:** at each release, before its tag, every tracker with a commit in the release's range ships or
@@ -58,7 +58,7 @@ The Owner calls it the most valuable part of this work.
   - **It splits** when items are open: they become a new tracker that names the old one, and the old one ships for the
     items it met. Work already built ships under the tracker that built it, since its commits were judged under that
     one.
-  - This repository's release run sheet stops on a touched tracker that does neither.
+  - This repository's release run sheet will stop on a touched tracker that does neither.
 
 ### The signals, never a refusal
 
