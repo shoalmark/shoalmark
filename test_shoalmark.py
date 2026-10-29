@@ -16,6 +16,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import subprocess
 import datetime
 import sys
@@ -669,11 +670,22 @@ _CHROME_NODE_GAP = ("Windows starts no shell script as a program, and a Node scr
                     if os.name == "nt" else "")
 
 
+def _chrome_stopped(signum, _frame):
+    """A SIGTERM, which atexit does not see (a runner's time limit sends one): the suite's own folder for Chrome is removed, and nothing else; then
+    the signal is sent again, so that the run ends by it, as it would have."""
+    shutil.rmtree(_CHROME_HOME[0], ignore_errors=True)
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+
+
 def _chrome_home():
-    """The suite's own temporary folder for Chrome: made on the first start, and removed when the run ends."""
+    """The suite's own temporary folder for Chrome: made on the first start, and removed when the run ends, at its exit or on a SIGTERM where no
+    other handler is set."""
     if not _CHROME_HOME:
         _CHROME_HOME.append(os.path.realpath(tempfile.mkdtemp(prefix="shoalmark-chrome-")))
         atexit.register(shutil.rmtree, _CHROME_HOME[0], True)
+        if signal.getsignal(signal.SIGTERM) is signal.SIG_DFL:
+            signal.signal(signal.SIGTERM, _chrome_stopped)
     return _CHROME_HOME[0]
 
 
@@ -2534,11 +2546,12 @@ if _browser("control"):
 #     records what each way the suite starts it gives it: from this process, from a child program that carries the browser helpers, and from each
 #     Node script that starts Chrome itself. No real browser runs here
 _KC_NAME = "FM-085 · every Chrome the suite starts gets a mock keychain and a fresh profile folder of the suite's own, whatever its runner passes"
-_KC_STAND_IN = """import json, os, sys
+_KC_STAND_IN = """import json, os, subprocess, sys
 argv = sys.argv[1:]
 profiles = [a.split("=", 1)[1] for a in argv if a.startswith("--user-data-dir=")]
+parent = subprocess.run(["ps", "-o", "comm=", "-p", str(os.getppid())], capture_output=True, text=True).stdout.strip()
 with open(@LOG@, "a", encoding="utf-8") as log:
-    log.write(json.dumps({"argv": argv, "fresh": [os.path.isdir(p) and not os.listdir(p) for p in profiles]}) + "\\n")
+    log.write(json.dumps({"argv": argv, "fresh": [os.path.isdir(p) and not os.listdir(p) for p in profiles], "parent": os.path.basename(parent)}) + "\\n")
 if "--dump-dom" in argv:
     print("<html><head></head><body></body></html>")
 port = [a.split("=", 1)[1] for a in argv if a.startswith("--remote-debugging-port=")]
@@ -2582,6 +2595,8 @@ def _kc_faults(argv, home, fresh):
 
 
 _kc_seen, _kc_real = [], subprocess.run
+_KC_DROPPED = ["--user-data-dir=" + str(HERE), "--user-data-dir", "-user-data-dir=" + str(HERE), "/user-data-dir=" + str(HERE), "--USER-DATA-DIR=" + str(HERE),
+               "-use-mock-keychain", "--use-mock-keychain=1"]      # a runner's spellings of the two flags, each one the guard drops
 
 
 def _kc_run(cmd, *a, **k):
@@ -2594,40 +2609,54 @@ def _kc_run(cmd, *a, **k):
 subprocess.run = _kc_run
 try:
     _kc_probe = _chrome_probe("a stand-in")
-    _kc_page = _chrome_run(["--user-data-dir=" + str(HERE), "-use-mock-keychain", "--lang=en-GB", "--dump-dom", "about:blank"])
+    _kc_page = _chrome_run([*_KC_DROPPED, "--lang=en-GB", "--dump-dom", "about:blank"])
 finally:
     subprocess.run = _kc_real
     _CONTROL_S.pop("a stand-in", None)
 _kc_in = [f for a, fresh, _p in _kc_seen for f in _kc_faults(a, _CHROME_HOME[0] if _CHROME_HOME else None, fresh)]
 check(f"{_KC_NAME} · from this process, on every system: the control and a page each start with the mock keychain and a profile folder made "
-      f"fresh in the suite's own temporary folder and removed when the start ends; a runner's profile and keychain flags are left out, its other "
-      f"flags kept (saw {_kc_in or [a for a, _f, _p in _kc_seen]})",
+      f"fresh in the suite's own temporary folder and removed when the start ends; a runner's profile and keychain flags, in every spelling the "
+      f"guard drops, are left out, its other flags kept (saw {_kc_in or [a for a, _f, _p in _kc_seen]})",
       _kc_probe == "" and _kc_page.returncode == 0 and len(_kc_seen) == 2 and not _kc_in and _kc_seen[0][2] != _kc_seen[1][2]
-      and not any(os.path.exists(p) for _a, _f, p in _kc_seen) and "--lang=en-GB" in _kc_seen[1][0] and "--user-data-dir=" + str(HERE) not in _kc_seen[1][0])
+      and not any(os.path.exists(p) for _a, _f, p in _kc_seen) and "--lang=en-GB" in _kc_seen[1][0] and not set(_KC_DROPPED) & set(_kc_seen[1][0]))
 
 _KC_PATHS = ["from a child program that carries the browser helpers, as the board block runs in one: the control",
              "from a child program that carries the browser helpers, as the board block runs in one: each page",
              "from work-tracker/evidence/FM-006/landing/start-page/checks.mjs, as the summaries' rebuild runs it",
              "from work-tracker/evidence/FM-002/slice-a/checks.mjs, as the summaries' rebuild runs it",
              "from scripts/check_landing_browser.mjs, as the landings' browser run runs it",
-             "the suite's own temporary folder is gone when the child program ends, and a runner's profile folder was never made"]
+             "the suite's own temporary folder is gone when the child program ends, and a runner's profile folder was never made",
+             "a SIGTERM, as a runner's time limit sends one, leaves no folder of the suite's behind: the run ends by the signal, and nothing "
+             "outside the suite's folder is touched"]
 if os.name == "nt":
     _skipped(f"{_KC_NAME} · started as programs", len(_KC_PATHS), "the stand-in for Chrome is a shell script, which Windows does not start as a program "
              "— the check from this process above runs here")
 else:
     with tempfile.TemporaryDirectory() as d:
         kc_dir = Path(d).resolve()
-        kc_log, kc_runner, kc_site = kc_dir / "starts.jsonl", ["--user-data-dir=" + str(kc_dir / "a-runner-profile"), "-use-mock-keychain", "--lang=en-GB"], kc_dir / "site"
-        kc_site.mkdir()
+        kc_log, kc_site = kc_dir / "starts.jsonl", kc_dir / "site"
+        kc_runner = ["--user-data-dir=" + str(kc_dir / "a-runner-profile"), "--user-data-dir", "-user-data-dir=" + str(kc_dir / "b-runner-profile"),
+                     "-use-mock-keychain", "--use-mock-keychain=1", "--lang=en-GB"]
+        kc_bin, kc_tmp = kc_dir / "bin a'b\"c$d", kc_dir / "tmp a'b\"c$d"     # a space, both quotes and a `$`: what a shell must be given quoted
+        for kc_made in (kc_site, kc_bin, kc_tmp):
+            kc_made.mkdir()
         (kc_dir / "stand-in.py").write_text(_KC_STAND_IN.replace("@LOG@", repr(str(kc_log))), encoding="utf-8")
-        (kc_dir / "stand-in").write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(kc_dir / "stand-in.py"))} "$@"\n', encoding="utf-8")
-        (kc_dir / "stand-in").chmod(0o755)
+        (kc_bin / "stand in").write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(kc_dir / "stand-in.py"))} "$@"\n', encoding="utf-8")
+        (kc_bin / "stand in").chmod(0o755)
         kc_scripts = [("work-tracker/evidence/FM-006/landing/start-page/checks.mjs", [str(kc_site), str(kc_dir / "a.json")]),
                       ("work-tracker/evidence/FM-002/slice-a/checks.mjs", [str(kc_site), str(kc_dir / "b.json")]),
                       ("scripts/check_landing_browser.mjs", [str(kc_site), "probe", str(kc_dir / "c.json")])] if shutil.which("node") else []
         kc_end = "".join(f"\nopen({str(kc_log)!r}, 'a', encoding='utf-8').write({json.dumps({'path': s}) + chr(10)!r})\n_chrome_node({s!r}, *{a!r}, timeout=60)\n"
                          for s, a in kc_scripts) + "\nprint('the suite folder:', _CHROME_HOME[0] if _CHROME_HOME else None)\n"
-        kc_r = _block_run(f"\n_CHROME = {str(kc_dir / 'stand-in')!r}\n_CHROME_FLAGS = {kc_runner!r}\n", kc_end)
+        kc_saved = _ENV.get("TMPDIR")
+        _ENV["TMPDIR"] = str(kc_tmp)
+        try:
+            kc_r = _block_run(f"\n_CHROME = {str(kc_bin / 'stand in')!r}\n_CHROME_FLAGS = {kc_runner!r}\n", kc_end)
+        finally:
+            if kc_saved is None:
+                _ENV.pop("TMPDIR", None)
+            else:
+                _ENV["TMPDIR"] = kc_saved
         kc_said = (kc_r.stdout + kc_r.stderr).strip()[-300:]
         kc_home = (re.search(r"^the suite folder: (.+)$", kc_r.stdout, re.M) or [None, ""])[1]
         kc_starts, kc_at = {}, "board"
@@ -2648,12 +2677,26 @@ else:
         for kc_name, (kc_script, kc_args) in zip(_KC_PATHS[2:5], kc_scripts):
             kc_got = kc_starts.get(kc_script, [])
             kc_faults = [f for o in kc_got for f in _kc_faults(o["argv"], kc_home, all(o["fresh"]))]
+            kc_whole = len(kc_got) == 1 and kc_got[0].get("parent") == "node" and any(
+                a.startswith("--host-resolver-rules=MAP * ~NOTFOUND, ") and a.endswith(", EXCLUDE 127.0.0.1") for a in kc_got[0]["argv"])
             check(f"{_KC_NAME} · {kc_name}: Chrome starts with the mock keychain and a profile folder made fresh in the suite's own temporary folder, the "
-                  f"one the script makes for itself left out (saw {kc_faults or [o['argv'] for o in kc_got]}" + (f"; the child said {kc_said!r})" if kc_faults or len(kc_got) != 1 else ")"),
-                  len(kc_got) == 1 and not kc_faults)
+                  f"one the script makes for itself left out, each other argument passed whole, and Node its parent, which the launcher's exec leaves so "
+                  f"(saw {kc_faults or [(o['argv'], o.get('parent')) for o in kc_got]}" + (f"; the child said {kc_said!r})" if kc_faults or not kc_whole else ")"),
+                  kc_whole and not kc_faults)
         check(f"{_KC_NAME} · {_KC_PATHS[5]} (saw {kc_home!r}, there after: {bool(kc_home) and os.path.exists(kc_home)}" + ("" if kc_home else f"; the child said {kc_said!r}") + ")",
-              bool(kc_home) and not os.path.exists(kc_home) and not (kc_dir / "a-runner-profile").exists()
-              and not any(kc_runner[0] in o["argv"] for v in kc_starts.values() for o in v))
+              bool(kc_home) and os.path.dirname(kc_home) == str(kc_tmp) and not os.path.exists(kc_home) and not (kc_dir / "a-runner-profile").exists()
+              and not (kc_dir / "b-runner-profile").exists() and not any(a in kc_runner[:-1] for v in kc_starts.values() for o in v for a in o["argv"]))
+        kc_stop_tmp = kc_dir / "stop tmp"
+        kc_stop_tmp.mkdir()
+        (kc_stop_tmp / "not the suite's").write_text("kept\n", encoding="utf-8")
+        kc_stop = subprocess.run([sys.executable, "-c", _parts + "\nprint('the suite folder:', _chrome_home(), flush=True)\nos.kill(os.getpid(), signal.SIGTERM)\n"
+                                  "time.sleep(10)\nprint('went on after the signal')\n"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                 env=dict(_ENV, TMPDIR=str(kc_stop_tmp)), timeout=300)
+        kc_stop_home = (re.search(r"^the suite folder: (.+)$", kc_stop.stdout, re.M) or [None, ""])[1]
+        check(f"{_KC_NAME} · {_KC_PATHS[6]} (saw exit {kc_stop.returncode}, {kc_stop_home!r}, there after: {bool(kc_stop_home) and os.path.exists(kc_stop_home)}"
+              + ("" if kc_stop_home else f"; the child said {(kc_stop.stdout + kc_stop.stderr).strip()[-300:]!r}") + ")",
+              kc_stop.returncode == -signal.SIGTERM and bool(kc_stop_home) and os.path.dirname(kc_stop_home) == str(kc_stop_tmp)
+              and not os.path.exists(kc_stop_home) and (kc_stop_tmp / "not the suite's").is_file() and "went on" not in kc_stop.stdout)
 
 _kc_tree = ast.parse((HERE / "test_shoalmark.py").read_text(encoding="utf-8"))
 _kc_defs = {n.name: n for n in ast.walk(_kc_tree) if isinstance(n, ast.FunctionDef)}
