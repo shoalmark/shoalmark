@@ -9660,14 +9660,14 @@ with tempfile.TemporaryDirectory() as tmp:
     git(root, "remote", "add", "origin", str(base / "origin.git"))
     tracker(root, "AP-401", extra=f'next: owner\nask-id: AP-401-Q1\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
     git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "-S", "--author=holgo <holgoijo@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/401")
-    code, out, err = run(root, "--answer", "AP-401", "accept")
+    code, out, err = run(root, "--answer", "AP-401-Q1", "accept")
     sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %ae"], capture_output=True, text=True, env=_ENV).stdout.strip()
     check("`--answer` reads the same list: the owner seat answers on a repository that has no `answerers` at all — signed, and the gate it just wrote for accepts it",
           code == 0 and "not in `answerers`" not in err and sig.startswith("G holgoijo@x holgoijo@x") and run(root, "--check")[0] == 0)
     (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "someone@else"\nimplementer = "holgoijo@x"\n', encoding="utf-8")
     tracker(root, "AP-402", extra=f'next: owner\nask-id: AP-402-Q1\nask: "And the second thing?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "another ask", "--author=p <someone@else>")
-    code, _, err = run(root, "--answer", "AP-402", "accept")
+    code, _, err = run(root, "--answer", "AP-402-Q1", "accept")
     check("`--answer` from a seat that does not hold `answer` is refused before the branch is cut, naming the seat and the right",
           code == fm.EXIT_LINT and "an answer is an `answer` change" in err and "does not hold `answer`" in err
           and subprocess.run(["git", "-C", str(root), "branch", "--show-current"], capture_output=True, text=True, env=_ENV).stdout.strip() != "answer/ap-402")

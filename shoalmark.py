@@ -829,6 +829,7 @@ def configure(root=None):
     _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
     _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
     _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
+    _ANSWER_HEADS.clear()                               # …and each answer's commit, found by its id (`answer_commits`)
     global _SVN_NEW, _WALK, _WALK_FAILED
     _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
     _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
@@ -2101,6 +2102,60 @@ def numbers_before(t, now, move, befores):
     return used | (file_numbers(after) if move[0] != "new" else file_numbers({**after, "ask_id": ""}))
 
 
+def svn_names_answer(t, rev):
+    """Whether Subversion's revision `rev` carries `Answers: <the tracker's ask id>` as a line of its message (`svn log -r <rev> --xml`)."""
+    try:
+        log = svn_run("log", "-r", str(rev).lstrip("r"), "--xml", svn_proof_path((TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()), xml=True)
+    except SvnUnreadable:
+        return False
+    said = "\n".join(m.text or "" for m in (log.iter("msg") if log is not None else ()))
+    return f"Answers: {t['ask_id']}" in [l.strip() for l in said.splitlines()]
+
+
+def answer_change_problems(trackers):
+    """On git, each change the walk reads (`changes_under_review`) that changes the answer of a tracker with an `ask-id:` — an `answer`
+    transition — is refused unless its commit is ordinary, carries `Answers:` naming that id, and changes no line of the put ask. A
+    merge never answers. The commit being made is judged on the commit, by the next run: its message is not written yet. Only a change
+    that touches a tracker carrying an ask id, open or in a record, is read — its blobs and its trailers; where none carries one, git is
+    asked nothing more."""
+    if vcs() != "git":
+        return []
+    rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers if t.get("file")}
+    ided = {rel for rel, t in rels.items() if t.get("ask_id") or t.get("asks_ids")}
+    changes = [c for c in changes_under_review() if c[4] and c[1] & ided]
+    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_w, result, _l in changes for rel in sorted(files & ided) for rev in [result, *bases])))
+    out = []
+    for bases, files, _name, _email, commit, result, label in changes:
+        for rel in sorted(files & ided):
+            now = blobs.get(f"{result}:{rel}")
+            aid = (parse_frontmatter(now or "")[0].get("ask-id") or "").strip()
+            if not aid:
+                continue
+            befores = [blobs.get(f"{b}:{rel}") or "" for b in bases]
+            if not all("answer" in transitions(was, now, new_file=not was) for was in befores):
+                continue
+            where = label + " — " if label else ""
+            values = trailer_values(_WALK_COMMITS[commit][1], "Answers") if commit in _WALK_COMMITS else trailers_of(commit, "Answers")
+            if len(bases) > 1:
+                out.append(f"{rels[rel]['id']}: {where}a merge changes the answer to {aid} in its own change — a merge never answers: the answer is the Owner's ordinary commit that names it")
+            elif aid not in [v.strip() for v in values]:
+                out.append(f"{rels[rel]['id']}: {where}changes the answer to {aid} and does not name it — an answer to an ask with an id carries the trailer `Answers: {aid}`: "
+                           f"`{CMD} --answer {aid} …` writes it")
+            elif put_ask_of(parse_frontmatter(now)[0]) != put_ask_of(parse_frontmatter(befores[0])[0]) or (parse_frontmatter(befores[0])[0].get("ask-id") or "").strip() != aid:
+                out.append(f"{rels[rel]['id']}: {where}answers {aid} and changes its put ask in the same commit — the answer binds the put ask its parent holds: answer it as it stands")
+    by_id = {t["id"]: rel for rel, t in rels.items()}
+    named = [(c, label, v.strip()) for _b, files, _n, _e, c, result, label in changes_under_review() if c and result and files & ided
+             for v in (trailer_values(_WALK_COMMITS[c][1], "Answers") if c in _WALK_COMMITS else trailers_of(c, "Answers")) if v.strip()]
+    held = cat_blobs(list(dict.fromkeys(f"{c}:{by_id[m.group(1)]}" for c, _l, v in named for m in [ASK_ID_ANY_RE.fullmatch(v)] if m and m.group(1) in by_id)))
+    for c, label, v in named:
+        m = ASK_ID_ANY_RE.fullmatch(v)
+        text = held.get(f"{c}:{by_id[m.group(1)]}") if m and m.group(1) in by_id else None
+        if text is None or (parse_frontmatter(text)[0].get("ask-id") or "").strip() != v:
+            out.append(f"{(label + ' — ') if label else ''}names `Answers: {v}`, and " + (f"{m.group(1)} does not carry {v} at that commit" if m and m.group(1) in by_id else f"no tracker carries {v}")
+                       + " — an answer names the ask its tracker holds open")
+    return out
+
+
 def fresh_tracker(t, text):
     """`t` as `text` would have it: its id, its file, and what its front matter and records say of its asks."""
     fm_, body = parse_frontmatter(text or "")
@@ -2228,6 +2283,92 @@ def id_backend_note(trackers):
                 "name it is not seen; name the id in the message that puts the ask")
     return ("note: ask ids are checked against the file alone — a number removed without its record, and two copies of the folder that "
             "each mint a number, are not seen")
+
+
+def front_line(text, key):
+    """The line a front matter keeps for `key` as `parse_frontmatter` reads it — the last one, its key's case folded — as written, or ""."""
+    head = (text or "").split("\n---", 1)[0] if (text or "").startswith("---\n") else ""
+    return next((l for l in reversed(head.split("\n")[1:]) if l.partition(":")[0].strip().lower() == key and ":" in l), "")
+
+
+_ANSWER_HEADS = {}
+
+
+def answer_commits(trackers):
+    """THE ANSWER'S COMMIT, found by its id and never by the line: {ask id: (the head's full sha or "", why there is none or "")} for every
+    tracker whose `answer:` stands beside an `ask-id:`. One `git log HEAD` for all of them — a `--grep` prefilter, no path limit, so no
+    history simplification skips a side branch — printing each commit's parents, author and plain trailer block, from which the
+    `Answers:` values are picked in Python (`trailer_values`), as every trailer the tool reads.
+    A candidate for an id is an ordinary commit (one parent) whose trailer value IS the id; whose author may answer by the DEFAULT
+    branch's configuration (`owners_at`: the `owner` line, and any name its `[rights]` gives `answer`), signed and verifying against the
+    default branch's signers file where that identity is `signed` (`verified_as` — never a branch's own configuration or signers file);
+    whose own change writes that tracker's `answer:` line — the tracker at the commit and at its parent, one `cat_blobs` for all,
+    differ there; and whose own change leaves the put ask as its parent has it — `ask-id:` and `put_ask` equal on both sides. The head
+    is the one candidate no other descends from (`git merge-base --independent`, asked only where an id has two). It must hold the
+    file's `answer:` line byte for byte, its id, and the put ask the file shows — the parent, the head and the file hold one put ask —
+    and `answered-by:` is its author's name. A merge is never a candidate: its resolution can only change the file, which must still
+    match the head."""
+    asked = {t["ask_id"]: t for t in trackers if t.get("answer") and t.get("ask_id") and t.get("file")}
+    if vcs() != "git" or not asked:
+        return {}
+    key = tuple(sorted((aid, t.get("answer", ""), t.get("answered_by", "")) for aid, t in asked.items()))
+    if key in _ANSWER_HEADS:
+        return _ANSWER_HEADS[key]
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    log = git_out(*signers_args(), "log", "--grep=^Answers:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}", "HEAD") or ""
+    trunk, why = default_trunk(git), []
+    answerers = owners_at(trunk, why)
+    found, out = {aid: [] for aid in asked}, {}
+    for rec in log.split("\x00")[1:]:
+        sha, parents, name, email, values = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
+        for value in set(trailer_values(values.strip("\n"), "Answers")):
+            if value in found and len(parents.split()) == 1:
+                found[value].append((sha, parents.strip(), name, email))
+    rels = {aid: (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix() for aid, t in asked.items()}
+    blobs = cat_blobs([f"{rev}:{rels[aid]}" for aid, cands in found.items() for sha, parent, _n, _e in cands for rev in (sha, parent)])
+    for aid, t in asked.items():
+        rel, keep = rels[aid], []
+        for sha, parent, name, email in found[aid]:
+            identity, mode = next(((who, m) for who, m in answerers.items() if who and who in (email, name)), (None, None))
+            if identity is None or (mode == "signed" and not verified_as(sha, identity)):
+                continue
+            at, before = blobs.get(f"{sha}:{rel}"), blobs.get(f"{parent}:{rel}")
+            if at is None or front_line(at, "answer") == front_line(before, "answer"):
+                continue
+            a_fm, b_fm = parse_frontmatter(at)[0], parse_frontmatter(before or "")[0]
+            if (a_fm.get("ask-id") or "").strip() != (b_fm.get("ask-id") or "").strip() or put_ask_of(a_fm) != put_ask_of(b_fm):
+                continue
+            keep.append((sha, name, at))
+        heads = keep
+        if len(keep) > 1:
+            tips = set((git("merge-base", "--independent", *[k[0] for k in keep]).stdout or "").split())
+            heads = [k for k in keep if k[0] in tips]
+        if not heads:
+            out[aid] = ("", f"no commit answers {aid}: an answer to an ask with an id is the Owner's ordinary commit that carries `Answers: {aid}`, "
+                            "signed where the default branch's configuration asks for it, and changes the `answer:` line and nothing of the put ask")
+            continue
+        if len(heads) > 1:
+            out[aid] = ("", f"{aid} has {len(heads)} answers, on branches that do not hold each other ({', '.join(h[0][:7] for h in heads)}) — one answer must "
+                            f"replace the other (`--answer {aid} … --supersede`) on a branch that holds both")
+            continue
+        sha, name, at = heads[0]
+        text = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8")
+        if (parse_frontmatter(at)[0].get("ask-id") or "").strip() != aid or front_line(at, "answer") != front_line(text, "answer"):
+            out[aid] = (sha, f"the answer here is not the one {sha[:7]} gave {aid} — an answer stands as its commit wrote it, beside the id it names")
+        elif put_ask_of(parse_frontmatter(at)[0]) != put_ask(t):
+            out[aid] = (sha, f"the put ask here is not the one {sha[:7]} answered under {aid} — a put ask never changes under its id: withdraw it and "
+                             f"put the changed ask as {next_ask_id(t, ask_numbers(t))}")
+        elif name != t.get("answered_by"):
+            out[aid] = (sha, f"`answered-by: {t.get('answered_by')}` but the commit that answers {aid}, {sha[:7]}, is `{name}`'s — an answer is filed from the account that gives it")
+        else:
+            out[aid] = (sha, "")
+    _ANSWER_HEADS[key] = out
+    return out
+
+
+def answer_commit(t):
+    """`answer_commits` for one tracker: (the head's full sha or "", why it does not count or "")."""
+    return answer_commits([t]).get(t.get("ask_id") or "", ("", ""))
 
 
 def ask_id_problems(t, keys=True, history=False):
@@ -3180,12 +3321,30 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
     # the answer is ONE front-matter line: every run of whitespace — a newline above all — collapses to one space.
     # A newline would close the line and the next fragment would be read as another key (`status: Shipped` flipped one),
     # and the tracker's body is where a long answer belongs.
-    tid, verdict, text = words[0].upper(), words[1], " ".join(" ".join(words[2:]).split())
+    named, verdict, text = words[0].upper(), words[1], " ".join(" ".join(words[2:]).split())
+    by_id = ASK_ID_ANY_RE.fullmatch(named)
+    tid = by_id.group(1) if by_id else named
     t = next((x for x in trackers if x["id"] == tid), None)
     # an answer that is there keys revoke and --supersede, not `next: owner`: the answer writes the next move (FM-030), and
     # a ruling's reads `build` from then on
     if not t or not t.get("ask"):
         print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
+        return EXIT_LINT
+    held, ids = t.get("ask_id") or "", [i for i, _d in t.get("asks_ids") or []]
+    if by_id and named != held:
+        if held and named in ids:
+            gone = "answered" if any(i == named for i, _d in t.get("asks_ids") or []) and named in answered_ids(t) else "withdrawn"
+            print(f'--answer: {tid} holds another ask now: {held}, since {t.get("ask_since") or "—"}: "{t["ask"]}". {named} was {gone} and is in {tid}\'s record. '
+                  f"Nothing was written. Read {held}, then answer it by its id", file=sys.stderr)
+        elif held:
+            print(f"--answer: {tid} has no ask {named}: it holds {held}, open" + (f"; {', '.join(dict.fromkeys(ids))} {'is' if len(set(ids)) == 1 else 'are'} in its record" if ids else ""),
+                  file=sys.stderr)
+        else:
+            print(f"--answer: {tid} has no ask {named}: its ask was asked before ask ids — answer it by its tracker: `{CMD} --answer {printed_arg(tid)} {verdict}`", file=sys.stderr)
+        return EXIT_LINT
+    if held and not by_id:
+        print(f"--answer: {tid}'s ask carries its id, {held} — name the ask you read: `{CMD} --answer {held} {verdict}" + (f" {printed_arg(text)}" if text else "") + "`",
+              file=sys.stderr)
         return EXIT_LINT
     if not t.get("answer") and t.get("next") != "owner":
         print(f"--answer: {tid} carries an `ask:` and `next: {t.get('next') or '—'}` — an ask waits on the Owner with `next: owner`; the seat that asks sets it", file=sys.stderr)
@@ -3220,7 +3379,8 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
             return (f"{tid} has no `ask:` line in {t['file']} — the front matter's question is what the answer is written under; "
                     f"the ask is there but not as its own line (indented, or wrapped). Fix the file, then answer")
         if t.get("answer"):
-            replaced.append((t["answer"], t.get("answered", ""), (line_author(path, "answer:")[3] or "")[:7] or "not committed"))
+            wrote = answer_commit(t)[0] if held else line_author(path, "answer:")[3]
+            replaced.append((t["answer"], t.get("answered", ""), (wrote or "")[:7] or "not committed"))
         return ""
 
     def write(lines, me, branch):
@@ -3248,11 +3408,31 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
 
     return owner_change(tid, t, dict(
         flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write,
-        subject=f"{tid}: {answer[:60]}", kept=("your answer", answer),
-        again=f'{CMD} --answer {printed_arg(tid)} {verdict}' + (f' {printed_arg(text)}' if text else "") + (" --supersede" if supersede else ""),
-        said=lambda where, proof: (f"{tid} answered: {answer}\n  {proof}, {where}" + f"\n  it has left your queue; the seat sees it under --answered"
+        subject=f"{held}: {first_words(answer, 60)}" if held else f"{tid}: {answer[:60]}", trailers=[f"Answers: {held}"] if held else [],
+        bound=(lambda: answer_bound(tid, held)) if held else None, name=held or tid, kept=("your answer", answer),
+        again=f'{CMD} --answer {printed_arg(held or tid)} {verdict}' + (f' {printed_arg(text)}' if text else "") + (" --supersede" if supersede else ""),
+        said=lambda where, proof: (f"{held or tid} answered: {answer}\n  {proof}, {where}" + f"\n  it has left your queue; the seat sees it under --answered"
                                    + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
                                    + seed_said(tid, seed))))
+
+
+def answered_ids(t):
+    """The ids of a tracker's records that carry an answer — `**answered** —` under their first line."""
+    _fm, body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8")) if t.get("file") else ({}, "")
+    out = set()
+    for s_, e_ in record_spans(body):
+        m = RECORD_ID_RE.match(body[s_:e_].lstrip())
+        if m and "\n**answered** — " in body[s_:e_]:
+            out.add(m.group(1))
+    return out
+
+
+def answer_bound(tid, aid):
+    """`--answer`'s own check of the commit it just made: the gate's reader, `answer_commit`, finds it by its id — "" — or why not."""
+    fresh = next((t for t in load_trackers() if t["id"] == tid), None)
+    _ANSWER_HEADS.clear()
+    head, why = answer_commit(fresh) if fresh else ("", f"{tid} cannot be read back")
+    return why if why or not head else ""
 
 
 def seed_said(tid, seed):
@@ -3471,7 +3651,7 @@ def owner_change(tid, t, how):
     if refused is not None:
         return refused
     flag, noun = how["flag"], how["noun"]
-    step = lambda n, text: answer_step(tid, n, text, how["verb"])
+    step = lambda n, text: answer_step(how.get("name") or tid, n, text, how["verb"])
     for p_ in answerers_problems():                           # a signature the configuration asks for and `[seats]` drops (FM-015)
         print(f"{flag}: {p_}", file=sys.stderr)
         return EXIT_LINT
@@ -3555,7 +3735,7 @@ def owner_change(tid, t, how):
         return undo(f"could not stage {rel}")
     step(3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
          else "committing — the pre-commit gate runs")
-    r = git("commit", *(["-S"] if signed else []), "-m", how["subject"])
+    r = git("commit", *(["-S"] if signed else []), "-m", how["subject"], *[x for line in how.get("trailers") or [] for x in ("-m", line)])
     if r.returncode:
         # what refused it is the HOOK's output, not git's last line — its tail, as the gate printed it
         said = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", (r.stdout.strip() + "\n" + r.stderr.strip()).strip())
@@ -3566,6 +3746,10 @@ def owner_change(tid, t, how):
         # the DEFAULT branch's signers file trusts, for the author's email
         print(f"{flag}: committed on {on} as {sha}, but the signature does not verify as `{me}` — "
               + unverified("HEAD", "`git commit --amend -S`, or check the signers file") + f"; the gate would refuse this {noun}: do not push it", file=sys.stderr)
+        return EXIT_LINT
+    unbound = how["bound"]() if how.get("bound") else ""
+    if unbound:
+        print(f"{flag}: committed on {on} as {sha}, but the gate would not count it — {unbound}; do not push it", file=sys.stderr)
         return EXIT_LINT
     lands = ref_name(trunk) if trunk else "the default branch"
     print(how["said"](f"committed on {on} as {sha}\n  it counts once this commit is on {lands}: push it, or merge the branch that carries it", proof))
@@ -9418,7 +9602,7 @@ def clear_ask(words, trackers):
     # the relation goes with the record (FM-029): the proposal and the options leave with the ask, and a record without
     # it could never say again whether the answer was the proposal
     block = (f'**{t.get("answered") or datetime.date.today().isoformat()}** · {t["ask"]}\n'
-             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' + signed_line(path) if t.get("answer")
+             + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' + signed_line(path, t) if t.get("answer")
                 else "**withdrawn** — no answer was given\n"))
     body = append_record(body, ASKS_HEAD_RE, HEAD["asks"], block)
     put(path, "\n".join(kept) + body)
@@ -9427,7 +9611,7 @@ def clear_ask(words, trackers):
     return EXIT_OK
 
 
-def signed_line(path):
+def signed_line(path, t=None):
     """FM-029, the Auditor seat's AU-29 — the record names the commit that signed the answer: `**signed** — <sha> · <G|N|U>`,
     the commit that wrote the `answer:` line and what git says of its signature here (`%G?`: G good, U good from a key
     not trusted here, N none; B, E, X, Y, R as git has them). The tier is not printed yet (FM-007). Under Subversion the
@@ -9435,7 +9619,7 @@ def signed_line(path):
     `not committed · N`."""
     if vcs() != "git":
         return ""
-    commit = line_author(path, "answer:")[3]
+    commit = answer_commit(t)[0] if t and t.get("ask_id") else line_author(path, "answer:")[3]
     if not commit:
         return "**signed** — not committed · N\n"
     said = (git_out("log", "-1", "--format=%G?", commit) or "").strip() or "N"
@@ -9623,7 +9807,9 @@ def revoke_cmd(words, trackers):
     refused = cli_git_refusal('revoke')
     if refused is not None:
         return refused
-    tid, why = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
+    named, why = words[0].upper(), " ".join(" ".join(words[1:]).split()).replace('"', "'")
+    by_id = ASK_ID_ANY_RE.fullmatch(named)
+    tid = by_id.group(1) if by_id else named
     t = next((x for x in trackers if x["id"] == tid), None)
     if not t:
         print(f"--revoke: no tracker {tid}", file=sys.stderr)
@@ -9635,7 +9821,7 @@ def revoke_cmd(words, trackers):
         if not t.get("answer"):
             print(f"--revoke: {tid} carries neither `done:` nor `answer:` — there is nothing of yours to revoke", file=sys.stderr)
             return EXIT_LINT
-        return answer_cmd([tid, "revoke", why], trackers, flag="--revoke", verb="revoking")
+        return answer_cmd([named, "revoke", why], trackers, flag="--revoke", verb="revoking")
     today, (was, _, where) = datetime.date.today().isoformat(), t["done"].partition(" · ")
     act = act_of({**t, "done": ""})
     what = act[0] if act else t.get("title") or tid
@@ -9727,6 +9913,7 @@ def lint(trackers, committing=False):
     problems += duplicate_record_problems(trackers)   # two records that carry one id, where they can still be stopped
     problems += id_walk_problems(trackers)            # a put with no id, a put ask changed under its id, an id gone with no record, a number reused
     problems += proposed_id_problems(trackers)        # an id this branch proposes that the default branch already holds
+    problems += answer_change_problems(trackers)      # an answer beside an id, changed by anything but the Owner's ordinary commit that names it
     if id_backend_note(trackers):
         print(f"  {id_backend_note(trackers)}", file=sys.stderr)
     by_ask = asks_by_key(trackers)
@@ -9746,6 +9933,18 @@ def lint(trackers, committing=False):
                                 + ", then the commit's author is checked against it")
             elif not SEATS and t.get("answered_by") not in allowed:
                 problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(allowed)}) — an answer counts only from an account that may give one')
+            elif t.get("ask_id") and vcs() == "git":
+                committed = front_line(cat_blobs([f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}"]).get(
+                    f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}") or "", "answer")
+                if committed != front_line((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"), "answer"):
+                    if committing:
+                        print(f'  {t["id"]}: the answer to {t["ask_id"]} is being committed now — its commit is found by its id and verified by the next run', file=sys.stderr)
+                    else:
+                        problems.append(f'{t["id"]}: the answer to {t["ask_id"]} is not committed yet — `{CMD} --answer {t["ask_id"]} …` commits it, signed, naming the id')
+                else:
+                    _head, why = answer_commit(t)
+                    if why:
+                        problems.append(f'{t["id"]}: {why}')
             else:
                 try:
                     who, email, how, commit = line_author(TRACKER_DIR / t["file"], "answer:")
@@ -9767,6 +9966,9 @@ def lint(trackers, committing=False):
                     problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
                 elif who != t.get("answered_by"):
                     problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
+                elif how == "svn" and t.get("ask_id") and not svn_names_answer(t, commit):
+                    problems.append(f'{t["id"]}: the revision {commit} that wrote the answer does not name {t["ask_id"]} in its message — on Subversion an answer to an ask with an id '
+                                    f'is committed with `Answers: {t["ask_id"]}` in its message')
                 elif how == "git" and (seat_mode(seat, who, email) if SEATS else allowed[who]) == "signed":
                     # ONE signature test for the whole gate — `verified_as`: a good signature under a trusted key, and
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
