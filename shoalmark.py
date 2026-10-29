@@ -3771,16 +3771,16 @@ const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29
     const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;
     sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
   d.showModal()};
-const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;
+const sign=(d,id,line,said,kind="answer")=>{const c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;
   d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>
     <p class="said" aria-live="polite"></p>
     <p class="dp">${l(P.intro)}</p><pre class="cmd">${esc(line)}</pre>
     <p><button type="button" class="copy" aria-label="${l("answer.sign.copy.name")}">${ICO.copy}${l("answer.sign.copy")}</button></p>
     <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
-    <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## __ACTS_HEAD__"))}</li>
-    <li>${l(P.commit)}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
-    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  ${PROOF.said}, on \`${br}\`, pushed`)}</pre>`:""}
-    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}
+    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## __ACTS_HEAD__"))}</li>
+    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
+    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  ${PROOF.said}, committed on ${BRANCH?`\`${BRANCH}\``:"a detached HEAD"} as …`)}</pre>`:""}
+    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format}`),c("G"))}</p>`:""}
     <h4>${l("answer.sign.fail")}</h4><p>${lh(P.fail,`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}${ICO.out}</a>`)}</p>
     <menu><button value="done" class="go">${l("answer.done")}</button></menu></form>`;
   const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())
@@ -4001,7 +4001,7 @@ LABELS = {
     "acts.done": "done", "acts.reschedule": "reschedule", "act.done.title": "done — where is the result?", "act.done.hint": "the path to the result, or where it is",
     "act.done.hint.promise": "the path to the result of this promise, or where it is",
     "act.due.title": "reschedule — to when?", "act.sign.step.done": "writes {0} — the time, and where the result is — and its record under {1}",
-    "act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge",
+    "act.sign.step.due": "writes the new {0}, and the old one into the record under {1}",
     # FM-030, their signed answer 920970b7: what they did and pushed, before their merge — the board, `--owner` and `--standup`
     # the day (the design guide, §1): what it frames, and its one fold — what a row is and what its age measures, so no resume reads as a live view
     "day.title": "the day", "day.span": "the last 24 hours",
@@ -4076,10 +4076,10 @@ LABELS = {
     "day.nocopy": "copying did not work — this page has no clipboard here (a board opened from a file often has none): select the prompt and copy it",
     "answer.sign.where": "where", "answer.sign.where.text": "In a terminal, in this repository, on the branch that carries the ask.",
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
-    "answer.sign.does": "what it does", "answer.sign.step.cut": "cuts {0} from the branch you are on",
+    "answer.sign.does": "what it does",
     "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm",
-    "answer.sign.step.push": "pushes the branch",
-    "answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker.",
+    "answer.sign.step.lands": "it counts once that commit is on the default branch: push it, or merge the branch that carries it",
+    "answer.sign.slow": "It prints each step as it starts, and it may take a while: the commit runs the gate over every tracker.",
     "answer.sign.success": "when it worked", "answer.sign.check": "to check",
     "answer.sign.check.text": "{0} prints {1} — a good signature, under a key this repository trusts.",
     "answer.sign.fail": "if it fails", "answer.sign.fail.text": "No signing key is set, or the signature does not verify: set up your key once — {0}.",

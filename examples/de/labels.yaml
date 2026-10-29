@@ -105,7 +105,7 @@ act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: Ihre Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Eintrag unter {1}"
-act.sign.step.due: "schreibt das neue {0}, und das alte in den Eintrag unter {1} — das Board zeigt es verschoben, unterwegs, bis zu Ihrem Merge"
+act.sign.step.due: "schreibt das neue {0}, und das alte in den Beleg unter {1}"
 sessions.recent: "Sitzungen · {0} mit einem Commit in den letzten 24 Stunden ({1} mit ihren Untersitzungen)"
 read.git.branch: "gelesen von {0} @ {1} um {2}"
 read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
@@ -158,11 +158,10 @@ answer.sign.where: Wo
 answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
 answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
-answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2} — und {3}"
 answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
-answer.sign.step.push: pusht den Zweig
-answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
+answer.sign.step.lands: "es zählt, sobald dieser Commit auf dem Standardzweig ist: pushe ihn, oder merge den Zweig, der ihn trägt"
+answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: der Commit lässt die Prüfung über alle Arbeitspakete laufen."
 answer.sign.success: Wenn es geklappt hat
 answer.sign.check: Zur Kontrolle
 answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem Schlüssel, dem dieses Repository vertraut."

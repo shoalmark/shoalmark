@@ -8028,10 +8028,9 @@ answer.sign.where: Wo
 answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
 answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
-answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
 answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
-answer.sign.step.push: pusht den Zweig
+answer.sign.step.lands: "es zählt, sobald dieser Commit auf dem Standardzweig ist: pushe ihn, oder merge den Zweig, der ihn trägt"
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
 answer.sign.success: Wenn es geklappt hat
 answer.sign.check: Zur Kontrolle
@@ -9272,9 +9271,10 @@ with tempfile.TemporaryDirectory() as tmp:
                   and re.search(r'<button type="button" class="copy" aria-label="copy the command"><svg class="ico"[^>]*><path d="[^"]+"></path></svg>command</button>', b2_) is not None
                   and re.search(r'<p class="said(?: ok)?"[^>]*>.*?<pre class="cmd">', b2_, re.S) is not None
                   and "In a terminal, in this repository, on the branch that carries the ask — fix/ap-090, the branch this board was built from." in s2_
-                  and "cuts answer/ap-090 from the branch you are on" in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
-                  and "commits them, signed with your key — it may ask you to confirm" in s2_ and "pushes the branch" in s2_ and "It prints each step as it starts" in s2_
-                  and "AP-090 answered: accepted - b signed, on `answer/ap-090`, pushed" in s2_ and "git log -1 --format=%G? answer/ap-090 prints G" in s2_
+                  and "answer/ap-090" not in s2_ and "writes the three lines — answer: answered: answered-by:" in s2_
+                  and "commits them, signed with your key — it may ask you to confirm" in s2_ and "it counts once that commit is on the default branch: push it, or merge the branch that carries it" in s2_
+                  and "pushes the branch" not in s2_ and "It prints each step as it starts" in s2_
+                  and "AP-090 answered: accepted - b signed, committed on `fix/ap-090` as …" in s2_ and "git log -1 --format=%G? prints G" in s2_
                   and f'href="{fm.SIGNING_PAGE}"' in b2_ and "give me the command" not in s2_ and "abort" not in s2_)
             check(f"FM-013 · …with ONE way out — done, the only button in its menu, closes the dialog; the only other control is the copy button, *command* (saw: {yes_})",
                   yes_["menu"] == "done" and yes_["buttons"] == "2" and yes_["open"] == "false")
@@ -13446,7 +13446,7 @@ with tempfile.TemporaryDirectory() as tmp:
             check(f"FM-030 · C · rendered, each act has two buttons — done · reschedule — and OK gives ONE command on the second screen: `--done <id> \"<where>\"`, and `--due <id> <time>` carrying the browser's zone (saw {done_[:240]!r} · {due_[:240]!r})",
                   "your acts, with their time: 2 AP-420 at seven" in rows_ and f"AP-421 this week act promised {since_} · no date yet done reschedule asked: Will you set up the key?" in rows_
                   and "--done AP-421 'evidence/AP-421/key.md'" in done_ and "writes done: — the time, and where the result is — and its record under ## Acts" in done_
-                  and "AP-421 done: evidence/AP-421/key.md signed, on `answer/ap-421`, pushed" in done_
+                  and f"AP-421 done: evidence/AP-421/key.md signed, committed on `{start_}` as …" in done_ and "answer/ap-421" not in done_
                   and f"--due AP-421 {when_}" in due_ and "writes the new due:, and the old one into the record under ## Acts" in due_
                   and "sign your act · AP-421" in done_ and "sign your act · AP-421" in due_ and "sign your answer" not in done_ + due_)
         except _ChromeFailed as e_:

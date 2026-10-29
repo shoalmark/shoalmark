@@ -109,8 +109,8 @@ def screen_lines(fm, proof, german):
         out[f"{lang} heading"] = labels.get("proof.here", "").replace("{0}", word)
         out[f"{lang} dialog"] = labels.get("proof.dialog", "").replace("{0}", word)
         out[f"{lang} consequence"] = labels.get(proof["why"], "") if proof["why"] else ""
-    out["end"] = f"  {proof['said']}, on `answer/ap-001`, pushed" if proof["said"] else ""
-    out["check"] = f"git log -1 --format={proof['format']} answer/ap-001" if proof["format"] else ""
+    out["end"] = f"  {proof['said']}, committed on `pd/001` as …" if proof["said"] else ""
+    out["check"] = f"git log -1 --format={proof['format']}" if proof["format"] else ""
     return out
 
 
@@ -167,7 +167,7 @@ def table(fm, rows=((True, True), (True, False), (False, True), (False, False)))
             for surface, text in lines.items():
                 if not trunk_signed and text and SIGNED_WORDS.search(text):
                     bad.append(f"{name}: the second screen's {surface} reads {text!r}")
-            if trunk_signed and not (lines["end"].startswith("  signed, on") and "%G?" in lines["check"] and "signed" in lines["en commit"]
+            if trunk_signed and not (lines["end"].startswith("  signed, committed on") and "%G?" in lines["check"] and "signed" in lines["en commit"]
                                      and lines["en heading"] == "your answers here: signed" and lines["en dialog"] == "your answer here: signed"
                                      and not lines["en consequence"]):
                 bad.append(f"{name}: the board does not say signed where origin/main asks for it ({lines['en heading']!r}, {lines['end']!r}, {lines['check']!r})")

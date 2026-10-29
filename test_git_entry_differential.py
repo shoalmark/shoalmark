@@ -1270,6 +1270,25 @@ R4_BOARD_EDITS = (
 )
 
 
+# the second screen commits on the branch the Owner stands on: no branch cut, nothing pushed, and the step that says when it counts
+R4_DIALOG_EDITS = (
+    ('const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n',
+     'const sign=(d,id,line,said,kind="answer")=>{const c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n'),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, on \\`${br}\\`, pushed`)}</pre>`:""}\n    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, committed on ${BRANCH?`\\`${BRANCH}\\``:"a detached HEAD"} as …`)}</pre>`:""}\n    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format}`),c("G"))}</p>`:""}\n'),
+    ('"act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge"',
+     '"act.sign.step.due": "writes the new {0}, and the old one into the record under {1}"'),
+    ('"answer.sign.step.cut": "cuts {0} from the branch you are on", ',
+     ''),
+    ('"answer.sign.step.push": "pushes the branch", ',
+     ''),
+    ('"answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker."',
+     '"answer.sign.slow": "It prints each step as it starts, and it may take a while: the commit runs the gate over every tracker."'),
+    ('"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", ',
+     '"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", "answer.sign.step.lands": "it counts once that commit is on the default branch: push it, or merge the branch that carries it", '),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
     occurs exactly once — else None."""
@@ -1277,7 +1296,7 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
