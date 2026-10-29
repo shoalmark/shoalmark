@@ -6105,10 +6105,14 @@ check("FM-006 · the taped state's check is not blind: each of the tape left off
 # The Owner's words of 2026-10-09 it replaces ("git installed, on Subversion too") and the withdrawn ruling's opening ("on every machine") stay out.
 _GIT_FILES = ("README.md", "docs/index.md", "docs/de/index.md", "docs/setup.md", "docs/de/setup.md", "docs/how-it-works.md", "docs/de/how-it-works.md",
               "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
-_GIT_EN = "Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`."
-_GIT_DE = "Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probieren Sie es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub."
-_GIT_SVN = ("On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.",
-            "Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.")
+_GIT_EN = "Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`."
+_GIT_DE = "Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probiere es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und `--init` und `--check` sagen, was dieser lokale Lauf nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autorenidentitäten. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub."
+_GIT_SVN = ("On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities.",
+            "Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und `--init` und `--check` sagen, was dieser lokale Lauf nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autorenidentitäten.")
+_GIT_LANDING_SVN = ('On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.',
+                    'Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.')
+_GIT_LANDING_EN = _GIT_EN.replace(_GIT_SVN[0], _GIT_LANDING_SVN[0])
+_GIT_LANDING_DE = _GIT_DE.replace(_GIT_SVN[1], _GIT_LANDING_SVN[1]).replace("Probiere es aus", "Probieren Sie es aus")
 _GIT_SETUP = ("*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. " + _GIT_SVN[0] + "*",
               "*Für die Person, der das Repository gehört. Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. " + _GIT_SVN[1] + "*")
 _GIT_HOW = ("- It needs Python 3.9 or newer; a git repository needs `git` installed. " + _GIT_SVN[0] + "\n  It needs no server, database or account of its own.\n",
@@ -6125,7 +6129,7 @@ def _git_problems(src):
     for path, want in (("README.md", _GIT_EN), ("docs/index.md", _GIT_EN), ("docs/de/index.md", _GIT_DE)):
         if "\n- " + want + "\n" not in src[path]:
             bad.append(f"{path} does not hold the Owner's sentence on what the tool needs, in its beta list")
-    for lang, want in (("en", _GIT_EN), ("de", _GIT_DE)):
+    for lang, want in (("en", _GIT_LANDING_EN), ("de", _GIT_LANDING_DE)):
         if words[lang].get("beta_4") != html(want):
             bad.append(f"the landing's words ({lang}) do not hold the Owner's sentence on what the tool needs, as beta_4")
     for path, want in zip(("docs/setup.md", "docs/de/setup.md"), _GIT_SETUP):
@@ -6153,12 +6157,12 @@ _gp = _git_problems(_gs)
 check("FM-006 · M4 · what the tool needs, as M4 builds it to v0.20.0's plan: on Subversion no `git`, from the release archive, and what it cannot verify there, and the queue's `gh` — the README, both start pages, the landing's two lists, both setup pages and "
       f"both How it works pages say it in step in English and German, the opening sentence of the withdrawn ruling stays out (problems found: {_gp})", _gp == [])
 _gctl = {"README's sentence left out": _with(_gs, "README.md", _GIT_SVN[0] + " ", ""),
-         "the landing's English list as B1 had it": _with(_gs, "overrides/partials/landing/en.html", _GIT_SVN[0].replace("`git`", "<code>git</code>"),
+         "the landing's English list as B1 had it": _with(_gs, "overrides/partials/landing/en.html", _GIT_LANDING_SVN[0].replace("`git`", "<code>git</code>"),
                                                           "Today the tool needs <code>git</code> installed, on Subversion too."),
          "the English start page without gh": _with(_gs, "docs/index.md", " and GitHub's command line, `gh`.", "."),
          "the German start page's gh clause changed": _with(_gs, "docs/de/index.md", "dazu `gh`, das Kommandozeilenwerkzeug von GitHub.", "dazu die GitHub-CLI."),
          "the landing's English list with the withdrawn opening": _with(_gs, "overrides/partials/landing/en.html", '"beta_4": "Made', '"beta_4": "Needs <code>git</code> on every machine, Subversion included. Made'),
-         "the German landing list without it": _with(_gs, "overrides/partials/landing/de.html", _GIT_SVN[1].replace("`git`", "<code>git</code>") + " ", ""),
+         "the German landing list without it": _with(_gs, "overrides/partials/landing/de.html", _GIT_LANDING_SVN[1].replace("`git`", "<code>git</code>") + " ", ""),
          "the English setup page as it was": _with(_gs, "docs/setup.md", _GIT_SETUP[0], "*For the person who owns the repository. Python 3.9 or newer is the only requirement.*"),
          "the German setup page as it was": _with(_gs, "docs/de/setup.md", _GIT_SETUP[1], "*Für die Person, der das Repository gehört. Python 3.9 oder neuer ist die einzige Voraussetzung.*"),
          "How it works with the withdrawn opening": _with(_gs, "docs/how-it-works.md", _GIT_HOW[0].split("\n")[0], "- It needs `git` on every machine, Subversion included, and Python 3.9 or newer."),
@@ -7938,6 +7942,7 @@ proof.dialog: "Ihre Antwort hier: {0}"
 proof.signed: signiert
 proof.author: nur der Autor
 proof.login: Server-Anmeldung
+proof.login.why: "Dieser lokale Lauf kann weder Commit-Signaturen noch vom Server authentifizierte Autorenidentitäten prüfen."
 proof.none: kein Autor
 proof.author.why: "eine Antwort hier belegt nur den Autor: jede Sitzung, die hier committen kann, kann eine in Ihrem Namen schreiben"
 answer.done: Fertig

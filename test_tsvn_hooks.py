@@ -64,8 +64,35 @@ def property_contract(properties):
     return True
 
 
+def four_line_upgrade(source, base):
+    root, tool, install, properties = installed_properties(source, base)
+    for kind, value in properties.items():
+        old = value.replace('"', "")
+        if kind == "start":
+            old = " \n" + old + " \n"
+        entry.command(root, "svn", "propset", "--", "tsvn:" + kind + "commithook", old, ".")
+    upgraded = install()
+    actual = {kind: entry.command(root, "svn", "propget", "--strict", "tsvn:" + kind + "commithook", ".") for kind in properties}
+    repeated = install()
+    return upgraded.returncode == 0 and actual == properties and repeated.returncode == 0 and "set " not in repeated.stdout
+
+
 @unittest.skipUnless(shutil.which("svn") and shutil.which("svnadmin"), "svn and svnadmin are required")
 class PropertyControls(unittest.TestCase):
+    def test_unquoted_four_line_upgrade_and_repeat(self):
+        with tempfile.TemporaryDirectory(prefix="tsvn-four-line-") as temp:
+            self.assertTrue(four_line_upgrade(HERE / "shoalmark.py", Path(temp).resolve()))
+
+    def test_unquoted_four_line_mutant_fails_same_control(self):
+        with tempfile.TemporaryDirectory(prefix="tsvn-four-line-mutant-") as temp:
+            base = Path(temp).resolve()
+            source = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+            before = "(legacy.strip(), unquoted.strip(), value.strip())"
+            self.assertEqual(source.count(before), 1)
+            mutant = base / "mutant.py"
+            mutant.write_text(source.replace(before, "(legacy.strip(), value.strip())"), encoding="utf-8")
+            self.assertFalse(four_line_upgrade(mutant, base))
+
     def test_installed_properties_and_legacy_upgrade(self):
         with tempfile.TemporaryDirectory(prefix="tsvn-properties-") as temp:
             base = Path(temp).resolve()

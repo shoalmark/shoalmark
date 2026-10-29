@@ -3473,13 +3473,9 @@ def answer_signing(name, email):
 
 
 def proof_page():
-    """What the board's page carries of `answer_proof` (`PROOF`): the state, the label of each line of the second screen that says how the
-    commit is proved (`PROOF_KEYS`), the terminal's word it previews, and what its check asks git for — "" where it previews or checks nothing;
-    and for the proof line said before *accept* (FM-007, the quick-wins design of 15 October), in the heading of *waiting for you* and in the
-    answer dialog: the state's word (`proof.<state>`) and, under *author only*, its consequence (`proof.author.why`), else ""."""
     state = answer_proof()
     return {"state": state, "keys": PROOF_KEYS[state], "said": PROOF_SAID.get(state, ""), "format": PROOF_FORMAT.get(state, ""),
-            "word": f"proof.{state}", "why": "proof.author.why" if state == "author" else ""}
+            "word": f"proof.{state}", "why": f"proof.{state}.why" if state in ("author", "login") else ""}
 
 
 def owner_change(tid, t, how):
@@ -4590,6 +4586,7 @@ LABELS = {
     "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}",
     "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author",
     "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name",
+    "proof.login.why": "this local run cannot verify commit signatures or server-authenticated author identities",
     "answer.done": "done",
     "ask.ruling": "decision", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "one click",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.shipped": "shipped", "story.closed": "closed", "story.open": "open", "story.parked": "parked",
@@ -11194,7 +11191,8 @@ def install_hook_svn():
             value = f"{kind}_commit_hook\n{command}\ntrue\nhide\n"
             have = have_properties.get(prop, "")
             legacy = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
-            if have.strip() and have.strip() not in (legacy.strip(), value.strip()):
+            unquoted = f"{kind}_commit_hook\n{legacy}"
+            if have.strip() and have.strip() not in (legacy.strip(), unquoted.strip(), value.strip()):
                 print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `{command}`", file=sys.stderr)
                 code = EXIT_LINT
                 continue

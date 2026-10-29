@@ -252,8 +252,14 @@ def other_backends(fm):
             subprocess.run(["svn", "commit", "-q", "-m", "the ask", "--username", "s@x"], cwd=root, check=True, capture_output=True)
             proof, code, err = page_proof(fm, root)
             if code != 0 or not proof or proof["state"] != "login" or proof["said"] or proof["format"] or proof["keys"] != fm.PROOF_KEYS["login"] \
-                    or proof["word"] != "proof.login" or proof["why"] or fm.LABELS["proof.login"] != "server login":
+                    or proof["word"] != "proof.login" or proof["why"] != "proof.login.why" or fm.LABELS["proof.login"] != "server login":
                 bad.append(f"Subversion: the page reads {proof} ({code}, {err.strip()[-160:]!r})")
+            else:
+                german = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+                lines = screen_lines(fm, proof, german)
+                if lines["en consequence"] != "this local run cannot verify commit signatures or server-authenticated author identities" \
+                        or lines["de consequence"] != "Dieser lokale Lauf kann weder Commit-Signaturen noch vom Server authentifizierte Autorenidentitäten prüfen.":
+                    bad.append(f"Subversion: the local verification limit is missing ({lines})")
     else:
         bad.append(None)                               # no svn here: said by the caller as a skip
     return bad

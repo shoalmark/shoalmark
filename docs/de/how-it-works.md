@@ -53,7 +53,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 - Es beweist nicht, dass Arbeit richtig ist. Seine Prüfungen melden einen Wechsel zu *Shipped* ohne Commit dahinter; ob dieser Commit seinen Zweck erfüllt, klärt ein Review.
 - Es ist kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit Ihres Repositorys.
 - Es passt heute zu Projekten, in denen eine Person das Sagen hat. Mehrere Menschen, die das Sagen haben, sind in dieser Beta nicht getestet.
-- Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren.
+- Es braucht Python 3.9 oder neuer; ein git-Repository braucht ein installiertes `git`. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und `--init` und `--check` sagen, was dieser lokale Lauf nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autorenidentitäten.
   Es braucht keinen eigenen Server, keine eigene Datenbank und kein eigenes Konto.
 
 ## Ausprobieren
