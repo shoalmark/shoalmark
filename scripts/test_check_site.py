@@ -443,24 +443,36 @@ class Twins(unittest.TestCase):
         self.assertIn("none of the snippet base paths", result.stderr)
 
 
-# a fenced block in a list item, one with a blank line inside, inline code that holds a fence, a German page, and a block an include brings in from the
-# second folder of the snippets' base path
+# a fenced block in a list item, one with a blank line inside, inline code that holds a fence, a German page with a block in a blockquote and one in a list
+# inside it, a block an include brings in from the second folder of the snippets' base path, and one each through snippets' block form, a line range and a
+# section of a file that holds a block outside both
 FENCED_DOCS = {
     "signing.md": "# Signing\n\n1. Turn it on:\n\n    ```\n    git config gpg.format ssh\n    git config user.signingkey ~/.ssh/signing.pub\n    ```\n\n"
                   "2. Name your seats:\n\n```toml\n[seats]\n\nplanner = \"planner@seat\"\n```\n\nWrite ` ``` ` to open a block.\n",
-    "de/signing.md": "# Signieren\n\n```\ngit config gpg.format ssh\ngit config user.signingkey ~/.ssh/signing.pub\n```\n",
+    "de/signing.md": "# Signieren\n\n```\ngit config gpg.format ssh\ngit config user.signingkey ~/.ssh/signing.pub\n```\n\n"
+                     "> Prüfen:\n>\n> ```\n> git status\n> ```\n>\n> - In einer Liste:\n>\n>     ```\n>     git log -1\n>     ```\n",
     "agents/README.md": '--8<-- "README.md"\n',
+    "names.md": "# Names\n\n--8<--\nnames-a.md\n--8<--\n",
+    "range.md": '# Range\n\n--8<-- "inc.md:3:5"\n',
+    "section.md": '# Section\n\n--8<-- "inc.md:example"\n',
 }
-FENCED_INCLUDED = {"launch/x/README.md": "# README\n\n~~~bash\nshoalmark --next\n~~~\n"}
+FENCED_INCLUDED = {"launch/x/README.md": "# README\n\n~~~bash\nshoalmark --next\n~~~\n", "launch/x/names-a.md": "~~~\nseats: 3\n~~~\n",
+                   "inc.md": "# Inc\n\n```\ninc line\n```\n\n--8<-- [start:example]\n~~~\nsection line\n~~~\n--8<-- [end:example]\n\n```\nneither\n```\n"}
 TWO_LINES = '<div class="highlight"><pre><span></span><code>git config gpg.format ssh\ngit config user.signingkey ~/.ssh/signing.pub\n</code></pre></div>'
 SEATS = ('<div class="highlight"><pre><span></span><code><span class="k">[seats]</span>\n\n<span class="n">planner</span><span class="w"> </span>=<span class="w"> </span>'
          '<span class="s2">"planner@seat"</span>\n</code></pre></div>')
 NEXT = '<div class="highlight"><pre><span></span><code>shoalmark<span class="w"> </span>--next\n</code></pre></div>'
+PRE = '<div class="highlight"><pre><span></span><code>%s\n</code></pre></div>'
+STATUS, LOG, SEATS3, INC, SECTION = (PRE % "git status", PRE % "git log -1", PRE % "seats: 3", PRE % "inc line", PRE % "section line")
 FENCED_PAGES = {
     "signing.html": ('<html lang="en"><body><h1 id="signing">Signing</h1><ol><li><p>Turn it on:</p>' + TWO_LINES + '</li><li><p>Name your seats:</p></li></ol>'
                      + SEATS + "<p>Write <code>```</code> to open a block.</p></body></html>"),
-    "de/signing.html": '<html lang="de"><body><h1 id="signieren">Signieren</h1>' + TWO_LINES + "</body></html>",
+    "de/signing.html": ('<html lang="de"><body><h1 id="signieren">Signieren</h1>' + TWO_LINES + "<blockquote><p>Prüfen:</p>" + STATUS
+                        + "<ul><li><p>In einer Liste:</p>" + LOG + "</li></ul></blockquote></body></html>"),
     "agents/index.html": "Get a better-performing human Owner." + NEXT,
+    "names.html": '<html lang="en"><body><h1 id="names">Names</h1>' + SEATS3 + "</body></html>",
+    "range.html": '<html lang="en"><body><h1 id="range">Range</h1>' + INC + "</body></html>",
+    "section.html": '<html lang="en"><body><h1 id="section">Section</h1>' + SECTION + "</body></html>",
 }
 
 
@@ -496,7 +508,7 @@ class FencedBlocks(unittest.TestCase):
             with self.subTest(docs=docs):
                 result = self.checked(docs=docs, named=docs)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn("the 4 fenced block(s) of the docs, in both languages, build to code blocks", result.stdout)
+                self.assertIn("the 9 fenced block(s) of the docs, in both languages, build to code blocks", result.stdout)
 
     def test_each_control_is_refused(self):
         collapsed = "<p><code>git config gpg.format ssh\ngit config user.signingkey ~/.ssh/signing.pub</code></p>"
@@ -521,6 +533,18 @@ class FencedBlocks(unittest.TestCase):
             ("the docs folder zensical.toml names holds no page", dict(docs="pages", named="docs-elsewhere"), ["docs_dir", "holds no page"]),
             ("the docs read from the folder zensical.toml names, a block there not built", dict(docs="pages", named="pages", change=self.put("signing.html", TWO_LINES, collapsed)),
              ["signing.html: 1 fenced block(s) do not build to a code block"]),
+            ("a German block in a blockquote built as inline code in it", dict(change=self.put("de/signing.html", STATUS, "<p><code>git status</code></p>")),
+             ["de/signing.html: 1 fenced block(s) do not build to a code block, the first opening 'git status'"]),
+            ("a German block in a list inside a blockquote built as inline code", dict(change=self.put("de/signing.html", LOG, "<p><code>git log -1</code></p>")),
+             ["de/signing.html: 1 fenced block(s) do not build to a code block, the first opening 'git log -1'"]),
+            ("the block the include's block form brings in not built", dict(change=self.put("names.html", SEATS3, "<p><code>seats: 3</code></p>")),
+             ["names.html: 1 fenced block(s) do not build to a code block, the first opening 'seats: 3'"]),
+            ("the block a line range brings in not built", dict(change=self.put("range.html", INC, "<p><code>inc line</code></p>")),
+             ["range.html: 1 fenced block(s) do not build to a code block, the first opening 'inc line'"]),
+            ("the block a section brings in not built", dict(change=self.put("section.html", SECTION, "<p><code>section line</code></p>")),
+             ["section.html: 1 fenced block(s) do not build to a code block, the first opening 'section line'"]),
+            ("a section the file does not hold", dict(change=self.put("../docs/section.md", "inc.md:example", "inc.md:other")),
+             ["section.md includes inc.md:other, and that file holds no section other"]),
         )
         for name, args, messages in rows:
             with self.subTest(name):
