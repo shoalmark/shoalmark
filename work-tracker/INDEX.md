@@ -35,6 +35,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-085](FM-085-the-suite-starts-chrome-with-a-mock-keychain-and-a-fresh.md) | P2 | The suite's browser blocks rely on whoever runs them to start Chrome with a mock keychain and a profile of its own. A r… | In Progress | progress | 2026-10-29 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
 | [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | P2 | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | In Progress | progress | 2026-10-19 |
