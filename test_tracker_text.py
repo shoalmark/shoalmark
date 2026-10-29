@@ -295,7 +295,7 @@ def physical_checks(fm, base, check, group="physical"):
 
 
 def converted_readings(fm, root, ending, missing=False):
-    """Committed answer and refusal record, and an act on a branch the commands no longer read; absent snapshots use the same paths."""
+    """A committed answer, and an act on a branch the commands no longer read; absent snapshots use the same paths."""
     init_git(root)
     write(root / "shoalmark.toml", CONFIG, "\n")
     absent = commit(root, "the configured repository")
@@ -324,7 +324,7 @@ def converted_readings(fm, root, ending, missing=False):
     fm.recover_relations([t])
     recovered = t["asks_recovered"]
     values = {"recover_from_log": (recovered[0] == fm.RELATION_TEXT["unknown"] and recovered[1] == "") if missing else (recovered[0] == fm.RELATION_TEXT["proposal"] and answer.startswith(recovered[1]) and bool(recovered[1])),
-              "refusal_record_in_place": fm.refusal_record_in_place(answer, after, rel) is (not missing)}
+}
     g = lambda *a: subprocess.run(["git", *a], cwd=root, capture_output=True, text=True, encoding="utf-8", env=fm.nested_git_env())
     git(root, "switch", "-q", "main")
     git(root, "reset", "--hard", "-q", after)
@@ -400,13 +400,6 @@ def converted_checks(fm, base, check):
         t.update(asks_answers=[("Read text?", "accepted")], asks_key=("Read text?", "accepted"))
         fm.recover_relations([t])
         check("Git " + filt + " unavailable answer history", t["asks_recovered"] == (fm.RELATION_TEXT["unknown"], "") and bool(fm.BOARD_UNREAD))
-        try:
-            fm.refusal_record_in_place(sha + "^", sha, rel)
-        except fm.Unread:
-            unread = True
-        else:
-            unread = False
-        check("Git " + filt + " unavailable refusal-record snapshot", unread)
         check("Git " + filt + " unavailable physical tracker lines", fm.line_author(p, "answer") == (None, None, "unread", ""))
         check("Git " + filt + " reads retain the filtered object store", packs == {f.name: f.read_bytes() for f in (root / ".git/objects/pack").iterdir()})
 

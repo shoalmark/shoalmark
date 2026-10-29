@@ -2497,7 +2497,7 @@ def forge_prs():
 
 def pushed_branches(prs):
     """The branches on `origin` that no pull request carries — what the forge's banner offers the Owner, and nothing else
-    showed them: every head `git ls-remote` names, less the default branch, `answer/*`, an open pull request's branch, a
+    showed them: every head `git ls-remote` names, less the default branch, an open pull request's branch, a
     head any pull request ever had (the forge's `refs/pull/N/head`, open or closed), and a head already inside the
     default branch, an open pull request's head, or another such branch's head (of twins with one head, the first by
     name stays). A head this clone never fetched — a single-branch clone fetches one — is fetched here, by its ref;
@@ -2520,7 +2520,7 @@ def pushed_branches(prs):
     inside = lambda a, b: git_out("merge-base", "--is-ancestor", a, b) is not None
     carried = {p["headRefName"] for p in prs} | {p["headRefOid"] for p in prs} | pulled
     named = [(name, sha) for name, sha in sorted(heads.items())
-             if name != default and not name.startswith("answer/") and name not in carried and sha not in carried]
+             if name != default and name not in carried and sha not in carried]
     lacking = set(have_not([sha for _n, sha in named]))
     if lacking:                                             # the one fetch for heads the configured refspec does not cover
         git_out("fetch", "--quiet", "origin", *[f"refs/heads/{name}" for name, sha in named if sha in lacking], board=False)
@@ -2539,20 +2539,6 @@ def have_not(shas):
     r = vcs_process("git", "cat-file", "--batch-check", input="".join(f"{s_}^{{commit}}\n" for s_ in shas), cwd=ROOT,
                        capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     return [s_ for s_, line in zip(shas, r.stdout.splitlines()) if line.endswith(" missing")]
-
-
-def answerer_of(commit):
-    """(whether the author of `commit` may answer — the gate's own match, email or name —, that author as the queue names
-    one — the email, else the name —, the configured identity they answer as, which a signature must name: `answerer_identity`)"""
-    name, _, email = (git_out("log", "-1", "--format=%an%x01%ae", commit) or "").strip().partition("\x01")
-    return (holds(seat_of(name, email), "answer") if SEATS else name in may_answer()), email or name or "no author", answerer_identity(name, email)
-
-
-def answers_as_him(commit):
-    """`commit` is theirs: its author may answer and it verifies as them — the gate's one test, `verified_as`, as
-    `answer_reading` applies it to the commit an `answer/*` pull request is read by (FM-031, RV-710)"""
-    may, _who, identity = answerer_of(commit)
-    return may and verified_as(commit, identity)
 
 
 def review_addendum():
@@ -2584,187 +2570,21 @@ def addenda_between(r, h, v=None):
     return out.returncode == 0
 
 
-REFUSAL_SUBJECT_RE = re.compile(r"^([A-Z][A-Z0-9]*-\d+): --(?:answer|done|due|revoke) refused — ")   # `record_refusal`'s subject
-REFUSAL_LINE_RE = re.compile(r"^\*\*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\*\* · .+ refused — ")               # … and its one line
-
-
-def refusal_record(commit):
-    """The tool's own refusal record (FM-030, `record_refusal`), unsigned by design: one parent, the subject `<ID>: --<act>
-    refused — …`, ONE file changed — that tracker's, its text and not its mode, as git's own list of the commit's changes names
-    them —, and a diff that adds the one `**<date> <time>** · … refused — …`
-    line and nothing else but the `## Acts` heading it may make and blank lines, and removes blank lines only: no
-    front-matter key, no act. And, from the tracker's text at the parent and at the commit (RV-715, the Owner's cold
-    re-check of `af5a9e2`, P1: a refusal-shaped line typed into *What is true now* passed the diff alone): the front
-    matter is byte-identical, the body before `## Acts` is byte-identical (trailing blank lines aside), and the section
-    under `## Acts` is the parent's plus that ONE line — nothing else changes anywhere. The gate reads no right in it;
-    `--queue` admits it below their act as it admits a review file's commit (RV-712) — a forged one in their name carries in
-    one line under `## Acts` that rules nothing, and nothing outside it."""
-    r = vcs_process("git", "-c", "core.quotePath=false", "show", *board_diff_args(), "--format=%P%x00%s", "--unified=0", "--no-renames", "--no-color", "--no-ext-diff",
-                        "--ignore-submodules=none", commit,
-                       cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    head, _, diff = r.stdout.partition("\n")
-    parents, _, subject = head.partition("\x00")
-    tid = REFUSAL_SUBJECT_RE.match(subject)
-    if r.returncode != 0 and unread_here():
-        raise Unread                                        # its diff met an object the partial clone lacks: no answer
-    if r.returncode != 0 or len(parents.split()) != 1 or not tid:
-        return False
-    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
-    files, added, removed, hunk = [], [], [], False
-    for line in diff.splitlines():
-        if line.startswith("diff --git "):
-            hunk = False
-        elif not hunk and line.startswith("+++ "):
-            files.append(line[len("+++ b/"):] if line.startswith("+++ b/") else line)
-        elif line.startswith("@@"):
-            hunk = True
-        elif hunk and line[:1] in "+-" and line:
-            (added if line[0] == "+" else removed).append(line[1:])
-    name = files[0][len(rel) + 1:] if len(files) == 1 and files[0].startswith(rel + "/") else ""
-    if not (name.startswith(tid.group(1) + "-") and name.endswith(".md") and "/" not in name and all(not x.strip() for x in removed)
-            and all(not x.strip() or ACTS_HEAD_RE.match(x) or REFUSAL_LINE_RE.match(x) for x in added)
-            and sum(1 for x in added if REFUSAL_LINE_RE.match(x)) == 1):
-        return False
-    # ONE file changed, as git's own list of the commit's changes names them — not as its `+++` lines do: git prints none for a change with no text to
-    # show, a binary or an empty file added, changed or deleted, or a mode alone. The record changes its tracker's text and nothing else, not its mode.
-    # `--ignore-submodules=none`, here and in the diff above: a `.gitmodules` that says `ignore = all` for a submodule leaves its pointer out of every
-    # list git makes, but where the command line asks for it — the checkout's own configuration does not
-    listed = vcs_process("git", "-c", "core.quotePath=false", "show", "--format=", "--raw", "-z", "--no-renames", "--no-abbrev", "--ignore-submodules=none", commit, cwd=ROOT,
-                            capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if listed.returncode != 0 and unread_here():
-        raise Unread                                        # its trees are not in the partial clone: no answer
-    changes = listed.stdout.split("\x00")[:-1]              # `:<mode> <mode> <id> <id> <status>`, then the path, for each change
-    if listed.returncode != 0 or len(changes) != 2 or changes[1] != files[0] or not re.fullmatch(r":(100644|100755) \1 [0-9a-f]+ [0-9a-f]+ M", changes[0]):
-        return False
-    return refusal_record_in_place(parents.strip(), commit, files[0])
-
-
-def refusal_record_in_place(parent, commit, path):
-    """RV-715, RV-716 (the Owner's cold re-checks of `af5a9e2` and `729ddae`) — the diff alone said what lines were added, not
-    WHERE: the tracker's text at `parent` and at `commit` is read in three parts — the body before the `## Acts` heading,
-    the section from that heading to the next `##`/`###` heading (as `append_record` bounds it), and the suffix after it.
-    The front matter and the body before the heading are byte-identical, the suffix is byte-identical, and the section's
-    lines are the parent's followed by exactly one refusal line. Where the parent has no `## Acts`, the new section is
-    the heading and that one line, placed exactly where `append_record` puts one — immediately above the ship-log heading
-    where the parent has one, else at the body's end — and the rest of the body is the parent's byte for byte. Anything else — a line in *What is true now*, a line in a later `## Asks`, a moved
-    heading, a second record — and it is not the tool's record, whatever the diff looked like."""
-    def text_at(ref):
-        spec = f"{ref}:{path}"
-        text = cat_blobs([spec]).get(spec)
-        if text is None and specs_unread([spec]):
-            raise Unread                                    # not in the partial clone, as against not there
-        return text
-    def parts(text):
-        body = parse_frontmatter(text)[1]
-        front = text[: len(text) - len(body)]
-        m = ACTS_HEAD_RE.search(body)
-        if not m:
-            return front, body, None, None
-        rest = re.search(r"^#{2,3}\s+", body[m.end():], re.M)
-        cut = m.end() + (rest.start() if rest else len(body) - m.end())
-        return front, body[: m.start()], body[m.start():cut], body[cut:]
-    lines = lambda x: [l for l in x.split("\n") if l.strip()]
-    old, new = text_at(parent), text_at(commit)
-    if old is None or new is None:
-        return False
-    of, obefore, oacts, osuffix = parts(old)
-    nf, nbefore, nacts, nsuffix = parts(new)
-    if of != nf or nacts is None:
-        return False
-    if oacts is None:
-        # the heading is new: the section is the heading and one line, and it sits exactly where `append_record` puts one —
-        # immediately above the ship-log heading where the parent has one, else at the body's end — with the rest of the body
-        # the parent's byte for byte (a section made before any other heading is not the tool's)
-        log = re.search(r"^#{2,3}\s+(%s)\s*$" % re.escape(HEAD["log"]), obefore, re.I | re.M)
-        if log:
-            around = nbefore == obefore[: log.start()] and nsuffix == obefore[log.start():]
-        else:
-            around = not nsuffix.strip() and nbefore.rstrip("\n") == obefore.rstrip("\n")
-        got = lines(nacts)
-        return around and len(got) == 2 and ACTS_HEAD_RE.match(got[0]) is not None and REFUSAL_LINE_RE.match(got[1]) is not None
-    if nbefore != obefore or nsuffix != osuffix:
-        return False
-    before, after = lines(oacts), lines(nacts)
-    return after[: len(before)] == before and len(after) == len(before) + 1 and REFUSAL_LINE_RE.match(after[-1]) is not None
-
-
-def stray_below(commit, base, skip=True):
-    """FM-031, RV-710 — what an `answer/*` branch's merge would carry in that its reading does not see: the first commit of
-    its own — `git log <commit> ^<base>`, newest first, `commit` itself left out unless `skip` is False — that is not theirs
-    (`answers_as_him`: may answer, verifies as them), not a review addendum (`review_addendum`, no merge), and not the
-    tool's own refusal record (`refusal_record`), as the wait that names it: `wait: a seat's commit on your answer branch
-    (<sha>, <author>)`, or where its author may answer, `wait: an unverified commit in your name on your answer branch
-    (<sha>)` — never *a seat's* of a commit in their name (RV-712). "" where there is none; None where the walk cannot run —
-    `base` is not here (RV-711): nothing below is proven, and a reader waits. A submodule's pointer counts as a path changed, whatever `.gitmodules` says
-    (`--ignore-submodules=none`)."""
-    ok = review_addendum()
-    full = (git_out("rev-parse", "--verify", "--quiet", commit + "^{commit}") or "").strip()
-    out = vcs_process("git", "-c", "core.quotePath=false", "log", "--format=%x00%H %P", "--name-only", "--no-renames", "--ignore-submodules=none", commit, "^" + base,
-                         cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
-    if out.returncode != 0 and full and unread_here() and git_out("rev-parse", "--verify", "--quiet", base + "^{commit}"):
-        raise Unread                                        # the base is here, and the walk met a tree the partial clone lacks: no answer
-    if out.returncode != 0 or not full:
+def owner_reading(head, base, own):
+    """A pull request the Owner made alone — every commit of its own, `own` (not on `base`), the Owner's signed commit as the gate
+    verifies it (`verified_owner`: an Owner identity of the default branch's, signed and verified), and its change, read from where it
+    leaves `base`, under the tracker directory alone: ("merge", `merge: yours — signed`, "") with no verdict, since a review of the
+    Owner's own answers reports and never blocks. None for any other pull request, and where `base` is not here."""
+    if not own:
         return None
-    for chunk in out.stdout.split("\x00")[1:]:
-        shas, *paths = chunk.strip("\n").split("\n")
-        sha, *parents = shas.split()
-        if (skip and sha == full) or (len(parents) <= 1 and all(not x or ok(x, True) for x in paths)) or answers_as_him(sha):
-            continue
-        may, who, _email = answerer_of(sha)
-        if may and refusal_record(sha):
-            continue
-        return (f"{STRAY_WAITS[1]} ({sha[:7]})" if may else f"{STRAY_WAITS[0]} ({sha[:7]}, {who})")
-    return ""
-
-
-STRAY_WAITS = ("wait: a seat's commit on your answer branch", "wait: an unverified commit in your name on your answer branch")   # `stray_below`'s two
-
-
-def answer_branch_reading(head, base):
-    """THE reading of an `answer/*` branch at `head` against `base` — `--queue`'s action for its pull request, and the
-    board's for their act on its way (`on_their_way`, RV-714): (kind, action, detail). It is read by ONE commit
-    (`answer_reading`): the newest of its own that changed an `answer:`, `done:` or `due:` line in a tracker —
-    `owner_change` cuts the branch for `--answer`, `--done` and `--due` alike — where every commit past it is a review
-    file's only (`addenda_between`, any commit's own `review*.md`) — the parent project's PRs 836, 849 and 853, a
-    Reviewer's docs pass on the answer, read *not an answerer (reviewer@seat)* by the head, and its `answer/bug-327`, a
-    Reviewer's verdict on their `--done`, the same (RV-679, 0.18.6); anything else past it, and the head is read, as
-    before. A merge carries every commit below that one too, and `owner_change` cuts `answer/<id>` from the branch they
-    stand on — a seat's, unmerged, carries its commits: *merge: your answer* only where `stray_below` finds none —
-    else its wait, the first such below theirs, never the head's reading (RV-710, the Owner's cold review of 0.18.6's
-    widening; RV-735, the same below their `answer:` since 0.18.4) — and where `base` is not here, a wait that says so: a
-    reader that cannot see below their act never says merge (RV-711)."""
     rel = TRACKER_DIR.relative_to(ROOT).as_posix()
-    found = git_out("log", *board_diff_args(), "-1", "--format=%H", "-G", "^(answer|done|due):", head, "^" + base, "--", rel)
-    if found is None and unread_here():
-        raise Unread                                        # its walk met an object the partial clone lacks: no answer
-    at = (found or "").strip()
-    at = at if at and (at == head or addenda_between(at, head)) else head
-    action = answer_reading(at)
-    if action[0] != "merge":
-        return action
-    stray = stray_below(at, base)
-    if stray is None:
-        return "wait", f"wait: the base {ref_name(base)} is not fetched here — fetch it; the commits below {at[:7]} are unread", ""
-    return ("wait", stray, "") if stray else action
-
-
-def answer_reading(head):
-    """An `answer/*` pull request is the Owner's own signed answer, `done:` or `due:`, and needs no Reviewer: `merge: your
-    answer` when the author of `head` — their answer, `done:` or `due:` commit, as `queue_actions` finds it — may answer and
-    the commit verifies as them — the gate's one test, `verified_as` — else it waits: on an author who may not answer,
-    named, whatever the commit's signature (R8 — a signed commit by someone else read *unsigned*, and the impostor is the
-    case the Owner most needs named); else on the signature. `answer_branch_reading` reads a merge here as theirs only where
-    every commit of the branch's own below `head` is theirs too, a review file's only, or the tool's own refusal record
-    (RV-710)."""
-    may, who, identity = answerer_of(head)
-    if not may:
-        return "wait", f"wait: not an answerer ({who})", ""
-    if verified_as(head, identity):
-        return "merge", "merge: your answer", f"signed {head[:7]}"
-    if signature_kind(head) not in ("", "ssh"):             # GPG, X.509: a signed line verifies by SSH only
-        return "wait", f"wait: {SIGN_WITH_SSH}", ""
-    gap = signature_gap(head)
-    return "wait", (f"wait: answer not verified here — {gap}" if gap else "wait: unsigned answer"), ""
+    paths = git_out("-c", "core.quotePath=false", "diff", "--name-only", "-z", "--no-renames", "--ignore-submodules=none", f"{base}...{head}")
+    if paths is None:
+        return None
+    changed = [x for x in paths.split("\0") if x]
+    if not changed or any(not x.startswith(rel + "/") for x in changed) or not all(verified_owner(c) for c in own):
+        return None
+    return "merge", "merge: yours — signed", ""
 
 
 def triage_reading(head, base):
@@ -2802,20 +2622,17 @@ def queue_actions(prs, branches=()):
     """Each open pull request's ONE action, in the order the Owner takes them: what they can act on first, then what waits;
     inside each, the oldest first; then each branch pushed without one (`pushed_branches`), read the same way — its
     verdict or its conflict — as `wait: no pull request — …`. Returns [(pr, kind, action, detail)], `kind` one of
-    merge · close · wait · branch. An `answer/*` pull request is read by `answer_reading`, not by a verdict — on their
-    answer, `done:` or `due:` commit, the newest of its own that changed an `answer:`, `done:` or `due:` line, where only
-    review files follow it (FM-031, 0.18.4: a Reviewer's docs pass on the answer read *not an answerer* by the head;
-    0.18.6, RV-679: on their `--done` or `--due`, too); else on its head — and it reads *merge: your answer* only where
-    every commit of its own below that one is theirs too, a review file's only, or the tool's own refusal record; else a wait
-    naming the first that is not (RV-710, RV-712), and a wait where its base is not here (RV-711) —
-    `answer_branch_reading`, the board's reader too (RV-714). For a pull request the first rule that holds is the action:
+    merge · close · wait · branch. Every pull request is read alike, whatever its branch is called. For a pull request the
+    first rule that holds is the action:
     - `wait: from a fork, read it yourself` — fork commits supply no verdict or carry-over instruction;
     - `closes with PR N` — its head is inside N's head, on the same base (of twins with one head, the newer one closes);
     - `close: carried into PR N` — every commit of its own (not on its base) is on N's branch, as that commit or as the
       same patch;
     - `wait: conflict in <paths>` — `git merge-tree --write-tree origin/<base> <head>` does not merge clean;
     - `wait: TRIAGE.md changed unsigned` — a commit of its own changes the Owner's intent or current path and is not their
-      signed commit (FM-037, `triage_reading`: the walk `--check` makes on the branch);
+      signed commit (`triage_reading`: the walk `--check` makes on the branch);
+    - `merge: yours — signed` — every commit of its own is the Owner's signed commit, and it changes the tracker directory alone:
+      no verdict is asked of it (`owner_reading`);
     - `wait: NOT READY (<verdict>)` — the last verdict on its head says so;
     - `wait: no verdict on <head>` — no verdict names its head;
     - `merge` — the last verdict on its head says READY, READY WITH FINDINGS or READY TO TAG, and it merges clean.
@@ -2917,8 +2734,8 @@ def queue_actions(prs, branches=()):
             rows.append((p, "wait", "wait: conflict in " + ", ".join(paths), ""))
         elif (guarded := triage_reading(head(p), base(p))):
             rows.append((p, "wait", *guarded))
-        elif p["headRefName"].startswith("answer/"):
-            rows.append((p, *answer_branch_reading(head(p), base(p))))
+        elif (mine := owner_reading(head(p), base(p), own(p)[0])):
+            rows.append((p, *mine))
         elif last is None:
             rows.append((p, "wait", f"wait: no verdict on {head(p)[:7]}", ""))
         elif last[1] == "NOT READY":
@@ -9834,8 +9651,8 @@ def cli_parser():
                                             "then what invites and notifications left here, each named, never removed (R9); "
                                             "where `gh` reads the forge, it ends with the queue of pull requests (--queue)")
     add("--queue", action="store_true", help="the open pull requests, read from GitHub with `gh` (origin fetched once), ONE action each — wait: from a fork, read it yourself (first) · merge · closes with PR N · "
-                                            "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned (FM-037) · wait: no verdict on … · wait: NOT READY (…); an answer/* pull request reads "
-                                            "merge: your answer · wait: not an answerer (<author>) · wait: a seat's commit on your answer branch (<sha>, <author>) · wait: an unverified commit in your name on your answer branch (<sha>) · wait: the base <base> is not fetched here — … · wait: unsigned answer · wait: answer not verified here — … — in the order to take them; then each branch on "
+                                            "close: carried into PR N · wait: conflict in … · wait: TRIAGE.md changed unsigned · merge: yours — signed, where every commit of its own is the Owner's signed "
+                                            "commit and it changes the tracker directory alone · wait: no verdict on … · wait: NOT READY (…) — in the order to take them; then each branch on "
                                             "origin no pull request carries, as `branch <name> @ <sha>  wait: no pull request — …`, and a count; then the pull requests "
                                             "merged or closed in the last 24 hours, with their times. "
                                             f"Read-only; exit {EXIT_DRIFT} where the forge cannot be read")
