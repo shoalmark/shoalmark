@@ -4,10 +4,15 @@ status: Parked
 considered: FM-004, FM-005, FM-006
 tags: research
 kind-of-problem: complex
-next: build
+next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
+ask: "Do you allocate FM-030's stand-up prompt as FM-023's What is true now (29 October, the stand-up prompt) sets out: A, the built-in prompt's new text, in v0.20.2, and B, the Board copying the tracker folder's standup.md under your signed guard, in v0.20.3?"
+ask-kind: ruling
+ask-since: 2026-10-29
+ask-options: "yes | yes, with the changes I name | no: both wait for v0.20.3"
+ask-proposal: "yes"
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -16,6 +21,32 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-29 — the stand-up prompt grows, for the Owner's signed answer.** On the Owner's word of 29 October, as the
+Auditor relays it: "A for v0.20.2, B for v0.20.3".
+[FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) holds the work.
+- **A, in v0.20.2, after BF-95:** the stand-up prompt built into the tool takes a new text. It checks first, read only,
+  that the Owner's folder is not behind. It takes the agenda one item at a time, and prints the command that records
+  each answer for the Owner to run. Then it brings the answers to the default branch, puts every blocker in one
+  exchange, and lays out the day's path. On the Owner's go it drives that path to the end of the day, by the
+  repository's own agent contract.
+  - A new value names the lead seat's worktree, the one whose identity `[seats]` maps to the planner.
+  - The text follows what holds the files: git with a forge that `gh` can read, git with none, Subversion, or a plain
+    folder.
+  - It is critical: an Opus Builder, a standard review, then a critical review. The prompt stays English on every
+    board.
+- **B, in v0.20.3:** the Board copies the tracker folder's `standup.md` where it exists, and names which text it copied.
+  The file is guarded like the Owner's two sections of [`TRIAGE.md`](TRIAGE.md): only the Owner's signed commit changes
+  it.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2 | A: the stand-up prompt's new built-in text, with the lead seat's worktree, by version control (FM-030). Critical. | BF-95 |
+| v0.20.3 | B: the Board copies the tracker folder's `standup.md`, guarded like the Owner's two sections, and names the text it copied (FM-030). | A |
+
+v0.20.2's release sitting is on Friday 30 October, at the end of the day, on the Owner's word of 29 October. What is
+not READY and merged into its release branch by then moves to v0.20.3, by the Owner's signed answer. The ask above puts
+A and B to the Owner.
 
 **2026-10-28 — the German rewrite, for the Owner's signed answer.** Every German line moves to *du* in v0.20.2, at
 once and in one lane: the Owner's ruling of 22 October, as the Auditor relays it.
@@ -398,6 +429,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The stand-up prompt's growth filed, on the Owner's word of 29 October: A, its new built-in text, in v0.20.2, and B, the Board copying the tracker folder's `standup.md` under the Owner's signed guard, in v0.20.3, with the ask for the Owner's signed answer. v0.20.2's release sitting named: Friday 30 October, at the end of the day. Records only. |
 | 2026-10-29 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The rewrite is in v0.20.2's allocation, in one lane, as the ask set it out. Records only. |
 | 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
 | 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
