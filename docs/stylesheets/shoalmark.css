@@ -45,6 +45,8 @@ body[data-md-color-scheme=slate][data-md-color-primary]{
 /* headings: Mono, one weight, the markdown marks kept and never read */
 .md-typeset h1,.md-typeset h2,.md-typeset h3,.md-typeset h4{font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:600;letter-spacing:-.01em;color:var(--md-default-fg-color)}
 .md-typeset h1{font-size:1.9em;line-height:1.2;text-wrap:balance}
+/* a German title of one long word (Datenschutzerklärung) breaks at a syllable with its hyphen, not mid-letter, where the page button narrows the line */
+.md-typeset h1:lang(de){-webkit-hyphens:auto;hyphens:auto;hyphenate-limit-chars:16 8 8;-webkit-hyphenate-limit-before:8;-webkit-hyphenate-limit-after:8}
 .md-typeset h2{font-size:1.2em}.md-typeset h3{font-size:1em}
 .md-typeset h2::before{content:"## ";content:"## " / "";color:var(--md-default-fg-color--light);font-weight:400}
 .md-typeset h3::before{content:"### ";content:"### " / "";color:var(--md-default-fg-color--light);font-weight:400}
@@ -136,6 +138,8 @@ body[data-md-color-scheme][data-md-color-primary]{
    outranks the rule above and paints the foot's link in the page's ink, 1.12:1 on the band by day; inside the foot the
    page's ink is the band's */
 .md-footer-meta{--md-default-fg-color:var(--bandink)}
+/* the foot's legal line stands apart from the theme's credit beneath it: two links 3 px over a third were too close to tap (WCAG 2.5.8) */
+.md-copyright__highlight{margin-bottom:.3rem}
 
 /* B1 — "How it works": the week's picture, drawn from a real tracker (FM-024), the real board and a real commit (4127dba) of this
    repository. Three cards down the page's column, each a verbatim excerpt (a cut is marked …), the theme's own tokens; the board's

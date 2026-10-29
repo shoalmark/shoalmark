@@ -35,6 +35,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-091](FM-091-the-site-has-no-imprint-and-no-privacy-notice-and-its.md) | P2 | The site has no imprint and no privacy notice, though a German provider must have both, easy to find from every page. A… | In Progress | progress | 2026-10-29 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
 | [FM-061](FM-061-vendoring-still-takes-an-untagged-or-partial-source-a-weaker.md) | P2 | vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows | In Progress | progress | 2026-10-16 |
@@ -64,6 +65,8 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-094](FM-094-a-link-written-as-html-in-a-docs-page-does-not-lead-to-its.md) | — | A docs page's llms twin keeps a link only when the page writes it in Markdown. A link written as HTML, as the legal pag… | Proposed | triage | — |
+| [FM-093](FM-093-the-site-stores-its-display-setting-when-a-page-opens-not.md) | — | The site's theme stores the visitor's colour palette in their browser as soon as any docs page opens, not only when the… | Proposed | triage | — |
 | [FM-092](FM-092-with-the-repository-widget-no-longer-calling-github-the-site.md) | — | Once FM-091 merges, the theme's repository widget no longer calls GitHub in every visitor's browser, and the site no lo… | Proposed | triage | — |
 | [FM-090](FM-090-the-site-check-s-reading-of-markdown-has-edge-cases-no-page.md) | — | The site check that BF-95 added reads Markdown the way the site's build does, and its review found edge cases that no p… | Proposed | triage | — |
 | [FM-089](FM-089-agentic-seamanship-v0-20-3.md) | — | Agentic seamanship, the chapter for v0.20.3: trackers that close by a definition of done, and evidence that stays small… | Proposed | triage | — |
