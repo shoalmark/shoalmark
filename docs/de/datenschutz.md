@@ -1,6 +1,6 @@
 # Datenschutzerklärung
 
-Stand: 29.10.2026 · v1.0 · shoalmark.tools · [English](../privacy.md)
+Stand: 29.10.2026 · v1.0 · shoalmark.tools · <a href="../privacy.html" hreflang="en" lang="en">English</a>
 
 ## 1. Verantwortlicher
 

@@ -1,6 +1,6 @@
 # Impressum
 
-Stand: 29.10.2026 · v1.0 · shoalmark.tools · [English](../imprint.md)
+Stand: 29.10.2026 · v1.0 · shoalmark.tools · <a href="../imprint.html" hreflang="en" lang="en">English</a>
 
 ## Angaben gemäß § 5 DDG
 

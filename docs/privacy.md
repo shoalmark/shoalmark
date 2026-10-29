@@ -1,6 +1,6 @@
 # Privacy notice
 
-As of 29 October 2026 · v1.0 · shoalmark.tools · [Deutsch](de/datenschutz.md)
+As of 29 October 2026 · v1.0 · shoalmark.tools · <a href="de/datenschutz.html" hreflang="de" lang="de">Deutsch</a>
 
 ## 1. Controller
 

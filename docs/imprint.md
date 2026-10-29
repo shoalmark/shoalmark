@@ -1,6 +1,6 @@
 # Imprint
 
-As of 29 October 2026 · v1.0 · shoalmark.tools · [Deutsch](de/impressum.md)
+As of 29 October 2026 · v1.0 · shoalmark.tools · <a href="de/impressum.html" hreflang="de" lang="de">Deutsch</a>
 
 ## Information under § 5 DDG
 
