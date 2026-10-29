@@ -420,8 +420,8 @@ docs_dir = config_path.parent / project.get("docs_dir", "docs")
 snippets = ((project.get("markdown_extensions") or {}).get("pymdownx") or {}).get("snippets") or {}
 snippet_bases = [config_path.parent / base for base in (snippets.get("base_path") or ["."])]
 directory_urls = project.get("use_directory_urls", True)
-INCLUDE = re.compile(r"""^([ \t]*)-+8<-+[ \t]+(["'])(.+?)\2[ \t]*$""")
-INCLUDE_BLOCK = re.compile(r"^[ \t]*-+8<-+[ \t]*$")
+INCLUDE = re.compile(r"""^([ \t]*)(;*)-+8<-+[ \t]+(["'])(.+?)\3$""")
+INCLUDE_BLOCK = re.compile(r"^[ \t]*(;*)-+8<-+$")
 SECTION_MARK = re.compile(r"(?i)^.*?(;*)-+8<-+[ \t]+\[[ \t]*(start|end)[ \t]*:[ \t]*([a-z][-_0-9a-z]*)[ \t]*\].*$")
 PART = re.compile(r"(?i)(.*?)(?:((?::-?[0-9]*){1,2}(?:(?:,(?=[-0-9:])-?[0-9]*)(?::-?[0-9]*)?)*)|(:[a-z][-_0-9a-z]*))?$")
 QUOTE = re.compile(r"^[ \t]{0,3}(?:>[ \t]?)+")
@@ -486,25 +486,29 @@ def expanded(name, page, depth):
 
 def source_lines(path, page, depth=0, lines=None, section=False):
     """A page's lines as the build reads them: each include, a `--8<-- "name"` line or a block of names between two `--8<--` lines, replaced by the lines
-    it brings in at its indentation; outside a section, a section's marker lines left out, as snippets leaves them out."""
+    it brings in at its indentation; an include marker escaped with `;` kept as text with one `;` taken off, inside a block of names too; outside a section,
+    a section's marker lines left out, as snippets leaves them out."""
     if lines is None:
         lines = path.read_text(encoding="utf-8").expandtabs(4).split("\n")
     out, names = [], False
     for line in lines:
-        m = INCLUDE.match(line)
+        m, block = INCLUDE.match(line), INCLUDE_BLOCK.match(line)
+        if m and m.group(2) or block and block.group(1):
+            out.append(line.replace(";", "", 1))
+            continue
         if names:
-            if INCLUDE_BLOCK.match(line):
+            if block:
                 names = False
             elif not m and not line.strip():
                 out.append("")
             elif not m and not line.strip().startswith(";") and depth < 8:
                 out += [line[:len(line) - len(line.lstrip())] + inner for inner in expanded(line.strip(), page, depth)]
             continue
-        if INCLUDE_BLOCK.match(line):
+        if block:
             names = True
             continue
         if m and depth < 8:
-            out += [m.group(1) + inner for inner in expanded(m.group(3).strip(), page, depth)]
+            out += [m.group(1) + inner for inner in expanded(m.group(4).strip(), page, depth)]
             continue
         mark = None if section else SECTION_MARK.match(line)
         if mark and not mark.group(1):
