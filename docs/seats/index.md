@@ -56,6 +56,7 @@ the rows.
 The research seat carries a type as the first line of its brief — *Type: sources* checks a claim against its primary
 artefacts; *Type: measurement* works out how much evidence a question needs, the decision rule and the controls — and its
 chain keeps its two steps as two separate sessions. Seat names are English in every language and file: the configuration
-keys, the App names, the board, the docs; German pages keep the English name and address the Owner as *Sie*.
+keys, the App names, the board, the docs; German pages keep the English seat names but call the Owner *der Eigner*, and
+speak to the reader as *du*.
 
 *Proposed by the Principal on 2026-09-30 from the Owner's rulings of that day; approved by the Owner the same day with four fixes.*

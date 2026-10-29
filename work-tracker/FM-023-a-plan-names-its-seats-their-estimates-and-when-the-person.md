@@ -8,6 +8,14 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
+ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the CI class fix move unless READY by Thursday 20:00?"
+ask-kind: ruling
+ask-since: 2026-10-29
+ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as FM-023's What is true now (27 October, the scope) sets out"
+ask-proposal: "yes"
+answer: "accepted - yes"
+answered: 2026-10-29
+answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -16,6 +24,150 @@ Seat: Principal · filed 2026-09-23 on the Owner's requirement. Tagged `research
 is designed or built.
 
 ## What is true now
+
+**2026-10-29 — the release branch rebuilt, and the CI class fix moved to v0.20.3.** On the Owner's word of 29 October,
+as the Auditor relays it:
+- **`release/v0.20.2-signed` is retired.** #230, J's pull request, was merged into it with GitHub's merge button
+  (`d872dd7`), and the gate refuses that on a base that is not main.
+  - The Owner redid it as a signed merge of their own, on a new branch: `release/v0.20.2-rebuilt` at `9f1843b`, from
+    `8b24e91` and J's verdict `6e0a9ab`, with J's tree.
+  - Every v0.20.2 lane now targets the new branch. The retired branch stays as it is: no one deletes it.
+  - A pull request into a base that is not main now opens as a draft, titled "[signed merge only] …".
+- **The CI class fix moves to v0.20.3 whole,** its three findings RV-3920 to RV-3922 with it. The ask above already
+  names the class fix whole, moving unless READY by Thursday 20:00, and no lane builds it, so the ask's "yes" covers
+  it. No change to the ask is needed. The entry below that says "beyond its three findings" no longer holds for those
+  three.
+
+**2026-10-29 — from v0.20.3, each release's allocation is a tracker of its own,** on the Owner's word of 29 October,
+as the Auditor relays it.
+- **The tracker:** each release's allocation is filed as its own tracker, which ships at that release's tag.
+- **This tracker** keeps the research question it was filed for, and holds no allocation after v0.20.2's.
+- **v0.20.3's allocation** will hold [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter of agentic
+  seamanship, with its two parts: [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
+  trackers that close, and [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md), evidence in
+  three classes, all filed today. The theme's trackers carry the tag `seamanship`, in the configuration's vocabulary
+  since the Owner's #229, and each release that carries it gets one chapter.
+
+**2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
+Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
+relayed commits are optional", and "cut-off Fri 14:00 approved".
+[FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) holds the work.
+- **A, in v0.20.2, after BF-95:** the stand-up prompt built into the tool takes a new text. It checks first, read only,
+  that the Owner's folder is not behind. It takes the agenda one item at a time, and prints the command that records
+  each answer for the Owner to run. Then it brings the answers to the default branch, puts every blocker in one
+  exchange, and lays out the day's path. On the Owner's go it drives that path to the end of the day, by the
+  repository's own agent contract.
+  - A new value names the lead seat's worktree, the one whose identity `[seats]` maps to the planner.
+  - The text follows what holds the files: git with a forge that `gh` can read, git with none, Subversion, or a plain
+    folder.
+  - It is critical: an Opus Builder, a standard review, then a critical review. The prompt stays English on every
+    board.
+- **B, in v0.20.3:** the Board copies the tracker folder's `standup.md` where it exists, and names which text it copied.
+  The file is guarded like the Owner's two sections of [`TRIAGE.md`](TRIAGE.md): only the Owner's signed commit changes
+  it.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2 | A: the stand-up prompt's new built-in text, with the lead seat's worktree, by version control (FM-030). Critical. | BF-95 |
+| v0.20.3 | B: the Board copies the tracker folder's `standup.md`, guarded like the Owner's two sections, and names the text it copied (FM-030). | A |
+
+- **S1, the ask ids with R4's answer commit, must land in v0.20.2:**
+  [FM-050](FM-050-an-ask-has-no-id-of-its-own-so-an-answer-cannot-name-the-ask.md). It builds on the release branch as
+  it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3
+  follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
+- **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
+- **FM-065, quick win 10, and the CI class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
+  29 October, 20:00. The CI class fix makes every root `test_*.py` run in CI, directly or through `test_core.py`, or
+  be named as excluded. Its three findings are RV-3920 to RV-3922, from the review of the CI item that #219 merged. It
+  is not filed as a tracker yet.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2, must land | S1: the ask ids with R4's answer commit (FM-050). Critical. | — |
+| v0.20.2, optional | FM-076: relayed commits. | — |
+| v0.20.2, unless not READY by Thursday 20:00 | FM-065; quick win 10; the CI class fix beyond its three findings (RV-3920 to RV-3922). Otherwise v0.20.3. | — |
+
+**The cut-off is Friday 30 October, 14:00 CET,** on the Owner's word of 29 October. After it, only the release's own
+commits go into its release branch, and the sitting follows. What is not READY and merged by then moves to v0.20.3, by
+the Owner's signed answer. The ask above puts all of this to the Owner.
+
+**2026-10-28 — the German rewrite ruled and started, and the v0.20.2 lane rebuilt, signed.** The Owner's signed
+answer (`558ec59`, #227) accepts the ask of the entry below. The same day, as the Auditor relays it, the Owner ruled the
+rewrite's glossary, which [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) records, and its plan:
+- the lane, `fm/006-german-du`, is built on the v0.20.2 lane now, and goes into it by pull request;
+- FM-024, FM-068 and FM-076 each move their own German lines to *du* by the glossary before they join, and the check
+  below catches what is left;
+- the probe prompts' part gets a critical review;
+- a check in the suite refuses, in German prose, each formal form and each term the glossary retires, with each allowed
+  exception named and a control;
+- a German native reader reads the lane twice before it merges, and the German of the other v0.20.2 lanes once before
+  the release sitting;
+- the lane's German pages go live only with v0.20.2's tag's own docs build, and no docs build runs on main between the
+  release's merge into main and its tag.
+
+The v0.20.2 lane is rebuilt as `release/v0.20.2-signed`: the same trees, with the merges of #219 and #220 made again by
+the Owner in their own checkout and signed (`c4d211b`, `8b24e91`). The earlier branch, whose two merges GitHub's merge
+button had made, is retired. Every merge into a base other than main is the Owner's, made in their checkout and signed,
+and every v0.20.2 lane takes the signed branch as its base and its target.
+
+**2026-10-28 — the German rewrite, for the Owner's signed answer.** Every German line moves to *du* in v0.20.2, at
+once and in one lane: the Owner's ruling of 22 October, as the Auditor relays it.
+[FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) records its docs part under *What is
+true now* (27 and 28 October). The lane covers:
+- the German docs pages, each written from its meaning, not sentence by sentence;
+- the tool's German strings, [`examples/de/labels.yaml`](../examples/de/labels.yaml), and so the Board, with FM-024's
+  new German labels;
+- both German probe prompts, [`ADOPT.de.md`](../ADOPT.de.md) and [`ADOPT.svn.de.md`](../ADOPT.svn.de.md), which
+  re-pins the probe, with the probe dialog's [`launch/probe/start.de.md`](../launch/probe/start.de.md) and
+  [`launch/probe/how-it-works.de.md`](../launch/probe/how-it-works.de.md); the prompt's mixed German forms go with it;
+- the German link preview, [`brand/social/link-preview-de.svg`](../brand/social/link-preview-de.svg) and
+  [`docs/assets/preview-de.png`](../docs/assets/preview-de.png).
+
+First, a short glossary goes to the Owner to rule. A German native reader reads each part before it merges. The 27
+October table below does not list the rewrite. The ask above puts it to the Owner, on the Auditor's relay of 28 October.
+
+**2026-10-27 — v0.20.2's scope narrowed, and v0.20.3 named, on the Owner's word of 27 October, as relayed by the Auditor, for their signed answer.** The Owner said "leave them
+for v0.20.3", then "I want to also add ASK ids to v0.20.2", on the Auditor's list just before. The ask above puts it to
+them. The tables below stay as the record of what was allocated before.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2 | In progress: the CI item (`test_plugin.py` in CI), FM-068, FM-024, FM-076, and S2 (READY at `ec5d19f`). | — |
+| v0.20.2 | `/find-drift` and the plugin, in the lane; `/prune-drift` (READY at `9017ad8`), rebuilt onto the lane. | — |
+| v0.20.2 | The suite's Chrome keychain flag: the suite starts Chrome with `--use-mock-keychain` and a fresh `--user-data-dir` itself. | — |
+| v0.20.2 | Quick win 10: `--sessions` gains the harness and resume columns. | FM-024's round |
+| v0.20.2 | S1: the ask ids with R4's answer commit (FM-050). | FM-076 |
+| v0.20.2 | FM-063: the trailer step leaves a message that ends in bare links as it is (S), built in the `prepare-commit-msg` hook, so critical. | — |
+| v0.20.2 | FM-065: the skill-call contract. Its design is READY WITH FINDINGS (`4dc1910`), and its first use is `/prune-drift` calling `/find-drift`. | `/prune-drift`'s rebuild |
+| v0.20.2 | The German rewrite: every German line moves to *du*, in one lane (`fm/006-german-du`), by the glossary of 28 October (FM-006). | — |
+| v0.20.3 | S3, who asked, the receipts and S4, from batch 3. | S1 |
+| v0.20.3 | From 18 October's allocation: the prose prune of `shoalmark.py` with the comment ratchet, FM-037's guard, the five conversions, and the text fixes. | v0.20.2's tag |
+
+- **FM-063 and FM-065 stay in v0.20.2,** on the Owner's word of 27 October: "both stay in v0.20.2".
+
+**2026-10-27 — batch 3 and quick win 11's S2 move from v0.20.1 to v0.20.2, for the Owner's signed answer.** On 22
+October, with the probe release, the Owner moved them to v0.20.2: batch 3 (S1 with the ask ids, S3, S4 the guided
+answer, the receipts, and the sessions with `--sessions` and who asked) and quick win 11's S2. The record never said
+so. This entry and the 15 October table's new row say it, and the ask above puts it to the Owner for a signed answer.
+- **It amends** v0.20.2's allocation of 18 October (answered at `88bf707`).
+- **Once it is answered,** FM-059's release answer of 16 October (*accepted - v0.20.1*, `99b1708`) is named as
+  superseded by it.
+- **What they need first** is unchanged: FM-050's ask ids and FM-059's guided answer are designed and reviewed, and
+  their ruling asks are filed again on today's main.
+
+**2026-10-21 — the tags of v0.20,** on the Owner's ruling of 20 October (recorded privately):
+- v0.20.0 and v0.20.1 take lightweight tags, with no release run sheet;
+- the last v0.20.x tag, the officially announced release, takes the run sheet, the signed tag and the announcement;
+- each lane built on `be19828` takes main's site commits before its pull request.
+
+**2026-10-19 — FM-063 goes to v0.20.2,** the Planner's call, which the Auditor's relay of 19 October left to the
+Planner: a seat's commit message that ends in bare links has them rewritten by the trailer step. Until it ships, a seat
+ends its message with a sentence. The 18 October table below has a v0.20.2 row for it.
+
+**2026-10-19 — the skill-call contract goes to v0.20.2 (FM-065),** on the Owner's word of 19 October (recorded
+privately): one skill calls another, external skills included, through a contract that pins what it calls and checks
+what it gets back. It is prepared for from v0.20.2's first release, and no external skill runs in v0.20.2. The 18
+October table below has a v0.20.2 row for it.
 
 **2026-10-19 — R11's hook half comes back in v0.20.1,** on the Owner's word of 19 October (recorded privately): the
 hooks that rebuild the board after a checkout, a merge and a rebase. v0.20.0 ships as built, with R11's upgrade note.
@@ -43,6 +195,8 @@ the Owner's word of 18 October (recorded privately). Both ship in v0.20.2 as a C
 | v0.20.2 | Five small conversions, each a rule made a check: the ship log only grows; triage rows only grow; no line of a commit message begins with `---`; the allowed test runner; no home folder's path in public text. | The prose each one replaces | v0.20.1's tag |
 | v0.20.2 | The text fixes `/find-drift`'s first run found, in the rule files: sources that disagree, and obsolete text. The seat definitions are the Owner's to type. | The obsolete text | The second skill |
 | v0.20.2 | The suite's Chrome keychain flag: on macOS, the suite starts Chrome with `--use-mock-keychain`. | — | v0.20.1's head |
+| v0.20.2 | FM-063: the trailer step adds a seat's trailers and changes nothing else in the message, where it ends in bare links (S). | The rule that a seat ends its message with a sentence | — |
+| v0.20.2 | FM-065: the skill-call contract (M): its six parts, a registration format and a check, proven by synthetic child skills, and first used by `/prune-drift` calling `/find-drift`. No external skill runs. | — | A design round, then the Owner's ruling |
 | After v0.20.2 | R5; defects 1, 3 and 4; the four larger conversions; the broader R24 boundary work. | — | The Owner's allocation |
 
 - **When:** the work may start now.
@@ -77,6 +231,7 @@ proposes stays parked. The rows that read v0.20.0 moved there on 18 October, by 
 | v0.20.1 | Receipts, read from git (M): counts the record holds, each with its definition, never a total in a heading. | — (R13 went ahead, in v0.20.0) | R4; FM-055's definitions |
 | v0.20.1 | R17: partial and untagged vendoring go. Defect 5's class fix. | — | — |
 | v0.20.1 | R11's hook half comes back: the hooks that rebuild the board after a checkout, a merge and a rebase (FM-057), on the Owner's word of 19 October (recorded privately). | — | v0.20.0's tag |
+| v0.20.2 | Moved from v0.20.1 on the Owner's word of 22 October, with the probe release: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with `--sessions` and who asked) and quick win 11's S2. Their v0.20.1 rows above stay as the record of where they were. | — | This tracker's ask of 27 October; FM-050 and FM-059 ruled first |
 | After v0.20.1 | R5; defects 1, 3 and 4; the harness plugin; broader R24 boundary work. | — | As on 12 October |
 | v0.21.x | Research and complex work, each from a round the Owner allocates, as line 6 says. | — | The Owner's allocation |
 | Unchanged | The held rows R6, R7, R8, R16, R20, D3 and D4, looked at on 20 October; R25–R27 kept; #154's prerequisite wording as replaced by the Owner's signed answer of 12 October in adaec88 (#168). | — | As on 12 October |
@@ -318,10 +473,41 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted the proposal
 **signed** — 88bf707 · G
 
+**2026-10-27** · Do you amend v0.20.2's allocation of 18 October as FM-023's What is true now (27 October) sets out: batch 3 (S1 with the ask ids, S3, S4 the guided answer, the receipts, and the sessions with --sessions and who asked) and quick win 11's S2 move from v0.20.1 to v0.20.2, as you said on 22 October?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 3996506 · G
+
+**2026-10-27** · Do you amend v0.20.2's allocation as FM-023's What is true now (27 October, the scope) sets out: v0.20.2 keeps the work in progress and adds the Chrome flag, quick win 10, S1, FM-063 and FM-065; v0.20.3 takes S3, who asked, the receipts, S4 and the rest of 18 October's allocation?
+**answered** — accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills · holgo99
+**relation** — accepted with a change
+**signed** — 62ac263 · G
+
+**2026-10-28** · Do you list v0.20.2's German rewrite in its allocation, as FM-023's What is true now of 28 October sets out: every German line moved to du in one lane (docs pages, the tool's strings, both probe prompts and their dialog, the preview image), glossary first, a native reader before each merge?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 558ec59 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | FM-086 to FM-089 carry the tag `seamanship`, in the vocabulary since the Owner's #229. Records only. |
+| 2026-10-29 | `release/v0.20.2-signed` retired after #230's button merge; `release/v0.20.2-rebuilt` at `9f1843b`, the Owner's signed merge of J, is v0.20.2's base. The CI class fix moves to v0.20.3 whole, its three findings with it. Records only. |
+| 2026-10-29 | The CI class fix is described in this entry, not named as FM-062's: no tracker holds it yet (RV-3988). Records only. |
+| 2026-10-29 | The records review's six findings fixed (RV-3982 to RV-3987): the CI class fix is named as FM-062's, an ask option cites its source, the tag waits for the vocabulary, the count of trackers is corrected, and what is not yet filed or done says so. Records only. |
+| 2026-10-29 | From v0.20.3, each release's allocation is a tracker of its own, on the Owner's word of 29 October. FM-086 and FM-087 are filed for v0.20.3. Records only. |
+| 2026-10-29 | v0.20.2's allocation amended, on the Owner's words of 29 October: S1 must land, FM-076 is optional, FM-065, quick win 10 and the class fix beyond its three findings move unless READY by Thursday 20:00, and the cut-off is Friday 14:00. The ask is amended to put all of it, with A and B, to the Owner. Records only. |
+| 2026-10-29 | The stand-up prompt's growth filed, on the Owner's word of 29 October: A, its new built-in text, in v0.20.2, and B, the Board copying the tracker folder's `standup.md` under the Owner's signed guard, in v0.20.3, with the ask for the Owner's signed answer. v0.20.2's release sitting named: Friday 30 October, at the end of the day. Records only. |
+| 2026-10-29 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The rewrite is in v0.20.2's allocation, in one lane, as the ask set it out. Records only. |
+| 2026-10-28 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The glossary and the plan ruled the same day, the lane started, a v0.20.2 row, and the v0.20.2 lane rebuilt as `release/v0.20.2-signed`, signed. Records only. |
+| 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
+| 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
+| 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
+| 2026-10-27 | Batch 3 and quick win 11's S2 recorded as moved from v0.20.1 to v0.20.2, on the Owner's word of 22 October, with a row of the 15 October table; the ask filed for the Owner's signed answer, amending v0.20.2's allocation of 18 October. Records only. |
+| 2026-10-21 | The tags of v0.20, on the Owner's ruling of 20 October (recorded privately): lightweight for v0.20.0 and v0.20.1; the run sheet, the signed tag and the announcement for the last v0.20.x. |
+| 2026-10-19 | FM-065, the skill-call contract, allocated to v0.20.2 on the Owner's word of 19 October (recorded privately): one v0.20.2 row; nothing is designed or built. |
+| 2026-10-19 | FM-063 filed, a bug, and allocated to v0.20.2, the Planner's call: one v0.20.2 row; nothing is built. |
 | 2026-10-19 | R11's hook half comes back in v0.20.1, on the Owner's word of 19 October (recorded privately): one v0.20.1 row; v0.20.0 unchanged. |
 | 2026-10-18 | v0.20.0 cut from main as it stands, on the Owner's ruling of 18 October (recorded privately): R22, R15, R13, R11, R9 and the stand-up across repositories move from v0.20.1, with the two prompts, what the board read and FM-045's fix. The second skill is named `/prune-drift`, the Owner's word of 18 October. |
 | 2026-10-18 | v0.20.2's allocation ask filed: shoalmark's first two skills in one Claude plugin, on the Owner's rulings of 18 October. The answer of 17 October recorded under the asks, and v0.20.1's count of quick wins made the Owner's eleven, the guided answer among them. |

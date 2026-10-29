@@ -22,6 +22,118 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-10-29 — BF-95: fenced code builds to a code block again, in English and German.** Since `e0a21dd` the site's
+`[project.markdown_extensions]` table held only the snippets extension. Setting that table replaces Zensical's
+default extensions, all but `toc` and `tables`, so every fenced block built as inline code inside a paragraph.
+Its line breaks were lost, a block with a blank line split in two and showed its fences, and setup's step 1, copied,
+ran only `git clone`.
+- `pymdownx.superfences` joins the table, and it is the only extension the pages were missing (`ccf5cd1`).
+- `scripts/check_site.py` now checks that every fenced block in the docs, and in what the snippets include, builds
+  to a `<pre>`, and that no built page shows a literal fence, in both languages. A build without the extension
+  fails it (`67ba698`).
+- No words, no CSS and no template change.
+
+**2026-10-27 — the German preview image still says "Ihre Agenten":** `docs/assets/preview-de.png` and its source `brand/social/link-preview-de.svg` read *Eine Werkbank für Ihre Agenten.*, while the start page's German claim and description now say *deine*, and both German `og_image_alt`s quote the image as it stands. The image goes with v0.20.2's move of the remaining German pages to *du*.
+
+**2026-10-27 — a native reader's feedback on the German, for v0.20.2's move to "du",** on the Owner's word of 27 October. A German native reader, with no name to record, wrote: *"Die Übersetzung hier ist sehr holprig: https://shoalmark.tools/de/how-it-works.html Im Abschnitt eine Woche in vier Schritten"*. It holds: the section reads as English translated sentence by sentence (*"Was Ihr Wort braucht, wartet darauf"*, *"Sie sitzen, wann immer es Ihnen passt"*, *"Nicht alles braucht Sie"*, *"Ein Sitz mit dem Recht dazu"*, *"Die Agenten handeln auf Ihre Antwort"*). For v0.20.2:
+- the rewrite writes every German docs page from its meaning, not sentence by sentence;
+- first, a short glossary goes to the Owner to rule: seat, sitting, Owner, Board, stand-up, ask, answer, ship. "Sitz" and "sitzen" cause most of the stumbling;
+- a German native reader reads every German page before it merges.
+
+**2026-10-28 — the probe prompt's mixed German forms go to v0.20.2's rewrite:** the German probe prompt says *Prüf*, *sag* and *schreib* beside *Prüfe* and *Ändere*. On the Owner's word of 28 October, "Later, with the rewrite", these forms go to v0.20.2's German rewrite, with the native reader. The prompt does not change now.
+
+**2026-10-28 — B1, the landings' browser block, builds each launch state again.** It had been stale since `781e0d1` turned the switch on: it asserted the switch off before its probe build, and its interim build took the switch as it stood. `_b1_site` now sets the stage's `zensical.toml` to the state it builds, its probe switch with the tape off and its launch folder, before `landing_facts.py`, so the figures, the switch and the base path agree in each state, and it refuses a file that holds neither form, or both.
+
+**2026-10-28 — B1's skip counts the seven checks it runs:** the launch form, the interim and the probe state, the controls, and the three excerpt checks. It had counted its two-state loop once.
+
+**2026-10-28 — the German rewrite to *du*: the glossary ruled, and the lane started.** On the Owner's word of 28
+October, as the Auditor relays it, every German line of v0.20.2 moves to lower-case *du* in one lane,
+`fm/006-german-du`, on the v0.20.2 lane `release/v0.20.2-signed`. The glossary, as ruled:
+- seat: *die Rolle*; the config's `[seats]` stays code, and one sentence links the two;
+- sitting: *die Runde*, or a verb where it reads better;
+- the person who owns a repository: *der Eigner*, as ruled on 23 September; the seat name `owner`, the `[seats]` key,
+  commands and quoted refusals stay English;
+- *das Board*; *das Stand-up*, and the menu reads "Das Stand-up"; *die Frage*; *die Antwort*; *ausgeliefert* and *das
+  Release*; *die Session*, which frees *Sitzung*;
+- *das Arbeitspaket*, and *Eintrag* only for a line in a list; *die Sichtung*; *das Review*, *der Reviewer*, *das
+  Urteil*; *der Beleg*, and *der Verlauf* for the history; *der Abschluss*;
+- *du* in lower case everywhere, and the long imperatives everywhere (*prüfe*, *sage*, *schreibe*).
+
+Retired in German prose: *Sitz*, *Owner*, *Tafel*, *der Standup*, *Prüfer* and *Nachweis*. A check in the suite refuses
+each formal form and each retired term in German prose. The lane's German pages go live only with v0.20.2's tag's own
+docs build. A German native reader reads the lane twice before it merges: the site first, then the Board and the probe.
+
+**2026-10-28 — the German rewrite: the Owner's words on the hero line, the inspector, the probe's template and its
+button.** On the Owner's word of 28 October, as the Auditor relays it:
+- the German hero line is *Die Agenten tragen die Arbeit, du hast das letzte Wort.* in all seven places, each in its own
+  form. It changes A2's *der Mensch hat das letzte Wort* (below). The why page's two places follow with its German;
+- the landing's inspector is *der Gutachter*, the marine surveyor, beside *der Skipper* and *der Schiffbauer*;
+- the German probe prompt's report template says *der Eigner* and *Arbeitspakete*: the two named exceptions to the rule
+  that the prompts' code blocks stay byte for byte;
+- the landing's button and the interim dialog read *Gib deinen Agenten die Notiz*;
+- *Arbeitspaket* is the work item in the probe prompts too, and *Eintrag* only a line in a list;
+- the unused picture of the German Board, `examples/de/tafel.png`, is removed.
+
+**2026-10-28 — the German rewrite: the why page's German in *du*, the preview's alt, and the guard read whole.** After
+#228 joined the lane (`b8581fd`):
+- the why page's German says *du hast das letzte Wort* in its two places, as the hero line above has it;
+- nine of its texts move by the glossary, to *Stand-up*, *Session* and *Rolle*. In the maker's quote only *Sitzungen*
+  becomes *Sessions*, and the timeline sentence, *zurück in der Schleife* and *lass* stay word for word;
+- the German link preview's alt quotes *Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.* in its three
+  places (BF-94);
+- the check against formal German and retired terms now reads every German source whole. Its pending set is empty, and
+  a control keeps it so (`a531131`);
+- the critical review of the probe prompts' German is READY WITH FINDINGS. RV-3951: two words now agree with
+  *Arbeitspaket*, *Jedes bekommt* and *mit denen es* (`cebbcd2`). RV-3952: recorded privately.
+
+**2026-10-28 — the German rewrite: its standard review, the fix round, and the retired terms in full.** The lane's
+standard review is READY WITH FINDINGS (`a699baf`):
+- RV-3960: the feedback page and the issue form speak to the reader as *du*. The form's file name and keys stay as they
+  were, and the check against formal German now reads both (`2871c5a`). The entry above said it read every German source
+  whole, which holds only from here: it reads 27;
+- RV-3961, RV-3962 and RV-3963: the check reads inflected and compound retired terms, and four kinds of markup no longer
+  hide prose from it (`984453d`);
+- RV-3964: retired in German prose, as ruled, are *Sitz*, *Sitzung* (for a sitting and for a session), *Owner*, *Tafel*,
+  *der Standup*, *Prüfer* and *Nachweis*; *lass*, *sieh* and *lies* stay. The entry above that started the lane left out
+  *Sitzung*;
+- RV-3965: the English seats page's line that German pages address the Owner as *Sie* (`docs/seats/index.md:59`) is
+  a leftover. This lane changes no English, so the line waits for the Owner's word;
+- RV-3966 needed no change in the repository, and RV-3967, the wording of three German lines, waits for the Owner's
+  word.
+
+**2026-10-29 — the German rewrite: the Owner's words for the lane, and the issue form read whole.** On the Owner's word
+of 29 October, as the Auditor relays it:
+- in the maker's quote, *Sitzungen* → *Sessions* stands as it is at `a531131`;
+- RV-3965: the English seats page now says that German pages keep the English seat names but call the Owner *der
+  Eigner*, and speak to the reader as *du* (`5194717`). It is the lane's one English change;
+- RV-3967: three German lines take the Owner's words (`5194717`). On the requirements page: *nie dadurch, dass eine
+  Rolle sie ändert*. On the stand-up page: *Eine Runde reicht für alle*. On the setup page: *Das Gate lehnt den Commit
+  einer Rolle ab, der keine Session dieser Rolle trägt*;
+- RV-3960's new German lines stand as written, *Sage uns* included: the long imperative, with no new exception.
+
+The re-check of the fix round is READY WITH FINDINGS (`fa1819c`):
+- RV-3968: the check against formal German reads the issue form's values and paragraphs whole (`4661793`);
+- RV-3969: where the entry above says four kinds of markup, read: three kinds of markup, and a second copy of an
+  allowed text, no longer hide prose from it.
+
+The re-check of the morning round is READY WITH FINDINGS (`3a0c673`):
+- RV-3970: the three lines above in the Owner's own words, on the requirements, setup and seats pages, are each pinned
+  to stand once, as written (`a9064f1`). The stand-up line was already pinned.
+
+The Designer's look at the lane (`fa1819c`) finds that it fits. BF-96 (signing's footer title cut at 390 px) and BF-97
+(the stand-up title's last word alone at 375 px) are the theme's own title behaviour, in English too. They are
+recorded as seen, with no fix. BF-95, found in the same look, is a lane of its own on main.
+
+**2026-10-28 — the why page, on the Owner's word on the live site:** the story stands as a quote again, in its figure with its blockquote, left rule and caption and their rules on screen, on a phone and in print, where BF-86 and RV-3930 had made it running text; its words stay in the first person. Its caption is the Owner's attribution in their own words, after its dash and linked to the X profile, and the portdive sentence is said there once. Its last paragraph tells the timeline from shoalmark's first commit on 21 September. The tile *Measured, not promised.* reads *Reports, not proofs.*, the Board's own words, and the TL;DR's Try-it line says what the prompt asks: to try the setup on a copy in a throwaway folder, and to change nothing in the repository without the reader's yes. The German says the same in the page's *du* voice.
+
+**2026-10-28 — the why page prints on one page again, and its caption balances its lines:** BF-90 sets the print's running text, the quote, the TL;DR's Try-it row and the card a little smaller, so the page prints on one page in English and German, and BF-91 balances the caption's lines on screen, as the Designer measured them.
+
+**2026-10-28 — the why page's German timeline is the Owner's own words:** after *Mit shoalmark bin ich zurückgekommen.*, the quote's last German paragraph reads, as the Owner wrote it: *Seit dem ersten Commit von shoalmark am 21. September stammen die meisten Commits von meinen Agenten. Von mir kommen vor allem Merges und Antworten.*
+
+**2026-10-28 — the why page's TL;DR gains a "Not" row, and its German quote reads "zurück in der Schleife", on the Owner's word:** after Status, the row says what shoalmark is not, in English and German, and the quote's last German paragraph opens with *Mit shoalmark bin ich zurück in der Schleife.*, answering *aus der Schleife genommen* above it.
+
+**2026-10-28 — the why page prints on one page again with the new row, and the TL;DR's rows wrap without a lone last word:** BF-92 sets the print's page margin, its grid and the TL;DR's leading, so the page prints on one page in English and German, and BF-93 wraps the TL;DR's rows on screen, as the Designer measured them.
+
 **2026-10-23 08:18:29 CEST — v0.20.1's release commit, on `fm/006-release-b2` from `7200c8d`:** `VERSION` reads 0.20.1, CHANGELOG's `## 0.20.1 — 2026-10-23` holds every lane's lines, and both setup pages clone `--branch v0.20.1`. ADOPT's pins stay on v0.20.0, as the pin's order requires until the switch commit. The landing's tag and day follow VERSION and the CHANGELOG heading; the footer's sentence for v0.20.1 waits for the go-to-market seat's row.
 
 **2026-10-23 00:44:51 CEST — v0.20.1's landing, its fix round on `fm/006-b1-landing` after `022c7ef`:** the review-commit cohort counts every `Reviewed:` trailer, an empty one too, before it asks for exactly one (`79e4a46`, RV-3820); the C4 check lets the German board say *Board* and still finds *open* (`5e4f1cf`, RV-3821); two comments that named their rulings are gone (`f943e9d`, RV-3822); the B1 block's excerpt part runs on a fixed excerpt (`a963d7f`); the door's tape is peeled off from one end (`5479436`, `fad7feb`, BF-70); the copy icon stands under the door's label (`6674d74`, BF-71); the high scores stack on a phone (`c817de4`, BF-72); the door keeps still on hover (`df4f1e1`, BF-73); the approvals come before the tell line in the dialog (`c7d1aae`, BF-74); the German dialog fits at 1024 × 768 (`0f863ca`, BF-75); and the B1 dialog check asks what a phone shows of it (`be57ac8`). The B1 browser block and the German board's block pass at `fad7feb`. The same Reviewer's re-check and the Designer's look come next.
@@ -29,6 +141,17 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 **2026-10-22 19:11:43 CEST — v0.20.1's landing, built in one build on `fm/006-b1-landing` from `0d42812`:** the tape-off ceremony and the golden coin in the probe state (`724c130`); lane 11's final prompt joined (`62e33fa`, ADOPT.de.md's four hunks taken from `a6703ff`), with the dialog's final words and pins checks 2, 5 and 8 (`e3515ae`); the high scores' third row, the review-commit cohort from #160, read from the closed pull requests recorded to #211 (`c459d39`); the ruled words (`ea0f893`), and the second ruled words with the feedback page at https://shoalmark.tools/feedback (`f6f3660`). The probe switch stays off and the tape on, and `docs.yml` is unchanged. The critical review, with the Designer's check beside it, comes next.
 
 **2026-10-21 21:50:51 CEST — the social images are filed in `brand/social/`:** the Designer's nine files, byte for byte, under names that hold no platform: the profile header (`profile-header.svg`, its source; `.jpg`, the one in use; `.png`, the lossless export), the repository card (`repository-card.svg`, `.png`) and the site's link preview in English and German (`link-preview-en.svg`, `.png`; `link-preview-de.svg`, `.png`). Its `README.md` is the Designer's draft with one sentence corrected by the go-to-market seat, since the descriptor on the images is a claim; it names the font's licence, `docs/assets/fonts/ibmplexmono-OFL.txt`. The five check images, the profile header's safe zones and two previews and the repository card's safe border and preview, are in `work-tracker/evidence/FM-006/social-v0-20-1/`, renamed the same way. The repository's social preview stays the Owner's upload of `repository-card.png`. A standard review follows.
+
+**2026-10-21 — v0.20.0 is tagged, lightweight, on `4756b68`.** That commit is #202's merge: `be19828` plus five site
+files. The tool, VERSION, both ADOPT pages and the CHANGELOG are byte-identical to `be19828`.
+- **The Owner's ruling of 20 October,** recorded privately: the release run sheet and the signed tag are cancelled for
+  v0.20.0. They are kept for the last v0.20.x tag, the officially announced release. release.yml's draft release
+  stays unpublished.
+- **The site merges #202 to #204** (`d834ea1`, `765d25a`, `2703408`) merged with no verdict on record.
+  - #202's branch was cut from `39e5763`, of 13 October, and the gate refused it with 11 ledger-integrity violations.
+  - #204's CI passed four suites, and its macOS job was cancelled. Main is unproven on macOS until that job runs
+    again.
+  - At `24942d1`, `--check` exits 0.
 
 **2026-10-19 03:29:39 CEST — v0.20.0 integrated for final release review:** main `b36527c` and records `624b415` are merged on `release/v0.20.0`; RV-3465–RV-3469 are fixed in `cfda9ce`, `20b2ac9`, `aec80fa`, `f09ccee` and `d153cb7`, and the release footer is shortened in `3f1787b`. The tool and both LF adoption pins are unchanged from B1; the real-history test verifies against `0d60d55`'s signers file and confirms the old key's refusal against `9409d3b`'s. The required local docs check found a relative README link resolving below `agents/docs/`; it now uses the stand-up page's published URL. Final-head check receipts belong to the Builder's hand-back; the independent critical round 2, then the Owner's CI, merge and signed tag, remain.
 
@@ -1141,6 +1264,18 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-10-29 09:30:19 CET | **BF-95: fenced code builds to a code block again**, in English and German (`ccf5cd1`), and the site check refuses a fenced block that does not (`67ba698`). Records only. |
+| 2026-10-29 07:48:56 CET | **The German rewrite: the Owner's three ruled lines pinned** (`a9064f1`, RV-3970), and the Designer's look: the lane fits; BF-96 and BF-97 seen, with no fix. Records only. |
+| 2026-10-29 07:20:53 CET | **The German rewrite: the Owner's words for the lane.** The quote's *Sessions* stands. The English seats page's line on the German pages (RV-3965) and three German lines (RV-3967) take the Owner's words (`5194717`), and RV-3960's new lines stand as written. The check reads the issue form's values and paragraphs whole (`4661793`, RV-3968), and the earlier entry's count of markup kinds is corrected (RV-3969). Records only. |
+| 2026-10-28 22:52:17 CET | **The German rewrite's standard review, READY WITH FINDINGS** (`a699baf`), and its fix round: the feedback page and the issue form in *du*, read by the check (`2871c5a`, RV-3960); inflected and compound retired terms refused, and four kinds of markup read through (`984453d`, RV-3961 to RV-3963); the retired terms named in full (RV-3964); an English leftover named (RV-3965). Records only. |
+| 2026-10-28 21:53:10 CET | **The German rewrite: the why page's German in *du*, and the guard read whole** after #228 joined the lane (`b8581fd`): the hero line in its two places, nine texts by the glossary, and the preview's alt in its three places (BF-94), with the guard's pending set empty (`a531131`). From the critical review of the probe prompts' German, READY WITH FINDINGS: RV-3951 (`cebbcd2`); RV-3952: recorded privately. Records only. |
+| 2026-10-28 19:22:59 CET | **The German rewrite: the Owner's words** on the hero line (*du hast das letzte Wort*, changing A2), the inspector (*der Gutachter*), the probe template's two named exceptions, the landing's button, *Arbeitspaket* in the probe prompts, and the old German Board picture removed. Records only. |
+| 2026-10-28 16:15:38 CET | **The German rewrite's glossary ruled, and its lane started** on `release/v0.20.2-signed`, on the Owner's word: every German line of v0.20.2 moves to *du*, by the glossary this file's entry of 28 October records. Records only. |
+| 2026-10-28 12:12:39 CET | **The why page, on the Owner's word on the live site,** on `fm/006-why-page-fixes` from `bc5da4e`: the quote back around the story, with its rules on screen, on a phone and in print, its caption the Owner's attribution linked to the X profile, the timeline from the first commit, the tile *Reports, not proofs.* and the Try-it line, in English and German; the story's `.proof>p` rules, which match nothing with the quote back, went. The suite's pins move with the quote and the words. The Designer looks next, on screen, on a phone and in print. |
+| 2026-10-28 05:51:22 CET | **RV-3931 and BF-88, the why page's story column and print size, and the Owner's long German forms** on `fm/006-founder-voice-site` after the verdict `e9df669` (READY WITH FINDINGS) and the Designer's re-check, recorded privately: five rules in `overrides/why.html`, each a rule of its own, `.proof{margin-top:36px}.proof>p{max-width:70ch}` on screen, `.proof{margin-top:28px}` up to 640 px, and in print `.proof{margin-top:0}`, `.proof>p{font-size:7.4pt;line-height:1.3;margin:0 0 2.5pt}` and `html[lang=de] .proof>p{font-size:7.2pt}`, each pinned with a control; and the Owner's long forms *Kopiere den Prompt*, *probiere es … aus* and *wähle eines*. The probe prompt does not change. |
+| 2026-10-27 23:23:47 CET | **A native reader's feedback on the German, recorded for v0.20.2** on the Owner's word: the how-it-works page's week in four steps reads as English translated sentence by sentence. v0.20.2's move to *du* writes every German docs page from its meaning, after the Owner rules a short glossary, and a German native reader reads each page before it merges. The how-it-works page stays as it is this round. |
+| 2026-10-27 23:23:47 CET | **RV-3930, BF-84, BF-85 and BF-86, the fix round** on `fm/006-founder-voice-site` after the verdict `132ff58` (READY WITH FINDINGS) and the Designer's check: `da4504b` draws the pitch page's story as the section's plain paragraphs, with no figure, quote, caption or `.said` rule left (RV-3930, BF-86); `670c064` moves the first-person line out of the lede to its own short line under the two buttons, its link on one line (BF-84, BF-85), and sets the Owner's German: *Deine* in `cost_3`, *Agentenflotte*, *Wähle*, *Füge … ein* and *Probiere*. The suite's pins move with the markup and the words, with new controls. The Designer re-checks the first screen and the pitch page, and the reviewer the commits. |
+| 2026-10-27 21:11:02 CET | **The site in the founder's own voice, EN and DE** on `fm/006-founder-voice-site`, base `a380239`: `5e1c14a` moves the start page and the pitch page from *we* to *I*, as the go-to-market brief, recorded privately, asks, in voice and placement only: the pitch page's *What I saw*, *I started with what I measured*, *I believe* and *I hold*, the story of 13 July as running text with its attribution's fact one sentence in it, and *In my last repository*; on the start page *my last repository*, *my unanswered questions*, *my form* and *Follow me building it on X*, whom it is for and one first-person line to the pitch page under the headline, and the agents' card's *Tested with Claude Code and Codex. Any agent that can run Python 3.9 or later should work.* The four German files move from *Sie* to lower-case *du*, with *ich* for *I*; the other German pages and the tool's own German strings keep *Sie* until v0.20.2. The suite's site pins move with the text, none dropped or loosened. Built as docs.yml builds it, from the recorded pull requests, the pages' figures are the base's, and the probe prompt and its checksum are unchanged. The Designer's check and a standard review come next, and the Owner approves the strings before the pull request. |
 | 2026-10-23 08:18:29 CEST | **v0.20.1's release commit** on `fm/006-release-b2`, base `7200c8d` (release/v0.20.1 after its joins): VERSION 0.20.1, the CHANGELOG section of 2026-10-23, both setup pages on `--branch v0.20.1`; ADOPT's pins stay on v0.20.0, by the pin's order. |
 | 2026-10-23 00:44:51 CEST | **v0.20.1's landing, the fix round** on `fm/006-b1-landing` after the verdict `022c7ef`: `79e4a46` RV-3820, every `Reviewed:` trailer counted; `5e4f1cf` RV-3821, *Board* allowed in C4's German check; `f943e9d` RV-3822, two comments gone; `a963d7f` the B1 excerpt part on a fixed excerpt; `5479436` and `fad7feb` BF-70, the peel; `6674d74` BF-71, the door's copy icon; `c817de4` BF-72, the high scores stacked on a phone; `df4f1e1` BF-73, no lift on hover; `c7d1aae` BF-74, the approvals before the tell line; `0f863ca` BF-75, the German dialog's room at 1024 × 768; `be57ac8` the B1 dialog check on what a phone shows. The B1 block and the german block pass at `fad7feb`. |
 | 2026-10-22 19:11:43 CEST | **v0.20.1's landing, one build** on `fm/006-b1-landing`, base `0d42812`: `724c130` the tape-off ceremony and the golden coin; `62e33fa` lane 11's final prompt merged (`a6703ff`); `e3515ae` the dialog's final words and pins checks 2, 5 and 8; `c459d39` the high scores' third row, its data (23/39 for the review-commit cohort on the recording to #211); `ea0f893` the ruled words; `f6f3660` the second ruled words and the feedback page. Nothing pushed. |
@@ -1150,6 +1285,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 | 2026-10-21 12:58:07 CEST | **v0.20.1's landing built for today's taped deploy** on `fm/006-b1-landing`, base `375dea1`, main after #207: `1e1a2a4` merges B1 integrated (`b54868c`) by the brief's precedence, and `5592048` reads Berlin's zone in `landing_facts.py`, since R13 removed `ratio_zone`. Then, on the Owner's rulings for today: `5fc720b` reads a parked wreck as open, labelled on hold; `8d31880` applies the ruled words file row by row, with BF-46's shorter cue and BF-45's German lead; `1b6d490` adds the Designer's four lead icons and BF-44; `98d877f` turns on the taped coin slot (`taped = true` beside `probe = false`), with the Designer's tape and the hollow mark of a parked wreck, and a build that refuses the tape with the switch on. The third High scores row (S1 to S5) waits for its code and the Owner's rule; the probe switch stays off until v0.20.1. The review, the full non-browser run and the pull request remain. |
 | 2026-10-21 08:24:13 CEST | **The follow-up's fix round built** on `fm/006-landing-follow-up`, on the Reviewer's READY WITH FINDINGS (`5cff40d`) and the Designer's check, all P3. `a891541`, the landing's CSS: RV-3538, the narrow-header rule's comment is removed, since a changed line keeps no tracker id, review id or ruling in a comment; the rule's reason stands here: at 400 px and less the header's gaps and side padding narrow, so the page does not scroll sideways at 360, 375 or 390 px. BF-37, the paragraphs of *Why not my issue tracker?* keep to 80 characters a line. BF-38, the code in the ticker and in the beta's box takes its line's own face and size, in `--land`. RV-3539: recorded privately. The site was not built in the Builder's workbench. The Owner's pull request is next. |
 | 2026-10-21 01:48:01 CEST | **The landing's follow-up built** on `fm/006-landing-follow-up`, base `24942d1`, five fixes from the Designer's check of the new hero. `c902c72`, the landing's CSS: BF-32, the hero's claim balances its lines on a phone; BF-33, the *Why shoalmark?* line of *Two players, one record* gets 24 px above it; BF-34, the Owner's pick, the footer's *Why shoalmark?* link takes `--drying` and keeps its underline; BF-36, at 400 px and less the header's gap narrows to 10 px, so the page no longer scrolls sideways at 360 px. `38bd86b`, BF-35, the Owner's pick: *Why shoalmark?* and *Warum shoalmark?* in the docs nav, each after its language's *Start*. With BF-34 the footer then has two link styles, not one. *Why shoalmark?* and *shoalmark* share `--drying`, while the version link keeps `#b4c3d1`, from an inline style in the landing's footer. The site was not built in the Builder's workbench. Main after #206 is merged next, then the Designer's check and one review. |
+| 2026-10-21 | v0.20.0 tagged lightweight on `4756b68`, on the Owner's ruling of 20 October (recorded privately): no run sheet and no signed tag for v0.20.0, both kept for the last v0.20.x tag; the site merges #202 to #204 recorded. By the Planner seat. Records only. |
 | 2026-10-19 03:22:51 CEST | **v0.20.0 B2 integrated** on `release/v0.20.0`: main `b36527c` and records `624b415` merged; RV-3465–RV-3469 fixed (`cfda9ce`, `20b2ac9`, `aec80fa`, `f09ccee`, `d153cb7`); footer shortened (`3f1787b`). The tool and adoption pins are unchanged. Final-head checks are recorded in the Builder's hand-back; independent critical round 2 and the Owner's release steps remain. |
 | 2026-10-18 19:41:52 CEST | **v0.20.0 prepared** on `release/v0.20.0`, base `7de7762`: `4364eb5` removes the retired configuration line; `0962c83` prepares the release texts, pins and their checks; `0ef22d7` adds [the Owner's run sheet](evidence/FM-006/release-v0-20-0-owner-run-sheet.md). Independent critical review, B2's merges and final checks, then the Owner's CI, merge and tag remain. |
 | 2026-10-16 | **B1 integrated** by the Builder seat (`27f31560/builder-15`) on `fm/006-b1-integrated` from `c5ef25a`: the merge of `4907071`, a fix of two of B1's controls on the integrated tree, M1, M2, M5, M3, M6, M7, M8, M10, S3, S4, M4 and *Board* for *Tafel*, and FM-049's line and issue form. The signing page's key state, the re-read of M4 and M9 after v0.20.0's tag, `board.png` and A3's `ADOPT.de.md` wait. Nothing is pushed. |
