@@ -3,15 +3,8 @@ id: FM-088
 status: Proposed
 considered: FM-086, FM-062, FM-083, FM-030, FM-037, FM-078
 tags: process, seamanship
-next: build
-ask: "In which release does shared memory land, as FM-088's What is true now sets out: the team's and each seat's memory in the repository, the four ways a lesson leaves harness memory, review by scope, the evals and staleness?"
-ask-kind: ruling
-ask-since: 2026-10-29
-ask-options: "v0.20.3 | v0.20.4, after FM-086's signals | later, when I name it"
-ask-proposal: "v0.20.4, after FM-086's signals"
-answer: "accepted - v0.20.3"
-answered: 2026-10-29
-answered-by: holgo99
+epic: FM-089
+next: wait
 hook: "What the team learns lives only in each harness's local memory, on one machine. Another seat, another harness and every new user of the product start without it, and nothing moves a lesson from a session's scratchpad into the record where every seat can read it."
 ---
 
@@ -20,8 +13,9 @@ hook: "What the team learns lives only in each harness's local memory, on one ma
 ## What is true now
 
 **Filed 2026-10-29; nothing is built.** On the Owner's word of 29 October, as the Auditor relays it: shoalmark gets
-shared memory, one file for every seat's own role and one that applies to all roles. Its release is the Owner's, and
-the ask above puts it to them.
+shared memory, one file for every seat's own role and one that applies to all roles. The Owner's signed answer of 29
+October lands it in v0.20.3 (`febbed9`, #236), as a part of v0.20.3's chapter of agentic seamanship,
+[FM-089](FM-089-agentic-seamanship-v0-20-3.md).
 
 **The gap:**
 - **Where lessons live:** a seat's lessons sit in its harness's local memory folder, on one machine.
@@ -116,8 +110,16 @@ soon as a check holds them.
 - [ ] Every seat of this repository has classified its harness memories as product, project or local, and each product
   lesson names its target on the ladder.
 
+## Asks
+
+**2026-10-29** · In which release does shared memory land, as FM-088's What is true now sets out: the team's and each seat's memory in the repository, the four ways a lesson leaves harness memory, review by scope, the evals and staleness?
+**answered** — accepted - v0.20.3 · holgo99
+**relation** — chose option 1: v0.20.3
+**signed** — febbed9 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The Owner's signed answer (`febbed9`, #236): "accepted - v0.20.3". The ask is cleared, and FM-088 is a part of FM-089. Records only. |
 | 2026-10-29 | Filed, on the Owner's word of 29 October, with the ask on its release. Records only. |

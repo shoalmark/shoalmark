@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the CI class fix move unless READY by Thursday 20:00?"
-ask-kind: ruling
-ask-since: 2026-10-29
-ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as FM-023's What is true now (27 October, the scope) sets out"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-29
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -468,10 +460,16 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted the proposal
 **signed** — 558ec59 · G
 
+**2026-10-29** · Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the CI class fix move unless READY by Thursday 20:00?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 0fbd74b · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The Owner's signed answer to the amended allocation (`0fbd74b`, #235): "accepted - yes". v0.20.2's allocation of 29 October binds, and the ask is cleared. Records only. |
 | 2026-10-29 | FM-086 to FM-089 carry the tag `seamanship`, in the vocabulary since the Owner's #229. Records only. |
 | 2026-10-29 | `release/v0.20.2-signed` retired after #230's button merge; `release/v0.20.2-rebuilt` at `9f1843b`, the Owner's signed merge of J, is v0.20.2's base. The CI class fix moves to v0.20.3 whole, its three findings with it. Records only. |
 | 2026-10-29 | The CI class fix is described in this entry, not named as FM-062's: no tracker holds it yet (RV-3988). Records only. |
