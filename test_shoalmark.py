@@ -882,6 +882,9 @@ with tempfile.TemporaryDirectory() as d:
         ("signed-off among prose", b"Subject\n\nBody.\n\nA note in prose\nSigned-off-by: A U Thor <a@example.org>\n", b"", additions),
         ("folded value", b"Subject\n\nNote: a value\n  folded on\n", b"", additions),
         ("comment character from the configuration", b"Subject\n\nNote:  value\n", b"\n; keep this comment\n", additions),
+        ("a four-dash line closing the last paragraph", b"Subject\n\nNote:  value\n----\n", b"", b"\n" + additions),
+        ("scissors with a diff below", b"Subject\n\nNote:  value\n", b"# ------------------------ >8 ------------------------\n# Do not modify or remove the line above.\ndiff --git a/f b/f\n+added\n", additions),
+        ("three lines of prose beside a sign-off", b"Subject\n\nBody.\n\none\ntwo\nthree\nSigned-off-by: A U Thor <a@example.org>\n", b"", additions),
     ]
     real_process, starts, differ = fm.vcs_process, [], []
 
