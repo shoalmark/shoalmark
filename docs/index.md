@@ -11,12 +11,16 @@ template: landing.html
 
 ## The agents do the work; you have the final word.
 
-See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.
+For one person in charge and their agent fleet. See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.
 
 --8<-- "start.en.md"
 
+I built this after my agents turned me into their rubber stamp. [Why shoalmark →](why-shoalmark.md)
+
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
 sentence per question, for their stand-up, whenever it suits them, and make their answer one command.
+
+Tested with Claude Code and Codex. Any agent that can run Python 3.9 or later should work.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
 questions on the board until it suits you.
