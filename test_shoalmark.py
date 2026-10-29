@@ -19466,12 +19466,13 @@ if _stage_svn:
 else:
     _skipped("FM-044 SVN caller runtime", 9, "svn or svnadmin is not installed here")
 if os.name == "nt":
-    _skipped("RV-3096 inherited deleted-directory runtime", 22,
+    _skipped("RV-3096 inherited deleted-directory runtime", 24,
              "Windows prevents deleting an in-use current directory")
 elif _stage_svn:
     _stage_guard("RV-3096 inherited directory", check, _stage_callers.inherited_cwd_controls, fm, check)
+    _stage_guard("RV-3096 inherited directory mutants", check, _stage_callers.inherited_cwd_mutants, fm, check)
 else:
-    _skipped("RV-3096 inherited-directory runtime", 22, "svn or svnadmin is not installed here")
+    _skipped("RV-3096 inherited-directory runtime", 24, "svn or svnadmin is not installed here")
 fm.configure(HERE)
 for _stage_case in _stage_unittest.defaultTestLoader.loadTestsFromTestCase(_stage_cli.CliControls):
     _stage_result = _stage_unittest.TestResult()
