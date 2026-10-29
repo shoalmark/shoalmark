@@ -8,7 +8,7 @@ next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and FM-062's CI class fix move unless READY by Thursday 20:00?"
+ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the CI class fix move unless READY by Thursday 20:00?"
 ask-kind: ruling
 ask-since: 2026-10-29
 ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as FM-023's What is true now (27 October, the scope) sets out"
@@ -60,14 +60,16 @@ relayed commits are optional", and "cut-off Fri 14:00 approved".
   it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3
   follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
 - **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
-- **FM-065, quick win 10, and [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md)'s CI
-  class fix beyond its three findings** move to v0.20.3 unless READY by Thursday 29 October, 20:00.
+- **FM-065, quick win 10, and the CI class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
+  29 October, 20:00. The CI class fix makes every root `test_*.py` run in CI, directly or through `test_core.py`, or
+  be named as excluded. Its three findings are RV-3920 to RV-3922, from the review of the CI item that #219 merged. It
+  is not filed as a tracker yet.
 
 | Release | Work | Depends on |
 |---|---|---|
 | v0.20.2, must land | S1: the ask ids with R4's answer commit (FM-050). Critical. | — |
 | v0.20.2, optional | FM-076: relayed commits. | — |
-| v0.20.2, unless not READY by Thursday 20:00 | FM-065; quick win 10; FM-062's CI class fix beyond its three findings. Otherwise v0.20.3. | — |
+| v0.20.2, unless not READY by Thursday 20:00 | FM-065; quick win 10; the CI class fix beyond its three findings (RV-3920 to RV-3922). Otherwise v0.20.3. | — |
 
 **The cut-off is Friday 30 October, 14:00 CET,** on the Owner's word of 29 October. After it, only the release's own
 commits go into its release branch, and the sitting follows. What is not READY and merged by then moves to v0.20.3, by
@@ -454,6 +456,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The CI class fix is described in this entry, not named as FM-062's: no tracker holds it yet (RV-3988). Records only. |
 | 2026-10-29 | The records review's six findings fixed (RV-3982 to RV-3987): the CI class fix is named as FM-062's, an ask option cites its source, the tag waits for the vocabulary, the count of trackers is corrected, and what is not yet filed or done says so. Records only. |
 | 2026-10-29 | From v0.20.3, each release's allocation is a tracker of its own, on the Owner's word of 29 October. FM-086 and FM-087 are filed for v0.20.3. Records only. |
 | 2026-10-29 | v0.20.2's allocation amended, on the Owner's words of 29 October: S1 must land, FM-076 is optional, FM-065, quick win 10 and the class fix beyond its three findings move unless READY by Thursday 20:00, and the cut-off is Friday 14:00. The ask is amended to put all of it, with A and B, to the Owner. Records only. |
