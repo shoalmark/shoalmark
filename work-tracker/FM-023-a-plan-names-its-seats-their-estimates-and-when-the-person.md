@@ -30,9 +30,10 @@ as the Auditor relays it:
     `8b24e91` and J's verdict `6e0a9ab`, with J's tree.
   - Every v0.20.2 lane now targets the new branch. The retired branch stays as it is: no one deletes it.
   - A pull request into a base that is not main now opens as a draft, titled "[signed merge only] …".
-- **The CI class fix moves to v0.20.3 whole,** its three findings RV-3920 to RV-3922 with it. The ask above already names
-  the class fix whole, moving unless READY by Thursday 20:00, and no lane builds it, so the ask's "yes" covers it. No
-  change to the ask is needed. The entry below that says "beyond its three findings" no longer holds for those three.
+- **The CI class fix moves to v0.20.3 whole,** its three findings RV-3920 to RV-3922 with it. The ask above already
+  names the class fix whole, moving unless READY by Thursday 20:00, and no lane builds it, so the ask's "yes" covers
+  it. No change to the ask is needed. The entry below that says "beyond its three findings" no longer holds for those
+  three.
 
 **2026-10-29 — from v0.20.3, each release's allocation is a tracker of its own,** on the Owner's word of 29 October,
 as the Auditor relays it.
