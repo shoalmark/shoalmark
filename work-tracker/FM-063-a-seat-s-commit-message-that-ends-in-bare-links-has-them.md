@@ -1,15 +1,21 @@
 ---
 id: FM-063
-status: Proposed
+status: In Progress
 considered: FM-024, FM-057, FM-040
 tags: bug
-next: wait
+next: build
+triaged: 2026-10-29
+tier: P2
 hook: "a seat's commit message that ends in bare links has them rewritten by the trailer step"
 ---
 
 # FM-063 — a seat's commit message that ends in bare links has them rewritten by the trailer step
 
 ## What is true now
+
+**2026-10-29 — judged In Progress, P2, critical, for v0.20.2, before the first build commit.** It is built on the
+release branch's head with main joined, on the Owner's word of 29 October that it goes to a Builder on Codex. The step
+runs in the prepare-commit-msg hook, so its review is critical.
 
 **Filed 2026-10-19; nothing is built.** The Auditor reproduced it with git 2.50.1. It goes to v0.20.2, the Planner's
 call, which the Auditor's relay of 19 October left to the Planner. Its row is in FM-023's v0.20.2 table, under *What is
@@ -54,4 +60,5 @@ The tool adds its trailers, and must change nothing a seat wrote.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | Judged In Progress, P2, critical, for v0.20.2, before the first build commit. Records only. |
 | 2026-10-19 | Filed from the Auditor's reproduction with git 2.50.1, as a bug; v0.20.2, the Planner's call; nothing is built. |
