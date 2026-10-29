@@ -9129,7 +9129,7 @@ def _de_tag_words(tag):
 def _de_parts(rel, text):
     """The German prose a source holds, as the strings it reads: a page whole, a partial's word values and its prompt, the German preview's
     alternative text, the German menu's titles, the labels' and the settings' values and comments, the tool's German constants, the preview's
-    lines, the feedback page's German section, and the issue form's German halves and German paragraphs."""
+    lines, the feedback page's German section, and the issue form's text values and paragraphs, each whole."""
     if rel.endswith(".md"):
         return [text]
     if rel.endswith("/de.html"):
@@ -9181,7 +9181,7 @@ def _de_parts(rel, text):
                 continue
             if block_ is not None:
                 paras_ = [p_.strip() for p_ in "\n".join(block_[1]).split("\n\n") if p_.strip()]
-                parts += paras_[1::2]                   # its paragraphs run English, then German
+                parts += paras_
                 block_ = None
             m_ = re.match(r"^(\s*)(?:- )?(name|description|title|label|placeholder|value):\s*(.*)$", line_)
             if not m_:
@@ -9194,8 +9194,7 @@ def _de_parts(rel, text):
                 value_ = value_[1:-1].replace("''", "'")
             elif len(value_) > 1 and value_[0] == value_[-1] == '"':
                 value_ = value_[1:-1]
-            if " · " in value_:
-                parts.append(value_.split(" · ", 1)[1])
+            parts.append(value_)
         return parts
     raise AssertionError("no reader for " + rel)
 
@@ -9326,6 +9325,15 @@ check(f"the guard reads what a tag in a words partial says to its reader: a form
 _de_twice = {**_ds_de, "ADOPT.de.md": _ds_de["ADOPT.de.md"] + "\n\nIhr lest diesen Text.\n"}
 check("an allowed text is allowed once, where it stands: „Ihr lest diesen Text“ a second time in ADOPT.de.md turns the guard red",
       not _dg and bool(_de_guard(_de_twice)))
+# The issue form is read whole: a German-only value, and a German paragraph wherever it stands in its block.
+_de_form_ = ".github/ISSUE_TEMPLATE/what-your-agent-found.yml"
+_de_form_label = _with(_ds_de, _de_form_, "      label: What your agent found · Was dein Agent gefunden hat\n", "      label: Was Ihr Agent gefunden hat\n")
+check("the guard reads each value of the issue form whole: a German-only label, „Was Ihr Agent gefunden hat“, with no English half before it, "
+      "turns it red", not _dg and bool(_de_guard(_de_form_label)))
+_de_form_paras = _with(_with(_ds_de, _de_form_, "      value: |\n", "      value: |\n        One more line in English stands first.\n\n"),
+                       _de_form_, "Lass Privates weg:", "Lassen Sie Privates weg:")
+check("the guard reads every paragraph of the issue form's text block: with one more English paragraph at the block's top, a formal form in "
+      "the German paragraph, „Lassen Sie Privates weg“, turns it red", not _dg and bool(_de_guard(_de_form_paras)))
 # Each old text of the why page's German and of the link preview's German alt, beside its text now: put back, each turns the guard red.
 _de_old_why = (
     ("kopierst du den Stand-up-Prompt: Er bittet eine Session, sie mit dir durchzugehen",
