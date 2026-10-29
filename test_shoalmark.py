@@ -987,7 +987,7 @@ with tempfile.TemporaryDirectory() as d:
     seats_cfg = base_cfg + f'\n[seats]\nowner = "owner@example.org"\nprincipal = ["principal@seat", "{NEW_P} signed"]\n'
     (root / "shoalmark.toml").write_text(seats_cfg)
     fm.configure(root)
-    tracker(root, "MSR-002", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    tracker(root, "MSR-002", extra=f'next: owner\nask-id: MSR-002-Q1\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
     (root / "shoalmark.toml").write_text(base_cfg); run(root); (root / "shoalmark.toml").write_text(seats_cfg); git(root, "add", "-A")
     commit_as(root, "principal@seat", "the ask, at the unsigned old address\n\nSession: 1111aaaa\nWorktree: wt-p")
     code_u, _, err_u = run(root, "--check")
@@ -1237,7 +1237,7 @@ with tempfile.TemporaryDirectory() as d:
     for how, text in (("new", f'owner = "owner@example.org"\n{base_cfg}\n[seats]\n{PLANNER}'), ("old", f'{base_cfg}\n[seats]\nowner = "owner@example.org"\n{PLANNER}')):
         read_(text); held[how] = sorted(r for r in fm.RIGHTS if fm.holds("owner", r))
     read_(f'owner = "owner@example.org"\n{base_cfg}\n[seats]\n{PLANNER}')
-    ask_ = f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n'
+    ask_ = f'next: owner\nask-id: MSR-001-Q1\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n'
     git(root, "add", "-A"); commit_as(root, "planner@seat", "the tracker, filed by a seat\n\nSession: 1111aaaa")
     said = {}
     for right, edit in (("ask", lambda s: s.replace("considered: none\n", "considered: none\n" + ask_)),
@@ -1245,7 +1245,7 @@ with tempfile.TemporaryDirectory() as d:
                         ("triage", lambda s: s.replace("considered: none\n", "considered: none\ntier: P2\nrank: 1\ntriaged: 2026-10-01\nkind-of-problem: complicated\n")),
                         ("close", lambda s: s.replace("status: In Progress", "status: Closed").replace("rank: 1\n", ""))):
         t_.write_text(edit(t_.read_text())); git(root, "add", "-A"); staged = run(root, "--print-written", git_env=AS("owner@example.org"))      # the pre-commit run, judging the Owner's pending change
-        git(root, "add", "-A"); commit_as(root, "owner@example.org", f"the Owner's {right}")
+        git(root, "add", "-A"); commit_as(root, "owner@example.org", f"the Owner's {right}" + ("\n\nAnswers: MSR-001-Q1" if right == "answer" else ""))
         clean = run_safe(root, "--check"); said[right] = (staged[0], clean[0], staged[2] + clean[2])           # …and the same commit, made, judged at HEAD
     t_.write_text(t_.read_text().replace("answered-by: owner@example.org", "answered-by: planner@seat")); git(root, "add", "-A"); commit_as(root, "planner@seat", "a seat's answer\n\nSession: 1111aaaa")
     control = run_safe(root, "--check")
@@ -9658,14 +9658,14 @@ with tempfile.TemporaryDirectory() as tmp:
     for p_ in (root / "docs/work-tracker").glob("AP-400-*.md"):
         p_.unlink()
     git(root, "remote", "add", "origin", str(base / "origin.git"))
-    tracker(root, "AP-401", extra=f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    tracker(root, "AP-401", extra=f'next: owner\nask-id: AP-401-Q1\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
     git(root, "add", "-A"); run(root, "--print-written"); git(root, "add", "-A"); git(root, "commit", "-qm", "the ask", "-S", "--author=holgo <holgoijo@x>"); git(root, "push", "-q", "-u", "origin", "HEAD:pd/401")
     code, out, err = run(root, "--answer", "AP-401", "accept")
     sig = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%G? %GS %ae"], capture_output=True, text=True, env=_ENV).stdout.strip()
     check("`--answer` reads the same list: the owner seat answers on a repository that has no `answerers` at all — signed, and the gate it just wrote for accepts it",
           code == 0 and "not in `answerers`" not in err and sig.startswith("G holgoijo@x holgoijo@x") and run(root, "--check")[0] == 0)
     (root / "shoalmark.toml").write_text('name = "w"\n[kinds]\nAP = "Work"\n[seats]\nowner = "someone@else"\nimplementer = "holgoijo@x"\n', encoding="utf-8")
-    tracker(root, "AP-402", extra=f'next: owner\nask: "And the second thing?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
+    tracker(root, "AP-402", extra=f'next: owner\nask-id: AP-402-Q1\nask: "And the second thing?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "the launcher"\n', title="an ask")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "another ask", "--author=p <someone@else>")
     code, _, err = run(root, "--answer", "AP-402", "accept")
     check("`--answer` from a seat that does not hold `answer` is refused before the branch is cut, naming the seat and the right",
@@ -10066,7 +10066,7 @@ with tempfile.TemporaryDirectory() as tmp:
         git(root, "config", k_, v_)
     (root / "shoalmark.toml").write_text('name = "k"\n[kinds]\nAP = "Work"\n[seats]\nowner = "h@x"\nprincipal = "principal@seat"\nimplementer = "implementer@seat"\n', encoding="utf-8")
     askK_ = f'ask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {old}\nask-proposal: "yes"\n'
-    tracker(root, "AP-950", extra=askK_ + "next: review\n", title="sent back"); tracker(root, "AP-951", extra=askK_ + "next: owner\n", title="asked")
+    tracker(root, "AP-950", extra="ask-id: AP-950-Q1\n" + askK_ + "next: review\n", title="sent back"); tracker(root, "AP-951", extra=askK_ + "next: owner\n", title="asked")
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "filed", "--author=p <principal@seat>")
     editK_ = lambda n_, a_, b_: (lambda p_: p_.write_text(p_.read_text().replace(a_, b_, 1), encoding="utf-8"))(next((root / "docs/work-tracker").glob(f"AP-{n_}-*.md")))
     editK_(951, "next: owner\n", 'answer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\nnext: build\n')
@@ -11100,18 +11100,18 @@ else:
             for p_ in ps_:
                 svn("revert", str(p_), cwd=root); p_.unlink()
             run(root)
-        ask6_ = 'next: owner\nask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'
+        ask6_ = lambda id_: f'next: owner\nask-id: {id_}-Q1\nask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\n'
         for key_, extra_, status_, right_ in (("close", "", "Closed", "close"),
                                               ("answer", 'ask: "Shall it ship first?"\nask-kind: ruling\nask-since: 2026-10-01\nask-proposal: "yes"\nanswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\n', "In Progress", "answer"),
                                               ("triage", "tier: P1\n", "In Progress", "triage"),
-                                              ("ask", ask6_, "In Progress", "ask")):
+                                              ("ask", ask6_("C6-010"), "In Progress", "ask")):
             p_ = new6_("C6-010", extra_, status_)
             code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-010"); code_d, _, err_d = run(root)
             gone6_(p_)
             check(f"FM-006 · v0.19.1 · case {key_}: a new tracker carrying a line `{right_}` guards, `svn add`ed and not committed — `--check` and the default run refuse it before the commit, exit 4, in one line naming the tracker and `{right_}` (saw {code}, {code_d}, {len(lines_)})",
                   code == fm.EXIT_LINT and code_d == fm.EXIT_LINT and said6_(err_d, "C6-010") == lines_ and len(lines_) == 1 and lines_[0].startswith("C6-010: is not committed yet") and f"`{right_}`" in lines_[0]
                   and "who makes a commit is known only once it is made" in lines_[0] and "File it open, with no such line, and make that change in a commit of its own" in lines_[0])
-        p_ = new6_("C6-011", "tier: P1\n" + ask6_, "Closed", add_=False)
+        p_ = new6_("C6-011", "tier: P1\n" + ask6_("C6-011"), "Closed", add_=False)
         code, _, err = run(root, "--check"); lines_ = said6_(err, "C6-011")
         check(f"FM-006 · v0.19.1 · an unversioned new tracker — never `svn add`ed — carrying `close`, `ask` and `triage` lines is refused too, in one line naming all three (saw {code}, {len(lines_)})",
               code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-011: is not committed yet, and it carries lines that `ask`, `close` and `triage` guard"))
@@ -11136,7 +11136,7 @@ else:
               code == fm.EXIT_LINT and len(lines_) == 1 and lines_[0].startswith("C6-013: is not committed yet") and not said6_(err, "C6-012") and code_o == 0 and code_c == 0
               and not said6_(err_o + err_c, "C6-012"))
         # a committed tracker, and an answer line the parser reads and the line reader cannot find — `Answer:` — written by a seat without `answer`
-        new6_("C6-014", ask6_); run(root); svn("commit", "-m", "C6-014: the ask", "--username", "planner", cwd=root); svn("update", cwd=root)
+        new6_("C6-014", ask6_("C6-014")); run(root); svn("commit", "-m", "C6-014: the ask", "--username", "planner", cwd=root); svn("update", cwd=root)
         p14_ = wt6_ / "C6-014-x.md"
         p14_.write_text(p14_.read_text(encoding="utf-8").replace('ask-proposal: "yes"\n', 'ask-proposal: "yes"\nAnswer: "accepted - yes"\nanswered: 2026-10-02\nanswered-by: holgo\n'), encoding="utf-8")
         run(root); code_b, _, err_b = run(root, "--check")
@@ -11218,7 +11218,7 @@ else:
         check(f"FM-006 · v0.19.1 · a Subversion blame that cannot be read is refused in one line, never read as a line nobody committed (saw {code_u})",
               code_u == fm.EXIT_LINT and len(said6_(err_u, "C6-071")) == 1 and "Subversion's history could not be read" in said6_(err_u, "C6-071")[0])
         # a `next: owner` not committed yet, in a committed tracker: its one line names the tracker once
-        p72_ = new6_("C6-072", asked6_.replace("ship first?", "ship third?")); commit6_("planner", "C6-072 filed")
+        p72_ = new6_("C6-072", "ask-id: C6-072-Q1\n" + asked6_.replace("ship first?", "ship third?")); commit6_("planner", "C6-072 filed")
         p72_.write_text(p72_.read_text(encoding="utf-8").replace("hook: ", "next: owner\nhook: ", 1), encoding="utf-8"); run(root); code_n, _, err_n = run(root, "--check")
         p72_.write_text(p72_.read_text(encoding="utf-8").replace("next: owner\n", "", 1), encoding="utf-8"); run(root)
         check(f"FM-006 · v0.19.1 · on Subversion the line for a `next: owner` not committed yet names the tracker once, word for word (saw {said6_(err_n, 'C6-072')!r})",

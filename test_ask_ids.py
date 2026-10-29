@@ -260,7 +260,89 @@ def rows_records(area, add):
         accepted(said, "refused") and "note: FM-001: two records under `## Asks` carry FM-001-Q2" in said[2] and "the next ask is FM-001-Q3" in said[2], seen(said))
 
 
-ROWS = (rows_form, rows_records)
+# --- minting and reuse, read from each change -------------------------------------------------------------------------------------
+
+def rows_minting(area, add):
+    r = Repo(area / "c1", {"FM-001": text("FM-001")})
+    r.write("FM-001", text("FM-001", ask()))
+    r.commit("FM-001: put to the Owner, no id")
+    said = r.check()
+    add("C1 · a put with no id: refused, naming the next number", refused(said, "puts an ask with no `ask-id:`", "write `ask-id: FM-001-Q1`"), seen(said))
+    r = Repo(area / "c1-before", {"FM-001": text("FM-001", ask())})
+    r.write("FM-001", text("FM-001", ask(q="Ship it now?")))
+    r.commit("FM-001: the ask before ids, reworded in place")
+    said = r.check()
+    add("C1 · an ask before ids reworded in place: refused the same way", refused(said, "writes a new `ask:` where `next: owner` stands", "write `ask-id: FM-001-Q1`"), seen(said))
+    r = Repo(area / "c1-left", {"FM-001": text("FM-001", ask())})
+    r.write("FM-001", text("FM-001", ask(), body="\nA line of its body.\n"))
+    r.commit("FM-001: its body, the ask before ids untouched")
+    said = r.check()
+    add("C1 · an ask before ids that no change touches stays as it is: accepted", accepted(said, "ask-id"), seen(said))
+    for what, change in (("question", dict(q="Ship it later?")), ("proposal", dict(proposal="no")), ("options", dict(options="yes | no")),
+                         ("kind", dict(kind="determination"))):
+        r = Repo(area / f"c2-{what}", {"FM-001": text("FM-001", ask(aid="FM-001-Q1", options="yes | later"))})
+        r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", **{"options": "yes | later", **change})))
+        r.commit(f"FM-001: its {what}, changed in place")
+        said = r.check()
+        add(f"C2 · the put ask's {what} changed under its id: refused, naming the withdrawal and the next number",
+            refused(said, f"changes the put ask under FM-001-Q1 — its {what}", "put the changed ask as FM-001-Q2"), seen(said))
+    r = Repo(area / "c2-renewed", {"FM-001": text("FM-001", ask(aid="FM-001-Q1"))})
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q2", q="Ship it later?"), asks=record("FM-001-Q1", "Ship it?")))
+    r.commit("FM-001: FM-001-Q1 withdrawn, the changed ask put as FM-001-Q2")
+    said = r.check()
+    add("C2 · the same change made as a withdrawal and a new put — the old id's record, the changed ask under the next number: accepted", accepted(said), seen(said))
+    r = Repo(area / "c3", {"FM-001": text("FM-001", ask(aid="FM-001-Q1"))})
+    r.write("FM-001", text("FM-001", "next: build\n"))
+    r.commit("FM-001: the ask dropped")
+    said = r.check()
+    add("C3 · an id dropped with no record: refused, naming `--clear-ask`", refused(said, "removes FM-001-Q1 with no record under `## Asks`", "--clear-ask FM-001-Q1"), seen(said))
+    r = Repo(area / "no-file", {"FM-001": text("FM-001", ask(aid="FM-001-Q1"))})
+    (r.root / "shoalmark.toml").write_text('name = "ids"\n[kinds]\nFM = "Work"\n', encoding="utf-8")      # no seat: the rights walk reads no line
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1"), body="\nA line of its body.\n"))
+    r.commit("FM-001: its body, in a repository that names no seat")
+    bare = {"id": "FM-999", "kind": "FM", "status": "Proposed", "hook": "a tracker held in memory", "links": [], "tags": []}
+    fm.configure(r.root)
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            fm.lint([bare, *fm.load_trackers()])
+        broke = ""
+    except Exception as e:
+        broke = f"{type(e).__name__}: {e}"
+    finally:
+        fm.configure(HERE)
+    add("a tracker a caller holds in memory, with no file, passes through the id rules on a change without an exception, as through the "
+        "tool's other readers", not broke, broke)
+    r = Repo(area / "c4-equal", {"FM-001": text("FM-001", asks=record("FM-001-Q1", "Ship it?", "accepted"))})
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q="Ship the next?"), asks=record("FM-001-Q1", "Ship it?", "accepted")))
+    r.commit("FM-001: a new ask under a used number")
+    said = r.check()
+    add("C4 · a new id equal to a record's: refused, naming the next number", refused(said, "puts FM-001-Q1, and its number is not above every number FM-001 has used", "put it as FM-001-Q2"), seen(said))
+    r = Repo(area / "c4-below", {"FM-001": text("FM-001", asks=record("FM-001-Q3", "Ship it?", "accepted"))})
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q2", q="Ship the next?"), asks=record("FM-001-Q3", "Ship it?", "accepted")))
+    r.commit("FM-001: a new ask below the highest number")
+    said = r.check()
+    add("C4 · a new id below the highest number in the records: refused, naming the next number", refused(said, "the highest is FM-001-Q3", "put it as FM-001-Q4"), seen(said))
+    r = Repo(area / "c4-history", {"FM-001": text("FM-001")})
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1")))
+    r.commit("FM-001: put as FM-001-Q1")
+    r.write("FM-001", text("FM-001", "next: build\n"))
+    git(r.root, "add", "-A")
+    git(r.root, "commit", "-q", "-m", "FM-001: the number lost, past the gate")
+    git(r.root, "push", "-q", "origin", "main")
+    r.switch("-c", "later")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q="Ship it again?")))
+    r.commit("FM-001: the lost number minted again")
+    said = r.check()
+    add("C4 · a number written and removed in the file's history, minted again: refused on git, naming the next number",
+        refused(said, "puts FM-001-Q1, and its number is not above every number FM-001 has used", "put it as FM-001-Q2"), seen(said))
+    r = Repo(area / "c4-plain", {"FM-001": text("FM-001", ask(aid="FM-001-Q1", q="Ship it again?"))}, vcs="none")
+    run(r.root, "--print-written")
+    said = r.check()
+    add("C4 · …and in a plain folder, where no history is read: accepted, with the limit line", accepted(said, "refused")
+        and "note: ask ids are checked against the file alone — a number removed without its record" in said[2], seen(said))
+
+
+ROWS = (rows_form, rows_records, rows_minting)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------

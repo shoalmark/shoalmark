@@ -896,6 +896,28 @@ def answers_undone(rows):
     return [row for row in rows if not (git_words(row)[:1] == ("for-each-ref",) and "refs/remotes/origin/answer/" in git_words(row))]
 
 
+ID_HEAD_READ = ("rev-parse", "--verify", "-q", "HEAD")
+
+
+def id_head_read(row):
+    """Whether a start or call is the id rules' read of HEAD: that argv exactly, from `head_commit` as `id_walk_problems` calls it."""
+    stack = row.get("product_stack") or []
+    return git_words(row) == ID_HEAD_READ and any(a == "id_walk_problems" and b == "head_commit" for a, b in zip(stack, stack[1:]))
+
+
+def id_rules_undone(rows):
+    """The candidate's starts or calls with the id rules' one read taken out: the first `id_head_read`, which `id_walk_problems` starts in the
+    commit being made to tell a repository's first commit, which has no parent to judge against. Every other start and call stays, in
+    order — a second such read, and the same read from any other caller, included."""
+    out, taken = [], False
+    for row in rows:
+        if not taken and id_head_read(row):
+            taken = True
+            continue
+        out.append(row)
+    return out
+
+
 def origin_undone(rows):
     """The starts or calls with these removed: each `config --get remote.origin.url`, each `ls-remote --symref origin HEAD`, and the one
     `rev-parse --verify --quiet refs/remotes/origin/<name>^{commit}` that directly follows either. Every other start and call stays, in order."""
@@ -1639,12 +1661,12 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
             assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads of the default branch's configuration, each a read, and the baseline's reads of answer branches are set aside",
-                           rows_match(origin_undone(answers_undone(before["starts"])), fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
+                           "reads of the default branch's configuration, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside",
+                           rows_match(origin_undone(answers_undone(before["starts"])), fm054_own(id_rules_undone(after["starts"])), counted) and not fm054_reads(before["starts"])
                            and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"])))
             assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads, each a read, and the baseline's reads of answer branches are set aside",
-                           rows_match(origin_undone(answers_undone(before["run_calls"])), fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
+                           "reads, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside",
+                           rows_match(origin_undone(answers_undone(before["run_calls"])), fm054_own(id_rules_undone(after["run_calls"])), counted) and not fm054_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"])))
             assert_control(label_prefix + "the candidate reads the working tree's edits once where the baseline reads them, and not where it does not",
                            edit_reads(after["starts_raw"]) == (1 if edit_reads(before["starts_raw"]) else 0))
@@ -1714,6 +1736,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        not schema_matches(olds, dict(news, status=news["status"] + 1)) and not schema_matches(olds, dict(news, stderr=news["stderr"] + "x\n"))
                        and r15_schema_dropped(dict(olds, stdout="")) is None
                        and not schema_matches(dict(olds, stdout=olds["stdout"] + "| `freeze_tag` | twice |\n"), news))
+
+        # the id rules' read of HEAD, held to itself on the pair that makes it — the commit being made: without the allowance the starts do not
+        # match, and a second read under the id rules, the same argv again or another, is still caught
+        allowance = "Git entry id rules allowance: "
+        id_old, id_new = (next(row for row in rows if row["case"] == "check-print-written-priority" and row["version"] == version) for version in ("baseline", "candidate"))
+        id_base = origin_undone(answers_undone(id_old["starts"]))
+        id_read = [row for row in id_new["starts"] if id_head_read(row)]
+        assert_control(allowance + "the commit being made starts the read once; without the allowance the starts do not match, and with it they do",
+                       len(id_read) == 1 and not rows_match(id_base, fm054_own(id_new["starts"])) and rows_match(id_base, fm054_own(id_rules_undone(id_new["starts"]))))
+        id_at = id_new["starts"].index(id_read[0]) + 1 if id_read else 0
+        id_twice = id_new["starts"][:id_at] + [dict(id_read[0])] + id_new["starts"][id_at:] if id_read else []
+        id_other = id_new["starts"][:id_at] + [dict(id_read[0], argv=id_read[0]["argv"][:2] + ["HEAD^"])] + id_new["starts"][id_at:] if id_read else []
+        assert_control(allowance + "a second read under the id rules is still caught — the same argv twice, or `git rev-parse HEAD^`",
+                       bool(id_read) and not rows_match(id_base, fm054_own(id_rules_undone(id_twice)))
+                       and not rows_match(id_base, fm054_own(id_rules_undone(id_other))))
 
         # R21's allowance is held to its one difference on the real default pair: equal snapshots match, and no variant below does.
         old, new = (next(row for row in rows if row["case"] == "clean-default-origin" and row["version"] == version) for version in ("baseline", "candidate"))

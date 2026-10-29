@@ -1972,7 +1972,182 @@ def next_ask_id(t, used=None):
     return f"{t['id']}-Q{max(numbers) + 1 if numbers else 1}"
 
 
-def ask_id_problems(t, keys=True):
+def ask_numbers(t, rev="HEAD"):
+    """THE NUMBERS A TRACKER HAS USED, one reader: its open ask's and its records' (`file_numbers`), and — on git — every `ask-id:` line of
+    its own id that the file's history reachable from `rev` added or removed (`git log --full-history -G '^ask-id:' -p`): a line added
+    or removed there both mean the number was used, and no commit is credited with anything. On Subversion, every id of the tracker the
+    log of its path names in a message (`svn log --xml`). With no version control, the file alone. The next number is one more than the
+    highest (`next_ask_id`)."""
+    used = file_numbers(t)
+    try:
+        rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
+    except (KeyError, ValueError):
+        return used
+    own = lambda aid: (lambda m: int(m.group(2)) if m and m.group(1) == t["id"] and int(m.group(2)) > 0 else None)(ASK_ID_ANY_RE.fullmatch(aid.strip()))
+    if vcs() == "git" and rev:
+        log = git_out("-c", "core.quotePath=false", "log", *board_diff_args(), "--full-history", "--no-renames", "--no-color", "--no-ext-diff", "-U0", "-p",
+                      "--format=", "-G", "^ask-id:", rev, "--", rel) or ""
+        used |= {n for n in (own(l[len("+ask-id:"):]) for l in log.splitlines() if l.startswith(("+ask-id:", "-ask-id:"))) if n}
+    elif vcs() == "svn":
+        try:
+            log = svn_run("log", "--xml", svn_proof_path(rel), xml=True, answers=("E155010", "E200009"))
+        except SvnUnreadable:
+            log = None
+        for message in (log.iter("msg") if log is not None else ()):
+            used |= {n for n in (own(m.group(0)) for m in ASK_ID_ANY_RE.finditer(message.text or "")) if n}
+    return used
+
+
+def id_moves(before, after, new_file=False):
+    """What a change does to a tracker's ask id, read from its text before and after it — the rules the walk judges for every author
+    each as (rule, the id it is about, a word): `put` — `next: owner` set, or a new `ask:` where `next: owner` stands, with no
+    `ask-id:`; `changed` — the put ask changed under its id (the question, the proposal, the options or the kind — `put_ask_of`; never
+    `ask-since:`); `gone` — an id gone with no record that carries it; `new` — an id that was not there, which the caller holds against
+    every number used. A renumbering — the same put ask under a new number, as the refusal of a number another branch holds asks of a branch — is no id gone."""
+    b, b_body = parse_frontmatter(before or "")
+    a, a_body = parse_frontmatter(after or "")
+    b_id, a_id = (b.get("ask-id") or "").strip(), (a.get("ask-id") or "").strip()
+    a_next, b_next = (a.get("next") or "").strip().lower(), (b.get("next") or "").strip().lower()
+    a_ask, b_ask = answer_fields(a)["ask"], answer_fields(b)["ask"]
+    out = []
+    if a_next == "owner" and a_ask.strip() and not a_id and (b_next != "owner" or answer_norm(a_ask) != answer_norm(b_ask)):
+        out.append(("put", "", "sets `next: owner`" if b_next != "owner" else "writes a new `ask:` where `next: owner` stands"))
+    if a_id and a_id == b_id:
+        b_put, a_put = put_ask_of(b), put_ask_of(a)
+        which = [w for w, x, y in zip(("question", "proposal", "options", "kind"), b_put, a_put) if x != y]
+        if which:
+            out.append(("changed", a_id, ", ".join(which)))
+    renumbered = bool(a_id) and bool(b_id) and a_id != b_id and put_ask_of(a) == put_ask_of(b)
+    if b_id and b_id != a_id and b_id not in {i for i, _d in record_ids(a_body)} and not renumbered:
+        out.append(("gone", b_id, ""))
+    if a_id and a_id != b_id:
+        out.append(("new", a_id, ""))
+    return out
+
+
+def id_refusal(t, where, move, used):
+    """The refusal of one of `id_moves`' moves, with the next number where the way through needs one — or None where a new id is above
+    every number in `used`."""
+    rule, aid, word = move
+    nxt = next_ask_id(t, used)
+    if rule == "put":
+        return (f"{t['id']}: {where}puts an ask with no `ask-id:` — it {word}, and an ask put to the Owner carries its own id: "
+                f"write `ask-id: {nxt}` on the line above `ask:`")
+    if rule == "changed":
+        return (f"{t['id']}: {where}changes the put ask under {aid} — its {word} — and a put ask never changes under its id: withdraw it "
+                f"(`{CMD} --clear-ask {aid} owner` writes its record) and put the changed ask as {nxt}")
+    if rule == "gone":
+        return f"{t['id']}: {where}removes {aid} with no record under `## {HEAD['asks']}` that carries it — `{CMD} --clear-ask {aid} <next move>` writes the record"
+    n, top = ask_number(aid, t["id"]), max(used, default=0)
+    if n is None or n > top:                              # a shape that is no id of the tracker's is the file rules'
+        return None
+    return f"{t['id']}: {where}puts {aid}, and its number is not above every number {t['id']} has used — the highest is {t['id']}-Q{top}: put it as {nxt}"
+
+
+def id_walk_problems(trackers):
+    """THE ID RULES ON THE CHANGES, judged for every author, the Owner included — a reused number is not a right. On git, each
+    change the walk reads (`changes_under_review`), as `rights_problems` reads it: an ordinary commit against its parent, a merge's own
+    change against EVERY parent (a move is one it makes against each), the commit being made against HEAD; a new id is held against
+    the numbers used reachable from where the change starts. On Subversion, the uncommitted change: each tracker the working copy has
+    modified or added, against its own BASE, a new id held against the log of its path. With no version control there is no change:
+    the open ask's id is held against the records the file carries. A tracker a caller holds in memory, with no file, is not read here,
+    as the tool's other readers leave it."""
+    if vcs() == "svn":
+        return svn_id_problems(trackers)
+    if vcs() != "git":
+        out = []
+        for t in trackers:
+            n, top = ask_number(t.get("ask_id") or "", t["id"]), max([n_ for n_ in file_numbers(t) if n_ != ask_number(t.get("ask_id") or "", t["id"])] or [0])
+            if n is not None and n <= top:
+                out.append(f"{t['id']}: `ask-id: {t['ask_id']}` is not above every number its records carry — the highest is {t['id']}-Q{top}: put it as {next_ask_id(t)}")
+        return out
+    if COMMITTING and not head_commit():
+        return []                                        # a first commit has no parent to compare with, as the walk reads a root commit
+    rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers if t.get("file")}
+    rels.update(staged_absent(rels))
+    changes = changes_under_review()
+    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
+                                         for rev in ([result] if result else []) + list(bases))))
+    out = []
+    for bases, files, _name, _email, commit, result, label in changes:
+        touched = sorted(files & set(rels))
+        staged = cat_blobs([f":./{rel}" for rel in touched], index_env()) if result is None and COMMITTING else {}
+        where = label + " — " if label else ""
+        for rel in touched:
+            t = rels[rel]
+            now = (blobs.get(f"{result}:{rel}") if result is not None else staged.get(f":./{rel}") if COMMITTING
+                   else (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
+            if now is None:
+                continue
+            moves = None
+            for base in bases:
+                was = blobs.get(f"{base}:{rel}")
+                made = set(id_moves(was or "", now, new_file=was is None))
+                moves = made if moves is None else moves & made
+            for move in sorted(moves or ()):
+                said = id_refusal(t, where, move, numbers_before(t, now, move, [(b, blobs.get(f"{b}:{rel}") or "") for b in bases]))
+                if said:
+                    out.append(said)
+    return out
+
+
+def numbers_before(t, now, move, befores):
+    """The numbers a change's move is held against: what each side it starts from shows — its file, and on git the history reachable from
+    it (`ask_numbers`) — and the records the change leaves; and, where the move is not a new id's, the open ask's id it leaves too."""
+    if move[0] == "gone":
+        return set()
+    after = fresh_tracker(t, now)
+    used = set().union(*(ask_numbers(fresh_tracker(t, text), rev) for rev, text in befores)) if befores else set()
+    return used | (file_numbers(after) if move[0] != "new" else file_numbers({**after, "ask_id": ""}))
+
+
+def fresh_tracker(t, text):
+    """`t` as `text` would have it: its id, its file, and what its front matter and records say of its asks."""
+    fm_, body = parse_frontmatter(text or "")
+    return {"id": t["id"], "file": t["file"], "fm": fm_, "ask_id": (fm_.get("ask-id") or "").strip(), "asks_ids": record_ids(body), **answer_fields(fm_)}
+
+
+def svn_id_problems(trackers):
+    """The id rules on the changes, on Subversion: the uncommitted change — each tracker `svn status` names modified, added or replaced, read against its BASE
+    (`svn cat -r BASE`, the working copy's own pristine copy) — and a new id held against the log of its path. Where Subversion cannot be
+    read, one refusal: the ids are not judged, and not passed unread."""
+    rels = {}
+    for t in trackers:
+        try:
+            rels[(TRACKER_DIR / t["file"]).relative_to(ROOT).as_posix()] = t
+        except (KeyError, ValueError):
+            continue
+    try:
+        status = svn_local_status()
+        out = []
+        for rel, t in sorted(rels.items()):
+            wc = status.get(rel)
+            if wc is None or wc.get("item") not in ("modified", "added", "replaced", "merged"):
+                continue
+            was = "" if wc.get("item") in ("added", "replaced") else (svn_run("cat", "-r", "BASE", svn_proof_path(rel)) or "")
+            now = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8")
+            for move in sorted(set(id_moves(was, now, new_file=not was))):
+                said = id_refusal(t, "the uncommitted change — ", move, numbers_before(t, now, move, [(None, was)]))
+                if said:
+                    out.append(said)
+        return out
+    except SvnUnreadable as e:
+        return [f"Subversion's working copy could not be read, so the ask ids of the change in front of this run are not judged — and not passed unread. svn said: {e}"]
+
+
+def id_backend_note(trackers):
+    """`--check`'s one line where a tracker carries an id and the backend cannot show every number used: on Subversion the file and its
+    log, with no version control the file alone — each with what it cannot see. "" on git, and where no tracker carries an id."""
+    if vcs() == "git" or not any(t.get("ask_id") or t.get("asks_ids") for t in trackers):
+        return ""
+    if vcs() == "svn":
+        return ("note: ask ids are checked against the file and its log — a number written and removed in revisions whose messages do not "
+                "name it is not seen; name the id in the message that puts the ask")
+    return ("note: ask ids are checked against the file alone — a number removed without its record, and two copies of the folder that "
+            "each mint a number, are not seen")
+
+
+def ask_id_problems(t, keys=True, history=False):
     """WHAT AN ASK'S ID MUST BE, read from the file — the rules every backend reads, without the tracker's id:
     - its shape: `<this tracker's id>-Q<n>`, n from 1 with no leading zero; with `keys`, the key on one line, in lower case
       (`lint` names that from `key_problems` itself);
@@ -1986,13 +2161,13 @@ def ask_id_problems(t, keys=True):
         return out
     if ask_number(aid, t["id"]) is None:
         out.append(f"`ask-id: {aid}` is not an id of {t['id']}'s — an ask's id is `{t['id']}-Q<n>`, n from 1 with no leading zero: "
-                   f"put this ask as {next_ask_id(t)}")
+                   f"put this ask as {next_ask_id(t, ask_numbers(t) if history else None)}")
     if not t.get("ask"):
         out.append(f"`ask-id: {aid}` stands with no `ask:` — an id names a put ask; with no question it names nothing. Remove it, or put the ask")
     held = [d for i, d in t.get("asks_ids") or [] if i == aid]
     if held:
         out.append(f"`ask-id: {aid}` is also the id of the record of {held[0]} under `## {HEAD['asks']}` — a number is never reused: "
-                   f"put this ask as {next_ask_id(t)}, its put ask unchanged")
+                   f"put this ask as {next_ask_id(t, ask_numbers(t) if history else None)}, its put ask unchanged")
     return out
 
 
@@ -9463,12 +9638,15 @@ def lint(trackers, committing=False):
     problems += build_problems()                     # FM-033: no build commit before a judgement, where it is on
     problems += triage_guard()[0]                    # FM-037: only the Owner changes their intent and their current path
     problems += duplicate_record_problems(trackers)   # two records that carry one id, where they can still be stopped
+    problems += id_walk_problems(trackers)            # a put with no id, a put ask changed under its id, an id gone with no record, a number reused
+    if id_backend_note(trackers):
+        print(f"  {id_backend_note(trackers)}", file=sys.stderr)
     by_ask = asks_by_key(trackers)
     for t in trackers:
         problems += t.get("key_problems") or []         # each key a right is judged on is read from one line, in lower case (v0.19.1)
         # WHAT AN ASK MUST BE — the same rules the Owner's queue reads, refused here first; and what its id must be, on every tracker
         problems += [f'{t["id"]}: {why}' for why in ask_problems(t, by_ask, ids=False)]
-        problems += [f'{t["id"]}: {why}' for why in ask_id_problems(t, keys=False)]
+        problems += [f'{t["id"]}: {why}' for why in ask_id_problems(t, keys=False, history=True)]
         problems += record_problems(t) if committing else []
         if t.get("answer"):
             # the pre-mortem's rule: an answer counts only from the account it is filed from. Who that may be comes
