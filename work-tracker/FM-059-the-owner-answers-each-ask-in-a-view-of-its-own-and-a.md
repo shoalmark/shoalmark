@@ -13,6 +13,8 @@ hook: "The Owner answers each ask in a Board view that holds only its dialog; a 
 
 ## What is true now
 
+**2026-10-29 — S2 rebuilt on the release branch, awaiting the Auditor's bounded re-check:** `b5c2dce` writes S2's reviewed build (`3baabe1`, READY at `ec5d19f`) again by hand on `aefb9df`, where a merge of `ec5d19f` conflicts: the hooks' copy records the tool's full commit and its file comparison, with the reviewed meaning. Its message tables each place it differs from `3baabe1`. Its eleven rows and four mutants, `test_core.py` and the slices of `test_shoalmark.py` that touch or read the hooks' copy pass on Python 3.15 and 3.9.6, with the Windows stand-in on 3.15. The suite's last block runs longer than a slice's time limit here, with no failure before it, and is left to the full non-browser run on 3.15. Requirements recorded privately.
+
 **2026-10-27 — judged for v0.20.3, S2 excepted,** on the Owner's word of 27 October, as relayed by the Auditor. S3 and S4 move to v0.20.3. S2, READY at `ec5d19f`, stays in v0.20.2. FM-023's ask of 27 October puts the move to the Owner.
 
 **2026-10-27 — adopted by the Owner, and judged In Progress, P2, critical, for v0.20.2.** The Owner's signed answer adopts the guided answer view's design; it is recorded under `## Asks`. It is batch 3's S2 (READY at `ec5d19f`), S3 and S4. FM-023's signed answer of 27 October moves batch 3 to v0.20.2, so this tracker's release answer of 16 October (*accepted - v0.20.1*, `99b1708`) is superseded by it.
@@ -716,3 +718,4 @@ Reviewer privately. This text does not state them.
 | 2026-10-27 | Input for the design recorded, from the Auditor: the ask rendered from the repository, a link with only the tracker id, the exact diff before signing, and local presence required. Records only. |
 | 2026-10-27 | The Owner's signed answer adopts the design; its ask cleared; judged In Progress, P2, critical, for v0.20.2 (S2, S3, S4 of batch 3); the release answer of 16 October superseded by FM-023's answer of 27 October. Records only. |
 | 2026-10-27 | Judged for v0.20.3, S2 excepted (S2 stays in v0.20.2), on the Owner's word of 27 October; FM-023's ask puts it to the Owner. Records only. |
+| 2026-10-29 | S2 rebuilt on the release branch in `b5c2dce` by the Builder seat (`27f31560/builder-42`), on the Owner's word of 29 October as the Auditor relays it: `3baabe1`'s change written again by hand on `aefb9df`, its differences tabled in its message, with its rows and four mutants, `test_core.py` and the slices on Python 3.15 and 3.9.6 and the Windows stand-in on 3.15. The Auditor's bounded re-check remains. |
