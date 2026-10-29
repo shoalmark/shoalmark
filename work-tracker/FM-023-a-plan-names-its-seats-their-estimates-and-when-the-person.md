@@ -8,10 +8,10 @@ next: owner
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you allocate FM-030's stand-up prompt as FM-023's What is true now (29 October, the stand-up prompt) sets out: A, the built-in prompt's new text, in v0.20.2, and B, the Board copying the tracker folder's standup.md under your signed guard, in v0.20.3?"
+ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the class fix move unless READY by Thursday 20:00?"
 ask-kind: ruling
 ask-since: 2026-10-29
-ask-options: "yes | yes, with the changes I name | no: both wait for v0.20.3"
+ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as allocated on 27 October"
 ask-proposal: "yes"
 ---
 
@@ -22,8 +22,9 @@ is designed or built.
 
 ## What is true now
 
-**2026-10-29 — the stand-up prompt grows, for the Owner's signed answer.** On the Owner's word of 29 October, as the
-Auditor relays it: "A for v0.20.2, B for v0.20.3".
+**2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
+Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
+relayed commits are optional", and "cut-off Fri 14:00 approved".
 [FM-030](FM-030-an-accepted-action-ask-leaves-the-person-s-list-before-the.md) holds the work.
 - **A, in v0.20.2, after BF-95:** the stand-up prompt built into the tool takes a new text. It checks first, read only,
   that the Owner's folder is not behind. It takes the agenda one item at a time, and prints the command that records
@@ -44,9 +45,23 @@ Auditor relays it: "A for v0.20.2, B for v0.20.3".
 | v0.20.2 | A: the stand-up prompt's new built-in text, with the lead seat's worktree, by version control (FM-030). Critical. | BF-95 |
 | v0.20.3 | B: the Board copies the tracker folder's `standup.md`, guarded like the Owner's two sections, and names the text it copied (FM-030). | A |
 
-v0.20.2's release sitting is on Friday 30 October, at the end of the day, on the Owner's word of 29 October. What is
-not READY and merged into its release branch by then moves to v0.20.3, by the Owner's signed answer. The ask above puts
-A and B to the Owner.
+- **S1, the ask ids with R4's answer commit, must land in v0.20.2:**
+  [FM-050](FM-050-an-ask-has-no-id-of-its-own-so-an-answer-cannot-name-the-ask.md). It builds on the release branch as
+  it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3 follow S1's answer commit. If S1 is not in by the cut-off, A
+  ships with the steps that describe answer branches.
+- **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
+- **FM-065, quick win 10, and the class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
+  29 October, 20:00.
+
+| Release | Work | Depends on |
+|---|---|---|
+| v0.20.2, must land | S1: the ask ids with R4's answer commit (FM-050). Critical. | — |
+| v0.20.2, optional | FM-076: relayed commits. | — |
+| v0.20.2, unless not READY by Thursday 20:00 | FM-065; quick win 10; the class fix beyond its three findings. Otherwise v0.20.3. | — |
+
+**The cut-off is Friday 30 October, 14:00 CET,** on the Owner's word of 29 October. After it, only the release's own
+commits go into its release branch, and the sitting follows. What is not READY and merged by then moves to v0.20.3, by
+the Owner's signed answer. The ask above puts all of this to the Owner.
 
 **2026-10-28 — the German rewrite, for the Owner's signed answer.** Every German line moves to *du* in v0.20.2, at
 once and in one lane: the Owner's ruling of 22 October, as the Auditor relays it.
@@ -429,6 +444,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | v0.20.2's allocation amended, on the Owner's words of 29 October: S1 must land, FM-076 is optional, FM-065, quick win 10 and the class fix beyond its three findings move unless READY by Thursday 20:00, and the cut-off is Friday 14:00. The ask is amended to put all of it, with A and B, to the Owner. Records only. |
 | 2026-10-29 | The stand-up prompt's growth filed, on the Owner's word of 29 October: A, its new built-in text, in v0.20.2, and B, the Board copying the tracker folder's `standup.md` under the Owner's signed guard, in v0.20.3, with the ask for the Owner's signed answer. v0.20.2's release sitting named: Friday 30 October, at the end of the day. Records only. |
 | 2026-10-29 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The rewrite is in v0.20.2's allocation, in one lane, as the ask set it out. Records only. |
 | 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
