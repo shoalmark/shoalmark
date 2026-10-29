@@ -22,6 +22,14 @@ is designed or built.
 
 ## What is true now
 
+**2026-10-29 — from v0.20.3, each release's allocation is a tracker of its own,** on the Owner's word of 29 October,
+as the Auditor relays it.
+- **The tracker:** each release's allocation is filed as its own tracker, which ships at that release's tag.
+- **This tracker** keeps the research question it was filed for, and holds no allocation after v0.20.2's.
+- **v0.20.3's allocation** will hold [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
+  trackers that close, and [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md), evidence
+  in three classes, both filed today.
+
 **2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
 Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
 relayed commits are optional", and "cut-off Fri 14:00 approved".
@@ -444,6 +452,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | From v0.20.3, each release's allocation is a tracker of its own, on the Owner's word of 29 October. FM-086 and FM-087 are filed for v0.20.3. Records only. |
 | 2026-10-29 | v0.20.2's allocation amended, on the Owner's words of 29 October: S1 must land, FM-076 is optional, FM-065, quick win 10 and the class fix beyond its three findings move unless READY by Thursday 20:00, and the cut-off is Friday 14:00. The ask is amended to put all of it, with A and B, to the Owner. Records only. |
 | 2026-10-29 | The stand-up prompt's growth filed, on the Owner's word of 29 October: A, its new built-in text, in v0.20.2, and B, the Board copying the tracker folder's `standup.md` under the Owner's signed guard, in v0.20.3, with the ask for the Owner's signed answer. v0.20.2's release sitting named: Friday 30 October, at the end of the day. Records only. |
 | 2026-10-29 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The rewrite is in v0.20.2's allocation, in one lane, as the ask set it out. Records only. |
