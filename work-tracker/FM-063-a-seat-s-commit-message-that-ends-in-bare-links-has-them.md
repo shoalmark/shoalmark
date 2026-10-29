@@ -13,6 +13,8 @@ hook: "a seat's commit message that ends in bare links has them rewritten by the
 
 ## What is true now
 
+**2026-10-29 — built in `ec5432a`:** the hook inserts missing seat trailers into the original bytes, using Git to read existing keys and locate the insertion; the base reproduction is red, the 34 regression controls and core suite are green on Python 3.15, and four mutants are red. Next: standard review, critical review and CI across its Git versions; the Planner removes the sentence-ending rule from the common files after merge.
+
 **2026-10-29 — judged In Progress, P2, critical, for v0.20.2, before the first build commit.** It is built on the
 release branch's head with main joined, on the Owner's word of 29 October that it goes to a Builder on Codex. The step
 runs in the prepare-commit-msg hook, so its review is critical.
@@ -62,3 +64,4 @@ The tool adds its trailers, and must change nothing a seat wrote.
 |---|---|
 | 2026-10-29 | Judged In Progress, P2, critical, for v0.20.2, before the first build commit. Records only. |
 | 2026-10-19 | Filed from the Auditor's reproduction with git 2.50.1, as a bug; v0.20.2, the Planner's call; nothing is built. |
+| 2026-10-29 | Built in `ec5432a`: removed the in-place message rewrite; retained byte-preserving insertion and regression controls. Review and the Planner's post-merge rule deletion remain. |
