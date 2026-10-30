@@ -156,8 +156,8 @@ answer.sign.copy: Befehl
 answer.sign.copied: der Befehl ist in deiner Zwischenablage
 answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Befehl markieren und kopieren."
 answer.sign.where: Wo
-answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage trägt."
-answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage trägt — {0}, dem Branch, aus dem dieses Board gebaut wurde."
+answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage enthält."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage enthält — {0}, dem Branch, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2} — und {3}"
 answer.sign.step.commit: "committet sie, signiert mit deinem Schlüssel — er fragt vielleicht nach einer Bestätigung"
@@ -204,8 +204,8 @@ day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen
 day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."
 day.runs: Was die Session ausführen soll
 day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
-day.closeout.runs: "{0} und {1}, und ein git log des Standard-Branches. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
-day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standard-Branches füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
+day.closeout.runs: "{0} und {1} sowie ein git log des Standard-Branches. {0} startet das Ableitungsprogramm, {2}, falls es eines gibt. Wo gh die Ablage lesen kann, holt {0} außerdem origin und fragt gh nach den Pull Requests."
+day.fixed: "Der Prompt steht fest und ist auf Englisch. Eingesetzt werden nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standard-Branches — keiner davon von einem Agenten geschrieben, jeder vorher gegen eine Liste erlaubter Zeichen geprüft."
 day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
 day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
 day.refused.long: "ist länger als {0} Zeichen"
@@ -228,7 +228,7 @@ path.line: 1 Zeile
 day.title: der Tag
 day.span: die letzten 24 Stunden
 reviews.reports: Berichte, keine Beweise
-reviews.sessions: "seine Session {0}, die des Branches {1}"
+reviews.sessions: "Session des Urteils {0}, Session des Branches {1}"
 reviews.sessions.more: "{0} und {1} weitere"
 reviews.more: "und {0} weitere Urteile von einer anderen Session in dieser Woche"
 reviews.more.one: und 1 weiteres Urteil von einer anderen Session in dieser Woche
@@ -246,12 +246,12 @@ reviews.on: "auf {0}"
 reviews.notready: "{0} nicht bereit"
 reviews.findings: "{0} mit Befunden"
 reviews.branch: "Branch {0}"
-reviews.branch.merged: "Branch {0}, wie sein Merge {1} ihn nennt"
-reviews.branch.ambiguous: "Branch {0}: {1} halten das Urteil jeweils auf ihrer eigenen Linie"
+reviews.branch.merged: "Branch {0}, wie ihn der Merge {1} nennt"
+reviews.branch.ambiguous: "Branch {0}: {1} enthalten das Urteil jeweils in ihrer eigenen Linie"
 reviews.ambiguous: mehrdeutig
 reviews.branch.unknown: "Branch nicht bekannt — {0}"
-reviews.branch.none: kein Branch hier hält das Urteil auf seiner eigenen Linie
-reviews.branch.unnamed: "sein Merge {0} nennt keinen Branch"
+reviews.branch.none: kein Branch hier enthält das Urteil in seiner eigenen Linie
+reviews.branch.unnamed: "der Merge {0} nennt keinen Branch"
 verdict.READY: bereit
 verdict.READY WITH FINDINGS: bereit mit Befunden
 verdict.READY TO TAG: bereit zum Taggen

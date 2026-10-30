@@ -8026,8 +8026,8 @@ answer.sign.copy: nochmals kopieren
 answer.sign.copied: Kopiert.
 answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Befehl markieren und kopieren."
 answer.sign.where: Wo
-answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage trägt."
-answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage trägt — {0}, dem Branch, aus dem dieses Board gebaut wurde."
+answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage enthält."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage enthält — {0}, dem Branch, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
 answer.sign.step.commit: "committet sie, signiert mit deinem Schlüssel — er fragt vielleicht nach einer Bestätigung"
@@ -8148,8 +8148,8 @@ day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen
 day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."
 day.runs: Was die Session ausführen soll
 day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
-day.closeout.runs: "{0} und {1}, und ein git log des Standard-Branches. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
-day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standard-Branches füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
+day.closeout.runs: "{0} und {1} sowie ein git log des Standard-Branches. {0} startet das Ableitungsprogramm, {2}, falls es eines gibt. Wo gh die Ablage lesen kann, holt {0} außerdem origin und fragt gh nach den Pull Requests."
+day.fixed: "Der Prompt steht fest und ist auf Englisch. Eingesetzt werden nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standard-Branches — keiner davon von einem Agenten geschrieben, jeder vorher gegen eine Liste erlaubter Zeichen geprüft."
 day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
 day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
 day.refused.long: "ist länger als {0} Zeichen"
