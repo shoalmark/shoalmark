@@ -65,7 +65,7 @@ Was shoalmark dazu ausgibt, jeden Tag:
 
 1. Sie holen shoalmark beim Git-Tag eines Releases und legen eine festgeschriebene Kopie ins Repository, jede Datei
    mit Prüfsumme (`--vendor`).
-2. `--init` schreibt die Konfiguration, die Triage-Datei und den Vertrag für Agenten.
+2. `--init` schreibt die Konfiguration, die Datei `TRIAGE.md` und den Vertrag für Agenten.
 3. Die Agenten lesen den Vertrag, das [README](../agents/README.md), und legen die Arbeit an: eine Markdown-Datei je
    Arbeitspaket.
 4. **Du** schreibst drei Zeilen in deinen eigenen Worten: wofür das Repository da ist, was gilt, wenn es
