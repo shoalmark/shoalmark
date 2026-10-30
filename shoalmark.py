@@ -10974,10 +10974,10 @@ INTENT_EXAMPLES = (
     "- **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*",
     "- **never** — *e.g. lend what the catalogue does not hold, or drop a member's record before their last loan is back*",
 )
-INTENT_NOTE_DE = "*Die eigenen Worte des Owners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*"
-INTENT_LEAD_DE = """*Drei Zeilen in Ihren eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
+INTENT_NOTE_DE = "*Die eigenen Worte des Eigners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*"
+INTENT_LEAD_DE = """*Drei Zeilen in deinen eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
 Repository, all das, da ist · was gilt, wenn es funktioniert · was keine Sichtung und kein Agent tun darf, um dorthin zu
-kommen. Das Beispiel ist ein ganzes Produkt; überschreiben Sie es — eine Sichtung liest alles, was Sie hier schreiben, und
+kommen. Das Beispiel ist ein ganzes Produkt; überschreibe es — eine Sichtung liest alles, was du hier schreibst, und
 lässt nur diese Einleitung und die unveränderten Beispiele aus.*"""
 INTENT_EXAMPLES_DE = (
     "- **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*",
@@ -10986,9 +10986,16 @@ INTENT_EXAMPLES_DE = (
 )
 # …and under the path heading: its note, English and German, and the first bare line (AU-20; `unwritten`)
 PATH_SCAFFOLD = ("*The Owner's. A pass judges every tier against it; only the Owner changes it.*",
-                 "*Gehört dem Owner. Eine Sichtung misst jede Stufe daran; nur der Owner ändert ihn.*", "1.")
+                 "*Gehört dem Eigner. Eine Sichtung misst jede Stufe daran; nur der Eigner ändert ihn.*", "1.",
+                 "*Gehört dem Owner. Eine Sichtung misst jede Stufe daran; nur der Owner ändert ihn.*")
+# The German note and lead-in a home copied before 0.20.2 still carries, in the formal address: the scaffold too
+INTENT_SCAFFOLD_DE_BEFORE = ("*Die eigenen Worte des Owners — für · damit · niemals. Niemand sonst ändert das. Eine Sichtung druckt es über ihre Regeln.*", """*Drei Zeilen in Ihren eigenen Worten über das Repository als Ganzes, nie über ein einzelnes Feature: wofür dieses
+Repository, all das, da ist · was gilt, wenn es funktioniert · was keine Sichtung und kein Agent tun darf, um dorthin zu
+kommen. Das Beispiel ist ein ganzes Produkt; überschreiben Sie es — eine Sichtung liest alles, was Sie hier schreiben, und
+lässt nur diese Einleitung und die unveränderten Beispiele aus.*""")
 INTENT_SCAFFOLD = (INTENT_NOTE, INTENT_LEAD, *INTENT_EXAMPLES, "- **for** —", "- **so that** —", "- **never** —",
-                   INTENT_NOTE_DE, INTENT_LEAD_DE, *INTENT_EXAMPLES_DE, "- **für** —", "- **damit** —", "- **niemals** —")
+                   INTENT_NOTE_DE, INTENT_LEAD_DE, *INTENT_EXAMPLES_DE, "- **für** —", "- **damit** —", "- **niemals** —",
+                   *INTENT_SCAFFOLD_DE_BEFORE)
 
 TRIAGE_HOME = """\
 # Triage
