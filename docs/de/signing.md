@@ -223,23 +223,23 @@ auf Stufe 0 nach nichts. Die zweite gibt `G` aus, dann die E-Mail, für die der 
 deine `owner`-E-Mail sein —, dann deine Autor-E-Mail. Die dritte nimmt den Test-Commit wieder weg.
 
 **Dann eine Frage beantworten.** Auf dem Board öffnet *annehmen* oder *ablehnen* einen Dialog mit der Frage, ihren
-Möglichkeiten und dem, was sie aufhält; OK gibt dir einen Befehl. Führe den Befehl in einem Terminal im Repository aus,
-auf dem Branch, den der Dialog nennt:
+Möglichkeiten und dem, was sie aufhält; OK gibt dir einen Befehl. Führe ihn in einem Terminal im Repository aus, auf
+dem Branch, den der Dialog nennt:
 
 ```
 python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept
 ```
 
 `AP-007-Q1` ist die eigene ID der Frage: die ID ihres Arbeitspakets, dann `Q` und die Nummer der Frage. Der Befehl
-schreibt die drei Zeilen auf dem Branch, auf dem du stehst, und committet sie, mit deinem Schlüssel signiert (Stufe 2
-fragt nach deiner Passphrase, Stufe 3 nach deiner Berührung), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Der
-Befehl meldet jeden Schritt, sobald der Schritt beginnt. Der Befehl legt keinen Branch an und pusht nichts. Scheitert
-etwas vor dem Commit, nimmt der Befehl alles Geschriebene zurück und gibt die Befehlszeile aus, mit der du die Antwort
-erneut gibst; ist der Commit gemacht, aber die Signatur wird nicht verifiziert, meldet der Befehl das und sagt, dass du
-den Commit nicht pushen sollst. `git log -1 --format=%G?` gibt `G` aus, und die Frage ist von deiner Liste
-verschwunden. Das zählt erst, wenn dieser Commit auf dem Standard-Branch liegt: Pushe ihn oder merge den Branch, der
-ihn enthält. Eine Frage, die gestellt wurde, als Fragen noch keine ID hatten, hat keine eigene ID; du beantwortest sie
-mit der ID ihres Arbeitspakets: `--answer AP-007 accept`.
+schreibt die drei Zeilen auf deinem aktuellen Branch und committet sie, mit deinem Schlüssel signiert (Stufe 2 fragt
+nach deiner Passphrase, Stufe 3 nach deiner Berührung), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet
+jeden Schritt, bevor er ihn ausführt, legt keinen Branch an und pusht nichts. Scheitert etwas vor dem Commit, nimmt der
+Befehl alles Geschriebene zurück und gibt die Befehlszeile aus, mit der du die Antwort erneut gibst; ist der Commit
+gemacht, lässt sich die Signatur aber nicht verifizieren, meldet der Befehl das und sagt, dass du den Commit nicht
+pushen sollst. `git log -1 --format=%G?` gibt `G` aus, und die Frage ist von deiner Liste verschwunden. Das zählt erst,
+wenn dieser Commit auf dem Standard-Branch liegt: Pushe ihn oder merge den Branch, der ihn enthält. Eine Frage, die
+gestellt wurde, als Fragen noch keine ID hatten, hat keine eigene ID; du beantwortest sie mit der ID ihres
+Arbeitspakets: `--answer AP-007 accept`.
 
 ## Deine Absicht und dein aktueller Weg — nur dein signierter Commit ändert sie
 

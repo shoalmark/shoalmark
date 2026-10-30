@@ -78,23 +78,24 @@ Option, die du gewählt hast —, die Frage, die sie beantwortet, klein darunter
 Ergebnis liegt — der Pfad genügt: der Beleg ergänzt, was das Repository über die Datei weiß, wer sie wann hinzugefügt
 hat und bei einer Prüfung ihr Urteil —, und gibt dir `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`;
 **verschieben** fragt nach der neuen Zeit und gibt dir `--due AP-007 <time>`. Beides wird signiert wie eine Antwort
-und auf dem Branch committet, auf dem du stehst; gepusht wird nichts.
+und auf deinem aktuellen Branch committet; gepusht wird nichts.
 
 ## Wo deine Antwort landet
 
-Was du beantwortest oder tust, ist ein Commit von dir, auf dem Branch, auf dem du stehst, mit deinem Schlüssel signiert,
+Was du beantwortest oder tust, ist ein Commit von dir auf deinem aktuellen Branch, mit deinem Schlüssel signiert,
 sobald du das Signieren einschaltest: `--answer`, `--done`, `--due` und `--revoke` legen keinen Branch an und pushen
-nichts. Jeder dieser Befehle nennt danach Branch und Commit und baut das Board neu, und die Seite, auf die du
-zurückkommst, zeigt deine Antwort oder Handlung auf diesem Branch sofort: Die Frage verlässt *wartet auf dich*, und eine
-erledigte Handlung verlässt *deine Handlungen*. Das zählt erst, wenn dieser Commit auf dem Standard-Branch liegt: Pushe
-ihn oder merge den Branch, der ihn enthält. Ein Checkout ohne diesen Commit — der Standard-Branch, bevor der Commit dort
-liegt, oder ein anderer Rechner — zeigt die Frage oder die Handlung weiter als offen.
+nichts. Jeder dieser Befehle nennt danach Branch und Commit und baut das Board neu, sodass die Seite, auf die du
+zurückkommst, deine Antwort oder Handlung auf diesem Branch sofort zeigt: Die Frage verschwindet aus *wartet auf dich*,
+und eine erledigte Handlung verschwindet aus *deine Handlungen*. Das zählt erst, wenn dieser Commit auf dem
+Standard-Branch liegt: Pushe ihn oder merge den Branch, der ihn enthält. Ein Checkout ohne diesen Commit — der
+Standard-Branch, bevor der Commit dort liegt, oder ein anderer Rechner — zeigt die Frage oder die Handlung weiterhin
+als offen.
 
 Um eine Antwort zurückzunehmen, führe `python3 tools/shoalmark/shoalmark.py --revoke AP-007-Q1 "<why>"` aus, mit der ID
 der beantworteten Frage; um eine erledigte Handlung zurückzunehmen, `--revoke AP-007 "<why>"`, mit der ID ihres
-Arbeitspakets. Das Board hat dafür keinen Knopf. Beides ist ein neuer Commit, nie ein Überschreiben: Die zurückgenommene
-Antwort kommt in den Verlauf des Arbeitspakets; bei einer erledigten Handlung kommt die Rücknahme in ihren Beleg unter
-*Handlungen*, und die Handlung ist wieder offen.
+Arbeitspakets. Das Board hat dafür keinen Knopf. Beides ist ein neuer Commit, es wird nichts überschrieben: Die
+zurückgenommene Antwort kommt in den Verlauf des Arbeitspakets; bei einer erledigten Handlung kommt die Rücknahme in
+ihren Beleg unter *Handlungen*, und die Handlung ist wieder offen.
 
 Einladungen und Benachrichtigungen gibt es nicht mehr (R9): `--invite`, `--notify` und `--standup DATEI.ics` sagen das
 in einer Zeile. Wo eine frühere Version eine Kalenderdatei, einen Zeitplan oder seinen Zustand auf deinem Rechner
