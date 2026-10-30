@@ -9407,7 +9407,8 @@ def _de_prose_files():
 
 
 _DE_FORMAL = re.compile(r"\b(Sie|Ihnen|Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres)\b")
-_DE_RETIRED = re.compile(r"\b(?:\w*(?<![Bb]e)[Ss]itz(?:e|es)?|\w*[Ss]itzung\w*|Owners?|\w*[Tt]afel\w*|\w*[Ss]tandup\w*|Prüfer\w*|Nachweis\w*|\w*(?<![Bb]irken)[Zz]weig\w*)\b")
+_DE_RETIRED = re.compile(r"\b(?:\w*(?<![Bb]e)[Ss]itz(?:e|es)?|\w*[Ss]itzung\w*|Owners?|\w*[Tt]afel\w*|\w*[Ss]tandup\w*|Prüfer\w*|Nachweis\w*"
+                         r"|\w*(?<![Bb]irken)[Zz]weig\w*|\w*[Vv]ersionskontroll\w*|Stamm(?:e?s)?|Stämmen?|\w*Vorr[aä]t\w*|\w+vorrat\w*|\w*Forge[sn]?|Ablagen?)\b")
 # What is not prose, by kind. Config keys are not read at all: each reader takes only the values of its file's keys.
 _DE_NOT_PROSE = (
     ("code blocks", re.compile(r"(?ms)^[ \t]*(`{3,})[^`\n]*$.*?^[ \t]*\1`*[ \t]*$|<pre\b.*?</pre>")),
@@ -9454,11 +9455,18 @@ _DE_ALLOWED = (
     ("ADOPT.de.md", "Ihr lest diesen Text", "the plural of du, to the agents"),
     ("ADOPT.svn.de.md", "Sie nennt, was er braucht.", "third person: the line"),
     ("ADOPT.svn.de.md", "Ihr Gate prüft eine Revision", "third person: the packages'"),
+    ("examples/de/labels.yaml", "Sie nennt dir die Zeilen, die du schreibst und committest", "third person: the session"),
+    ("examples/de/labels.yaml", "Sie nennt dir die Zeilen, die du schreibst.", "third person: the session"),
     ("launch/interim/how-it-works.de.md", "Sie lädt zu einer Messung ein", "third person: the note"),
     ("overrides/partials/why/de.html", "Sie nennt, was nie passieren darf", "third person: the intent"),
 )
+# Formal address allowed, each by its page and on the whole page. A retired term stays refused there.
+_DE_FORMAL_PAGES = (
+    ("docs/de/impressum.md", "a legal text: it speaks to its reader as Sie"),
+    ("docs/de/datenschutz.md", "a legal text: it speaks to its reader as Sie"),
+)
 # Pending, each by file and exact text: a German text not yet rewritten. The set is empty, and a check below keeps it so; nothing is
-# exempt by its path.
+# exempt by its path but the legal pages' formal address, above.
 _DE_PENDING = ()
 _DE_CONSTANTS = {}
 
@@ -9552,12 +9560,14 @@ def _de_prose(rel, text):
 
 
 def _de_guard(src, pending=None):
-    """What the guard refuses, one line each: a formal form or a retired term left in a source's German prose once its allowed and
-    pending texts are taken out, and an allowed or pending text its source no longer holds. The pending set is the suite's, or the one
-    given."""
+    """What the guard refuses, one line each: a formal form outside the pages allowed formal address, or a retired term on any page, left in
+    a source's German prose once its allowed and pending texts are taken out; an allowed or pending text its source no longer holds; and a
+    page allowed formal address that is not among the sources. The pending set is the suite's, or the one given."""
     bad = []
     pending = _DE_PENDING if pending is None else pending
     named = [(rel_, text_, "allowed") for rel_, text_, _why in _DE_ALLOWED] + [(rel_, text_, "pending") for rel_, text_ in pending]
+    formal_ = {rel_ for rel_, _why in _DE_FORMAL_PAGES}
+    bad += [f"{rel_}: its page, allowed formal address, is not there" for rel_ in sorted(formal_ - set(src))]
     for rel_ in sorted(src):
         prose_ = _de_prose(rel_, src[rel_])
         for nrel_, text_, what_ in named:
@@ -9566,6 +9576,8 @@ def _de_guard(src, pending=None):
                     bad.append(f"{rel_}: its {what_} text is not there: {text_[:60]!r}")
                 prose_ = prose_.replace(text_, " ", 1)
         for rx_, what_ in ((_DE_FORMAL, "a formal form"), (_DE_RETIRED, "a retired term")):
+            if rx_ is _DE_FORMAL and rel_ in formal_:
+                continue
             for m_ in rx_.finditer(prose_):
                 bad.append(f"{rel_}: {what_}, {m_.group(0)!r}: …{prose_[max(0, m_.start() - 40):m_.end() + 30]}…")
     return bad
@@ -9601,17 +9613,61 @@ def _de_inject(src, rel, word):
 _DE_FILES = _de_prose_files()
 _ds_de = _sources(_DE_FILES)
 _dg = _de_guard(_ds_de)
-check(f"the lane's German prose speaks as du: in {len(_DE_FILES)} sources, no formal address and no retired term is left outside "
-      f"{len(_DE_ALLOWED)} allowed texts and {len(_DE_PENDING)} pending ones, each named by its file and exact text, and each still there "
-      f"(saw {_dg[:6]})", not _dg)
+check(f"the lane's German prose speaks as du: in {len(_DE_FILES)} sources, no formal address is left outside {len(_DE_ALLOWED)} allowed "
+      f"texts and {len(_DE_PENDING)} pending ones, each named by its file and exact text, and the {len(_DE_FORMAL_PAGES)} legal pages, each named "
+      f"by its file; no retired term is left outside the allowed and pending texts; and each named text and page is still there (saw {_dg[:6]})",
+      not _dg)
 _de_pending_files = {rel_ for rel_, _t in _DE_PENDING}
 _de_outside = [rel_ for rel_ in _DE_FILES if rel_ not in _de_pending_files]
 check(f"nothing in the German prose is pending: the pending set holds no text, so each of the {len(_DE_FILES)} sources is read whole "
       f"outside it (pending: {[(rel_, text_[:40]) for rel_, text_ in _DE_PENDING][:4]})", not _DE_PENDING and len(_de_outside) == len(_DE_FILES))
-_de_blind = {"a formal form": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
+_de_legal = sorted(rel_ for rel_, _why in _DE_FORMAL_PAGES)
+_de_blind = {"a formal form": [rel_ for rel_ in _de_outside if rel_ not in _de_legal and not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
              "a retired term": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Owner"))]}
-check(f"the guard is not blind outside the pending set: a formal form, and a retired term, put into each of the {len(_de_outside)} German "
-      f"sources outside it turns it red (sources where it stayed green: {_de_blind})", not any(_de_blind.values()) and len(_de_outside) >= 20)
+check(f"the guard is not blind outside the pending set: a formal form put into each of the {len(_de_outside) - len(_de_legal)} German sources "
+      f"outside it but the legal pages, and a retired term put into each of all {len(_de_outside)}, turns it red (sources where it stayed green: "
+      f"{_de_blind})", not any(_de_blind.values()) and len(_de_outside) >= 20 and set(_de_legal) <= set(_de_outside))
+# The legal pages keep Sie by their path alone: their text on another page is refused, and a retired term on them is refused as on any other.
+_de_legal_line = "Wenn Sie uns per E-Mail schreiben, verarbeiten wir Ihre Adresse"
+_de_legal_out = {"a Sie sentence of the privacy notice in the setup page": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", _de_legal_line + ". Das ist alles."),
+                 "the privacy notice's whole text under another page's name": {**_ds_de, "docs/de/kontakt.md": _ds_de["docs/de/datenschutz.md"]},
+                 "the imprint gone from the sources": {rel_: text_ for rel_, text_ in _ds_de.items() if rel_ != "docs/de/impressum.md"}}
+_de_legal_out_green = [name_ for name_, src_ in _de_legal_out.items() if not _de_guard(src_)]
+check(f"the legal pages' formal address is theirs alone: a Sie sentence of the privacy notice put into the setup page, the privacy notice's whole "
+      f"text under another page's name, and the imprint gone from the sources each turn the guard red (stayed green: {_de_legal_out_green})",
+      not _dg and _de_legal == ["docs/de/datenschutz.md", "docs/de/impressum.md"] and _de_legal_line in " ".join(_ds_de["docs/de/datenschutz.md"].split())
+      and not _de_legal_out_green)
+_de_legal_terms = ("Owner", "Sitzung", "Standup", "Tafel", "Prüfer", "Nachweis", "Zweig", "Versionskontrolle", "Stamm", "Vorrat", "Forge", "Ablage")
+_de_legal_elsewhere = {term_: bool(_de_guard(_de_inject(_ds_de, "docs/de/setup.md", term_))) for term_ in _de_legal_terms}
+_de_legal_wrong = [(rel_, term_) for rel_ in _de_legal for term_ in _de_legal_terms
+                   if bool(_de_guard(_de_inject(_ds_de, rel_, term_))) != _de_legal_elsewhere[term_]]
+check(f"a retired term stays refused on the legal pages, as on any other: each of {', '.join(_de_legal_terms)} turns the guard red in the "
+      f"setup page and in each legal page (green in the setup page: {[term_ for term_, red_ in _de_legal_elsewhere.items() if not red_]}; "
+      f"wrong: {_de_legal_wrong})", not _dg and not _de_legal_wrong and all(_de_legal_elsewhere.values()) and len(_de_legal_terms) == 12)
+# Five more retired words: each refused in its forms and compounds, and each where it stood, put back; what only holds their letters stays
+# green, and so does forge as code or as a placeholder.
+_de_five = ("Versionskontrolle", "Versionskontrollsystem", "Stamm", "Stammes", "Vorrat", "Vorräte", "Arbeitsvorrat", "Forge", "Forges",
+            "Git-Forge", "Ablage", "Ablagen", "Git-Ablage")
+_de_five_stay = ("Stammverzeichnis", "stammt", "stammen", "Stammdaten", "Zwischenablage", "Ablagefach")
+_de_five_seen = {term_: bool(_de_guard(_de_inject(_ds_de, "docs/de/setup.md", term_))) for term_ in _de_five + _de_five_stay}
+_de_five_wrong = [term_ for term_, red_ in _de_five_seen.items() if red_ != (term_ in _de_five)]
+check(f"the guard reads five more retired words, inflected or in a compound: each of {', '.join(_de_five)} put into a German page turns it red, "
+      f"and {', '.join(_de_five_stay)} leave it green (wrong: {_de_five_wrong})", not _dg and not _de_five_wrong)
+_de_five_back = {"Versionskontrolle": _with(_ds_de, "examples/de/labels.yaml", "ohne Versionsverwaltung hält", "ohne Versionskontrolle hält"),
+                 "Stamm": _with(_ds_de, "examples/de/labels.yaml", '"{0} auf dem Trunk"', '"{0} auf dem Stamm"'),
+                 "Vorrat": _with(_ds_de, "examples/de/labels.yaml", "section.backlog: Backlog", "section.backlog: Vorrat"),
+                 "Forge": _with(_ds_de, "docs/de/signing.md", "Die Git-Plattform nimmt sie an.", "Die Forge nimmt sie an."),
+                 "Ablage": _with(_ds_de, "examples/de/labels.yaml", "viewer.forge: Plattform", "viewer.forge: Ablage")}
+_de_five_back_green = [word_ for word_, src_ in _de_five_back.items() if not _de_guard(src_)]
+check(f"no retired word comes back where it stood: each of the five put back in one of its old lines, in the labels or on the signing page, "
+      f"turns the guard red (stayed green: {_de_five_back_green})", not _dg and not _de_five_back_green and len(_de_five_back) == 5)
+_de_forge_code = {"inline code": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Setze `Forge = \"github\"` oder `[Forge]`. Das ist alles."),
+                  "a code block": {**_ds_de, "docs/de/setup.md": _ds_de["docs/de/setup.md"] + "\n\n```toml\n[Forge]\nForge = \"github\"\n```\n"},
+                  "a config key": {**_ds_de, "examples/de/shoalmark.toml": _ds_de["examples/de/shoalmark.toml"] + "\nForge = \"github\"\n"},
+                  "a placeholder": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Mit --forge <forge> ist das alles.")}
+_de_forge_code_red = [name_ for name_, src_ in _de_forge_code.items() if _de_guard(src_)]
+check(f"forge as code is not read as prose: Forge in inline code, in a code block and as a config key, and <forge> as a placeholder, each "
+      f"leave the guard green (read as prose: {_de_forge_code_red})", not _dg and not _de_forge_code_red and len(_de_forge_code) == 4)
 # The suite's pending set is empty, so the pending controls give the guard one of their own: a text each of four sources holds now.
 _de_try_pending = (("docs/de/warum-shoalmark.md", "du hast das letzte Wort"), ("overrides/partials/why/de.html", "du hast das letzte Wort"),
                    ("overrides/partials/landing/de.html", "„Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.“"),
