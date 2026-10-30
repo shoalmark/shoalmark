@@ -178,7 +178,8 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
     dem Standard-Branch, nie gegen die eines Branches. Committe ihre erste Fassung darum selbst auf dem
     Standard-Branch, signiert — ein Branch kann keinen Schlüssel beweisen, den der Standard-Branch nicht führt, und bis
     die Datei dort liegt, wird keine Signatur verifiziert. Ein neuer Schlüssel zählt, sobald er dort gemergt ist: `--answer`
-    prüft das, bevor es pusht.
+    prüft den eben gemachten Commit gegen diese Fassung und sagt, wenn die Signatur nicht verifiziert wird, dass du den
+    Commit nicht pushen sollst.
 
 3. **Ihn auf der Forge als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,
    Typ **Signing Key** ([die Schritte bei GitHub](https://docs.github.com/de/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -222,17 +223,23 @@ auf Stufe 0 nach nichts. Die zweite gibt `G` aus, dann die E-Mail, für die der 
 deine `owner`-E-Mail sein —, dann deine Autor-E-Mail. Die dritte nimmt den Test-Commit wieder weg.
 
 **Dann eine Frage beantworten.** Auf dem Board öffnet *annehmen* oder *ablehnen* einen Dialog mit der Frage, ihren
-Möglichkeiten und dem, was sie aufhält; OK gibt dir einen Befehl. Führe ihn in einem Terminal im Repository aus:
+Möglichkeiten und dem, was sie aufhält; OK gibt dir einen Befehl. Führe den Befehl in einem Terminal im Repository aus,
+auf dem Branch, den der Dialog nennt:
 
 ```
-python3 tools/shoalmark/shoalmark.py --answer AP-007 accept
+python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept
 ```
 
-Er legt den Branch `answer/ap-007` an (shoalmark schreibt den Branch, den es anlegt, klein; git behält die Schreibweise,
-die es bekommt), schreibt die drei Zeilen, committet sie mit deinem Schlüssel signiert (Stufe 2 fragt nach deiner
-Passphrase, Stufe 3 nach deiner Berührung) und pusht; jeden Schritt nennt er, bevor er ihn tut. Scheitert etwas, macht er alles rückgängig,
-was er geschrieben hat, und gibt den Befehl aus, mit dem du die Antwort erneut gibst. `git log -1 --format=%G?
-answer/ap-007` gibt `G` aus, und die Frage ist von deiner Liste verschwunden.
+`AP-007-Q1` ist die eigene ID der Frage: die ID ihres Arbeitspakets, dann `Q` und die Nummer der Frage. Der Befehl
+schreibt die drei Zeilen auf dem Branch, auf dem du stehst, und committet sie, mit deinem Schlüssel signiert (Stufe 2
+fragt nach deiner Passphrase, Stufe 3 nach deiner Berührung), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Der
+Befehl meldet jeden Schritt, sobald der Schritt beginnt. Der Befehl legt keinen Branch an und pusht nichts. Scheitert
+etwas vor dem Commit, nimmt der Befehl alles Geschriebene zurück und gibt die Befehlszeile aus, mit der du die Antwort
+erneut gibst; ist der Commit gemacht, aber die Signatur wird nicht verifiziert, meldet der Befehl das und sagt, dass du
+den Commit nicht pushen sollst. `git log -1 --format=%G?` gibt `G` aus, und die Frage ist von deiner Liste
+verschwunden. Das zählt erst, wenn dieser Commit auf dem Standard-Branch liegt: Pushe ihn oder merge den Branch, der
+ihn enthält. Eine Frage, die gestellt wurde, als Fragen noch keine ID hatten, hat keine eigene ID; du beantwortest sie
+mit der ID ihres Arbeitspakets: `--answer AP-007 accept`.
 
 ## Deine Absicht und dein aktueller Weg — nur dein signierter Commit ändert sie
 

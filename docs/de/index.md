@@ -80,7 +80,7 @@ Der Beleg bleibt in deinem Repository, als Markdown und deine eigenen Commits.
 
 - **Ein Stand-up, wann immer es dir passt**, ein Klick kopiert den Stand-up-Prompt; die ersten Zeilen des Boards sind seine
   Tagesordnung.
-- **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt deine Antwort als Commit, mit deinem Schlüssel
+- **Ein Befehl pro Antwort:** `--answer AP-007-Q1 accept`. Der Befehl schreibt deine Antwort als Commit, mit deinem Schlüssel
   signiert, sobald du das Signieren einschaltest.
 - **Der Rest steht auf dem Board:** Deine Agenten sind angehalten, jede Session mit dem zu beenden, was auf dich wartet, und
   das Board stellt es ganz oben hin.

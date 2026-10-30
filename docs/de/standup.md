@@ -12,8 +12,7 @@ Er gibt die Tagesordnung einer Runde aus, nach Art geordnet: zuerst **Entscheidu
 vorläufige Antwort ist eine Antwort), dann was nur **deine Hände** tun können, in der Reihenfolge, die am meisten
 Arbeit freigibt, dann was **Belege klären** könnten, ohne dich, dann **Knöpfe**. Jeder Punkt ist eine Frage, mit der
 Wartezeit und dem, was sie aufhält. Nach den Fragen kommen **deine Handlungen, mit ihrer Zeit** — versäumte und
-überfällige zuerst, dann was fällig wird, dann was noch keinen Termin hat — und zuletzt, was du beantwortet oder getan
-hast und was **unterwegs** zu deinem Merge ist.
+überfällige zuerst, dann was fällig wird, dann was noch keinen Termin hat.
 
 ## Wann
 
@@ -45,10 +44,9 @@ konfiguriertes Programm, und es holt nichts — und es schreibt nichts, weder in
 startet es aus den absoluten Einträgen von PATH außerhalb der genannten Repositories; wo keiner eines enthält, werden die
 Ordner, die es brauchen, mit dem Grund genannt. Es sagt,
 was dadurch ungelesen bleibt: ob ein git-Arbeitsbaum Änderungen hat, was `git status` dort sagt; und was das eigene
-`--standup` eines Repositorys auf diesen Wegen liest — was du beantwortet oder getan hast und auf einem Antwort-Branch
-unterwegs ist (eine Frage, die du beantwortet hast, steht hier bis zu deinem Merge), die Warteschlange der Pull
-Requests und, wo ein Repository `[seats]` hat, wer gefragt hat. Du antwortest in jedem Repository wie bisher, und sein
-eigenes `--standup` dort sagt den Rest.
+`--standup` eines Repositorys auf diesen Wegen liest — die Warteschlange der Pull Requests und, wo ein Repository
+`[seats]` hat, wer gefragt hat. Du antwortest in jedem Repository wie bisher, und sein eigenes `--standup` dort sagt
+den Rest.
 
 Auf dem Board trägt der Kasten mit dem, was auf dich wartet, zwei Knöpfe: **Stand-up-Prompt** vor den Sessions des letzten Tages
 und **Abschluss-Prompt** an seinem Ende. Jeder kopiert einen festen Prompt für die Session, die du nutzt — Claude Code, Codex
@@ -67,7 +65,7 @@ Session endet mit `--owner`: dieselbe Liste, damit sie zu dir kommt, ohne dass d
 Auf dem Board trägt jede Frage **annehmen** und **ablehnen**. Beides öffnet einen Dialog mit der Frage, ihren
 Möglichkeiten (die vom Agenten empfohlene zuerst) und dem, was sie aufhält; beim Annehmen kannst du eine Änderung
 mitgeben, beim Ablehnen sagst du, warum. OK gibt dir einen Befehl — `python3 tools/shoalmark/shoalmark.py --answer
-AP-007 accept` —, der deine Antwort als Commit schreibt, mit deinem Schlüssel signiert, sobald du das Signieren
+AP-007-Q1 accept` —, der deine Antwort als Commit schreibt, mit deinem Schlüssel signiert, sobald du das Signieren
 einschaltest. Die Antwort ist dein eigener Commit: [Deine Antwort ist dein Commit](signing.md).
 
 ## Deine Handlungen, mit ihrer Zeit
@@ -79,23 +77,24 @@ oder **versäumt**, wenn ihr Fenster ohne Ergebnis verstrichen ist. Eine zugesag
 Option, die du gewählt hast —, die Frage, die sie beantwortet, klein darunter. Jede trägt zwei Knöpfe: **erledigt** fragt, wo das
 Ergebnis liegt — der Pfad genügt: der Beleg ergänzt, was das Repository über die Datei weiß, wer sie wann hinzugefügt
 hat und bei einer Prüfung ihr Urteil —, und gibt dir `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`;
-**verschieben** fragt nach der neuen Zeit und gibt dir `--due AP-007 <Zeit>`. Beides wird signiert und gepusht wie
-eine Antwort.
+**verschieben** fragt nach der neuen Zeit und gibt dir `--due AP-007 <time>`. Beides wird signiert wie eine Antwort
+und auf dem Branch committet, auf dem du stehst; gepusht wird nichts.
 
-## Unterwegs — vor deinem Merge
+## Wo deine Antwort landet
 
-Was du beantwortest oder tust, ist ein signierter Commit auf `answer/<id>`, gepusht; der Standard-Branch hat ihn erst nach
-deinem Merge. Bis dahin liest das Board git, und die Seite, auf die du zurückkommst, zeigt es sofort: die Frage verlässt
-*wartet auf dich*, die Handlung verlässt *deine Handlungen*, und beide stehen unter **unterwegs** — deine Zusage oder deine
-Antwort zuerst, dann was es ist: *beantwortet, unterwegs*, *erledigt, unterwegs — <wo das Ergebnis liegt>*,
-*verschoben, unterwegs — fällig <Zeit>*, *zurückgenommen, unterwegs — <warum>* oder *Erledigung zurückgenommen,
-unterwegs*; der Branch, der Commit und seine Zeit, ob er signiert ist, und *dein Merge ist als Nächstes dran* — oder
-*dein Merge wartet: …*, wo die Queue auf den Branch wartet, meist auf den Commit einer Rolle unter deiner Handlung. Eine
-Antwort oder eine erledigte Handlung trägt einen Knopf, **zurücknehmen**, wo annehmen und ablehnen oder erledigt und
-verschieben standen: er fragt, warum, und gibt dir `python3 tools/shoalmark/shoalmark.py --revoke AP-007 "<warum>"` —
-einen neuen signierten Commit darauf, auf demselben Branch, nie ein Überschreiben. Eine Verschiebung trägt keinen; um sie
-noch einmal zu verschieben, führe `--due` auf ihrem Branch aus. Nach deinem Merge liest jede wieder vom
-Standard-Branch; ein anderer Rechner zeigt nach einem Fetch dieselben Zeilen.
+Was du beantwortest oder tust, ist ein Commit von dir, auf dem Branch, auf dem du stehst, mit deinem Schlüssel signiert,
+sobald du das Signieren einschaltest: `--answer`, `--done`, `--due` und `--revoke` legen keinen Branch an und pushen
+nichts. Jeder dieser Befehle nennt danach Branch und Commit und baut das Board neu, und die Seite, auf die du
+zurückkommst, zeigt deine Antwort oder Handlung auf diesem Branch sofort: Die Frage verlässt *wartet auf dich*, und eine
+erledigte Handlung verlässt *deine Handlungen*. Das zählt erst, wenn dieser Commit auf dem Standard-Branch liegt: Pushe
+ihn oder merge den Branch, der ihn enthält. Ein Checkout ohne diesen Commit — der Standard-Branch, bevor der Commit dort
+liegt, oder ein anderer Rechner — zeigt die Frage oder die Handlung weiter als offen.
+
+Um eine Antwort zurückzunehmen, führe `python3 tools/shoalmark/shoalmark.py --revoke AP-007-Q1 "<why>"` aus, mit der ID
+der beantworteten Frage; um eine erledigte Handlung zurückzunehmen, `--revoke AP-007 "<why>"`, mit der ID ihres
+Arbeitspakets. Das Board hat dafür keinen Knopf. Beides ist ein neuer Commit, nie ein Überschreiben: Die zurückgenommene
+Antwort kommt in den Verlauf des Arbeitspakets; bei einer erledigten Handlung kommt die Rücknahme in ihren Beleg unter
+*Acts*, und die Handlung ist wieder offen.
 
 Einladungen und Benachrichtigungen gibt es nicht mehr (R9): `--invite`, `--notify` und `--standup DATEI.ics` sagen das
 in einer Zeile. Wo eine frühere Version eine Kalenderdatei, einen Zeitplan oder seinen Zustand auf deinem Rechner
