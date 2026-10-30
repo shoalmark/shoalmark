@@ -39,7 +39,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 
 **Nicht alles braucht dich.** Eine Rolle, die das Recht zum Schließen hat, schließt Arbeit ab, ohne dich zu fragen. Mit dem Werkzeug ausgeliefert sind drei Rollen mit festen Rechten: planner darf fragen, schließen und sichten, reviewer sichten, builder nichts. Für jede weitere Rolle legst du die Rechte selbst fest. Antworten darf nur, wem du das Recht dazu gibst, und standardmäßig bist das nur du.
 
-**Wie fest „kein Agent antwortet für dich“ gilt, bestimmt deine Signatur.** Eine Signatur beweist den Schlüssel, nicht die Hand: Wer deinen Schlüssel benutzen kann, kann in deinem Namen antworten. Es gibt vier Stufen, von einem Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Berührung braucht. [Deine Antwort ist dein Commit](signing.md) hilft dir bei der Wahl.
+**Wie fest „kein Agent antwortet für dich“ gilt, bestimmt deine Signatur.** Eine Signatur beweist den Schlüssel, nicht die Hand: Wer deinen Schlüssel benutzen kann, kann in deinem Namen antworten. Es gibt vier Stufen, von einem Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht. [Deine Antwort ist dein Commit](signing.md) hilft dir bei der Wahl.
 
 ## Dein Teil
 

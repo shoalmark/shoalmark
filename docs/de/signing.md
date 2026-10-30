@@ -49,7 +49,7 @@ Hardware-Schlüssel sehen gleich aus. Eine kommende Version liest die Schlüssel
 welcher signiert hat:
 
 - *mit einem Software-Schlüssel signiert — alles, was unter dem Konto des Eigners läuft, kann das erzeugen*
-- *mit einem Hardware-Schlüssel signiert — braucht die Berührung des Eigners*
+- *mit einem Hardware-Schlüssel signiert — braucht die Freigabe des Eigners am Gerät*
 
 Auf den Stufen 0 bis 2 signiert ein Software-Schlüssel, und der Beleg kann sie nicht unterscheiden: Stufe 2 schützt
 dich, ohne es zu zeigen. Stufe 3 ist der Schritt, den der Beleg sehen kann. Ein Schlüssel aus der Secure Enclave ist die
@@ -59,13 +59,13 @@ Signierer-Datei angegeben (siehe Stufe 3).
 ## Auf Verlangen signieren — und was das nicht aufhält
 
 Steht `commit.gpgsign` auf `true`, signiert git jeden Commit im Repository, auch die deiner Agenten. Auf Stufe 0 gilt
-jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Berührung hängen.
+jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Freigabe am Gerät hängen.
 Lass es also ungesetzt, und signiere deine Antworten, wenn du sie gibst: Der Befehl `--answer` vom Board
 tut das für dich, von Hand ist es `git commit -S`. Hast du es schon gesetzt, macht `git config --unset commit.gpgsign`
 es rückgängig.
 
 **Ein ungesetztes `commit.gpgsign` hält keinen Agenten fern.** Ein Agent kann `-S` selbst übergeben. Nur Stufe 2
-oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Berührung, die der Agent nicht hat.
+oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Freigabe am Gerät, die der Agent nicht hat.
 Stufe 2 hält den Agenten auf, der aus Versehen signiert; Stufe 3 auch den, der es absichtlich tut.
 
 ## Weg A — ein eigener Signierschlüssel (git)
@@ -89,7 +89,7 @@ Diese Passphrase nie speichern. Den Schlüssel weder dem `ssh-agent` noch dem Sc
 und `ssh-add -l` darf ihn nicht auflisten. Sein eigener Dateiname, wie hier, verhindert, dass ssh ihn beim Pushen
 anbietet. Weiter bei *Danach, für jede Stufe*.
 
-### Stufe 3, der starke Weg — ein Hardware-Schlüssel, der deine Berührung braucht
+### Stufe 3, der starke Weg — Freigabe am Gerät
 
 Zwei Wege führen dorthin: zwei FIDO2-Sicherheitsschlüssel, oder, ohne Kauf, die Secure Enclave eines Macs mit
 Touch ID. Ein Passkey auf deinem Telefon gehört heute nicht dazu: OpenSSH signiert über libfido2 per USB oder NFC und
@@ -232,7 +232,7 @@ python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept
 
 `AP-007-Q1` ist die eigene ID der Frage: die ID ihres Arbeitspakets, dann `Q` und die Nummer der Frage. Der Befehl
 schreibt die drei Zeilen auf deinem aktuellen Branch und committet sie, mit deinem Schlüssel signiert (Stufe 2 fragt
-nach deiner Passphrase, Stufe 3 nach deiner Berührung), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet
+nach deiner Passphrase, Stufe 3 nach deiner Freigabe am Gerät: PIN und Berührung des Sicherheitsschlüssels, oder Touch ID), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet
 jeden Schritt, bevor er ihn ausführt, legt keinen Branch an und pusht nichts. Scheitert etwas vor dem Commit, nimmt der
 Befehl alles Geschriebene zurück und gibt die Befehlszeile aus, mit der du die Antwort erneut gibst; ist der Commit
 gemacht, lässt sich die Signatur aber nicht verifizieren, meldet der Befehl das und sagt, dass du den Commit nicht

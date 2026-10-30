@@ -29,7 +29,7 @@ Commit, signiert mit einem Schlüssel, dem du vertraust, und eine unsignierte le
 `owner`-Zeile als `signed` markiert ist, wie es die [Einrichtungsseite](setup.md) tut. Unter Subversion zählt sie nur als
 Commit, den der Server als deinen authentifiziert hat. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort.
 Wie stark diese Signatur ist, wählst du — [vier Stufen](signing.md), vom Schlüssel, den alles unter deinem Konto
-benutzen kann, bis zu einem, der deine Berührung braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt
+benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt
 hat.
 
 ## Warum nicht mein Ticketsystem?
