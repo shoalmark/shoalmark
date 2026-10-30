@@ -2003,8 +2003,9 @@ def id_moves(before, after, new_file=False):
     """What a change does to a tracker's ask id, read from its text before and after it — the rules the walk judges for every author
     each as (rule, the id it is about, a word): `put` — `next: owner` set, or a new `ask:` where `next: owner` stands, with no
     `ask-id:`; `changed` — the put ask changed under its id (the question, the proposal, the options or the kind — `put_ask_of`; never
-    `ask-since:`); `gone` — an id gone with no record that carries it; `new` — an id that was not there, which the caller holds against
-    every number used. A renumbering — the same put ask under a new number, as the refusal of a number another branch holds asks of a branch — is no id gone."""
+    `ask-since:`); `gone` — an id gone with no record that carries it, its word `renumbered` where the same put ask stands under a new
+    number; `new` — an id that was not there, which the caller holds against every number used. Whether a renumbering is the repair of
+    a number the default branch holds is the caller's to read (`renumber_repairs`): anywhere else the old number keeps its record."""
     b, b_body = parse_frontmatter(before or "")
     a, a_body = parse_frontmatter(after or "")
     b_id, a_id = (b.get("ask-id") or "").strip(), (a.get("ask-id") or "").strip()
@@ -2019,8 +2020,8 @@ def id_moves(before, after, new_file=False):
         if which:
             out.append(("changed", a_id, ", ".join(which)))
     renumbered = bool(a_id) and bool(b_id) and a_id != b_id and put_ask_of(a) == put_ask_of(b)
-    if b_id and b_id != a_id and b_id not in {i for i, _d in record_ids(a_body)} and not renumbered:
-        out.append(("gone", b_id, ""))
+    if b_id and b_id != a_id and b_id not in {i for i, _d in record_ids(a_body)}:
+        out.append(("gone", b_id, "renumbered" if renumbered else ""))
     if a_id and a_id != b_id:
         out.append(("new", a_id, ""))
     return out
@@ -2049,7 +2050,8 @@ def id_walk_problems(trackers):
     """THE ID RULES ON THE CHANGES, judged for every author, the Owner included — a reused number is not a right. On git, each
     change the walk reads (`changes_under_review`), as `rights_problems` reads it: an ordinary commit against its parent, a merge's own
     change against EVERY parent (a move is one it makes against each), the commit being made against HEAD; a new id is held against
-    the numbers used reachable from where the change starts. On Subversion, the uncommitted change: each tracker the working copy has
+    the numbers used reachable from where the change starts. An id renumbered, its put ask unchanged, passes with no record of its own
+    only where the default-branch comparison finds its old number taken (`renumber_repairs`). On Subversion, the uncommitted change: each tracker the working copy has
     modified or added, against its own BASE, a new id held against the log of its path. With no version control there is no change:
     the open ask's id is held against the records the file carries. A tracker a caller holds in memory, with no file, is not read here,
     as the tool's other readers leave it."""
@@ -2086,10 +2088,29 @@ def id_walk_problems(trackers):
                 made = set(id_moves(was or "", now, new_file=was is None))
                 moves = made if moves is None else moves & made
             for move in sorted(moves or ()):
+                if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:{rel}") or "" for b in bases]):
+                    continue                              # the record that holds the old number is the other ask's
                 said = id_refusal(t, where, move, numbers_before(t, now, move, [(b, blobs.get(f"{b}:{rel}") or "") for b in bases]))
                 if said:
                     out.append(said)
     return out
+
+
+def renumber_repairs(t, rel, befores):
+    """The ids among `befores` — the copies a change starts from — that the default-branch comparison finds taken (`proposed_id_findings`):
+    proposed by the branch, and held on the default branch — its open ask with another put ask, or a record — or below its highest
+    number. Renumbering such an id, its put ask unchanged, is the repair that refusal asks for, and moves the id with no record of its
+    own: the number is the other ask's. Read only where a change renumbers — one `git merge-base` and one `cat_blobs` — and empty where
+    this clone holds no default branch, or nothing is taken: there an id renumbered keeps its record, as any id gone does."""
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    held = (git("rev-parse", "--verify", "--quiet", f"{trunk}^{{commit}}").stdout.strip() if trunk else "")
+    base = git("merge-base", "HEAD", trunk).stdout.strip() if held else ""
+    if not base:
+        return set()
+    blobs = cat_blobs([f"{rev}:{rel}" for rev in (base, trunk)])
+    copies = [(t["id"], was, blobs.get(f"{base}:{rel}") or "", blobs.get(f"{trunk}:{rel}") or "") for was in befores]
+    return {aid for _tid, aid, _what, _nxt in proposed_id_findings(copies, trunk)}
 
 
 def numbers_before(t, now, move, befores):
@@ -2307,13 +2328,14 @@ def answer_commits(trackers):
     is the one candidate no other descends from (`git merge-base --independent`, asked only where an id has two). It must hold the
     file's `answer:` line byte for byte, its id, and the put ask the file shows — the parent, the head and the file hold one put ask —
     and `answered-by:` is its author's name. A merge is never a candidate: its resolution can only change the file, which must still
-    match the head."""
+    match the head. Each id's result is kept for the run: `lint` asks for every standing answer at once, and `answer_commit`, asked of
+    one tracker later in the same run, reads what that one log found."""
     asked = {t["ask_id"]: t for t in trackers if t.get("answer") and t.get("ask_id") and t.get("file")}
     if vcs() != "git" or not asked:
         return {}
-    key = tuple(sorted((aid, t.get("answer", ""), t.get("answered_by", "")) for aid, t in asked.items()))
-    if key in _ANSWER_HEADS:
-        return _ANSWER_HEADS[key]
+    key = lambda aid: (aid, asked[aid].get("answer", ""), asked[aid].get("answered_by", ""))
+    if all(key(aid) in _ANSWER_HEADS for aid in asked):
+        return {aid: _ANSWER_HEADS[key(aid)] for aid in asked}
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     log = git_out(*signers_args(), "log", "--grep=^Answers:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}", "HEAD") or ""
     trunk, why = default_trunk(git), []
@@ -2362,7 +2384,7 @@ def answer_commits(trackers):
             out[aid] = (sha, f"`answered-by: {t.get('answered_by')}` but the commit that answers {aid}, {sha[:7]}, is `{name}`'s — an answer is filed from the account that gives it")
         else:
             out[aid] = (sha, "")
-    _ANSWER_HEADS[key] = out
+    _ANSWER_HEADS.update({key(aid): v for aid, v in out.items()})
     return out
 
 
@@ -3143,7 +3165,7 @@ def queue_actions(prs, branches=()):
     nothing but the review folder (`[paths] reviews`, `evidence/reviews/` by default, a glob allowed) and
     `<tracker dir>/sessions.md` — and the verdict commit itself, whose own review file counts wherever it sits under
     `<tracker dir>/evidence/` (`review*.md`), as the parent project's review gate reads it: a head that IS the verdict,
-    `Reviewed:` its parent, is covered (FM-031, 0.18.4)."""
+    `Reviewed:` its parent, is covered."""
     forks = [(p, "wait", "wait: from a fork, read it yourself", "") for p in prs if p.get("isCrossRepository")]
     prs = [p for p in prs if not p.get("isCrossRepository")]
     git = lambda *a, board=None, **k: vcs_process("git", "-c", "core.quotePath=false", *a, cwd=ROOT, capture_output=True, text=True,
@@ -3387,6 +3409,9 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
     seed = dict(zip(("when", "words", "why"), answer_due(promise_of({**t, "answer": answer}), datetime.date.today()))) if move == "owner" and verdict == "accept" else {}
 
     def check_ask():
+        if held and vcs() == "git" and not head_commit():
+            return (f"{held} is answered by a commit whose one parent holds its ask, and this branch has no commit yet — commit "
+                    f"{t['file']} first, then answer it. Nothing was written")
         # the ask is a front-matter LINE, and the answer is written under it: an ask that parsed (indented, or under a key
         # the file spells another way) but is not one raised out of `next(...)` with a traceback instead of a refusal.
         # Asked before anything is written — nothing is touched for an answer that cannot be written
@@ -5221,7 +5246,7 @@ def read_at_html(read, labels):
 
 
 def board_basis():
-    """FM-045 — what the board is built from, one SHA-256 per part, computed one way for the board's run, every run that writes the board, and
+    """What the board is built from, one SHA-256 per part, computed one way for the board's run, every run that writes the board, and
     `--owner` and `--standup`:
     - `trackers`, the tracker folder: each tracker, each triage worksheet and `TRIAGE.md` — the files of it the board reads;
     - `configuration`: `shoalmark.toml`, and the repository's brand files in `<tracker dir>/brand/` as `brand` reads them — the first of logo.svg
@@ -9823,12 +9848,14 @@ def due_cmd(words, trackers):
 
 
 def revoke_cmd(words, trackers):
-    """`--revoke <id> "<why>"` — the Owner takes back what they last did on a tracker, as a new signed commit, never an
-    overwrite. An act done: `done:` leaves the front matter, the revocation is recorded under `## Acts` beside what it revokes,
-    and where their accepted action answer had `--done` hand the move to the seat, `next: owner` is theirs again — the act is
-    owed. Else their answer, taken back as `--answer <id> revoke` takes it: `revoked - <why>`, the answer it replaces into the
-    ship log with its commit. The tracker is read as the branch they stand on holds it. Made as `--answer` makes their answer
-    (`owner_change`); the seats that hold `answer` may run it."""
+    """`--revoke <ask-id|id> "<why>"` — the Owner takes back what they did, as a new signed commit, never an overwrite; the
+    argument names what. An ask's id names their answer to that ask, taken back as `--answer <ask-id> revoke` takes it — the id
+    checked first, as `--answer` checks it, whatever else the tracker carries: `revoked - <why>`, the answer it replaces into the
+    ship log with its commit. A tracker's id names their act done: `done:` leaves the front matter, the revocation is recorded
+    under `## Acts` beside what it revokes, and where their accepted action answer had `--done` hand the move to the seat,
+    `next: owner` is theirs again — the act is owed. With no act done, a tracker's id names their answer to an ask before ask
+    ids. The tracker is read as the branch they stand on holds it. Made as `--answer` makes their answer (`owner_change`); the
+    seats that hold `answer` may run it."""
     refused = cli_git_refusal('revoke')
     if refused is not None:
         return refused
@@ -9842,6 +9869,8 @@ def revoke_cmd(words, trackers):
     if not why:
         print("--revoke: a revocation carries its reason — the record keeps it beside what it revokes", file=sys.stderr)
         return EXIT_LINT
+    if by_id:
+        return answer_cmd([named, "revoke", why], trackers, flag="--revoke", verb="revoking")
     if not t.get("done"):
         if not t.get("answer"):
             print(f"--revoke: {tid} carries neither `done:` nor `answer:` — there is nothing of yours to revoke", file=sys.stderr)
@@ -9939,6 +9968,7 @@ def lint(trackers, committing=False):
     problems += id_walk_problems(trackers)            # a put with no id, a put ask changed under its id, an id gone with no record, a number reused
     problems += proposed_id_problems(trackers)        # an id this branch proposes that the default branch already holds
     problems += answer_change_problems(trackers)      # an answer beside an id, changed by anything but the Owner's ordinary commit that names it
+    answer_commits(trackers)                          # every standing answer beside an id: the answer history read once, for the loop below
     if id_backend_note(trackers):
         print(f"  {id_backend_note(trackers)}", file=sys.stderr)
     by_ask = asks_by_key(trackers)
@@ -10256,9 +10286,10 @@ def cli_parser():
     add("--due", nargs=2, metavar=("ID", "TIME"), help="the Owner's act moves (FM-030): `--due <id> 2026-09-26T07:30:00+02:00` writes the new `due:` and records the "
                                                        "old one under `## Acts`; on an act that was done, a new act. Made as --answer makes their answer. The board's "
                                                        "*reschedule* button copies it")
-    add("--revoke", nargs=2, metavar=("ID", "WHY"), help="the Owner takes back what they last did on a tracker (FM-030): `--revoke <id> \"<why>\"` — an act done: "
-                                                          "`done:` leaves the front matter, the revocation is recorded under `## Acts`, the act is owed again; else their "
-                                                          "answer, as `--answer <id> revoke`. Made as --answer makes their answer. The board's *revoke* button copies it")
+    add("--revoke", nargs=2, metavar=("ID", "WHY"), help="the Owner takes back what they did (FM-030): `--revoke <ask-id> \"<why>\"` — their answer to that ask, as "
+                                                          "`--answer <ask-id> revoke`, its id checked first; `--revoke <id> \"<why>\"` — their act done: `done:` leaves the "
+                                                          "front matter, the revocation is recorded under `## Acts`, the act is owed again; with no act done, their answer to "
+                                                          "an ask before ask ids. Made as --answer makes their answer")
     add("--answered", action="store_true", help="what the Owner answered and no seat has acted on yet — the seat's side of the exchange — each answer with its relation to the proposal: "
                                                "accepted the proposal · chose option N · accepted with a change · rejected · revoked · relation not computable; and what WAS acted on since their last sitting, by commit, with the relation its record carries — "
                                                "for a record written before 0.18.1, the one the commit that wrote its answer gives")

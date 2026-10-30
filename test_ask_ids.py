@@ -598,7 +598,148 @@ def rows_before(area, add):
     add("2 · its record carries no id: `**<date>** · <question>`", f"**{TODAY}** · Ship the old one?\n**answered** — accepted · Owner" in t and "**FM-001-Q" not in t, t[-300:])
 
 
-ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before)
+# --- a renumbering, and what the default branch holds ----------------------------------------------------------------------------
+
+def rows_renumber(area, add):
+    r = put_repo(area, "renumber-alone")
+    r.write("FM-001", r.read("FM-001").replace("ask-id: FM-001-Q1", "ask-id: FM-001-Q2"))
+    r.commit("FM-001: its ask renumbered, where no other ask holds its number")
+    said = r.check()
+    add("C3 · an id renumbered, its put ask unchanged, where no other ask holds the old number: refused, naming `--clear-ask` — the old number keeps its record",
+        refused(said, "removes FM-001-Q1 with no record under `## Asks`", "--clear-ask FM-001-Q1"), seen(said))
+    r = two(area, "renumber-landed")
+    r.switch("A")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q="Ship A?")))
+    r.commit("FM-001: put on A")
+    r.write("FM-001", text("FM-001", asks=record("FM-001-Q1", "Ship A?")))
+    r.commit("FM-001: cleared on A")
+    r.land("A")
+    r.switch("B")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q="Ship B?")))
+    r.commit("FM-001: put on B")
+    r.land("B")
+    r.write("FM-001", text("FM-001", ask(aid="FM-001-Q2", q="Ship B?"), asks=record("FM-001-Q1", "Ship A?")))
+    r.commit("FM-001: the open ask renumbered beside the record that holds its number")
+    said = r.check()
+    add("F3's repair on the default branch: the open ask renumbered, its put ask unchanged, beside the record that holds the old number — accepted, with no record of its own",
+        accepted(said, "removes FM-001-Q1"), seen(said))
+
+
+# --- `--revoke`: the argument names what it takes back -------------------------------------------------------------------------------
+
+def act_repo(area, name):
+    """`put_repo` with an action ask, which the Owner accepted and whose act they did (`--done`), on `ans`."""
+    r = put_repo(area, name, kind="action", proposal="I do it")
+    run(r.root, "--answer", "FM-001-Q1", "accept")
+    run(r.root, "--done", "FM-001", "evidence/result.md")
+    return r
+
+
+def rows_revoke(area, add):
+    r = act_repo(area, "revoke-forms")
+    done = "\ndone: " in r.read("FM-001")
+    said = run(r.root, "--revoke", "FM-001-Q1", "the promise is withdrawn")
+    t = r.read("FM-001")
+    log = [git(r.root, "log", "-1", f"--format={f}").strip() for f in ("%s", "%(trailers:key=Answers,valueonly)", "%G?")]
+    add("3c · `--revoke <ask-id>` on an action whose act is done: the answer to that ask is revoked, one signed commit naming the id — the act done stays",
+        done and said[0] == 0 and 'answer: "revoked - the promise is withdrawn"' in t and "\ndone: " in t
+        and log == ["FM-001-Q1: revoked - the promise is withdrawn", "FM-001-Q1", "G"], seen(said) + " · " + " | ".join(log))
+    said = r.check()
+    add("3c · …and the gate counts the revocation: its commit is found by the id", accepted(said), seen(said))
+    said = run(r.root, "--revoke", "FM-001", "not done after all")
+    t = r.read("FM-001")
+    add("3c · …then `--revoke <tracker id>` on the same tracker: the act done is revoked — `done:` leaves, the revocation is under `## Acts` — and the answer stands as the revocation left it",
+        said[0] == 0 and "\ndone: " not in t and "done revoked — not done after all" in t and 'answer: "revoked - the promise is withdrawn"' in t
+        and git(r.root, "log", "-1", "--format=%s").strip() == "FM-001: done revoked — not done after all", seen(said))
+    r = act_repo(area, "revoke-stale")
+    before = (r.head(), r.read("FM-001"))
+    said = run(r.root, "--revoke", "FM-001-Q2", "not this one")
+    add("3c · `--revoke` with an ask id the tracker does not hold, on an action whose act is done: refused before writing, naming the ask it holds — nothing revoked",
+        said[0] == fm.EXIT_LINT and "FM-001 has no ask FM-001-Q2: it holds FM-001-Q1, open" in said[2] and (r.head(), r.read("FM-001")) == before, seen(said))
+
+
+# --- where the answer's commit is made ------------------------------------------------------------------------------------------------
+
+def rows_unborn(area, add):
+    base = area / "unborn"
+    wc = base / "wc"
+    wc.mkdir(parents=True)
+    key = base / "key-owner"
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key), "-C", "owner"], check=True, capture_output=True)
+    git(wc, "init", "-q", "--initial-branch=main")
+    for k, v in (("user.name", OWNER[0]), ("user.email", OWNER[1]), ("gpg.format", "ssh"), ("user.signingkey", str(key)),
+                 ("gpg.ssh.allowedSignersFile", f"{REL}/allowed_signers"), ("commit.gpgsign", "false")):
+        git(wc, "config", k, v)
+    (wc / "shoalmark.toml").write_text(CONFIG, encoding="utf-8")
+    (wc / REL).mkdir(parents=True)
+    (wc / REL / "allowed_signers").write_text(f"{OWNER[1]} " + key.with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
+    write(wc, "FM-001", text("FM-001", ask(aid="FM-001-Q1")))
+    state = lambda: (git(wc, "rev-parse", "--verify", "-q", "HEAD", check=False).strip(), git(wc, "ls-files", "--stage"), (wc / REL / "FM-001-x.md").read_bytes())
+    before = state()
+    said = run(wc, "--answer", "FM-001-Q1", "accept")
+    add("3c · `--answer <ask-id>` on a branch with no commit yet: refused before writing — HEAD unborn, the index and the tracker's bytes as they were",
+        said[0] == fm.EXIT_LINT and "this branch has no commit yet" in said[2] and state() == before and before[0] == "", seen(said))
+    r = put_repo(area, "detached")
+    git(r.root, "switch", "-q", "--detach")
+    said = run(r.root, "--answer", "FM-001-Q1", "accept")
+    add("3c · …on a detached HEAD the answer is made: one commit on it, still detached, the gate counting it",
+        said[0] == 0 and "committed on a detached HEAD as " in said[1] and git(r.root, "branch", "--show-current").strip() == "" and accepted(r.check()), seen(said))
+
+
+# --- the answer history, read once for every standing answer --------------------------------------------------------------------------
+
+def counted(fn):
+    """`fn()`, and how many `git log --grep=^Answers:` it started — every start of the module's process boundary watched."""
+    real, seen_ = fm.vcs_process, []
+
+    def watching(program, *a, **k):
+        seen_.append((program, *a))
+        return real(program, *a, **k)
+    fm.vcs_process = watching
+    try:
+        out = fn()
+    finally:
+        fm.vcs_process = real
+    return out, sum(1 for argv in seen_ if "--grep=^Answers:" in argv)
+
+
+def heads_of(r):
+    """`answer_commits` over the trackers of `r` as they stand: {ask id: (head, why)}."""
+    fm.configure(r.root)
+    try:
+        with contextlib.redirect_stderr(io.StringIO()):
+            return fm.answer_commits(fm.load_trackers())
+    finally:
+        fm.configure(HERE)
+
+
+def rows_one_log(area, add):
+    r = Repo(area / "one-log", {tid: text(tid) for tid in ("FM-001", "FM-002", "FM-003")})
+    for tid in ("FM-001", "FM-002", "FM-003"):
+        r.write(tid, text(tid, ask(aid=f"{tid}-Q1", q=f"Ship {tid}?")))
+    r.commit("three asks, put")
+    git(r.root, "push", "-q", "origin", "main")
+    r.switch("-c", "ans")
+    shas = {}
+    for tid in ("FM-001", "FM-002"):
+        run(r.root, "--answer", f"{tid}-Q1", "accept")
+        shas[f"{tid}-Q1"] = r.head()
+    said, logs = counted(r.check)
+    heads = heads_of(r)
+    add("3b · two standing answers, each beside its id: one `--check` reads the answer history once — one `git log --grep=^Answers:` — and finds each head, with no refusal",
+        accepted(said) and logs == 1 and heads == {aid: (sha, "") for aid, sha in shas.items()}, seen(said) + f" · {logs} log(s) · {heads}")
+    r.write("FM-003", answered(r.read("FM-003"), by=SEAT[0]))
+    r.commit("FM-003-Q1: accepted", who=SEAT, trailers=("Answers: FM-003-Q1",))
+    said, logs = counted(r.check)
+    heads = heads_of(r)
+    add("3b · …and with a third that does not count, a seat's unsigned answer: still one read; the third refused — no commit answers it — and the two others found",
+        refused(said, "FM-003: no commit answers FM-003-Q1") and "FM-001: no commit" not in said[2] and "FM-002: no commit" not in said[2] and logs == 1
+        and {aid: h for aid, h in heads.items() if aid != "FM-003-Q1"} == {aid: (sha, "") for aid, sha in shas.items()} and heads["FM-003-Q1"][0] == "",
+        seen(said) + f" · {logs} log(s)")
+
+
+ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before, rows_renumber, rows_revoke,
+        rows_unborn, rows_one_log)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
@@ -626,6 +767,12 @@ MUTANTS = (
     ("the walk's id rules read a tracker with no file", "id_walk_problems", 'for t in trackers if t.get("file")}', "for t in trackers}", (rows_minting,)),
     ("the answer's change rule reads a tracker with no file", "answer_change_problems", 'for t in trackers if t.get("file")}', "for t in trackers}",
      (rows_minting,)),
+    ("a renumbering passes with no record wherever it stands", "id_walk_problems",
+     'if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:{rel}") or "" for b in bases]):',
+     'if move[0] == "gone" and move[2] == "renumbered":', (rows_renumber,)),
+    ("`--revoke` chooses by `done:` alone", "revoke_cmd", "    if by_id:\n", "    if False:\n", (rows_revoke,)),
+    ("an answer with an id made on an unborn branch", "answer_cmd", 'if held and vcs() == "git" and not head_commit():', "if False:", (rows_unborn,)),
+    ("the gate reads each answer's history alone", "lint", "    answer_commits(trackers)  ", "    None  ", (rows_one_log,)),
 )
 
 

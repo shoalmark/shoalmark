@@ -142,10 +142,10 @@ def state(root):
 
 
 def table(fm, rows=((True, True), (True, False), (False, True), (False, False))):
-    """FM-054's table: for each (default branch signed, checkout signed), every surface — the page's state and its second
+    """The signing table: for each (default branch signed, checkout signed), every surface — the page's state and its second
     screen's lines, `--answer`'s step and last line, its commit's signature, its one line where the two differ — against
-    the default branch's reading alone. Where the checkout asks for a signature its default branch does not (RV-3309),
-    `--answer` is refused before anything changes: HEAD, the trackers, the branches and the remote are as they were. Where it
+    the default branch's reading alone. Where the checkout asks for a signature its default branch does not, `--answer` is
+    refused before anything changes: HEAD, the trackers, the branches and the remote are as they were. Where it
     reports an answer given, `--check` on the branch it committed on finds no signing or rights refusal. Returns every mismatch,
     as a line; [] where the table holds."""
     german = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
