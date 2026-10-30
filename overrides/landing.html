@@ -14,7 +14,6 @@
 {%- set w = L.w -%}
 {%- set urls = L.urls -%}
 {%- set probe = config.extra and config.extra.probe -%}
-{%- set taped = config.extra and config.extra.taped -%}
 {%- set rdate = F.release.date_de if de else F.release.date_en -%}
 {%- set board_words = {"files": [w.pd_1_b, w.pd_1], "commits": [w.pd_3_b, w.pd_3], "before": [w.pd_2_b, w.pd_2]} -%}{%- set ranks = [w.rk_1, w.rk_2, w.rk_3] -%}
 {%- set board = F.scores | selectattr("id", "in", board_words) | list -%}{#- the high scores' rows as the data ranks them, those the page has words for -#}
@@ -453,39 +452,14 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
   *,*::before,*::after{animation:none!important;transition:none!important}
   .wreck.open .f2{display:none}
 }
-/* the taped coin slot: the primary button shown, aria-disabled, taped over until the release that opens it */
-.btn.taped{position:relative;padding-bottom:26px;background:var(--closed);color:var(--landink);cursor:default}
-.btn.taped:hover,.btn.taped:active{transform:none;box-shadow:4px 4px 0 var(--band)}
-.btn.taped .tape{position:absolute;left:-7px;right:-7px;bottom:5px;padding:3px 0 2px;font:700 10px/1.2 var(--pix);letter-spacing:.12em;text-align:center;text-transform:uppercase;white-space:nowrap;color:var(--landink);background:var(--land);transform:rotate(-2deg);box-shadow:0 2px 0 rgba(5,11,18,.45);clip-path:polygon(0 0,100% 0,98.6% 25%,100% 50%,98.6% 75%,100% 100%,0 100%,1.4% 75%,0 50%,1.4% 25%)}
-.taped-why{margin:14px 0 0;max-width:54ch;font-size:13px;line-height:1.55;color:var(--mute)}
-.taped-why a{color:var(--blue)}
 .founder{margin:14px 0 0;max-width:54ch;font-size:13px;line-height:1.55;color:var(--dim)}.founder a{white-space:nowrap}
-@media (max-width:700px){.btn.taped{padding-bottom:30px}.btn.taped .tape{bottom:6px;font-size:11px}}
-/* beside the taller taped button, the second button keeps its place */
-@media (min-width:701px){.cta.is-taped>.btn.alt{margin-bottom:14px}}
-/* where the title stands in the chart, the reason line goes under the chart: same place in the markup and reading order */
-@media (min-width:1280px){
-  .hero.is-taped{padding-bottom:108px}
-  .hero.is-taped .title .taped-why{position:absolute;left:26px;top:calc(var(--k) * 196px + 16px);width:calc(var(--k) * 300px);max-width:80ch;margin:0}
-}
-/* the coin door, taped: a dark door frame, the coin slit in a light bezel where the copy icon stood, the label in the
-   unlit window, and a strip of painter's tape across the slit, in a colour the page uses nowhere else */
-.btn.taped{padding-left:50px;border:2px solid var(--contour);background:linear-gradient(90deg,#0b1520 0 36px,var(--closed) 36px);
-  box-shadow:inset 0 0 0 1px var(--abyss),4px 4px 0 var(--band)}
-.btn.taped .ic{display:none}
-.btn.taped::before{content:"";position:absolute;left:11px;top:7px;bottom:7px;width:14px;background:#010407;
-  box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px #4b5e6e,inset 6px 0 0 4px #000}
-.btn.taped .tape{color:#fff;background:#1f6fbf repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px);
-  box-shadow:0 2px 0 rgba(5,11,18,.55)}
-@media (min-width:701px){.cta.is-taped>.btn.alt{margin-bottom:18px}}
-@media (max-width:700px){.btn.taped{padding-left:18px}.btn.taped::before{top:9px;bottom:9px}}
 /* an open wreck on hold: drawn hollow (#wo), still and without the open wreck's glow, in the chart's magenta */
 .wreck.open.held{filter:none}
 .wreck.open.held .f1{animation:none}
 .wreck.open.held .f2{display:none}
 .inc-head svg.held{filter:none}
 .key .km{display:grid;gap:5px;justify-items:start}
-/* the probe state: the coin door, lit; the tape-off ceremony; the golden coin */
+/* the probe state: the coin door, lit; the golden coin */
 .btn.door{position:relative;isolation:isolate;padding-left:50px;border:2px solid var(--contour);
   background:linear-gradient(90deg,#0b1520 0 36px,var(--watt) 36px);box-shadow:inset 0 0 0 1px var(--abyss),4px 4px 0 var(--band)}
 .btn.door{flex-direction:column;gap:4px;padding-bottom:10px}
@@ -493,31 +467,6 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 .btn.door:hover{transform:none}
 .btn.door::before{content:"";position:absolute;left:11px;top:7px;bottom:7px;width:14px;background:#010407;
   box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px #4b5e6e,inset 6px 0 0 4px #000}
-.btn.door::after{content:"";position:absolute;left:36px;top:0;right:0;bottom:0;z-index:-1;background:var(--closed);
-  animation:tape-unlit .6s steps(1) 2.2s both}
-/* registered, --p animates as a number; where @property is not known (before Safari 16.4 and Firefox 128) the peel jumps, and the door still ends lit */
-@property --p{syntax:"<number>";inherits:true;initial-value:0}
-.btn.door .tapebox{position:absolute;left:-7px;right:-7px;bottom:5px;height:17px;pointer-events:none;z-index:2;transform:rotate(-2deg);
-  animation:tape-pick .3s steps(3) .6s both,tape-pull 1s steps(12) .9s forwards,tape-off .3s steps(2) 1.9s forwards}
-.btn.door .tape{position:absolute;inset:0;padding:3px 0 2px;font:700 10px/1.2 var(--pix);letter-spacing:.12em;text-align:center;
-  text-transform:uppercase;white-space:nowrap;color:#fff;
-  background:#1f6fbf repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px);box-shadow:0 2px 0 rgba(5,11,18,.55);
-  clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)}
-.btn.door .flap{position:absolute;top:0;height:100%;left:calc((1 - var(--p)) * 100%);width:calc(var(--p) * 100%);transform-origin:0 50%;
-  transform:rotate(calc(-10deg - var(--p) * 14deg));
-  background:#5f9ad3 repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 1px,transparent 1px 3px);
-  box-shadow:inset 2px 0 0 #a8cbee,0 3px 0 rgba(5,11,18,.45)}
-.hero{overflow-x:clip}
-@keyframes tape-pick{from{--p:0}to{--p:.06}}
-@keyframes tape-pull{from{--p:.06}to{--p:1}}
-@keyframes tape-off{0%{transform:rotate(-2deg)}50%{transform:rotate(-2deg) translate(18px,-16px)}99%{transform:rotate(-2deg) translate(36px,-32px);opacity:1}100%{transform:rotate(-2deg) translate(36px,-32px);opacity:0}}
-@keyframes tape-unlit{0%{opacity:1}17%{opacity:0}34%{opacity:1}50%{opacity:0}67%{opacity:1}84%,100%{opacity:0}}
-.is-door .cue{display:grid;justify-items:center}.is-door .cue .was,.is-door .cue .now{grid-area:1/1}
-/* steps(1) flips only at an animation's end, so each cue turns with an animation of 1 ms that starts at 2.8 s */
-.cue .was{animation:tape-gone 1ms 2.8s both}
-.cue .now{visibility:hidden;animation:tape-show 1ms 2.8s both,blink 1s steps(1) 2.8s 4}
-@keyframes tape-gone{to{visibility:hidden}}
-@keyframes tape-show{to{visibility:visible}}
 @media (min-width:701px){.cta.is-door>.btn.alt{margin-bottom:18px}}
 @media (max-width:700px){.btn.door{padding-left:18px}.btn.door::before{top:9px;bottom:9px}}
 .btn.door .gcoin{position:absolute;left:11px;top:10px;width:14px;height:14px;display:none;pointer-events:none;z-index:1;transform-origin:50% 50%}
@@ -528,8 +477,8 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 @keyframes golden-coin-near{from{transform:translate(-12px,-8px)}to{transform:none}}
 @keyframes golden-coin-in{0%{transform:none}30%{transform:scaleX(.55) translateY(3px)}60%{transform:scaleX(.2) translateY(8px)}100%{transform:scaleX(.2) translateY(16px);opacity:0}}
 @keyframes golden-coin-slit{0%,100%{box-shadow:inset 0 0 0 2px #b4c3d1,inset 0 0 0 4px var(--gold),inset 6px 0 0 4px #000}}
-@media (prefers-reduced-motion:reduce){.btn.door .tapebox,.btn.door .tape,.btn.door .flap,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible}}
-@media print{.btn.door .tapebox,.btn.door .tape,.btn.door .flap,.btn.door::after,.btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible;animation:none}}
+@media (prefers-reduced-motion:reduce){.btn.door .gcoin{display:none!important}}
+@media print{.btn.door .gcoin{display:none!important}.cue-t{animation:none}}
 </style>
 </head>
 <body>
@@ -561,7 +510,7 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
 </header>
 
 <main id="top">
-<section class="hero{% if taped %} is-taped{% endif %}" aria-label="{{ w.hero_aria }}">
+<section class="hero" aria-label="{{ w.hero_aria }}">
   <div class="stage" id="stage">
     <canvas id="chart" width="320" height="205" role="img" aria-label="{{ w.chart_aria }}"></canvas>
     <canvas id="fleet" width="320" height="205" aria-hidden="true"></canvas>
@@ -576,21 +525,15 @@ dialog.probe::backdrop{background:rgba(5,11,18,.86)}
     <p class="claim">{{ w.claim }}</p>
     <h1>{{ w.h1 }}</h1>{# FM-006 v0.19.0 first screen: A1, the H1 #}
     <p class="lede">{{ w.lede }}</p>{# FM-006 v0.19.0 first screen: A1, the job line — done set as the agents' card sets it #}
-    <div class="cta{% if taped %} is-taped{% endif %}{% if probe %} is-door{% endif %}">
+    <div class="cta{% if probe %} is-door{% endif %}">
       {%- if probe %}
-      <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span><span class="cue-t now">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>
-      <a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">{{ w.btn_tape }}</span><span class="flap"></span></span></a></div>{# the probe state: the lit coin door copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
-      {%- elif taped %}
-      <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span></span>
-      <button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></button></div>{# the taped state: the button the probe will open, shown and taped over — no link, no handler, no dialog; the line under the actions says why #}
+      <div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>
+      <a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5ZM0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a></div>{# the probe state: the lit coin door copies the prompt and opens the dialog; with no script the link reads the same text at its short address #}
       {%- else %}
       <a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>{# B1: the interim state — today's action, to the note in the page's language #}
       {%- endif %}
       <a class="btn alt" href="{{ urls.how }}">{{ w.btn_how }}</a>{# B1: the secondary action, always — the new page that explains shoalmark to a person #}
     </div>
-    {%- if taped %}
-    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>
-    {%- endif %}
     <p class="founder">{{ w.founder }}</p>
   </div>
 </section>

@@ -6103,8 +6103,7 @@ def _landing_problems(src):
         bad.append("a language's lang, title or description is not its own")
     if 'import "partials/landing/" ~ ("de" if de else "en") ~ ".html" as L' not in code or 'import "partials/landing/facts.html" as F' not in code:
         bad.append("the template does not choose its words by the page's path, or does not read facts.html")
-    untaped = {lang: {k: v for k, v in d.items() if k not in ("cue_taped", "taped_why")} for lang, d in words.items()}   # the taped state names the release it ends at
-    if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(untaped, ensure_ascii=False)):
+    if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(words, ensure_ascii=False)):
         bad.append("a release is typed where the build's figures give it")
     if code.count('<b id="hud-w">{{ F.counts.wrecks }}</b>') != 1 or code.count('<b id="hud-o">{{ F.counts.open }}</b>') != 1 or re.search(r'id="hud-[wo]">\d', code):
         bad.append("the top bar's wrecks and open counts are not facts.html's `counts`, or a count is typed in the HTML")
@@ -6288,14 +6287,13 @@ _FOUNDER_LEDE = {"en": "For one person in charge and their agent fleet. See wher
                  "de": "Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit steht,"}
 _FOUNDER_TWIN = {"docs/index.md": ('--8<-- "start.en.md"\n\nI built this after my agents turned me into their rubber stamp. [Why shoalmark →](why-shoalmark.md)\n', "en"),
                  "docs/de/index.md": ('--8<-- "start.de.md"\n\nIch habe das gebaut, nachdem meine Agenten mich zu ihrem Abnicker gemacht hatten. [Warum shoalmark →](warum-shoalmark.md)\n', "de")}
-_FOUNDER_AT = ('{{ w.btn_how }}</a>\n    </div>\n    {%- if taped %}\n    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    {%- endif %}\n'
-               '    <p class="founder">{{ w.founder }}</p>\n  </div>\n</section>')
+_FOUNDER_AT = '{{ w.btn_how }}</a>\n    </div>\n    <p class="founder">{{ w.founder }}</p>\n  </div>\n</section>'
 
 
 def _founder_problems(src):
     """What is wrong with the start page's first-person line, one line each: each words file holds it as a key of its own, the lede opens with whom the tool is
-    for and holds no part of the line, the template draws it once, under the two buttons and the taped state's reason line, as the hero's last line, with its
-    link kept on one line, and each Markdown twin holds it right after the page's action."""
+    for and holds no part of the line, the template draws it once, under the two buttons, as the hero's last line, with its link kept on one line, and each
+    Markdown twin holds it right after the page's action."""
     words, bad = _landing_words(src)
     code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
     for lang in ("en", "de"):
@@ -6305,7 +6303,7 @@ def _founder_problems(src):
         if not lede.startswith(_FOUNDER_LEDE[lang]) or re.search(r"<br|<a\b", lede) or _FOUNDER[lang].split(" <a ")[0] in lede:
             bad.append(f"{lang}.html's lede does not open with whom it is for, or still holds the first-person line")
     if code.count(_FOUNDER_AT) != 1 or code.count("{{ w.founder }}") != 1:
-        bad.append("the template does not draw the first-person line once, under the two buttons and the reason line, as the hero's last line")
+        bad.append("the template does not draw the first-person line once, under the two buttons, as the hero's last line")
     if ".founder a{white-space:nowrap}" not in code:
         bad.append("the first-person line's link may break across two lines")
     for rel, (line, lang) in _FOUNDER_TWIN.items():
@@ -6383,8 +6381,7 @@ check(f"FM-006 · B1 · the docs' stand-up check is not blind: each of a word of
 # The switch `probe` in zensical.toml's [project.extra] and the folder "How it works" takes its words from (the snippets' base path) are two places for one
 # fact; the pages name the button as the landing labels it; and no page says that shoalmark scans.
 _LAUNCH_FILES = (*_LANDING_FILES, "docs/how-it-works.md", "docs/de/how-it-works.md",
-                 *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")),
-                 "launch/taped/how-it-works.en.md", "launch/taped/how-it-works.de.md")
+                 *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")))
 _SCAN_FREE = ("It does not scan your code for security problems or data leaks.", "Es prüft deinen Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.")
 
 
@@ -6393,18 +6390,20 @@ def _launch_problems(src):
     words from one include, names the button as the landing labels it, and says nothing of scanning that the Owner did not rule."""
     words, bad = _landing_words(src)
     toml = src["zensical.toml"]
-    switch = re.search(r"(?ms)^\[project\.extra\]\n(?:#[^\n]*\n)*probe = (true|false)\n(?:taped = (true|false)\n)?", toml)
+    switch = re.search(r"(?ms)^\[project\.extra\]\n(?:#[^\n]*\n)*probe = (true|false)\n", toml)
     folder = re.search(r"(?m)^pymdownx\.snippets\.base_path = \[(.*)\]$", toml)
-    state = {("true", None): "probe", ("true", "false"): "probe", ("false", None): "interim", ("false", "false"): "interim", ("false", "true"): "taped"}.get(switch.groups()) if switch else None
-    if state is None or not folder or re.findall(r'"launch/(\w+)"', folder.group(1)) != {"probe": ["probe"], "interim": ["interim"], "taped": ["taped", "interim"]}[state]:
-        bad.append("zensical.toml: the probe switch, the tape and the launch folders in the snippets' base path disagree, or one is missing (the tape goes with the switch off, its folder before the interim one)")
+    state = {"true": "probe", "false": "interim"}[switch.group(1)] if switch else None
+    if state is None or not folder or re.findall(r'"launch/(\w+)"', folder.group(1)) != [state]:
+        bad.append("zensical.toml: the probe switch and the launch folder in the snippets' base path disagree, or one is missing")
+    if re.search(r"(?m)^\s*taped\s*=", toml):
+        bad.append("zensical.toml still sets `taped`, which nothing reads: the landing has no tape, so the line goes")
     if '= "how-it-works.md" }' not in toml or '= "de/how-it-works.md" }' not in toml:
         bad.append("zensical.toml: How it works is not in the navigation in both languages")
     for lang, page in (("en", "docs/how-it-works.md"), ("de", "docs/de/how-it-works.md")):
         if src[page].count(f'--8<-- "how-it-works.{lang}.md"') != 1 or "<!-- state" in src[page]:
             bad.append(f"how it works ({lang}) does not take its launch state's words from one include")
         quote = '"%s"' if lang == "en" else "„%s“"
-        for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe"), ("taped", "btn_probe")):
+        for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe")):
             if quote % words[lang].get(key, "?") not in src[f"launch/{launch}/how-it-works.{lang}.md"]:
                 bad.append(f"how it works ({lang}), {launch}: it does not name the button as the landing labels it ({words[lang].get(key)})")
     # the start pages' Markdown twins lead with the page's own action in each state: the note, or the prompt's short address under the button's own label
@@ -6428,14 +6427,16 @@ def _launch_problems(src):
 _ls = _sources(_LAUNCH_FILES)
 _lp = _launch_problems(_ls)
 _on = "\nprobe = true\n" in _ls["zensical.toml"]
-check(f"FM-006 · B1 · the launch state is one fact in two places that agree ({'the probe switch, on, the tape, off, and the probe folder' if _on else 'the probe switch, off, the tape, on, and the taped and interim folders'} "
-      "of the snippets' base path), How it works stands in the navigation "
-      "and takes its words from those folders in English and German, names the button as the landing labels it in each state, and no page says that shoalmark scans for security problems "
+check(f"FM-006 · B1 · the launch state is one fact in two places that agree ({'the probe switch, on, and the probe folder' if _on else 'the probe switch, off, and the interim folder'} "
+      "of the snippets' base path, with no `taped` line), How it works stands in the navigation "
+      "and takes its words from that folder in English and German, names the button as the landing labels it in each state, and no page says that shoalmark scans for security problems "
       f"or data leaks (problems found: {_lp})", _lp == [])
-_ctl = {**({"the switch off, its folder on": _with(_ls, "zensical.toml", "\nprobe = true\n", "\nprobe = false\n"),
-           "the tape on beside the switch": _with(_ls, "zensical.toml", "\ntaped = false\n", "\ntaped = true\n")} if _on else
-           {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n"),
-            "the tape on, its folder left out": _with(_ls, "zensical.toml", '"launch/taped", ', "")}),
+_lstate = "probe" if _on else "interim"
+_lswitch = "\nprobe = true\n" if _on else "\nprobe = false\n"
+_ctl = {**({"the switch off, its folder on": _with(_ls, "zensical.toml", "\nprobe = true\n", "\nprobe = false\n")} if _on else
+           {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n")}),
+        "the tape's line back": _with(_ls, "zensical.toml", _lswitch, _lswitch + "taped = false\n"),
+        "the taped folder back in the base path": _with(_ls, "zensical.toml", f'"launch/{_lstate}"]', f'"launch/taped", "launch/{_lstate}"]'),
         "a button named differently in How it works": _with(_ls, "launch/probe/how-it-works.en.md", '"Copy the prompt"', '"Run probe prompt"'),
         "a scan claimed": _with(_ls, "docs/how-it-works.md", "It does not scan your code for security problems or data leaks.", "It scans your code for security problems."),
         "a state fence left in the page": _with(_ls, "docs/de/how-it-works.md", '--8<-- "how-it-works.de.md"', "<!-- state: interim -->"),
@@ -6443,52 +6444,98 @@ _ctl = {**({"the switch off, its folder on": _with(_ls, "zensical.toml", "\nprob
         "a start twin leading with the other state's action": _with(_ls, "launch/probe/start.de.md", "de/probe.txt)", "ADOPT.de.md)"),
         "a start page's action typed in the page": _with(_ls, "docs/index.md", '--8<-- "start.en.md"', "**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**")}
 _ctl_saw = {name: len(_launch_problems(src)) for name, src in _ctl.items()}
-check(f"FM-006 · B1 · the launch check is not blind: each of {'the switch off with its folder on, the tape on beside the switch' if _on else 'the switch on with its folder off, the tape on with its folder left out'}, "
-      "a button named differently in How it works, a scan claimed, "
+check(f"FM-006 · B1 · the launch check is not blind: each of {'the switch off with its folder on' if _on else 'the switch on with its folder off'}, the tape's line back, the taped folder "
+      "back in the base path, a button named differently in How it works, a scan claimed, "
       f"a state fence left in the page, the English page out of the navigation, a start twin leading with the other state's action and a start page's action typed in the page leaves a problem "
-      f"(problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 8)
+      f"(problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 9)
 
 
-_TAPED_BUTTON = '<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">'
+# What each launch state draws. With the probe on: one cue line, the live one, over the coin door, which is the primary link with its label, its copy icon
+# and its coin after them, the coin hidden from screen readers. With the probe off: the note's link alone. Neither state, nor the styles, the words or the
+# script, holds anything of the tape: the tape over the door, its box and flap, the unlit window, the taped cue, the taped button and the line that says why;
+# nor do the pitch page's styles. The dialog and its script are built under the probe switch alone.
+_STATE_CUE = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
+_STATE_DOOR = ('<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false">',
+               '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a></div>')
+_STATE_NOTE = '<a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>'
+_TAPE_CSS = re.compile(r"@keyframes\s*tape-[\w-]*|animation:[^;{}]*\btape-[\w-]*|@property\s*--p\b|\.btn\.door::after|\.(?:tape|tapebox|flap|taped|taped-why|is-taped)\b|\.btn\.taped\b"
+                       r"|\.cue\s+\.(?:was|now)\b")
+_TAPE_WORDS = ("cue_taped", "taped_why", "btn_tape")
 
 
-def _taped_problems(src):
-    """What is wrong with the taped state's markup, one line each; none where it is as the Designer drew it."""
-    bad = []
+def _state_problems(src):
+    """What is wrong with what each launch state draws, one line each; none where the probe state draws the live cue over the lit coin door and its coin,
+    the interim state the note's link alone, and nothing of the tape is drawn, styled, worded or scripted on the landing, nor styled on the pitch page."""
+    words, bad = _landing_words(src)
     code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
-    part = code.split("{%- elif taped %}")[1].split("{%- else %}")[0] if code.count("{%- elif taped %}") == 1 else ""
-    button = re.search(r"<button\b[^>]*>.*?</button>", part, re.S)
-    if not button or not button.group(0).startswith(_TAPED_BUTTON) or re.search(r"\s(href|id|on\w+)=", button.group(0).split(">")[0]):
-        bad.append("the taped button is not a button, aria-disabled and described by its reason line, with no link, id or handler")
-    if not button or '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span>' not in button.group(0) or "{{ w.btn_probe }}" not in button.group(0):
-        bad.append("the taped button does not keep its label with the tape across it, hidden from screen readers")
-    if '{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}' not in part:
-        bad.append("the taped cue is not its words with the coin after the first dash")
-    if '{%- if taped %}\n    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    {%- endif %}' not in code:
-        bad.append("the reason line is not under the actions, in the taped state alone, with the id the button names")
+    css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S)
+    cta = code[code.find('<div class="cta'):code.find('<a class="btn alt"')]
+    parts = re.fullmatch(r'<div class="cta\{% if probe %\} is-door\{% endif %\}">\s*\{%- if probe %\}(.*?)\{%- else %\}(.*?)\{%- endif %\}\s*', cta, re.S)
+    if not parts:
+        bad.append("the actions are not one probe branch and one interim branch, with the door's class in the probe state alone")
+    else:
+        door = re.escape(_STATE_CUE) + r"\s*" + re.escape(_STATE_DOOR[0]) + r"(?:(?!</svg>).)*" + re.escape(_STATE_DOOR[1])
+        if not re.fullmatch(door, parts.group(1).strip(), re.S):
+            bad.append("the probe state does not draw the live cue alone over the coin door: its label, its copy icon and its coin after them, hidden from screen readers")
+        if parts.group(2).strip() != _STATE_NOTE:
+            bad.append("the interim state does not draw the note's link alone")
+    drawn = re.search(r"\btaped\b|\bw\.(?:" + "|".join(_TAPE_WORDS) + r")\b|class=\"[^\"]*\b(?:tape|tapebox|flap|taped-why|is-taped|was|now)\b", code)
+    if drawn:
+        bad.append(f"the template draws the tape, the taped state or the taped cue again: {drawn.group(0)!r}")
+    styled = _TAPE_CSS.search(css)
+    if styled:
+        bad.append(f"the landing's styles hold the tape-off ceremony or the taped state again: {styled.group(0)!r}")
+    why = re.sub(r"\{#.*?#\}", "", src["overrides/why.html"], flags=re.S)
+    styled = _TAPE_CSS.search(re.sub(r"/\*.*?\*/", "", why[why.find("<style>"):why.find("</style>")], flags=re.S))
+    if "<style>" not in why or styled:
+        bad.append(f"the pitch page's styles are not read, or hold the tape or the taped state: {styled.group(0) if styled else 'no <style>'!r}")
+    for lang in ("en", "de"):
+        kept = [k for k in _TAPE_WORDS if k in words.get(lang, {})]
+        if kept:
+            bad.append(f"{lang}.html still holds the taped state's words: {', '.join(kept)}")
     for what, mark in (("the dialog", '<dialog class="probe"'), ("the dialog's script", ".showModal()")):
         tags = re.findall(r"\{%-?\s*(.*?)\s*-?%\}", code[:code.find(mark)]) if mark in code else []
         if not tags or tags[-1] != "if probe":
             bad.append(f"{what} is not built under the probe switch alone")
-    script = code[code.find("<script>"):]
-    if "taped" in script:
-        bad.append("a script reads the taped button")
+    if re.search(r"\btaped?\b|tapebox|\.flap\b", code[code.find("<script>"):]):
+        bad.append("a script reads the tape")
     return bad
 
 
-_tape_src = _sources(_LANDING_FILES)
-_tape_p = _taped_problems(_tape_src)
-check("FM-006 · the taped coin slot: the button the probe will open is a button, aria-disabled and described by the line under the actions, with no link, id or handler; it keeps "
-      f"its label with the tape across it, hidden from screen readers, under the coin's cue; the dialog and its script are built under the probe switch alone (problems found: {_tape_p})", _tape_p == [])
-_tape_ctl = {"the tape left off": _with(_tape_src, "overrides/landing.html", '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></button>', "</button>"),
-         "a dialog built": _with(_tape_src, "overrides/landing.html", '{%- if probe %}\n{#', '{%- if probe or taped %}\n{#'),
-         "a click handler on the button": _with(_tape_src, "overrides/landing.html", 'aria-disabled="true" aria-describedby="taped-why">', 'aria-disabled="true" aria-describedby="taped-why" onclick="copy()">'),
-         "a script that handles the button": _with(_tape_src, "overrides/landing.html", "</script>", 'document.querySelector(".btn.taped").addEventListener("click", () => 0);\n</script>'),
-         "aria-describedby missing": _with(_tape_src, "overrides/landing.html", ' aria-describedby="taped-why">', ">"),
-         "the button a link": _with(_tape_src, "overrides/landing.html", '<button type="button" class="btn taped"', '<button type="button" href="probe.txt" class="btn taped"')}
-_tape_ctl_saw = {name: len(_taped_problems(src)) for name, src in _tape_ctl.items()}
-check("FM-006 · the taped state's check is not blind: each of the tape left off, a dialog built, a click handler on the button, a script that handles it, aria-describedby missing and the "
-      f"button a link leaves a problem (problems found: {_tape_ctl_saw})", all(_tape_ctl_saw.values()) and len(_tape_ctl_saw) == 6)
+_st_src = _sources((*_LANDING_FILES, "overrides/why.html"))
+_st_p = _state_problems(_st_src)
+check("FM-006 · the landing's launch states · with the probe on the live cue alone stands over the coin door, its label, copy icon and coin, the coin hidden from screen readers; with "
+      "it off the note's link stands alone; nothing of the tape-off ceremony or the taped state is drawn, styled, worded in either language or scripted, and the pitch page "
+      "styles none of it; the dialog and its script "
+      f"are built under the probe switch alone (problems found: {_st_p})", _st_p == [])
+_LH = "overrides/landing.html"
+_st_ctl = {
+    "the ceremony's tape back in the door": _with(_st_src, _LH, '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>',
+                                                   '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tapebox" aria-hidden="true"><span class="tape" '
+                                                   'aria-hidden="true">{{ w.btn_tape }}</span><span class="flap"></span></span></a>'),
+    "the ceremony's CSS back": _with(_st_src, _LH, "</style>", ".btn.door .tapebox{position:absolute;left:-7px;right:-7px;bottom:5px;height:17px}\n</style>"),
+    "the ceremony's keyframes back": _with(_st_src, _LH, "</style>", "@keyframes tape-pull{from{--p:.06}to{--p:1}}\n</style>"),
+    "the unlit window back": _with(_st_src, _LH, "</style>", '.btn.door::after{content:"";position:absolute;inset:0 0 0 36px;z-index:-1;background:var(--closed)}\n</style>'),
+    "the taped cue back in the cue": _with(_st_src, _LH, '<span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue',
+                                           '<span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped }}</span><span class="cue-t now">{{ w.cue'),
+    "a taped cue in the English words": _with(_st_src, "overrides/partials/landing/en.html", '  "cue": "— press start —",\n',
+                                              '  "cue": "— press start —",\n  "cue_taped": "— after v0.20.1 —",\n'),
+    "the reason in the German words": _with(_st_src, "overrides/partials/landing/de.html", '  "cue": "— Start drücken —",\n',
+                                            '  "cue": "— Start drücken —",\n  "taped_why": "Nicht defekt, nur noch nicht offen.",\n'),
+    "the taped branch back": _with(_st_src, _LH, "      {%- else %}\n      " + _STATE_NOTE,
+                                   '      {%- elif taped %}\n      <button type="button" class="btn taped" aria-disabled="true">{{ w.btn_probe }}</button>\n      {%- else %}\n      ' + _STATE_NOTE),
+    "the line that says why back": _with(_st_src, _LH, '    <p class="founder">', '    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    <p class="founder">'),
+    "a dialog built outside the probe state": _with(_st_src, _LH, "{%- if probe %}\n{#", "{%- if probe or true %}\n{#"),
+    "a script that reads the tape": _with(_st_src, _LH, "</script>", 'document.querySelector(".tapebox");\n</script>'),
+    "the door in the interim state": _with(_st_src, _LH, _STATE_NOTE, _STATE_NOTE.replace('class="btn"', 'class="btn door"')),
+    "the coin in the interim state": _with(_st_src, _LH, _STATE_NOTE, _STATE_NOTE.replace("</a>", '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>')),
+    "the coin left out of the door": _with(_st_src, _LH, '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>', "</a>"),
+    "the taped try row's style back on the pitch page": _with(_st_src, "overrides/why.html", "</style>", ".tldr dl>div.try.taped{background:var(--closed)}\n</style>")}
+_st_ctl_saw = {name: len(_state_problems(src)) for name, src in _st_ctl.items()}
+check("FM-006 · the landing's launch states · the check is not blind: each of the ceremony's tape back in the door, its CSS, its keyframes or the unlit window back, the taped "
+      "cue back in the cue, a taped cue in the English words or the reason in the German words, the taped branch back, the line that says why back, a dialog built outside the "
+      "probe state, a script that reads the tape, the door or the coin in the interim state, the coin left out of the door and the taped try row's style back on the pitch "
+      f"page leaves a problem (problems found: {_st_ctl_saw})", all(_st_ctl_saw.values()) and len(_st_ctl_saw) == 15)
 
 
 # --- FM-006 · B1 · what the tool needs, as M4 builds it to v0.20.0's plan: Subversion without git, from the release archive -----------------
@@ -6604,9 +6651,9 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
 
 
 # --- FM-006 · B1 · the hero's cue and the arcade labels' cabinet parts ------------------------------------------------------------------------------------
-# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green, the taped cue
-# "— [coin] …" under it until the tape-off ceremony turns the one into the other at 2.8 s; only the live cue's icon and words blink, four blinks of a second each,
-# then stay lit, and under reduced motion nothing blinks. The players label has a joystick and the start label a coin,
+# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green, one line from
+# the first frame; only its icon and words blink, four blinks of a second each from the page's start, then stay lit; under reduced motion nothing blinks, and
+# in print the cue stands still. The players label has a joystick and the start label a coin,
 # neither blinking; the issue tracker's, the fleet's, the high scores' and the register's labels have a ticket, a ship, a screen and a wreck, none blinking. Every icon is
 # aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
 _CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
@@ -6624,15 +6671,15 @@ def _cue_problems(src):
         for key, want in _CUE_WORDS[lang].items():
             if words[lang].get(key) != want:
                 bad.append(f"the {lang} word {key} is not {want!r}")
-    # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, its icon the dome after the first dash of the words;
-    # the taped cue, its coin after the first dash, shares its place until the ceremony turns it
-    probe_part = code.split("{%- elif taped %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- elif taped %}" in code else ""
-    cue = ('<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span>'
-           '<span class="cue-t now">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>')
-    if cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue |") != 1 or re.search(r"w\.cue\b", code.replace(cue, "")):
-        bad.append("the cue is not, in the probe state alone, the strip over the primary button, hidden from screen readers, with the dome after its first dash")
-    # the animation: only a cue's words and icon blink, at most 5 s in all, then they stay lit — the taped state's cue from the start, the live cue from 2.8 s,
-    # when the taped cue and the live cue each turn with one step of 1 ms; nothing else of the cue and the labels animates, and nothing blinks under reduced motion
+    # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, one line, its icon the dome after the first dash of
+    # the words
+    probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
+    cue = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
+    if (cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue |") != 1 or re.search(r"w\.cue\b", code.replace(cue, ""))
+            or code.count('class="cue-t') != 1):
+        bad.append("the cue is not, in the probe state alone, one strip over the primary button, hidden from screen readers, with the dome after its first dash")
+    # the animation: only the cue's words and icon blink, from the page's start, at most 5 s in all, then they stay lit; nothing else of the cue and the
+    # labels animates, nothing blinks under reduced motion, and in print the cue stands still
     rules = re.findall(r"([^{}]+)\{([^{}]*animation[^{}]*)\}", re.sub(r"/\*.*?\*/", "", code, flags=re.S))
     mine = [(sel.strip().split(".")[-1], body) for sel, body in rules if re.search(r"\.(cue|cab|n-ic|n|cta-main)\b", sel)]
     seen, wrong = {}, []
@@ -6640,15 +6687,15 @@ def _cue_problems(src):
         for one in re.search(r"animation:\s*([^;]*)", body).group(1).split(","):
             one = one.strip()
             blink = re.fullmatch(r"blink ([\d.]+)s steps\(1\)(?: ([\d.]+)s)? (\d+)", one)
-            turn = re.fullmatch(r"(tape-gone|tape-show) 1ms 2\.8s both", one)
-            if blink and (sel, blink.group(2)) in (("cue-t", None), ("now", "2.8")) and float(blink.group(1)) * int(blink.group(3)) <= 5:
+            if blink and sel == "cue-t" and blink.group(2) is None and float(blink.group(1)) * int(blink.group(3)) <= 5:
                 seen.setdefault(sel, []).append("blink")
-            elif turn and (sel, turn.group(1)) in (("was", "tape-gone"), ("now", "tape-show")):
-                seen.setdefault(sel, []).append(turn.group(1))
             elif one != "none":
                 wrong.append(sel + ": " + one)
-    if wrong or seen != {"cue-t": ["blink"], "was": ["tape-gone"], "now": ["tape-show", "blink"]}:
-        bad.append(f"the cue's words and icon are not the only things of the cue and the labels that animate, blinking at most 5 s in all and then lit ({wrong or seen})")
+    if wrong or seen != {"cue-t": ["blink"]}:
+        bad.append(f"the cue's words and icon are not the only things of the cue and the labels that animate, blinking from the start, at most 5 s in all and then lit ({wrong or seen})")
+    printed = re.finditer(r"@media print\{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}", re.sub(r"/\*.*?\*/", "", code, flags=re.S).replace("@media print {", "@media print{"))
+    if not any(re.search(r"(?:^|\})\s*\.cue-t\{animation:none\}", m.group(1)) for m in printed):
+        bad.append("in print the cue's words and icon may still blink")
     if "*,*::before,*::after{animation:none!important" not in code:
         bad.append("the rule that ends every animation under reduced motion is not there")
     # the icons: seven, each aria-hidden and not focusable; every label keeps its words and takes its icon after the first dash
@@ -6665,8 +6712,8 @@ def _cue_problems(src):
 
 _cs = _sources(_CUE_FILES)
 _cp = _cue_problems(_cs)
-check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue stands over the primary button in the probe state alone, in both languages' words; only its icon and words blink, "
-      "four seconds at most and then lit, and nothing blinks under reduced motion; the joystick and the coin stand on the players and start labels, the ticket, the ship, the screen and the "
+check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue stands over the primary button in the probe state alone, one line, in both languages' words; only its icon and "
+      "words blink, from the start, four seconds at most and then lit, nothing blinks under reduced motion and in print the cue stands still; the joystick and the coin stand on the players and start labels, the ticket, the ship, the screen and the "
       "wreck on the issue tracker's, the fleet's, the high scores' and the register's, every icon is "
       f"aria-hidden, and the labels keep their words (problems found: {_cp})", _cp == [])
 _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html", "{%- else %}\n      <a class=\"btn\" href=\"{{ urls.adopt }}\">", "{%- else %}\n      <span class=\"cue\" aria-hidden=\"true\">{{ w.cue }}</span><a class=\"btn\" href=\"{{ urls.adopt }}\">"),
@@ -6682,23 +6729,27 @@ _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html"
          "the scores label without its icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_screen ~ " ") }}</span>', '<span class="n">{{ w.scores_n }}</span>'),
          "the register label with another icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_wreck ~ " ") }}</span>', '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_stick ~ " ") }}</span>'),
          "the players label reworded": _with(_cs, "overrides/partials/landing/en.html", '"players_n": "— select player —"', '"players_n": "— choose —"'),
-         "the start label's German reworded": _with(_cs, "overrides/partials/landing/de.html", '"start_n": "— Münze einwerfen —"', '"start_n": "— Los —"')}
+         "the start label's German reworded": _with(_cs, "overrides/partials/landing/de.html", '"start_n": "— Münze einwerfen —"', '"start_n": "— Los —"'),
+         "the taped cue beside the live one": _with(_cs, "overrides/landing.html", '<span class="cue" aria-hidden="true"><span class="cue-t">',
+                                                    '<span class="cue" aria-hidden="true"><span class="cue-t was">— after v0.20.1 —</span><span class="cue-t">'),
+         "the cue blinking late, as the ceremony had it": _with(_cs, "overrides/landing.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 2.8s 4}"),
+         "the cue blinking in print": _with(_cs, "overrides/landing.html", ".cue-t{animation:none}}", "}")}
 _cctl_saw = {name: len(_cue_problems(src)) for name, src in _cctl.items()}
-check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s or "
-      "with its rules, a label blinking, the reduced-motion rule gone, an icon read by screen readers, the scores label without its icon, the register label with another, and a label reworded leaves a problem "
-      f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 14)
+check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s, "
+      "late as the ceremony had it, in print or with its rules, the taped cue beside the live one, a label blinking, the reduced-motion rule gone, an icon read by screen readers, the scores "
+      "label without its icon, the register label with another, and a label reworded leaves a problem "
+      f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 17)
 
 
-# --- the probe state's coin door: the tape-off ceremony and the golden coin -----------------------------------------------------------------------------
-# With the probe on, the primary link is the coin door, lit. Once per page load the tape over it is picked at its right end (0.6–0.9 s), pulled off towards its
-# left end (0.9–1.9 s) and lifted away (1.9–2.2 s), the window lights (2.2–2.8 s) and the taped cue turns to the live one (2.8 s); a press or a tap drops the golden coin into the slot, and the dialog opens when it has landed, at most 0.36 s after
-# the press, at once for the keyboard and under reduced motion; the copy stays inside the click. The tape, the coin and the taped cue are hidden from screen
-# readers and are drawn neither under reduced motion nor in print; the taped and the interim states carry none of it; nothing is stored.
-_CEREMONY_STORAGE = re.compile(r"\b(localStorage|sessionStorage|indexedDB|cookieStore)\b|document\.cookie|\bcaches\s*\.")
-_CEREMONY_DOOR = ('<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false">',
-                  '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">'
-                  '{{ w.btn_tape }}</span><span class="flap"></span></span></a>')
-_CEREMONY_HIDES = (".btn.door .tapebox", ".btn.door .tape", ".btn.door .flap", ".btn.door::after", ".btn.door .gcoin", ".cue .was")
+# --- the probe state's coin door and the golden coin -----------------------------------------------------------------------------------------------------
+# With the probe on, the primary link is the coin door, lit from the first frame, its copy icon under its label; a mouse that hovers it holds the golden coin
+# at the slot, and a press or a tap drops the coin into the slot; the dialog opens when it has landed, at most 0.36 s after the press, at once for the keyboard
+# and under reduced motion; the copy stays inside the click. The coin is hidden from screen readers and is drawn neither under reduced motion nor in print; the
+# interim state carries none of it; nothing is stored.
+_DOOR_STORAGE = re.compile(r"\b(localStorage|sessionStorage|indexedDB|cookieStore)\b|document\.cookie|\bcaches\s*\.")
+_DOOR_MARKUP = ('<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false">',
+                '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>')
+_DOOR_LIT = ".btn.door{position:relative;isolation:isolate;padding-left:50px;border:2px solid var(--contour);background:linear-gradient(90deg,#0b1520 0 36px,var(--watt) 36px);"
 
 
 def _css_rules(css, media):
@@ -6715,81 +6766,67 @@ def _css_rules(css, media):
     return found
 
 
-def _ceremony_problems(src):
-    """What is wrong with the probe state's coin door and its ceremony in the template, one line each; none where it is drawn as the Designer's plan has it."""
+def _door_problems(src):
+    """What is wrong with the probe state's coin door and its golden coin in the template, one line each; none where it is drawn as the Designer's plan has it."""
     bad, tpl = [], src["overrides/landing.html"]
     code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)
     css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S).replace(" {", "{")
-    probe_part = code.split("{%- elif taped %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- elif taped %}" in code else ""
-    door = re.search(re.escape(_CEREMONY_DOOR[0]) + r"(?:(?!</svg>).)*" + re.escape(_CEREMONY_DOOR[1]), probe_part, re.S)
-    if not door or code.count('class="btn door"') != 1 or code.count('<span class="gcoin"') != 1 or code.count('<span class="tape"') != 2:
-        bad.append("the probe state's primary link is not the coin door, its label read and its coin and tape after it, each hidden from screen readers, "
-                   "or the door, the coin or a tape stands elsewhere")
-    if 'class="cta{% if taped %} is-taped{% endif %}{% if probe %} is-door{% endif %}"' not in code:
+    probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
+    door = re.search(re.escape(_DOOR_MARKUP[0]) + r"(?:(?!</svg>).)*" + re.escape(_DOOR_MARKUP[1]), probe_part, re.S)
+    if not door or code.count('class="btn door"') != 1 or code.count('<span class="gcoin"') != 1:
+        bad.append("the probe state's primary link is not the coin door, its label read and its coin after it, hidden from screen readers, or the door or the coin stands elsewhere")
+    if 'class="cta{% if probe %} is-door{% endif %}"' not in code:
         bad.append("the actions do not take the door's place in the probe state alone")
+    if _DOOR_LIT not in css.replace("\n  ", "") or re.search(r"\.btn\.door::after|\.btn\.door\{[^}]*animation", css):
+        bad.append("the door's window is not lit from the first frame: it is not in the button's green, or something is drawn over it or animates it")
     rm, pr = _css_rules(css, "(prefers-reduced-motion:reduce)"), _css_rules(css, "print")
     for what, rules in (("under reduced motion", rm), ("in print", pr)):
-        if not all("display:none!important" in rules.get(sel, "") for sel in _CEREMONY_HIDES) or "visibility:visible" not in rules.get(".cue .now", ""):
-            bad.append(f"{what} the tape, the unlit window, the coin or the taped cue is drawn, or the live cue is not shown")
+        if "display:none!important" not in rules.get(".btn.door .gcoin", ""):
+            bad.append(f"{what} the coin is drawn")
     if "*,*::before,*::after{animation:none!important" not in css.replace(" ", ""):
         bad.append("the rule that ends every animation under reduced motion is not there")
-    timing = ("animation:tape-pick .3s steps(3) .6s both,tape-pull 1s steps(12) .9s forwards,tape-off .3s steps(2) 1.9s forwards",
-              "@keyframes tape-pick{from{--p:0}to{--p:.06}}", "@keyframes tape-pull{from{--p:.06}to{--p:1}}",
-              "animation:tape-unlit .6s steps(1) 2.2s both", ".cue .was{animation:tape-gone 1ms 2.8s both}",
-              ".cue .now{visibility:hidden;animation:tape-show 1ms 2.8s both,blink 1s steps(1) 2.8s 4}",
-              "@media (hover:hover) and (pointer:fine){.btn.door:hover .gcoin{display:block;animation:golden-coin-near .24s steps(2) both}}",
-              ".btn.door.golden-coin .gcoin{display:block;animation:golden-coin-in .36s steps(4) forwards}")
-    if not all(t.replace(" {", "{") in css for t in timing) or re.search(r"(tape|golden-coin)-[\w-]*[^;{}]*infinite", css):
-        bad.append("the ceremony does not play once, picking the tape 0.6–0.9 s, pulling it 0.9–1.9 s, lifting it 1.9–2.2 s, lighting 2.2–2.8 s and turning the cue at 2.8 s, "
-                   "or the coin does not come on a mouse's hover "
-                   "and drop on a press")
+    timing = ("@media (hover:hover) and (pointer:fine){.btn.door:hover .gcoin{display:block;animation:golden-coin-near .24s steps(2) both}}",
+              ".btn.door.golden-coin .gcoin{display:block;animation:golden-coin-in .36s steps(4) forwards}",
+              ".btn.door.golden-coin::before{animation:golden-coin-slit .3s steps(1) .22s}")
+    if not all(t.replace(" {", "{") in css for t in timing) or re.search(r"golden-coin-[\w-]*[^;{}]*infinite", css):
+        bad.append("the coin does not come on a mouse's hover and drop on a press, once, with the slit's flash")
     if ".btn.door{flex-direction:column;gap:4px;padding-bottom:10px}" not in css or ".btn.door .ic{order:2}" not in css or re.search(r"\.btn\.door \.ic\{[^}]*display:none", css):
-        bad.append("the lit door does not show its copy icon under its label, in the room the tape leaves")
+        bad.append("the lit door does not show its copy icon under its label")
     if ".btn.door:hover{transform:none}" not in css:
         bad.append("the door lifts on hover, where the coin coming to the slot is its hover")
-    peel = ('@property --p{syntax:"<number>";inherits:true;initial-value:0}', "clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)",
-            "left:calc((1 - var(--p)) * 100%);width:calc(var(--p) * 100%)")
-    if not all(t in css for t in peel) or ".hero{overflow-x:clip}" not in css:
-        bad.append("the tape is not peeled by one registered value, --p, that cuts the stuck part back from the right and grows the loose flap, or the hero does "
-                   "not clip it sideways")
-    if _CEREMONY_STORAGE.search(tpl):
-        bad.append(f"landing.html names a storage API: {_CEREMONY_STORAGE.search(tpl).group(0)}")
+    if _DOOR_STORAGE.search(tpl):
+        bad.append(f"landing.html names a storage API: {_DOOR_STORAGE.search(tpl).group(0)}")
     if "url(" in css:
         bad.append("the landing's styles load a file")
     return bad
 
 
 _crs = _sources(_CUE_FILES)
-_crp = _ceremony_problems(_crs)
-check("FM-006 · the tape-off ceremony · with the probe on the primary link is the coin door, its label read, its copy icon under the label and its coin and tape hidden from "
-      "screen readers; the taped and interim states "
-      "carry none of it; neither reduced motion nor print draws the tape, the unlit window, the coin or the taped cue; the ceremony plays once, the tape peeled by --p "
-      "inside a hero that clips it sideways, its cue turning at 2.8 s; "
+_crp = _door_problems(_crs)
+check("FM-006 · the coin door · with the probe on the primary link is the coin door, lit from the first frame, its label read, its copy icon under the label and its coin hidden "
+      "from screen readers; the interim state carries none of it; neither reduced motion nor print draws the coin; the coin comes on a mouse's hover and drops on a press, once; "
       f"landing.html names no storage API and its styles load no file (problems found: {_crp})", _crp == [])
 _crctl = {"the coin read by screen readers": _with(_crs, "overrides/landing.html", '<span class="gcoin" aria-hidden="true">', '<span class="gcoin">'),
-          "the door's tape read by screen readers": _with(_crs, "overrides/landing.html", '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">{{ w.btn_tape }}',
-                                                          '<span class="tapebox"><span class="tape">{{ w.btn_tape }}'),
-          "the coin in the taped state too": _with(_crs, "overrides/landing.html", '{{ w.btn_probe }}<span class="tape" aria-hidden="true">', '{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tape" aria-hidden="true">'),
           "the coin as the cards' coin": _with(_crs, "overrides/landing.html", '<span class="gcoin" aria-hidden="true">', '<span class="coin" aria-hidden="true">'),
-          "reduced motion drawing the tape": _with(_crs, "overrides/landing.html", "@media (prefers-reduced-motion:reduce){.btn.door .tapebox,", "@media (prefers-reduced-motion:reduce){"),
-          "print drawing the flap": _with(_crs, "overrides/landing.html", "@media print{.btn.door .tapebox,.btn.door .tape,.btn.door .flap,", "@media print{.btn.door .tapebox,.btn.door .tape,"),
-          "print drawing the taped cue": _with(_crs, "overrides/landing.html", ".btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible;animation:none}}",
-                                               ".btn.door .gcoin{display:none!important}.cue .now{visibility:visible;animation:none}}"),
-          "the tape pulled for ever": _with(_crs, "overrides/landing.html", "tape-pull 1s steps(12) .9s forwards", "tape-pull 1s steps(12) .9s infinite forwards"),
-          "the tape swung off whole, as before": _with(_crs, "overrides/landing.html", "clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)", "clip-path:none"),
-          "--p not registered": _with(_crs, "overrides/landing.html", '@property --p{syntax:"<number>";inherits:true;initial-value:0}', ""),
-          "the hero not clipping the tape": _with(_crs, "overrides/landing.html", ".hero{overflow-x:clip}", ""),
+          "the coin in the interim state too": _with(_crs, "overrides/landing.html", '<a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>',
+                                                     '<a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>'),
+          "reduced motion drawing the coin": _with(_crs, "overrides/landing.html", "@media (prefers-reduced-motion:reduce){.btn.door .gcoin{display:none!important}}", ""),
+          "print drawing the coin": _with(_crs, "overrides/landing.html", "@media print{.btn.door .gcoin{display:none!important}", "@media print{"),
+          "the coin dropping for ever": _with(_crs, "overrides/landing.html", "golden-coin-in .36s steps(4) forwards", "golden-coin-in .36s steps(4) infinite forwards"),
+          "the window unlit": _with(_crs, "overrides/landing.html", "#0b1520 0 36px,var(--watt) 36px", "#0b1520 0 36px,var(--closed) 36px"),
+          "the unlit window drawn over the door": _with(_crs, "overrides/landing.html", ".btn.door:hover{transform:none}",
+                                                        '.btn.door:hover{transform:none}\n.btn.door::after{content:"";position:absolute;inset:0 0 0 36px;z-index:-1;background:var(--closed)}'),
+          "the door lighting late": _with(_crs, "overrides/landing.html", ".btn.door:hover{transform:none}",
+                                          ".btn.door:hover{transform:none}\n.btn.door{animation:door-lit .6s steps(1) 2.2s both}"),
           "the door's icon hidden": _with(_crs, "overrides/landing.html", ".btn.door .ic{order:2}", ".btn.door .ic{order:2;display:none}"),
           "the door lifting on hover": _with(_crs, "overrides/landing.html", ".btn.door:hover{transform:none}", ""),
           "the door's icon beside its label": _with(_crs, "overrides/landing.html", ".btn.door{flex-direction:column;gap:4px;padding-bottom:10px}", ".btn.door{gap:4px;padding-bottom:10px}"),
-          "the cue turning late": _with(_crs, "overrides/landing.html", ".cue .was{animation:tape-gone 1ms 2.8s both}", ".cue .was{animation:tape-gone .6s steps(1) 2.8s both}"),
           "a storage API": _with(_crs, "overrides/landing.html", 'downAt = performance.now();', 'downAt = performance.now(); sessionStorage.setItem("seen", "1");'),
           "the door in every state": _with(_crs, "overrides/landing.html", '{% if probe %} is-door{% endif %}', " is-door")}
-_crctl_saw = {name: len(_ceremony_problems(src)) for name, src in _crctl.items()}
-check("FM-006 · the tape-off ceremony · its source check is not blind: each of the coin or the door's tape read by screen readers, the coin in the taped state, the coin as the cards' coin, "
-      "reduced motion drawing the tape, print drawing the flap or the taped cue, the tape pulled for ever, the tape swung off whole, --p not registered, the hero not clipping the "
-      "tape, the door's icon hidden or beside its label, the door lifting on hover, the cue turning late, a storage API and the door in every state leaves a problem "
-      f"(problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 17)
+_crctl_saw = {name: len(_door_problems(src)) for name, src in _crctl.items()}
+check("FM-006 · the coin door · its source check is not blind: each of the coin read by screen readers, as the cards' coin or in the interim state, reduced motion or print drawing "
+      "the coin, the coin dropping for ever, the window unlit, the unlit window drawn over the door, the door lighting late, the door's icon hidden or beside its label, the door "
+      f"lifting on hover, a storage API and the door in every state leaves a problem (problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 14)
 
 _BOARD_STACK = ("@media(max-width:640px){.board thead{display:none}.board tbody{display:block}.board tr{display:grid;grid-template-columns:auto 1fr;column-gap:14px;"
                 "align-items:baseline;border-top:1px dashed var(--contour);padding:12px 0}.board td{border-top:0;padding:0}.board td.pd{grid-column:1/-1;padding-top:8px}}")
@@ -7225,7 +7262,7 @@ def _hold_problems(o):
 if shutil.which("node"):
     _ho = _hold_run(_crs["overrides/landing.html"])
     _hp = _hold_problems(_ho)
-    check("FM-006 · the tape-off ceremony · the dialog's hold, run: after a press the dialog opens when the coin has landed, at most 0.36 s after the press and not inside the click; "
+    check("FM-006 · the golden coin · the dialog's hold, run: after a press the dialog opens when the coin has landed, at most 0.36 s after the press and not inside the click; "
           "a slow click, the keyboard (even just after a press that made no click) and reduced motion get it at once; the copy is made inside the click every time; the coin drops on a press alone "
           f"(problems found: {_hp}; saw {_ho})", _hp == [])
     _hctl_ = {"a hold of 0.6 s": _with(_crs, "overrides/landing.html", "Math.max(0, 360 - (performance.now() - downAt))", "Math.max(0, 600 - (performance.now() - downAt))"),
@@ -7235,21 +7272,15 @@ if shutil.which("node"):
                                                 "const opening = () => { say", "const opening = () => { const p = write(); say"),
               "the coin on every button": _with(_crs, "overrides/landing.html", "    if (e.button) return;\n", "")}
     _hctl_saw = {name: _hold_problems(_hold_run(src["overrides/landing.html"])) for name, src in _hctl_.items()}
-    check("FM-006 · the tape-off ceremony · the hold's run is not blind: each of a hold of 0.6 s, a hold for the keyboard, a hold under reduced motion, the copy after the hold and the coin "
+    check("FM-006 · the golden coin · the hold's run is not blind: each of a hold of 0.6 s, a hold for the keyboard, a hold under reduced motion, the copy after the hold and the coin "
           f"on every button leaves a problem (saw {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 5)
 else:
-    SKIPS.append(("FM-006 · the tape-off ceremony · the dialog's hold, run", 2, "no Node here"))
+    SKIPS.append(("FM-006 · the golden coin · the dialog's hold, run", 2, "no Node here"))
 
 
-_RULED_WORDS = {"en": {"cue_taped": "— after v0.20.1 —",
-                       "taped_why": "Not out of order, just not open yet: the prompt behind this button goes live after v0.20.1, once its last test runs are through. "
-                                    "Until then, hand your agents <a href=\"{adopt}\">the note</a>.",
-                       "board_t": "pull requests with a review on record when opened", "rk_3": "3rd", "pd_3_b": "reviewed by commit",
+_RULED_WORDS = {"en": {"board_t": "pull requests with a review on record when opened", "rk_3": "3rd", "pd_3_b": "reviewed by commit",
                        "pd_3": "pull requests {c3_first}–{c3_last}, from {cohort_end} to {read_date}", "pd_2_b": "before the rule"},
-                "de": {"cue_taped": "— nach v0.20.1 —",
-                       "taped_why": "Nicht defekt, nur noch nicht offen: Der Prompt hinter diesem Knopf geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind. "
-                                    "Bis dahin gibst du deinen Agenten <a href=\"{adopt}\">die Notiz</a>.",
-                       "board_t": "Pull Requests mit festgehaltenem Review beim Öffnen", "rk_3": "3.", "pd_3_b": "per Commit geprüft",
+                "de": {"board_t": "Pull Requests mit festgehaltenem Review beim Öffnen", "rk_3": "3.", "pd_3_b": "per Commit geprüft",
                        "pd_3": "Pull Requests {c3_first}–{c3_last}, vom {cohort_end} bis {read_date}", "pd_2_b": "vor der Regel"}}
 
 
@@ -7267,14 +7298,16 @@ def _ruled_problems(src):
 
 _rws = _sources(_CUE_FILES)
 _rwp = _ruled_problems(_rws)
-check("FM-006 · the ruled words · T1 and T3 are the ruled rows byte for byte in English and German, and the high scores' box title, third rank, review-commit row "
-      f"and the row before the rule are too; the template draws the third row with them (problems found: {_rwp})", _rwp == [])
-_rwctl = {"T1 as it was": _with(_rws, "overrides/partials/landing/en.html", '"cue_taped": "— after v0.20.1 —"', '"cue_taped": "— opens at v0.20.1 —"'),
-          "T3's German as it was": _with(_rws, "overrides/partials/landing/de.html", "geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind", "wird noch fertiggestellt und geht mit v0.20.1 live"),
-          "a byte off in T3": _with(_rws, "overrides/partials/landing/en.html", "once its last test runs are through.", "once its last test runs are through"),
+check("FM-006 · the ruled words · the high scores' box title, third rank, review-commit row and the row before the rule are the ruled rows byte for byte in English and "
+      f"German; the template draws the third row with them (problems found: {_rwp})", _rwp == [])
+_rwctl = {"the German box title as it was": _with(_rws, "overrides/partials/landing/de.html", '"board_t": "Pull Requests mit festgehaltenem Review beim Öffnen"',
+                                                  '"board_t": "Pull Requests mit einer Reviewer-Datei, als sie geöffnet wurden"'),
+          "a byte off in the review-commit row": _with(_rws, "overrides/partials/landing/en.html", '"pd_3": "pull requests {c3_first}–{c3_last},', '"pd_3": "pull requests {c3_first}-{c3_last},'),
+          "the row before the rule reworded": _with(_rws, "overrides/partials/landing/en.html", '"pd_2_b": "before the rule"', '"pd_2_b": "before the review rule"'),
           "the third rank left out of the template": _with(_rws, "overrides/landing.html", "{%- set ranks = [w.rk_1, w.rk_2, w.rk_3] -%}", "{%- set ranks = [w.rk_1, w.rk_2] -%}")}
 _rwctl_saw = {name: len(_ruled_problems(src)) for name, src in _rwctl.items()}
-check("FM-006 · the ruled words · their check is not blind: each of T1 as it was, T3's German as it was, a byte off in T3 and the third rank left out of the template "
+check("FM-006 · the ruled words · their check is not blind: each of the German box title as it was, a byte off in the review-commit row, the row before the rule reworded "
+      "and the third rank left out of the template "
       f"leaves a problem (problems found: {_rwctl_saw})", all(_rwctl_saw.values()) and len(_rwctl_saw) == 4)
 
 
@@ -8921,9 +8954,9 @@ def _snippet_bases(conf_):
 
 
 def _probe_turned(conf_):
-    """zensical.toml with the probe state's switch turned, as a probe build turns it: probe = true, taped = false, and `base_path` on launch/probe. A
+    """zensical.toml with the probe state's switch turned, as a probe build turns it: probe = true, and `base_path` on launch/probe. A
     copy, never written; one already turned stays as it is. None where a key the switch turns is not there exactly once."""
-    for pat_, new_ in ((r"^probe = (?:true|false)$", "probe = true"), (r"^taped = (?:true|false)$", "taped = false"),
+    for pat_, new_ in ((r"^probe = (?:true|false)$", "probe = true"),
                        (r"^pymdownx\.snippets\.base_path = \[[^\]]*\]$", 'pymdownx.snippets.base_path = [".", "launch/probe"]')):
         conf_, n_ = re.subn(pat_, new_, conf_, flags=re.M)
         if n_ != 1:
@@ -8974,7 +9007,7 @@ check(f"R10 · the docs keep their look · the committed state: each include a l
 _dturned = _probe_turned((HERE / "zensical.toml").read_text(encoding="utf-8"))
 _dprobe = _docs_refs(bases=_snippet_bases(_dturned)) if _dturned else []
 _dprobe_gone = [p_.relative_to(HERE).as_posix() if HERE in p_.parents else str(p_) for p_ in _dprobe if not p_.exists()]
-check(f"R10 · the docs keep their look · the probe state, zensical.toml turned in a copy as a probe build turns it (probe = true, taped = false, "
+check(f"R10 · the docs keep their look · the probe state, zensical.toml turned in a copy as a probe build turns it (probe = true, "
       f"`base_path` on launch/probe): every file is there, and each include a launch state holds is found in launch/probe ({len(_dprobe)} files; "
       f"missing: {_dprobe_gone}; from the launch states: {[p_.relative_to(HERE).as_posix() for p_ in _dlaunch(_dprobe)]})",
       _dturned is not None and _snippet_bases(_dturned) == [".", "launch/probe"] and len(_dprobe) >= 30 and not _dprobe_gone
@@ -17299,7 +17332,7 @@ fm.configure(HERE)
 # 375, 390 and 1440 px no sideways scroll, no script error, no failed request, no request to another host; and in the probe state the dialog is a real
 # modal (labelled, focus in and back out, Escape, Tab inside, its folds by keyboard) that shows, with its fold closed and without scrolling, its label, Close, the
 # copied line, Copy again and step 3 on a phone and does not scroll inside itself at 1024×768, and the
-# tape-off ceremony holds its frames, its reduced-motion and print states, the door's name and the dialog's hold.
+# coin door holds its frames, lit and still, its reduced-motion and print states, its name and the dialog's hold.
 # Behind SHOALMARK_REGENERATE=1, like the other browser rebuilds: the site is built twice, as docs.yml builds it (the figures first, Zensical as
 # requirements-docs.txt pins it, then llms_txt.py); each control changes one thing in a built site and the browser must find it.
 _B1_NAME = "FM-006 · B1 · the landings in a real browser"
@@ -17316,26 +17349,26 @@ else:
         _pin = re.search(r"(?m)^zensical==(\S+)", (HERE / "requirements-docs.txt").read_text(encoding="utf-8")).group(1)
         _head = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
 
-        _B1_FORMS = {"interim": ("probe = false\ntaped = false\n", 'pymdownx.snippets.base_path = [".", "launch/interim"]\n'),
-                     "probe": ("probe = true\ntaped = false\n", 'pymdownx.snippets.base_path = [".", "launch/probe"]\n')}
+        _B1_FORMS = {"interim": ("probe = false\n", 'pymdownx.snippets.base_path = [".", "launch/interim"]\n'),
+                     "probe": ("probe = true\n", 'pymdownx.snippets.base_path = [".", "launch/probe"]\n')}
 
         def _b1_form(toml):
-            """The launch state a zensical.toml holds, "interim" or "probe", when it holds exactly one of the two forms: its switch with the tape off, and its
-            launch folder alone in the snippets' base path, each line once. None when it holds neither form, or both."""
+            """The launch state a zensical.toml holds, "interim" or "probe", when it holds exactly one of the two forms: its switch, and its launch folder
+            alone in the snippets' base path, each line once. None when it holds neither form, or both."""
             text = "\n" + toml
             held = [state for state, (switch, folder) in _B1_FORMS.items() if text.count("\n" + switch) == 1 and text.count("\n" + folder) == 1]
             return held[0] if len(held) == 1 else None
 
         def _b1_site(work, state, name=None, facts_edit=None, template_edit=None):
             """This tree built as docs.yml would build it in the launch state `state`, whichever state zensical.toml holds. The stage's zensical.toml is set to
-            that state first (its probe switch, the tape off, and its launch folder in the snippets' base path), since the figures follow the switch; then the
+            that state first (its probe switch and its launch folder in the snippets' base path), since the figures follow the switch; then the
             figures (scripts/landing_facts.py, read from this history at HEAD, the pull requests from the response recorded to #211), Zensical, then llms_txt.py.
             The file must hold exactly one of the two forms. `facts_edit` and `template_edit` change what was written or what the landing is, for a control."""
             stage = work / (name or state)
             shutil.copytree(HERE, stage, ignore=shutil.ignore_patterns(".git", "site", "__pycache__", ".cache", "work-tracker"))
             toml = (stage / "zensical.toml").read_text(encoding="utf-8")
             held = _b1_form(toml)
-            assert held, "zensical.toml holds neither launch form, or both: the probe switch with the tape off and its one launch folder"
+            assert held, "zensical.toml holds neither launch form, or both: the probe switch and its one launch folder"
             for have, want in zip(_B1_FORMS[held], _B1_FORMS[state]):
                 toml = toml.replace(have, want)
             (stage / "zensical.toml").write_text(toml, encoding="utf-8")
@@ -17363,12 +17396,12 @@ else:
         _b1_held = _b1_form(_b1_toml)
         _b1_other = "interim" if _b1_held == "probe" else "probe"
         _b1_ctl = {} if _b1_held is None else {
-            "the tape on beside the switch": _b1_toml.replace("\ntaped = false\n", "\ntaped = true\n", 1),
+            "the switch written twice": _b1_toml.replace("\n" + _B1_FORMS[_b1_held][0], "\n" + _B1_FORMS[_b1_held][0] + "\n" + _B1_FORMS[_b1_held][0], 1),
             "the switch with the other state's folder": _b1_toml.replace(_B1_FORMS[_b1_held][1], _B1_FORMS[_b1_other][1], 1),
             "both forms": _b1_toml + "".join(_B1_FORMS[_b1_other])}
         _b1_ctl_saw = {name: _b1_form(text) for name, text in _b1_ctl.items()}
         check(f"FM-006 · B1 · the site is built in each launch state from the one form zensical.toml holds ({_b1_held}), and the reading is not blind: each of "
-              f"the tape on beside the switch, the switch with the other state's folder and both forms holds no form (saw {_b1_ctl_saw})",
+              f"the switch written twice, the switch with the other state's folder and both forms holds no form (saw {_b1_ctl_saw})",
               _b1_held in _B1_FORMS and len(_b1_ctl_saw) == 3 and all(v is None for v in _b1_ctl_saw.values()))
 
         with tempfile.TemporaryDirectory() as d:
@@ -17380,8 +17413,8 @@ else:
                 check(f"{_B1_NAME}, {_state} state: both landings and both How it works pages at 360, 375, 390 and 1440 px — no sideways scroll, no script error, no failed request, no request "
                       f"to another host, the top bar's anchors in one row where they first show, the high scores' rows stacked on a phone and in columns wider" + (", and the dialog is a labelled modal that takes focus in and gives it back, closes on Escape, keeps Tab inside, opens its folds by keyboard, shows a refused "
                                             "copy and, with its fold closed, shows its label, Close, the copied line, Copy again and step 3 without scrolling at 360×780, 375×667 and 390×844 and does not "
-                                            "scroll inside itself at 1024×768; the tape-off ceremony keeps the page's width and the door's place in "
-                                            "every frame, peels the tape and ends lit, draws nothing under reduced motion or in print, leaves the door named by its label, and the dialog waits 0.36 s from a press for the coin, "
+                                            "scroll inside itself at 1024×768; the coin door is lit and still from the first frame, with no tape, unlit window or second cue "
+                                            "line, keeps the page's width, draws no coin under reduced motion or in print, where the cue stands still, is named by its label, and the dialog waits 0.36 s from a press for the coin, "
                                             "not for the keyboard or under reduced motion" if _state == "probe" else "")
                       + f" (exit {_saw[_state][0]}, {_saw[_state][2]} checks, failing {_saw[_state][1]})", _saw[_state][0] == 0 and not _saw[_state][1] and _saw[_state][2] > 40)
             # the controls: one thing changed in a copy of the probe site, and the browser finds exactly that
@@ -17440,11 +17473,13 @@ else:
                               "the cue stands clear of every chart label, by at least 2 px"),
                 "cue-motion": ("a cue that blinks under reduced motion", _mutate("cue-motion", "index.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}", "1440x900"),
                                "under reduced motion nothing animates: the document has no animation"),
-                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "blink 1s steps(1) 2.8s 4}", "blink 1s steps(1) 2.8s infinite}", "cue"),
-                                "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}", "cue"),
+                                "with motion allowed only the cue's icon and words blink, from the start, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-late": ("a cue that blinks only from 2.8 s, as the ceremony had it", _mutate("cue-late", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 2.8s 4}", "cue"),
+                             "with motion allowed only the cue's icon and words blink, from the start, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
                 "cue-rules": ("a cue whose rules blink too", _mutate("cue-rules", "index.html", "</head>", "<style>.cue{animation:blink 1s steps(1) 4}</style></head>", "cue"),
-                              "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
-                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "blink 1s steps(1) 2.8s 4}", "blink 1s steps(1) 2.8s 4 forwards}", "cue"),
+                              "with motion allowed only the cue's icon and words blink, from the start, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 4 forwards}", "cue"),
                              "after the blink the cue is at rest and lit"),
                 "bar-docs": ("a Docs button wider than the bar has room for", _mutate("bar-docs", "index.html", "</head>", "<style>.hud nav a.docs{padding-inline:40px!important}</style></head>", "bar"),
                              "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways"),
@@ -17454,22 +17489,25 @@ else:
                              "both header buttons show the focus ring when the keyboard reaches them, whole inside the window and the bar"),
                 "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
-                "door-wide": ("a tape that peels off past the window's edge", _mutate("door-wide", "index.html", "</head>", "<style>.hero{overflow-x:visible}@keyframes tape-off{to{transform:translateX(900px)}}</style></head>", "door"),
-                              "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
+                "door-tape": ("a tape drawn over the door again", _mutate("door-tape", "index.html", '<span class="gcoin" aria-hidden="true">',
+                                                                    '<span class="tape" aria-hidden="true">not yet</span><span class="gcoin" aria-hidden="true">', "door"),
+                              'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
                 "board-columns": ("high scores left in their columns on a phone", _mutate("board-columns", "index.html", "@media(max-width:640px){.board thead{display:none}", "@media(max-width:1px){.board thead{display:none}"),
                                   "on a phone each high scores row stacks, its period's words under the rank and the score at full width, the column heads gone"),
                 "desk-scrolls": ("a German dialog that scrolls at 1024×768", _mutate("desk-scrolls", "de/index.html", "max-height:calc(100dvh - 96px);overflow:auto", "max-height:calc(100dvh - 400px);overflow:auto", "desk"),
                                  "at 1024×768, with its fold closed, nothing in the dialog scrolls inside itself"),
-                "door-peel": ("a tape never pulled off", _mutate("door-peel", "index.html", ",tape-pull 1s steps(12) .9s forwards", "", "door"),
-                              "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and gone once lifted away, after 2.2 s"),
+                "door-cue": ("the taped cue back beside the live one", _mutate("door-cue", "index.html", '<span class="cue" aria-hidden="true"><span class="cue-t">',
+                                                                               '<span class="cue" aria-hidden="true"><span class="cue-t was">— after v0.20.1 —</span><span class="cue-t">', "door"),
+                             'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
                 "door-icon": ("a door without its copy icon", _mutate("door-icon", "index.html", ".btn.door .ic{order:2}", ".btn.door .ic{display:none}", "door"),
                               "the lit door is 55 px tall on a desktop and 59 px on a phone, its copy icon centred under its label"),
                 "door-lift": ("a door that lifts on hover", _mutate("door-lift", "index.html", ".btn.door:hover{transform:none}", "", "door"),
                               "on hover the door does not lift: the coin coming to the slot is its hover"),
-                "door-moves": ("a door that grows during the ceremony", _mutate("door-moves", "index.html", "</head>", "<style>.btn.door{animation:door-grow 1s steps(1) 1s both}@keyframes door-grow{to{padding-bottom:60px}}</style></head>", "door"),
-                               "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
-                "door-unlit": ("a window that stays unlit", _mutate("door-unlit", "index.html", "84%,100%{opacity:0}", "84%,100%{opacity:1}", "door"),
-                               "the ceremony starts taped and unlit with the taped cue, and ends with the tape gone, the window lit and the live cue shown"),
+                "door-moves": ("a door that grows in its first seconds", _mutate("door-moves", "index.html", "</head>", "<style>.btn.door{animation:door-grow 1s steps(1) 1s both}@keyframes door-grow{to{padding-bottom:60px}}</style></head>", "door"),
+                               'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
+                "door-unlit": ("an unlit window drawn over the door", _mutate("door-unlit", "index.html", "</head>",
+                                                                       '<style>.btn.door::after{content:"";position:absolute;left:36px;top:0;right:0;bottom:0;z-index:-1;background:#8595a2}</style></head>', "door"),
+                               'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
                 "door-hold": ("a dialog that waits 0.9 s for the coin", _mutate("door-hold", "index.html", "Math.max(0, 360 - (performance.now() - downAt))", "Math.max(0, 900 - (performance.now() - downAt))", "door"),
                               "after a mouse press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click"),
                 "door-copy": ("a copy made after the hold", _mutate("door-copy", "index.html", "const opening = () => { say", "const opening = () => { write(); say", "door"),
@@ -17478,18 +17516,19 @@ else:
                                  "under reduced motion a mouse press draws no coin and the dialog opens at once, the copy made in the click"),
                 "door-key": ("a keyboard that waits for the coin", _mutate("door-key", "index.html", " || !downAt || !e.detail ? 0 : Math.max(0, 360 - (performance.now() - downAt))", " ? 0 : 360", "door"),
                              "the keyboard gets the dialog at once, the copy made in the click"),
-                "door-motion": ("a tape drawn under reduced motion", _mutate("door-motion", "index.html", "@media (prefers-reduced-motion:reduce){.btn.door .tapebox,.btn.door .tape,.btn.door .flap,", "@media (prefers-reduced-motion:reduce){", "door"),
-                                "under reduced motion the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown"),
-                "door-print": ("a tape drawn in print", _mutate("door-print", "index.html", "@media print{.btn.door .tapebox,.btn.door .tape,.btn.door .flap,", "@media print{", "door"),
-                               "in print the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown"),
-                "door-name": ("a tape read by screen readers", _mutate("door-name", "index.html", '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">not yet</span>', '<span class="tapebox"><span class="tape">not yet</span>', "door"),
-                              "the door's name is its label alone: the tape and the coin are hidden from screen readers"),
+                "door-motion": ("a coin drawn under reduced motion", _mutate("door-motion", "index.html", "@media (prefers-reduced-motion:reduce){.btn.door .gcoin{display:none!important}}", "", "door"),
+                                "under reduced motion a mouse press draws no coin and the dialog opens at once, the copy made in the click"),
+                "door-print": ("a cue that blinks in print", _mutate("door-print", "index.html", ".cue-t{animation:none}}", "}", "door"),
+                               "in print the coin is not drawn and the cue stands lit and still, one line"),
+                "door-name": ("a door named with a tape's words", _mutate("door-name", "index.html", '<span class="gcoin" aria-hidden="true">', '<span class="tape">not yet</span><span class="gcoin" aria-hidden="true">', "door"),
+                              "the door's name is its label alone: the coin is hidden from screen readers"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
                   "modal, a dialog whose third step is out of view on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
-                  "and of the tape-off ceremony a tape that peels off past the window's edge, a tape never pulled off, a door without its copy icon, a door that lifts on hover, a door that grows during it, a window that stays unlit, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
-                  "a tape drawn under reduced motion or in print and a tape read by screen readers makes it exit 1 with that check failing "
+                  "a cue that blinks only from 2.8 s, as the ceremony had it, "
+                  "and of the coin door a tape drawn over it again, the taped cue back beside the live one, a door without its copy icon, a door that lifts on hover, a door that grows in its first seconds, an unlit window drawn over it, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
+                  "a coin drawn under reduced motion, a cue that blinks in print and a door named with a tape's words makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
@@ -18146,25 +18185,26 @@ else:
               and '"Parked": ["open held", T.status_parked]' in tpl_ and 'const ORDER = {"In Progress": 0, "Proposed": 1, "Parked": 1.5, "Shipped": 2, "Closed": 3};' in tpl_
               and '<symbol id="wo" viewBox="0 0 9 6">' in tpl_ and 'STATUS[w.status][0].startsWith("open")' in tpl_)
 
-def _taped_state(lf, text):
-    """landing_facts.py's launch state for a zensical.toml of `text`: (switch, taped), or the one line it stops with."""
+def _switch_read(lf, text):
+    """landing_facts.py's probe switch for a zensical.toml of `text`, or the one line it stops with."""
     with tempfile.TemporaryDirectory() as d:
         config = Path(d) / "zensical.toml"
         config.write_text(text, encoding="utf-8")
         try:
-            return lf.launch_state(config)
+            return lf.probe_switch(config)
         except lf.Stop as e:
             return str(e)
 
 
 _tape_lf = _lf_module()
-_tape_states = {name: _taped_state(_tape_lf, text) for name, text in (
-    ("both", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\ntaped = true\n'),
-    ("taped", '[project]\nsite_name = "t"\n# the tape, in a comment: taped = maybe\n\n[project.extra]\nprobe = false\ntaped = true  # until the release that opens it\n'),
+_tape_states = {name: _switch_read(_tape_lf, text) for name, text in (
+    ("on", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\n'),
+    ("on, a tape line left", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\ntaped = true\n'),
     ("off", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = false\n'))}
-check("FM-006 · the tape and the probe switch exclude each other: landing_facts.py stops a build with both on, in one line that says so; with the switch off it reads the tape on, "
-      f"its comments left alone, or off where it is not written (saw {_tape_states})",
-      isinstance(_tape_states["both"], str) and "exclude each other" in _tape_states["both"] and _tape_states["taped"] == (False, True) and _tape_states["off"] == (False, False))
+_tape_readers = [n for n in ("taped_switch", "launch_state") if hasattr(_tape_lf, n)]
+check("FM-006 · landing_facts.py reads the probe switch alone: no tape is read, so a `taped` line left in zensical.toml neither stops the build nor turns the switch "
+      f"(saw {_tape_states}; the tape's own readers still there: {_tape_readers})",
+      _tape_states == {"on": True, "on, a tape line left": True, "off": False} and not _tape_readers)
 
 
 if _lf_why:

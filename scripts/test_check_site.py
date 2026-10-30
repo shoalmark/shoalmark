@@ -11,6 +11,8 @@ CHECKER = Path(__file__).with_name("check_site.py")
 SITE_URL = "https://shoalmark.tools/"
 PROMPT = 'Please check honestly whether shoalmark fits this project; the answer may be "no fit".\nI decide.\n'
 LABELS = {"en": "Copy the prompt", "de": "Prompt kopieren"}
+CUES = {"en": "— press start —", "de": "— Start drücken —"}
+COIN = '<span class="gcoin" aria-hidden="true"><svg class="cab cab-coin" aria-hidden="true"></svg></span>'
 TWIN_TEXT = "# How it works\n\nTry it: the button \"Hand your agents the note\" leads to a note.\n\n```\nnext: owner\n```\n"
 
 
@@ -19,7 +21,8 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
     en = lang == "en"
     where, other = (SITE_URL, SITE_URL + "de/") if en else (SITE_URL + "de/", SITE_URL)
     label = LABELS[lang] if probe else ("Hand your agents the note" if en else "Gib deinen Agenten die Notiz")
-    primary = (f'<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">{label}</a>' if probe else
+    primary = (f'<span class="cue" aria-hidden="true"><span class="cue-t">{CUES[lang]}</span></span>'
+               f'<a class="btn door" id="probe-open" href="probe.txt" aria-haspopup="dialog">{label}{COIN}</a>' if probe else
                f'<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT{"" if en else ".de"}.md">{label}</a>')
     short = SITE_URL + ("" if en else "de/") + "probe.txt"
     dialog = (f'<dialog class="probe" id="probe" aria-labelledby="probe-h"><h2 id="probe-h">The probe prompt</h2>'
@@ -222,7 +225,8 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("probe.txt", "I decide.", "I decide!"), "probe.txt is missing or is not, byte for byte", probe=True)
         self.refused(self.edit("index.html", ' aria-labelledby="probe-h"', ""), "not one labelled dialog", probe=True)
         self.refused(self.edit("de/index.html", '<textarea id="probe-text" readonly>', '<textarea id="other" readonly>'), "not one labelled dialog", probe=True)
-        self.refused(self.edit("index.html", '<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">', '<a class="btn" href="probe.txt">'), "does not copy the prompt", probe=True)
+        self.refused(self.edit("index.html", '<a class="btn door" id="probe-open" href="probe.txt" aria-haspopup="dialog">', '<a class="btn door" id="probe-open" href="index.html" aria-haspopup="dialog">'),
+                     "does not copy the prompt", probe=True)
         self.refused(self.edit("index.html", ">shoalmark.tools/<wbr>probe.txt</a>", ">probe.txt</a>"), "second step does not link to", probe=True)
         self.refused(self.edit("de/index.html", ">shoalmark.tools/<wbr>de/<wbr>probe.txt</a>", ">https://shoalmark.tools/de/probe.txt</a>"), "second step does not link to", probe=True)
         self.refused(self.edit("de/index.html", ">shoalmark.tools/<wbr>de/<wbr>probe.txt</a>", ">shoalmark.tools/<wbr>probe.txt</a>"), "second step does not link to", probe=True)
@@ -389,99 +393,18 @@ FIGURE = ('<figure class="week" markdown="0">\n<div class="week-card"><h3 class=
           '<figcaption>One question, a signed commit that sets <code>next</code> to <code>build</code>.</figcaption>\n</figure>')
 
 
-class Taped(unittest.TestCase):
-    """The taped state: the probe switch off and the tape on. The primary button is a taped, aria-disabled button described by its reason line; each control
-    changes one thing in a taped site that passes, and the check names it."""
+class States(unittest.TestCase):
+    """What each launch state draws on the landing. With the probe on, the primary link is the coin door, lit, with its one coin in it, hidden from screen
+    readers; with the probe off, neither. In both, nothing of the tape-off ceremony or the taped state is drawn or styled, and no other page, the pitch page
+    among them, styles it. Each control puts one part of them back, or moves the door or its coin, in a site that passes, and the check names it."""
 
-    def taped_site(self, site):
-        good_site(site)
-        for name, en in (("index.html", True), ("de/index.html", False)):
-            note = "https://github.com/shoalmark/shoalmark/blob/main/ADOPT%s.md" % ("" if en else ".de")
-            old = '<a class="btn" href="%s">%s</a>' % (note, "Hand your agents the note" if en else "Gib deinen Agenten die Notiz")
-            new = ('<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">%s</span></button>'
-                   % (LABELS["en" if en else "de"], "not yet" if en else "noch nicht"))
-            why = '<p class="taped-why" id="taped-why">%s <a href="%s">%s</a>.</p>' % ("Not open yet. Until then, hand your agents" if en else "Noch nicht offen. Bis dahin gibst du deinen Agenten",
-                                                                                     note, "the note" if en else "die Notiz")
-            text = (site / name).read_text(encoding="utf-8")
-            self.assertIn(old, text)
-            (site / name).write_text(text.replace(old, new).replace("<footer>", why + "<footer>"), encoding="utf-8")
-        for name, old, new in (("how-it-works.html", "Hand your agents the note", LABELS["en"]), ("how-it-works/index.md", "Hand your agents the note", LABELS["en"]),
-                               ("de/how-it-works.html", "Gib deinen Agenten die Notiz", LABELS["de"]), ("de/how-it-works/index.md", "Gib deinen Agenten die Notiz", LABELS["de"])):
-            text = (site / name).read_text(encoding="utf-8")       # How it works names the taped button, as the taped state's words do
-            self.assertIn(old, text)
-            (site / name).write_text(text.replace(old, new), encoding="utf-8")
-
-    def checked(self, change=None, probe=False):
+    def checked(self, probe, change=None):
         with tempfile.TemporaryDirectory() as tmp:
             site = Path(tmp) / "site"
-            self.taped_site(site)
+            good_site(site, probe)
             if change:
                 change(site)
-            footed(site)
-            toml = Path(tmp) / "zensical-taped.toml"
-            toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = true\n" % ("true" if probe else "false"), encoding="utf-8")
-            return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
-
-    def edit(self, old, new):
-        def change(site):
-            text = (site / "index.html").read_text(encoding="utf-8")
-            self.assertIn(old, text)
-            (site / "index.html").write_text(text.replace(old, new, 1), encoding="utf-8")
-        return change
-
-    def test_a_taped_site_passes(self):
-        result = self.checked()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_each_control_is_refused(self):
-        for name, change, probe, message in (
-                ("the tape left off", self.edit('<span class="tape" aria-hidden="true">not yet</span>', ""), False, "carries no tape hidden from screen readers"),
-                ("a dialog built", self.edit("<footer>", '<dialog id="probe" aria-labelledby="h"><h2 id="h">x</h2></dialog><footer>'), False, "a dialog is built"),
-                ("a click handler on the button", self.edit('aria-disabled="true"', 'aria-disabled="true" onclick="copy()"'), False, "with no id, link or handler"),
-                ("a script that handles the button", self.edit("</body>", '<script>document.querySelector(".taped").addEventListener("click", () => 0)</script></body>'), False,
-                 "a script handles the taped button"),
-                ("aria-describedby missing", self.edit(' aria-describedby="taped-why"', ""), False, "is not described by the line that says why"),
-                ("the button a link", self.edit('<button type="button" class="btn taped"', '<a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md" class="btn">x</a><button type="button" class="btn taped"'), False,
-                 "does not lead to how-it-works.html alone"),
-                ("the switch on with the tape", None, True, "the two exclude each other")):
-            with self.subTest(name):
-                result = self.checked(change, probe)
-                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
-                self.assertIn(message, result.stderr)
-
-
-class Ceremony(unittest.TestCase):
-    """The tape-off ceremony beside the taped state. With the probe on, the primary link is the coin door: its tape and its coin stand in it, hidden from
-    screen readers, and the site passes; the taped state's tape, on its taped button, is refused with the probe on, and the ceremony's door is refused with
-    the probe off, taped or not."""
-
-    TAPE = {"en": "not yet", "de": "noch nicht"}
-
-    def door(self, lang, href, extra=""):
-        return ('<span class="cue" aria-hidden="true"><span class="cue-t was">— x —</span><span class="cue-t now">— y —</span></span>'
-                '<a class="btn door"%s href="%s" aria-haspopup="dialog">%s<span class="gcoin" aria-hidden="true"><svg class="cab cab-coin" aria-hidden="true"></svg></span>'
-                '<span class="tape" aria-hidden="true">%s</span></a>' % (extra, href, LABELS[lang], self.TAPE[lang]))
-
-    def checked(self, probe, taped=False, change=None):
-        with tempfile.TemporaryDirectory() as tmp:
-            site = Path(tmp) / "site"
-            if taped:
-                Taped.taped_site(self, site)
-            else:
-                good_site(site, probe)
-            for name, lang in (("index.html", "en"), ("de/index.html", "de")):
-                text = (site / name).read_text(encoding="utf-8")
-                if probe:
-                    old = '<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">%s</a>' % LABELS[lang]
-                    self.assertIn(old, text)
-                    text = text.replace(old, self.door(lang, "probe.txt", ' id="probe-open"'))
-                (site / name).write_text(text, encoding="utf-8")
-            if change:
-                change(site)
-            footed(site)
-            toml = Path(tmp) / "zensical-ceremony.toml"
-            toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = %s\n" % ("true" if probe else "false", "true" if taped else "false"), encoding="utf-8")
-            return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+            return run(site, probe)
 
     def put(self, old, new, name="index.html"):
         def change(site):
@@ -490,22 +413,53 @@ class Ceremony(unittest.TestCase):
             (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
         return change
 
-    def test_the_ceremony_with_the_probe_and_the_taped_tape_without_it(self):
-        taped_button = '<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">not yet</span></button>' % LABELS["en"]
+    def pitch(self, css=""):
+        """A pitch page built beside the landings, its try row styled, with `css` in its styles."""
+        def change(site):
+            (site / "why-shoalmark.html").write_text('<!doctype html><html lang="en"><head><title>Why shoalmark?</title><style>.tldr dl>div.try{background:#bccd8f}%s</style>'
+                                                     '</head><body><section class="tldr"><dl><div class="try"><dt>Try it</dt><dd>x</dd></div></dl></section></body></html>' % css,
+                                                     encoding="utf-8")
+        return change
+
+    def test_each_state_draws_its_own_and_nothing_of_the_tape(self):
         note = '<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>'
+        tape = '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">%s</span><span class="flap"></span></span>'
+        taped_button = ('<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">not yet</span></button>'
+                        % LABELS["en"])
+        style = lambda css: self.put("</head>", "<style>%s</style></head>" % css)
         rows = (
-            ("the probe build with the ceremony", dict(probe=True), None),
-            ("the taped tape beside the door, with the probe on", dict(probe=True, change=self.put('<a class="btn alt"', taped_button + '<a class="btn alt"')),
-             "the taped state's tape is built"),
-            ("the door's tape moved onto a taped button, with the probe on", dict(probe=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span></a>', '</a>' + taped_button)),
-             "the taped state's tape is built"),
-            ("the door's tape read by screen readers, with the probe on", dict(probe=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span>', '<span class="tape">not yet</span>')),
-             "the ceremony's tape or coin is read by screen readers"),
-            ("the ceremony's door with the probe off", dict(probe=False, change=self.put(note, self.door("en", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"))),
-             "the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built"),
-            ("the ceremony's coin in the taped state", dict(probe=False, taped=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span></button>',
-                                                                                                 '<span class="tape" aria-hidden="true">not yet</span><span class="gcoin" aria-hidden="true"></span></button>')),
-             "the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built"))
+            ("the probe build: the lit door with its coin", dict(probe=True), None),
+            ("the interim build: the note's link, no door", dict(probe=False), None),
+            ("the ceremony's tape back over the door", dict(probe=True, change=self.put(COIN + "</a>", COIN + tape % "not yet" + "</a>")),
+             "the landing draws a tape, the taped state or a second cue line"),
+            ("the ceremony's tape back over the German door", dict(probe=True, change=self.put(COIN + "</a>", COIN + tape % "noch nicht" + "</a>", "de/index.html")),
+             "de/index.html: the landing draws a tape"),
+            ("the taped cue back beside the live one", dict(probe=True, change=self.put('<span class="cue-t">%s</span>' % CUES["en"],
+                                                                                         '<span class="cue-t was">— after v0.20.1 —</span><span class="cue-t now">%s</span>' % CUES["en"])),
+             "the landing draws a tape, the taped state or a second cue line, or styles one: ['cue-t now']"),
+            ("the ceremony's keyframes back in the page's style", dict(probe=True, change=style("@keyframes tape-pull{from{--p:.06}to{--p:1}}")),
+             "or styles one: ['@keyframes tape-pull']"),
+            ("the ceremony's tape style back", dict(probe=True, change=style(".btn.door .tape{position:absolute;inset:0}")), "or styles one: ['.tape']"),
+            ("the unlit window back over the door", dict(probe=True, change=style('.btn.door::after{content:"";background:#8595a2}')), "or styles one: ['.btn.door::after']"),
+            ("the taped cue's style back", dict(probe=True, change=style(".cue .was{visibility:hidden}")), "or styles one: ['.cue .was']"),
+            ("the taped button back, with the probe off", dict(probe=False, change=self.put(note, taped_button)),
+             "the landing draws a tape, the taped state or a second cue line, or styles one: ['button.btn.taped', 'span.tape']"),
+            ("the line that says why back, with the probe off", dict(probe=False, change=self.put("<footer>", '<p class="taped-why" id="taped-why">Not open yet.</p><footer>')),
+             "or styles one: ['p.taped-why']"),
+            ("the taped button's style back, with the probe off", dict(probe=False, change=style(".btn.taped{background:#8595a2}")), "or styles one: ['.btn.taped']"),
+            ("the coin left out of the door", dict(probe=True, change=self.put(COIN, "")), "the primary link is not the coin door with its one coin in it"),
+            ("a second coin, outside the door", dict(probe=True, change=self.put('<a class="btn alt"', COIN + '<a class="btn alt"')),
+             "the primary link is not the coin door with its one coin in it"),
+            ("the door without its id", dict(probe=True, change=self.put(' id="probe-open"', "")), "the primary link is not the coin door with its one coin in it"),
+            ("the coin read by screen readers", dict(probe=True, change=self.put('<span class="gcoin" aria-hidden="true">', '<span class="gcoin">')),
+             "the door's coin is read by screen readers"),
+            ("the door with the probe off", dict(probe=False, change=self.put(note, note.replace('class="btn"', 'class="btn door"'))),
+             "the probe switch is off, but the coin door or its coin is built"),
+            ("the coin with the probe off", dict(probe=False, change=self.put(note, note.replace("</a>", COIN + "</a>"))),
+             "the probe switch is off, but the coin door or its coin is built"),
+            ("a pitch page whose try row is styled, and nothing of the tape", dict(probe=True, change=self.pitch()), None),
+            ("the taped try row's style back on the pitch page", dict(probe=True, change=self.pitch(".tldr dl>div.try.taped{background:#8595a2}")),
+             "why-shoalmark.html styles the tape-off ceremony or the taped state: .taped"))
         for name, args, message in rows:
             with self.subTest(name):
                 result = self.checked(**args)
