@@ -14,6 +14,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -23,6 +24,8 @@ REL = "docs/work-tracker/"
 CONFIG = ('name = "text fixture"\nowner = "owner@example.invalid"\n'
           '[kinds]\nTX = "Work"\n[seats]\nreader = "reader@example.invalid"\n'
           '[rights]\nreader = []\n')
+# the retry line as a copied command spells it on Windows, a PowerShell literal for each argument; elsewhere the id stands bare
+DIRTY_AGAIN_WIN = "--answer 'TX-001' reject"
 TRIAGE_TEXT = "# Triage\n\n## The intent\n\nKeep one reading.\n\n## The current path\n\nRead text.\n\n## Passes\n\nNone.\n"
 
 
@@ -331,7 +334,7 @@ def converted_readings(fm, root, ending, missing=False):
     # The working answer differs from the committed one, or is a new file.
     write(p, answered.replace('answer: "accepted"', 'answer: "rejected - fixture"'), ending)
     dirty = fm.dirty_refusal(g, [rel])
-    values["dirty_refusal"] = "failed half-way" in dirty and "--answer TX-001 reject" in dirty and (("--supersede" in dirty) is (not missing))
+    values["dirty_refusal"] = "failed half-way" in dirty and (DIRTY_AGAIN_WIN if sys.platform == "win32" else "--answer TX-001 reject") in dirty and (("--supersede" in dirty) is (not missing))
     # HEAD and committed merge-parent snapshots supply the old answer.
     git(root, "reset", "--hard", "-q", after)
     write(p, plain, ending)
@@ -379,6 +382,10 @@ def converted_checks(fm, base, check):
     for consumer in readings[0]:
         check(f"Git {consumer} committed LF, CRLF and missing snapshots", all(r[consumer] for r in readings),
               "LF/CRLF/missing=" + "/".join(str(r[consumer]) for r in readings))
+    from unittest import mock
+    with mock.patch.object(fm.sys, "platform", "win32"):
+        made = f"--answer {fm.printed_arg('TX-001')} reject"
+    check("Git dirty_refusal's Windows text above is the text printed_arg makes there", made == DIRTY_AGAIN_WIN, made)
     source = base / "reads-lf"
     git(source, "config", "uploadpack.allowFilter", "true")
     for filt in ("blob:none", "tree:0"):

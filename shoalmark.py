@@ -3998,9 +3998,9 @@ def dirty_refusal(git, dirty):
         m = re.fullmatch(r"(accepted|rejected|revoked)(?:\s+-\s+(.*))?", ans)
         verb = {"accepted": "accept", "rejected": "reject", "revoked": "revoke"}[m.group(1)] if m else ""
         said += (f"\n  {tid} carries an answer that was never committed — {ans!r}. It looks like an earlier `--answer` that failed half-way"
-                 + (f"; to give it again: {CMD} --answer {named} {verb}" + (f' "{m.group(2)}"' if m.group(2) else "")
+                 + (f"; to give it again: {CMD} --answer {printed_arg(named)} {verb}" + (f" {printed_arg(m.group(2))}" if m.group(2) else "")
                     + (" --supersede" if had and verb != "revoke" else "") if m else ""))
-    said += (f"\n  undo what it left with ONE command:\n    git{'' if top == ROOT else ' -C ' + str(top)} restore --staged --worktree -- {' '.join(mine)}"
+    said += (f"\n  undo what it left with ONE command:\n    git{'' if top == ROOT else ' -C ' + printed_arg(str(top))} restore --staged --worktree -- {' '.join(printed_arg(p_) for p_ in mine)}"
              + (f"\n  the rest is not the tool's — commit or stash it: {', '.join(theirs)}" if theirs else ""))
     return said
 

@@ -9891,10 +9891,17 @@ with tempfile.TemporaryDirectory() as tmp:
     (root / "notes.txt").write_text("the Owner's own change\n", encoding="utf-8")
     code, out, err = run(root, "--answer", "AP-501", "accept")
     undo_ = "git restore --staged --worktree -- docs/work-tracker/AP-500-x.md docs/work-tracker/INDEX.md"
+    undo_win_ = "git restore --staged --worktree -- 'docs/work-tracker/AP-500-x.md' 'docs/work-tracker/INDEX.md'"
+    again_win_ = "--answer 'AP-500' accept 'count one week first'"
     check("FM-017 · the dirty-tree refusal names the paths — and a tracker carrying an answer that was never committed is called what it looks like, a failed earlier `--answer`, with ONE command that undoes it and the answer to give again",
           code == fm.EXIT_LINT and "working tree has changes" in err and all(p_ in err.split("Changed:")[1].split("\n")[0] for p_ in ("docs/work-tracker/AP-500-x.md", "docs/work-tracker/INDEX.md", "notes.txt"))
-          and "AP-500 carries an answer that was never committed" in err and "failed half-way" in err and undo_ in err
-          and '--answer AP-500 accept "count one week first"' in err and "commit or stash it: notes.txt" in err)
+          and "AP-500 carries an answer that was never committed" in err and "failed half-way" in err and (undo_win_ if _WIN_ARGS else undo_) in err
+          and (again_win_ if _WIN_ARGS else "--answer AP-500 accept 'count one week first'") in err and "commit or stash it: notes.txt" in err)
+    from unittest import mock as _mock
+    with _mock.patch.object(fm.sys, "platform", "win32"):
+        made_ = ("git restore --staged --worktree -- " + " ".join(fm.printed_arg(p_) for p_ in ("docs/work-tracker/AP-500-x.md", "docs/work-tracker/INDEX.md")),
+                 f"--answer {fm.printed_arg('AP-500')} accept {fm.printed_arg('count one week first')}")
+    check(f"FM-017 · …the Windows text written out for those two lines is the text `printed_arg` makes there (made {made_})", made_ == (undo_win_, again_win_))
     subprocess.run(undo_.split()[:1] + ["-C", str(root)] + undo_.split()[1:], check=True, capture_output=True, env=_ENV)
     check("FM-017 · the command it gives undoes exactly what the tool left — the Owner's own change stays", sh_("status", "--porcelain", "--untracked-files=no") == "M notes.txt")
     rm_git(root)
@@ -16650,9 +16657,16 @@ with tempfile.TemporaryDirectory() as tmp:
     a_.write_text(a_.read_text().replace('answer: "accepted - yes"', 'answer: "revoked - the audit comes first"'), encoding="utf-8")
     b_.write_text(b_.read_text().replace('answer: "accepted - yes"', 'answer: "rejected - not this quarter"'), encoding="utf-8")
     code_, _, err_ = run(root, "--answer", "AP-298", "accept")
+    revoke_win_, reject_win_ = "--answer 'AP-296' revoke 'the audit comes first'", "--answer 'AP-297' reject 'not this quarter' --supersede"
     check(f"FM-029 · the half-written-answer recovery reads `revoked` too — its *give it again* is `revoke \"<reason>\"` — and an answer that replaced a committed one is given again with `--supersede` (saw {err_.strip()[-300:]!r})",
-          code_ == fm.EXIT_LINT and '--answer AP-296 revoke "the audit comes first"' in err_ and '--answer AP-296 revoke "the audit comes first" --supersede' not in err_
-          and '--answer AP-297 reject "not this quarter" --supersede' in err_)
+          code_ == fm.EXIT_LINT and (revoke_win_ if _WIN_ARGS else "--answer AP-296 revoke 'the audit comes first'") in err_
+          and (revoke_win_ if _WIN_ARGS else "--answer AP-296 revoke 'the audit comes first'") + " --supersede" not in err_
+          and (reject_win_ if _WIN_ARGS else "--answer AP-297 reject 'not this quarter' --supersede") in err_)
+    from unittest import mock as _mock
+    with _mock.patch.object(fm.sys, "platform", "win32"):
+        made_ = (f"--answer {fm.printed_arg('AP-296')} revoke {fm.printed_arg('the audit comes first')}",
+                 f"--answer {fm.printed_arg('AP-297')} reject {fm.printed_arg('not this quarter')} --supersede")
+    check(f"FM-029 · …the Windows text written out for those lines is the text `printed_arg` makes there (made {made_})", made_ == (revoke_win_, reject_win_))
     rm_git(root)
 fm.configure(HERE)
 
