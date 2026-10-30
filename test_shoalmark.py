@@ -8781,7 +8781,7 @@ type.verdict: verdict
 answer.sign.copy.name: copy the command
 """
 def _c4_english(shown):
-    return sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
+    return sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "done", "ended", "trackers", "proposed", "shipped",
                               "closed", "parked", "blocked", "neighbours", "file", "intent", "verdict", "missing", "stated", "handover", "untriaged", "waiting", "kept")
                    if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
 
@@ -8832,6 +8832,13 @@ _c4_prompt_controls(check)
 _c4_board = " ".join(fm.read_flat(GERMAN)[k] for k in ("view.board", "viewer.board"))
 check(f"C4 · without a browser, the German board's name and its back link ({_c4_board!r}) hold no English word, and with open beside them only open is "
       f"found (saw {_c4_english(_c4_board)}, {_c4_english(_c4_board + ' open')})", _c4_english(_c4_board) == [] and _c4_english(_c4_board + " open") == ["open"])
+# German names the backlog with the English word itself: the board's heading reads "Backlog", and the English-word list does not count it.
+_c4_backlog = lambda table: fm.read_flat(table).get("section.backlog") == "Backlog" and not _c4_english(fm.read_flat(table)["section.backlog"])
+_c4_vorrat = GERMAN.replace("section.backlog: Backlog\n", "section.backlog: Vorrat\n", 1)
+check(f"C4 · without a browser, the German board's backlog heading reads „Backlog“, in the suite's German table and in the one the tool ships, and the "
+      f"English-word list does not count it; with „Vorrat“ in its place the check is red (saw {fm.read_flat(GERMAN).get('section.backlog')!r})",
+      _c4_backlog(GERMAN) and _c4_backlog((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+      and _c4_vorrat != GERMAN and not _c4_backlog(_c4_vorrat))
 
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
 _GONE_NAMES = ("theme.css", "wordmark.svg")       # the two files R10's look half stopped reading, which a check below writes and removes again
@@ -8907,6 +8914,8 @@ with tempfile.TemporaryDirectory() as d:
                 english = _c4_english(shown)
                 check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english}; {counts})",
                       cut_ok and not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
+                check("C4 · rendered in a browser, the German board's backlog heading reads „Backlog“",
+                      bool(re.search(r"(?<![\w-])Backlog(?![\w-])", shown)))
                 _, labelled_page, _, _, _ = board_with(repo_labels_yaml=GERMAN + "\nday.asks: open\n")
                 shown, cut_ok, counts = _c4_cut_prompts([dom(""), chrome(dom("#=MSR-001"))], day_data(labelled_page), text)
                 english = _c4_english(shown)
