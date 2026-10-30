@@ -382,6 +382,9 @@ check("the board is the first view: progress · triage · triaged · backlog · 
 check("the board shows the triage home: the Owner's current path on top, the newest pass under `triaged` — plain text, ids clickable",
       "HOME={" in _tri and "__HOME__" not in _tri and "FEAT-002 to its end" in _tri and "](FEAT-002" not in _tri.split("const BLOB")[1].split(",T=[")[0]
       and 'HOME.last?`<tr class="s">' in _tri and set(gti.triage_home()) == {"path", "last", "intent"})
+check("a shut group of the work table is its heading alone: its paragraph, the newest pass under `triaged` or a story's state, is drawn with its rows, "
+      "only where the group is open",
+      _tri.count('return head+(folded?"":state+g.map(') == 1 and "</tr>${state}`" not in _tri)
 _ix = gti.render_triage([dict(_live[0], rank=2, tier="P1"), dict(_live[1], rank=1, tier="P0"), _live[2]])
 check("the index opens with what the board shows: the Owner's path verbatim, then the ranked trackers in order",
       "FEAT-002](FEAT-002-a-story.md) to its end" in _ix and re.search(rf"\| 1 \| P0 \| — \| — \| [^|]+ \| \[{_live[1]['id']}\]", _ix).start() < re.search(rf"\| 2 \| P1 \| — \| — \| [^|]+ \| \[{_live[0]['id']}\]", _ix).start()

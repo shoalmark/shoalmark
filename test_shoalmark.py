@@ -7470,6 +7470,112 @@ console.log(JSON.stringify(out));
         SKIPS.append(("FM-006 · the board reloads · its logic, run", 3, "no Node here"))
     rm_git(root)
 
+# --- a shut group of the work table is its heading alone (the guide, §8: a fold's `> ` is closed): the newest pass under *triaged* and a story's
+#     state fold with the group's rows, and stand under its heading, before its rows, where it is opened, by a click or by a search, which opens
+#     every group. The page's own script, run in Node from the board a copy of the tool builds; a mutant that keeps a paragraph under a shut
+#     group, or drops it from an open one, fails it ------------------------------------------------------------------------------------------
+_FOLD_HARNESS = r"""
+const vm=require("vm"),fs=require("fs"),code=fs.readFileSync(process.argv[2],"utf8");
+const any=new Proxy(function(){},{get:(t,k)=>k===Symbol.toPrimitive?()=>"":k==="then"?undefined:any,apply:()=>any,construct:()=>any});
+const els=new Map(),el=id=>{if(!els.has(id))els.set(id,new Proxy({id,value:"",hidden:false,innerHTML:"",textContent:"",dataset:{}},
+  {get:(t,k)=>k in t?t[k]:any,set:(t,k,v)=>(t[k]=v,true)}));return els.get(id)};
+const store={getItem:()=>null,setItem(){},removeItem(){}};
+const sandbox={document:{getElementById:el,querySelectorAll:()=>[],querySelector:()=>null,styleSheets:[],documentElement:{style:{}},addEventListener(){},
+  head:{append(){}},createElement:()=>any,createTextNode:()=>any,activeElement:null,visibilityState:"visible"},marked:{use(){},parse:()=>""},
+  matchMedia:()=>({matches:false,addEventListener(){}}),localStorage:store,sessionStorage:store,history:{replaceState(){}},location:{hash:"",reload(){}},
+  navigator:{},addEventListener(){},scrollTo(){},scrollY:0,TextDecoder,atob};
+sandbox.window=sandbox;vm.createContext(sandbox);
+const go=s=>vm.runInContext(s,sandbox),body=()=>go('$("b").innerHTML'),
+  click=k=>go(`$("b").onclick({target:{closest:s=>s=="tr.g"?{dataset:{k:${JSON.stringify(k)}}}:null}})`),out={};
+go(code);
+out.board=body();click("boardtriaged");out.boardOpened=body();click("boardtriaged");out.boardShut=body();
+go('$("q").value="msr";draw()');out.searched=body();
+go('$("q").value="";gi=GROUPS.findIndex(g=>g[0]=="epic");draw()');out.story=body();click("epicMSR-001");out.storyOpened=body();
+process.stdout.write(JSON.stringify(out));
+"""
+_FOLD_PASS, _FOLD_STATE = "the pass ranked the story first", "one chapter is left to write"
+_FOLD_SEEN = (("board", "boardtriaged", True, _FOLD_PASS), ("boardOpened", "boardtriaged", False, _FOLD_PASS), ("boardShut", "boardtriaged", True, _FOLD_PASS),
+              ("searched", "boardtriaged", False, _FOLD_PASS), ("story", "epicMSR-001", True, _FOLD_STATE), ("storyOpened", "epicMSR-001", False, _FOLD_STATE))
+
+
+def _fold_run(source):
+    """The work table's body as the board a copy of the tool whose source is `source` builds draws it, run in Node: the board at load, its *triaged*
+    group opened by a click and shut by another, a search typed, then the story view at load and its story opened by a click — {state: html};
+    {"error": …} where the page did not run."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+        tracker(root_, "MSR-001", extra="tier: P1\ntriaged: 2026-10-01\n", title="a story", body=f"## What is true now\n\n{_FOLD_STATE}.\n\n## Done when\n\nit is.\n")
+        tracker(root_, "MSR-002", status="Proposed", extra="tier: P2\nepic: MSR-001\ntriaged: 2026-10-01\n", title="its chapter")
+        home_ = root_ / "docs/work-tracker/TRIAGE.md"; said_ = home_.read_text(encoding="utf-8")
+        home_.write_text(said_.replace("*None yet.*", f"2026-10-01 — {_FOLD_PASS}: MSR-001, then MSR-002."), encoding="utf-8")
+        tr_("--html-only")
+        page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        rm_git(root_)
+        if said_.count("*None yet.*") != 1 or page_.count("<script>") != 2:
+            return {"error": "the fixture's triage home, or its page, is not the one this check reads"}
+        (base_ / "board.js").write_text(page_.split("<script>")[2].rsplit("</script>", 1)[0], encoding="utf-8")
+        (base_ / "harness.js").write_text(_FOLD_HARNESS, encoding="utf-8")
+        r_ = subprocess.run([shutil.which("node"), str(base_ / "harness.js"), str(base_ / "board.js")], capture_output=True, text=True, encoding="utf-8",
+                            errors="replace", timeout=60, env=_ENV)
+    try:
+        return json.loads(r_.stdout)
+    except ValueError:
+        return {"error": r_.stderr[-300:]}
+
+
+def _fold_problems(o):
+    """What is wrong with the work table's folds in `_fold_run`'s output, one line each, led by the state it was seen in: [] where nothing is."""
+    if set(o) != {s_ for s_, _k, _f, _t in _FOLD_SEEN}:
+        return [f"run: the page's script did not run: {o}"]
+    bad = []
+    for state_, key_, shut_, text_ in _FOLD_SEEN:
+        html_ = o[state_]
+        m_ = re.search(r'<tr class="g( f)?" data-k="' + re.escape(key_) + '">', html_)
+        if not m_:
+            bad.append(f"{state_}: no heading for {key_}")
+            continue
+        end_ = html_.find("</tr>", m_.end()) + len("</tr>")
+        next_ = html_.find('<tr class="g', end_)
+        under_ = html_[end_:next_ if next_ >= 0 else len(html_)]
+        if bool(m_.group(1)) != shut_:
+            bad.append(f"{state_}: {key_} is {'shut' if m_.group(1) else 'open'} where it should be {'shut' if shut_ else 'open'}")
+        elif shut_ and (under_ or text_ in html_):
+            bad.append(f"{state_}: the shut {key_} shows more than its heading: {under_[:160]!r}")
+        elif not shut_ and not (re.match(r'<tr class="s"><td colspan="\d+">', under_) and text_ in under_[:under_.find("</tr>")] and '<tr class="t' in under_):
+            bad.append(f"{state_}: the open {key_} does not show its paragraph under its heading, then its rows: {under_[:160]!r}")
+    return bad
+
+
+if shutil.which("node"):
+    _fold_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    _fold_bad = _fold_problems(_fold_run(_fold_src))
+    check("a shut group of the work table is its heading alone: the newest pass under *triaged* and a story's state fold with the group's rows, at load "
+          f"and when a click shuts it again, and stand under its heading, before its rows, where a click or a search opens it (problems: {_fold_bad})", _fold_bad == [])
+    _FOLD_KEEP = 'return head+(folded?"":state+g.map('
+    _FOLD_MUTANTS = {
+        "the paragraph in the group's heading again, under a shut group as under an open one":
+            ((("</tr>`;   // a header sums its rows up", "</tr>${state}`;   // a header sums its rows up"), (_FOLD_KEEP, 'return head+(folded?"":g.map(')),
+             {"board", "boardShut", "story"}),
+        "the newest pass kept under a shut *triaged* group": (((_FOLD_KEEP, 'return head+(folded?(k=="triaged"?state:""):state+g.map('),), {"board", "boardShut"}),
+        "a story's state kept under a shut story": (((_FOLD_KEEP, 'return head+(folded?(gname=="epic"?state:""):state+g.map('),), {"story"}),
+        "the paragraph dropped from an open group": (((_FOLD_KEEP, 'return head+(folded?"":g.map('),), {"boardOpened", "searched", "storyOpened"})}
+    for what_, (edits_, want_) in _FOLD_MUTANTS.items():
+        mutant_ = _fold_src
+        for a_, b_ in edits_:
+            mutant_ = mutant_.replace(a_, b_) if mutant_.count(a_) == 1 else ""
+        seen_ = {p_.split(":", 1)[0] for p_ in _fold_problems(_fold_run(mutant_))} if mutant_ else set()
+        check(f"the work table's folds · its mutant, {what_}: the check FAILS on it, in each of {sorted(want_)} (failed in {sorted(seen_)})",
+              bool(mutant_) and want_ <= seen_)
+    fm.configure(HERE)
+else:
+    _skipped("the work table's folds, run in Node", 5, "Node is not installed here")
+
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
     try:

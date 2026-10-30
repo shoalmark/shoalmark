@@ -1392,6 +1392,15 @@ ASK_ID_EDITS = (
 )
 
 
+# a shut group of the work table is its heading alone: its paragraph, the newest pass under `triaged` or a story's state, folds with its rows
+GROUP_FOLD_EDITS = (
+    ("what is kept and what is owed stay open; `triaged` keeps its pass paragraph\n",
+     "what is kept and what is owed stay open; a shut group is its heading alone: its paragraph (the newest pass, a story's state) folds with its rows\n"),
+    ("</tr>${state}`;   // a header sums its rows up by the board's columns\n", "</tr>`;   // a header sums its rows up by the board's columns\n"),
+    ('    return head+(folded?"":g.map(t=>', '    return head+(folded?"":state+g.map(t=>'),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
     occurs exactly once — else None; then its rows, each ask cell carrying its id (`ask_id_rows`)."""
@@ -1399,7 +1408,7 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
@@ -2033,6 +2042,24 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         for what, stdout in schemas.items():
             assert_control(v2 + f"--schema with A2's two lines, one of them not as approved, does not match — {what}",
                            bool(brand) and stdout != schema_new and two_lines(stdout) and not takes(stdout))
+        # the group fold's allowance, held as the page's other edits are: literal text, each after found once on the candidate's page, and a page
+        # whose group fold differs from it beyond the allowance does not match
+        group_fold = "Git entry group-fold allowance: "
+        assert_control(group_fold + "GROUP_FOLD_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(GROUP_FOLD_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in GROUP_FOLD_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in GROUP_FOLD_EDITS))
+        drawn = b'return head+(folded?"":state+g.map('
+        fold_variants = {
+            "the paragraph in the group's heading again": new_page.replace(b"</tr>`;   // a header sums", b"</tr>${state}`;   // a header sums", 1)
+                                                                   .replace(drawn, b'return head+(folded?"":g.map(', 1),
+            "the paragraph under a shut group as well": new_page.replace(drawn, b'return head+state+(folded?"":g.map(', 1),
+            "one byte more in the comment": new_page.replace(b"(the newest pass, a story's state) folds with its rows\n",
+                                                             b"(the newest pass, a story's state) folds with its rows \n", 1)}
+        made_folds = {what: page != new_page for what, page in fold_variants.items()}
+        assert_control(group_fold + "a page whose group fold differs from GROUP_FOLD_EDITS' after — the paragraph in the heading again, the paragraph "
+                       f"under a shut group as well, one byte more in the comment — does not match (each variant made: {made_folds})",
+                       all(made_folds.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in fold_variants.values()))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),
