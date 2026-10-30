@@ -18954,6 +18954,10 @@ _module_guard(test_tracker_text, check, fm, skip_count=11, details=False)
 import test_owner_exemption
 _module_guard(test_owner_exemption, check, single_label="FM-033 R14 · Owner authors, signatures, histories and CI")
 
+# an ask's own id and the answer that names it: its class test, a program of its own so its mutants patch the module it imports
+import test_ask_ids
+_module_guard(test_ask_ids, check)
+
 # R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
 import test_r9_removals
 _module_guard(test_r9_removals, check)

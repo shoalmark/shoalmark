@@ -603,7 +603,30 @@ ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
 
-MUTANTS = ()
+MUTANTS = (
+    ("the head found by `line_author`: the reader goes back to the line", "answer_commit",
+     'return answer_commits([t]).get(t.get("ask_id") or "", ("", ""))',
+     'return (line_author(TRACKER_DIR / t["file"], "answer:")[3], "")', (rows_binding,)),
+    ("a trailer matched by its prefix: Q12 answers Q1", "answer_commits",
+     "if value in found and len(parents.split()) == 1:",
+     "value = next((a for a in found if value.startswith(a)), value)\n            if value in found and len(parents.split()) == 1:", (rows_binding,)),
+    ("the question left out of the binding", "answer_commits",
+     "elif put_ask_of(parse_frontmatter(at)[0]) != put_ask(t):", "elif put_ask_of(parse_frontmatter(at)[0])[1:] != put_ask(t)[1:]:", (rows_binding,)),
+    ("the binding compares the question alone", "answer_commits",
+     "elif put_ask_of(parse_frontmatter(at)[0]) != put_ask(t):", "elif put_ask_of(parse_frontmatter(at)[0])[0] != put_ask(t)[0]:", (rows_binding,)),
+    ("no check for two heads", "answer_commits", "if len(heads) > 1:", "if False:", (rows_binding,)),
+    ("C4 without the history read", "ask_numbers", 'if vcs() == "git" and rev:', 'if False:', (rows_minting,)),
+    ("C5 against the branch's own base", "proposed_id_findings", "t_open, t_put, t_records = held_ids(there)", "t_open, t_put, t_records = held_ids(base)", (rows_branches,)),
+    ("C5 without the default branch's records", "proposed_id_findings",
+     "theirs = {n for n in (ask_number(a, tid) for a in [t_open, *t_records]) if n}", "t_records = {}\n        theirs = {n for n in (ask_number(a, tid) for a in [t_open]) if n}", (rows_branches,)),
+    ("signers read from the checkout", "verified_as", 'v = vcs_process("git", *signers_args(), "log"', 'v = vcs_process("git", "log"', (rows_binding,)),
+    ("the next number from the front matter alone", "file_numbers", '[t.get("ask_id") or ""] + [i for i, _d in t.get("asks_ids") or []]', '[t.get("ask_id") or ""]', (rows_records, rows_minting)),
+    ("`--answer` by tracker id on an ask with an id", "answer_cmd", "if held and not by_id:", "if False:", (rows_commands,)),
+    ("C2 off", "id_moves", "if which:", "if False:", (rows_minting, rows_binding)),
+    ("the walk's id rules read a tracker with no file", "id_walk_problems", 'for t in trackers if t.get("file")}', "for t in trackers}", (rows_minting,)),
+    ("the answer's change rule reads a tracker with no file", "answer_change_problems", 'for t in trackers if t.get("file")}', "for t in trackers}",
+     (rows_minting,)),
+)
 
 
 @contextlib.contextmanager
