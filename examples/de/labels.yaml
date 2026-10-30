@@ -87,6 +87,7 @@ waiting.holds: hält {0} weitere auf
 waiting.days: seit {0} Tagen
 waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
+ask.legacy: gestellt, bevor Fragen eine ID hatten
 waiting.bottleneck: "Sie sind der Engpass — {0} Fragen, {1} Einträge aufgehalten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für Sie"
 waiting.malformed.one: 1 Frage zurückgegeben — nicht für Sie
@@ -160,6 +161,7 @@ answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zwei
 answer.sign.does: Was er tut
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2} — und {3}"
 answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
+answer.sign.step.names: "seine Nachricht nennt die Frage, die er beantwortet: {0}"
 answer.sign.step.lands: "es zählt, sobald dieser Commit auf dem Standardzweig ist: pushe ihn, oder merge den Zweig, der ihn trägt"
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: der Commit lässt die Prüfung über alle Arbeitspakete laufen."
 answer.sign.success: Wenn es geklappt hat

@@ -2529,15 +2529,27 @@ def answered(trackers):
     rows = sorted((t for t in trackers if t.get("answer") and t["status"] in OPEN_STATUSES), key=lambda t: t.get("answered", ""))
     print(f"{len(rows)} ANSWERED, NOT YET ACTED ON" if rows else "NOTHING ANSWERED IS WAITING FOR A SEAT.")
     for t in rows:
-        print(f"\n{t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   relation: {relation_text(answer_relation(t))}\n   → act on it, then `{CMD} --clear-ask {t['id']} <next move>` — it moves the exchange into the body under `## {HEAD['asks']}`; the record stays, the ask goes")
+        print(f"\n{t.get('ask_id') or t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   relation: {relation_text(answer_relation(t))}\n   → act on it, then `{CMD} --clear-ask {t.get('ask_id') or t['id']} <next move>` — it moves the exchange into the body under `## {HEAD['asks']}`; the record stays, the ask goes")
     acted = acted_on(trackers)
     if acted:
         print(f"\nACTED ON SINCE THE LAST STANDUP — {len(acted)}")
         recover_relations([t for t, _ in acted])           # a record without its relation line: one `git log` for all of them
         for t, commit in acted:
             said, source = record_relation(t)
-            print(f"  {t['id']} — acted on in `{commit}`" + (f" · {said}" if said else "") + (f", read from the answer's commit `{source}`" if source else ""))
+            print(f"  {newest_record_id(t) or t['id']} — acted on in `{commit}`" + (f" · {said}" if said else "")
+                  + (f", read from the answer's commit `{source}`" if source else ""))
     return EXIT_OK
+
+
+def newest_record_id(t):
+    """The id the newest record under `## Asks` carries, or "" — a record of an ask before ask ids carries none."""
+    _fm, body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8")) if t.get("file") and (TRACKER_DIR / t["file"]).is_file() else ({}, "")
+    start, end = newest_record(body)
+    m = RECORD_ID_RE.match(body[start:end].lstrip())
+    return m.group(1) if m else ""
+
+
+ASK_LEGACY = "asked before ask ids"          # an ask open without an id, as the board, `--owner` and `--standup` name it
 
 
 ACTS_TITLE = "ACTS — yours, with their time"
@@ -2567,7 +2579,8 @@ def owner_digest(trackers):
         print(f"{len(q)} NEED THE OWNER" + (f" · oldest {max(ages)} day(s)" if ages else "") + (f" · holding up {len(held)}: {', '.join(held)}" if held else "")
               + (f" · {line}" if line else ""))
         for t, a, hs in q:
-            print(f"\n{t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "") + (f" · holds up {', '.join(hs)}" if hs else ""))
+            print(f"\n{t.get('ask_id') or t['id']}" + (f" · {t['ask_kind']}" if t.get("ask_kind") else "") + (f" · asked {a} day(s) ago" if a is not None else "")
+                  + (f" · holds up {', '.join(hs)}" if hs else "") + ("" if t.get("ask_id") else f" · {ASK_LEGACY}"))
             print("   " + t["ask"])
     if acts:
         print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
@@ -2599,7 +2612,9 @@ def standup(trackers):
         if rows:
             print(f"\n{title}")
         for n, (t, a, hs) in enumerate(rows, 1):
-            print(f"  {n}. {t['id']} — " + t["ask"] + (f"  [{a} day(s)]" if a is not None else "") + (f"  [frees {', '.join(hs)}]" if hs else ""))
+            age = [f"{a} day(s)"] if a is not None else []
+            print(f"  {n}. {t.get('ask_id') or t['id']} — " + t["ask"] + (f"  [{' · '.join(age + ([] if t.get('ask_id') else [ASK_LEGACY]))}]" if age or not t.get("ask_id") else "")
+                  + (f"  [frees {', '.join(hs)}]" if hs else ""))
     if acts:                                                # after the asks, what they owe, with its time
         print(f"\n{ACTS_TITLE}\n" + "\n".join(acts))
     sent_back(trackers)
@@ -4210,7 +4225,7 @@ __DAY__
 <script>__MARKED__</script>
 <script>
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
-//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],
+//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask's id — "" before ask ids],
 //        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
 const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
 __ROWS__
@@ -4280,7 +4295,7 @@ days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
 // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
 const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
-const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="__CMD__";
+const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[29][12]||t[0],cmd="__CMD__";
   const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
   // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
   // which is offered first. A proposal alone is a list of one. Last always comes Other, with the box — and when
@@ -4289,7 +4304,7 @@ const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29
   const rows=ordered.map((o,i)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`
       +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+`</span></label>`).join("")
     +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
-  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
+  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${t[0]}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
     <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
     <p class="dp proof">${lh("proof.dialog",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)}</p>${PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:""}
     ${kind=="accept"?`${rows}<textarea name="text" rows="3" placeholder="${l("answer.change.hint")}"${ordered.length?" disabled":" required"}></textarea>`
@@ -4304,13 +4319,13 @@ const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29
     sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
   d.showModal()};
 const sign=(d,id,line,said,kind="answer")=>{const c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;
-  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>
+  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id.replace(/-Q\d+$/,"")}">${id}</a></h3>
     <p class="said" aria-live="polite"></p>
     <p class="dp">${l(P.intro)}</p><pre class="cmd">${esc(line)}</pre>
     <p><button type="button" class="copy" aria-label="${l("answer.sign.copy.name")}">${ICO.copy}${l("answer.sign.copy")}</button></p>
     <h4>${l("answer.sign.where")}</h4><p>${BRANCH?lh("answer.sign.where.branch",c(BRANCH)):l("answer.sign.where.text")}</p>
-    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## __ACTS_HEAD__"))}</li>
-    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
+    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id.replace(/-Q\d+$/,""))?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## __ACTS_HEAD__"))}</li>
+    <li>${l(P.commit)}</li>${kind=="answer"&&/-Q\d+$/.test(id)?`<li>${lh("answer.sign.step.names",c("Answers: "+id))}</li>`:""}<li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>
     ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\n  ${PROOF.said}, committed on ${BRANCH?`\`${BRANCH}\``:"a detached HEAD"} as …`)}</pre>`:""}
     ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format}`),c("G"))}</p>`:""}
     <h4>${l("answer.sign.fail")}</h4><p>${lh(P.fail,`<a href="${l("answer.sign.url")}" target="_blank" rel="noopener">${l("answer.sign.page")}${ICO.out}</a>`)}</p>
@@ -4347,8 +4362,8 @@ function box(){
       // FM-007: how an answer here is proved — the same for every ask on one repository's board, so said once, here, before *accept*:
       // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour's (PROOF, `proof_page`)
       lh("proof.here",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join(" "):""),
-    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",
-      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):""].filter(Boolean).join(" · "),
+    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(t[29][12]?`<a href="#=${t[0]}">${t[29][12]}</a>`:idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",
+      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),
       t[29][0]?btn("answer.accept",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'accept')`)+btn("answer.reject",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'reject')`):"")).join("")
     +(w.length>14?`<p class="sub">${l("waiting.more",w.length-14)}</p>`:"")
     +(sent.length?`<p class="sub">${sent.length==1?l("waiting.malformed.one"):l("waiting.malformed",sent.length)}</p>`+sent.map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`,"",esc(t[29][7][0]).replace(/`([^`]+)`/g,"<code>$1</code>"),"")).join(""):""),w.length?"wait":""));
@@ -4387,7 +4402,7 @@ function DAYOPEN(k){const d=$("dlg");d.innerHTML=$("day-"+k).innerHTML;if(DAY[k]
 function draw(){
   // a whole id alone is that tracker — not every row whose body links to it (FM-020). What links to it is `~ID` (Markdown
   // links only: a chapter's `epic:` and `blocked-by:` are not in it); a story's chapters are the story view
-  const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),exact=!hood&&byId.get(q.toUpperCase()),words=q.toLowerCase().split(/\s+/).filter(Boolean);
+  const q=$("q").value.trim(),own=s=>s.toUpperCase().replace(/^([A-Z][A-Z0-9]*-\d+)-Q\d+$/,"$1"),hood=q[0]=="~"&&byId.get(own(q.slice(1))),exact=!hood&&byId.get(own(q)),words=q.toLowerCase().split(/\s+/).filter(Boolean);
   const near=hood&&new Set([hood[0],...hood[12],...(inb.get(hood[0])||[])]),[gname,gkey]=GROUPS[gi],every=all||gname=="board";
   const rows=T.filter(t=>hood?near.has(t[0]):exact?t==exact:(every||OPEN.has(t[2]))&&words.every(w=>(t.slice(0,27).join(" ")+" "+Object.values(t[27]||{}).join(" ")+" "+sl(t[2])+(blocked(t)?" blocked "+sl("Blocked"):"")+(untriaged(t)?" untriaged "+(L["count.untriaged"]||""):"")).toLowerCase().includes(w)))
     .sort((x,y)=>(x[2]=="Parked")-(y[2]=="Parked")||((x[18]||99)-(y[18]||99))||(x[1]<y[1]?-1:x[1]>y[1]?1:0)||y[8]-x[8]);
@@ -4521,7 +4536,7 @@ LABELS = {
     "path.title": "your current path", "path.lines": "{0} lines", "path.line": "1 line",
     "waiting.title": "waiting for you", "waiting.detail": "open work whose next move is yours",
     "waiting.oldest": "oldest {0} days", "waiting.holds": "holding up {0} more", "waiting.days": "{0} days", "waiting.holds.ids": "holds up {0}",
-    "waiting.unasked": "not yet stated as a question",
+    "waiting.unasked": "not yet stated as a question", "ask.legacy": "asked before ask ids",
     "waiting.bottleneck": "you are the bottleneck — {0} asks, {1} trackers held up",
     "waiting.malformed": "{0} asks sent back — not for you", "waiting.malformed.one": "1 ask sent back — not for you",
     # past 14 asks (BF-9): the asks are sorted oldest first, so the 14 shown are the oldest — what is not shown is counted, never a bare …
@@ -4610,6 +4625,7 @@ LABELS = {
     "answer.sign.where.branch": "In a terminal, in this repository, on the branch that carries the ask — {0}, the branch this board was built from.",
     "answer.sign.does": "what it does",
     "answer.sign.step.write": "writes the three lines — {0} {1} {2} — and {3}", "answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm",
+    "answer.sign.step.names": "its message names the ask it answers: {0}",
     "answer.sign.step.lands": "it counts once that commit is on the default branch: push it, or merge the branch that carries it",
     "answer.sign.slow": "It prints each step as it starts, and it may take a while: the commit runs the gate over every tracker.",
     "answer.sign.success": "when it worked", "answer.sign.check": "to check",
@@ -5372,7 +5388,7 @@ def render_html(trackers, read=None):
              needs_of(t, by_id) if t["status"] in OPEN_STATUSES else [], t.get("next", ""),
              intent_of(t, by_id), "" if t.get("intent") or not intent_of(t, by_id) else t.get("epic", ""), verdicts.get(t["id"], []), t.get("reads", 0), list(kind_of(t)), t.get("x") or {}, t.get("xd") or {},
              [t.get("ask", ""), t.get("ask_kind", ""), t.get("ask_since", ""), held_up_by(t, trackers) if t.get("next") == "owner" and t["status"] in OPEN_STATUSES else [], t.get("answer", ""), t.get("ask_proposal", ""), t.get("ask_options") or [], ask_problems(t, by_ask, provenance=not (SAFE_READS and vcs() == "svn")),
-              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or [])],
+              t.get("answered", ""), t.get("answered_by", ""), t.get("supersedes", ""), list(answer_relation(t) or []), t.get("ask_id", "")],
              list(act_of(t) or [])],
         )
         for t in sorted(trackers, key=lambda t: (t["kind"], t["num"]))
@@ -9581,15 +9597,22 @@ def clear_ask(words, trackers):
     `## Asks` (date · question · answer · answered-by, and the answer's relation to the proposal, newest last), the ask and answer lines leave the front matter,
     and `next:` becomes the move that follows. Done by hand, the answer is usually just deleted; the gate refuses that."""
     if len(words) != 2 or words[1].lower() not in MOVES:
-        print(f"--clear-ask <id> <next move> — the move that follows: {' · '.join(MOVES)}", file=sys.stderr)
+        print(f"--clear-ask <ask-id|id> <next move> — the move that follows: {' · '.join(MOVES)}", file=sys.stderr)
         return EXIT_LINT
-    tid, move = words[0].upper(), words[1].lower()
+    named, move = words[0].upper(), words[1].lower()
+    by_id = ASK_ID_ANY_RE.fullmatch(named)
+    tid = by_id.group(1) if by_id else named
     t = next((x for x in trackers if x["id"] == tid), None)
     if not t:
         print(f"--clear-ask: no tracker {tid}", file=sys.stderr)
         return EXIT_LINT
     if not t.get("ask"):
         print(f"--clear-ask: {tid} carries no `ask:` — there is nothing to clear", file=sys.stderr)
+        return EXIT_LINT
+    aid = t.get("ask_id") or ""
+    if by_id and named != aid:
+        print(f"--clear-ask: {tid} holds " + (f"{aid}, not {named}" if aid else f"an ask before ask ids, not {named}") + " — an ask is cleared by the id the tracker holds",
+              file=sys.stderr)
         return EXIT_LINT
     path = TRACKER_DIR / t["file"]
     text = path.read_text(encoding="utf-8")
@@ -9601,13 +9624,15 @@ def clear_ask(words, trackers):
         kept.insert(len(kept) - 1, f"next: {move}")       # `head` ends on the closing `---`; the move goes above it
     # the relation goes with the record (FM-029): the proposal and the options leave with the ask, and a record without
     # it could never say again whether the answer was the proposal
-    block = (f'**{t.get("answered") or datetime.date.today().isoformat()}** · {t["ask"]}\n'
+    day = t.get("answered") or datetime.date.today().isoformat()
+    block = ((f'**{aid}** · {day} · {t["ask"]}\n' if aid else f'**{day}** · {t["ask"]}\n')
              + (f'**answered** — {t["answer"]} · {t["answered_by"]}\n**relation** — {relation_text(answer_relation(t))}\n' + signed_line(path, t) if t.get("answer")
                 else "**withdrawn** — no answer was given\n"))
     body = append_record(body, ASKS_HEAD_RE, HEAD["asks"], block)
     put(path, "\n".join(kept) + body)
-    print(f'{tid}: the exchange is in the body under `## {HEAD["asks"]}`, the ask is cleared, `next: {move}`.\n'
-          f'  commit {path.relative_to(ROOT).as_posix()} — the gate refuses an answer removed without its record')
+    print(f'{aid or tid}: the exchange is in the body under `## {HEAD["asks"]}`, the ask is cleared, `next: {move}`.\n'
+          f'  commit {path.relative_to(ROOT).as_posix()} — the gate refuses an answer removed without its record'
+          + (f'\n  the next ask on {tid} is {next_ask_id(t, ask_numbers(t) | {ask_number(aid, tid) or 0})}' if aid else ""))
     return EXIT_OK
 
 

@@ -8010,6 +8010,7 @@ ask.ruling: eine Entscheidung
 ask.action: nur Ihre Hände
 ask.determination: ließe sich durch einen Versuch klären
 ask.ceremony: ein Knopfdruck
+ask.legacy: gestellt, bevor Fragen eine ID hatten
 answer.accept: annehmen
 answer.reject: ablehnen
 answer.proposal: "der Vorschlag der Sitzung:"
@@ -8031,6 +8032,7 @@ answer.sign.does: Was er tut
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
 answer.sign.step.commit: "committet sie, signiert mit Ihrem Schlüssel — er fragt vielleicht nach einer Bestätigung"
 answer.sign.step.lands: "es zählt, sobald dieser Commit auf dem Standardzweig ist: pushe ihn, oder merge den Zweig, der ihn trägt"
+answer.sign.step.names: "seine Nachricht nennt die Frage, die er beantwortet: {0}"
 answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Einträge laufen."
 answer.sign.success: Wenn es geklappt hat
 answer.sign.check: Zur Kontrolle
@@ -13066,7 +13068,7 @@ with tempfile.TemporaryDirectory() as tmp:
           code4 == fm.EXIT_LINT and "answered already" in err4 and "revoke" in err4 and "--supersede" in err4
           and code5 == 0 and t_["answer"] == "accepted - the exporter instead" and t_.get("supersedes") == revoked_ and gate_ == 0
           and f'superseded: *"revoked - the importer waits for the audit"* ({revoked_}) — replaced by: *"accepted - the exporter instead"*' in ap80.read_text()
-          and f'"accepted - the exporter instead", "yes", [], [], "{datetime.date.today().isoformat()}", "holgo", "{revoked_}", ["changed", 0, ""]]' in page_ and 'l("viewer.supersedes"' in page_)
+          and f'"accepted - the exporter instead", "yes", [], [], "{datetime.date.today().isoformat()}", "holgo", "{revoked_}", ["changed", 0, ""], ""]' in page_ and 'l("viewer.supersedes"' in page_)
     tracker(root, "AP-081", extra=ask_("Ship the exporter?"), title="unanswered"); run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "a second ask")
     code7, _, err7 = run(root, "--answer", "AP-081", "revoke", "nothing to take back"); code8, _, err8 = run_safe(root, "--answer", "AP-081", "accept", "--supersede")
     check("RV-479 · `revoke` and `--supersede` on an ask with no answer are refused — there is nothing to replace; a revocation without its reason too",
@@ -15983,7 +15985,7 @@ with tempfile.TemporaryDirectory() as tmp:
           and "   relation: accepted with a change\n" in said_ and "   relation: chose option 2: the relation only — no new verbs\n" in said_
           and "   relation: accepted the proposal\n" in said_ and "   relation: rejected: not this quarter — the audit comes first\n" in said_)
     check("FM-029 · the board's tracker view carries the relation next to the answer, in the words of its labels — English built in, German in the table the tool ships",
-          '"accepted - the relation only — no new verbs"' in page_ and '["option", 2, "the relation only — no new verbs"]]' in page_ and '["changed", 0, ""]]' in page_
+          '"accepted - the relation only — no new verbs"' in page_ and '["option", 2, "the relation only — no new verbs"], ""]' in page_ and '["changed", 0, ""], ""]' in page_
           and 'l("relation."+r[0],r[1])' in page_ and '"relation.option": "chose option {0}"' in page_ and '"relation.unknown": "relation not computable"' in page_)
     run(root); git(root, "add", "-A"); git(root, "commit", "-qm", "the answers merged", "--author=holgo <h@x>")
     code_, out_, _ = run(root, "--clear-ask", "AP-292", "build"); body_ = f29_.read_text()

@@ -831,6 +831,37 @@ FM057_KEYS = {"built_at", "vcs", "branch", "changes"}
 PAGE_ROWS = re.compile(rb"\bT=\[\n(.*?)\n\];", re.S)
 
 
+def page_json(value):
+    """JSON as the tool writes it into the page's script (`script_json`): `<`, `>`, `&` and the two line separators as `\\u` escapes."""
+    return (json.dumps(value, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+
+
+def rows_with_ids(block):
+    """The page's rows (`T=[…]`'s lines) with each row's ask cell, its 30th item, carrying the ask's id last — "" for an ask put before ids,
+    as every ask of the baseline's is — written as the tool writes a row. None where a row is not one of twelve-item ask cells."""
+    out = []
+    for line in block.decode("utf-8").split("\n"):
+        body, comma = (line[:-1], ",") if line.endswith(",") else (line, "")
+        try:
+            row = json.loads(body)
+        except ValueError:
+            return None
+        if not (isinstance(row, list) and len(row) > 29 and isinstance(row[29], list) and len(row[29]) == 12):
+            return None
+        out.append(page_json(row[:29] + [row[29] + [""]] + row[30:]) + comma)
+    return "\n".join(out).encode("utf-8")
+
+
+def ask_id_rows(page):
+    """The baseline's page with `rows_with_ids` applied to its rows — the page unchanged where it holds no rows, None where a row does not fit."""
+    m = PAGE_ROWS.search(page)
+    if not m:
+        return page
+    block = rows_with_ids(m.group(1))
+    return None if block is None else page[:m.start(1)] + block + page[m.end(1):]
+
+
 def git_words(row):
     """What follows the program in a start (`argv`) or a call (its first argument), as a tuple — () where it is no argument list."""
     argv = row.get("argv") if "argv" in row else (row.get("args") or [None])[0]
@@ -1002,7 +1033,7 @@ def fm057_board(baseline, candidate):
         when = datetime.datetime.fromisoformat(new.get("built_at", ""))
     except (ValueError, TypeError, AttributeError):
         return False
-    return (all(rows) and rows[0].group(1) == rows[1].group(1) and isinstance(old, dict) and isinstance(new, dict)
+    return (all(rows) and rows[1].group(1) in (rows[0].group(1), rows_with_ids(rows[0].group(1))) and isinstance(old, dict) and isinstance(new, dict)
             and set(new) == set(old) | FM057_KEYS and not set(old) & FM057_KEYS and all(new[key] == old[key] for key in old)
             and new["vcs"] == "git" and (new["changes"] is None if "--html-only" in (candidate.get("flags") or []) else
                                          isinstance(new["changes"], int) and not isinstance(new["changes"], bool) and new["changes"] >= 0)
@@ -1320,18 +1351,41 @@ R4_DIALOG_EDITS = (
 )
 
 
+# an ask carries its own id: the row names it, the headings and the second screen's steps name it, and an ask put before ids says so
+ASK_ID_EDITS = (
+    ('//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],\n',
+     '//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask\'s id — "" before ask ids],\n'),
+    ('const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="shoalmark";\n',
+     'const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[29][12]||t[0],cmd="shoalmark";\n'),
+    ('  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>\n',
+     '  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${t[0]}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>\n'),
+    ('  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>\n',
+     '  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id.replace(/-Q\\d+$/,"")}">${id}</a></h3>\n'),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id.replace(/-Q\\d+$/,""))?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li>${kind=="answer"&&/-Q\\d+$/.test(id)?`<li>${lh("answer.sign.step.names",c("Answers: "+id))}</li>`:""}<li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n'),
+    ('    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):""].filter(Boolean).join(" · "),\n',
+     '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(t[29][12]?`<a href="#=${t[0]}">${t[29][12]}</a>`:idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),\n'),
+    ('  const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),exact=!hood&&byId.get(q.toUpperCase()),words=q.toLowerCase().split(/\\s+/).filter(Boolean);\n',
+     '  const q=$("q").value.trim(),own=s=>s.toUpperCase().replace(/^([A-Z][A-Z0-9]*-\\d+)-Q\\d+$/,"$1"),hood=q[0]=="~"&&byId.get(own(q.slice(1))),exact=!hood&&byId.get(own(q)),words=q.toLowerCase().split(/\\s+/).filter(Boolean);\n'),
+    ('"waiting.unasked": "not yet stated as a question", ',
+     '"waiting.unasked": "not yet stated as a question", "ask.legacy": "asked before ask ids", '),
+    ('"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", ',
+     '"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", "answer.sign.step.names": "its message names the ask it answers: {0}", '),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
-    occurs exactly once — else None."""
+    occurs exactly once — else None; then its rows, each ask cell carrying its id (`ask_id_rows`)."""
     page = fm053_transform(page)
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
-    return text.encode("utf-8")
+    return ask_id_rows(text.encode("utf-8"))
 
 
 def differs_only_by(baseline, candidate, path, key, rule):

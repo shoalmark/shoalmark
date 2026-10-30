@@ -41,14 +41,35 @@ R4_STEPS = ((re.compile(r" — 1/4 reading the trackers"), " — 1/3 reading the
 FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
 # the board reads no answer branch: the base's line that the board was older than what it shows, where the answer branches alone had changed
 R4_BASIS = re.compile(r"\nthe board is older than what it shows — the answer branches changed since it was built: `[^`\n]*` rebuilds it\n\Z")
+# the base put every ask before ask ids, and names a fixture's ask that carries an id by its tracker: `--owner` and `--standup` name such an
+# ask by its id, and say of every other one that it was asked before ask ids — on `--owner` after its age, on `--standup` inside its first
+# age bracket. One reading, `as_before_ids`, for every comparison of those two with an older tool: this test's and test_standup_repos.py's.
+OWNER_ASK = re.compile(r"(?m)^(\S+)( · [^·\n]+ · asked [^\n]*)$")
+STANDUP_AGE = re.compile(r"(?m)^(  \d+\. )(\S+)( — [^\n]*?  \[\d+ day\(s\))\]")
+LEGACY_NOTE = " · asked before ask ids"
+R9_IDS = {"AP-005": "AP-005-Q1"}
+
+
+def as_before_ids(flag, text, ids):
+    """A base run's `--owner` or `--standup` stdout with each ask line as the tool says it now: an ask whose tracker `ids` names (tracker id →
+    ask id) by that id, and every other ask said as asked before ask ids — once per line, in its first age bracket on the stand-up. Any
+    other flag's text as it was."""
+    if flag == "--owner":
+        return OWNER_ASK.sub(lambda m: ids[m.group(1)] + m.group(2) if m.group(1) in ids else m.group(0) + LEGACY_NOTE, text)
+    if flag == "--standup":
+        return STANDUP_AGE.sub(lambda m: m.group(1) + (ids[m.group(2)] + m.group(3) if m.group(2) in ids else m.group(2) + m.group(3) + LEGACY_NOTE) + "]",
+                               text)
+    return text
 
 
 def as_proved(entry):
     """A base run's (flag, exit, stdout, stderr) as the joined tool says it: for `--due` and `--done`, the one line naming how the commit is
     proved, once; for `--standup`, the two kinds the board renames; for `--standup` and `--owner`, the line naming the answer branches alone
-    as what changed since the board was built, which the board no longer reads; anything else as it was."""
+    as what changed since the board was built, which the board no longer reads, and each ask as the tool says it now (`as_before_ids`);
+    anything else as it was."""
     if entry[0] in ("--standup", "--owner") and isinstance(entry[2], str):
         out = R4_BASIS.sub("", entry[2], count=1)
+        out = as_before_ids(entry[0], out, R9_IDS)
         for old, new in FM053_AGENDA if entry[0] == "--standup" else ():
             out = out.replace(old, new) if out.count(old) == 1 else out
         return entry[:2] + (out,) + entry[3:]
@@ -127,6 +148,8 @@ def fixture(base, tool, env, clock):
     tracker(root, "AP-002", f"next: run\ndue: {at(-10)}\n", "the overdue run")
     tracker(root, "AP-003", f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {since}\nask-proposal: "the launcher"\n', "a ruling")
     tracker(root, "AP-004", ask("Will you set up the key?", "accepted - this week"), "the key")
+    tracker(root, "AP-005", f'next: owner\nask-id: AP-005-Q1\nask: "Shall the importer wait?"\nask-kind: ruling\nask-since: {since}\n'
+                            'ask-proposal: "it waits"\n', "an ask that carries its id")
     (root / "docs/work-tracker/evidence/AP-001").mkdir(parents=True)
     write(root / "docs/work-tracker/evidence/AP-001/read.md", "the read, done\n")
     run(tool, root, env)                                         # INDEX.md and the board, as this tool writes them

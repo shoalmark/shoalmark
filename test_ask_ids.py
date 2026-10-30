@@ -537,7 +537,68 @@ def rows_binding(area, add):
     add("3b · a squash merge of the answer: refused — the Owner's signature is gone", refused(said, "no commit answers FM-001-Q1"), seen(said))
 
 
-ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding)
+# --- the commands -------------------------------------------------------------------------------------------------------------------
+
+def rows_commands(area, add):
+    r = Repo(area / "c3-clear", {"FM-001": text("FM-001", ask(aid="FM-001-Q1"))})
+    said_clear = run(r.root, "--clear-ask", "FM-001-Q1", "build", who=SEAT)
+    r.commit("FM-001: FM-001-Q1 withdrawn")
+    said = r.check()
+    add("C3 · the same through `--clear-ask`: the record carries the id, withdrawn — accepted, and `--clear-ask` names the next id",
+        accepted(said) and f"**FM-001-Q1** · {TODAY} · Ship it?\n**withdrawn** — no answer was given" in r.read("FM-001")
+        and "the next ask on FM-001 is FM-001-Q2" in said_clear[1], seen(said) + " · " + said_clear[1][-200:])
+    r = put_repo(area, "cmd")
+    before = (r.head(), git(r.origin, "for-each-ref"), r.read("FM-001"))
+    said = run(r.root, "--answer", "FM-001-Q9", "accept")
+    add("3c · `--answer` with an unknown id refuses before writing, naming the open ask",
+        said[0] == fm.EXIT_LINT and "FM-001 has no ask FM-001-Q9: it holds FM-001-Q1, open" in said[2] and (r.head(), git(r.origin, "for-each-ref"), r.read("FM-001")) == before, seen(said))
+    said = run(r.root, "--answer", "FM-001", "accept")
+    add("3c · a tracker id where the ask has an id: refused, naming the id", said[0] == fm.EXIT_LINT and "FM-001's ask carries its id, FM-001-Q1 — name the ask you read" in said[2], seen(said))
+    said = run(r.root, "--answer", "FM-001-Q1", "accept")
+    t = r.read("FM-001")
+    log = [git(r.root, "log", "-1", f"--format={f}").strip() for f in ("%s", "%(trailers:key=Answers,valueonly)", "%G?")]
+    add("3c · `--answer <ask-id>`: one signed commit on the branch it stands on, `<ask-id>: <answer>` with `Answers: <ask-id>`, nothing pushed, no `answer/*` ref, the branch unchanged",
+        said[0] == 0 and log == ["FM-001-Q1: accepted", "FM-001-Q1", "G"] and git(r.root, "branch", "--show-current").strip() == "ans"
+        and "answering FM-001-Q1 — 2/3 writing" in said[2]
+        and git(r.root, "for-each-ref", "refs/heads/answer", "refs/remotes/origin/answer") == "" and git(r.origin, "for-each-ref") == before[1]
+        and said[1].startswith("FM-001-Q1 answered: accepted\n  signed, committed on `ans` as ") and 'answer: "accepted"' in t, seen(said))
+    said = run(r.root, "--answer", "FM-001-Q1", "reject", "no")
+    add("3c · an id already answered: refused, naming revoke and `--supersede`", said[0] == fm.EXIT_LINT and "answered already" in said[2] and "--supersede" in said[2], seen(said))
+    said = run(r.root, "--answer", "FM-001-Q1", "accept", "later", "--supersede")
+    add("3c · …then `--supersede`: accepted, the answer replaced, its commit naming the id", said[0] == 0 and "Answers: FM-001-Q1" in git(r.root, "log", "-1", "--format=%B")
+        and r.check()[0] == 0, seen(said))
+    run(r.root, "--clear-ask", "FM-001-Q1", "build", who=SEAT)
+    r.commit("FM-001: FM-001-Q1 cleared", who=SEAT)
+    r.write("FM-001", r.read("FM-001").replace("next: build\n", ask(aid="FM-001-Q2", q="Ship the next?")))
+    r.commit("FM-001: put as FM-001-Q2", who=SEAT)
+    before = (r.head(), r.read("FM-001"))
+    said = run(r.root, "--answer", "FM-001-Q1", "accept")
+    add("3c · an id the tracker no longer holds open: refused before writing, in the design's words, the file as it was",
+        said[0] == fm.EXIT_LINT and f'FM-001 holds another ask now: FM-001-Q2, since {SINCE}: "Ship the next?". FM-001-Q1 was answered and is in FM-001\'s record. '
+        "Nothing was written. Read FM-001-Q2, then answer it by its id" in said[2] and (r.head(), r.read("FM-001")) == before, seen(said))
+
+
+# --- asks before ids -------------------------------------------------------------------------------------------------------------
+
+def rows_before(area, add):
+    r = Repo(area / "before", {"FM-001": text("FM-001", ask(q="Ship the old one?")), "FM-002": text("FM-002", ask(aid="FM-002-Q1", q="Ship the new one?"))})
+    owner, standup = run(r.root, "--owner")[1], run(r.root, "--standup")[1]
+    run(r.root, "--html-only")
+    page = (r.root / REL / "index.html").read_text(encoding="utf-8")
+    add("2 · `--owner` names an ask with an id by its id, and an ask before ids by its tracker, *asked before ask ids*",
+        "\nFM-002-Q1 · ruling · asked 2 day(s) ago" in owner and "\nFM-001 · ruling · asked 2 day(s) ago · asked before ask ids" in owner, owner[:400])
+    add("2 · `--standup` the same", "FM-002-Q1 — Ship the new one?  [2 day(s)]" in standup and "FM-001 — Ship the old one?  [2 day(s) · asked before ask ids]" in standup, standup[:400])
+    add("2 · the board's row carries the id as the ask cell's 13th item, and its label for an ask before ids",
+        '"FM-002-Q1"]' in page and '"ask.legacy": "asked before ask ids"' in page, "")
+    said = run(r.root, "--answer", "FM-001", "accept")
+    gate = r.check()
+    add("2 · an open ask without an id, answered by its tracker's id, verified as today", said[0] == 0 and accepted(gate), seen(said) + " · " + seen(gate))
+    run(r.root, "--clear-ask", "FM-001", "build", who=SEAT)
+    t = r.read("FM-001")
+    add("2 · its record carries no id: `**<date>** · <question>`", f"**{TODAY}** · Ship the old one?\n**answered** — accepted · Owner" in t and "**FM-001-Q" not in t, t[-300:])
+
+
+ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
