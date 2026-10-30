@@ -9528,7 +9528,7 @@ with tempfile.TemporaryDirectory() as tmp:
             # the dialog's head is one line of ` · `-separated parts: the id ran straight into its first mark ("AP-022 a ruling"),
             # and an ask with no kind, no age and holding nothing left a dangling separator behind the id
             check("the dialog's head separates the id from its marks the way the rest of the line is separated, and carries none when there are no marks",
-                  '<a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>' in page)
+                  '<a href="#=${t[0]}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>' in page)
         except _ChromeFailed as e_:
             _hung("queue", e_)
 fm.configure(HERE)
