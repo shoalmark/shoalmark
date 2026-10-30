@@ -2,7 +2,7 @@
 id: FM-103
 status: Proposed
 considered: FM-033, FM-041, FM-053
-tags: process
+tags: bug
 hook: "An In Progress tracker that no pass has judged within the triage window sits under triage, still showing In Progress, and nothing on its row says why. The rule is right, but a person reads it as a bug. The Board should say on the row that it waits to be judged again, and since when."
 ---
 
@@ -39,4 +39,5 @@ The rule is sound, so the Board should tell it plainly.
 
 | Date | Event |
 |---|---|
+| 2026-10-30 | Tagged `bug`, on the Owner's word of 30 October. Records only. |
 | 2026-10-30 | Filed for v0.20.x, on the Owner's word of 30 October. Records only. |

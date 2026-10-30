@@ -2,7 +2,7 @@
 id: FM-104
 status: Proposed
 considered: FM-088, FM-095, FM-100, FM-026, FM-042
-tags: process
+tags: seamanship
 hook: "The person's own files sit in three places today, and three v0.20.3 candidates would each add more. They should live in one home the person reaches easily, under fixed names, so that the person sees what is theirs to edit. Rank 1 when v0.20.3 starts, on the Owner's word."
 ---
 
@@ -52,4 +52,5 @@ theirs to edit, and leaves no setting to learn.
 
 | Date | Event |
 |---|---|
+| 2026-10-30 | Tagged `seamanship`, on the Owner's word of 30 October. Records only. |
 | 2026-10-30 | Filed for v0.20.3, rank 1 at its start, on the Owner's word of 30 October. Records only. |
