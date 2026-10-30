@@ -232,7 +232,7 @@ python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept
 
 `AP-007-Q1` ist die eigene ID der Frage: die ID ihres Arbeitspakets, dann `Q` und die Nummer der Frage. Der Befehl
 schreibt die drei Zeilen auf deinem aktuellen Branch und committet sie, mit deinem Schlüssel signiert (Stufe 2 fragt
-nach deiner Passphrase, Stufe 3 nach deiner Freigabe am Gerät: PIN und Berührung des Sicherheitsschlüssels, oder Touch ID), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet
+nach deiner Passphrase, Stufe 3 nach deiner Freigabe am Gerät: entweder PIN und Berührung des Sicherheitsschlüssels oder Touch ID), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet
 jeden Schritt, bevor er ihn ausführt, legt keinen Branch an und pusht nichts. Scheitert etwas vor dem Commit, nimmt der
 Befehl alles Geschriebene zurück und gibt die Befehlszeile aus, mit der du die Antwort erneut gibst; ist der Commit
 gemacht, lässt sich die Signatur aber nicht verifizieren, meldet der Befehl das und sagt, dass du den Commit nicht

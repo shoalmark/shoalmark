@@ -9455,8 +9455,6 @@ _DE_ALLOWED = (
     ("ADOPT.de.md", "Ihr lest diesen Text", "the plural of du, to the agents"),
     ("ADOPT.svn.de.md", "Sie nennt, was er braucht.", "third person: the line"),
     ("ADOPT.svn.de.md", "Ihr Gate prüft eine Revision", "third person: the packages'"),
-    ("examples/de/labels.yaml", "Sie nennt dir die Zeilen, die du schreibst und committest", "third person: the session"),
-    ("examples/de/labels.yaml", "Sie nennt dir die Zeilen, die du schreibst.", "third person: the session"),
     ("launch/interim/how-it-works.de.md", "Sie lädt zu einer Messung ein", "third person: the note"),
     ("overrides/partials/why/de.html", "Sie nennt, was nie passieren darf", "third person: the intent"),
 )
