@@ -126,7 +126,7 @@ read.copy.spoken: den Neubau-Befehl kopieren
 read.about: was diese Seite liest und was sie nicht sehen kann
 read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
 read.about.svn: "gelesen von der Arbeitskopie um {0}"
-read.about.none: "gelesen aus dem Ordner um {0}"
+read.about.none: "gelesen aus dem Ordner {1} um {0}"
 read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
 day.copied: der Prompt ist in deiner Zwischenablage
 day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."

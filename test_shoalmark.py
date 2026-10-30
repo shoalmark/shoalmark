@@ -8567,7 +8567,7 @@ read.copy.spoken: den Neubau-Befehl kopieren
 read.about: "was diese Seite liest, und was sie nicht sehen kann"
 read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
 read.about.svn: "gelesen von der Arbeitskopie um {0}"
-read.about.none: "gelesen aus dem Ordner um {0}"
+read.about.none: "gelesen aus dem Ordner {1} um {0}"
 read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
 day.copied: der Prompt ist in deiner Zwischenablage
 day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."
@@ -15538,7 +15538,8 @@ def _ra_said(lang, key, *values):
 def _ra_faults(mod):
     """What `mod` renders wrong, part by part — {part: [faults]}, each list empty where the part holds:
     - `words`: each shape's line and fold read as their labels say, in both languages; in a plain folder the line names the folder by its name and
-      nothing of the path above it — the filesystem's root by its path —, and the English fold names the full path at the full time;
+      nothing of the path above it — the filesystem's root by its path —, and the fold names the full path at the full time, in English and in
+      German;
     - `code`: the two reasons that name `commit_url` show it as code in both languages, no rendered part keeps a backtick, the labels that hold a code
       span are those two reasons alone, in English and in German, and the page's script still shows a sent-back reason's code spans as code;
     - `values`: a folder's own backticks and markup stay text, on the line and in the fold;
@@ -15568,6 +15569,10 @@ def _ra_faults(mod):
     if plain_ != ("read from the folder stock&#95;ledger at 10-30 16:50",
                   "read from the folder /home/someone/work/stock&#95;ledger at 2026-10-30 16:50 +01:00 · no version control: no commit or revision to name"):
         out_["words"].append(f"en: the plain folder reads {plain_}")
+    plain_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, "de")
+    if plain_ != ("gelesen aus dem Ordner stock&#95;ledger um 10-30 16:50", "gelesen aus dem Ordner /home/someone/work/stock&#95;ledger um 2026-10-30 16:50 +01:00 · "
+                  "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"):
+        out_["words"].append(f"de: the plain folder reads {plain_}")
     coded_ = {lang_: sorted(k_ for k_, v_ in dict(mod.LABELS, **_RA_TABLES[lang_]).items() if re.search(r"`[^`]+`", v_)) for lang_ in ("en", "de")}
     if coded_ != {"en": ["link.noviewer", "link.unknown"], "de": ["link.noviewer", "link.unknown"]} or not set(coded_["en"]) <= set(mod.LINK_WHY):
         out_["code"].append(f"the labels that hold a code span: {coded_}")
@@ -15602,8 +15607,8 @@ _RA_MUTANTS = (     # (what, the part it must fail, its changes to the tool's te
 )
 _ra_real = _ra_faults(fm)
 check(f"FM-053, BF-30 · the read-at line and its fold read as their labels say, in each shape, on git, on Subversion and in a plain folder, in English "
-      f"and in the German table the tool ships; a plain folder's line names the folder by its name alone, and the English fold names its full path at "
-      f"the full time (saw {_ra_real['words'][:3]})", not _ra_real["words"])
+      f"and in the German table the tool ships; a plain folder's line names the folder by its name alone, and its fold names its full path at the full "
+      f"time, in both languages (saw {_ra_real['words'][:3]})", not _ra_real["words"])
 check(f"FM-053, BF-30 · the class: each code span a label writes shows as code — the two reasons a commit is no link, `link.unknown` and "
       f"`link.noviewer`, in English and in German, the only labels that hold one — as the page's script shows a sent-back reason's; and a folder's own "
       f"backticks and markup stay text (saw {_ra_real['code'][:3]}, {_ra_real['values'][:2]})", not _ra_real["code"] and not _ra_real["values"])
@@ -15620,6 +15625,14 @@ for what_, part_, changes_ in _RA_MUTANTS:
     sys.modules.pop("fm_read_at_mutant", None)
     check(f"FM-053, BF-30, BF-49 · …the mutant, {what_}: this tool with that one change FAILS the {part_} part "
           f"(saw {seen_[part_][:1] if seen_ else 'the change is not there to make'})", seen_ is not None and bool(seen_[part_]))
+_ra_de_now, _RA_DE_OLD = _RA_TABLES["de"], "gelesen aus dem Ordner um {0}"
+_RA_TABLES["de"] = dict(_ra_de_now, **{"read.about.none": _RA_DE_OLD})
+try:
+    _ra_old_row = _ra_faults(fm)
+finally:
+    _RA_TABLES["de"] = _ra_de_now
+check(f"FM-053, BF-30 · …the mutant, the German table's old row for the fold, *{_RA_DE_OLD}*: the German fold names no path, and the words part "
+      f"FAILS (saw {_ra_old_row['words'][:1]})", _ra_de_now.get("read.about.none") != _RA_DE_OLD and bool(_ra_old_row["words"]))
 fm.configure(HERE)
 
 # --- revoke: `--revoke <id> "<why>"` takes back what he last did on a tracker — a new signed commit on the branch he
