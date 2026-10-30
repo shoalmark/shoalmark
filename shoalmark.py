@@ -1962,6 +1962,15 @@ def ask_number(aid, tid):
     return int(m.group(2)) if m and m.group(1) == tid else None
 
 
+UNFORMED_ASK = "{0}'s `ask-id:` is not in the form {0}-Q<n>, so no command is printed for it"
+
+
+def ask_cmd_id(aid, tid):
+    """`aid` where it is one of `tid`'s ids in its own shape (`ask_number`), else "": a command printed for a person to copy names an
+    ask only by such an id, and where there is none, `UNFORMED_ASK` stands in the command's place."""
+    return aid if ask_number(aid, tid) is not None else ""
+
+
 def file_numbers(t):
     """The numbers the file itself shows as used: its open ask's and its records' (any shape that reads as one of its ids)."""
     out = set()
@@ -2042,10 +2051,12 @@ def id_refusal(t, where, move, used):
         return (f"{t['id']}: {where}puts an ask with no `ask-id:` — it {word}, and an ask put to the Owner carries its own id: "
                 f"write `ask-id: {nxt}` on the line above `ask:`")
     if rule == "changed":
+        clear = f"`{CMD} --clear-ask {aid} owner` writes its record" if ask_cmd_id(aid, t["id"]) else UNFORMED_ASK.format(t["id"])
         return (f"{t['id']}: {where}changes the put ask under {aid} — its {word} — and a put ask never changes under its id: withdraw it "
-                f"(`{CMD} --clear-ask {aid} owner` writes its record) and put the changed ask as {nxt}")
+                f"({clear}) and put the changed ask as {nxt}")
     if rule == "gone":
-        return f"{t['id']}: {where}removes {aid} with no record under `## {HEAD['asks']}` that carries it — `{CMD} --clear-ask {aid} <next move>` writes the record"
+        clear = f"`{CMD} --clear-ask {aid} <next move>` writes the record" if ask_cmd_id(aid, t["id"]) else UNFORMED_ASK.format(t["id"])
+        return f"{t['id']}: {where}removes {aid} with no record under `## {HEAD['asks']}` that carries it — {clear}"
     n, top = ask_number(aid, t["id"]), max(used, default=0)
     if n is None or n > top:                              # a shape that is no id of the tracker's is the file rules'
         return None
@@ -2167,7 +2178,7 @@ def answer_change_problems(trackers):
                 out.append(f"{rels[rel]['id']}: {where}a merge changes the answer to {aid} in its own change — a merge never answers: the answer is the Owner's ordinary commit that names it")
             elif aid not in [v.strip() for v in values]:
                 out.append(f"{rels[rel]['id']}: {where}changes the answer to {aid} and does not name it — an answer to an ask with an id carries the trailer `Answers: {aid}`: "
-                           f"`{CMD} --answer {aid} …` writes it")
+                           + (f"`{CMD} --answer {aid} …` writes it" if ask_cmd_id(aid, rels[rel]["id"]) else UNFORMED_ASK.format(rels[rel]["id"])))
             elif put_ask_of(parse_frontmatter(now)[0]) != put_ask_of(parse_frontmatter(befores[0])[0]) or (parse_frontmatter(befores[0])[0].get("ask-id") or "").strip() != aid:
                 out.append(f"{rels[rel]['id']}: {where}answers {aid} and changes its put ask in the same commit — the answer binds the put ask its parent holds: answer it as it stands")
     by_id = {t["id"]: rel for rel, t in rels.items()}
@@ -2376,8 +2387,9 @@ def answer_commits(trackers):
                             "signed where the default branch's configuration asks for it, and changes the `answer:` line and nothing of the put ask")
             continue
         if len(heads) > 1:
+            again = f"`--answer {aid} … --supersede`" if ask_cmd_id(aid, t["id"]) else UNFORMED_ASK.format(t["id"])
             out[aid] = ("", f"{aid} has {len(heads)} answers, on branches that do not hold each other ({', '.join(h[0][:7] for h in heads)}) — one answer must "
-                            f"replace the other (`--answer {aid} … --supersede`) on a branch that holds both")
+                            f"replace the other ({again}) on a branch that holds both")
             continue
         sha, name, at = heads[0]
         text = (TRACKER_DIR / t["file"]).read_text(encoding="utf-8")
@@ -2557,7 +2569,10 @@ def answered(trackers):
     rows = sorted((t for t in trackers if t.get("answer") and t["status"] in OPEN_STATUSES), key=lambda t: t.get("answered", ""))
     print(f"{len(rows)} ANSWERED, NOT YET ACTED ON" if rows else "NOTHING ANSWERED IS WAITING FOR A SEAT.")
     for t in rows:
-        print(f"\n{t.get('ask_id') or t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   relation: {relation_text(answer_relation(t))}\n   → act on it, then `{CMD} --clear-ask {t.get('ask_id') or t['id']} <next move>` — it moves the exchange into the body under `## {HEAD['asks']}`; the record stays, the ask goes")
+        named = ask_cmd_id(t.get("ask_id"), t["id"]) if t.get("ask_id") else t["id"]
+        then = (f", then `{CMD} --clear-ask {named} <next move>` — it moves the exchange into the body under `## {HEAD['asks']}`; the record stays, the ask goes"
+                if named else "; " + UNFORMED_ASK.format(t["id"]))
+        print(f"\n{t.get('ask_id') or t['id']} · answered {t['answered']} by {t['answered_by']}\n   asked: {t['ask']}\n   answer: {t['answer']}\n   relation: {relation_text(answer_relation(t))}\n   → act on it{then}")
     acted = acted_on(trackers)
     if acted:
         print(f"\nACTED ON SINCE THE LAST STANDUP — {len(acted)}")
@@ -3390,8 +3405,8 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
             print(f"--answer: {tid} has no ask {named}: its ask was asked before ask ids — answer it by its tracker: `{CMD} --answer {printed_arg(tid)} {verdict}`", file=sys.stderr)
         return EXIT_LINT
     if held and not by_id:
-        print(f"--answer: {tid}'s ask carries its id, {held} — name the ask you read: `{CMD} --answer {held} {verdict}" + (f" {printed_arg(text)}" if text else "") + "`",
-              file=sys.stderr)
+        print(f"--answer: {tid}'s ask carries its id, {held} — " + (f"name the ask you read: `{CMD} --answer {held} {verdict}" + (f" {printed_arg(text)}" if text else "") + "`"
+                                                                   if ask_cmd_id(held, tid) else UNFORMED_ASK.format(tid)), file=sys.stderr)
         return EXIT_LINT
     if not t.get("answer") and t.get("next") != "owner":
         print(f"--answer: {tid} carries an `ask:` and `next: {t.get('next') or '—'}` — an ask waits on the Owner with `next: owner`; the seat that asks sets it", file=sys.stderr)
@@ -10008,7 +10023,8 @@ def lint(trackers, committing=False):
                     if committing:
                         print(f'  {t["id"]}: the answer to {t["ask_id"]} is being committed now — its commit is found by its id and verified by the next run', file=sys.stderr)
                     else:
-                        problems.append(f'{t["id"]}: the answer to {t["ask_id"]} is not committed yet — `{CMD} --answer {t["ask_id"]} …` commits it, signed, naming the id')
+                        problems.append(f'{t["id"]}: the answer to {t["ask_id"]} is not committed yet — '
+                                        + (f'`{CMD} --answer {t["ask_id"]} …` commits it, signed, naming the id' if ask_cmd_id(t["ask_id"], t["id"]) else UNFORMED_ASK.format(t["id"])))
                 else:
                     _head, why = answer_commit(t)
                     if why:

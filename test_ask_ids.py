@@ -660,6 +660,62 @@ def rows_given_again(area, add):
         seen(said))
 
 
+# --- a copied answer line names an ask only by its own id form ---------------------------------------------------------------------
+
+def rows_unformed(area, add):
+    odd = "FM-001-Q1$(echo x)"
+    words = "FM-001's `ask-id:` is not in the form FM-001-Q<n>, so no command is printed for it"
+
+    def plain(said, part):
+        """Every line of the run that carries `part` names the tracker in the sentence, and no line names the ask in a command."""
+        _code, out, err = said
+        lines = [l for l in (err + out).splitlines() if part in l]
+        return bool(lines) and all(words in l for l in lines) and f"--answer {odd}" not in err + out and f"--clear-ask {odd}" not in err + out
+
+    r = Repo(area / "unformed", {"FM-001": text("FM-001", ask(aid=odd))})
+    said = run(r.root, "--answer", "FM-001", "accept")
+    add("3c · `--answer` by the tracker's id where its `ask-id:` is not in its own form: refused, a sentence and no command",
+        said[0] == fm.EXIT_LINT and plain(said, "'s ask carries its id"), seen(said))
+    write(r.root, "FM-001", answered(r.read("FM-001")))
+    said = r.check()
+    add("3c · an answer not committed yet under an `ask-id:` not in its own form: a sentence and no command", refused(said) and plain(said, "is not committed yet"), seen(said))
+    r.commit("FM-001: answered", who=OWNER, sign=True)
+    said = r.check()
+    add("3b · an answer committed without its trailer under an `ask-id:` not in its own form: a sentence and no command",
+        refused(said, "does not name it") and plain(said, "does not name it"), seen(said))
+    said = run(r.root, "--answered", who=SEAT)
+    add("4 · `--answered` on an answer under an `ask-id:` not in its own form: a sentence and no command", said[0] == 0 and plain(said, "→ act on it"), seen(said))
+    r = Repo(area / "unformed-changed", {"FM-001": text("FM-001", ask(aid=odd))})
+    r.switch("-c", "changed")
+    r.write("FM-001", r.read("FM-001").replace('ask: "Ship it?"', 'ask: "Ship it now?"'))
+    r.commit("FM-001: its put ask changed under its id")
+    said = r.check()
+    add("C2 · a put ask changed under an `ask-id:` not in its own form: refused, a sentence and no command",
+        refused(said, "changes the put ask under") and plain(said, "changes the put ask under"), seen(said))
+    r = Repo(area / "unformed-gone", {"FM-001": text("FM-001", ask(aid=odd))})
+    r.switch("-c", "gone")
+    r.write("FM-001", r.read("FM-001").replace(f"ask-id: {odd}", "ask-id: FM-001-Q1"))
+    r.commit("FM-001: its ask renumbered")
+    said = r.check()
+    add("C3 · an `ask-id:` not in its own form removed with no record: refused, a sentence and no command",
+        refused(said, "with no record under") and plain(said, "with no record under"), seen(said))
+    r = Repo(area / "unformed-two", {"FM-001": text("FM-001", ask(aid=odd))})
+    git(r.root, "branch", "two")
+    r.switch("-c", "one")
+    r.write("FM-001", answered(r.read("FM-001")))
+    r.commit("FM-001: accepted", who=OWNER, sign=True, trailers=(f"Answers: {odd}",))
+    r.switch("two")
+    r.write("FM-001", answered(r.read("FM-001"), answer="accepted - the other way"))
+    r.commit("FM-001: accepted the other way", who=OWNER, sign=True, trailers=(f"Answers: {odd}",))
+    git(r.root, "merge", "-q", "--no-edit", "one", check=False)
+    r.write("FM-001", answered(text("FM-001", ask(aid=odd)), answer="accepted - the other way"))
+    git(r.root, "add", "-A")
+    git(r.root, "commit", "-q", "--no-edit", who=SEAT, check=False)
+    said = r.check()
+    add("3b · two answers on two branches under an `ask-id:` not in its own form: refused, a sentence and no command",
+        refused(said, "answers, on branches that do not hold each other") and plain(said, "answers, on branches that do not hold each other"), seen(said))
+
+
 # --- a renumbering, and what the default branch holds ----------------------------------------------------------------------------
 
 def rows_renumber(area, add):
@@ -801,7 +857,7 @@ def rows_one_log(area, add):
 
 
 ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before, rows_record_names, rows_given_again,
-        rows_renumber, rows_revoke, rows_unborn, rows_one_log)
+        rows_unformed, rows_renumber, rows_revoke, rows_unborn, rows_one_log)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
@@ -842,6 +898,8 @@ MUTANTS = (
     ("a half-written answer given again by its tracker", "dirty_refusal", '(now_fm.get("ask-id") or "").strip() or tid', "tid", (rows_given_again,)),
     ("a half-written answer given again by an `ask-id:` in any form", "dirty_refusal", "aid if ask_number(aid, tid) is not None else tid", "aid",
      (rows_given_again,)),
+    ("a copied answer line names an ask by an `ask-id:` in any form", "ask_cmd_id", 'return aid if ask_number(aid, tid) is not None else ""', "return aid",
+     (rows_unformed,)),
 )
 
 
