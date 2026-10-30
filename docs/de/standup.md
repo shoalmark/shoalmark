@@ -84,18 +84,18 @@ eine Antwort.
 
 ## Unterwegs — vor deinem Merge
 
-Was du beantwortest oder tust, ist ein signierter Commit auf `answer/<id>`, gepusht; der Standardzweig hat ihn erst nach
+Was du beantwortest oder tust, ist ein signierter Commit auf `answer/<id>`, gepusht; der Standard-Branch hat ihn erst nach
 deinem Merge. Bis dahin liest das Board git, und die Seite, auf die du zurückkommst, zeigt es sofort: die Frage verlässt
 *wartet auf dich*, die Handlung verlässt *deine Handlungen*, und beide stehen unter **unterwegs** — deine Zusage oder deine
 Antwort zuerst, dann was es ist: *beantwortet, unterwegs*, *erledigt, unterwegs — <wo das Ergebnis liegt>*,
 *verschoben, unterwegs — fällig <Zeit>*, *zurückgenommen, unterwegs — <warum>* oder *Erledigung zurückgenommen,
-unterwegs*; der Zweig, der Commit und seine Zeit, ob er signiert ist, und *dein Merge ist als Nächstes dran* — oder
-*dein Merge wartet: …*, wo die Queue auf den Zweig wartet, meist auf den Commit einer Rolle unter deiner Handlung. Eine
+unterwegs*; der Branch, der Commit und seine Zeit, ob er signiert ist, und *dein Merge ist als Nächstes dran* — oder
+*dein Merge wartet: …*, wo die Queue auf den Branch wartet, meist auf den Commit einer Rolle unter deiner Handlung. Eine
 Antwort oder eine erledigte Handlung trägt einen Knopf, **zurücknehmen**, wo annehmen und ablehnen oder erledigt und
 verschieben standen: er fragt, warum, und gibt dir `python3 tools/shoalmark/shoalmark.py --revoke AP-007 "<warum>"` —
-einen neuen signierten Commit darauf, auf demselben Zweig, nie ein Überschreiben. Eine Verschiebung trägt keinen; um sie
-noch einmal zu verschieben, führe `--due` auf ihrem Zweig aus. Nach deinem Merge liest jede wieder vom
-Standardzweig; ein anderer Rechner zeigt nach einem Fetch dieselben Zeilen.
+einen neuen signierten Commit darauf, auf demselben Branch, nie ein Überschreiben. Eine Verschiebung trägt keinen; um sie
+noch einmal zu verschieben, führe `--due` auf ihrem Branch aus. Nach deinem Merge liest jede wieder vom
+Standard-Branch; ein anderer Rechner zeigt nach einem Fetch dieselben Zeilen.
 
 Einladungen und Benachrichtigungen gibt es nicht mehr (R9): `--invite`, `--notify` und `--standup DATEI.ics` sagen das
 in einer Zeile. Wo eine frühere Version eine Kalenderdatei, einen Zeitplan oder seinen Zustand auf deinem Rechner

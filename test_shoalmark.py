@@ -7973,7 +7973,7 @@ act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: deine Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Beleg unter {1}"
-act.sign.step.due: "schreibt das neue {0}, und das alte in den Beleg unter {1} — das Board zeigt es verschoben, unterwegs, bis zu deinem Merge"
+act.sign.step.due: "trägt den neuen Termin in {0} ein und schreibt den alten in den Beleg unter {1}"
 sessions.recent: Sessions · {0} am letzten Tag
 read.git.branch: "gelesen von {0} @ {1} um {2}"
 read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
@@ -8010,7 +8010,7 @@ ask.ruling: eine Entscheidung
 ask.action: nur deine Hände
 ask.determination: ließe sich durch einen Versuch klären
 ask.ceremony: ein Knopfdruck
-ask.legacy: gestellt, bevor Fragen eine ID hatten
+ask.legacy: gestellt, als Fragen noch keine ID hatten
 answer.accept: annehmen
 answer.reject: ablehnen
 answer.proposal: "die Rolle schlägt vor:"
@@ -8026,14 +8026,14 @@ answer.sign.copy: nochmals kopieren
 answer.sign.copied: Kopiert.
 answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Befehl markieren und kopieren."
 answer.sign.where: Wo
-answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
-answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem dieses Board gebaut wurde."
+answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage trägt."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage trägt — {0}, dem Branch, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2}"
 answer.sign.step.commit: "committet sie, signiert mit deinem Schlüssel — er fragt vielleicht nach einer Bestätigung"
-answer.sign.step.lands: "es zählt, sobald dieser Commit auf dem Standardzweig ist: pushe ihn, oder merge den Zweig, der ihn trägt"
-answer.sign.step.names: "seine Nachricht nennt die Frage, die er beantwortet: {0}"
-answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Arbeitspakete laufen."
+answer.sign.step.lands: "das zählt erst, wenn dieser Commit auf dem Standard-Branch liegt: Pushe ihn oder merge den Branch, der ihn enthält"
+answer.sign.step.names: "die Commit-Nachricht nennt die beantwortete Frage: {0}"
+answer.sign.slow: "Er meldet jeden Schritt, bevor er ihn ausführt. Das kann eine Weile dauern, denn beim Commit läuft die Prüfung über alle Arbeitspakete."
 answer.sign.success: Wenn es geklappt hat
 answer.sign.check: Zur Kontrolle
 answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem Schlüssel, dem dieses Repository vertraut."
@@ -8148,8 +8148,8 @@ day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen
 day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."
 day.runs: Was die Session ausführen soll
 day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
-day.closeout.runs: "{0} und {1}, und ein git log des Standardzweigs. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
-day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standardzweigs füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
+day.closeout.runs: "{0} und {1}, und ein git log des Standard-Branches. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
+day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standard-Branches füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
 day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
 day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
 day.refused.long: "ist länger als {0} Zeichen"
@@ -8158,7 +8158,7 @@ day.refused.split: "nennt das Werkzeug über einen Pfad mit Leerzeichen, den der
 day.value.name: der Ordnername des Repositorys
 day.value.path: sein Pfad
 day.value.cmd: der Befehl des Werkzeugs
-day.value.branch: der Name des Standardzweigs
+day.value.branch: der Name des Standard-Branches
 brand.gone: no longer read: {0}
 brand.gone.theme: [palette] in shoalmark.toml
 brand.gone.fonts: the system's monospace
@@ -9048,7 +9048,7 @@ def _de_prose_files():
 
 
 _DE_FORMAL = re.compile(r"\b(Sie|Ihnen|Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres)\b")
-_DE_RETIRED = re.compile(r"\b(?:\w*(?<![Bb]e)[Ss]itz(?:e|es)?|\w*[Ss]itzung\w*|Owners?|\w*[Tt]afel\w*|\w*[Ss]tandup\w*|Prüfer\w*|Nachweis\w*)\b")
+_DE_RETIRED = re.compile(r"\b(?:\w*(?<![Bb]e)[Ss]itz(?:e|es)?|\w*[Ss]itzung\w*|Owners?|\w*[Tt]afel\w*|\w*[Ss]tandup\w*|Prüfer\w*|Nachweis\w*|\w*(?<![Bb]irken)[Zz]weig\w*)\b")
 # What is not prose, by kind. Config keys are not read at all: each reader takes only the values of its file's keys.
 _DE_NOT_PROSE = (
     ("code blocks", re.compile(r"(?ms)^[ \t]*(`{3,})[^`\n]*$.*?^[ \t]*\1`*[ \t]*$|<pre\b.*?</pre>")),
@@ -9286,10 +9286,12 @@ check(f"no form passes by where it stands, and the named texts stay true: a sent
       f"its file, and a pending text gone from its file each turn the guard red (stayed green: {_de_more_green})", not _de_more_green)
 # A retired term inflected or in a compound is read as one; a word that only holds its letters is not.
 _de_forms = {term_: bool(_de_guard(_de_inject(_ds_de, "docs/de/setup.md", term_)))
-             for term_ in ("Standups", "Testsitz", "Untersitzungen", "Sitzungsende", "Tafeln", "Besitz", "besitzen")}
-_de_forms_wrong = [term_ for term_, red_ in _de_forms.items() if red_ != (term_ not in ("Besitz", "besitzen"))]
-check(f"the guard reads a retired term inflected or in a compound: each of Standups, Testsitz, Untersitzungen, Sitzungsende and Tafeln put "
-      f"into a source turns it red, and Besitz and besitzen leave it green (wrong: {_de_forms_wrong})", not _dg and not _de_forms_wrong)
+             for term_ in ("Standups", "Testsitz", "Untersitzungen", "Sitzungsende", "Tafeln", "Zweig", "Zweigs", "Standardzweig", "Besitz", "besitzen",
+                           "Birkenzweige")}
+_de_forms_wrong = [term_ for term_, red_ in _de_forms.items() if red_ != (term_ not in ("Besitz", "besitzen", "Birkenzweige"))]
+check(f"the guard reads a retired term inflected or in a compound: each of Standups, Testsitz, Untersitzungen, Sitzungsende, Tafeln, Zweig, "
+      f"Zweigs and Standardzweig put into a source turns it red, and Besitz, besitzen and Birkenzweige leave it green (wrong: {_de_forms_wrong})",
+      not _dg and not _de_forms_wrong)
 # Prose the guard must still read, each case beside the code or the markup that stands next to it: red on the case, and the code itself unread.
 _de_spans = (_with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Mit ``git log`` sehen Sie es in `--check`. Das ist alles."),
              _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Mit ``Sie log`` und `Owner` siehst du es. Das ist alles."))
