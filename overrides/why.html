@@ -108,6 +108,9 @@ p{margin:0 0 14px}
 .contact{margin:26px auto 0;color:var(--dim);font-size:14px;line-height:1.6;text-align:center}.contact>span{white-space:nowrap}
 .contact a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--contour);text-decoration-thickness:1px;text-underline-offset:3px}
 .contact a:hover{text-decoration-color:currentColor}.contact a:focus-visible{outline:2px solid var(--watt);outline-offset:2px}
+.legal{margin:10px auto 0;color:var(--dim);font-size:13px;line-height:1.6;text-align:center}
+.legal a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--contour);text-decoration-thickness:1px;text-underline-offset:3px}
+.legal a:hover{text-decoration-color:currentColor}.legal a:focus-visible{outline:2px solid var(--watt);outline-offset:2px}
 @media (max-width:1023px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.mark{grid-template-columns:1fr;gap:22px}}
 @media (max-width:640px){
@@ -141,6 +144,7 @@ p{margin:0 0 14px}
  .hud,.s-mark,.after-board,.move .pre{display:none}
  .contact{grid-column:1/-1;grid-row:7;margin:3pt 0 0;padding-top:2pt;max-width:none;border-top:.6pt dashed var(--contour);font-size:7.6pt;line-height:1.3;color:var(--dim);text-align:left}.contact>span{display:inline}.contact .sep{display:inline}
  .contact a{color:var(--ink);text-decoration:none}
+ .legal{display:none}
  .board .mock{top:-8.5pt;right:0;padding:1.5pt 4pt;background:#fff;color:var(--ink);border:1pt solid var(--ink);box-shadow:none;font-size:7pt}
  main{max-width:none;padding:0;display:grid;grid-template-columns:minmax(0,1.286fr) 0 minmax(0,1fr);column-gap:14pt;align-items:start}
  .hero,.s-why{grid-column:1/-1}
@@ -225,4 +229,5 @@ p{margin:0 0 14px}
 <div class="move"><p class="pre">{{ w.move_pre }}</p><p class="close">{{ w.move_close }}</p><div class="acts"><a class="btn" href="{{ w.acts[0][1] }}">{{ w.acts[0][0] }}</a><a class="btn alt" href="{{ w.acts[1][1] }}">{{ w.acts[1][0] }}</a><a class="btn ghost" href="{{ w.acts[2][1] }}">{{ w.acts[2][0] }}</a></div></div>
 </section>
 <p class="contact"><span>{{ w.contact[0] }}</span><span class="sep">{{ w.contact[1] }}</span><span>{{ w.contact[2] }}</span></p>
+<footer class="legal"><a href="{{ w.legal[0][1] }}">{{ w.legal[0][0] }}</a><span class="sep"> · </span><a href="{{ w.legal[1][1] }}">{{ w.legal[1][0] }}</a></footer>
 </main></body></html>

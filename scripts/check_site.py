@@ -173,9 +173,55 @@ probe_on = bool((tomllib.loads(config_path.read_text(encoding="utf-8"))["project
 taped_on = bool((tomllib.loads(config_path.read_text(encoding="utf-8"))["project"].get("extra") or {}).get("taped"))
 SITE_URL = "https://shoalmark.tools/"
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
-LOADS = {"script": "src", "img": "src", "source": "src", "iframe": "src", "audio": "src", "video": "src", "embed": "src", "object": "data", "form": "action"}
-LOADING_RELS = {"stylesheet", "icon", "shortcut", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon", "mask-icon"}
+LOADS = {"script": "src", "img": "src", "source": "src", "iframe": "src", "frame": "src", "audio": "src", "video": "src", "track": "src", "embed": "src",
+         "object": "data", "form": "action"}
+LOADING_RELS = {"stylesheet", "icon", "shortcut", "preload", "modulepreload", "prefetch", "prerender", "preconnect", "dns-prefetch", "manifest",
+                "apple-touch-icon", "mask-icon"}
+SVG_LOADS = {"image", "feimage", "use", "script"}
 REQUEST_APIS = re.compile(r"\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|importScripts)\s*\(|\bimport\s*\(|new\s+Image\b")
+STATIC_IMPORT = re.compile(r"\bimport\s*(?:[\w$*{},\s]+?\s*from\s*)?(['\"])(.+?)\1")
+CSS_URL = re.compile(r"(?i)url\(\s*(?:(['\"])(.*?)\1|([^'\")\s][^)\s]*))\s*\)|@import\s+(['\"])(.*?)\4")
+CSS_IMAGE_SET = re.compile(r"(?i)image-set\(((?:[^()]|\([^()]*\))*)\)")
+LEGAL = {"en": ("imprint.html", "privacy.html"), "de": ("de/impressum.html", "de/datenschutz.html")}
+
+
+def srcset_urls(value):
+    """The addresses of a srcset: each candidate's address runs to the first space, or ends at its own trailing comma."""
+    urls, i = [], 0
+    while i < len(value):
+        while i < len(value) and (value[i].isspace() or value[i] == ","):
+            i += 1
+        start = i
+        while i < len(value) and not value[i].isspace():
+            i += 1
+        url = value[start:i]
+        if url.endswith(","):
+            url = url.rstrip(",")
+        else:
+            depth = 0
+            while i < len(value) and (value[i] != "," or depth):
+                depth += {"(": 1, ")": -1}.get(value[i], 0)
+                i += 1
+        if url:
+            urls.append(url)
+    return urls
+
+
+def leaves_site(url):
+    """Whether a browser asks another host for `url`: it names a host, or a scheme other than data:, blob: or about:. Browsers drop tabs and line
+    breaks anywhere in an address and spaces and control characters around it, read a backslash as a slash, and take the host after any run of
+    slashes, so the address is read here as they read it."""
+    url = re.sub(r"[\t\n\r]", "", url).strip("".join(chr(c) for c in range(0x21))).replace("\\", "/")
+    parts = urlsplit(url)
+    return bool(parts.netloc) or url.startswith("//") or parts.scheme not in ("", "data", "blob", "about")
+
+
+def css_urls_of(css):
+    """Every address a piece of CSS names: in url(), in an @import's string, and in each string of an image-set()."""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    found = [m.group(2) if m.group(1) else m.group(3) if m.group(3) is not None else m.group(5) for m in CSS_URL.finditer(css)]
+    found += [s for m in CSS_IMAGE_SET.finditer(css) for s in re.findall(r"['\"]([^'\"]*)['\"]", m.group(1))]
+    return [url for url in found if url is not None]
 
 
 def fail(message):
@@ -190,6 +236,7 @@ class Page(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.lang = self.title = None
         self.meta, self.links, self.anchors, self.texts, self.textareas, self.dialogs, self.scripts, self.loads = {}, [], [], {}, {}, [], [], []
+        self.components, self.styles = [], []
         self.text, self.stack = "", []
         self.buttons, self.tapes, self.button_texts, self.tape_texts = [], [], [], []
         self.tape_holders, self.doors, self.coins = [], [], []
@@ -210,14 +257,29 @@ class Page(HTMLParser):
             self.meta[a.get("name") or a.get("property")] = a.get("content")
         elif tag == "link":
             self.links.append(a)
-            if set((a.get("rel") or "").split()) & LOADING_RELS and a.get("href"):
-                self.loads.append((tag, a["href"]))
+            if set((a.get("rel") or "").lower().split()) & LOADING_RELS:
+                self.loads += [(tag, a["href"])] if a.get("href") else []
+                self.loads += [(tag, url) for url in srcset_urls(a.get("imagesrcset") or "")]
         elif tag == "dialog":
             self.dialogs.append(a)
         if tag == "button" or "tape" in (a.get("class") or "").split():
             (self.buttons if tag == "button" else self.tapes).append(a)
         if tag in LOADS and a.get(LOADS[tag]):
             self.loads.append((tag, a[LOADS[tag]]))
+        if tag in ("img", "source"):
+            self.loads += [(tag, url) for url in srcset_urls(a.get("srcset") or "")]
+        if tag == "video" and a.get("poster"):
+            self.loads.append((tag, a["poster"]))
+        if tag == "input" and (a.get("type") or "").lower() == "image" and a.get("src"):
+            self.loads.append((tag, a["src"]))
+        if tag in SVG_LOADS:
+            self.loads += [(tag, a[key]) for key in ("href", "xlink:href") if a.get(key)]
+        if tag == "base" and a.get("href"):
+            self.loads.append((tag, a["href"]))
+        if a.get("style"):
+            self.styles.append(a["style"])
+        if "data-md-component" in a:
+            self.components.append(a["data-md-component"])
         if tag not in VOID:
             self.stack.append({"tag": tag, "attrs": a, "text": "", "name": ""})
 
@@ -229,7 +291,9 @@ class Page(HTMLParser):
             if el["attrs"].get("id"):
                 self.texts[el["attrs"]["id"]] = el["text"]
             if el["tag"] == "a":
-                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["name"].split())})
+                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["name"].split()), "footer": any(up["tag"] == "footer" for up in self.stack)})
+            elif el["tag"] == "style":
+                self.styles.append(el["text"])
             elif el["tag"] == "textarea" and el["attrs"].get("id"):
                 self.textareas[el["attrs"]["id"]] = el["text"]
             elif el["tag"] == "title":
@@ -394,22 +458,75 @@ listed = (site / "llms.txt").read_text(encoding="utf-8")
 if not all(f"]({twin})" in listed for twin in ("how-it-works/index.md", "de/index.md", "de/how-it-works/index.md")):
     fail("llms.txt does not list the German start page and both How it works pages")
 
-# no request to any other host: nothing a page loads is from outside the site, no inline script can ask for one, the theme's call to GitHub's API is not built in
-for rel in sorted(path.relative_to(site).as_posix() for path in site.rglob("*.html")):
-    page = pages.get(rel) or parse(rel)
+def source_component(rel, page):
+    """The theme's script asks api.github.com for the repository's facts from every element whose data-md-component is "source", and keeps them
+    in sessionStorage."""
+    if "source" in page.components or 'data-md-component="source"' in (site / rel).read_text(encoding="utf-8"):
+        fail(f"{rel} lets the theme's script ask api.github.com for the repository's facts (data-md-component=\"source\")")
+
+
+def other_hosts(rel, page):
     for tag, url in page.loads:
-        parts = urlsplit(url)
-        if parts.scheme in ("http", "https") and parts.netloc != "shoalmark.tools" or url.startswith("//"):
+        if leaves_site(url):
             fail(f"{rel} loads {url} ({tag}), from outside the site")
+    for script in page.scripts:
+        for found in STATIC_IMPORT.finditer(script):
+            if leaves_site(found.group(2)):
+                fail(f"an inline script of {rel} imports {found.group(2)}, from outside the site")
+    for css in page.styles:
+        for url in css_urls_of(css):
+            if leaves_site(url):
+                fail(f"{rel} loads a stylesheet resource from outside the site: {url[:80]}")
+    for found in re.finditer(r"url\(\s*['\"]?\s*((?:[a-zA-Z][\w+.-]*:)?//[^'\")\s]*)", re.sub(r"/\*.*?\*/", "", (site / rel).read_text(encoding="utf-8"), flags=re.S)):
+        if leaves_site(found.group(1)):
+            fail(f"{rel} loads a stylesheet resource from outside the site: {found.group(1)[:80]}")
+
+
+def footer_links(parsed):
+    """Each page's footer links the imprint and the privacy notice of its language: German under de/, English elsewhere."""
+    for target in [target for pair in LEGAL.values() for target in pair]:
+        if not (site / target).is_file():
+            fail(f"missing {target}, which every page's footer links")
+    lacking = {}
+    for rel, page in sorted(parsed.items()):
+        linked = {in_site(rel, a["attrs"].get("href") or "") for a in page.anchors if a.get("footer")}
+        want = LEGAL["de" if rel.startswith("de/") else "en"]
+        if not set(want) <= linked:
+            lacking[rel] = [target for target in want if target not in linked]
+    if lacking:
+        fail("a page's footer does not link its language's imprint and privacy notice: "
+             + "; ".join(f"{rel} lacks {', '.join(targets)}" for rel, targets in sorted(lacking.items())))
+
+
+def in_site(rel, href):
+    """The file of the site that `href`, on the page `rel`, leads to, relative to the site; None where it leads to another host."""
+    url = urlsplit(href)
+    if url.netloc == "shoalmark.tools" and url.scheme == "https":
+        path = unquote(url.path).lstrip("/")
+    elif not url.scheme and not url.netloc:
+        path = unquote(url.path)
+        path = path.lstrip("/") if path.startswith("/") else posixpath.normpath(posixpath.join(posixpath.dirname(rel), path))
+    else:
+        return None
+    return path + "index.html" if path.endswith("/") or path == "" else path
+
+
+# no request to any other host: nothing a page loads is from outside the site, no inline script can ask for one, the theme's call to GitHub's API is not built in
+parsed = {}
+for rel in sorted(path.relative_to(site).as_posix() for path in site.rglob("*.html")):
+    page = parsed[rel] = pages.get(rel) or parse(rel)
+    other_hosts(rel, page)
     for script in page.scripts:
         if REQUEST_APIS.search(script):
             fail(f"an inline script of {rel} can ask for something: {REQUEST_APIS.search(script).group(0)}")
-    if 'data-md-component="source"' in (site / rel).read_text(encoding="utf-8"):
-        fail(f"{rel} lets the theme's script ask api.github.com for the repository's facts (data-md-component=\"source\")")
-for css in [*site.rglob("*.css"), *site.rglob("*.html")]:
-    if re.search(r"url\(\s*['\"]?(?:https?:)?//", re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)):
-        fail(f"{css.relative_to(site)} loads a stylesheet resource from outside the site")
+    source_component(rel, page)
+for css in site.rglob("*.css"):
+    for url in css_urls_of(css.read_text(encoding="utf-8")):
+        if leaves_site(url):
+            fail(f"{css.relative_to(site)} loads a stylesheet resource from outside the site: {url[:80]}")
 print("site check: the landings in two languages, their launch state, How it works, the Markdown twins and requests to no other host passed")
+footer_links(parsed)
+print(f"site check: each of the {len(parsed)} pages links its language's imprint and privacy notice in its footer")
 
 
 # --- fenced code: every fenced block of the docs, and of what their includes bring in, builds to a code block, and no page shows a fence as text ----------

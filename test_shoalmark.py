@@ -18747,13 +18747,19 @@ _FEEDBACK_WORDS = ("<title>shoalmark · feedback · Rückmeldung</title>", "<p>T
                    f'<p>If nothing happens: <a href="{_TELL_URL}">open the form</a>.</p>', "<p>What you send there is public, under your GitHub name.</p>",
                    "<p>Weiter zum Rückmeldeformular von shoalmark auf GitHub.</p>", f'<p>Falls nichts passiert: <a href="{_TELL_URL}">Formular öffnen</a>.</p>',
                    "<p>Was du dort absendest, ist öffentlich, unter deinem GitHub-Namen.</p>")
+_FEEDBACK_LEGAL = ["../imprint.html", "../privacy.html", "../de/impressum.html", "../de/datenschutz.html"]
 
 
 def _feedback_problems(page):
     bad = []
-    targets = re.findall(r'<a [^>]*href="([^"]*)"', page) + re.findall(r'<meta http-equiv="refresh" content="0; url=([^"]*)">', page)
+    feet = re.findall(r"<footer>(.*?)</footer>", page, re.S)
+    legal = re.findall(r'<a [^>]*href="([^"]*)"', feet[0]) if len(feet) == 1 else []
+    rest = re.sub(r"<footer>.*?</footer>", "", page, count=1, flags=re.S) if len(feet) == 1 else page
+    targets = re.findall(r'<a [^>]*href="([^"]*)"', rest) + re.findall(r'<meta http-equiv="refresh" content="0; url=([^"]*)">', page)
     if len(targets) != 3 or set(targets) != {_TELL_URL}:
         bad.append(f"the page does not lead to the issue form alone, by its refresh and its two links: {targets}")
+    if legal != _FEEDBACK_LEGAL:
+        bad.append(f"the page's one footer does not link the imprint and the privacy notice, in English and then in German, and nothing else: {legal}")
     if '<meta name="robots" content="noindex">' not in page or re.search(r"<script|\bon\w+=", page, re.I):
         bad.append("the page is indexed, or carries a script")
     if not all(w in page for w in _FEEDBACK_WORDS) or '<section lang="en">' not in page or '<section lang="de">' not in page:
@@ -18764,14 +18770,16 @@ def _feedback_problems(page):
 _fbp = (HERE / _FEEDBACK).read_text(encoding="utf-8") if (HERE / _FEEDBACK).is_file() else ""
 _fbprob = _feedback_problems(_fbp) if _fbp else [f"there is no {_FEEDBACK}"]
 check(f"FM-006 · the feedback page · {_FEEDBACK} leads to the issue form by a refresh and a plain link, in English and German, in the ruled words, with no "
-      f"script and not indexed (problems found: {_fbprob})", _fbprob == [])
+      f"script and not indexed, and its one footer links the imprint and the privacy notice in both languages (problems found: {_fbprob})", _fbprob == [])
 _fbctl = {"the refresh to another address": _fbp.replace("content=\"0; url=" + _TELL_URL, "content=\"0; url=https://github.com/shoalmark/shoalmark/issues/new", 1),
           "a link to the discussions": _fbp.replace(f'href="{_TELL_URL}">Formular', 'href="https://github.com/shoalmark/shoalmark/discussions">Formular', 1),
           "a script that carries a query on": _fbp.replace("</body>", "<script>location.replace(location.search)</script></body>", 1),
-          "the page indexed": _fbp.replace('<meta name="robots" content="noindex">\n', "", 1)}
+          "the page indexed": _fbp.replace('<meta name="robots" content="noindex">\n', "", 1),
+          "the German privacy link gone from the footer": _fbp.replace(' · <a href="../de/datenschutz.html">Datenschutz</a>', "", 1),
+          "a refresh inside the footer": _fbp.replace("</footer>", '<meta http-equiv="refresh" content="0; url=https://github.com/shoalmark/shoalmark/discussions">\n</footer>', 1)}
 _fbctl_saw = {name: len(_feedback_problems(page)) for name, page in _fbctl.items()}
-check("FM-006 · the feedback page · its check is not blind: each of the refresh to another address, a link to the discussions, a script that carries a query on "
-      f"and the page indexed leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 4)
+check("FM-006 · the feedback page · its check is not blind: each of the refresh to another address, a link to the discussions, a script that carries a query on, "
+      f"the page indexed, the German privacy link gone from the footer and a refresh inside the footer leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 6)
 
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:

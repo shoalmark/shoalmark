@@ -8,14 +8,6 @@ next: build
 triaged: 2026-09-24
 tier: P3
 hook: "A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when done — so a person can plan what to take in, and when to be available"
-ask: "Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the CI class fix move unless READY by Thursday 20:00?"
-ask-kind: ruling
-ask-since: 2026-10-29
-ask-options: "yes | yes, with the changes I name | no: v0.20.2 stays as FM-023's What is true now (27 October, the scope) sets out"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-29
-answered-by: holgo99
 ---
 
 # FM-023 — a plan names its seats, their estimates and when the person is needed, updated as it runs, recorded when done
@@ -43,10 +35,13 @@ as the Auditor relays it.
 - **The tracker:** each release's allocation is filed as its own tracker, which ships at that release's tag.
 - **This tracker** keeps the research question it was filed for, and holds no allocation after v0.20.2's.
 - **v0.20.3's allocation** will hold [FM-089](FM-089-agentic-seamanship-v0-20-3.md), v0.20.3's chapter of agentic
-  seamanship, with its two parts: [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
+  seamanship, with its three parts: [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md),
   trackers that close, and [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md), evidence in
-  three classes, all filed today. The theme's trackers carry the tag `seamanship`, in the configuration's vocabulary
+  three classes, both filed today, and
+  [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md), shared memory, which joined on the
+  Owner's signed answer (febbed9). The theme's trackers carry the tag `seamanship`, in the configuration's vocabulary
   since the Owner's #229, and each release that carries it gets one chapter.
+- **Candidates for v0.20.3's chapter:** FM-095 to FM-098, filed for v0.20.x. The allocation pulls in what fits.
 
 **2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
 Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
@@ -76,6 +71,7 @@ relayed commits are optional", and "cut-off Fri 14:00 approved".
   it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3
   follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
 - **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
+- **2026-10-30:** FM-076 moves to v0.20.3, on the Owner's word of 29 October.
 - **FM-065, quick win 10, and the CI class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
   29 October, 20:00. The CI class fix makes every root `test_*.py` run in CI, directly or through `test_core.py`, or
   be named as excluded. Its three findings are RV-3920 to RV-3922, from the review of the CI item that #219 merged. It
@@ -488,10 +484,19 @@ arc has run on it with its estimate–actual gap in the record.
 **relation** — accepted the proposal
 **signed** — 558ec59 · G
 
+**2026-10-29** · Do you amend v0.20.2's allocation as FM-023's What is true now (29 October) sets out: S1 must land, FM-076 is optional, FM-030's A ships and B goes to v0.20.3, and FM-065, quick win 10 and the CI class fix move unless READY by Thursday 20:00?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 0fbd74b · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-10-30 | FM-076 moves to v0.20.3, on the Owner's word of 29 October. Records only. |
+| 2026-10-29 | FM-095 to FM-098 are named as candidates for v0.20.3's chapter, filed for v0.20.x. Records only. |
+| 2026-10-29 | The Auditor's re-check of 6fd3099, which fixed RV-3994, is READY, and #240 merged it into main (8fbdf0c). Records only. |
+| 2026-10-29 | The Owner's signed answer to the amended allocation (`0fbd74b`, #235): "accepted - yes". v0.20.2's allocation of 29 October binds, and the ask is cleared. Records only. |
 | 2026-10-29 | FM-086 to FM-089 carry the tag `seamanship`, in the vocabulary since the Owner's #229. Records only. |
 | 2026-10-29 | `release/v0.20.2-signed` retired after #230's button merge; `release/v0.20.2-rebuilt` at `9f1843b`, the Owner's signed merge of J, is v0.20.2's base. The CI class fix moves to v0.20.3 whole, its three findings with it. Records only. |
 | 2026-10-29 | The CI class fix is described in this entry, not named as FM-062's: no tracker holds it yet (RV-3988). Records only. |
