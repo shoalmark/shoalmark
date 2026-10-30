@@ -832,6 +832,11 @@ MUTANTS = (
     ("`--revoke` chooses by `done:` alone", "revoke_cmd", "    if by_id:\n", "    if False:\n", (rows_revoke,)),
     ("an answer with an id made on an unborn branch", "answer_cmd", 'if held and vcs() == "git" and not head_commit():', "if False:", (rows_unborn,)),
     ("the gate reads each answer's history alone", "lint", "    answer_commits(trackers)  ", "    None  ", (rows_one_log,)),
+    ("`--answered` names a record by its bare id", "newest_record_id", 'return record_name(m.group(1), m.group(2), record_ids(body)) if m else ""',
+     'return m.group(1) if m else ""', (rows_record_names,)),
+    ("a record named without its date", "record_name", 'return f"{aid} of {day}" if sum(i == aid for i, _d in records) > 1 else aid', "return aid",
+     (rows_record_names,)),
+    ("a half-written answer given again by its tracker", "dirty_refusal", '(now_fm.get("ask-id") or "").strip() or tid', "tid", (rows_given_again,)),
 )
 
 
