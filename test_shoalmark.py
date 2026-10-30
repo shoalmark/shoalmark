@@ -7659,6 +7659,228 @@ if shutil.which("node"):
 else:
     _skipped("the work table's folds, run in Node", 5, "Node is not installed here")
 
+# --- a seat's icon in today's session row, before the seat's word (the guide, §4): the tool's own copy of `brand/seats/<seat>.svg` without its
+#     ground, found by the seat's exact word, aria-hidden beside it; any other word keeps an empty 20 px slot. Grey, and inverted on the light board
+#     and on paper; the dark rule is the page's own, so the switch reaches it. The seven sources stay byte for byte. The page's own script runs in
+#     Node from a board a copy of the tool builds, on a stylesheet read from the page; each mutant fails it where it should ---------------------
+import base64
+_SEAT_GROUND = '<rect width="20" height="20" fill="#15293d"/>\n'
+_SEAT_PINS = {   # each source's sha256, its line ends as committed: an edit to one turns the check red
+              "auditor": "e301a564aba8bae81330baea593c9bc042aed340f7c17ac4a6cfe672dc84d100",
+              "builder": "d855ae89bcab29f96e34a76b104e7970ee3099c0f76b6a20d99e0c468857050d",
+              "designer": "9cf45f2d5c376e9d54ff90c22ea2b1f505f2eba048c65f21a54f5c31a85e36aa",
+              "go-to-market": "d09eaf7a0597b6d3c9dd1e4d87c37be384ad29175c4f6e8451c645da25598772",
+              "planner": "d8a61f1d85d4a82aeea6eca35b15079aea9c2aa69d575dd86d10bd4a48d3515e",
+              "research": "132b61f879d8b1fdfed0f6a3be7e7508daa51fe17822c67ab6559b7b52b0a978",
+              "reviewer": "fc86797e1e9bdd5b0d93f48af100a38c1a9727bfd90a5ab3c3352ae52b7ad2b2",
+}
+_SEAT_HARNESS = r"""
+const vm=require("vm"),fs=require("fs"),code=fs.readFileSync(process.argv[2],"utf8"),css=JSON.parse(fs.readFileSync(process.argv[3],"utf8"));
+const any=new Proxy(function(){},{get:(t,k)=>k===Symbol.toPrimitive?()=>"":k==="then"?undefined:any,apply:()=>any,construct:()=>any});
+const els=new Map(),el=id=>{if(!els.has(id))els.set(id,new Proxy({id,value:"",hidden:false,innerHTML:"",textContent:"",dataset:{}},
+  {get:(t,k)=>k in t?t[k]:any,set:(t,k,v)=>(t[k]=v,true)}));return els.get(id)};
+const store={getItem:()=>null,setItem(){},removeItem(){}},
+  rules=css.map(r=>"media" in r?{media:{mediaText:r.media},cssRules:[]}:{selectorText:r.sel||r.at||""}),sheets=[{cssRules:rules}];
+const sandbox={document:{getElementById:el,querySelectorAll:()=>[],querySelector:()=>null,styleSheets:sheets,documentElement:{style:{}},addEventListener(){},
+  head:{append(){}},createElement:()=>any,createTextNode:()=>any,activeElement:null,visibilityState:"visible"},marked:{use(){},parse:()=>""},
+  matchMedia:()=>({matches:false,addEventListener(){}}),localStorage:store,sessionStorage:store,history:{replaceState(){}},location:{hash:"",reload(){}},
+  navigator:{},addEventListener(){},scrollTo(){},scrollY:0,TextDecoder,atob};
+sandbox.window=sandbox;vm.createContext(sandbox);
+const go=s=>vm.runInContext(s,sandbox),medias=()=>rules.filter(r=>r.media).map(r=>r.media.mediaText),out={medias:{}};
+go(code);
+out.box=go('$("p").innerHTML');
+for(const m of ["light","dark","auto"]){go(`setScheme(${JSON.stringify(m)})`);out.medias[m]=medias()}
+go('setScheme("dark");onbeforeprint()');out.medias.print=medias();go("onafterprint()");
+process.stdout.write(JSON.stringify(out));
+"""
+_SEAT_WORDS = {"a0000001": "auditor", "a0000002": "builder", "a0000003": "designer", "a0000004": "go-to-market", "a0000005": "planner",
+               "a0000006": "research", "a0000007": "reviewer"}
+_SEAT_OTHER = {"b0000001": "qa", "b0000002": "constructor", "b0000003": 'o"&x@odd'}      # a seat outside the seven, a key on every object, a word to escape
+
+
+def _seat_css(page):
+    """The page's stylesheet as a list of its top-level rules, in order: {"media": text, "rules": [[selector, {property: value}]]}, {"sel", "decls"}
+    or {"at"} — read by brace depth, its comments taken out."""
+    css = re.sub(r"/\*.*?\*/", "", page.split("<style>", 1)[1].split("</style>", 1)[0], flags=re.S)
+
+    def close(i):
+        depth = 0
+        for j in range(i, len(css)):
+            depth += {"{": 1, "}": -1}.get(css[j], 0)
+            if depth == 0:
+                return j
+        raise ValueError("an unclosed rule")
+
+    def rules(a, b):
+        out = []
+        while True:
+            k = css.find("{", a, b)
+            if k < 0:
+                return out
+            head, end = css[a:k].strip(), close(k)
+            if head.startswith("@media"):
+                out.append({"media": head[len("@media"):].strip(), "rules": [[r["sel"], r["decls"]] for r in rules(k + 1, end) if "sel" in r]})
+            elif head.startswith("@"):
+                out.append({"at": head})
+            else:
+                out.append({"sel": head, "decls": dict((p.split(":", 1)[0].strip(), p.split(":", 1)[1].strip()) for p in css[k + 1:end].split(";") if ":" in p)})
+            a = end + 1
+    return rules(0, len(css))
+
+
+def _seat_holds(media, system, printing):
+    """Whether a media rule's text holds on a 1024 px screen or on paper, the system's scheme `system`: None where a part is not one this reads."""
+    said = []
+    for one in media.split(","):
+        parts = []
+        for part in re.split(r"\s+and\s+", one.strip()):
+            p = re.sub(r"\s+", "", part)
+            m = re.fullmatch(r"\((min|max)-width:(\d+)px\)", p)
+            c = re.fullmatch(r"\(prefers-color-scheme:(dark|light)\)", p)
+            parts.append(printing if p == "print" else not printing if p == "screen" else True if p == "all" else
+                         (1024 >= int(m[2]) if m[1] == "min" else 1024 <= int(m[2])) if m else c[1] == system if c else None)
+        if None in parts:
+            return None
+        said.append(all(parts))
+    return any(said)
+
+
+def _seat_filter(css, medias, system, printing):
+    """`.seat img`'s filter as the cascade gives it: the last rule that holds, in order — None where none does, "?" where a media text is unread."""
+    got, at = None, 0
+    for r in css:
+        pairs = [(r["sel"], r["decls"])] if "sel" in r else r.get("rules", [])
+        if "media" in r:
+            holds = _seat_holds(medias[at], system, printing)
+            at += 1
+            if holds is None:
+                return "?"
+            if not holds:
+                continue
+        for sel, decls in pairs:
+            if ".seat img" in [s.strip() for s in sel.split(",")] and "filter" in decls:
+                got = decls["filter"]
+    return got
+
+
+def _seat_run(source):
+    """A copy of the tool whose source is `source`, its board built in a repository where the seven seats, three words outside them and a parent
+    with no commit of its own each committed in the last day; the page's script run in Node: {"page", "box", "medias", "css"} — {"error"} where it
+    did not run."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+        cfg_ = root_ / "shoalmark.toml"
+        cfg_.write_text(cfg_.read_text(encoding="utf-8") + '\n[seats]\nowner = "owner@example.org"\n' + "".join(
+            f'{w_} = "{"gtm" if w_ == "go-to-market" else w_}@seat"\n' for w_ in _SEAT_WORDS.values()) + 'qa = "qa@seat"\nconstructor = "ctor@seat"\n', encoding="utf-8")
+        tracker(root_, "MSR-001"); git(root_, "add", "-A"); commit_as(root_, "owner@example.org", "the tree")
+        for sid_, w_ in _SEAT_WORDS.items():
+            commit_as(root_, f'{"gtm" if w_ == "go-to-market" else w_}@seat', f"{w_}\n\nSession: {sid_}\nWorktree: wt-{w_}")
+        for sid_, who_ in (("b0000001", "qa@seat"), ("b0000002", "ctor@seat"), ("b0000003", 'o"&x@odd')):
+            commit_as(root_, who_, f"another\n\nSession: {sid_}\nWorktree: wt-{sid_}")
+        commit_as(root_, "builder@seat", "a sub-session alone\n\nSession: c0000001/builder-1\nWorktree: wt-sub")
+        tr_("--html-only")
+        page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        rm_git(root_)
+        if page_.count("<script>") != 2 or page_.count("<style>") != 1:
+            return {"error": "the page is not the one this check reads"}
+        css_ = _seat_css(page_)
+        (base_ / "board.js").write_text(page_.split("<script>")[2].rsplit("</script>", 1)[0], encoding="utf-8")
+        (base_ / "css.json").write_text(json.dumps([{"media": r["media"]} if "media" in r else r for r in css_]), encoding="utf-8")
+        (base_ / "harness.js").write_text(_SEAT_HARNESS, encoding="utf-8")
+        r_ = subprocess.run([shutil.which("node"), str(base_ / "harness.js"), str(base_ / "board.js"), str(base_ / "css.json")], capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", timeout=60, env=_ENV)
+    try:
+        return dict(json.loads(r_.stdout), page=page_, css=css_)
+    except ValueError:
+        return {"error": r_.stderr[-300:]}
+
+
+def _seat_problems(o, seats=HERE / "brand/seats"):
+    """What is wrong with the seat icons in `_seat_run`'s output and the sources in `seats`, one line each, led by what it breaks: [] where nothing is."""
+    if "error" in o or not {"page", "box", "medias", "css"} <= set(o):
+        return [f"run: the page did not run: {o.get('error', o)}"]
+    bad, sources = [], {p_.stem: p_.read_bytes().replace(b"\r\n", b"\n") for p_ in sorted(Path(seats).glob("*.svg"))}
+    moved = sorted(k_ for k_ in set(sources) | set(_SEAT_PINS) if hashlib.sha256(sources.get(k_, b"")).hexdigest() != _SEAT_PINS.get(k_))
+    if moved:
+        bad.append(f"pin: brand/seats is not the seven sources as committed: {moved}")
+    rows = dict(re.findall(r'<details class="grp"><summary>([0-9a-f]{8}) (.*?)(?:<span class="subs">|</summary>)', o["box"]))
+    for sid_, w_ in _SEAT_WORDS.items():
+        m_ = re.fullmatch(r'<span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)"></span> '
+                          + re.escape(w_) + r" \(wt-" + re.escape(w_) + r"\)", rows.get(sid_, ""))
+        if not m_:
+            bad.append(f"aria: {w_}'s row is not its icon, aria-hidden, then its word: {rows.get(sid_, '')[:160]!r}")
+            continue
+        drawn_ = base64.b64decode(m_[1]).decode("utf-8")
+        if "<rect" in drawn_ or _SEAT_GROUND.strip() in drawn_:
+            bad.append(f"ground: {w_}'s icon keeps a ground")
+        if drawn_ != sources.get(w_, b"").decode("utf-8").replace(_SEAT_GROUND, "", 1) or sources.get(w_, b"").decode("utf-8").count(_SEAT_GROUND) != 1:
+            bad.append(f"equal: {w_}'s icon is not its source without the ground line alone")
+    for sid_, w_ in {**_SEAT_OTHER, "c0000001": "—"}.items():
+        said_ = html.escape(w_, quote=True).replace("&#x27;", "'")
+        if rows.get(sid_) != f'<span class="seat"></span> {said_} (' + ("—" if sid_ == "c0000001" else f"wt-{sid_}") + ")":
+            kind_ = "esc" if "&" in w_ and rows.get(sid_, "").startswith('<span class="seat"></span>') else "borrowed"
+            bad.append(f"{kind_}: {w_!r}'s row is not an empty slot, then its word: {rows.get(sid_, '')[:160]!r}")
+    if '"&x@odd' in o["box"]:
+        bad.append("esc: a seat's word stands unescaped in the box")
+    slot = [r_["decls"] for r_ in o["css"] if r_.get("sel") == ".seat"]
+    if not slot or not all(slot[-1].get(k_) == v_ for k_, v_ in (("display", "inline-block"), ("width", "20px"), ("height", "20px"))):
+        bad.append(f"slot: `.seat` is not an inline 20 px slot: {slot}")
+    want = {"light": "grayscale(1) invert(1)", "dark": "grayscale(1)"}
+    for state_, systems_ in (("light", {"light": "light", "dark": "light"}), ("dark", {"light": "dark", "dark": "dark"}),
+                             ("auto", {"light": "light", "dark": "dark"}), ("print", {"light": "light", "dark": "light"})):
+        for system_, looks_ in systems_.items():
+            got_ = _seat_filter(o["css"], o["medias"].get(state_, []), system_, state_ == "print")
+            if got_ != want[looks_]:
+                bad.append(f"{state_}: the switch at {state_}, the system {system_}: `.seat img` is {got_!r}, not {want[looks_]!r}")
+    return bad
+
+
+if shutil.which("node"):
+    _seat_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    _seat_got = _seat_run(_seat_src)
+    _seat_bad = _seat_problems(_seat_got)
+    check("a seat's icon stands before its word in today's session row: the seven, each its source without the ground line alone and aria-hidden; any "
+          "other word an empty 20 px slot, escaped; grey on the dark board, inverted on the light one and on paper, the switch reaching both; the "
+          f"seven sources as committed (problems: {_seat_bad})", _seat_bad == [])
+    _SEAT_ROW = '<span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} ('
+    _SEAT_MUTANTS = {
+        "the ground kept in the builder's embedded copy": ((("'<title>builder — the shipwright</title>\\n'",
+                                                            "'<title>builder — the shipwright</title>\\n' '<rect width=\"20\" height=\"20\" fill=\"#15293d\"/>\\n'"),), None, {"ground", "equal"}),
+        "a source edited, the builder's hard hat recoloured, and the tool not rebuilt": ((), ("builder.svg", 'fill="#f1d47a" d="M8 4h4v1h-4Z', 'fill="#f1d47b" d="M8 4h4v1h-4Z'), {"pin", "equal"}),
+        "no invert on the light board": (((".seat img{filter:grayscale(1) invert(1)}", ".seat img{filter:grayscale(1)}"),), None, {"light", "auto", "print"}),
+        "the dark rule out of its media rule, out of the switch's reach": ((("@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}", ".seat img{filter:grayscale(1)}"),),
+                                                                           None, {"light", "auto", "print"}),
+        "paper given the dark board's grey": ((("@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}",
+                                                "@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}@media print{.seat img{filter:grayscale(1)}}"),), None, {"print"}),
+        "a word outside the seven given the builder's icon": (((_SEAT_ROW, _SEAT_ROW.replace('SEAT[g[1]]:""', "SEAT[g[1]]:SEAT.builder")),), None, {"borrowed"}),
+        "the table read with its prototype": (((_SEAT_ROW, _SEAT_ROW.replace('Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""', 'SEAT[g[1]]||""')),), None, {"borrowed"}),
+        "the icon not aria-hidden": ((("""return f'<img alt="" aria-hidden="true" width="20" """, """return f'<img alt="" width="20" """),), None, {"aria"}),
+        "the seat's word unescaped": (((_SEAT_ROW, _SEAT_ROW.replace("${esc(g[1])} (", "${g[1]} (")),), None, {"esc"}),
+        "no 20 px slot": (((".seat{display:inline-block;width:20px;height:20px;vertical-align:top}", ".seat{vertical-align:top}"),), None, {"slot"})}
+    for what_, (edits_, source_edit_, want_) in _SEAT_MUTANTS.items():
+        mutant_ = _seat_src
+        for a_, b_ in edits_:
+            mutant_ = mutant_.replace(a_, b_) if mutant_.count(a_) == 1 else ""
+        with tempfile.TemporaryDirectory() as sd_:
+            seats_ = Path(sd_) / "seats"
+            shutil.copytree(HERE / "brand/seats", seats_)
+            if source_edit_:
+                f_ = seats_ / source_edit_[0]; t_ = f_.read_bytes().decode("utf-8")
+                f_.write_bytes(t_.replace(source_edit_[1], source_edit_[2]).encode("utf-8") if t_.count(source_edit_[1]) == 1 else b"")
+            got_ = _seat_got if mutant_ == _seat_src else _seat_run(mutant_) if mutant_ else {"error": "the mutant's text is not in the tool"}
+            seen_ = {p_.split(":", 1)[0] for p_ in _seat_problems(got_, seats_)}
+        check(f"the seat icons · its mutant, {what_}: the check FAILS on it, in each of {sorted(want_)} (failed in {sorted(seen_)})",
+              bool(mutant_) and want_ <= seen_ and "run" not in seen_)
+    fm.configure(HERE)
+else:
+    _skipped("the seat icons, run in Node", 11, "Node is not installed here")
+
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
     try:

@@ -4189,6 +4189,11 @@ details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}det
 .lim{white-space:pre-line;color:var(--dim);padding:2px 0 0 2ch}
 details.grp>summary{padding:3px 0}details.grp .subs{display:block;padding-left:2ch;color:var(--dim)}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
 details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
+/* a seat's icon in a session's row: 20 px, grey, without its ground; inverted on the light board and on paper. The dark rule is the page's
+   own, so the switch reaches it; a word outside the seven keeps the slot, empty */
+.seat{display:inline-block;width:20px;height:20px;vertical-align:top}.seat img{display:block}
+.seat img{filter:grayscale(1) invert(1)}
+@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}
 code{font:inherit}
 /* a name in a row moves to the next line whole, and breaks only where it is longer than a line (BF-11) */
 .row code{display:inline-block}
@@ -4275,7 +4280,7 @@ __DAY__
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask's id — "" before ask ids],
 //        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
-const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,SEAT=__SEATS__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -4424,7 +4429,7 @@ function box(){
       btn("acts.done",t[0],`OWE(T.find(x=>x[0]=='${t[0]}'),'done')`)+btn("acts.reschedule",t[0],`OWE(T.find(x=>x[0]=='${t[0]}'),'due')`),
       a[5]?`<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("")));
   {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];
-    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
+    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} <span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
   const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
@@ -4859,6 +4864,87 @@ BRAND_GONE_TOOL = (("themes/", "no theme is copied: the board's colours are `[pa
 # The tool's own mark, the Pricke (FM-006) — the site's `overrides/.icons/shoalmark/pricke.svg`, one path on a 16-unit
 # grid. The running line ends every page with it: the tool's name and version, not a brand, not a label, in every repository.
 PRICKE = "M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"
+
+# The seven seat icons (the design guide, §4): `brand/seats/<seat>.svg` on a 20-unit grid, each as its file holds it but for the
+# ground square, which a session's row leaves out; the files keep it for their use as avatars. A row finds its seat's icon by the
+# seat's exact word, and any other word keeps an empty slot.
+SEAT_ICONS = {
+    "auditor": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                '<title>auditor — the owl</title>\n'
+                '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                '<path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><!-- the ear tufts -->\n'
+                '<path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><!-- the head -->\n'
+                '<path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><!-- the eyes, wide awake -->\n'
+                '<path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><!-- the spectacles -->\n'
+                '<path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><!-- the pupils -->\n'
+                '<path fill="#f1d47a" d="M9 11h2v2h-2Z"/><!-- the beak -->\n'
+                '</svg>\n'),
+    "builder": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                '<title>builder — the shipwright</title>\n'
+                '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                '<path fill="#bccd8f" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><!-- the head, the stake\'s own green -->\n'
+                '<path fill="#f1d47a" d="M8 4h4v1h-4ZM7 5h6v1h-6ZM6 6h8v1h-8ZM5 7h10v1h-10Z"/><!-- the hard hat -->\n'
+                '<path fill="#e8d4a0" d="M9 4h2v3h-2Z"/><!-- its ridge -->\n'
+                '<path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><!-- the eyes -->\n'
+                '<path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/><!-- the blush -->\n'
+                '</svg>\n'),
+    "designer": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                 '<title>designer — the painter</title>\n'
+                 '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                 '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                 '<path fill="#f1d47a" d="M8 7h4v1h-4ZM7 8h6v1h-6ZM6 9h8v1h-8ZM5 10h10v4h-10ZM6 14h8v1h-8Z"/><!-- the head, a pear -->\n'
+                 '<path fill="#f38a80" d="M9 4h1v1h-1ZM7 5h6v1h-6ZM6 6h9v1h-9Z"/><!-- the beret, tilted -->\n'
+                 '<path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><!-- the eyes, on its drawing -->\n'
+                 '<path fill="#f38a80" d="M13 12h1v1h-1Z"/><!-- the blush -->\n'
+                 '</svg>\n'),
+    "go-to-market": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                     '<title>go-to-market — the herald</title>\n'
+                     '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                     '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                     '<path fill="#f38a80" d="M5 6h7v1h-7ZM4 7h9v6h-9ZM5 13h7v1h-7Z"/><!-- the head, leaning back from the horn -->\n'
+                     '<path fill="#15293d" d="M6 8h1v2h-1ZM11 8h1v2h-1Z"/><!-- the eyes, open on the stranger -->\n'
+                     '<path fill="#d9e4ec" d="M13 10h2v1h-2ZM15 9h1v3h-1ZM16 8h1v5h-1Z"/><!-- the horn -->\n'
+                     '</svg>\n'),
+    "planner": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                '<title>planner — the skipper</title>\n'
+                '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                '<path fill="#d9e4ec" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><!-- the head -->\n'
+                '<path fill="#d9e4ec" d="M6 4h8v1h-8ZM5 5h10v1h-10Z"/><!-- the cap\'s crown -->\n'
+                '<path fill="#5b83a3" d="M6 6h8v1h-8Z"/><!-- its band -->\n'
+                '<path fill="#f1d47a" d="M9 6h2v1h-2Z"/><!-- its badge -->\n'
+                '<path fill="#07111b" d="M6 7h8v1h-8Z"/><!-- its peak -->\n'
+                '<path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><!-- the eyes, level -->\n'
+                '<path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/><!-- the blush -->\n'
+                '</svg>\n'),
+    "research": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                 '<title>research — the tide gauge</title>\n'
+                 '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                 '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                 '<path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><!-- the staff -->\n'
+                 '<path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><!-- the eyes, wide open -->\n'
+                 '<path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><!-- the marks it reads -->\n'
+                 '<path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/><!-- the blush -->\n'
+                 '</svg>\n'),
+    "reviewer": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                 '<title>reviewer — the inspector</title>\n'
+                 '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                 '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                 '<path fill="#8fb9f3" d="M6 6h8v1h-8ZM5 7h10v6h-10ZM6 13h8v1h-8Z"/><!-- the head -->\n'
+                 '<path fill="#d9e4ec" d="M11 7h4v1h-4ZM10 8h1v4h-1ZM15 8h1v4h-1ZM11 12h4v1h-4ZM15 13h1v2h-1Z"/><!-- the monocle, its cord -->\n'
+                 '<path fill="#15293d" d="M12 9h2v2h-2Z"/><!-- the eye behind it, magnified -->\n'
+                 '<path fill="#15293d" d="M6 10h2v1h-2Z"/><!-- the other eye, squinting -->\n'
+                 '<path fill="#f38a80" d="M6 12h1v1h-1Z"/><!-- the blush -->\n'
+                 '</svg>\n'),
+}
+
+
+def seat_icon(seat):
+    """A seat's icon as a session's row draws it: 20 px, an image beside the seat's word, never read."""
+    data = base64.b64encode(SEAT_ICONS[seat].encode("utf-8")).decode("ascii")
+    return f'<img alt="" aria-hidden="true" width="20" height="20" src="data:image/svg+xml;base64,{data}">'
 LOGO_MAX = 200_000            # bytes — a logo is inlined into the page; past this it is skipped, with a warning
 
 
@@ -5555,7 +5641,7 @@ def render_html(trackers, read=None):
     unwrap = lambda md: re.sub(r" {2,}", " ", re.sub(r"(?<!\n)\n(?!\s*\n|\s*\d+\. |\s*- )", " ", md))   # source line breaks are not the reader's
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
-    page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
+    page = (HTML_PAGE.replace("__SEATS__", script_json({k: seat_icon(k) for k in SEAT_ICONS})).replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
             .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]).replace("__PROOF__", script_json(proof_page())))     # before any text of the repository's is in the page
     logo, labels, _src, warnings, gone = brand()
