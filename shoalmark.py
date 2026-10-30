@@ -4250,7 +4250,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .dfl{display:grid;grid-template-columns:3ch 3ch 1ch 1fr;gap:0 1ch;padding:0 1ch;white-space:pre-wrap;word-break:break-word}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
 #p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}#p .pw.au,#dlg .pw.au{color:var(--amber)}
-#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block;overflow-wrap:anywhere}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}details.about>summary{color:var(--dim)}details.about>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.about[open]>summary:before{content:"v ";content:"v " / ""}
+#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block;overflow-wrap:anywhere}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}details.about>summary{color:var(--dim)}details.about>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.about[open]>summary:before{content:"v ";content:"v " / ""}details.about .help{overflow-wrap:anywhere}
 #r{display:flex;justify-content:flex-end;gap:1ch;align-items:center;margin:28px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
 @media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.rv .how{padding-left:0}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
 #sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}
@@ -4611,7 +4611,7 @@ LABELS = {
     "read.none": "read from the folder {0} at {1}", "read.none.why": "no version control: no commit or revision to name",
     "read.self": "it reads its file again when you come back to it; nothing polls", "read.copy": "rebuild command", "read.copy.spoken": "copy the rebuild command",
     "read.about": "what this page reads, and what it cannot see", "read.about.git": "read from {0}'s history at {1}",
-    "read.about.svn": "read from the working copy at {0}", "read.about.none": "read from the folder at {0}",
+    "read.about.svn": "read from the working copy at {0}", "read.about.none": "read from the folder {1} at {0}",
     "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
     "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
     "link.noviewer": "no Subversion viewer configured (`commit_url`), so not linked", "link.nocommit": "no commit to link",
@@ -5332,13 +5332,20 @@ def svn_revision():
 
 def read_at_html(read, labels):
     """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it, and the fold beneath it
-    that says the rest: the line names where the board was read and when, that the page reads its file again, and the rebuild command's copy button, the
-    command itself hidden behind it; the fold names the history or the folder it was read from at the full time, why the commit is not a link, and what
-    is changed and not committed. Each part escaped; every `_` is written as a character reference, so no placeholder of the page can match inside it.
-    Each part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
+    that says the rest: the line names where the board was read and when — a folder by its name alone —, that the page reads its file again, and the
+    rebuild command's copy button, the command itself hidden behind it; the fold names the history, the working copy or the folder's full path it was read
+    from, at the full time, why the commit is not a link, and what is changed and not committed. Each part escaped, and each code span a label writes in
+    backticks shown as code, as the page's script shows a sent-back reason's; a value's own backticks stay text. Every `_` is written as a character
+    reference, so no placeholder of the page can match inside it. Each part names a fact read, or that it was not read; none says *current*, *live* or
+    *up to date*."""
     def say(key, *args):
         return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
     esc = lambda text: html_escape(text).replace("_", "&#95;")
+    def show(key, *args):
+        """The label `key` as the page's text: its own text escaped, each code span it writes in backticks as `<code>`, then each value, escaped, in
+        its place."""
+        text = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(labels.get(key, LABELS[key])))
+        return re.sub(r"\{(\d)\}", lambda m: esc(str(args[int(m.group(1))])) if int(m.group(1)) < len(args) else "", text)
     def head(shown, commit):
         """The commit as the line shows it — a link to its page on the forge (`commit_link`), or the commit alone — and the label of why it is no link."""
         url, why = commit_link(commit)
@@ -5350,25 +5357,26 @@ def read_at_html(read, labels):
     if read.get("vcs") == "git":
         sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")
         shown, why = head(sha, read.get("commit")) if sha else ("", "")
-        where = say("read.git.unborn", branch or "HEAD", when) if not sha else say("read.git.detached", held, when) if branch is None else say("read.git.branch", branch, held, when)
-        line = esc(where).replace(held, shown)
-        about = [say("read.about.git", branch or "HEAD", full), say(why) if why else "",
-                 say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n)]
+        where = show("read.git.unborn", branch or "HEAD", when) if not sha else show("read.git.detached", held, when) if branch is None else show("read.git.branch", branch, held, when)
+        line = where.replace(held, shown)
+        about = [show("read.about.git", branch or "HEAD", full), show(why) if why else "",
+                 show("read.git.unread") if n is None else show("read.git.clean") if n == 0 else show("read.git.changed.one") if n == 1 else show("read.git.changed", n)]
     elif read.get("vcs") == "svn":
         revision = read.get("revision")
         shown, why = head("r" + revision, revision) if revision else ("", "")
-        line = (esc(say("read.svn.unread", when)) if revision is None else esc(say("read.svn.new", when)) if not revision
-                else esc(say("read.svn", held, when)).replace(held, shown))
-        about = [say("read.about.svn", full), say(why) if why else ""]
+        line = (show("read.svn.unread", when) if revision is None else show("read.svn.new", when) if not revision
+                else show("read.svn", held, when).replace(held, shown))
+        about = [show("read.about.svn", full), show(why) if why else ""]
     else:
-        line = esc(say("read.none", read.get("folder", ""), when))
-        about = [say("read.about.none", full), say("read.none.why")]
-    facts = [line, esc(say("read.self"))]
+        folder = read.get("folder", "")
+        line = show("read.none", os.path.basename(folder) or folder, when)
+        about = [show("read.about.none", full, folder), show("read.none.why")]
+    facts = [line, show("read.self")]
     return ('<p id="ra" class="m"><span>' + " ".join(f'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>' for i, f in enumerate(facts))
             + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
-            f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{esc(say("read.copy"))}</button>'
+            f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{show("read.copy")}</button>'
             '<span id="rs" class="said" aria-live="polite"></span></p>\n'
-            f'<details class="about"><summary>{esc(say("read.about"))}</summary><p class="help">{" · ".join(esc(f) for f in about if f)}</p></details>')
+            f'<details class="about"><summary>{show("read.about")}</summary><p class="help">{" · ".join(f for f in about if f)}</p></details>')
 
 
 def board_basis():

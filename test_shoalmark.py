@@ -15282,7 +15282,7 @@ def _q4_case(shape, root, tool):
         want_, record_, keys_ = [f"read from the working copy @ r{rev_}"], dict(vcs="svn", revision=rev_), {"built_at", "vcs", "revision"}
         about_ = ["read from the working copy at"]
     else:
-        want_, about_ = [f"read from the folder {root}"], ["read from the folder at", "no version control: no commit or revision to name"]
+        want_, about_ = [f"read from the folder {root.name} at "], [f"read from the folder {root} at ", "no version control: no commit or revision to name"]
         record_, keys_ = dict(vcs="none", folder=str(root)), {"built_at", "vcs", "folder"}
     at_ = None
     try:
@@ -15405,11 +15405,13 @@ def _ln_saw(root, tool):
             _q4_html.unescape(re.sub(r"<[^>]+>", "", fold_.group(1))) if fold_ else "")
 def _ln_ok(rows, tool):
     """Every row as asserted: exit 0; its link, exactly, where it must make one — and then no reason; else no link at all, and the fold beneath the line
-    carries the reason's own words. No other reason anywhere in the line or the fold. (all held, what was seen)"""
+    carries the reason's own words, as a reader sees them: a code span shown as code, without its backticks. No other reason anywhere in the line or the
+    fold. (all held, what was seen)"""
     seen_ = []
+    said_ = lambda k_: re.sub(r"`([^`]+)`", r"\1", fm.LABELS[k_])
     for what_, root_, want_, why_ in rows:
         code_, href_, line_, fold_ = _ln_saw(root_, tool)
-        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or fm.LABELS[why_] in fold_) and not any(fm.LABELS[k_] in line_ + " " + fold_ for k_ in fm.LINK_WHY if k_ != why_)
+        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or said_(why_) in fold_) and not any(said_(k_) in line_ + " " + fold_ for k_ in fm.LINK_WHY if k_ != why_)
         seen_.append((what_, ok_, href_, fold_[:160]))
     return all(o_ for _w, o_, _h, _l in seen_), seen_
 with tempfile.TemporaryDirectory() as d:
@@ -15477,6 +15479,147 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row — the board's run is stopped, exit 4, "
           f"before it compares the working tree, and its folder stays empty (saw {_cn_saw(c_) if c_ else 'the change is not there to make'})",
           c_ is not None and not _cn_ok(c_) and c_["code"] == fm.EXIT_LINT and not c_["marker"])
+fm.configure(HERE)
+
+# --- the read-at line outside version control, and its fold: in a plain folder the line names the folder by its name alone, and the fold names its
+#     full path at the full time; on git and on Subversion the line and the fold read as their labels say, in English and in the German table the tool
+#     ships. Each code span a label writes in backticks shows as code, as the page's script shows a sent-back reason's: the two reasons a commit is no
+#     link that name `commit_url`, in both languages; a value's own backticks stay text. The fold's text breaks anywhere, so a long path in it never
+#     makes the page wider than the screen. Rendered by `read_at_html` in process, at one fixed moment, with the reason a commit is no link given; each
+#     mutant is this tool with that one change, loaded beside it, and must fail the part it breaks ----------------------------------------------------
+_RA_AT, _RA_WHEN, _RA_FULL = "2026-10-30T16:50:00+01:00", "10-30 16:50", "2026-10-30 16:50 +01:00"
+_RA_PATH = "/home/someone/work/stock_ledger"
+_RA_TABLES = {"en": {}, "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))}
+_RA_SHAPES = (      # (what, the read, the reason a commit is no link, the line's label and values, the fold's labels and values)
+    ("a plain folder", {"vcs": "none", "folder": _RA_PATH}, "", ("read.none", "stock_ledger", _RA_WHEN),
+     (("read.about.none", _RA_FULL, _RA_PATH), ("read.none.why",))),
+    ("git, on a branch", {"vcs": "git", "commit": "c" * 40, "branch": "main", "changes": 2}, "link.unknown", ("read.git.branch", "main", "c" * 7, _RA_WHEN),
+     (("read.about.git", "main", _RA_FULL), ("link.unknown",), ("read.git.changed", 2))),
+    ("git, a detached HEAD", {"vcs": "git", "commit": "c" * 40, "branch": None, "changes": None}, "link.noforge", ("read.git.detached", "c" * 7, _RA_WHEN),
+     (("read.about.git", "HEAD", _RA_FULL), ("link.noforge",), ("read.git.unread",))),
+    ("git, no commit yet", {"vcs": "git", "commit": "", "branch": "main", "changes": 1}, "", ("read.git.unborn", "main", _RA_WHEN),
+     (("read.about.git", "main", _RA_FULL), ("read.git.changed.one",))),
+    ("Subversion, at a revision", {"vcs": "svn", "revision": "12"}, "link.noviewer", ("read.svn", "r12", _RA_WHEN),
+     (("read.about.svn", _RA_FULL), ("link.noviewer",))),
+    ("Subversion, its revision not read", {"vcs": "svn", "revision": None}, "", ("read.svn.unread", _RA_WHEN), (("read.about.svn", _RA_FULL),)),
+    ("Subversion, no revision yet", {"vcs": "svn", "revision": ""}, "", ("read.svn.new", _RA_WHEN), (("read.about.svn", _RA_FULL),)),
+)
+_RA_CODE = {    # (language, the reason): its words in the fold, as the page's markup — the code span as code
+    ("en", "link.unknown"): "the forge's commit address is not configured (<code>commit&#95;url</code>), so not linked",
+    ("en", "link.noviewer"): "no Subversion viewer configured (<code>commit&#95;url</code>), so not linked",
+    ("de", "link.unknown"): "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (<code>commit&#95;url</code>), darum nicht verlinkt",
+    ("de", "link.noviewer"): "kein Subversion-Betrachter konfiguriert (<code>commit&#95;url</code>), darum nicht verlinkt"}
+_RA_PRECEDENT = 'esc(t[29][7][0]).replace(/`([^`]+)`/g,"<code>$1</code>")'
+_RA_RULE = "details.about .help{overflow-wrap:anywhere}"
+
+
+def _ra_parts(mod, read, lang, why=""):
+    """The read-at line's first fact and the fold's text, as the page's markup, from `mod`'s `read_at_html`: in English, or in the German table the tool
+    ships over it, at `_RA_AT`, the reason a commit is no link being `why` (none: a link). (the fact, the fold's text), each None where it is not there."""
+    keep_ = mod.commit_link
+    mod.commit_link = lambda commit, tool=False: (None, why) if why else (f"https://forge.example/commit/{commit}", "")
+    try:
+        page_ = mod.read_at_html(dict(read, built_at=_RA_AT), dict(mod.LABELS, **_RA_TABLES[lang]))
+    finally:
+        mod.commit_link = keep_
+    fact_ = re.match(r'<p id="ra" class="m"><span><span class="fact">(.*?)&nbsp;·</span> ', page_)
+    fold_ = re.search(r'<p class="help">(.*?)</p></details>$', page_)
+    return fact_.group(1) if fact_ else None, fold_.group(1) if fold_ else None
+
+
+def _ra_said(lang, key, *values):
+    """A label of the tool's as the page must show it, worked out here: its text escaped as the tool escapes text, each code span in it as code, each
+    value escaped in its place."""
+    esc_ = lambda s_: str(s_).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("_", "&#95;")
+    text_ = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc_(_RA_TABLES[lang].get(key, fm.LABELS[key])))
+    return re.sub(r"\{(\d)\}", lambda m_: esc_(values[int(m_.group(1))]) if int(m_.group(1)) < len(values) else "", text_)
+
+
+def _ra_faults(mod):
+    """What `mod` renders wrong, part by part — {part: [faults]}, each list empty where the part holds:
+    - `words`: each shape's line and fold read as their labels say, in both languages; in a plain folder the line names the folder by its name and
+      nothing of the path above it — the filesystem's root by its path —, and the English fold names the full path at the full time;
+    - `code`: the two reasons that name `commit_url` show it as code in both languages, no rendered part keeps a backtick, the labels that hold a code
+      span are those two reasons alone, in English and in German, and the page's script still shows a sent-back reason's code spans as code;
+    - `values`: a folder's own backticks and markup stay text, on the line and in the fold;
+    - `wrap`: the fold's text breaks anywhere, by one rule beside the read-at line's, and no other help line's rule is changed."""
+    out_ = {"words": [], "code": [], "values": [], "wrap": []}
+    for lang_ in ("en", "de"):
+        for what_, read_, why_, line_, fold_ in _RA_SHAPES:
+            got_ = _ra_parts(mod, read_, lang_, why_)
+            want_ = (_ra_said(lang_, *line_), " · ".join(_ra_said(lang_, *f_) for f_ in fold_))
+            if got_ != want_:
+                out_["words"].append(f"{lang_}, {what_}: {got_} for {want_}")
+            if "`" in "".join(p_ or "" for p_ in got_):
+                out_["code"].append(f"{lang_}, {what_}: a backtick shown in {got_}")
+            if why_ in ("link.unknown", "link.noviewer") and _RA_CODE[(lang_, why_)] not in (got_[1] or ""):
+                out_["code"].append(f"{lang_}, {what_}: {why_} not as {_RA_CODE[(lang_, why_)]!r} in {got_[1]!r}")
+        line_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, lang_)[0] or ""
+        if "stock&#95;ledger" not in line_ or "someone" in line_ or "home" in line_:
+            out_["words"].append(f"{lang_}: the plain folder's line names more or less than the folder's name: {line_!r}")
+        root_ = _ra_parts(mod, {"vcs": "none", "folder": "/"}, lang_)[0]
+        if root_ != _ra_said(lang_, "read.none", "/", _RA_WHEN):
+            out_["words"].append(f"{lang_}: the filesystem's root named as {root_!r}")
+        odd_ = _ra_parts(mod, {"vcs": "none", "folder": "/home/some`one`/led`ger`<b>&"}, lang_)
+        if (odd_[0] != _ra_said(lang_, "read.none", "led`ger`<b>&", _RA_WHEN) or "led`ger`&lt;b&gt;&amp;" not in odd_[0]
+                or "<code>" in "".join(p_ or "" for p_ in odd_) or (lang_ == "en" and "/home/some`one`/led`ger`&lt;b&gt;&amp;" not in (odd_[1] or ""))):
+            out_["values"].append(f"{lang_}: {odd_}")
+    plain_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, "en")
+    if plain_ != ("read from the folder stock&#95;ledger at 10-30 16:50",
+                  "read from the folder /home/someone/work/stock&#95;ledger at 2026-10-30 16:50 +01:00 · no version control: no commit or revision to name"):
+        out_["words"].append(f"en: the plain folder reads {plain_}")
+    coded_ = {lang_: sorted(k_ for k_, v_ in dict(mod.LABELS, **_RA_TABLES[lang_]).items() if re.search(r"`[^`]+`", v_)) for lang_ in ("en", "de")}
+    if coded_ != {"en": ["link.noviewer", "link.unknown"], "de": ["link.noviewer", "link.unknown"]} or not set(coded_["en"]) <= set(mod.LINK_WHY):
+        out_["code"].append(f"the labels that hold a code span: {coded_}")
+    if mod.HTML_PAGE.count(_RA_PRECEDENT) != 1:
+        out_["code"].append("the page's script no longer shows a sent-back reason's code spans as code")
+    style_ = mod.HTML_PAGE[mod.HTML_PAGE.find("<style>"):mod.HTML_PAGE.find("</style>")]
+    ra_ = next((l_ for l_ in style_.splitlines() if l_.startswith("#ra{")), "")
+    if style_.count(_RA_RULE) != 1 or not ra_.endswith(_RA_RULE) or re.search(r"(?:^|[}\s,])\.help\{[^}]*overflow-wrap", style_.replace(_RA_RULE, ""), re.M):
+        out_["wrap"].append(f"the read-at line's rules end {ra_[-90:]!r}; the fold's rule stands {style_.count(_RA_RULE)} times")
+    return out_
+
+
+_RA_MUTANTS = (     # (what, the part it must fail, its changes to the tool's text)
+    ("the full path on the line again", "words",
+     (('line = show("read.none", os.path.basename(folder) or folder, when)', 'line = show("read.none", folder, when)'),)),
+    ("the fold without the folder's path", "words",
+     (('about = [show("read.about.none", full, folder), show("read.none.why")]', 'about = [show("read.about.none", full), show("read.none.why")]'),)),
+    ("a label's {0} read as the path, not the time, so an older table's fold puts the path where its time stands", "words",
+     (('"read.about.none": "read from the folder {1} at {0}"', '"read.about.none": "read from the folder {0} at {1}"'),
+      ('about = [show("read.about.none", full, folder), show("read.none.why")]', 'about = [show("read.about.none", folder, full), show("read.none.why")]'))),
+    ("the code spans printed with their backticks", "code",
+     ((r'text = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(labels.get(key, LABELS[key])))', "text = esc(labels.get(key, LABELS[key]))"),)),
+    ("the sent-back reasons' code spans printed with their backticks", "code", ((_RA_PRECEDENT, "esc(t[29][7][0])"),)),
+    ("a value's backticks shown as code, the code spans read after the values are in", "values",
+     ((r'text = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(labels.get(key, LABELS[key])))' "\n"
+       r'        return re.sub(r"\{(\d)\}", lambda m: esc(str(args[int(m.group(1))])) if int(m.group(1)) < len(args) else "", text)',
+       "text = esc(labels.get(key, LABELS[key]))\n"
+       r'        return re.sub(r"`([^`]+)`", r"<code>\1</code>", re.sub(r"\{(\d)\}", lambda m: esc(str(args[int(m.group(1))])) if int(m.group(1)) < len(args) else "", text))'),)),
+    ("the fold's wrapping rule gone", "wrap", ((_RA_RULE + "\n", "\n"),)),
+    ("`break-word` in its place", "wrap", ((_RA_RULE + "\n", "details.about .help{overflow-wrap:break-word}\n"),)),
+    ("the rule on every help line", "wrap", ((_RA_RULE + "\n", ".help{overflow-wrap:anywhere}\n"),)),
+)
+_ra_real = _ra_faults(fm)
+check(f"FM-053, BF-30 · the read-at line and its fold read as their labels say, in each shape, on git, on Subversion and in a plain folder, in English "
+      f"and in the German table the tool ships; a plain folder's line names the folder by its name alone, and the English fold names its full path at "
+      f"the full time (saw {_ra_real['words'][:3]})", not _ra_real["words"])
+check(f"FM-053, BF-30 · the class: each code span a label writes shows as code — the two reasons a commit is no link, `link.unknown` and "
+      f"`link.noviewer`, in English and in German, the only labels that hold one — as the page's script shows a sent-back reason's; and a folder's own "
+      f"backticks and markup stay text (saw {_ra_real['code'][:3]}, {_ra_real['values'][:2]})", not _ra_real["code"] and not _ra_real["values"])
+check(f"FM-053, BF-49 · the read-at fold's text breaks anywhere, by one rule beside the read-at line's, scoped to that fold (saw {_ra_real['wrap']})",
+      not _ra_real["wrap"])
+_ra_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+for what_, part_, changes_ in _RA_MUTANTS:
+    src_ = _ra_src
+    for a_, b_ in changes_:
+        src_ = src_.replace(a_, b_, 1) if src_.count(a_) == 1 else None
+        if src_ is None:
+            break
+    seen_ = _ra_faults(_tool_module(src_, "fm_read_at_mutant")) if src_ is not None else None
+    sys.modules.pop("fm_read_at_mutant", None)
+    check(f"FM-053, BF-30, BF-49 · …the mutant, {what_}: this tool with that one change FAILS the {part_} part "
+          f"(saw {seen_[part_][:1] if seen_ else 'the change is not there to make'})", seen_ is not None and bool(seen_[part_]))
 fm.configure(HERE)
 
 # --- revoke: `--revoke <id> "<why>"` takes back what he last did on a tracker — a new signed commit on the branch he

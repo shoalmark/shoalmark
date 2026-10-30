@@ -1073,14 +1073,26 @@ FM057_KEYS_SHOWN = ("read.git.branch", "read.git.detached", "read.git.unborn", "
                     "read.about", "read.about.git", "read.about.svn", "read.about.none", "link.unpushed", "link.noforge", "link.unknown", "link.noviewer",
                     "link.nocommit", "read.copied")
 FM057_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in FM057_KEYS_SHOWN)
+# the read-at fold's edits to the read-at line's own text on the page — (the text as the read-at line's allowance pins it, the candidate's), literal,
+# each after standing once on the candidate's page: the fold's wrapping rule beside the read-at line's rules, and the plain folder's fold label, which
+# names the folder's path. Each is put back as pinned before the read-at line's parts are taken out
+READ_AT_FOLD_EDITS = (
+    ('details.about[open]>summary:before{content:"v ";content:"v " / ""}\n',
+     'details.about[open]>summary:before{content:"v ";content:"v " / ""}details.about .help{overflow-wrap:anywhere}\n'),
+    ('"read.about.none": "read from the folder at {0}"', '"read.about.none": "read from the folder {1} at {0}"'),
+)
 
 
 def fm057_page_dropped(data):
     """The candidate's board page without the read-at line's parts, each taken out exactly once as specified above — the style line, the read-at
-    line and its fold, the three script lines, the twenty-five words — and the reload's comment put back as the baseline's. None where any part is
-    not there exactly once as written."""
+    line and its fold, the three script lines, the twenty-five words — and the reload's comment put back as the baseline's; before that, each of
+    READ_AT_FOLD_EDITS' afters put back as its before. None where an after or a part is not there exactly once as written."""
     if data is None:
         return None
+    for old, new in READ_AT_FOLD_EDITS:
+        if data.count(new.encode("utf-8")) != 1:
+            return None
+        data = data.replace(new.encode("utf-8"), old.encode("utf-8"), 1)
     for line in FM057_PAGE_LINES:
         if data.count(line + b"\n") != 1:
             return None
@@ -1909,16 +1921,34 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        "byte; the baseline's page holds neither", bool(read_at) and fm057_page_dropped(day_dropped_joined(new_page)) == joined_transform(old_page)
                        and day_dropped(old_page) is None and fm057_page_dropped(old_page) is None)
         at = read_at.group(0) if read_at else b"\n"
+        rule057 = b"details.about .help{overflow-wrap:anywhere}"
+        style057 = FM057_PAGE_LINES[0] + rule057 + b"\n"
         variants057 = {
             "one byte more in the read-at line": new_page.replace(at, at.replace(b"nothing polls", b"nothing polls!"), 1),
             "the read-at line twice": new_page.replace(at, at * 2, 1),
-            "the read-at line's style gone": new_page.replace(FM057_PAGE_LINES[0] + b"\n", b"\n", 1),
+            "the read-at line's style gone": new_page.replace(style057, b"\n", 1),
             "a word FM-057 does not name, beside its own": new_page.replace(b'"read.copy": "rebuild command"', b'"read.copy": "rebuild command", "read.more": "more"', 1),
         }
         made057 = {name: page != new_page for name, page in variants057.items()}
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
                        f"does not name does not match (each variant made: {made057})",
                        all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
+        # the read-at fold's edits, held the same way: literal text, each after found once and no before, and a fold changed beyond them does not match
+        fold057, label057 = "Git entry read-at fold allowance: ", b'"read.about.none": "read from the folder {1} at {0}"'
+        assert_control(fold057 + "READ_AT_FOLD_EDITS is literal text alone, each pair a before and an after that differ, each after standing once on "
+                       "the candidate's page and no before",
+                       bool(READ_AT_FOLD_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in READ_AT_FOLD_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 and new_page.count(a.encode("utf-8")) == 0 for a, b in READ_AT_FOLD_EDITS))
+        fold_variants = {
+            "the fold's rule as `break-word`": new_page.replace(rule057, b"details.about .help{overflow-wrap:break-word}", 1),
+            "one byte more in the fold's rule": new_page.replace(rule057, b"details.about .help{overflow-wrap:anywhere;}", 1),
+            "the fold's rule on every help line": new_page.replace(rule057, b".help{overflow-wrap:anywhere}", 1),
+            "the folder's fold label one byte more": new_page.replace(label057, label057[:-1] + b'!"', 1),
+            "the folder's fold label as it was": new_page.replace(label057, b'"read.about.none": "read from the folder at {0}"', 1)}
+        made_fold = {what: page != new_page for what, page in fold_variants.items()}
+        assert_control(fold057 + "a page whose read-at fold differs from READ_AT_FOLD_EDITS' after — its rule as `break-word`, one byte more, or on every "
+                       f"help line; the folder's fold label one byte more, or as it was — does not match (each variant made: {made_fold})",
+                       all(made_fold.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in fold_variants.values()))
         settings = "Git entry board settings allowance: "
         raw = new["starts_raw"]
         reads = [i for i, row in enumerate(raw) if "GIT_CONFIG_PARAMETERS" in (row.get("environment") or {}) and git_words(row)[:1] == ("log",)
