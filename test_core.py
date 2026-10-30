@@ -792,6 +792,9 @@ run_freeze_removed_controls(gti, check)
 from test_ratio_removed import run_ratio_removed_controls
 run_ratio_removed_controls(gti, check)
 
+from test_tsvn_hooks import run_controls as run_tsvn_controls
+run_tsvn_controls(check)
+
 print()
 if FAILS:
     print(f"FAILED: {len(FAILS)} — {', '.join(FAILS)}")

@@ -3472,13 +3472,9 @@ def answer_signing(name, email):
 
 
 def proof_page():
-    """What the board's page carries of `answer_proof` (`PROOF`): the state, the label of each line of the second screen that says how the
-    commit is proved (`PROOF_KEYS`), the terminal's word it previews, and what its check asks git for — "" where it previews or checks nothing;
-    and for the proof line said before *accept* (FM-007, the quick-wins design of 15 October), in the heading of *waiting for you* and in the
-    answer dialog: the state's word (`proof.<state>`) and, under *author only*, its consequence (`proof.author.why`), else ""."""
     state = answer_proof()
     return {"state": state, "keys": PROOF_KEYS[state], "said": PROOF_SAID.get(state, ""), "format": PROOF_FORMAT.get(state, ""),
-            "word": f"proof.{state}", "why": "proof.author.why" if state == "author" else ""}
+            "word": f"proof.{state}", "why": f"proof.{state}.why" if state in ("author", "login") else ""}
 
 
 def owner_change(tid, t, how):
@@ -4589,6 +4585,7 @@ LABELS = {
     "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}",
     "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author",
     "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name",
+    "proof.login.why": "this local run cannot verify commit signatures or server-authenticated author identities",
     "answer.done": "done",
     "ask.ruling": "decision", "ask.action": "your hands", "ask.determination": "evidence could settle it", "ask.ceremony": "one click",
     "story.chapter": "chapter", "story.chapters": "chapters", "story.shipped": "shipped", "story.closed": "closed", "story.open": "open", "story.parked": "parked",
@@ -11311,11 +11308,14 @@ def install_hook_svn():
             raise SvnUnreadable(f"the consumer tool {tool} is not a regular local file; vendor it before installing properties")
         base = "%REPOROOT%" + url.strip().lstrip("^").rstrip("/")
         for prop, kind in TSVN_HOOKS.items():
-            # The retained Tortoise format: command, wait, hidden window; it still asks its user before running.
-            value = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
+            # TortoiseSVN consumes the type before the command, and a quoted repository path ends at its closing quote.
+            command = f'python "{base}/{tool}" --tsvn-hook {kind}'
+            value = f"{kind}_commit_hook\n{command}\ntrue\nhide\n"
             have = have_properties.get(prop, "")
-            if have.strip() and "--tsvn-hook" not in have:
-                print(f"{prop} is set and is not shoalmark's — left alone. Add to it: `python {base}/{tool} --tsvn-hook {kind}`", file=sys.stderr)
+            legacy = f"python {base}/{tool} --tsvn-hook {kind}\ntrue\nhide\n"
+            unquoted = f"{kind}_commit_hook\n{legacy}"
+            if have.strip() and have.strip() not in (legacy.strip(), unquoted.strip(), value.strip()):
+                print(f"{prop} is set and is not shoalmark's — left alone.", file=sys.stderr)
                 code = EXIT_LINT
                 continue
             if have.strip() != value.strip():
@@ -12045,7 +12045,7 @@ def board_watchdog(board=True):
     said = (f"the board's run took longer than {BOARD_RUN_SECONDS} s and was stopped" if board
             else f"shoalmark: the hook's run took longer than {BOARD_RUN_SECONDS} s and was stopped — the commit is refused; SHOALMARK_BOARD_SECONDS gives it longer")
     def stop():
-        os.write(2, (said + "\n").encode("utf-8"))
+        os.write(2, (said + "\n").encode(getattr(sys.stderr, "encoding", None) or "utf-8", errors="replace"))
         os._exit(EXIT_LINT)
     timer = threading.Timer(BOARD_RUN_SECONDS, stop)
     timer.daemon = True
@@ -12191,13 +12191,21 @@ def tsvn_arguments(words, explicit_root=None, source_file=None):
     return ["--root", str(root)] + (["--check"] if kind == "pre" else [])
 
 
-SVN_VERIFY_LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
+SVN_VERIFY_LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated author identities."
+
+
+def configure_output(argv):
+    encoding = "utf-8"
+    if os.name == "nt" and "--tsvn-hook" in argv:
+        # TortoiseSVN converts captured hook bytes through the Windows ANSI code page, regardless of Python's UTF-8 mode.
+        encoding = "mbcs"
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding=encoding, errors="replace", newline="\n")
 
 
 def main(argv=None, *, _notice=True):
-    for stream in (sys.stdout, sys.stderr):                 # a Windows console in cp1252 cannot encode `—` `→` `◐`: say it in UTF-8, never crash
-        if hasattr(stream, "reconfigure"):                   # …and `\n`, never `\r\n`: a hook pipes --print-written into `git add`
-            stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+    configure_output(sys.argv[1:] if argv is None else argv)
     removed = r17_removed(r17_given(sys.argv[1:] if argv is None else list(argv)))     # before argparse: its --help and --version end the run (RV-3367)
     if removed:                                             # R17: a removed flag is named, never silently ignored — before anything is read or written
         print(removed, file=sys.stderr)
@@ -12225,21 +12233,27 @@ def main(argv=None, *, _notice=True):
             print("--standup DIR … reads the repositories it names, and --root names the one a run reads: name that folder after --standup", file=sys.stderr)
             return 2
         return standup_across(args.standup)
+    notice = _notice and not args.tsvn_hook and cli_operation(args) in ("init", "check")
+    try:
+        return main_run(args)
+    finally:
+        if notice and vcs() == "svn":
+            print(SVN_VERIFY_LIMIT, file=sys.stderr)
+
+
+def main_run(args):
     if args.html_only:                                      # …and nothing else, whatever else was said: the board's run is read-only and stands alone
         others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
         if others:
             print(f"--html-only is the board's read-only run and stands alone, with --root: {', '.join(others)} goes with another run", file=sys.stderr)
             return 2
-        code = board_run(args.root)
-        if _notice and vcs() == "svn":
-            print(SVN_VERIFY_LIMIT, file=sys.stderr)
-        return code
+        return board_run(args.root)
     tortoise = bool(args.tsvn_hook)
     if tortoise:
         try:
             args = parse_args(tsvn_arguments(args.tsvn_hook, args.root, __file__))
         except (ValueError, OSError, UnicodeError) as error:
-            print(f"--tsvn-hook: {error} — nothing is written" + (" — " + SVN_VERIFY_LIMIT if _notice else ""), file=sys.stderr)
+            print(f"--tsvn-hook: {error} — nothing is written", file=sys.stderr)
             return EXIT_LINT
     if args.root:
         configure(args.root)
@@ -12249,15 +12263,12 @@ def main(argv=None, *, _notice=True):
         try:
             svn_local_directory(".")                      # A's validated local WC binding, never a server read
         except (SvnUnreadable, OSError) as error:
-            print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written" + (" — " + SVN_VERIFY_LIMIT if _notice else ""), file=sys.stderr)
+            print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written", file=sys.stderr)
             return EXIT_LINT
     diagnostic, code = cli_preflight(args, vcs()) if vcs() == "svn" else (None, EXIT_OK)
-    limitation = SVN_VERIFY_LIMIT if _notice and vcs() == "svn" else ""
     if diagnostic is not None:
-        print(diagnostic + (" — " + limitation if limitation else ""), file=sys.stderr)
+        print(diagnostic, file=sys.stderr)
         return code
-    if limitation and not args.vendor:                      # a --vendor run says it with its own result, below
-        print(limitation, file=sys.stderr)
     owner_refused = owner_signature_problems() if args.check else []
     for problem in owner_refused:
         print(problem, file=sys.stderr)
@@ -12271,27 +12282,7 @@ def main(argv=None, *, _notice=True):
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
     if args.vendor:
-        if not limitation:
-            return vendor(args.vendor)
-        # FM-004: a --vendor refusal keeps its one line, the Subversion notice folded in (" — " + notice) as --tsvn-hook's and the
-        # preflight's are, whichever function refuses, returning or raising; any other run of it says the notice once, on its own line
-        import io
-        said, code = io.StringIO(), None
-        stderr, sys.stderr = sys.stderr, said
-        try:
-            code = vendor(args.vendor)
-        except SystemExit as stop:
-            code = stop.code
-            raise
-        finally:
-            sys.stderr = stderr
-            text = said.getvalue()
-            if code == EXIT_LINT and text.endswith("\n") and text.count("\n") == 1:
-                print(text[:-1] + " — " + limitation, file=sys.stderr)
-            else:
-                print(limitation, file=sys.stderr)
-                sys.stderr.write(text)
-        return code
+        return vendor(args.vendor)
     if args.brand is not None:
         return brand_report(args.brand or None)
     if args.init:
@@ -12522,10 +12513,8 @@ def main(argv=None, *, _notice=True):
     return EXIT_DRIFT if drifted else EXIT_OK
 
 
-if __name__ == "__main__":                                  # what is said while the configuration is read, here, is in UTF-8 too — as `main` says
-    for _stream in (sys.stdout, sys.stderr):                # everything after: a Windows console in cp1252 would say `—` in its own code page
-        if hasattr(_stream, "reconfigure"):
-            _stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
+if __name__ == "__main__":
+    configure_output(sys.argv[1:])
 SAFE_READS = __name__ == "__main__" and "--html-only" in sys.argv[1:]     # the configuration `configure()` reads here is the board's run's first read: the same rule
 WATCHDOG_MODE = watchdog_mode(sys.argv[1:]) if __name__ == "__main__" else None
 if WATCHDOG_MODE is not None:

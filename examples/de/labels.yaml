@@ -199,6 +199,7 @@ proof.dialog: "deine Antwort hier: {0}"
 proof.signed: signiert
 proof.author: nur der Autor
 proof.login: Server-Anmeldung
+proof.login.why: "Dieser lokale Lauf kann weder Commit-Signaturen noch vom Server authentifizierte Autorenidentitäten prüfen."
 proof.none: kein Autor
 proof.author.why: "eine Antwort hier belegt nur den Autor: jede Session, die hier committen kann, kann eine in deinem Namen schreiben"
 answer.done: Fertig

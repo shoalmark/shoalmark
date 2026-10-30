@@ -53,7 +53,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 - It does not prove that work is right. Its checks report a move to *Shipped* with no commit behind it; whether that commit did the job is what a review is for.
 - It is not a migration tool: it imports no ticket system and starts from your repository's own work.
 - Today it fits a project with one person in charge. Several people in charge are not tested in this beta.
-- It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.
+- It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities.
   It needs no server, database or account of its own.
 
 ## Try it
