@@ -5,6 +5,7 @@ in-process with an argv list, so a non-zero exit is observable without a subproc
 """
 
 import ast
+import atexit
 import collections
 import hashlib
 import html
@@ -15,6 +16,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import subprocess
 import datetime
 import sys
@@ -662,6 +664,81 @@ class _ChromeFailed(Exception):
 
 
 _CONTROL_S = {}     # FM-039: per Chrome, its own time here on the control, a blank page, in seconds — a page's budget is counted beyond it
+_CHROME_HOME = []   # the suite's own temporary folder for Chrome, once it is made: every profile folder the suite gives Chrome is made in it
+_CHROME_OWN = re.compile(r"(?:--|-|/)(?:use-mock-keychain|user-data-dir)(?:=.*)?", re.I | re.S)     # the two flags the suite sets, in any spelling Chrome reads
+_CHROME_NODE_GAP = ("Windows starts no shell script as a program, and a Node script's Chrome gets its mock keychain and its profile folder from one"
+                    if os.name == "nt" else "")
+
+
+def _chrome_stopped(signum, _frame):
+    """A SIGTERM, which atexit does not see (a runner's time limit sends one): the suite's own folder for Chrome is removed, and nothing else; then
+    the signal is sent again, so that the run ends by it, as it would have."""
+    shutil.rmtree(_CHROME_HOME[0], ignore_errors=True)
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+
+
+def _chrome_home():
+    """The suite's own temporary folder for Chrome: made on the first start, and removed when the run ends, at its exit or on a SIGTERM where no
+    other handler is set."""
+    if not _CHROME_HOME:
+        _CHROME_HOME.append(os.path.realpath(tempfile.mkdtemp(prefix="shoalmark-chrome-")))
+        atexit.register(shutil.rmtree, _CHROME_HOME[0], True)
+        if signal.getsignal(signal.SIGTERM) is signal.SIG_DFL:
+            signal.signal(signal.SIGTERM, _chrome_stopped)
+    return _CHROME_HOME[0]
+
+
+def _chrome_argv(chrome, args, profile):
+    """`chrome` on `args`, as the suite starts every Chrome: with a mock keychain, so that no run reads or asks for the person's keychain, and with
+    `profile`, a fresh folder of the suite's own, so that none opens the person's own profile. Either flag in `args`, in any spelling Chrome reads,
+    is left out: what a runner passes changes neither."""
+    return [chrome, "--use-mock-keychain", f"--user-data-dir={profile}", *(a for a in args if not _CHROME_OWN.fullmatch(a))]
+
+
+def _chrome_start(chrome, args, timeout):
+    """Headless `chrome` on `args`, started from this process with `_chrome_argv`: `subprocess.run`'s result. Its profile folder is made for this
+    start and removed when the start ends."""
+    profile = tempfile.mkdtemp(prefix="profile-", dir=_chrome_home())
+    try:
+        return subprocess.run(_chrome_argv(chrome, ["--headless=new", "--disable-gpu", *_CHROME_FLAGS, *args], profile),
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
+    finally:
+        shutil.rmtree(profile, ignore_errors=True)
+
+
+def _chrome_launcher(chrome):
+    """What the suite gives a program of its own that starts Chrome itself, as $CHROME: a shell script in the suite's own folder that starts `chrome`
+    as `_chrome_argv` does, each start with a profile folder made for it there. None on Windows, which starts no shell script as a program."""
+    if os.name == "nt":
+        return None
+    home = _chrome_home()
+    fd, path = tempfile.mkstemp(prefix="chrome-", dir=home)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write("#!/bin/sh\n"
+                f"profile=$(mktemp -d {shlex.quote(home + '/profile-XXXXXX')}) || exit 70\n"
+                'for a in "$@"; do\n'
+                "  shift\n"
+                "  case $a in\n"
+                "    --use-mock-keychain|--use-mock-keychain=*|-use-mock-keychain|-use-mock-keychain=*) ;;\n"
+                "    --user-data-dir|--user-data-dir=*|-user-data-dir|-user-data-dir=*) ;;\n"
+                '    *) set -- "$@" "$a" ;;\n'
+                "  esac\n"
+                "done\n"
+                f'exec {shlex.quote(chrome)} --use-mock-keychain "--user-data-dir=$profile" "$@"\n')
+    os.chmod(path, 0o700)
+    return path
+
+
+def _chrome_node(script, *args, timeout=1800):
+    """The Node script `script`, which starts Chrome from $CHROME, run on `args`: `subprocess.run`'s result. Its Chrome is `_CHROME` behind
+    `_chrome_launcher`. Its temporary folders, the profile folder it makes for itself among them, are made in the suite's own folder; a runner's
+    flags reach it as CHROME_FLAGS."""
+    launcher = _chrome_launcher(_CHROME)
+    if launcher is None:
+        raise RuntimeError(_CHROME_NODE_GAP)
+    return subprocess.run([shutil.which("node"), str(HERE / script), *args], cwd=str(HERE), capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", timeout=timeout, env=dict(_ENV, CHROME=launcher, CHROME_FLAGS=" ".join(_CHROME_FLAGS), TMPDIR=_chrome_home()))
 
 
 def _chrome_probe(chrome):
@@ -672,8 +749,7 @@ def _chrome_probe(chrome):
         return "no Chrome or Chromium is installed here"
     t0 = time.monotonic()
     try:
-        r = subprocess.run([chrome, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, "--dump-dom", "about:blank"],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+        r = _chrome_start(chrome, ["--dump-dom", "about:blank"], 60)
     except OSError as e:
         return f"Chrome could not start here: {e}"
     except subprocess.TimeoutExpired:
@@ -701,14 +777,11 @@ def _chrome_run(args, timeout=60):
     """Headless Chrome, which passed its control here, on one page: `subprocess.run`'s result. Its budget is `timeout`
     seconds beyond Chrome's own time on the control — the page's cost, not Chrome's start. Past it the run is tried once
     more, then raises `_ChromeFailed`, which the block's `_hung` turns into a FAIL naming the page, the budget and the
-    control's time. (FM-035: on the v0.18.3 tag's macOS runner the answer dialog's run went past 60 s and the suite died
-    in a traceback. A profile of its own per run, tried, made every run hang here. FM-039: a budget in wall-clock seconds
-    measured Chrome's start — on the Owner's machine on 2026-09-27 a blank page alone took 5.4 s, past FM-035's 5 s.)"""
+    control's time. Each start is `_chrome_start`'s: a mock keychain, and a profile folder made fresh for it."""
     own = _CONTROL_S.get(_CHROME, 0.0)
     for _attempt in (1, 2):
         try:
-            return subprocess.run([_CHROME, "--headless=new", "--disable-gpu", *_CHROME_FLAGS, *args],
-                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=own + timeout)
+            return _chrome_start(_CHROME, args, own + timeout)
         except subprocess.TimeoutExpired:
             continue
     raise _ChromeFailed(f"headless Chrome did not return {args[-1].rsplit('/', 1)[-1]} within {timeout} s beyond Chrome's own {own:.1f} s, tried twice")
@@ -2571,6 +2644,174 @@ if _browser("control"):
     _own = float((re.search(r"^control: (\d+\.\d) s$", _late.stdout, re.M) or [None, "0"])[1])
     check(f"FM-039 · a Chrome 5 s slower to start than this one — its control on a blank page took {_own} s — renders the healthy board and passes: the budget is 5 s beyond the control, the page's own cost, not 5 s of wall-clock time, which Chrome's start alone would spend (saw {_late.stdout.strip()[-260:]!r})",
           _own >= 5 and _late.returncode == 0 and _late.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _late.stdout)
+
+# --- every Chrome the suite starts gets a mock keychain and a profile folder of the suite's own, whatever its runner passes. A stand-in for Chrome
+#     records what each way the suite starts it gives it: from this process, from a child program that carries the browser helpers, and from each
+#     Node script that starts Chrome itself. No real browser runs here
+_KC_NAME = "FM-085 · every Chrome the suite starts gets a mock keychain and a fresh profile folder of the suite's own, whatever its runner passes"
+_KC_STAND_IN = """import json, os, subprocess, sys
+argv = sys.argv[1:]
+profiles = [a.split("=", 1)[1] for a in argv if a.startswith("--user-data-dir=")]
+parent = subprocess.run(["ps", "-o", "comm=", "-p", str(os.getppid())], capture_output=True, text=True).stdout.strip()
+with open(@LOG@, "a", encoding="utf-8") as log:
+    log.write(json.dumps({"argv": argv, "fresh": [os.path.isdir(p) and not os.listdir(p) for p in profiles], "parent": os.path.basename(parent)}) + "\\n")
+if "--dump-dom" in argv:
+    print("<html><head></head><body></body></html>")
+port = [a.split("=", 1)[1] for a in argv if a.startswith("--remote-debugging-port=")]
+if port:
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class Version(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = json.dumps({"Browser": "a stand-in"}).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    server = HTTPServer(("127.0.0.1", int(port[0])), Version)
+    server.timeout = 20
+    server.handle_request()
+    server.server_close()
+"""
+
+
+def _kc_profile(argv):
+    """The profile folder a start's arguments name, or None."""
+    return next((a.split("=", 1)[1] for a in argv if a.startswith("--user-data-dir=")), None)
+
+
+def _kc_faults(argv, home, fresh):
+    """What is wrong with one start of Chrome, its arguments `argv`: [] where the mock keychain is passed once, and one profile folder, in `home`, the
+    suite's own temporary folder, that was there and empty when Chrome started (`fresh`). Any spelling Chrome reads counts as the flag."""
+    keychain = [a for a in argv if re.fullmatch(r"(?:--|-|/)use-mock-keychain(?:=.*)?", a, re.I | re.S)]
+    profile = [a for a in argv if re.fullmatch(r"(?:--|-|/)user-data-dir(?:=.*)?", a, re.I | re.S)]
+    faults = [] if keychain == ["--use-mock-keychain"] else [f"the keychain flags {keychain}"]
+    if len(profile) != 1 or not home or os.path.dirname(_kc_profile(profile) or "") != home:
+        faults.append(f"the profile flags {profile}, not one folder in the suite's own {home}")
+    elif not fresh:
+        faults.append(f"{profile[0]} was not there, or not empty, when Chrome started")
+    return faults
+
+
+_kc_seen, _kc_real = [], subprocess.run
+_KC_DROPPED = ["--user-data-dir=" + str(HERE), "--user-data-dir", "-user-data-dir=" + str(HERE), "/user-data-dir=" + str(HERE), "--USER-DATA-DIR=" + str(HERE),
+               "-use-mock-keychain", "--use-mock-keychain=1"]      # a runner's spellings of the two flags, each one the guard drops
+
+
+def _kc_run(cmd, *a, **k):
+    """`subprocess.run` while the check below runs: a stand-in for Chrome in this process, which records the start and renders a blank page."""
+    p = _kc_profile(cmd[1:]) or ""
+    _kc_seen.append((list(cmd[1:]), bool(p) and os.path.isdir(p) and not os.listdir(p), p))
+    return subprocess.CompletedProcess(cmd, 0, "<html><head></head><body></body></html>", "")
+
+
+subprocess.run = _kc_run
+try:
+    _kc_probe = _chrome_probe("a stand-in")
+    _kc_page = _chrome_run([*_KC_DROPPED, "--lang=en-GB", "--dump-dom", "about:blank"])
+finally:
+    subprocess.run = _kc_real
+    _CONTROL_S.pop("a stand-in", None)
+_kc_in = [f for a, fresh, _p in _kc_seen for f in _kc_faults(a, _CHROME_HOME[0] if _CHROME_HOME else None, fresh)]
+check(f"{_KC_NAME} · from this process, on every system: the control and a page each start with the mock keychain and a profile folder made "
+      f"fresh in the suite's own temporary folder and removed when the start ends; a runner's profile and keychain flags, in every spelling the "
+      f"guard drops, are left out, its other flags kept (saw {_kc_in or [a for a, _f, _p in _kc_seen]})",
+      _kc_probe == "" and _kc_page.returncode == 0 and len(_kc_seen) == 2 and not _kc_in and _kc_seen[0][2] != _kc_seen[1][2]
+      and not any(os.path.exists(p) for _a, _f, p in _kc_seen) and "--lang=en-GB" in _kc_seen[1][0] and not set(_KC_DROPPED) & set(_kc_seen[1][0]))
+
+_KC_PATHS = ["from a child program that carries the browser helpers, as the board block runs in one: the control",
+             "from a child program that carries the browser helpers, as the board block runs in one: each page",
+             "from work-tracker/evidence/FM-006/landing/start-page/checks.mjs, as the summaries' rebuild runs it",
+             "from work-tracker/evidence/FM-002/slice-a/checks.mjs, as the summaries' rebuild runs it",
+             "from scripts/check_landing_browser.mjs, as the landings' browser run runs it",
+             "the suite's own temporary folder is gone when the child program ends, and a runner's profile folder was never made",
+             "a SIGTERM, as a runner's time limit sends one, leaves no folder of the suite's behind: the run ends by the signal, and nothing "
+             "outside the suite's folder is touched"]
+if os.name == "nt":
+    _skipped(f"{_KC_NAME} · started as programs", len(_KC_PATHS), "the stand-in for Chrome is a shell script, which Windows does not start as a program "
+             "— the check from this process above runs here")
+else:
+    with tempfile.TemporaryDirectory() as d:
+        kc_dir = Path(d).resolve()
+        kc_log, kc_site = kc_dir / "starts.jsonl", kc_dir / "site"
+        kc_runner = ["--user-data-dir=" + str(kc_dir / "a-runner-profile"), "--user-data-dir", "-user-data-dir=" + str(kc_dir / "b-runner-profile"),
+                     "-use-mock-keychain", "--use-mock-keychain=1", "--lang=en-GB"]
+        kc_bin, kc_tmp = kc_dir / "bin a'b\"c$d", kc_dir / "tmp a'b\"c$d"     # a space, both quotes and a `$`: what a shell must be given quoted
+        for kc_made in (kc_site, kc_bin, kc_tmp):
+            kc_made.mkdir()
+        (kc_dir / "stand-in.py").write_text(_KC_STAND_IN.replace("@LOG@", repr(str(kc_log))), encoding="utf-8")
+        (kc_bin / "stand in").write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(kc_dir / "stand-in.py"))} "$@"\n', encoding="utf-8")
+        (kc_bin / "stand in").chmod(0o755)
+        kc_scripts = [("work-tracker/evidence/FM-006/landing/start-page/checks.mjs", [str(kc_site), str(kc_dir / "a.json")]),
+                      ("work-tracker/evidence/FM-002/slice-a/checks.mjs", [str(kc_site), str(kc_dir / "b.json")]),
+                      ("scripts/check_landing_browser.mjs", [str(kc_site), "probe", str(kc_dir / "c.json")])] if shutil.which("node") else []
+        kc_end = "".join(f"\nopen({str(kc_log)!r}, 'a', encoding='utf-8').write({json.dumps({'path': s}) + chr(10)!r})\n_chrome_node({s!r}, *{a!r}, timeout=60)\n"
+                         for s, a in kc_scripts) + "\nprint('the suite folder:', _CHROME_HOME[0] if _CHROME_HOME else None)\n"
+        kc_saved = _ENV.get("TMPDIR")
+        _ENV["TMPDIR"] = str(kc_tmp)
+        try:
+            kc_r = _block_run(f"\n_CHROME = {str(kc_bin / 'stand in')!r}\n_CHROME_FLAGS = {kc_runner!r}\n", kc_end)
+        finally:
+            if kc_saved is None:
+                _ENV.pop("TMPDIR", None)
+            else:
+                _ENV["TMPDIR"] = kc_saved
+        kc_said = (kc_r.stdout + kc_r.stderr).strip()[-300:]
+        kc_home = (re.search(r"^the suite folder: (.+)$", kc_r.stdout, re.M) or [None, ""])[1]
+        kc_starts, kc_at = {}, "board"
+        for kc_line in (kc_log.read_text(encoding="utf-8").splitlines() if kc_log.exists() else []):
+            kc_o = json.loads(kc_line)
+            kc_at = kc_o.get("path", kc_at)
+            kc_starts.setdefault(kc_at, []).extend([] if "path" in kc_o else [kc_o])
+        kc_board = kc_starts.get("board", [])
+        for kc_name, kc_got in zip(_KC_PATHS[:2], ([o for o in kc_board if "--virtual-time-budget=4000" not in o["argv"]],
+                                                   [o for o in kc_board if "--virtual-time-budget=4000" in o["argv"]])):
+            kc_faults = [f for o in kc_got for f in _kc_faults(o["argv"], kc_home, all(o["fresh"]))]
+            check(f"{_KC_NAME} · {kc_name}: the mock keychain and a profile folder made fresh in the child's own temporary folder, one for each start; a "
+                  f"runner's profile and keychain flags left out, its other flags kept (saw {kc_faults or [o['argv'] for o in kc_got]}"
+                  + (f"; the child said {kc_said!r})" if kc_faults or not kc_got else ")"),
+                  bool(kc_got) and not kc_faults and all("--lang=en-GB" in o["argv"] for o in kc_got) and len({_kc_profile(o["argv"]) for o in kc_got}) == len(kc_got))
+        if not kc_scripts:
+            _skipped(f"{_KC_NAME} · the Node scripts", 3, "no Node here")
+        for kc_name, (kc_script, kc_args) in zip(_KC_PATHS[2:5], kc_scripts):
+            kc_got = kc_starts.get(kc_script, [])
+            kc_faults = [f for o in kc_got for f in _kc_faults(o["argv"], kc_home, all(o["fresh"]))]
+            kc_whole = len(kc_got) == 1 and kc_got[0].get("parent") == "node" and any(
+                a.startswith("--host-resolver-rules=MAP * ~NOTFOUND, ") and a.endswith(", EXCLUDE 127.0.0.1") for a in kc_got[0]["argv"])
+            check(f"{_KC_NAME} · {kc_name}: Chrome starts with the mock keychain and a profile folder made fresh in the suite's own temporary folder, the "
+                  f"one the script makes for itself left out, each other argument passed whole, and Node its parent, which the launcher's exec leaves so "
+                  f"(saw {kc_faults or [(o['argv'], o.get('parent')) for o in kc_got]}" + (f"; the child said {kc_said!r})" if kc_faults or not kc_whole else ")"),
+                  kc_whole and not kc_faults)
+        check(f"{_KC_NAME} · {_KC_PATHS[5]} (saw {kc_home!r}, there after: {bool(kc_home) and os.path.exists(kc_home)}" + ("" if kc_home else f"; the child said {kc_said!r}") + ")",
+              bool(kc_home) and os.path.dirname(kc_home) == str(kc_tmp) and not os.path.exists(kc_home) and not (kc_dir / "a-runner-profile").exists()
+              and not (kc_dir / "b-runner-profile").exists() and not any(a in kc_runner[:-1] for v in kc_starts.values() for o in v for a in o["argv"]))
+        kc_stop_tmp = kc_dir / "stop tmp"
+        kc_stop_tmp.mkdir()
+        (kc_stop_tmp / "not the suite's").write_text("kept\n", encoding="utf-8")
+        kc_stop = subprocess.run([sys.executable, "-c", _parts + "\nprint('the suite folder:', _chrome_home(), flush=True)\nos.kill(os.getpid(), signal.SIGTERM)\n"
+                                  "time.sleep(10)\nprint('went on after the signal')\n"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                 env=dict(_ENV, TMPDIR=str(kc_stop_tmp)), timeout=300)
+        kc_stop_home = (re.search(r"^the suite folder: (.+)$", kc_stop.stdout, re.M) or [None, ""])[1]
+        check(f"{_KC_NAME} · {_KC_PATHS[6]} (saw exit {kc_stop.returncode}, {kc_stop_home!r}, there after: {bool(kc_stop_home) and os.path.exists(kc_stop_home)}"
+              + ("" if kc_stop_home else f"; the child said {(kc_stop.stdout + kc_stop.stderr).strip()[-300:]!r}") + ")",
+              kc_stop.returncode == -signal.SIGTERM and bool(kc_stop_home) and os.path.dirname(kc_stop_home) == str(kc_stop_tmp)
+              and not os.path.exists(kc_stop_home) and (kc_stop_tmp / "not the suite's").is_file() and "went on" not in kc_stop.stdout)
+
+_kc_tree = ast.parse((HERE / "test_shoalmark.py").read_text(encoding="utf-8"))
+_kc_defs = {n.name: n for n in ast.walk(_kc_tree) if isinstance(n, ast.FunctionDef)}
+_kc_door = {id(n) for n in ast.walk(_kc_defs["_chrome_node"])} if "_chrome_node" in _kc_defs else set()
+_kc_given = sorted(n.lineno for n in ast.walk(_kc_tree) if id(n) not in _kc_door and (
+    isinstance(n, ast.keyword) and n.arg == "CHROME" or isinstance(n, ast.Dict) and any(isinstance(k, ast.Constant) and k.value == "CHROME" for k in n.keys)
+    or isinstance(n, ast.Subscript) and isinstance(n.slice, ast.Constant) and n.slice.value == "CHROME"))     # a keyword, a key or an item an environment is given
+_kc_through = {k: k in _kc_defs and any(isinstance(c, ast.Call) and getattr(c.func, "id", "") == "_chrome_node" for c in ast.walk(_kc_defs[k]))
+               and not any(isinstance(n, ast.Name) and n.id == "subprocess" for n in ast.walk(_kc_defs[k])) for k in ("_checks_mjs", "_b1_browser")}
+check(f"{_KC_NAME} · a Node script gets Chrome only through `_chrome_node`: no other code gives a program `CHROME`, and the summaries' rebuild "
+      f"and the landings' browser run start their scripts through it alone (saw `CHROME` given at lines {_kc_given}; through it alone: {_kc_through})",
+      bool(_kc_door) and not _kc_given and all(_kc_through.values()))
 
 # --- FM-006: a private security report — everything the board renders from a tracker is escaped for where it lands --------------------------------------
 # Inert markers only: a hostile string here does nothing but stand where a tag, a comment or a link would be.
@@ -17365,7 +17606,8 @@ else:
 
 _RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
 _uvx, _npm = shutil.which("uvx"), shutil.which("npm")
-_why = ("SHOALMARK_REGENERATE=1 is not set (the browser rebuild takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
+_why = ("SHOALMARK_REGENERATE=1 is not set (the browser rebuild takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else _CHROME_NODE_GAP if _CHROME_NODE_GAP
+        else "no uvx here" if not _uvx
         else "no Node here" if not _have_node else "this clone is shallow" if _shallow32 != "false" else "")
 _needed = [c for b in (*_b6.values(), *_b2.values()) for c in [b["tested"]] if b["file"].endswith("checks.json") or b["file"].endswith("checks-r3-before.json")] + ["2a9f7eb", "70fedd3"]
 _why = _why or next((f"this clone does not hold {c}" for c in _needed if not _held(c)), "")
@@ -17391,8 +17633,7 @@ else:
         subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
 
     def _checks_mjs(script, stage_dir, out, *extra):
-        r = subprocess.run([_have_node, str(HERE / script), str(stage_dir), str(out), *extra], cwd=str(HERE), capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME))
+        r = _chrome_node(script, str(stage_dir), str(out), *extra)
         return json.loads(Path(out).read_text()) if r.returncode == 0 and Path(out).exists() else None
 
     def _same(name, got, block, derived):
@@ -17447,7 +17688,8 @@ fm.configure(HERE)
 # Behind SHOALMARK_REGENERATE=1, like the other browser rebuilds: the site is built twice, as docs.yml builds it (the figures first, Zensical as
 # requirements-docs.txt pins it, then llms_txt.py); each control changes one thing in a built site and the browser must find it.
 _B1_NAME = "FM-006 · B1 · the landings in a real browser"
-_why = ("SHOALMARK_REGENERATE=1 is not set (the browser run builds the site twice and takes minutes)" if not _RUN else "no Chrome here" if not _CHROME else "no uvx here" if not _uvx
+_why = ("SHOALMARK_REGENERATE=1 is not set (the browser run builds the site twice and takes minutes)" if not _RUN else "no Chrome here" if not _CHROME
+        else _CHROME_NODE_GAP if _CHROME_NODE_GAP else "no uvx here" if not _uvx
         else "no Node here" if not _have_node else "no scripts/landing_facts.py here, so the landing's figures cannot be written" if not (HERE / "scripts/landing_facts.py").is_file() else "")
 if _why:
     _regen_skip(_B1_NAME, 7, _why)
@@ -17497,8 +17739,7 @@ else:
 
         def _b1_browser(site, state, out, pages=None, sizes=None):
             """(exit code, the failing checks' names) of the browser run over `site`; the run narrowed to `pages` and `sizes` where they are named."""
-            r = subprocess.run([_have_node, str(HERE / "scripts/check_landing_browser.mjs"), str(site), state, str(out)] + ([pages] + ([sizes] if sizes else []) if pages else []),
-                               capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800, env=dict(_ENV, CHROME=_CHROME, CHROME_FLAGS=" ".join(_CHROME_FLAGS)))
+            r = _chrome_node("scripts/check_landing_browser.mjs", str(site), state, str(out), *([pages] + ([sizes] if sizes else []) if pages else []))
             rows = json.loads(Path(out).read_text(encoding="utf-8"))["rows"] if Path(out).exists() else []
             return r.returncode, sorted({row["check"] for row in rows if not row["ok"]}), len(rows)
 
