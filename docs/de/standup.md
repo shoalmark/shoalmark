@@ -50,9 +50,12 @@ den Rest.
 
 Auf dem Board trägt der Kasten mit dem, was auf dich wartet, zwei Knöpfe: **Stand-up-Prompt** vor den Sessions des letzten Tages
 und **Abschluss-Prompt** an seinem Ende. Jeder kopiert einen festen Prompt für die Session, die du nutzt — Claude Code, Codex
-oder eine andere: der eine bittet sie, deine Runde nach dieser Tagesordnung zu halten, einen Punkt nach dem anderen; der andere,
-den Tag aus dem Verlauf vorzulesen und nichts zu ändern. Keiner führt etwas aus, und eine Nachricht ist nie eine Antwort: Deine
-Entscheidung hält der Befehl fest, den du selbst ausführst. Die Prompts sind englisch.
+oder eine andere: der eine bittet sie, deine Runde nach dieser Tagesordnung zu halten, einen Punkt nach dem anderen, dir dann die
+Blocker und den geordneten Plan des Tages vorzulegen und auf dein Zeichen die Arbeit der Builder und Reviewer nach dem Vertrag für
+Agenten zu lenken, jeder Merge der deine; der andere, den Tag aus dem Verlauf vorzulesen und nichts zu ändern. Keiner der Knöpfe
+führt etwas aus, und eine Nachricht ist nie eine Antwort: Jede Entscheidung hältst du selbst fest — unter git mit dem Befehl, den
+die Session dir zum Ausführen ausgibt, unter Subversion mit den Zeilen, die du schreibst und committest, in einem einfachen Ordner
+mit den Zeilen, die du schreibst. Die Prompts sind englisch.
 
 ## Was die Agenten damit tun
 
