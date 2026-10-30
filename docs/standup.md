@@ -11,8 +11,7 @@ python3 tools/shoalmark/shoalmark.py --standup
 It prints the agenda of one sitting, by kind — **rulings** first (answer; a provisional answer is an answer), then what
 only **your hands** can do, in the order that frees the most work, then what **evidence could settle** without you,
 then **buttons**. Each item is one question, with how long it has waited and what it holds up. After the questions come
-**your acts, with their time** — missed and overdue first, then what falls due, then what has no date yet — and last
-what you answered or did that is **on its way** to your merge.
+**your acts, with their time** — missed and overdue first, then what falls due, then what has no date yet.
 
 ## When
 
@@ -42,10 +41,9 @@ two repositories is two items.
 It runs nothing of theirs — no repository's own tool, deriver, hook or configured program, and no fetch — and writes
 nothing, in a repository or anywhere else. It starts git and svn from PATH's absolute entries outside the repositories you
 name; where none holds one, the folders that need it are named with why. It says what that leaves unread: whether a git working tree has changes,
-which `git status` there tells; and what each repository's own `--standup` reads by those means — what you answered or
-did that is on its way on an answer branch (an ask you answered shows until your merge), the pull-request queue, and,
-where a repository has `[seats]`, who asked. You answer in each repository, as ever, and its own `--standup` there tells
-the rest.
+which `git status` there tells; and what each repository's own `--standup` reads by those means — the pull-request
+queue, and, where a repository has `[seats]`, who asked. You answer in each repository, as ever, and its own `--standup`
+there tells the rest.
 
 On the board, the box of what waits for you carries two buttons: **stand-up prompt**, before the sessions of the last day, and
 **close-out prompt**, at its end. Each copies a fixed prompt for the session you use — Claude Code, Codex or another: one asks it
@@ -62,7 +60,7 @@ Between standups nobody interrupts you except for what cannot be undone. A sessi
 
 On the board each question carries **accept** and **reject**. Either opens a dialog with the question, its choices, the
 one the agent recommends, and what it holds up; accept may carry your change, reject says why. OK gives you one
-command — `python3 tools/shoalmark/shoalmark.py --answer AP-007 accept` — which writes your answer as a commit, signed
+command — `python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept` — which writes your answer as a commit, signed
 with your key once you turn signing on. The answer is your own commit: [Your answer is your commit](signing.md).
 
 ## Your acts, with their time
@@ -74,20 +72,22 @@ An act you promised reads as your promise — the option you took — with the q
 Each carries two buttons: **done** asks where the result is — the path is enough: the record adds what the repository
 says of the file, who added it and when, and for a review its verdict — and gives you
 `python3 tools/shoalmark/shoalmark.py --done AP-007 "evidence/AP-007/read.md"`; **reschedule** asks for the new time and
-gives you `--due AP-007 <time>`. Both are signed and pushed as an answer is.
+gives you `--due AP-007 <time>`. Both are signed as an answer is, and committed on the branch you stand on; nothing is
+pushed.
 
-## On their way — before your merge
+## Where your answer lands
 
-What you answer or do is a signed commit on `answer/<id>`, pushed; the default branch has it only after your merge. Until
-then the board reads git, so the page you come back to shows it at once: the question leaves *waiting for you*, the act
-leaves *your acts*, and each is listed under **on their way** — your promise or your answer first, then what it is:
-*answered, on its way*, *done, on its way — <where the result is>*, *rescheduled, on its way — due <time>*, *revoked, on
-its way — <why>* or *done revoked, on its way*; the branch, the commit and its time, whether it is signed, and *your merge
-is next* — or *your merge waits: …* where the queue waits on the branch, a seat's commit below your act the usual one.
-An answer or an act done carries one button, **revoke**, where accept and reject or done and reschedule were:
-it asks why and gives you `python3 tools/shoalmark/shoalmark.py --revoke AP-007 "<why>"` — a new signed commit on top of
-it, on the same branch, never an overwrite. A reschedule carries none; to move it again, run `--due` on its branch. After
-your merge each reads from the default branch again; another machine shows the same rows after a fetch.
+What you answer or do is one commit of yours, on the branch you stand on, signed with your key once you turn signing on:
+`--answer`, `--done`, `--due` and `--revoke` cut no branch and push nothing. Each says what it committed, and where, and
+rebuilds the board, so the page you come back to shows it at once on that branch: the question leaves *waiting for you*,
+and an act done leaves *your acts*. It counts once that commit is on the default branch: push it, or merge the branch
+that carries it. A checkout without that commit — the default branch before it lands, or another machine — still shows
+it waiting.
+
+To take back an answer, run `python3 tools/shoalmark/shoalmark.py --revoke AP-007-Q1 "<why>"`, with the id of the ask it
+answered; to take back an act done, `--revoke AP-007 "<why>"`, with its work item's id. The board has no button for it.
+Either is a new commit, never an overwrite: the answer it takes back goes into the work item's ship log; for an act
+done, the revocation goes into its record under *Acts*, and the act is owed again.
 
 Invites and notifications are gone (R9): `--invite`, `--notify` and `--standup FILE.ics` print one line saying so. Where
 an earlier version left a calendar file, a schedule or its state on your machine, `--standup` and `--owner` name each

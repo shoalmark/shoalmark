@@ -162,7 +162,8 @@ step says *both*.
     signed commit changes this file: the gate refuses a seat's change to it, and it checks every signature against the
     default branch's copy, never a branch's own. So commit its first version on the default branch yourself, signed — a
     branch cannot prove a key the default branch does not hold, and until the file is there no signature verifies. A new
-    key counts once it is merged there: `--answer` checks that before it pushes.
+    key counts once it is merged there: `--answer` checks its own commit against that copy, and says not to push one that
+    does not verify.
 
 3. **Add it on the forge, as a signing key.** On GitHub: *Settings → SSH and GPG keys → New SSH key*, key type
    **Signing Key** ([GitHub's steps](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
@@ -203,16 +204,20 @@ nothing at tier 0. The second prints `G`, then the email the key is trusted for 
 exactly — then your author email. The third drops the test commit.
 
 **Then answer an ask.** On the board, *accept* or *reject* opens a dialog with the question, its choices and what it
-holds up; OK gives you one command. Run it in a terminal, in the repository:
+holds up; OK gives you one command. Run it in a terminal, in the repository, on the branch the dialog names:
 
 ```
-python3 tools/shoalmark/shoalmark.py --answer AP-007 accept
+python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept
 ```
 
-It cuts the branch `answer/ap-007` (shoalmark lower-cases the branch it creates; git keeps the case it is given),
-writes the three lines, commits them signed with your key (tier 2 asks for your passphrase, tier 3 for your touch),
-and pushes, naming each step as it starts. If anything fails it undoes everything it wrote and prints the
-command to give the answer again. `git log -1 --format=%G? answer/ap-007` prints `G`, and the ask leaves your queue.
+`AP-007-Q1` is the ask's own id: its work item's id, then `Q` and the ask's number. The command writes the three lines
+on the branch you stand on and commits them, signed with your key (tier 2 asks for your passphrase, tier 3 for your
+touch), with `Answers: AP-007-Q1` in the commit's message, naming each step as it starts. It cuts no branch and pushes
+nothing. If anything fails before the commit, it undoes everything it wrote and prints the command to give the answer
+again; where the commit is made and its signature does not verify, it says so, and says not to push it.
+`git log -1 --format=%G?` prints `G`, and the ask leaves your queue. It counts once that commit is on the default
+branch: push it, or merge the branch that carries it. An ask put before ask ids has no id of its own, and is answered by
+its work item's id: `--answer AP-007 accept`.
 
 ## Your intent and your current path — only your signed commit changes them
 

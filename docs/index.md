@@ -77,7 +77,7 @@ your own commits.
 ## What a day costs you
 
 - **One stand-up, whenever it suits you**, one click copies the stand-up prompt; the board's first lines are its agenda.
-- **One command per answer:** `--answer AP-007 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
+- **One command per answer:** `--answer AP-007-Q1 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
 - **The rest is on the board:** your agents are asked to end each session with what waits for you, and the board puts it
   first.
 
