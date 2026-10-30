@@ -80,7 +80,7 @@ Der Beleg bleibt in deinem Repository, als Markdown und deine eigenen Commits.
 
 - **Ein Stand-up, wann immer es dir passt**, ein Klick kopiert den Stand-up-Prompt; die ersten Zeilen des Boards sind seine
   Tagesordnung.
-- **Ein Befehl pro Antwort:** `--answer AP-007 accept`. Er schreibt deine Antwort als Commit, mit deinem Schlüssel
+- **Ein Befehl pro Antwort:** `--answer AP-007-Q1 accept`. Er schreibt deine Antwort als Commit, mit deinem Schlüssel
   signiert, sobald du das Signieren einschaltest.
 - **Der Rest steht auf dem Board:** Deine Agenten sind angehalten, jede Session mit dem zu beenden, was auf dich wartet, und
   das Board stellt es ganz oben hin.
@@ -97,7 +97,7 @@ Sprache geschrieben sein. Läuft mit git auf Windows, macOS und Linux. Lizenz: A
 - Kein Migrationswerkzeug: Es importiert kein Ticketsystem und beginnt mit der eigenen Arbeit deines Repositorys. Ein Weg für eine Flotte, die schon ein eigenes System hat, ist erfasst, nicht gebaut.
 - Für eine Person mit dem letzten Wort und ihre Agentenflotte. Mehrere Menschen in der Verantwortung sind in dieser Beta nicht getestet; das kann später kommen.
 - *Kein Beweis, dass die Arbeit stimmt.* Bei geprüften Änderungen in Git oder Subversion muss ein Wechsel zu `Shipped` im Abschnitt „Verlauf“ (oder „Ship log“) des Arbeitspakets einen Commit nennen, der schon in der Historie der geprüften Änderung liegt und etwas außerhalb des Belegs ändert (unter Subversion eine Revision). Diese Belegregel gilt nicht für `Closed`. Bei einem Verstoß meldet die Prüfung einen Fehler und endet mit einem Rückgabewert ungleich null. Ein installierter Git-Commit-Hook kann den Commit dann verweigern, ist aber optional und lässt sich umgehen. Damit die Prüfung vor dem Merge verbindlich ist, muss dein Projekt über seine CI und seine Merge-Regeln einen erfolgreichen Lauf von `--check` auf dem Branch voraussetzen; shoalmark richtet das nicht für dich ein. Ob der Commit tut, was er soll, klärt ein Review.
-- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probiere es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und jeder Lauf sagt dort, was er nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autoren. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
+- Gebaut und erprobt mit `git` und GitHub. Subversion besteht die Test-Suite, ist in echter Arbeit aber noch nicht erprobt: Probiere es aus, ohne Gewähr. Unter Subversion läuft es ohne installiertes `git`, aus dem Release-Archiv, und `--init` und `--check` sagen, was dieser lokale Lauf nicht prüfen kann: Commit-Signaturen und vom Server authentifizierte Autorenidentitäten. Signierte Antworten brauchen ein `git`-Repository; die Pull-Request-Warteschlange braucht eines auf GitHub und dazu `gh`, das Kommandozeilenwerkzeug von GitHub.
 
 ## Hier anfangen
 

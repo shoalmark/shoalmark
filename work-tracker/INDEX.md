@@ -35,8 +35,13 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-085](FM-085-the-suite-starts-chrome-with-a-mock-keychain-and-a-fresh.md) | P2 | The suite's browser blocks rely on whoever runs them to start Chrome with a mock keychain and a profile of its own. A r… | In Progress | progress | 2026-10-29 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
+| [FM-070](FM-070-the-gate-s-text-shows-as-mojibake-in-tortoisesvn.md) | P3 | the gate's text shows as mojibake in TortoiseSVN | In Progress | progress | 2026-10-27 |
+| [FM-069](FM-069-the-subversion-notice-prints-on-every-run-and-reads-as-the.md) | P2 | the Subversion notice prints on every run and reads as the error in TortoiseSVN's refusal | In Progress | progress | 2026-10-27 |
+| [FM-068](FM-068-tortoisesvn-drops-the-hook-properties-install-hook-writes-so.md) | P1 | TortoiseSVN drops the hook properties --install-hook writes, so no TortoiseSVN commit is gated | In Progress | progress | 2026-10-27 |
 | [FM-066](FM-066-the-board-s-reads-hold-their-fixed-settings-for-every.md) | P1 | the board's reads hold their fixed settings for every program a configuration can name | In Progress | progress | 2026-10-21 |
+| [FM-063](FM-063-a-seat-s-commit-message-that-ends-in-bare-links-has-them.md) | P2 | a seat's commit message that ends in bare links has them rewritten by the trailer step | In Progress | progress | 2026-10-29 |
 | [FM-062](FM-062-an-agent-drifts-off-track-where-a-rule-is-held-only-as-prose.md) | P2 | an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live | In Progress | progress | 2026-10-19 |
 | [FM-061](FM-061-vendoring-still-takes-an-untagged-or-partial-source-a-weaker.md) | P2 | vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows | In Progress | progress | 2026-10-16 |
 | [FM-059](FM-059-the-owner-answers-each-ask-in-a-view-of-its-own-and-a.md) | P2 | The Owner answers each ask in a Board view that holds only its dialog; a prepared run stops there, and signs and pushes… | In Progress | progress | 2026-10-27 |
@@ -86,7 +91,6 @@
 | [FM-071](FM-071-blocked-by-owner-refuses-a-comma-in-its-reason.md) | — | blocked-by: Owner refuses a comma in its reason | Proposed | triage | — |
 | [FM-065](FM-065-a-skill-calls-another-skill-external-ones-included-through-a.md) | — | a skill calls another skill, external ones included, through a contract that pins what it calls and checks what it gets… | Proposed | triage | — |
 | [FM-064](FM-064-a-signed-answer-the-guided-run-pushes-is-out-of-the-board-s.md) | — | a signed answer the guided run pushes is out of the board's sight until its branch is merged | Proposed | triage | — |
-| [FM-063](FM-063-a-seat-s-commit-message-that-ends-in-bare-links-has-them.md) | — | a seat's commit message that ends in bare links has them rewritten by the trailer step | Proposed | triage | — |
 | [FM-060](FM-060-the-answer-s-refusal-record-is-committed-unsigned-under-the.md) | — | --answer's refusal record is committed unsigned under the Owner's name, and R14 then refuses every branch that carries… | Proposed | triage | — |
 | [FM-056](FM-056-the-gate-can-name-the-commit-that-removed-a-line-as-the-one.md) | — | The gate names who set a tracker's line with a pickaxe that also matches the commit that removed it, so a line a merge… | Proposed | triage | — |
 | [FM-055](FM-055-the-receipts-need-the-owner-s-definitions-of-a-day-a-sitting.md) | — | The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories co… | Proposed | triage | — |

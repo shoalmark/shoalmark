@@ -13,6 +13,8 @@ hook: "An ask has no id of its own, so an answer, the stand-up and the receipts 
 
 ## What is true now
 
+**2026-10-30 — built for v0.20.2 on `fm/050-ask-ids`, for its critical review and CI.** R4's answer commit and the ask ids, *The design*'s section 8, items 1 to 4 and 6 to 11, with the German lane's head joined in *du*, and the critical review's five findings fixed (RV-4140 to RV-4144). The docs, items 5 and 12, follow once both lanes have merged.
+
 **2026-10-27 — adopted by the Owner, and judged In Progress, P2, critical, for v0.20.2.** The Owner's signed answer adopts the ask-id design and R4's answer commit; it is recorded under `## Asks`. It is batch 3's S1, and it builds on FM-076 in the v0.20.2 lane, since both change the gate's answer and rights paths.
 
 **2026-10-27 — its ruling ask filed again, on today's main.** The design and its two review rounds come onto main from
@@ -570,3 +572,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-16 | The Owner's word: *on their way* (FM-030), in the board's code but in neither §1 nor §7 of the guide, goes into FM-050; its design round places it in the guide, beside the case of FM-053's hidden ask. |
 | 2026-10-27 | Its ruling ask filed again by the Planner seat, on today's main, with what changed since 16 October; the design unchanged. Records only. |
 | 2026-10-27 | The Owner's signed answer adopts the design; its ask cleared; judged In Progress, P2, critical, for v0.20.2 as batch 3's S1. Records only. |
+| 2026-10-30 | Built by the Builder seats (`27f31560/builder-41`, `27f31560/builder-47`) on `fm/050-ask-ids`: section 8, items 1 to 4 and 6 to 11; the German lane's head joined in *du*; the critical review's five findings fixed (RV-4140 to RV-4144). The docs follow. |

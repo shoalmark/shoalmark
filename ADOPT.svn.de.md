@@ -11,7 +11,7 @@ nicht erprobt: Es gilt ohne Gewähr, und der Bericht sagt das.
 
 - shoalmark braucht unter Subversion kein git. Es kommt als Archiv seines Releases (`ADOPT.de.md`, Schritt 3) und
   liest die Arbeitskopie über svn. Verlangt hier nie, git zu installieren.
-- Signierte Antworten, die Pull-Request-Warteschlange, Antwort-Branches und Handlungen, Sessions und das Bauurteil
+- Signierte Antworten, die Pull-Request-Warteschlange, die Handlungen des Eigners, Sessions und das Bauurteil
   brauchen git. Die Warteschlange braucht auch GitHub. Ein solcher Befehl wird hier in einer Zeile abgelehnt. Sie
   nennt, was er braucht. `--session new` gibt hier trotzdem eine Id aus, ohne die Prüfung gegen die Commit-Trailer
   von git, die zeigt, dass sie unbenutzt ist.
@@ -105,9 +105,11 @@ Probe ins Wegwerf-Repository: zuerst das Werkzeug laufen lassen, dann `svn add -
   2. Dann versucht der Eigner eine Änderung, die das Gate ablehnt: ein Arbeitspaket, auf `Shipped` gesetzt, ohne Revision im
      *Verlauf*. TortoiseSVN lehnt den Commit ab und zeigt die Zeile des Gates. Danach `svn revert`.
 
-  Haltet fest, was der Eigner gesehen hat. Dass TortoiseSVN die beiden Hook-Properties wie beschrieben ausführt, hat
-  noch kein Mensch unter Windows gesehen; nur die Kommandozeile ist in CI geprüft. Ist es anders, ist das ein Befund,
-  und Bericht und Rückmeldung sagen es. Unter macOS und Linux gibt es kein TortoiseSVN: Der Schritt entfällt.
+  Haltet fest, was der Eigner gesehen hat. Ein Feldbericht aus einer Windows-Arbeitskopie zeigte: Nach der Korrektur
+  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte einen Eintrag ab,
+  der ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um
+  den Pfad beruhen auf TortoiseSVNs Quellcode und wurden unter Windows noch nicht erprobt. Ist es anders, ist das ein
+  Befund, und Bericht und Rückmeldung sagen es. Unter macOS und Linux gibt es kein TortoiseSVN: Der Schritt entfällt.
 
 ## Schritt 9: der Server
 

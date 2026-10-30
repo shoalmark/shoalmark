@@ -1,6 +1,6 @@
 # Set up in ten minutes
 
-*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.*
+*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities.*
 
 ## 1. Put the tool in the repository
 
@@ -89,8 +89,8 @@ checkout or switch, a merge (including a fast-forward pull), or a rebase, from t
 needs you. On Subversion it rebuilds on a commit through TortoiseSVN or when the tool runs; after `svn update`, run
 `--html-only`.
 
-**Limit:** git has no hook after a bare `git fetch`. An answer branch arriving by fetch alone leaves what the board says
-is *on its way* as it was, until a checkout, a merge or `--html-only`.
+**Limit:** git has no hook after a bare `git fetch`, so a fetch alone does not rebuild the board: what it read of
+`origin` — which commits it links to their forge page — stays as it was until a checkout, a merge or `--html-only`.
 
 If you want a fixed time for your standup, set `standup = "09:00"` in `shoalmark.toml`. Without it, you hold the standup whenever it suits you: see [The standup](standup.md).
 

@@ -776,8 +776,38 @@ def fm053_schema(stdout):
     return stdout
 
 
+# the board, `--owner` and `--standup` read no answer branch: `--schema`'s rows of `answer:`, `due:` and `done:` no longer say one is read on its way
+# from `answer/<id>`, and say where the Owner's command commits — each old text once in the baseline's, new for old
+R4_SCHEMA_EDITS = (
+    ('Until their merge, an answer on an `answer/<id>` not merged into the default branch reads *answered, on its way* on the board, in `--owner` and in `--standup`, and the ask leaves their queue (FM-030); `--revoke <id> "<why>"` takes it back there, on top of it',
+     '`--answer` commits it on the branch the Owner stands on and pushes nothing: it counts once that commit is on the default branch. `--revoke <id> "<why>"` takes it back the same way'),
+    ("Moved by the Owner's `--due` and not merged yet, the new time is their act on its way: the board, `--owner` and `--standup` read it from `origin/answer/<id>` as *rescheduled, on its way — due <time>*, and the act leaves their list of acts until the merge — a `--due` after a done act too, never *done revoked*",
+     "The Owner's `--due` moves it in a commit on the branch they stand on"),
+    ('Until their merge, a `done:` on an `answer/<id>` not merged reads *done, on its way* and the act leaves their list (FM-030); `--revoke <id> "<why>"` takes it back — `done:` leaves, the revocation is recorded under `## Acts`, the act is owed again — on that branch, on top of it',
+     '`--revoke <id> "<why>"` takes it back — `done:` leaves, the revocation is recorded under `## Acts`, the act is owed again — in a commit on the branch the Owner stands on'),
+)
+
+
+# an ask carries its own id: `--schema` names the `ask-id:` key in a row of its own, right after `considered:`'s, whatever kinds that row names
+ASK_ID_SCHEMA_ROW = "| `ask-id:` | free text | the seat that puts the ask to the Owner — minted with `next: owner`; a draft (`next: review`) has none | the put ask's own id, `<ITEM>-Q<n>` — this tracker's id, then `-Q` and a number from 1 with no leading zero — on the line above `ask:`. An answer names it, and binds the whole put ask: `ask:`, `ask-proposal:`, `ask-options:` and `ask-kind:` never change under it. To change a put ask, `--clear-ask` writes the old id's record and the changed ask is put under the next number. Never reused: the next number is one more than the highest the tracker has used — in its front matter, in its records under `## Asks`, and on git in the file's history. What *never reused* can claim: on git, the file, its history reachable from HEAD, and the default branch's copy, its open ask and its records — a number minted on a branch this clone has not fetched is not seen until it is; on Subversion, the file and the log of its path, whose messages are read for the id — name it in the message that puts the ask — and a number written and removed in revisions whose messages do not name it is not seen; with no version control, the file alone — a number removed without its record, and two copies of the folder that each mint a number, are not seen. An ask open without an id is an ask before ask ids, answered by its tracker's id as before |"
+
+
+def r4_schema(stdout):
+    """The baseline's stdout with this lane's schema edits applied: R4_SCHEMA_EDITS in order, each to text that occurs exactly once, then
+    ASK_ID_SCHEMA_ROW after the one row of the `considered:` key — else None."""
+    for old, new in R4_SCHEMA_EDITS:
+        if stdout is None or stdout.count(old) != 1:
+            return None
+        stdout = stdout.replace(old, new)
+    lines = stdout.split("\n")
+    at = [i for i, line in enumerate(lines) if line.startswith("| `considered:` |")]
+    if len(at) != 1:
+        return None
+    return "\n".join(lines[:at[0] + 1] + [ASK_ID_SCHEMA_ROW] + lines[at[0] + 1:])
+
+
 def schema_matches(before, after):
-    staged = fm053_schema(before["stdout"])
+    staged = r4_schema(fm053_schema(before["stdout"]))
     return staged is not None and d_batch_schema_matches(dict(before, stdout=staged), after)
 
 
@@ -800,6 +830,37 @@ FM057_READS = FM057_MOVED + (("diff", "--cached", "--name-only", "--no-renames",
                              ("ls-files", "-z", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory"))
 FM057_KEYS = {"built_at", "vcs", "branch", "changes"}
 PAGE_ROWS = re.compile(rb"\bT=\[\n(.*?)\n\];", re.S)
+
+
+def page_json(value):
+    """JSON as the tool writes it into the page's script (`script_json`): `<`, `>`, `&` and the two line separators as `\\u` escapes."""
+    return (json.dumps(value, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+
+
+def rows_with_ids(block):
+    """The page's rows (`T=[…]`'s lines) with each row's ask cell, its 30th item, carrying the ask's id last — "" for an ask put before ids,
+    as every ask of the baseline's is — written as the tool writes a row. None where a row is not one of twelve-item ask cells."""
+    out = []
+    for line in block.decode("utf-8").split("\n"):
+        body, comma = (line[:-1], ",") if line.endswith(",") else (line, "")
+        try:
+            row = json.loads(body)
+        except ValueError:
+            return None
+        if not (isinstance(row, list) and len(row) > 29 and isinstance(row[29], list) and len(row[29]) == 12):
+            return None
+        out.append(page_json(row[:29] + [row[29] + [""]] + row[30:]) + comma)
+    return "\n".join(out).encode("utf-8")
+
+
+def ask_id_rows(page):
+    """The baseline's page with `rows_with_ids` applied to its rows — the page unchanged where it holds no rows, None where a row does not fit."""
+    m = PAGE_ROWS.search(page)
+    if not m:
+        return page
+    block = rows_with_ids(m.group(1))
+    return None if block is None else page[:m.start(1)] + block + page[m.end(1):]
 
 
 def git_words(row):
@@ -859,6 +920,34 @@ def edit_read(words):
 
 def edit_reads(rows):
     return sum(edit_read(git_words(row)) for row in rows)
+
+
+def answers_undone(rows):
+    """The baseline's starts or calls with each read of origin's answer branches removed — `for-each-ref` of `refs/remotes/origin/answer/`,
+    which the board, `--owner` and `--standup` no longer start. Every other start and call stays, in order."""
+    return [row for row in rows if not (git_words(row)[:1] == ("for-each-ref",) and "refs/remotes/origin/answer/" in git_words(row))]
+
+
+ID_HEAD_READ = ("rev-parse", "--verify", "-q", "HEAD")
+
+
+def id_head_read(row):
+    """Whether a start or call is the id rules' read of HEAD: that argv exactly, from `head_commit` as `id_walk_problems` calls it."""
+    stack = row.get("product_stack") or []
+    return git_words(row) == ID_HEAD_READ and any(a == "id_walk_problems" and b == "head_commit" for a, b in zip(stack, stack[1:]))
+
+
+def id_rules_undone(rows):
+    """The candidate's starts or calls with the id rules' one read taken out: the first `id_head_read`, which `id_walk_problems` starts in the
+    commit being made to tell a repository's first commit, which has no parent to judge against. Every other start and call stays, in
+    order — a second such read, and the same read from any other caller, included."""
+    out, taken = [], False
+    for row in rows:
+        if not taken and id_head_read(row):
+            taken = True
+            continue
+        out.append(row)
+    return out
 
 
 def origin_undone(rows):
@@ -945,7 +1034,7 @@ def fm057_board(baseline, candidate):
         when = datetime.datetime.fromisoformat(new.get("built_at", ""))
     except (ValueError, TypeError, AttributeError):
         return False
-    return (all(rows) and rows[0].group(1) == rows[1].group(1) and isinstance(old, dict) and isinstance(new, dict)
+    return (all(rows) and rows[1].group(1) in (rows[0].group(1), rows_with_ids(rows[0].group(1))) and isinstance(old, dict) and isinstance(new, dict)
             and set(new) == set(old) | FM057_KEYS and not set(old) & FM057_KEYS and all(new[key] == old[key] for key in old)
             and new["vcs"] == "git" and (new["changes"] is None if "--html-only" in (candidate.get("flags") or []) else
                                          isinstance(new["changes"], int) and not isinstance(new["changes"], bool) and new["changes"] >= 0)
@@ -1036,7 +1125,7 @@ FM054_PAGE_EDITS = (
     ('"answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch"',
      '"answer.sign.step.commit": "commits them, signed with your key"'),
     ('"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.done": ',
-     '"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.give.title": "Give your answer", "act.give.title": "Record your act", "answer.give.intro": "Your decision is made. A browser cannot write it into the repository — your terminal does, as you. Run this command:", "answer.give.step.commit": "commits them as you: this repository asks for no signature, so the commit proves the author only", "answer.give.step.commit.login": "the commit\'s author is your server login, as Subversion records it — with no signature", "answer.give.step.commit.none": "with no version control, nothing records who wrote them", "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.", "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.", "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}", "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author", "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name", "answer.done": '),
+     '"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.give.title": "Give your answer", "act.give.title": "Record your act", "answer.give.intro": "Your decision is made. A browser cannot write it into the repository — your terminal does, as you. Run this command:", "answer.give.step.commit": "commits them as you: this repository asks for no signature, so the commit proves the author only", "answer.give.step.commit.login": "the commit\'s author is your server login, as Subversion records it — with no signature", "answer.give.step.commit.none": "with no version control, nothing records who wrote them", "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.", "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.", "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}", "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author", "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name", "proof.login.why": "this local run cannot verify commit signatures or server-authenticated author identities", "answer.done": '),
     ('"viewer.none_in_progress": "none in progress"},BRANCH=',
      '"viewer.none_in_progress": "none in progress"},PROOF={"state": "author", "keys": {"title": "answer.give.title", "act": "act.give.title", "intro": "answer.give.intro", "commit": "answer.give.step.commit", "check": "answer.give.check.text", "fail": "answer.give.fail.text"}, "said": "author only", "format": "%an", "word": "proof.author", "why": "proof.author.why"},BRANCH='),
     ('    // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.\n',
@@ -1210,18 +1299,111 @@ BOARD_POLISH_EDITS = (
 )
 
 
+# the board, --owner and --standup read no answer branch: the rows on their way, the revoke dialog and their labels go
+R4_BOARD_EDITS = (
+    ("//        and ONLY where their act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone · due, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, their promise or their answer, the question, the done:, answer: or due: as written, 1 where the tip carries an answer main lacks, 1 where the act stays on their list, the due: on its way, what follows the label]]\n",
+     ''),
+    ("// THE OWNER'S BOX (the design guide, §1, §6, §8): its sections in the guide's order — waiting for you, your acts, what is on its way, the day, the\n",
+     "// THE OWNER'S BOX (the design guide, §1, §6, §8): its sections in the guide's order — waiting for you, your acts, the day, the\n"),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${kind.startsWith("revoke")?lh("way.sign.step.on",c(br)):lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind.replace("revoke.","")+":"),c("## Acts"))}</li>\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n'),
+    ('// FM-030, their signed answer 920970b7: on what is on its way, *revoke* in the place of the buttons — one field, why; OK gives\n// ONE command, `--revoke <id> "<why>"`, on the same second screen: it commits on top of their act, on its branch\nconst rev=t=>{const d=$("dlg"),id=t[0],w=t[31],cmd="shoalmark";\n  d.innerHTML=`<form method="dialog"><h3>${l("way.revoke.title")} · <a href="#=${id}">${id}</a></h3>\n    <p class="dq">${esc(w[7])}</p>${w[8]?`<p class="ddim">${l("acts.asked",w[8])}</p>`:""}<p class="m ddim">${l("way."+w[0])} · ${esc(w[1])} @ ${esc(w[3].slice(0,7))}</p>\n    <textarea name="text" rows="2" placeholder="${l("way.revoke.hint")}" required></textarea>\n    <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;\n  const f=d.querySelector("form");\n  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const why=String(f.text.value).trim().replace(/\\s+/g," ").replace(/"/g,"\'");\n    sign(d,id,`${cmd} --revoke ${id} ${sq(why)}`,w[0]=="done"?`done revoked: ${why}`:`answered: revoked - ${why}`,w[0]=="done"?"revoke.done":"revoke.answer")};\n  d.showModal()};\nwindow.ACT=act;window.OWE=owe;window.REV=rev;\n',
+     'window.ACT=act;window.OWE=owe;\n'),
+    ('  const all_=T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])),w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);\n',
+     '  const all_=T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]),w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);\n'),
+    ('  const acts=T.filter(t=>t[30].length&&!(t[31]&&!t[31][11]));\n',
+     '  const acts=T.filter(t=>t[30].length);\n'),
+    ('  // FM-030, their signed answer 920970b7: the board reads git. What they did and pushed on `answer/<id>` is here, not in the two\n  // lists above, until their merge — their promise or their answer first, what it is, the branch, the commit, its time, whether it\n  // verifies, and that their merge is next\n  const way=T.filter(t=>t[31]);\n  if(way.length)S.push(sec(hd("h2",`${l("way.title")}: ${way.length}`,""),way.map(t=>{const w=t[31];\n    return row(idl(t[0]),esc(w[7]),l(w[0]=="answer"||w[0]=="revoked"?"type.answer":"type.act"),\n      `<b class="go">${l("way."+w[0])}</b>`+(w[13]?" — "+esc(w[13]):w[12]?" — "+l("acts.due",w[12].replace("T"," ")):"")\n        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?`<b class="go">${l("way.signed")}</b>`:`<span class="hot">${l("way.unverified",w[6].replace(/^wait: /,""))}</span>`} · ${w[14]?l("way.held",w[14].replace(/^wait: /,"")):l("way.merge")}`,\n      w[0]=="done"||w[0]=="answer"?btn("way.revoke",t[0],`REV(T.find(x=>x[0]==\'${t[0]}\'))`):"",\n      w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));\n',
+     ''),
+    ('"way.title": "on their way", ',
+     ''),
+    ('"way.merge": "your merge is next", ',
+     ''),
+    ('"way.held": "your merge waits: {0}", ',
+     ''),
+    ('"way.done": "done, on its way", ',
+     ''),
+    ('"way.answer": "answered, on its way", ',
+     ''),
+    ('"way.revoked": "revoked, on its way", ',
+     ''),
+    ('"way.undone": "done revoked, on its way", ',
+     ''),
+    ('"way.due": "rescheduled, on its way", ',
+     ''),
+    ('"way.signed": "signed", ',
+     ''),
+    ('"way.unverified": "not verified here: {0}", ',
+     ''),
+    ('"way.revoke": "revoke", ',
+     ''),
+    ('"way.revoke.title": "revoke — why?", ',
+     ''),
+    ('"way.revoke.hint": "why you take it back — the record keeps it beside what it revokes", ',
+     ''),
+    ('"way.sign.step.on": "commits on {0}, where it is on its way — one branch per exchange", ',
+     ''),
+    ('"act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again", ',
+     ''),
+    ('"act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log", ',
+     ''),
+)
+
+
+# the second screen commits on the branch the Owner stands on: no branch cut, nothing pushed, and the step that says when it counts
+R4_DIALOG_EDITS = (
+    ('const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n',
+     'const sign=(d,id,line,said,kind="answer")=>{const c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n'),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, on \\`${br}\\`, pushed`)}</pre>`:""}\n    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, committed on ${BRANCH?`\\`${BRANCH}\\``:"a detached HEAD"} as …`)}</pre>`:""}\n    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format}`),c("G"))}</p>`:""}\n'),
+    ('"act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge"',
+     '"act.sign.step.due": "writes the new {0}, and the old one into the record under {1}"'),
+    ('"answer.sign.step.cut": "cuts {0} from the branch you are on", ',
+     ''),
+    ('"answer.sign.step.push": "pushes the branch", ',
+     ''),
+    ('"answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker."',
+     '"answer.sign.slow": "It prints each step as it starts, and it may take a while: the commit runs the gate over every tracker."'),
+    ('"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", ',
+     '"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", "answer.sign.step.lands": "it counts once that commit is on the default branch: push it, or merge the branch that carries it", '),
+)
+
+
+# an ask carries its own id: the row names it, the headings and the second screen's steps name it, and an ask put before ids says so
+ASK_ID_EDITS = (
+    ('//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],\n',
+     '//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask\'s id — "" before ask ids],\n'),
+    ('const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="shoalmark";\n',
+     'const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[29][12]||t[0],cmd="shoalmark";\n'),
+    ('  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>\n',
+     '  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${t[0]}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>\n'),
+    ('  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>\n',
+     '  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id.replace(/-Q\\d+$/,"")}">${id}</a></h3>\n'),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id.replace(/-Q\\d+$/,""))?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li>${kind=="answer"&&/-Q\\d+$/.test(id)?`<li>${lh("answer.sign.step.names",c("Answers: "+id))}</li>`:""}<li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n'),
+    ('    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):""].filter(Boolean).join(" · "),\n',
+     '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(t[29][12]?`<a href="#=${t[0]}">${t[29][12]}</a>`:idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),\n'),
+    ('  const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),exact=!hood&&byId.get(q.toUpperCase()),words=q.toLowerCase().split(/\\s+/).filter(Boolean);\n',
+     '  const q=$("q").value.trim(),own=s=>s.toUpperCase().replace(/^([A-Z][A-Z0-9]*-\\d+)-Q\\d+$/,"$1"),hood=q[0]=="~"&&byId.get(own(q.slice(1))),exact=!hood&&byId.get(own(q)),words=q.toLowerCase().split(/\\s+/).filter(Boolean);\n'),
+    ('"waiting.unasked": "not yet stated as a question", ',
+     '"waiting.unasked": "not yet stated as a question", "ask.legacy": "asked before ask ids", '),
+    ('"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", ',
+     '"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", "answer.sign.step.names": "its message names the ask it answers: {0}", '),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
-    occurs exactly once — else None."""
+    occurs exactly once — else None; then its rows, each ask cell carrying its id (`ask_id_rows`)."""
     page = fm053_transform(page)
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
-    return text.encode("utf-8")
+    return ask_id_rows(text.encode("utf-8"))
 
 
 def differs_only_by(baseline, candidate, path, key, rule):
@@ -1551,14 +1733,14 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
             assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads of the default branch's configuration, each a read, are set aside, and the stand-up's one read of origin's URL",
-                           rows_match(origin_undone(before["starts"]), fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
+                           "reads of the default branch's configuration, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
+                           rows_match(origin_undone(answers_undone(before["starts"])), fm054_own(id_rules_undone(after["starts"])), counted) and not fm054_reads(before["starts"])
                            and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"]))
                            and not day_reads(before["starts"]) and all(day_read(row["argv"]) for row in day_reads(after["starts"]))
                            and len(day_reads(after["starts"])) == (1 if label in DAY_READ_CASES else 0))
             assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads, each a read, are set aside, and the stand-up's one read of origin's URL",
-                           rows_match(origin_undone(before["run_calls"]), fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
+                           "reads, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
+                           rows_match(origin_undone(answers_undone(before["run_calls"])), fm054_own(id_rules_undone(after["run_calls"])), counted) and not fm054_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"]))
                            and not day_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and day_read(row["args"][0]) for row in day_reads(after["run_calls"]))
@@ -1632,6 +1814,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and r15_schema_dropped(dict(olds, stdout="")) is None
                        and not schema_matches(dict(olds, stdout=olds["stdout"] + "| `freeze_tag` | twice |\n"), news))
 
+        # the id rules' read of HEAD, held to itself on the pair that makes it — the commit being made: without the allowance the starts do not
+        # match, and a second read under the id rules, the same argv again or another, is still caught
+        allowance = "Git entry id rules allowance: "
+        id_old, id_new = (next(row for row in rows if row["case"] == "check-print-written-priority" and row["version"] == version) for version in ("baseline", "candidate"))
+        id_base = origin_undone(answers_undone(id_old["starts"]))
+        id_read = [row for row in id_new["starts"] if id_head_read(row)]
+        assert_control(allowance + "the commit being made starts the read once; without the allowance the starts do not match, and with it they do",
+                       len(id_read) == 1 and not rows_match(id_base, fm054_own(id_new["starts"])) and rows_match(id_base, fm054_own(id_rules_undone(id_new["starts"]))))
+        id_at = id_new["starts"].index(id_read[0]) + 1 if id_read else 0
+        id_twice = id_new["starts"][:id_at] + [dict(id_read[0])] + id_new["starts"][id_at:] if id_read else []
+        id_other = id_new["starts"][:id_at] + [dict(id_read[0], argv=id_read[0]["argv"][:2] + ["HEAD^"])] + id_new["starts"][id_at:] if id_read else []
+        assert_control(allowance + "a second read under the id rules is still caught — the same argv twice, or `git rev-parse HEAD^`",
+                       bool(id_read) and not rows_match(id_base, fm054_own(id_rules_undone(id_twice)))
+                       and not rows_match(id_base, fm054_own(id_rules_undone(id_other))))
+
         # R21's allowance is held to its one difference on the real default pair: equal snapshots match, and no variant below does.
         old, new = (next(row for row in rows if row["case"] == "clean-default-origin" and row["version"] == version) for version in ("baseline", "candidate"))
         old_index, new_index = (base64.b64decode(row["index_after"]["bytes_base64"]) for row in (old, new))
@@ -1654,9 +1851,9 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         allowance = "Git entry FM-057 allowance: "
         new_starts, new_calls = fm054_own(new["starts"]), fm054_own(new["run_calls"])
         page, record = (base64.b64decode(new["board_after"][path]["bytes_base64"]) for path in (PAGE_PATH, BUILT_PATH))
-        old_ou = origin_undone(old["starts"])
+        old_ou = origin_undone(answers_undone(old["starts"]))
         assert_control(allowance + "the default run's starts and calls differ by FM-057's reads and the starts `origin_undone` removes alone, its page and record by what it read, and equal runs match",
-                       old["starts"] != new_starts and fm057_rows(old_ou, new_starts) and fm057_rows(origin_undone(old["run_calls"]), new_calls)
+                       old["starts"] != new_starts and fm057_rows(old_ou, new_starts) and fm057_rows(origin_undone(answers_undone(old["run_calls"])), new_calls)
                        and fm057_board(old, new) and rows_match(new_starts, new_starts) and snapshots_match(new, new))
         extra = dict(new_starts[0], argv=new_starts[0]["argv"][:1] + ["status", "--porcelain"])
         at = next(i for i, row in enumerate(new_starts) if git_words(row) == FM057_READS[2])
@@ -1725,21 +1922,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             argv_ = raw[at]["argv"] + ["--text"]
         assert_control(settings + "the default run's starts differ from the baseline's by the board's settings, the drivers' lists, the tag, the flag, the "
                        "read of `origin/master`, the edits read once, the starts `origin_undone` removes and FM-054's reads alone; left in, they do not match",
-                       bool(reads) and rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw, True))) and not rows_match(old["starts"], raw))
+                       bool(reads) and rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(raw, True))) and not rows_match(old["starts"], raw))
         assert_control(settings + "a start with a setting the board's are not, or with `--text` beside `--no-textconv` outside the board's own run, does not "
                        "match",
-                       bool(reads) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, environment=env_), True)))
-                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, argv=argv_), True))))
+                       bool(reads) and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(changed(at, environment=env_), True)))
+                       and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(changed(at, argv=argv_), True))))
         ask_row = next((row for row in old["starts"] if git_words(row) == ("ls-remote", "--symref", "origin", "HEAD")), None)
         assert_control("Git entry origin-ask allowance: the candidate starts no `ls-remote --symref origin HEAD`, and its starts with one added do not match "
                        "once `origin_undone` has removed the baseline's",
                        ask_row is not None and not any(git_words(row) == ("ls-remote", "--symref", "origin", "HEAD") for row in raw)
-                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw + [ask_row], True))))
+                       and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(raw + [ask_row], True))))
         pairs = [i for i in range(1, len(raw)) if git_words(raw[i]) == TRUNK_READS[1] and git_words(raw[i - 1]) == TRUNK_READS[0] and fm054_own([raw[i]])]
         moved = raw[:pairs[0]] + raw[pairs[0] + 1:] + [raw[pairs[0]]] if pairs else raw
         assert_control("Git entry trunk-read allowance: the clean default run reads the cached `origin/master` directly after `origin/main`, and is taken "
                        "out only there; the same read anywhere else does not match",
-                       bool(pairs) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(moved, True))))
+                       bool(pairs) and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(moved, True))))
         # FM-054's allowance is held to its difference on the same pair: the page carries PROOF, and only `proof_reading`'s reads are new
         fm054 = "Git entry FM-054 allowance: "
         reads = fm054_reads(new["starts"])
@@ -1748,7 +1945,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         unstacked = [dict(row, product_stack=[s for s in row["product_stack"] if s != "proof_reading"]) for row in new["starts"]]
         strip = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
         assert_control(fm054 + "the same reads made outside `proof_reading` are not set aside, and do not match the baseline's starts",
-                       not rows_match(origin_undone(old["starts"]), fm054_own(unstacked)) and rows_match(origin_undone(old["starts"]), fm054_own(new["starts"])))
+                       not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(unstacked)) and rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(new["starts"])))
         writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
         assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
                        bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))
@@ -1758,7 +1955,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        "other start there, which the baseline never makes", len(said) == 1 and day_read(said[0]["argv"]) and not day_reads(old["starts"]))
         unday = [dict(row, product_stack=[s for s in row["product_stack"] if s != "day_vcs"]) for row in new["starts"]]
         assert_control(day + "the same read made outside `day_vcs` is not set aside, and does not match the baseline's starts",
-                       not rows_match(origin_undone(old["starts"]), fm054_own(unday)) and rows_match(origin_undone(old["starts"]), fm054_own(new["starts"])))
+                       not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(unday)) and rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(new["starts"])))
         other = [dict(row, argv=[row["argv"][0], "config", "--get", "user.email"]) if row is said[0] else row for row in new["starts"]] if said else []
         assert_control(day + "a start inside `day_vcs` that is not its one read is not one",
                        bool(other) and not all(day_read(row["argv"]) for row in day_reads(other)))
@@ -1821,7 +2018,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         moved = "\n".join(rest[:rest.index(brand)] + [palette] + rest[rest.index(brand):]) if brand in rest else schema_new
         r13_rows = {row: next((line for line in lines if line.startswith(row)), "") for row in R13_SCHEMA_ROWS}
         d_batch_old = [next((r13_rows[row] for row in R13_SCHEMA_ROWS if line.startswith(row)), line)
-                       for line in schema_old.split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
+                       for line in (r4_schema(schema_old) or schema_old).split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
         def two_lines(new):
             n = new.split("\n")
             found = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]

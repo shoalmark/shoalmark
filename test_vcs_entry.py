@@ -23,7 +23,7 @@ import time
 import traceback
 
 HERE = Path(__file__).resolve().parent
-LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held."
+LIMIT = "Subversion: this local run cannot verify commit signatures or server-authenticated author identities."
 MARKER = "__ENTRY_OBSERVATION__"
 STATUS = ["svn", "status", "--verbose", "--no-ignore", "--ignore-externals", "--depth", "infinity", ".", "--xml"]
 TOOL_FILES = ("VERSION", "NOTICE", "LICENSE-APACHE", "LICENSE-MIT", "CHANGELOG.md", "README.md", "vendor/marked-18.0.13.umd.js")
@@ -229,7 +229,7 @@ def invoke(tool, root, argv, cwd, search=None):
     spec = {"tool": str(tool), "argv": argv}
     before = snapshot(root)
     done = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--entry-probe", json.dumps(spec)],
-                          cwd=cwd, env=env, capture_output=True, text=True, encoding="utf-8", timeout=40)
+                          cwd=cwd, env=env, capture_output=True, text=True, encoding="mbcs" if os.name == "nt" and "--tsvn-hook" in argv else "utf-8", timeout=40)
     lines = done.stderr.splitlines(keepends=True)
     marker = [line[len(MARKER):] for line in lines if line.startswith(MARKER)]
     if len(marker) != 1:
@@ -281,7 +281,7 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
             observations.append(got)
             return got
         def checks(name, got, code=0, readonly=False, local=False):
-            check("entry: " + name + " emits the complete verification limit exactly once", got["notice_count"] == 1)
+            check("entry: " + name + " limits its notice to init and check", got["notice_count"] == int(name in ("init", "check")))
             check("entry: " + name + " has its deliberate result and no exception", got["code"] == code and got["exception"] is None)
             processes = [e for e in got["events"] if e["event"] == "subprocess.Popen"]
             check("entry: " + name + " attempts no Git or alternate network/process API", got["git_absent"] and all(e["argv"][0] == "svn" for e in processes) and not any(e.get("alternate_process_or_network") for e in got["events"]))
@@ -333,13 +333,13 @@ def run_entry_controls(source, check, baseline=None, report_path=None, payload=N
         check("entry: install really sets local properties without changing tracker bytes", any(e["argv"][1] == "propset" for e in processes) and not got["changed"])
         properties = {kind: command(root, "svn", "propget", "--strict", prop, ".")
                       for kind, prop in (("start", "tsvn:startcommithook"), ("pre", "tsvn:precommithook"))}
-        check("entry: installed Tortoise properties retain command/true/hide format", all(value.splitlines()[1:] == ["true", "hide"] and value.endswith("\n") for value in properties.values()))
+        check("entry: installed Tortoise properties use type/command/true/hide format", all(value.splitlines()[0] == kind + "_commit_hook" and value.splitlines()[2:] == ["true", "hide"] and value.endswith("\n") for kind, value in properties.items()))
         paths, message = base / "paths.txt", base / "message.txt"
         paths.write_text(str(root / "documents" / "O'Neil & ü.txt") + "\n", encoding="utf-8")
         message.write_text("Keep this message exactly unchanged.\n", encoding="utf-8")
         message_bytes = message.read_bytes()
         for kind in ("start", "pre"):
-            words = shlex.split(properties[kind].splitlines()[0])
+            words = shlex.split(properties[kind].splitlines()[1])
             installed_tool = Path(words[1].replace("%REPOROOT%", str(root)))
             check("entry: installed " + kind + " command names the actual local source and handler", words[0] == "python" and installed_tool == tool and words[2:] == ["--tsvn-hook", kind])
             appended = [str(paths), str(message), str(root)] if kind == "start" else [str(paths), "3", str(message), str(root)]

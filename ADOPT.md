@@ -20,7 +20,7 @@ problems or data leaks, and nothing in this probe looks for them.
 
 It is a single Python file: standard library only, Python 3.9 or later, no dependency. It works with what holds the
 files: git in a git repository and svn in a Subversion working copy. Subversion needs no git. Signed answers,
-the pull-request queue, the Owner's answer branches and acts, sessions and the build judgement need git. The
+the pull-request queue, the Owner's acts, sessions and the build judgement need git. The
 pull-request queue also needs GitHub. Elsewhere, a git-only command is refused in one line. It says what the command
 needs. It needs no network of its own: online, it reaches
 the repository's host through git, through gh for the pull-request queue, and through svn on Subversion. It runs on
@@ -341,8 +341,9 @@ does not. In a git repository:
 
 - *Works without the server:* the trackers, the gate on a commit, `INDEX.md`, the board, `--next`, `--owner` and
   `--standup`.
-- *Needs the server:* `--queue`, which reads pull requests from GitHub through `gh`, and the Owner's answer, which
-  `--answer` commits and pushes.
+- *Needs the server:* `--queue`, which reads pull requests from GitHub through `gh`, and the Owner's answer reaching the
+  default branch: `--answer` commits it on the branch the Owner stands on and pushes nothing, and it counts once that
+  commit is on the default branch, by a push or a merge.
 - *Needs one setting:* `--check` must know the default branch. Where `origin/HEAD` is not set, it refuses. Run
   `git remote set-head origin <default branch>` once; it needs no network.
 - *On Subversion,* the history is read from the server. Offline, a check that needs it refuses: a move to

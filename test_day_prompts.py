@@ -511,7 +511,7 @@ def run_checks(*, results=None):
             add("day · the German table words every line of each variant's dialog in German",
                 all(k in german and german[k] != L[k] for k in set(ASKS.values()) | set(RUNS_KEY.values())))
             add("day · the German fixed line names the default branch's name among the values, as the English does: no clause for the close-out alone",
-                FIXED_DE_CLAUSE not in german["day.fixed"] and "Name des Standardzweigs" in german["day.fixed"])
+                FIXED_DE_CLAUSE not in german["day.fixed"] and "Name des Standard-Branches" in german["day.fixed"])
             for variant, origin in (("git", None), ("forge", "https://github.com/example/notes-app.git")):
                 with board_step(add, f"German labels, {variant}"):
                     page, code, err = board(tool, area / ("de-" + variant), "notes-app", env, labels=de, origin=origin)

@@ -252,7 +252,7 @@ def run_board_local_controls(fm, check):
             env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
             cli = subprocess.run([sys.executable, "-B", str(HERE / "shoalmark.py"), "--root", str(root), "--html-only"], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
             check(f"A1: direct production CLI succeeds with no Git and unavailable server ({saw(cli)})",
-                  cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "Subversion: this local run cannot verify commit signatures or server-authenticated authors; protected SVN acceptance remains held.\n")
+                  cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "")
             before = board_snapshot(folder)                 # FM-057: after the last run that writes the board — each run names its own moment
             for scenario in ("malformed_xml", "failed_status"):
                 got = measured(root, search, scenario)
@@ -508,7 +508,7 @@ def run_svn_setup_controls(fm, check):
             got = measured(install, search, "setup:install")
             fm.configure(install)
             props = fm.svn_local_properties(".")
-            check("A2: actual no-Git/server-free property install retains generated format", got["code"] == 0 and got["git_absent"] and props == {prop: f"python %REPOROOT%/tools/shoalmark/shoalmark.py --tsvn-hook {kind}\ntrue\nhide\n" for prop, kind in fm.TSVN_HOOKS.items()})
+            check("A2: actual no-Git/server-free property install uses type/command/true/hide format", got["code"] == 0 and got["git_absent"] and props == {prop: f'{kind}_commit_hook\npython "%REPOROOT%/tools/shoalmark/shoalmark.py" --tsvn-hook {kind}\ntrue\nhide\n' for prop, kind in fm.TSVN_HOOKS.items()})
             got = measured(install, search, "setup:install")
             check("A2: repeat installed properties perform no mutation", got["code"] == 0 and not any(e[0] == "subprocess.Popen" and e[2][1:2] in (["add"], ["propset"]) for e in got["events"]))
             for name, fault in (("install-info-fail", "info"), ("install-proplist-fail", "proplist"), ("install-propset-fail", "propset")):
