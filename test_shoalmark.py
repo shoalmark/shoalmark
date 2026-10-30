@@ -7123,6 +7123,89 @@ check(f"FM-006 · the pitch page · its check is not blind: each of a row droppe
       f"the caption emptied, the story's gap changed, the quote's measure gone, the phone's gap removed or outside its block, the print gap merged into the print "
       f"block's rule, the print size changed and the German print size removed leaves a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 19)
 
+_WHY_DE_PRINT_STEP = (
+    "html[lang=de] body,html[lang=de] .tldr dl,html[lang=de] .lead,html[lang=de] .for,html[lang=de] .never,html[lang=de] .intro{font-size:7.3pt}",
+    "html[lang=de] .tldr dl,html[lang=de] .tldr dl>div.try{grid-template-columns:16.5ch 1fr}",
+)
+_WHY_EN_PRINT_SHADOWED = (
+    "body{font-size:8pt;line-height:1.3}",
+    ".tldr dl{grid-template-columns:13ch 1fr;gap:1.5pt 8pt;font-size:7.9pt;line-height:1.22}",
+    ".lead,.for,.never,.intro,.move .pre{font-size:7.9pt;text-align:left;margin:0 0 3pt;max-width:none}",
+    ".tldr dl>div.try{margin:2pt -9pt -2pt;padding:3pt 9pt 2pt;background:none;box-shadow:none;border-top:1.2pt solid var(--watt);gap:1.5pt 8pt;grid-template-columns:13ch 1fr}",
+)
+
+
+def _why_de_print_problems(src):
+    """What is wrong with the pitch page's German print step, one line each, in three parts: `step` where its two rules do not stand once each, as
+    rules of their own, in print, or another German rule sets what they set; `scope` where a rule that names a language is not in print or names
+    any selector without the German page's `html[lang=de] `, or the words files do not give each page its own language; `english` where the English
+    print rules the step shadows do not stand as they are, or the page leaves its one A4 @page rule. The step is the German print text at 7.3 pt with
+    its TL;DR label column at 16.5ch, which holds AUSPROBIEREN: whole: WebKit's print sets each line box in whole CSS pixels, rounded down, so below
+    about 7.37 pt the TL;DR's lines and the running text's are each a pixel shorter, where a smaller step changes no line's height."""
+    bad = []
+    tpl = src["overrides/why.html"]
+    css = re.sub(r"/\*.*?\*/", "", tpl.split("<style>", 1)[-1].split("</style>", 1)[0], flags=re.S)
+    at = lambda rule: [m.start() for m in re.finditer(r"(?<![^\s}])" + re.escape(rule), css)]
+    for rule in _WHY_DE_PRINT_STEP:
+        found = at(rule)
+        if len(found) != 1 or _css_scope(css, found[0]) != "@media print":
+            bad.append(f"step: the rule {rule} is not there once, as a rule of its own, in @media print")
+    sets = {}
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+        sels = [s.strip() for s in m.group(1).split(",")]
+        if not any("[lang" in s or ":lang(" in s for s in sels):
+            continue
+        if _css_scope(css, m.start(1)) != "@media print" or not all(s.startswith("html[lang=de] ") for s in sels):
+            bad.append(f"scope: the rule {m.group(1).strip()}{{…}} names a language outside print, or a selector without the German page's html[lang=de]")
+        for sel in sels:
+            for prop in (d.split(":", 1)[0].strip() for d in m.group(2).split(";") if ":" in d):
+                sets[(sel, prop)] = sets.get((sel, prop), 0) + 1
+    for rule in _WHY_DE_PRINT_STEP:
+        sels, body = rule[:-1].split("{", 1)
+        for sel in sels.split(","):
+            for prop in (d.split(":", 1)[0] for d in body.split(";")):
+                if sets.get((sel, prop), 0) != 1:
+                    bad.append(f"step: {sel} {{{prop}}} is set by {sets.get((sel, prop), 0)} German rules, not the step's alone")
+    langs = {lang: _why_words(src[f"overrides/partials/why/{lang}.html"]).get("lang") for lang in ("en", "de")}
+    if langs != {"en": "en", "de": "de"} or tpl.count('<html lang="{{ w.lang }}">') != 1:
+        bad.append(f"scope: the page does not take its html lang from its words, or the words files' languages are not their own (saw {langs})")
+    for rule in _WHY_EN_PRINT_SHADOWED:
+        found = at(rule)
+        if len(found) != 1 or _css_scope(css, found[0]) != "@media print":
+            bad.append(f"english: the print rule {rule} is not there once as it stands, in @media print")
+    found = at("@page{size:A4;margin:7.5mm 12mm}")
+    if len(found) != 1 or _css_scope(css, found[0]) != "" or len(re.findall(r"@page\b", css)) != 1:
+        bad.append("english: the page does not keep its one @page rule, A4 with its margins, outside every @media block")
+    return bad
+
+
+_WHY_DE_PRINT_FILES = ("overrides/why.html", "overrides/partials/why/en.html", "overrides/partials/why/de.html")
+_wds = _sources(_WHY_DE_PRINT_FILES)
+_wdp = _why_de_print_problems(_wds)
+check(f"FM-006 · BF-81 · the pitch page in German print · its step stands once in print: the German print text at 7.3 pt and its TL;DR label column "
+      f"at 16.5ch, set by no other German rule; every rule that names a language is in print and names the German page in each selector, and each "
+      f"page's html lang is its words'; the English print rules it shadows stand as they are, and the page stays A4 (problems found: {_wdp})", _wdp == [])
+_wd_step = " " + _WHY_DE_PRINT_STEP[0] + "\n"
+_wdctl = {"the step's size as it was": _with(_wds, "overrides/why.html", _WHY_DE_PRINT_STEP[0], _WHY_DE_PRINT_STEP[0].replace("7.3pt", "7.7pt")),
+          "the label column as it was": _with(_wds, "overrides/why.html", _WHY_DE_PRINT_STEP[1], _WHY_DE_PRINT_STEP[1].replace("16.5ch", "15.5ch")),
+          "the step undone by a later German rule": _with(_wds, "overrides/why.html", " a{text-decoration:none}\n}", " html[lang=de] body{font-size:7.7pt}\n a{text-decoration:none}\n}"),
+          "the step's body for every language": _with(_wds, "overrides/why.html", _WHY_DE_PRINT_STEP[0], _WHY_DE_PRINT_STEP[0].replace("html[lang=de] body,", "body,", 1)),
+          "the step on screen": _with(_with(_wds, "overrides/why.html", _wd_step, ""), "overrides/why.html", "@page{size:A4;", _WHY_DE_PRINT_STEP[0] + "\n@page{size:A4;"),
+          "a German rule for every language": _with(_wds, "overrides/why.html", "html[lang=de] .tiles li{font-size:7pt}", ".tiles li,html[lang=de] .tiles li{font-size:7pt}"),
+          "the English words as German": _with(_wds, "overrides/partials/why/en.html", '"lang": "en"', '"lang": "de"'),
+          "the English print size changed": _with(_wds, "overrides/why.html", _WHY_EN_PRINT_SHADOWED[0], _WHY_EN_PRINT_SHADOWED[0].replace("8pt", "7.3pt")),
+          "the English label column changed": _with(_wds, "overrides/why.html", _WHY_EN_PRINT_SHADOWED[1], _WHY_EN_PRINT_SHADOWED[1].replace("13ch", "16.5ch")),
+          "the page on US Letter": _with(_wds, "overrides/why.html", "@page{size:A4;", "@page{size:letter;")}
+_wdctl_saw = {name: sorted({p.split(":", 1)[0] for p in _why_de_print_problems(src)}) for name, src in _wdctl.items()}
+_wd_want = {"the step's size as it was": "step", "the label column as it was": "step", "the step undone by a later German rule": "step",
+            "the step's body for every language": "scope", "the step on screen": "scope", "a German rule for every language": "scope",
+            "the English words as German": "scope", "the English print size changed": "english", "the English label column changed": "english",
+            "the page on US Letter": "english"}
+check(f"FM-006 · BF-81 · the pitch page in German print · its check is not blind: each of the step's size or its label column as it was, the step undone "
+      f"by a later German rule, its body rule for every language, the step on screen, a German rule for every language, the English words as German, the "
+      f"English print size or label column changed and the page on US Letter leaves a problem in its own part (parts found: {_wdctl_saw})",
+      len(_wdctl_saw) == 10 and all(_wd_want[name] in parts for name, parts in _wdctl_saw.items()))
+
 _WHY_ENGLISH = {
     "W40": "shoalmark — the agents do the work; you have the final word",
     "W41": "The agents do the work; you have the final word.",
