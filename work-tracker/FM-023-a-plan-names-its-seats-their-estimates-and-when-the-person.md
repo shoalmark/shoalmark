@@ -71,6 +71,7 @@ relayed commits are optional", and "cut-off Fri 14:00 approved".
   it stands, not on FM-076: FM-050's "builds on FM-076" only ordered two changes to the same paths. A's steps 1 to 3
   follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
 - **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
+- **2026-10-30:** FM-076 moves to v0.20.3, on the Owner's word of 29 October.
 - **FM-065, quick win 10, and the CI class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
   29 October, 20:00. The CI class fix makes every root `test_*.py` run in CI, directly or through `test_core.py`, or
   be named as excluded. Its three findings are RV-3920 to RV-3922, from the review of the CI item that #219 merged. It
@@ -472,6 +473,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-10-30 | FM-076 moves to v0.20.3, on the Owner's word of 29 October. Records only. |
 | 2026-10-29 | FM-095 to FM-098 are named as candidates for v0.20.3's chapter, filed for v0.20.x. Records only. |
 | 2026-10-29 | The Auditor's re-check of 6fd3099, which fixed RV-3994, is READY, and #240 merged it into main (8fbdf0c). Records only. |
 | 2026-10-29 | The Owner's signed answer to the amended allocation (`0fbd74b`, #235): "accepted - yes". v0.20.2's allocation of 29 October binds, and the ask is cleared. Records only. |

@@ -3,12 +3,17 @@ id: FM-095
 status: Proposed
 considered: FM-062, FM-088, FM-089
 tags: seamanship
+blocked-by: FM-104
 hook: "A rule the Owner gives in chat lives in dated messages, in each seat's memory and in brief templates, and nowhere in this repository. One register would hold every ruling with the commit that signed it, what enforces it and what proves it, changed only by the Owner's signed answer."
 ---
 
 # FM-095 — the Owner's rulings live in chat, memories and briefs, not in one register that names what enforces each
 
 ## What is true now
+
+**2026-10-30 — where this tracker's files go comes from
+[FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md).** It waits on that decision, on the
+Owner's word of 30 October, and nothing of it is built before it.
 
 **Filed 2026-10-29 for v0.20.x; nothing is built.** On the Owner's word of 29 October, "file those", for agentic
 seamanship. It is considered for every v0.20 release and pulled into one when it fits: "we consider all, but we only
@@ -75,5 +80,6 @@ which ones only words hold.
 
 | Date | Event |
 |---|---|
+| 2026-10-30 | Blocked by FM-104, which decides where the person's files live, on the Owner's word of 30 October. Records only. |
 | 2026-10-29 | The pattern and the Done when name R1 to R28, as the record of 12 October holds them (RV-4056). Records only. |
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |

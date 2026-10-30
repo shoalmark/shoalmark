@@ -3,6 +3,7 @@ id: FM-088
 status: Proposed
 considered: FM-086, FM-062, FM-083, FM-030, FM-037, FM-078
 tags: process, seamanship
+blocked-by: FM-104
 epic: FM-089
 next: wait
 hook: "What the team learns lives only in each harness's local memory, on one machine. Another seat, another harness and every new user of the product start without it, and nothing moves a lesson from a session's scratchpad into the record where every seat can read it."
@@ -11,6 +12,10 @@ hook: "What the team learns lives only in each harness's local memory, on one ma
 # FM-088 — the team's lessons live only in each harness's local memory, so another seat, another harness and every user start without them
 
 ## What is true now
+
+**2026-10-30 — where this tracker's files go comes from
+[FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md).** It waits on that decision, on the
+Owner's word of 30 October, and nothing of it is built before it.
 
 **Filed 2026-10-29; nothing is built.** On the Owner's word of 29 October, as the Auditor relays it: shoalmark gets
 shared memory, one file for every seat's own role and one that applies to all roles. The Owner's signed answer of 29
@@ -121,5 +126,6 @@ soon as a check holds them.
 
 | Date | Event |
 |---|---|
+| 2026-10-30 | Blocked by FM-104, which decides where the person's files live, on the Owner's word of 30 October. Records only. |
 | 2026-10-29 | The Owner's signed answer (`febbed9`, #236): "accepted - v0.20.3". The ask is cleared, and FM-088 is a part of FM-089. Records only. |
 | 2026-10-29 | Filed, on the Owner's word of 29 October, with the ask on its release. Records only. |
