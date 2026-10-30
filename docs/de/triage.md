@@ -22,7 +22,7 @@ Zu jeder Aussage auf dieser Seite steht dabei, was sie hält:
 
 ## Was in der Datei steht
 
-Die `TRIAGE.md` liegt im Tracker-Verzeichnis, `docs/work-tracker/`, wenn du kein anderes gewählt hast. Sie hat drei
+Die `TRIAGE.md` liegt im Verzeichnis der Arbeitspakete, `docs/work-tracker/`, wenn du kein anderes gewählt hast. Sie hat drei
 Abschnitte, und zwei davon gehören dir.
 
 - **Die Absicht, *für · damit · niemals*.** Das sind drei Zeilen über das Repository als Ganzes, nie über ein
@@ -146,7 +146,7 @@ Signatur beweist also das Konto, nicht die Hand.
 - **Das Werkzeug.** Auf einem Branch lehnt `--check` jeden Commit ab, der den Text unter *Die Absicht* oder *Der
   aktuelle Weg* ändert, sei es ein Wort, eine Zeile oder nur eine Leerzeile, denn auch Leerraum zählt. Ebenso lehnt
   es einen Commit ab, der diese Überschriften umbenennt oder entfernt, die `TRIAGE.md` löscht oder verschiebt oder
-  das Tracker-Verzeichnis woandershin zeigen lässt. Durch kommt nur dein signierter Commit: `%G?` G, die E-Mail des
+  das Verzeichnis der Arbeitspakete woandershin zeigen lässt. Durch kommt nur dein signierter Commit: `%G?` G, die E-Mail des
   Autors als Signierer, und als Autor du, wie `owner` in der Konfiguration des Standard-Branchs dich nennt, oder eine
   Rolle, der `[rights]` dort das Recht `answer` gibt. Bei einem Merge zählt nur ein Text, den keiner seiner Eltern
   hatte.

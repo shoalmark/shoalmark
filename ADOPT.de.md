@@ -482,7 +482,7 @@ Die Arbeitspakete der Probe ziehen an einer Paketgrenze ins Projekt um. Vor dem 
   eigenen Hook hinzugefügt habt (unter Subversion die `tsvn:`-Hook-Properties, die `tools/shoalmark/shoalmark.py`
   aufrufen). Löscht ihr die Kopie — unter Subversion das Werkzeug — vorher, werden Commits abgelehnt. Dann `tools/shoalmark/`, `shoalmark.toml`, den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen
   (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der
-  Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.
+  Ordner mit den Arbeitspaketen kann bleiben: Es sind einfache Markdown-Dateien.
 
 ### 13. Rückmeldung
 

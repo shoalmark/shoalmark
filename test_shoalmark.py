@@ -1778,10 +1778,10 @@ if _browser("sessions"):
         fm.configure(HERE)
 # --- FM-053, BF-7: the reviews heading's counts put the number first, as its other counts do — in English and in the German table the tool ships
 _de_shipped = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
-check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{0}} ohne Spur* and *{{0}} auf dem Stamm* in the German table "
+check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{0}} ohne Spur* and *{{0}} auf dem Trunk* in the German table "
       f"(saw {fm.LABELS.get('reviews.untraced')!r}, {fm.LABELS.get('reviews.trunk')!r}, {_de_shipped.get('reviews.untraced')!r}, {_de_shipped.get('reviews.trunk')!r})",
       (fm.LABELS.get("reviews.untraced"), fm.LABELS.get("reviews.trunk"), _de_shipped.get("reviews.untraced"), _de_shipped.get("reviews.trunk"))
-      == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Stamm"))
+      == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Trunk"))
 
 # --- FM-053, BF-8: the guide's §10 puts *ended* among the words never on a board — the last group's heading reads *shipped or closed*; its key
 #     and its description stay; the German table the tool ships says *ausgeliefert oder geschlossen*, never *beendet*, which says *ended* too
@@ -7366,7 +7366,7 @@ check("FM-006 · a private security report · the README's entries for a reposit
       and "shoalmark's own `--install-hook` is the safe default" in _readme_ and not (HERE / "lefthook.yml").exists())
 check("FM-006 · a private security report · both notes' way back removes what calls the copy, then the copy in the git directory (RV-2300), and the rest of it is as it was",
       "the shoalmark block in `AGENTS.md` and the copy in the git directory\n  (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries" in _rd("ADOPT.md")
-      and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Tracker-Ordner kann bleiben" in _rd("ADOPT.de.md")
+      and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Ordner mit den Arbeitspaketen kann bleiben" in _rd("ADOPT.de.md")
       and "everything that calls\n  the copy of the tool in the git directory: the hooks marked `# shoalmark`" in _rd("ADOPT.md") and "Delete the copy — on\n  Subversion, the tool — before that, and commits are refused." in _rd("ADOPT.md")
       and "alles entfernen, was\n  die Kopie des Werkzeugs im Git-Verzeichnis aufruft" in _rd("ADOPT.de.md") and "Löscht ihr die Kopie — unter Subversion das Werkzeug — vorher, werden Commits abgelehnt." in _rd("ADOPT.de.md"))
 
@@ -8296,7 +8296,7 @@ GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
 lang: de
 search: Suche — Id, Stufe, Status, Wörter
-search.help: Eine ganze Id zeigt diesen Eintrag.
+search.help: Eine ganze Id zeigt dieses Arbeitspaket.
 view.by: nach {0}
 view.board: Board
 view.epic: Vorhaben
@@ -8350,14 +8350,14 @@ read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dies
 day.copied: der Prompt ist in deiner Zwischenablage
 day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
-link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
-link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
+link.noforge: keine Git-Plattform in der Konfiguration, darum nicht verlinkt
+link.unknown: "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
 link.noviewer: "kein Subversion-Betrachter konfiguriert (`commit_url`), darum nicht verlinkt"
 link.nocommit: kein Commit zu verlinken
 reviews.title: reviews · this week
 reviews.counts: {0} by another session · {1} by the same session
 reviews.untraced: {0} ohne Spur
-reviews.trunk: {0} auf dem Stamm
+reviews.trunk: {0} auf dem Trunk
 ask.ruling: eine Entscheidung
 ask.action: nur deine Hände
 ask.determination: ließe sich durch einen Versuch klären
@@ -8398,7 +8398,7 @@ act.give.title: deine Handlung festhalten
 answer.give.intro: "Deine Entscheidung steht. Ein Browser kann sie nicht ins Repository schreiben — dein Terminal tut es, unter deinem Namen. Diesen Befehl ausführen:"
 answer.give.step.commit: "committet sie unter deinem Namen: dieses Repository verlangt keine Signatur, also belegt der Commit nur den Autor"
 answer.give.step.commit.login: "Autor des Commits ist deine Server-Anmeldung, wie Subversion sie festhält — ohne Signatur"
-answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"
+answer.give.step.commit.none: "ohne Versionsverwaltung hält nichts fest, wer sie geschrieben hat"
 answer.give.check.text: "{0} gibt deinen Namen aus — den Autor, den git meldet, eine Zeichenkette, die jeder eintippen kann."
 answer.give.fail.text: "Er meldet, was ihn abgewiesen hat, und nimmt zurück, was er geschrieben hat; deine Worte werden erneut ausgegeben, mit dem Befehl, der sie wieder gibt."
 proof.here: "deine Antworten hier: {0}"
@@ -8424,20 +8424,20 @@ status.Blocked: Blockiert
 section.progress: in Arbeit
 section.triage: zu sichten
 section.triaged: gesichtet
-section.backlog: Vorrat
+section.backlog: Backlog
 section.ended: beendet
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
 desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
-desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
+desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Arbeitspakete
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
 desc.backlog: wartet — P0 bis P3, dann ohne Stufe, dann geparkt
 desc.ended: ausgeliefert oder ohne Auslieferung geschlossen
 group.none: ohne {0}
-count.trackers: Einträge
+count.trackers: Arbeitspakete
 count.open: offen
 count.around: rund um {0}
-count.id: Eintrag · {0}
+count.id: Arbeitspaket · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet
@@ -8461,11 +8461,11 @@ word.stated: benannt
 viewer.board: ← Board
 viewer.neighbours: Nachbarn
 viewer.file: Datei
-viewer.forge: Ablage
+viewer.forge: Plattform
 viewer.no_copy: keine gerenderte Fassung von {0} — bitte {1} ausführen
 viewer.intent: Absicht
 viewer.from: aus {0}
-viewer.intent.missing: fehlt — der Eigner nennt sie am Eintrag oder am Vorhaben
+viewer.intent.missing: fehlt — der Eigner nennt sie am Arbeitspaket oder am Vorhaben
 viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
 viewer.answer: die Antwort des Eigners
@@ -8499,10 +8499,10 @@ day.copy: Prompt
 day.asks: Worum er bittet
 day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält der Befehl fest, den du in deinem eigenen Terminal ausführst."
 day.standup.asks.svn: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst und committest."
-day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionskontrolle treibt er nichts voran. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."
+day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionsverwaltung treibt er nichts voran. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."
 day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."
 day.runs: Was die Session ausführen soll
-day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."
+day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh GitHub lesen kann, holt er origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."
 day.standup.runs.git: "In deinem Ordner, nur lesend: {0} und git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Was deine Antworten festhält, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."
 day.standup.runs.local: "In deinem Ordner, nur lesend: {0} und nur lesendes git. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Befehle, die den Branch deiner Runde beginnen und deine Antworten festhalten, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."
 day.standup.runs.svn: "In deiner Arbeitskopie, nur lesend: {0} und svn status -u. In ihrer eigenen Arbeitskopie: svn update, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Session hält keine deiner Antworten fest: sie nennt dir die Zeilen, die du schreibst und committest."

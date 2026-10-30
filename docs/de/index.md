@@ -52,7 +52,7 @@ Im eigenen Repository von shoalmark, das selbst mit shoalmark arbeitet:
 eigenen Antwort-Branches des Eigners (`answer/…`). Einer zählt, wenn ein Commit, der eine Datei unter
 `work-tracker/evidence/reviews/` anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull
 Requests datiert ist. Das Datum eines Commits sagt, wann er entstand, nicht wann er gepusht wurde: Die
-Push-Ereignisse der Forge bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet
+Push-Ereignisse der Git-Plattform bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet
 sie nicht mehr. Die Regel ist die signierte Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ.*
 
 Was shoalmark dazu ausgibt, jeden Tag:
