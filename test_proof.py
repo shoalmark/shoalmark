@@ -299,8 +299,7 @@ def git_only_refusals(fm):
                     read += 1
                     lines = [l for l in err.splitlines() if l.startswith(f"{flag}:")]      # on Subversion the line goes on with that backend's own limit
                     if (c != code or len(lines) != 1 or not (lines[0] == said or lines[0].startswith(said + " — Subversion: "))
-                            or re.search(r"\bsigned\b", err) or f"{flag}: answer" not in said
-                            or "require Git" not in said or "Subversion does not provide a commit signature" not in said):
+                            or re.search(r"\bsigned\b", err) or said != f"{flag}: requires Git; Subversion does not provide a commit signature"):
                         bad.append(f"{where}, {flag}, {how}: exit {c}, said {err.strip()[-200:]!r}")
     return bad, read
 

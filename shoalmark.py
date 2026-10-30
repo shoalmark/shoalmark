@@ -1937,6 +1937,12 @@ def record_ids(body):
     return [(m.group(1), m.group(2)) for m in (RECORD_ID_RE.match(body[s_:e_].lstrip()) for s_, e_ in record_spans(body)) if m]
 
 
+def record_name(aid, day, records):
+    """How every reading names one record that carries an id, among `records` — the tracker's [(id, date)], as `record_ids` reads them: by
+    the id alone where no other record carries it; where two do, by the id and the record's date, `<ITEM>-Q<n> of <date>`."""
+    return f"{aid} of {day}" if sum(i == aid for i, _d in records) > 1 else aid
+
+
 def put_ask_of(fm):
     """THE PUT ASK, one reader: from a front matter (its keys as `parse_frontmatter` reads them), the question, the proposal, the
     options as their list and the kind — each through `answer_norm`. An answer binds all four; `ask-since:` is not among them."""
@@ -2564,11 +2570,12 @@ def answered(trackers):
 
 
 def newest_record_id(t):
-    """The id the newest record under `## Asks` carries, or "" — a record of an ask before ask ids carries none."""
+    """The newest record under `## Asks`, named by the id it carries — with its date where another record carries that id too
+    (`record_name`) — or "": a record of an ask before ask ids carries none."""
     _fm, body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8")) if t.get("file") and (TRACKER_DIR / t["file"]).is_file() else ({}, "")
     start, end = newest_record(body)
     m = RECORD_ID_RE.match(body[start:end].lstrip())
-    return m.group(1) if m else ""
+    return record_name(m.group(1), m.group(2), record_ids(body)) if m else ""
 
 
 ASK_LEGACY = "asked before ask ids"          # an ask open without an id, as the board, `--owner` and `--standup` name it
@@ -3370,11 +3377,14 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
     held, ids = t.get("ask_id") or "", [i for i, _d in t.get("asks_ids") or []]
     if by_id and named != held:
         if held and named in ids:
-            gone = "answered" if any(i == named for i, _d in t.get("asks_ids") or []) and named in answered_ids(t) else "withdrawn"
-            print(f'--answer: {tid} holds another ask now: {held}, since {t.get("ask_since") or "—"}: "{t["ask"]}". {named} was {gone} and is in {tid}\'s record. '
+            with_answer = answered_ids(t)
+            gone = " ".join(f"{record_name(named, day, t['asks_ids'])} was {'answered' if (named, day) in with_answer else 'withdrawn'} and is in {tid}'s record."
+                            for i, day in t["asks_ids"] if i == named)
+            print(f'--answer: {tid} holds another ask now: {held}, since {t.get("ask_since") or "—"}: "{t["ask"]}". {gone} '
                   f"Nothing was written. Read {held}, then answer it by its id", file=sys.stderr)
         elif held:
-            print(f"--answer: {tid} has no ask {named}: it holds {held}, open" + (f"; {', '.join(dict.fromkeys(ids))} {'is' if len(set(ids)) == 1 else 'are'} in its record" if ids else ""),
+            names = list(dict.fromkeys(record_name(i, day, t["asks_ids"]) for i, day in t.get("asks_ids") or []))
+            print(f"--answer: {tid} has no ask {named}: it holds {held}, open" + (f"; {', '.join(names)} {'is' if len(names) == 1 else 'are'} in its record" if names else ""),
                   file=sys.stderr)
         else:
             print(f"--answer: {tid} has no ask {named}: its ask was asked before ask ids — answer it by its tracker: `{CMD} --answer {printed_arg(tid)} {verdict}`", file=sys.stderr)
@@ -3457,13 +3467,13 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
 
 
 def answered_ids(t):
-    """The ids of a tracker's records that carry an answer — `**answered** —` under their first line."""
+    """The records of a tracker that carry an id and an answer — `**answered** —` under their first line — as {(id, date)}."""
     _fm, body = parse_frontmatter((TRACKER_DIR / t["file"]).read_text(encoding="utf-8")) if t.get("file") else ({}, "")
     out = set()
     for s_, e_ in record_spans(body):
         m = RECORD_ID_RE.match(body[s_:e_].lstrip())
         if m and "\n**answered** — " in body[s_:e_]:
-            out.add(m.group(1))
+            out.add((m.group(1), m.group(2)))
     return out
 
 
@@ -3955,22 +3965,24 @@ def dirty_refusal(git, dirty):
         name = p_.rsplit("/", 1)[-1]
         if not KIND_RE.match(name) or not board_isfile(top / p_):      # the reading rule
             continue
-        now_ = (parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0].get("answer") or "").strip()
+        now_fm = parse_frontmatter((top / p_).read_text(encoding="utf-8"))[0]
+        now_ = (now_fm.get("answer") or "").strip()
         was_ = (parse_frontmatter(cat_blobs([f"HEAD:{p_}"]).get(f"HEAD:{p_}") or "")[0].get("answer") or "").strip()
         if now_ and now_ != was_:
-            left.append((p_, "-".join(name.split("-")[:2]), now_.strip('"'), was_))
+            tid = "-".join(name.split("-")[:2])
+            left.append((p_, tid, (now_fm.get("ask-id") or "").strip() or tid, now_.strip('"'), was_))
     if not left:
         return said + " — commit or stash them first"
     generated = {pathlib.Path(os.path.relpath(f, top)).as_posix() for f in [OUT, *DERIVED_FILES]}
     mine = [p_ for p_ in dirty if p_ in {l_[0] for l_ in left} | generated]
     theirs = [p_ for p_ in dirty if p_ not in mine]
-    for p_, tid, ans, had in left:
+    for p_, tid, named, ans, had in left:
         # the three words `--answer` writes, and the verb that writes each; an answer that replaced one the file had
         # committed was a `--supersede` — or a `revoke`, which needs none — and is given again the same way
         m = re.fullmatch(r"(accepted|rejected|revoked)(?:\s+-\s+(.*))?", ans)
         verb = {"accepted": "accept", "rejected": "reject", "revoked": "revoke"}[m.group(1)] if m else ""
         said += (f"\n  {tid} carries an answer that was never committed — {ans!r}. It looks like an earlier `--answer` that failed half-way"
-                 + (f"; to give it again: {CMD} --answer {tid} {verb}" + (f' "{m.group(2)}"' if m.group(2) else "")
+                 + (f"; to give it again: {CMD} --answer {named} {verb}" + (f' "{m.group(2)}"' if m.group(2) else "")
                     + (" --supersede" if had and verb != "revoke" else "") if m else ""))
     said += (f"\n  undo what it left with ONE command:\n    git{'' if top == ROOT else ' -C ' + str(top)} restore --staged --worktree -- {' '.join(mine)}"
              + (f"\n  the rest is not the tool's — commit or stash it: {', '.join(theirs)}" if theirs else ""))
@@ -5129,8 +5141,8 @@ def day_html(labels, prompts=None):
     return "\n".join(rows + dialogs), {kind: text for kind, (text, _f) in prompts.items()}
 
 
-# THE BOARD'S BASIS (FM-045, the Owner's ruling of 2026-10-08 on C, option 1): what the board shows is built from — the tracker folder, the
-# configuration, the answer branches it reads — recorded beside the page in `view/built.json`, written last by the board's own write, and
+# THE BOARD'S BASIS (FM-045, the Owner's ruling of 2026-10-08 on C, option 1): what the board shows is built from — the tracker folder and the
+# configuration — recorded beside the page in `view/built.json`, written last by the board's own write, and
 # `--owner` and `--standup` say in one line when any of it differs now. HEAD moving alone is never said: an ordinary commit changes nothing
 # the board shows. On Subversion and in a plain folder nothing is recorded and nothing is said.
 BASIS_PARTS = (("trackers", "the tracker folder"), ("configuration", "the configuration"))
@@ -6567,7 +6579,7 @@ def signature_kind(commit):
 def verified_as(commit, identity):
     """The gate's ONE signature test, shared by every rule that asks for a signed line — the identity a signature must name is the configured one
     (`signed_identity`), never the commit's author standing in for it. All three must hold: the signature, read from the commit object's own header,
-    is SSH; `%G?` is G under the DEFAULT branch's signers file (`trusted_signers`, FM-037's AU-19: an answer branch that appends its own key under the
+    is SSH; `%G?` is G under the DEFAULT branch's signers file (`trusted_signers`, FM-037's AU-19: a branch that appends its own key under the
     Owner's email vouches for nothing); and the principal that file trusts the key for (`%GS`) IS the identity's email — equal, never containing it."""
     if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or signature_gap(commit):
         return False
@@ -10197,11 +10209,11 @@ CLI_GIT_ONLY = {
     "commit_msg": ("--commit-msg: the Git-hook commit-message capability is unavailable under Subversion", EXIT_LINT),
     "sessions": ("--sessions: the registry is read from git's commit trailers — this is no git repository", EXIT_LINT),
     "queue": ("--queue: not a git repository — the queue is read from GitHub with `gh`", EXIT_NO_FORGE),
-    # FM-054, RV-3310: an answer branch is signed only where the default branch asks for it — so the capability is said, never *signed*
-    "answer": ("--answer: answer branches require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "done": ("--done: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "due": ("--due: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
-    "revoke": ("--revoke: answer-branch acts require Git; Subversion does not provide a commit signature", EXIT_LINT),
+    # FM-054, RV-3310: an answer is signed only where the default branch asks for it — so the capability is said, never *signed*
+    "answer": ("--answer: requires Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "done": ("--done: requires Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "due": ("--due: requires Git; Subversion does not provide a commit signature", EXIT_LINT),
+    "revoke": ("--revoke: requires Git; Subversion does not provide a commit signature", EXIT_LINT),
 }
 
 

@@ -5703,7 +5703,7 @@ check("refresh hooks · both setup pages name the three hooks, what the board re
       and "Limit:" in _rd("docs/setup.md") and "Grenze:" in _rd("docs/de/setup.md"))
 check("refresh hooks · the README names the hooks, read-at wording, and fetch-only limit with the rebuild command",
       all(name in _readme_ for name in ("post-checkout", "post-merge", "post-rewrite", "what it read, and when", "Limit:", "git fetch", "--html-only"))
-      and "an answer branch arriving by fetch alone" in _readme_)
+      and "a fetch alone does not rebuild the board" in _readme_)
 # --- FM-006 · B1: the landing is one template with its words per language -------------------------------------------------------------
 # overrides/landing.html reads every word from overrides/partials/landing/en.html or de.html (the page's language is its path) and every figure
 # from facts.html, which the build writes and nothing commits. These read the sources, as the suite reads the other pages, and have controls:

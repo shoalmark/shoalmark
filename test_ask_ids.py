@@ -598,6 +598,65 @@ def rows_before(area, add):
     add("2 · its record carries no id: `**<date>** · <question>`", f"**{TODAY}** · Ship the old one?\n**answered** — accepted · Owner" in t and "**FM-001-Q" not in t, t[-300:])
 
 
+# --- a record whose id another record carries too, as every reading names it -----------------------------------------------------
+
+def rows_record_names(area, add):
+    twice = record("FM-004-Q1", "Ship it?", day=SINCE) + "\n" + record("FM-004-Q1", "Ship the other?", "accepted", day=TODAY)
+    r = Repo(area / "names", {"FM-001": text("FM-001"), "FM-002": text("FM-002", ask(aid="FM-002-Q1", q="Ship the new one?")),
+                              "FM-003": text("FM-003", ask(q="Ship the old one?")), "FM-004": text("FM-004", ask(aid="FM-004-Q2", q="Ship the next?"), asks=twice)})
+    git(r.root, "branch", "A")
+    git(r.root, "branch", "B")
+    for b, q, day in (("A", "Ship A?", SINCE), ("B", "Ship B?", TODAY)):
+        r.switch(b)
+        r.write("FM-001", text("FM-001", ask(aid="FM-001-Q1", q=q)))
+        r.commit(f"FM-001: put on {b}")
+        r.write("FM-001", text("FM-001", "next: build\n", asks=record("FM-001-Q1", q, day=day)))
+        r.commit(f"FM-001: cleared on {b}")
+    r.land("A")
+    git(r.root, "merge", "-q", "--no-ff", "--no-edit", "B", check=False)
+    r.write("FM-001", text("FM-001", "next: build\n", asks=record("FM-001-Q1", "Ship A?", day=SINCE) + "\n" + record("FM-001-Q1", "Ship B?", day=TODAY)))
+    r.commit("the merge, made against the gate")
+    git(r.root, "push", "-q", "origin", "main")
+    git(r.root, "fetch", "-q", "origin")
+    for named in ("FM-002-Q1", "FM-003"):
+        run(r.root, "--clear-ask", named, "build", who=SEAT)
+    r.commit("FM-002 and FM-003: their asks cleared")
+    short = git(r.root, "log", "-1", "--format=%h").strip()
+    said = run(r.root, "--answered")
+    acted = [l for l in said[1].splitlines() if " — acted on in `" in l]
+    add("4 · `--answered` names an acted-on record whose id another record carries too by its id and its date, `FM-001-Q1 of <date>` — the newest record's",
+        said[0] == 0 and any(l.startswith(f"  FM-001-Q1 of {TODAY} — acted on in `") for l in acted) and not any(l.startswith("  FM-001-Q1 —") for l in acted),
+        seen(said) + f" · {acted}")
+    add("4 · `--answered` names an acted-on record whose id no other record carries by the bare id",
+        f"  FM-002-Q1 — acted on in `{short}`" in acted and "FM-002-Q1 of" not in said[1], f"{acted}")
+    add("2 · `--answered` names an acted-on record of an ask before ask ids by its tracker", f"  FM-003 — acted on in `{short}`" in acted, f"{acted}")
+    before = (r.head(), r.read("FM-004"))
+    said = run(r.root, "--answer", "FM-004-Q1", "accept")
+    add("4 · `--answer` on an id two records carry while another ask is open: refused before writing, naming each record by its id and its date",
+        said[0] == fm.EXIT_LINT and f'FM-004 holds another ask now: FM-004-Q2, since {SINCE}: "Ship the next?". FM-004-Q1 of {SINCE} was withdrawn and is in FM-004\'s record. '
+        f"FM-004-Q1 of {TODAY} was answered and is in FM-004's record. Nothing was written. Read FM-004-Q2, then answer it by its id" in said[2]
+        and (r.head(), r.read("FM-004")) == before, seen(said))
+    said = run(r.root, "--answer", "FM-004-Q9", "accept")
+    add("4 · `--answer` with an unknown id: its list of the records names an id two records carry by its id and its date",
+        said[0] == fm.EXIT_LINT and f"FM-004 has no ask FM-004-Q9: it holds FM-004-Q2, open; FM-004-Q1 of {SINCE}, FM-004-Q1 of {TODAY} are in its record" in said[2]
+        and (r.head(), r.read("FM-004")) == before, seen(said))
+
+
+# --- an answer an earlier `--answer` left half-written, given again as `--answer` takes it -----------------------------------------
+
+def rows_given_again(area, add):
+    r = Repo(area / "again", {"FM-001": text("FM-001", ask(aid="FM-001-Q1")), "FM-002": text("FM-002", ask(q="Ship the old one?")),
+                              "FM-003": text("FM-003", ask(aid="FM-003-Q1", q="Ship the third?"))})
+    for tid in ("FM-001", "FM-002"):
+        write(r.root, tid, answered(r.read(tid)))
+    before = r.head()
+    said = run(r.root, "--answer", "FM-003-Q1", "accept")
+    add("3c · a tree an earlier `--answer` left half-written, its ask carrying an id: the refusal gives the answer again by the ask's id",
+        said[0] == fm.EXIT_LINT and "failed half-way" in said[2] and "--answer FM-001-Q1 accept" in said[2] and "--answer FM-001 accept" not in said[2]
+        and r.head() == before, seen(said))
+    add("2 · …and an ask before ask ids by its tracker's id", said[0] == fm.EXIT_LINT and "--answer FM-002 accept" in said[2], seen(said))
+
+
 # --- a renumbering, and what the default branch holds ----------------------------------------------------------------------------
 
 def rows_renumber(area, add):
@@ -738,8 +797,8 @@ def rows_one_log(area, add):
         seen(said) + f" · {logs} log(s)")
 
 
-ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before, rows_renumber, rows_revoke,
-        rows_unborn, rows_one_log)
+ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before, rows_record_names, rows_given_again,
+        rows_renumber, rows_revoke, rows_unborn, rows_one_log)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
