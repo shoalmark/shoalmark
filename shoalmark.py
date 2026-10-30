@@ -7844,7 +7844,7 @@ def ship_problems(trackers):
                 continue
             if "" in verdicts.values():
                 continue
-            found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(f"':(exclude,top){p}'" for p in records)
+            found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(printed_arg(f":(exclude,top){p}") for p in records)
             out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
                        + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
                        + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')

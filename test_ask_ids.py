@@ -718,6 +718,29 @@ def rows_spelled(area, add):
         seen(said) + f" · shown {shown!r} · want {want!r}")
 
 
+SHIP_RECORDS = ["docs/work-tracker/", "it's $(echo x) notes/"]
+SHIP_HINT_WIN = "git log --oneline -- . ':(exclude,top)docs/work-tracker/' ':(exclude,top)it''s $(echo x) notes/'"
+
+
+def rows_ship_hint(area, add):
+    from unittest import mock
+    with mock.patch.object(fm.sys, "platform", "win32"):
+        made = "git log --oneline -- . " + " ".join(fm.printed_arg(":(exclude,top)" + p) for p in SHIP_RECORDS)
+    add("the Windows text of the ship-log hint written out here is the text `printed_arg` makes there", made == SHIP_HINT_WIN, made)
+    r = Repo(area / "ship", {"FM-001": text("FM-001")})
+    r.switch("-c", "ship")
+    (r.root / "shoalmark.toml").write_text(CONFIG + "[ratio]\nrecords = [" + ", ".join('"' + p + '"' for p in SHIP_RECORDS) + "]\n", encoding="utf-8")
+    r.write("FM-001", text("FM-001").replace("status: In Progress", "status: Shipped"))
+    r.commit("FM-001: shipped")
+    said = r.check()
+    shown = next((l.split("(`", 1)[1].split("` finds it)", 1)[0] for l in said[2].splitlines() if "moved to `Shipped`" in l and "` finds it)" in l), "")
+    want = ["log", "--oneline", "--", ".", *(":(exclude,top)" + p for p in SHIP_RECORDS)]
+    add("the ship-log hint names a well-formed records path as before", "':(exclude,top)docs/work-tracker/'" in shown, seen(said) + f" · shown {shown!r}")
+    ok = shown == SHIP_HINT_WIN if WIN_ARGS else shown.startswith("git ") and sh_args(shown[len("git "):]) == want
+    add("the ship-log hint spells its paths as every copied command does: each comes back unchanged", refused(said, "moved to `Shipped`") and ok,
+        seen(said) + f" · shown {shown!r} · want {want!r}")
+
+
 # --- a copied answer line names an ask only by its own id form ---------------------------------------------------------------------
 
 def rows_unformed(area, add):
@@ -915,7 +938,7 @@ def rows_one_log(area, add):
 
 
 ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before, rows_record_names, rows_given_again,
-        rows_spelled, rows_unformed, rows_renumber, rows_revoke, rows_unborn, rows_one_log)
+        rows_spelled, rows_ship_hint, rows_unformed, rows_renumber, rows_revoke, rows_unborn, rows_one_log)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
@@ -963,6 +986,8 @@ MUTANTS = (
     ("the restore line's arguments not spelled as a copied command's", "dirty_refusal",
      "' -C ' + printed_arg(str(top))} restore --staged --worktree -- {' '.join(printed_arg(p_) for p_ in mine)}",
      "' -C ' + str(top)} restore --staged --worktree -- {' '.join(mine)}", (rows_spelled,)),
+    ("the ship-log hint's paths in hand-written quotes", "ship_problems", """" ".join(printed_arg(f":(exclude,top){p}") for p in records)""",
+     """" ".join(f"':(exclude,top){p}'" for p in records)""", (rows_ship_hint,)),
 )
 
 
