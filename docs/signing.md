@@ -44,7 +44,7 @@ Today the tool says only whether an answer's signature verifies: a software key 
 coming version reads the key type from the signers file and says which one signed:
 
 - *signed with a software key — anything on the owner's account can produce it*
-- *signed with a hardware key — needs the owner's touch*
+- *signed with a hardware key — needs the owner's confirmation on the device*
 
 At tiers 0 to 2 a software key signs, and the record cannot tell them apart: tier 2 protects you without showing it.
 Tier 3 is the step the record can see. A Secure Enclave key is the exception: its type reads like a software key, so
@@ -53,12 +53,12 @@ its tier is declared beside it in the signers file (see tier 3).
 ## Sign on demand — and what that does not stop
 
 If `commit.gpgsign` is `true`, git signs every commit in the repository, your agents' included. At tier 0 each of
-them verifies as yours; at tiers 2 and 3 each of them stops at your passphrase or your touch. So leave it unset, and
+them verifies as yours; at tiers 2 and 3 each of them stops at your passphrase or your confirmation on the device. So leave it unset, and
 sign your answers as you give them: the board's `--answer` command does it for you, and by hand it is
 `git commit -S`. If you set it already, `git config --unset commit.gpgsign` undoes it.
 
 **Leaving it unset does not keep an agent out.** An agent can pass `-S` itself. Only tier 2 or 3 stops that: the
-signature then waits for a passphrase or a touch that the agent does not have. Tier 2 stops the agent that signs by
+signature then waits for a passphrase or a confirmation on the device that the agent does not have. Tier 2 stops the agent that signs by
 mistake; tier 3 also stops the one that means to.
 
 ## Route A — a separate signing key (git)
@@ -80,7 +80,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/signing_ed25519 -C "you@example.org"
 Never store that passphrase. Do not add this key to `ssh-agent` or the Keychain — no `ssh-add` — and `ssh-add -l`
 must not list it. Its own file name, as here, keeps ssh from offering it when you push. Go on at *Then, for any tier*.
 
-### Tier 3, the strong route — a hardware key that needs your touch
+### Tier 3, the strong route — confirmation on the device
 
 Two ways lead there: two FIDO2 security keys, or, with nothing to buy, the Secure Enclave of a Mac with Touch ID. A
 passkey on your phone is not one of them today: OpenSSH signs through libfido2 over USB or NFC, and it cannot reach a
@@ -212,7 +212,7 @@ python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept
 
 `AP-007-Q1` is the ask's own id: its work item's id, then `Q` and the ask's number. The command writes the three lines
 on the branch you stand on and commits them, signed with your key (tier 2 asks for your passphrase, tier 3 for your
-touch), with `Answers: AP-007-Q1` in the commit's message, naming each step as it starts. It cuts no branch and pushes
+confirmation on the device: a security key's PIN and touch, or Touch ID), with `Answers: AP-007-Q1` in the commit's message, naming each step as it starts. It cuts no branch and pushes
 nothing. If anything fails before the commit, it undoes everything it wrote and prints the command to give the answer
 again; where the commit is made and its signature does not verify, it says so, and says not to push it.
 `git log -1 --format=%G?` prints `G`, and the ask leaves your queue. It counts once that commit is on the default

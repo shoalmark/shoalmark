@@ -29,7 +29,7 @@ questions on the board until it suits you.
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as
 [the set-up page](setup.md) writes it. Under Subversion, it counts only as a commit the server authenticated as you. A
 click, a merge or a line in chat is not an answer. How strong that signature is, you choose — [four tiers](signing.md),
-from a key anything on your account can use to one that needs your touch — and every signature names the key that
+from a key anything on your account can use to one that needs your confirmation on the device — and every signature names the key that
 made it.
 
 ## Why not my issue tracker?
