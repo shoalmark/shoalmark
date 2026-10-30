@@ -11,7 +11,7 @@ work: it comes without a guarantee, and the report says so.
 
 - shoalmark needs no git on Subversion. It comes as its release's archive (ADOPT.md, step 3), and it reads the
   working copy through svn. Never ask for git to be installed here.
-- Signed answers, the pull-request queue, answer branches and acts, sessions and the build judgement need git. The
+- Signed answers, the pull-request queue, the Owner's acts, sessions and the build judgement need git. The
   queue also needs GitHub. Such a command is refused in one line here. It names what it needs. `--session new` still
   prints an id here, without the check against git's commit trailers that shows it unused.
 - It reads its history from the server through svn. A check that needs the history, such as a move to `Shipped` or an

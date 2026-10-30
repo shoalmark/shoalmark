@@ -11,7 +11,7 @@ nicht erprobt: Es gilt ohne Gewähr, und der Bericht sagt das.
 
 - shoalmark braucht unter Subversion kein git. Es kommt als Archiv seines Releases (`ADOPT.de.md`, Schritt 3) und
   liest die Arbeitskopie über svn. Verlangt hier nie, git zu installieren.
-- Signierte Antworten, die Pull-Request-Warteschlange, Antwort-Branches und Handlungen, Sessions und das Bauurteil
+- Signierte Antworten, die Pull-Request-Warteschlange, die Handlungen des Eigners, Sessions und das Bauurteil
   brauchen git. Die Warteschlange braucht auch GitHub. Ein solcher Befehl wird hier in einer Zeile abgelehnt. Sie
   nennt, was er braucht. `--session new` gibt hier trotzdem eine Id aus, ohne die Prüfung gegen die Commit-Trailer
   von git, die zeigt, dass sie unbenutzt ist.

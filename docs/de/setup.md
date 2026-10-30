@@ -94,8 +94,9 @@ Hooks wieder einzurichten. Das Board sagt, was es gelesen hat und wann. Seine er
 Unter Subversion wird es bei einem Commit über TortoiseSVN oder beim Lauf des Werkzeugs neu gebaut; nach `svn update`
 führst du `--html-only` aus.
 
-**Grenze:** git hat keinen Hook nach einem bloßen `git fetch`. Kommt ein Antwort-Branch allein durch Fetch an, bleibt die
-Anzeige *unterwegs* auf dem Board wie zuvor, bis zu einem Checkout, einem Merge oder `--html-only`.
+**Grenze:** git hat keinen Hook nach einem bloßen `git fetch`, also baut ein Fetch allein das Board nicht neu: Was das
+Board von `origin` gelesen hat — welche Commits das Board mit ihrer Seite auf der Git-Plattform verlinkt —, bleibt, wie
+es war, bis zu einem Checkout, einem Merge oder `--html-only`.
 
 Wenn du eine feste Uhrzeit für dein Stand-up willst, setze `standup = "09:00"` in `shoalmark.toml`. Ohne sie hältst du das Stand-up, wann immer es dir passt: siehe [Das Stand-up](standup.md).
 

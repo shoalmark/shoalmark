@@ -22,7 +22,7 @@ Probe sucht danach.
 
 Es ist eine einzige Python-Datei: nur Standardbibliothek, Python 3.9 oder neuer, keine Abhängigkeit. Es arbeitet mit
 dem, was die Dateien hält: mit git in einem git-Repository und mit svn in einer Subversion-Arbeitskopie. Subversion
-braucht kein git. Signierte Antworten, die Pull-Request-Warteschlange, die Antwort-Branches und Handlungen des Eigners,
+braucht kein git. Signierte Antworten, die Pull-Request-Warteschlange, die Handlungen des Eigners,
 Sessions und das Bauurteil brauchen git. Die Pull-Request-Warteschlange braucht auch GitHub. Anderswo wird ein
 Befehl, der git braucht, in einer Zeile abgelehnt. Sie sagt, was er braucht. Ein eigenes Netz braucht es nicht:
 Online erreicht es den Host des Repositorys über git, für die
@@ -377,8 +377,9 @@ sagt der Bericht, was dort geht und was nicht. In einem git-Repository:
 
 - *Geht ohne Server:* die Arbeitspakete, das Gate bei einem Commit, `INDEX.md`, das Board, `--next`, `--owner` und
   `--standup`.
-- *Braucht den Server:* `--queue`, das Pull-Requests über `gh` von GitHub liest, und die Antwort des Eigners, die
-  `--answer` committet und pusht.
+- *Braucht den Server:* `--queue`, das Pull-Requests über `gh` von GitHub liest, und der Weg der Antwort des Eigners auf
+  den Standard-Branch: `--answer` committet die Antwort auf dem aktuellen Branch des Eigners und pusht nichts; sie zählt
+  erst, wenn dieser Commit auf dem Standard-Branch liegt, durch einen Push oder einen Merge.
 - *Braucht eine Einstellung:* `--check` muss den Standard-Branch kennen. Wo `origin/HEAD` nicht gesetzt ist, lehnt es
   ab. Führt einmal `git remote set-head origin <standard-branch>` aus; das braucht kein Netz.
 - *Unter Subversion* wird die Historie vom Server gelesen. Offline lehnt eine Prüfung ab, die sie braucht: ein

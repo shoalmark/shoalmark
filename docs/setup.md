@@ -89,8 +89,8 @@ checkout or switch, a merge (including a fast-forward pull), or a rebase, from t
 needs you. On Subversion it rebuilds on a commit through TortoiseSVN or when the tool runs; after `svn update`, run
 `--html-only`.
 
-**Limit:** git has no hook after a bare `git fetch`. An answer branch arriving by fetch alone leaves what the board says
-is *on its way* as it was, until a checkout, a merge or `--html-only`.
+**Limit:** git has no hook after a bare `git fetch`, so a fetch alone does not rebuild the board: what it read of
+`origin` — which commits it links to their forge page — stays as it was until a checkout, a merge or `--html-only`.
 
 If you want a fixed time for your standup, set `standup = "09:00"` in `shoalmark.toml`. Without it, you hold the standup whenever it suits you: see [The standup](standup.md).
 

@@ -115,9 +115,6 @@ def git_readings(fm, root, ending):
     parsed = [fm.extract(root / REL / (tid + "-x.md"), at(after, tid)) for tid in initial]
     answer_lint = stable([p for p in fm.lint(parsed) if "an answer counts only from a seat" in p])
     judged = fm.judge_commits([(after, before, {"product.py"}, "TX-007: build")], "tx/007-text")
-    git(root, "update-ref", "refs/remotes/origin/answer/tx-003", after)
-    fm.configure(root)
-    travelling = fm.on_their_way(trackers)
     fm.configure(root)
     write(root / REL / "TX-007-x.md", initial["TX-007"].replace("One reading.", "A staged reading."), ending)
     git(root, "add", REL + "TX-007-x.md")
@@ -141,7 +138,6 @@ def git_readings(fm, root, ending):
         "index": fm.render(parsed, "Work"),
         "answer gate": answer_lint,
         "judgement": judged,
-        "answer branches": {tid: (r["kind"], r["answered"]) for tid, r in travelling.items()},
         "staged trackers": [(t["id"], t["status"], t.get("triaged")) for t in staged.values()],
     }
 
@@ -299,7 +295,7 @@ def physical_checks(fm, base, check, group="physical"):
 
 
 def converted_readings(fm, root, ending, missing=False):
-    """Committed answer, refusal record and unmerged act; absent snapshots use the same paths."""
+    """A committed answer, and an act on a branch the commands no longer read; absent snapshots use the same paths."""
     init_git(root)
     write(root / "shoalmark.toml", CONFIG, "\n")
     absent = commit(root, "the configured repository")
@@ -328,10 +324,8 @@ def converted_readings(fm, root, ending, missing=False):
     fm.recover_relations([t])
     recovered = t["asks_recovered"]
     values = {"recover_from_log": (recovered[0] == fm.RELATION_TEXT["unknown"] and recovered[1] == "") if missing else (recovered[0] == fm.RELATION_TEXT["proposal"] and answer.startswith(recovered[1]) and bool(recovered[1])),
-              "refusal_record_in_place": fm.refusal_record_in_place(answer, after, rel) is (not missing)}
+}
     g = lambda *a: subprocess.run(["git", *a], cwd=root, capture_output=True, text=True, encoding="utf-8", env=fm.nested_git_env())
-    advice = fm.unmerged_advice(g, "answer/tx-001", "refs/remotes/origin/main", rel, "TX-001", dict(flag="--done", again="shoalmark --done TX-001 result"), "reader", "reader@example.invalid")
-    values["unmerged_advice"] = ("merge it first" in advice if missing else "act is open there" in advice) and "git branch -D" not in advice
     git(root, "switch", "-q", "main")
     git(root, "reset", "--hard", "-q", after)
     # The working answer differs from the committed one, or is a new file.
@@ -359,23 +353,23 @@ def converted_readings(fm, root, ending, missing=False):
     merge_file.unlink()
     fm.COMMITTING = False
     git(root, "reset", "--hard", "-q", before)
-    # Read the unmerged branch, capturing the command before its downstream write.
+    # The unmerged branch is not read: the commands read the tracker as the checkout holds it, before any downstream write.
     fm.configure(root)
     current = fm.extract(p, plain)
     out = io.StringIO()
     with contextlib.redirect_stderr(out):
         result = fm.done_cmd(["TX-001", "result"], [current])
-    values["done_cmd"] = result == fm.EXIT_LINT and ("owes the Owner no act" in out.getvalue() if missing else "act is on `answer/tx-001`" in out.getvalue())
+    values["done_cmd"] = result == fm.EXIT_LINT and "owes the Owner no act" in out.getvalue() and "answer/tx-001" not in out.getvalue()
     old_answer, old_change = fm.answer_cmd, fm.owner_change
     calls = []
-    fm.answer_cmd = lambda words, trackers, **kw: calls.append((words, trackers[0]["answer"], kw.get("onto"))) or 0
+    fm.answer_cmd = lambda words, trackers, **kw: calls.append((words, trackers[0]["answer"])) or 0
     fm.owner_change = lambda *a, **kw: calls.append("owner_change") or 0
     try:
         with contextlib.redirect_stderr(io.StringIO()):
             result = fm.revoke_cmd(["TX-001", "fixture"], [current])
     finally:
         fm.answer_cmd, fm.owner_change = old_answer, old_change
-    values["revoke_cmd"] = (result == fm.EXIT_LINT and calls == []) if missing else (result == 0 and calls == [(["TX-001", "revoke", "fixture"], "accepted", "refs/heads/answer/tx-001")])
+    values["revoke_cmd"] = result == fm.EXIT_LINT and calls == []
     return values
 
 
@@ -406,13 +400,6 @@ def converted_checks(fm, base, check):
         t.update(asks_answers=[("Read text?", "accepted")], asks_key=("Read text?", "accepted"))
         fm.recover_relations([t])
         check("Git " + filt + " unavailable answer history", t["asks_recovered"] == (fm.RELATION_TEXT["unknown"], "") and bool(fm.BOARD_UNREAD))
-        try:
-            fm.refusal_record_in_place(sha + "^", sha, rel)
-        except fm.Unread:
-            unread = True
-        else:
-            unread = False
-        check("Git " + filt + " unavailable refusal-record snapshot", unread)
         check("Git " + filt + " unavailable physical tracker lines", fm.line_author(p, "answer") == (None, None, "unread", ""))
         check("Git " + filt + " reads retain the filtered object store", packs == {f.name: f.read_bytes() for f in (root / ".git/objects/pack").iterdir()})
 

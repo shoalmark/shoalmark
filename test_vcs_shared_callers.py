@@ -164,10 +164,9 @@ def git_controls(fm, old, check):
             check(f"A callers: real Git {name} result equals accepted source", a == b)
             check(f"A callers: real Git {name} process argv/options/environment equal accepted source", ar == br)
             return b
-        for name in ("git_version", "built_on", "head_commit", "default_branch", "answer_refs", "promisor_remotes", "repos_naming", "config_file_problem"):
+        for name in ("git_version", "built_on", "head_commit", "default_branch", "promisor_remotes", "repos_naming", "config_file_problem"):
             pair(name, lambda tool, name=name: getattr(tool, name)())
         pair("last_worked_on", lambda tool: tool.last_worked_on(tracker))
-        pair("on_their_way", lambda tool: tool.on_their_way([tool.extract(tracker, original)]))
         def relations(tool):
             need = {tracker.relative_to(root).as_posix(): {"asks_recovered_all": {("proceed", "accepted - fixture choice"): None}}}
             tool.recover_from_log(need)
@@ -183,7 +182,7 @@ def git_controls(fm, old, check):
         refusal = pair("config include refusal", lambda tool: tool.config_file_problem())
         check("A callers: actual inside-tree config include refuses hook/copy installation", bool(refusal) and "inside the working tree" in refusal)
         call(root, "git", "config", "--unset", "include.path")
-        for name, expected in (("git_version", None), ("built_on", ""), ("head_commit", ""), ("answer_refs", (None, "")),
+        for name, expected in (("git_version", None), ("built_on", ""), ("head_commit", ""),
                                ("default_branch", None), ("promisor_remotes", []), ("install_copy", (4, [f"--install-hook: {root} has no git directory to keep the hooks' copy in"]))):
             outcomes = []
             for tool in (old, fm):
@@ -237,9 +236,9 @@ def svn_probe(source, root, mode):
     try:
         with redirect_stdout(output), redirect_stderr(error):
             if mode == "metadata":
-                results = {"answer_refs": tool.answer_refs(), "git_version": tool.git_version(), "default_branch": tool.default_branch(),
+                results = {"git_version": tool.git_version(), "default_branch": tool.default_branch(),
                            "built_on": tool.built_on(), "head_commit": tool.head_commit(), "promisor_remotes": tool.promisor_remotes(),
-                           "specs_unread": tool.specs_unread(["HEAD:missing"]), "on_their_way": tool.on_their_way([{"id": "WORK-001"}]),
+                           "specs_unread": tool.specs_unread(["HEAD:missing"]),
                            "repos_naming": tool.repos_naming(), "config_file_problem": tool.config_file_problem(), "install_copy": tool.install_copy()[0]}
                 need = {}; tool.recover_from_log(need); results["recover_from_log"] = need; code = 0
             elif mode == "history":
@@ -283,7 +282,7 @@ def svn_controls(fm, old, check):
             value = json.loads(done.stdout); observations.append({"mode": mode, "source": str(source), "result": value}); return value
         got = probe("metadata")
         check("A callers: real no-Git SVN metadata bypasses every Git-only helper without a process attempt", got["code"] == 0 and got["git_absent"] and not got["events"])
-        check("A callers: SVN presentation/not-applicable results are explicit and carry no authority", got["results"] == {"answer_refs": [None, ""], "git_version": None, "default_branch": None, "built_on": "", "head_commit": "", "promisor_remotes": [], "specs_unread": [], "on_their_way": {}, "repos_naming": {}, "config_file_problem": "", "install_copy": 4, "recover_from_log": {}})
+        check("A callers: SVN presentation/not-applicable results are explicit and carry no authority", got["results"] == {"git_version": None, "default_branch": None, "built_on": "", "head_commit": "", "promisor_remotes": [], "specs_unread": [], "repos_naming": {}, "config_file_problem": "", "install_copy": 4, "recover_from_log": {}})
         prior = probe("metadata", old.__file__)
         check("A callers: immutable accepted caller baseline really attempts unavailable Git on ordinary SVN", prior["code"] == -1 and prior["git_absent"] and prior["results"].get("exception") == "FileNotFoundError" and prior["events"] and prior["events"][0][1][0] == "git")
         got = probe("board")

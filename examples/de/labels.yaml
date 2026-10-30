@@ -87,6 +87,7 @@ waiting.holds: hält {0} weitere auf
 waiting.days: seit {0} Tagen
 waiting.holds.ids: hält auf: {0}
 waiting.unasked: noch nicht als Frage gestellt
+ask.legacy: gestellt, als Fragen noch keine ID hatten
 waiting.bottleneck: "Du bist der Engpass — {0} Fragen, {1} Arbeitspakete aufgehalten"
 waiting.malformed: "{0} Fragen zurückgegeben — nicht für dich"
 waiting.malformed.one: 1 Frage zurückgegeben — nicht für dich
@@ -105,23 +106,7 @@ act.done.hint.promise: der Pfad zum Ergebnis dieser Zusage, oder wo es liegt
 act.due.title: Verschieben — auf wann?
 act.sign.title: deine Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Beleg unter {1}"
-act.sign.step.due: "schreibt das neue {0}, und das alte in den Beleg unter {1} — das Board zeigt es verschoben, unterwegs, bis zu deinem Merge"
-way.title: unterwegs
-way.merge: dein Merge ist als Nächstes dran
-way.held: "dein Merge wartet: {0}"
-way.done: erledigt, unterwegs
-way.answer: beantwortet, unterwegs
-way.revoked: zurückgenommen, unterwegs
-way.undone: Erledigung zurückgenommen, unterwegs
-way.due: verschoben, unterwegs
-way.signed: signiert
-way.unverified: "hier nicht geprüft: {0}"
-way.revoke: zurücknehmen
-way.revoke.title: Zurücknehmen — warum?
-way.revoke.hint: "warum du es zurücknimmst — der Beleg hält es neben dem fest, was es zurücknimmt"
-way.sign.step.on: "committet auf {0}, wo es unterwegs ist — ein Zweig je Austausch"
-act.sign.step.revoke.done: "entfernt {0} und trägt die Rücknahme unter {1} ein — die Handlung ist wieder offen"
-act.sign.step.revoke.answer: "schreibt {0} als zurückgenommen — die Antwort, die es zurücknimmt, kommt in den Verlauf"
+act.sign.step.due: "trägt den neuen Termin in {0} ein und schreibt den alten in den Beleg unter {1}"
 sessions.recent: "Sessions · {0} mit einem Commit in den letzten 24 Stunden ({1} mit ihren Sub-Sessions)"
 read.git.branch: "gelesen von {0} @ {1} um {2}"
 read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
@@ -171,14 +156,14 @@ answer.sign.copy: Befehl
 answer.sign.copied: der Befehl ist in deiner Zwischenablage
 answer.sign.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Befehl markieren und kopieren."
 answer.sign.where: Wo
-answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt."
-answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Zweig, der die Frage trägt — {0}, dem Zweig, aus dem dieses Board gebaut wurde."
+answer.sign.where.text: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage enthält."
+answer.sign.where.branch: "In einem Terminal, in diesem Repository, auf dem Branch, der die Frage enthält — {0}, dem Branch, aus dem dieses Board gebaut wurde."
 answer.sign.does: Was er tut
-answer.sign.step.cut: "legt {0} vom aktuellen Zweig an"
 answer.sign.step.write: "schreibt die drei Zeilen — {0} {1} {2} — und {3}"
 answer.sign.step.commit: "committet sie, signiert mit deinem Schlüssel — er fragt vielleicht nach einer Bestätigung"
-answer.sign.step.push: pusht den Zweig
-answer.sign.slow: "Er meldet jeden Schritt, sobald er beginnt, und kann eine Weile dauern: Zweigwechsel und Commit lassen jeweils die Prüfung über alle Arbeitspakete laufen."
+answer.sign.step.names: "die Commit-Nachricht nennt die beantwortete Frage: {0}"
+answer.sign.step.lands: "das zählt erst, wenn dieser Commit auf dem Standard-Branch liegt: Pushe ihn oder merge den Branch, der ihn enthält"
+answer.sign.slow: "Er meldet jeden Schritt, bevor er ihn ausführt. Das kann eine Weile dauern, denn beim Commit läuft die Prüfung über alle Arbeitspakete."
 answer.sign.success: Wenn es geklappt hat
 answer.sign.check: Zur Kontrolle
 answer.sign.check.text: "{0} gibt {1} aus — eine gültige Signatur, mit einem Schlüssel, dem dieses Repository vertraut."
@@ -220,8 +205,8 @@ day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen
 day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."
 day.runs: Was die Session ausführen soll
 day.standup.runs: "{0}. Er liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests."
-day.closeout.runs: "{0} und {1}, und ein git log des Standardzweigs. {0} startet das Ableitungsprogramm, {2}, wo es eines gibt, und wo gh die Ablage lesen kann, holt es origin und fragt gh nach den Pull Requests."
-day.fixed: "Der Prompt ist fest und englisch. Nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standardzweigs füllen ihn — keiner von einem Agenten geschrieben, jeder zuerst gegen eine schlichte Zeichenmenge geprüft."
+day.closeout.runs: "{0} und {1} sowie ein git log des Standard-Branches. {0} startet das Ableitungsprogramm, {2}, falls es eines gibt. Wo gh GitHub lesen kann, holt {0} außerdem origin und fragt gh nach den Pull Requests."
+day.fixed: "Der Prompt steht fest und ist auf Englisch. Eingesetzt werden nur der Ordnername, sein Pfad, der Befehl des Werkzeugs und, für den Tagesabschluss, der Name des Standard-Branches — keiner davon von einem Agenten geschrieben, jeder vorher gegen eine Liste erlaubter Zeichen geprüft."
 day.refused: "Nichts zu kopieren: {0}{1} {2}, darum wird dieser Prompt hier nicht gebaut."
 day.refused.chars: "enthält ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, das Leerzeichen, . _ / ~ : - und der Rückstrich"
 day.refused.long: "ist länger als {0} Zeichen"
@@ -230,7 +215,7 @@ day.refused.split: "nennt das Werkzeug über einen Pfad mit Leerzeichen, den der
 day.value.name: der Ordnername des Repositorys
 day.value.path: sein Pfad
 day.value.cmd: der Befehl des Werkzeugs
-day.value.branch: der Name des Standardzweigs
+day.value.branch: der Name des Standard-Branches
 # the line for each brand file the board no longer reads
 brand.gone: "nicht mehr gelesen: {0}"
 brand.gone.theme: "[palette] in shoalmark.toml"
@@ -244,14 +229,14 @@ path.line: 1 Zeile
 day.title: der Tag
 day.span: die letzten 24 Stunden
 reviews.reports: Berichte, keine Beweise
-reviews.sessions: "seine Session {0}, die des Zweigs {1}"
+reviews.sessions: "Session des Urteils {0}, Session des Branches {1}"
 reviews.sessions.more: "{0} und {1} weitere"
 reviews.more: "und {0} weitere Urteile von einer anderen Session in dieser Woche"
 reviews.more.one: und 1 weiteres Urteil von einer anderen Session in dieser Woche
 reviews.word.another: von einer anderen Session
 reviews.word.same: von derselben Session
 reviews.word.untraced: ohne Spur
-reviews.word.trunk: auf dem Stamm — kein Urteil zu einem Zweig
+reviews.word.trunk: auf dem Stamm — kein Urteil zu einem Branch
 type.act: Handlung
 type.answer: Antwort
 type.verdict: Urteil
@@ -261,13 +246,13 @@ reviews.counts: "{0} von einer anderen Session · {1} von derselben Session"
 reviews.on: "auf {0}"
 reviews.notready: "{0} nicht bereit"
 reviews.findings: "{0} mit Befunden"
-reviews.branch: "Zweig {0}"
-reviews.branch.merged: "Zweig {0}, wie sein Merge {1} ihn nennt"
-reviews.branch.ambiguous: "Zweig {0}: {1} halten das Urteil jeweils auf ihrer eigenen Linie"
+reviews.branch: "Branch {0}"
+reviews.branch.merged: "Branch {0}, wie ihn der Merge {1} nennt"
+reviews.branch.ambiguous: "Branch {0}: {1} enthalten das Urteil jeweils in ihrer eigenen Linie"
 reviews.ambiguous: mehrdeutig
-reviews.branch.unknown: "Zweig nicht bekannt — {0}"
-reviews.branch.none: kein Zweig hier hält das Urteil auf seiner eigenen Linie
-reviews.branch.unnamed: "sein Merge {0} nennt keinen Zweig"
+reviews.branch.unknown: "Branch nicht bekannt — {0}"
+reviews.branch.none: kein Branch hier enthält das Urteil in seiner eigenen Linie
+reviews.branch.unnamed: "der Merge {0} nennt keinen Branch"
 verdict.READY: bereit
 verdict.READY WITH FINDINGS: bereit mit Befunden
 verdict.READY TO TAG: bereit zum Taggen
