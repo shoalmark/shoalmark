@@ -94,7 +94,7 @@ Um eine Antwort zurückzunehmen, führe `python3 tools/shoalmark/shoalmark.py --
 der beantworteten Frage; um eine erledigte Handlung zurückzunehmen, `--revoke AP-007 "<why>"`, mit der ID ihres
 Arbeitspakets. Das Board hat dafür keinen Knopf. Beides ist ein neuer Commit, nie ein Überschreiben: Die zurückgenommene
 Antwort kommt in den Verlauf des Arbeitspakets; bei einer erledigten Handlung kommt die Rücknahme in ihren Beleg unter
-*Acts*, und die Handlung ist wieder offen.
+*Handlungen*, und die Handlung ist wieder offen.
 
 Einladungen und Benachrichtigungen gibt es nicht mehr (R9): `--invite`, `--notify` und `--standup DATEI.ics` sagen das
 in einer Zeile. Wo eine frühere Version eine Kalenderdatei, einen Zeitplan oder seinen Zustand auf deinem Rechner
