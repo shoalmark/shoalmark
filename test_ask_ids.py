@@ -645,9 +645,10 @@ def rows_record_names(area, add):
 # --- an answer an earlier `--answer` left half-written, given again as `--answer` takes it -----------------------------------------
 
 def rows_given_again(area, add):
+    odd = "FM-004-Q1$(echo x);`echo y`"
     r = Repo(area / "again", {"FM-001": text("FM-001", ask(aid="FM-001-Q1")), "FM-002": text("FM-002", ask(q="Ship the old one?")),
-                              "FM-003": text("FM-003", ask(aid="FM-003-Q1", q="Ship the third?"))})
-    for tid in ("FM-001", "FM-002"):
+                              "FM-003": text("FM-003", ask(aid="FM-003-Q1", q="Ship the third?")), "FM-004": text("FM-004", ask(aid=odd, q="Ship the fourth?"))})
+    for tid in ("FM-001", "FM-002", "FM-004"):
         write(r.root, tid, answered(r.read(tid)))
     before = r.head()
     said = run(r.root, "--answer", "FM-003-Q1", "accept")
@@ -655,6 +656,8 @@ def rows_given_again(area, add):
         said[0] == fm.EXIT_LINT and "failed half-way" in said[2] and "--answer FM-001-Q1 accept" in said[2] and "--answer FM-001 accept" not in said[2]
         and r.head() == before, seen(said))
     add("2 · …and an ask before ask ids by its tracker's id", said[0] == fm.EXIT_LINT and "--answer FM-002 accept" in said[2], seen(said))
+    add("3c · …and an `ask-id:` not in its own form by its tracker's id", said[0] == fm.EXIT_LINT and "--answer FM-004 accept" in said[2] and odd not in said[2],
+        seen(said))
 
 
 # --- a renumbering, and what the default branch holds ----------------------------------------------------------------------------
@@ -837,6 +840,8 @@ MUTANTS = (
     ("a record named without its date", "record_name", 'return f"{aid} of {day}" if sum(i == aid for i, _d in records) > 1 else aid', "return aid",
      (rows_record_names,)),
     ("a half-written answer given again by its tracker", "dirty_refusal", '(now_fm.get("ask-id") or "").strip() or tid', "tid", (rows_given_again,)),
+    ("a half-written answer given again by an `ask-id:` in any form", "dirty_refusal", "aid if ask_number(aid, tid) is not None else tid", "aid",
+     (rows_given_again,)),
 )
 
 

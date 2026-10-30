@@ -3970,7 +3970,8 @@ def dirty_refusal(git, dirty):
         was_ = (parse_frontmatter(cat_blobs([f"HEAD:{p_}"]).get(f"HEAD:{p_}") or "")[0].get("answer") or "").strip()
         if now_ and now_ != was_:
             tid = "-".join(name.split("-")[:2])
-            left.append((p_, tid, (now_fm.get("ask-id") or "").strip() or tid, now_.strip('"'), was_))
+            aid = (now_fm.get("ask-id") or "").strip() or tid
+            left.append((p_, tid, aid if ask_number(aid, tid) is not None else tid, now_.strip('"'), was_))
     if not left:
         return said + " — commit or stash them first"
     generated = {pathlib.Path(os.path.relpath(f, top)).as_posix() for f in [OUT, *DERIVED_FILES]}
