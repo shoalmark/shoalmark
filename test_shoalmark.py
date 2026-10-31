@@ -11017,6 +11017,9 @@ with tempfile.TemporaryDirectory() as tmp:
           -1 not in steps_ and steps_ == sorted(steps_) and "cutting" not in err and "pushing" not in err
           and out.startswith(f"AP-070 answered: accepted - count one week first\n  signed, committed on `{start_}` as {sha_}\n"
                              "  it counts once this commit is on the default branch: push it, or merge the branch that carries it\n"))
+    step3_ = next((l_ for l_ in err.splitlines() if "3/3 committing, signed" in l_), "")
+    check(f"--answer's signing step names a confirmation on the device, and no touch (saw {step3_!r})",
+          "your key may ask for its passphrase or a confirmation on the device" in step3_ and "touch" not in step3_.lower())
     sig = sh_("log", "-1", "--format=%G? %GS %an %s"); parent_ = sh_("rev-parse", "HEAD^")
     fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-070")
     check("--answer accept with a change: writes the three lines on the branch it stands on and commits them SIGNED under the answerer, one commit on top of where it stood — "

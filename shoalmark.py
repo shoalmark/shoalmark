@@ -3793,7 +3793,7 @@ def owner_change(tid, t, how):
         return undo(f"could not write {rel} — {e}")
     if git("add", "--", rel).returncode:
         return undo(f"could not stage {rel}")
-    step(3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
+    step(3, "committing, signed — your key may ask for its passphrase or a confirmation on the device; the pre-commit gate runs" if signed
          else "committing — the pre-commit gate runs")
     r = git("commit", *(["-S"] if signed else []), "-m", how["subject"], *[x for line in how.get("trailers") or [] for x in ("-m", line)])
     if r.returncode:
