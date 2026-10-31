@@ -247,7 +247,7 @@ class Page(HTMLParser):
         if "gcoin" in kinds:
             holder = next((el for el in reversed(self.stack) if el["tag"] in ("a", "button")), None)
             in_door = bool(holder) and holder["tag"] == "a" and "door" in (holder["attrs"].get("class") or "").split()
-            self.coins.append((in_door, a.get("aria-hidden")))
+            self.coins.append((holder["attrs"] if in_door else None, a.get("aria-hidden")))
         if TAPE_KINDS & set(kinds) or a.get("id") == "taped-why":
             self.tapes.append(".".join([tag] + kinds))
         if "door" in kinds:
@@ -362,7 +362,8 @@ for rel, lang, other, canonical, image, adopt, how in (
         fail(f"{rel}: the landing draws a tape, the taped state or a second cue line, or styles one: {(p.tapes + [' '.join(k) for k in p.cues[1:]] + ([styled.group(0)] if styled else []))[:3]}")
     if probe_on:
         hero, twins = [a for tag, a, start in p.doors if tag == "a" and not start], [a for tag, a, start in p.doors if tag == "a" and start]
-        if len(p.doors) != 2 or len(hero) != 1 or hero[0].get("id") != "probe-open" or [in_door for in_door, _ in p.coins] != [True, True]:
+        if (len(p.doors) != 2 or len(hero) != 1 or len(twins) != 1 or hero[0].get("id") != "probe-open" or len(p.coins) != 2
+                or any(sum(holder is door for holder, _ in p.coins) != 1 for door in hero + twins)):
             fail(f"{rel}: the probe switch is on, but the primary link is not the coin door with its one coin in it, or #start does not hold the door's twin with its own")
         if any(hidden != "true" for _, hidden in p.coins):
             fail(f"{rel}: the probe switch is on, but the door's coin is read by screen readers")

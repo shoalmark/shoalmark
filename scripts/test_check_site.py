@@ -424,6 +424,19 @@ class States(unittest.TestCase):
                                                      encoding="utf-8")
         return change
 
+    def test_each_door_has_its_own_coin(self):
+        for name in ("index.html", "de/index.html"):
+            for hero_coins, twin_coins in ((2, 0), (0, 2)):
+                with self.subTest(page=name, hero=hero_coins, twin=twin_coins):
+                    def redistribute(site):
+                        page = site / name
+                        parts = page.read_text(encoding="utf-8").split(COIN)
+                        self.assertEqual(len(parts), 3)
+                        page.write_text(parts[0] + COIN * hero_coins + parts[1] + COIN * twin_coins + parts[2], encoding="utf-8")
+                    result = self.checked(probe=True, change=redistribute)
+                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn(name + ": the probe switch is on, but the primary link is not the coin door with its one coin in it", result.stderr)
+
     def test_each_state_draws_its_own_and_nothing_of_the_tape(self):
         note = '<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>'
         tape = '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">%s</span><span class="flap"></span></span>'
