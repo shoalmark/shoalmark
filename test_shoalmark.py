@@ -10317,6 +10317,160 @@ _de_red = (_de_mutant_old is not None and not _de_scaffold_controls(_de_mutant_o
 check(f"the German triage home's controls are not blind: the old forms dropped from the scaffold turn the first red, and the path note "
       f"as it ships dropped turns the second red (red: {_de_red})", all(_de_red))
 
+# --- the closing pass's German wording, each complete line once -------------------------------------------------------------------------
+_DE_CLOSING_PINS = {
+    'ADOPT.de.md': (
+        ('  Ordner mit den Arbeitspaketen kann bleiben: Es sind einfache Markdown-Dateien.',
+         '  Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.'),
+    ),
+    'ADOPT.svn.de.md': (
+        ('  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte ein Arbeitspaket ab,',
+         '  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte einen Eintrag ab,'),
+        ('  das ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um',
+         '  der ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um'),
+    ),
+    'docs/de/how-it-works.md': (
+        ('**Wie fest „kein Agent antwortet für dich“ gilt, bestimmt deine Signatur.** Eine Signatur beweist den Schlüssel, nicht die Hand: Wer deinen Schlüssel benutzen kann, kann in deinem Namen antworten. Es gibt vier Stufen, von einem Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht. [Deine Antwort ist dein Commit](signing.md) hilft dir bei der Wahl.',
+         '**Wie fest „kein Agent antwortet für dich“ gilt, bestimmt deine Signatur.** Eine Signatur beweist den Schlüssel, nicht die Hand: Wer deinen Schlüssel benutzen kann, kann in deinem Namen antworten. Es gibt vier Stufen, von einem Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Berührung braucht. [Deine Antwort ist dein Commit](signing.md) hilft dir bei der Wahl.'),
+    ),
+    'docs/de/index.md': (
+        ('benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt',
+         'benutzen kann, bis zu einem, der deine Berührung braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt'),
+        ('Push-Ereignisse der Git-Plattform bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet',
+         'Push-Ereignisse der Forge bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet'),
+        ('2. `--init` schreibt die Konfiguration, die Datei `TRIAGE.md` und den Vertrag für Agenten.',
+         '2. `--init` schreibt die Konfiguration, die Triage-Datei und den Vertrag für Agenten.'),
+    ),
+    'docs/de/signing.md': (
+        ('noch git noch die Git-Plattform können das unterscheiden. Es zählt also, was es braucht, den Schlüssel zu benutzen. Vier',
+         'noch git noch die Forge können das unterscheiden. Es zählt also, was es braucht, den Schlüssel zu benutzen. Vier'),
+        ('- *mit einem Hardware-Schlüssel signiert — braucht die Freigabe des Eigners am Gerät*',
+         '- *mit einem Hardware-Schlüssel signiert — braucht die Berührung des Eigners*'),
+        ('jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Freigabe am Gerät hängen.',
+         'jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Berührung hängen.'),
+        ('oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Freigabe am Gerät, die der Agent nicht hat.',
+         'oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Berührung, die der Agent nicht hat.'),
+        ('### Stufe 3, der starke Weg — Freigabe am Gerät',
+         '### Stufe 3, der starke Weg — ein Hardware-Schlüssel, der deine Berührung braucht'),
+        ('- Die App erzeugt nur P-256-ECDSA-Schlüssel. Die Git-Plattform nimmt sie an.',
+         '- Die App erzeugt nur P-256-ECDSA-Schlüssel. Die Forge nimmt sie an.'),
+        ('3. **Ihn auf deiner Git-Plattform als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,',
+         '3. **Ihn auf der Forge als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,'),
+        ('   aus der Signierer-Datei nehmen und ihn auf der Git-Plattform unter *Signing keys* löschen. Unter *Authentication keys*',
+         '   aus der Signierer-Datei nehmen und ihn auf der Forge unter *Signing keys* löschen. Unter *Authentication keys*'),
+        ('nach deiner Passphrase, Stufe 3 nach deiner Freigabe am Gerät: entweder PIN und Berührung des Sicherheitsschlüssels oder Touch ID), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet',
+         'nach deiner Passphrase, Stufe 3 nach deiner Berührung), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet'),
+        ('oder aus dem Verzeichnis der Arbeitspakete verschiebt oder `tracker_dir` woandershin zeigen lässt; der Commit-Hook lehnt einen',
+         'oder aus dem Tracker-Verzeichnis verschiebt oder `tracker_dir` woandershin zeigen lässt; der Commit-Hook lehnt einen'),
+    ),
+    'docs/de/triage.md': (
+        ('Die `TRIAGE.md` liegt im Verzeichnis der Arbeitspakete, `docs/work-tracker/`, wenn du kein anderes gewählt hast. Sie hat drei',
+         'Die `TRIAGE.md` liegt im Tracker-Verzeichnis, `docs/work-tracker/`, wenn du kein anderes gewählt hast. Sie hat drei'),
+        ('  das Verzeichnis der Arbeitspakete woandershin zeigen lässt. Durch kommt nur dein signierter Commit: `%G?` G, die E-Mail des',
+         '  das Tracker-Verzeichnis woandershin zeigen lässt. Durch kommt nur dein signierter Commit: `%G?` G, die E-Mail des'),
+    ),
+    'examples/de/labels.yaml': (
+        ('search: Suche · ~ID',
+         'search: Suche · ~Id'),
+        ('search.help: Eine vollständige ID zeigt das zugehörige Arbeitspaket. Was darauf verweist: ~ID (nur Markdown-Verweise). Die Kapitel eines Vorhabens: die Ansicht nach Vorhaben. Alles andere sucht nach Teilwörtern — Stufe, Status, Wörter, blockiert, ungesichtet.',
+         'search.help: Eine ganze Id zeigt diesen Eintrag. Was darauf verweist: ~Id (nur Markdown-Verweise). Die Kapitel eines Vorhabens: die Ansicht nach Vorhaben. Alles andere sucht nach Teilwörtern — Stufe, Status, Wörter, blockiert, ungesichtet.'),
+        ('col.id: ID',
+         'col.id: Id'),
+        ('section.backlog: Backlog',
+         'section.backlog: Vorrat'),
+        ('desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Arbeitspakete',
+         'desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge'),
+        ('count.trackers: Arbeitspakete',
+         'count.trackers: Einträge'),
+        ('count.id: Arbeitspaket · {0}',
+         'count.id: Eintrag · {0}'),
+        ('viewer.forge: Plattform',
+         'viewer.forge: Ablage'),
+        ('read.about.none: "gelesen aus dem Ordner {1} um {0}"',
+         'read.about.none: "gelesen aus dem Ordner um {0}"'),
+        ('link.noforge: keine Git-Plattform in der Konfiguration, darum nicht verlinkt',
+         'link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt'),
+        ('link.unknown: "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"',
+         'link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"'),
+        ('reviews.trunk: "{0} auf dem Trunk"',
+         'reviews.trunk: "{0} auf dem Stamm"'),
+        ('answer.give.step.commit.none: "ohne Versionsverwaltung hält nichts fest, wer sie geschrieben hat"',
+         'answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"'),
+        ('day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge ist deiner. Ein Prompt bittet; er kann nicht sicherstellen, dass die Session ihm folgt. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält der Befehl fest, den du in deinem eigenen Terminal ausführst."',
+         'day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält der Befehl fest, den du in deinem eigenen Terminal ausführst."'),
+        ('day.standup.asks.svn: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge ist deiner. Ein Prompt bittet; er kann nicht sicherstellen, dass die Session ihm folgt. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst und committest."',
+         'day.standup.asks.svn: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst und committest."'),
+        ('day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionsverwaltung treibt er nichts voran. Ein Prompt bittet; er kann nicht sicherstellen, dass die Session ihm folgt. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."',
+         'day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionskontrolle treibt er nichts voran. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."'),
+        ('day.closeout.asks: "Er bittet die Session, den Tag aus dem Beleg wiederzugeben, jede Zeile mit ihrem Commit oder ihrer ID — der Bericht einer Session über den Beleg, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."',
+         'day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."'),
+        ('day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. Im eigenen Worktree der Session, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt; wo gh GitHub lesen kann, holt {0} außerdem origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."',
+         'day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."'),
+        ('day.standup.runs.git: "In deinem Ordner, nur lesend: {0} und git ls-remote. Im eigenen Worktree der Session, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Was deine Antworten festhält, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."',
+         'day.standup.runs.git: "In deinem Ordner, nur lesend: {0} und git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Was deine Antworten festhält, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."'),
+        ('day.standup.runs.local: "In deinem Ordner, nur lesend: {0} und nur lesendes git. Im eigenen Worktree der Session, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: {0} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Die Befehle, die den Branch deiner Runde anlegen und deine Antworten festhalten, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."',
+         'day.standup.runs.local: "In deinem Ordner, nur lesend: {0} und nur lesendes git. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Befehle, die den Branch deiner Runde beginnen und deine Antworten festhalten, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."'),
+        ('day.standup.runs.svn: "In deiner Arbeitskopie, nur lesend: {0} und svn status -u. In der eigenen Arbeitskopie der Session: svn update, {0} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Die Session hält keine deiner Antworten fest, sondern nennt dir die Zeilen, die du schreibst und committest."',
+         'day.standup.runs.svn: "In deiner Arbeitskopie, nur lesend: {0} und svn status -u. In ihrer eigenen Arbeitskopie: svn update, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Session hält keine deiner Antworten fest: sie nennt dir die Zeilen, die du schreibst und committest."'),
+        ('day.standup.runs.folder: "In deinem Ordner: {0}, und sonst nichts. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Die Session hält keine deiner Antworten fest, sondern nennt dir die Zeilen, die du schreibst."',
+         'day.standup.runs.folder: "In deinem Ordner: {0}, und sonst nichts. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Session hält keine deiner Antworten fest: sie nennt dir die Zeilen, die du schreibst."'),
+        ('reviews.sessions: "{0}, Session des Branches {1}"',
+         'reviews.sessions: "Session des Urteils {0}, Session des Branches {1}"'),
+        ('reviews.word.trunk: auf dem Trunk — kein Urteil zu einem Branch',
+         'reviews.word.trunk: auf dem Stamm — kein Urteil zu einem Branch'),
+        ('reviews.on: "auf {1} @ {0}"',
+         'reviews.on: "auf {0}"'),
+        ('reviews.branch: "{0}"',
+         'reviews.branch: "Branch {0}"'),
+        ('reviews.branch.ambiguous: "{1} ({0})"',
+         'reviews.branch.ambiguous: "Branch {0}: {1} enthalten das Urteil jeweils in ihrer eigenen Linie"'),
+        ('reviews.branch.notknown: unbekanntem Branch',
+         'reviews.branch.unknown: "Branch nicht bekannt — {0}"'),
+        ('reviews.branch.none: auf keinem Branch hier committet',
+         'reviews.branch.none: kein Branch hier enthält das Urteil in seiner eigenen Linie'),
+        ('reviews.help: "ein Urteil gehört zu dem Branch, auf dem es committet wurde; nach dem Merge zu dem, den die Merge-Nachricht nennt"',
+         None),
+        ('reviews.notknown: "nicht bekannt"',
+         None),
+        ('reviews.notknown.own: "das Urteil nennt keine Session"',
+         None),
+        ('reviews.notknown.range: "kein Commit darauf außer Merges und Urteilen nennt eine Session"',
+         None),
+        ('reviews.notknown.unread: "der Commit des Reviews fehlt hier"',
+         None),
+    ),
+    'overrides/partials/landing/de.html': (
+        ('  "rule_1": "<b>Das Arbeitspaket ist maßgeblich.</b> Nie ein Nebenplan, ein Chat oder ein TODO-Kommentar.",',
+         '  "rule_1": "<b>Der Tracker ist maßgeblich.</b> Nie ein Nebenplan, ein Chat oder ein TODO-Kommentar.",'),
+        ('  "p2_sig": "Sobald du das Signieren einschaltest, zählt als Antwort nur dein signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht.",',
+         '  "p2_sig": "Sobald du das Signieren einschaltest, zählt als Antwort nur dein signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Berührung braucht.",'),
+    ),
+}
+
+
+def _de_closing_pins_hold(text, pins):
+    lines = text.splitlines()
+    return all(lines.count(line) == 1 for line, _ in pins)
+
+
+_de_closing_entries = sum(len(pins) for pins in _DE_CLOSING_PINS.values())
+_de_closing_restorations = sum(old is not None for pins in _DE_CLOSING_PINS.values() for _, old in pins)
+print(f"German wording pins: {_de_closing_entries} entries; {_de_closing_restorations} old-line mutants; "
+      f"{_de_closing_entries - _de_closing_restorations} removal mutants")
+for _de_path, _de_pins in _DE_CLOSING_PINS.items():
+    _de_text = (HERE / _de_path).read_text(encoding="utf-8")
+    check(f"German wording: {_de_path}, untouched file has every pinned line exactly once",
+          _de_closing_pins_hold(_de_text, _de_pins))
+    for _de_new, _de_old in _de_pins:
+        _de_label = _de_new.split(":", 1)[0] if _de_path.endswith("labels.yaml") else _de_new[:64]
+        _de_mutant = "\n".join(_de_old if line == _de_new else line for line in _de_text.splitlines()) if _de_old is not None else "\n".join(
+            line for line in _de_text.splitlines() if line != _de_new)
+        _de_change = "old line restored" if _de_old is not None else "added line removed"
+        check(f"German wording: {_de_path}, {_de_label!r}, {_de_change} turns the pin check red",
+              _de_mutant != _de_text and not _de_closing_pins_hold(_de_mutant, _de_pins))
+        check(f"German wording: {_de_path}, {_de_label!r}, a duplicate turns the pin check red",
+              not _de_closing_pins_hold(_de_text + "\n" + _de_new + "\n", _de_pins))
+
 # --- the lane's German prose speaks as du: no formal address and no retired term, each exception and each pending place named by its text -----
 def _de_prose_files():
     """Every German prose source of the lane, by its path."""
