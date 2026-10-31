@@ -1780,7 +1780,7 @@ if _browser("sessions"):
                 git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            said_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
+            said_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code>.*?<span class="st">(.*?)</span>(?= <span class="acts">| </div>)', pdom.replace("&nbsp;", " ").replace("\u00a0", " ")) or [None, ""])[1] for v in rows_}
             check(f"FM-053, BF-6 · rendered: none reads —, one its id, many the oldest's id and *and 2 more* (saw {list(said_.values())})",
                   all(re.sub(r"<[^>]+>", "", said_[v]).endswith(w_) for v, w_ in rows_.items()))
     except _ChromeFailed as e_:
@@ -2900,6 +2900,7 @@ if _browser("board"):
             dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
                                                (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
             board_dom, view_dom = dom(""), dom("#=MSR-001")
+            board_dom = board_dom.replace("&nbsp;", " ").replace("\u00a0", " ")
             shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
             check("the board renders in a browser: five sections in order, the open tracker under `triage`, the shipped one folded away",
                   re.search(r"progress.*?triage.*?triaged.*?backlog.*?shipped or closed", shown, re.S) is not None
@@ -8268,7 +8269,7 @@ if _browser("story"):
             check(f"FM-005 · …and in the German table the tool ships: *3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen* (saw {heads_['de']})",
                   any(h_.endswith("3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen") for h_ in heads_["de"]) and not any("erledigt" in h_ for h_ in heads_["de"]))
             (wt_ / "brand/labels.yaml").unlink(); run(root)
-            story_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "index.html").as_uri() + "#=MSR-001"]).stdout))
+            story_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "index.html").as_uri() + "#=MSR-001"]).stdout.replace("&nbsp;", " ").replace("\u00a0", " ")))
             check("FM-005 · the story's own page counts its chapters the same way: *1 shipped · 1 closed* — never *2 done*",
                   re.search(r"chapters — 3: .*? · 0 parked · 1 shipped · 1 closed", story_) is not None and " done" not in story_[story_.find("chapters —"):story_.find("chapters —") + 200])
     except _ChromeFailed as e_:
@@ -11006,7 +11007,7 @@ with tempfile.TemporaryDirectory() as tmp:
     if _browser("queue"):
         try:
             dom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
+            shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom.replace("&nbsp;", " ").replace("\u00a0", " ")))
             check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
                   "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
                   and "decision" in shown and "a ruling" not in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
