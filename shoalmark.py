@@ -4189,7 +4189,7 @@ details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}det
 .lim{white-space:pre-line;color:var(--dim);padding:2px 0 0 2ch}
 details.grp>summary{padding:3px 0}details.grp .subs{display:block;padding-left:2ch;color:var(--dim)}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
 details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
-/* a seat's icon in a session's row: 20 px, grey, without its ground; inverted on the light board and on paper. The dark rule is the page's
+/* a seat's icon in a session's row: 20 px, grey, without its ground; inverted on the light board; paper draws none and keeps its slot. The dark rule is the page's
    own, so the switch reaches it; a word outside the seven keeps the slot, empty */
 .seat{display:inline-block;width:20px;height:20px;vertical-align:top}.seat img{display:block}
 .seat img{filter:grayscale(1) invert(1)}
