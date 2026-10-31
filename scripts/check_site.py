@@ -183,6 +183,32 @@ CSS_URL = re.compile(r"(?i)url\(\s*(?:(['\"])(.*?)\1|([^'\")\s][^)\s]*))\s*\)|@i
 CSS_IMAGE_SET = re.compile(r"(?i)image-set\(((?:[^()]|\([^()]*\))*)\)")
 LEGAL = {"en": ("imprint.html", "privacy.html"), "de": ("de/impressum.html", "de/datenschutz.html")}
 TAPE_KINDS = {"tape", "tapebox", "flap", "taped", "taped-why", "is-taped"}
+TWIN_PAD = ".door-again .btn.door"
+
+
+def door_paddings(css):
+    """Each rule of `css` that sets padding-left on a coin door, in order: (its @media prelude, or "" at the top level, its selector, the value)."""
+    found = []
+
+    def walk(rules, media):
+        for rule in rules:
+            if rule.type == "qualified-rule":
+                selector = " ".join(tinycss2.serialize(rule.prelude).split())
+                if ".btn.door" in selector:
+                    found.extend((media, selector, tinycss2.serialize(d.value).strip())
+                                 for d in tinycss2.parse_declaration_list(rule.content, skip_comments=True, skip_whitespace=True)
+                                 if d.type == "declaration" and d.lower_name == "padding-left")
+            elif rule.type == "at-rule" and rule.lower_at_keyword == "media" and rule.content is not None:
+                walk(tinycss2.parse_rule_list(rule.content, skip_comments=True, skip_whitespace=True), " ".join(tinycss2.serialize(rule.prelude).split()))
+    walk(tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True), "")
+    return found
+
+
+def weight(selector):
+    """A selector's specificity as these selectors spell it: (its ids, its classes), the heaviest of a list's parts."""
+    return max((part.count("#"), part.count(".")) for part in selector.split(","))
+
+
 TAPE_CSS = re.compile(r"@keyframes\s+tape-[\w-]*|\.btn\.door::after|\.(?:tape|tapebox|flap|taped|taped-why|is-taped)\b|\.btn\.taped\b|\.cue\s+\.(?:was|now)\b")
 
 
@@ -372,6 +398,13 @@ for rel, lang, other, canonical, image, adopt, how in (
         if (len(twins) != 1 or twins[0].get("id") or len(twin) != 1 or leads_to(rel, twin[0]["attrs"].get("href") or "") != leads_to(rel, door["attrs"].get("href") or "")
                 or twin[0]["attrs"].get("aria-haspopup") != "dialog" or twin[0]["text"] != door["text"]):
             fail(f"{rel}: the probe switch is on, but the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words")
+        # the twin shrinks to its label, so on a phone its own padding keeps the label clear of the slot: its rule at the top level, and no phone rule as heavy
+        pads = door_paddings(" ".join(p.styles))
+        own = [value for media, selector, value in pads if not media and selector == TWIN_PAD]
+        undone = [(selector, value) for media, selector, value in pads if "max-width" in media and weight(selector) >= weight(TWIN_PAD) and value != "50px"]
+        if own != ["50px"] or undone:
+            fail(f"{rel}: the probe switch is on, but the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts "
+                 f"on the slot (its rule: {own}; phone rules as heavy: {undone})")
     elif p.doors or p.coins:
         fail(f"{rel}: the probe switch is off, but the coin door or its coin is built")
     buttons = [a for a in p.anchors if "btn" in classes(a) and not a["start"]]

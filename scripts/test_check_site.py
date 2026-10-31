@@ -14,6 +14,8 @@ LABELS = {"en": "Copy the prompt", "de": "Prompt kopieren"}
 CUES = {"en": "— press start —", "de": "— Start drücken —"}
 COIN = '<span class="gcoin" aria-hidden="true"><svg class="cab cab-coin" aria-hidden="true"></svg></span>'
 TWIN = '<p class="door-again"><a class="btn door" href="probe.txt" aria-haspopup="dialog">%s' + COIN + '</a></p>'
+DOOR_STYLE = ('<style>.btn.door{position:relative;padding-left:50px}\n.door-again{margin:24px 0 0}\n.door-again .btn.door{padding-left:50px}\n'
+              '@media (max-width:700px){.btn.door{padding-left:18px}.btn.door::before{top:9px;bottom:9px}}</style>')
 TWIN_TEXT = "# How it works\n\nTry it: the button \"Hand your agents the note\" leads to a note.\n\n```\nnext: owner\n```\n"
 
 
@@ -38,7 +40,7 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
             f'<link rel="alternate" hreflang="x-default" href="{SITE_URL}">'
             f'<meta property="og:locale" content="{"en_GB" if en else "de_DE"}">'
             f'<meta property="og:image" content="{SITE_URL}assets/{"preview.png" if en else "preview-de.png"}">'
-            f'<link rel="stylesheet" href="{"" if en else "../"}stylesheets/x.css"></head><body>'
+            f'<link rel="stylesheet" href="{"" if en else "../"}stylesheets/x.css">{DOOR_STYLE if probe else ""}</head><body>'
             f'<a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{tag}">release<b>{tag}</b></a>'
             f'<a class="lang" href="{"de/index.html" if en else "../index.html"}" hreflang="{"de" if en else "en"}">{"DE" if en else "EN"}</a>'
             f'{primary}<a class="btn alt" href="{"" if en else "../"}{"" if en else "de/"}how-it-works.html">How</a>'
@@ -485,6 +487,11 @@ class States(unittest.TestCase):
              "the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words"),
             ("the twin in the German landing's other words", dict(probe=True, change=self.put(TWIN % LABELS["de"], TWIN % ("↑ " + LABELS["de"]), "de/index.html")),
              "de/index.html: the probe switch is on, but the door's twin in #start does not lead where the door leads"),
+            ("the twin's own padding dropped", dict(probe=True, change=self.put(".door-again .btn.door{padding-left:50px}\n", "")),
+             "the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts on the slot"),
+            ("a phone rule heavier than the twin's padding", dict(probe=True, change=self.put("@media (max-width:700px){.btn.door{padding-left:18px}",
+                                                                                                "@media (max-width:700px){#start .btn.door{padding-left:18px}.btn.door{padding-left:18px}")),
+             "the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts on the slot"),
             ("the twin with the probe off", dict(probe=False, change=self.put('<p class="small">tell</p>', TWIN.replace('href="probe.txt"', 'href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"')
                                                                                 % "Hand your agents the note" + '<p class="small">tell</p>')),
              "the probe switch is off, but the coin door or its coin is built"),
