@@ -235,7 +235,7 @@ path.line: 1 Zeile
 day.title: der Tag
 day.span: die letzten 24 Stunden
 reviews.reports: Berichte, keine Beweise
-reviews.sessions: "Session des Urteils {0}, Session des Branches {1}"
+reviews.sessions: "{0}, Session des Branches {1}"
 reviews.sessions.more: "{0} und {1} weitere"
 reviews.more: "und {0} weitere Urteile von einer anderen Session in dieser Woche"
 reviews.more.one: und 1 weiteres Urteil von einer anderen Session in dieser Woche
@@ -249,16 +249,20 @@ type.verdict: Urteil
 answer.sign.copy.name: den Befehl kopieren
 reviews.title: Reviews · diese Woche
 reviews.counts: "{0} von einer anderen Session · {1} von derselben Session"
-reviews.on: "auf {0}"
+reviews.on: "auf {1} @ {0}"
 reviews.notready: "{0} nicht bereit"
 reviews.findings: "{0} mit Befunden"
-reviews.branch: "Branch {0}"
-reviews.branch.merged: "Branch {0}, wie ihn der Merge {1} nennt"
-reviews.branch.ambiguous: "Branch {0}: {1} enthalten das Urteil jeweils in ihrer eigenen Linie"
+reviews.branch: "{0}"
+reviews.branch.ambiguous: "{1} ({0})"
 reviews.ambiguous: mehrdeutig
-reviews.branch.unknown: "Branch nicht bekannt — {0}"
-reviews.branch.none: kein Branch hier enthält das Urteil in seiner eigenen Linie
+reviews.branch.notknown: unbekanntem Branch
+reviews.branch.none: auf keinem Branch hier committet
 reviews.branch.unnamed: "der Merge {0} nennt keinen Branch"
+reviews.help: "ein Urteil gehört zu dem Branch, auf dem es committet wurde; nach dem Merge zu dem, den die Merge-Nachricht nennt"
+reviews.notknown: "nicht bekannt"
+reviews.notknown.own: "das Urteil nennt keine Session"
+reviews.notknown.range: "kein Commit darauf außer Merges und Urteilen nennt eine Session"
+reviews.notknown.unread: "der Commit des Reviews fehlt hier"
 verdict.READY: bereit
 verdict.READY WITH FINDINGS: bereit mit Befunden
 verdict.READY TO TAG: bereit zum Taggen

@@ -1549,6 +1549,11 @@ with tempfile.TemporaryDirectory() as d:
     check("FM-040 · the reader reads nothing where it is given nothing (not HEAD by default)", fm.read_history().parents == {} and fm.read_history("", None).parents == {})
     fm.configure(HERE)
 
+def _lbl(key, *values):
+    """The English label `key` with `values` in its places, as a row's text reads once its tags are gone: no-break spaces read as spaces."""
+    return re.sub(r"\{(\d)\}", lambda m: str(values[int(m[1])]) if int(m[1]) < len(values) else "", fm.LABELS.get(key, key))
+
+
 # --- FM-024 S6: each verdict reported as independent or same session — the reviewed range's sessions against its own --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -1598,7 +1603,7 @@ with tempfile.TemporaryDirectory() as d:
         try:
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1]))
+            strip_ = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1])))
         except _ChromeFailed as e_:
             strip_ = None
             _hung("strip", e_)
@@ -1606,8 +1611,9 @@ with tempfile.TemporaryDirectory() as d:
           "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
               "the day · the last 24 hoursstand-up" in strip_ and "stand-up promptsessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —close-out" in strip_
               and "reviews · this week · 2 by another session · 1 by the same session · 1 untraced · reports, not proofs" in strip_
-              and "by the same session · its session a9/reviewer-1, the branch's a9 and 1 more" in strip_ and "independent" not in strip_
-              and strip_.count("· branch feat") == 4)))      # RV-3343: each row names its branch, the one its verdict was committed to
+              and _lbl("reviews.word.same") + " · " + _lbl("reviews.sessions", "a9/reviewer-1", _lbl("reviews.sessions.more", "a9", 1)) in strip_
+              and "independent" not in strip_
+              and strip_.count(_lbl("reviews.on", "", _lbl("reviews.branch", "feat"))) == 4)))      # each row names its branch
 # --- FM-053, RV-3343: a verdict's row names its branch — the one that holds the verdict commit on its own line, or the merge that brought that line
 #     in, by its message; ambiguous or not known, with why; never a ref that merely points at the reviewed commit. The class test, run on the tool
 #     and on two mutants, each of which it must fail
@@ -1697,14 +1703,15 @@ if _browser("branch"):
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
             what_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
-            said_ = {v: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", w_)) for v, w_ in what_.items()}
+            said_ = {v: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", w_))) for v, w_ in what_.items()}
             check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in the row's own colour (BF-10) with "
                   f"each branch that holds it, and *not known* in italics with why (saw {said_})",
-                  said_[v_known] == f"on {built[:7]} · branch fm/a"
-                  and said_[v_amb] == f"on {built[:7]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
+                  said_[v_known] == _lbl("reviews.on", built[:7], _lbl("reviews.branch", "fm/a"))
+                  and said_[v_amb] == _lbl("reviews.on", built[:7], _lbl("reviews.branch.ambiguous", _lbl("reviews.ambiguous"), "fm/a, fm/b"))
                   and 'class="warn"' not in what_[v_amb] and "<span" not in what_[v_amb]      # BF-10: no colour on a verdict's row but its word
-                  and said_[v_none] == f"on {built[:7]} · branch not known — no branch here holds the verdict on its own line"
-                  and "<i>branch not known — no branch here holds the verdict on its own line</i>" in what_[v_none])
+                  and said_[v_none] == _lbl("reviews.on", built[:7], _lbl("reviews.branch.notknown")) + " — " + _lbl("reviews.branch.none")
+                  and f"<i>{html.escape(_lbl('reviews.branch.notknown'), False)}</i>" in what_[v_none]
+                  and f"<i>— {html.escape(_lbl('reviews.branch.none'), False)}</i>" in what_[v_none])
     except _ChromeFailed as e_:
         _hung("branch", e_)
         fm.configure(HERE)
@@ -1742,13 +1749,15 @@ _old_ok, _old_saw = _oldest_class(fm)
 check(f"FM-053, BF-6 · a review row's branch sessions: none, one and many — the oldest commit's session carried beside the sorted list, in the "
       f"report and in the board's data, never the first by name (saw {_old_saw})", _old_ok)
 _tool_src_old = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-_OLD_MUTANT = ('oldest_session(history, tip, own) if tip else ""))', 'sorted(ranged)[0] if ranged else ""))')
+_OLD_MUTANT = ('oldest_session(history, tip, own) if tip else "",\n', 'sorted(ranged)[0] if ranged else "",\n')
 check("FM-053, BF-6 · the class test FAILS on its mutant, the branch's first session taken by name",
       _tool_src_old.count(_OLD_MUTANT[0]) == 1 and not _oldest_class(_tool_module(_tool_src_old.replace(*_OLD_MUTANT), "fm_oldest_mutant"))[0])
 sys.modules.pop("fm_oldest_mutant", None); fm.configure(HERE)
 _rv_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, BF-6 · the row renders the branch's sessions as the oldest's id and *and n more*, one alone as its id, none as —, the verdict's own session as it was",
-      _rv_src.count('lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))') == 1
+check("FM-053, BF-6 · the row renders the branch's sessions as the oldest's id and *and n more*, one alone as its id, none not known with its reason, "
+      "the verdict's own session as it was",
+      _rv_src.count('lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1)'
+                    ':v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))') == 1
       and fm.LABELS.get("reviews.sessions.more") == "{0} and {1} more" and 'v[3].join(", ")' not in _rv_src)
 if _browser("sessions"):
     try:
@@ -1759,8 +1768,9 @@ if _browser("sessions"):
             git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
             git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
             rows_ = {}
-            for name_, sessions_, want_ in (("fm/none", (None,), "its session r-none, the branch's —"), ("fm/one", ("k1", "k1"), "its session r-one, the branch's k1"),
-                                            ("fm/many", ("zz9", "aa1", "mm5"), "its session r-many, the branch's zz9 and 2 more")):
+            for name_, sessions_, want_ in (("fm/none", (None,), _lbl("reviews.sessions", "r-none", _lbl("reviews.notknown") + " — " + _lbl("reviews.notknown.range"))),
+                                            ("fm/one", ("k1", "k1"), _lbl("reviews.sessions", "r-one", "k1")),
+                                            ("fm/many", ("zz9", "aa1", "mm5"), _lbl("reviews.sessions", "r-many", _lbl("reviews.sessions.more", "zz9", 2)))):
                 git(root, "checkout", "-q", "-b", name_, "main")
                 for n_, s_ in enumerate(sessions_):
                     built_ = commit_(f"{name_}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
@@ -1776,6 +1786,312 @@ if _browser("sessions"):
     except _ChromeFailed as e_:
         _hung("sessions", e_)
         fm.configure(HERE)
+# --- the reviews row as one. Line 1 reads *on <branch> @ <commit>* for every kind of branch: one that holds the verdict on its own line or that
+#     its merge names, the merge itself out of the row; the word *ambiguous* with the branches; a branch not known, said in its place in italics,
+#     its reason after the commit. The word before each name holds to it. Line 2 says who gave the verdict: a session not known says so, in
+#     italics, with the reason the tool's own test gives, never a dash, and each session id is kept whole. How a branch is known is the section's
+#     one help line. The rows are drawn by the board's own script, in Node, from the data of a board built on a repository grown through every
+#     case, and compared with the row its labels make; the German table keeps each of the row's labels and its places. Each fault's mutant fails
+#     the class test ---------------------------------------------------------------------------------------------------------------------------
+_RW_NODE = r"""
+const fs = require("fs"), inp = JSON.parse(fs.readFileSync(0, "utf8")), s = inp.script, L = inp.labels;
+const REG = {reviews: [0, 0, 0, 0, 0, 0], verdicts: inp.verdicts};
+const grab = (re, what) => { const m = s.match(re); if (!m) throw new Error("not in the board's script: " + what); return m[1]; };
+const esc = eval(grab(/\nesc=(s=>[^\n]*),\n/, "esc"));
+const l = eval(grab(/\nl=(\(k,\.\.\.a\)=>[^\n]*?),sl=/, "l"));
+const lh = eval(grab(/\nlh=(\(k,\.\.\.a\)=>[^\n]*),\n/, "lh"));
+const split = eval(grab(/\nsplit=(s=>[^\n]*),\n/, "split"));
+const VERDICT = eval("(" + grab(/\nVERDICT=(\{[^\n]*?\}),\n/, "VERDICT") + ")");
+const row = (id, what, ty, st, acts, more, cls) => ({id, what, ty, st, cls});
+const body = grab(/\n(  const cid=[\s\S]*?),\n    folds=v=>/, "the reviews row");
+const vr = new Function("esc", "l", "lh", "split", "VERDICT", "L", "REG", "row", body.replace("if(REG&&REG.reviews){const ", "const ") + ";\nreturn vr;")(
+  esc, l, lh, split, VERDICT, L, REG, row);
+process.stdout.write(JSON.stringify(inp.verdicts.map(vr)));
+"""
+_RW_KEYS = ("reviews.on", "reviews.branch", "reviews.branch.ambiguous", "reviews.ambiguous", "reviews.branch.notknown", "reviews.branch.none",
+            "reviews.branch.unnamed", "reviews.help", "reviews.sessions", "reviews.sessions.more", "reviews.notknown", "reviews.notknown.own",
+            "reviews.notknown.range", "reviews.notknown.unread")
+_RW_HELP = '`<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")'
+_RW_CSS = ".rv .sid{white-space:nowrap}"
+_RW_ABSENT = "0123456789abcdef0123456789abcdef01234567"      # a reviewed commit no repository here holds
+_RW_WORDS = {      # the row's words, English and German, as they ship
+    "reviews.on": ("on {1} @ {0}", "auf {1} @ {0}"),
+    "reviews.sessions": ("{0}, the branch's {1}", "{0}, Session des Branches {1}"),
+    "reviews.branch.notknown": ("branch not known", "unbekanntem Branch"),
+    "reviews.help": ("a verdict's branch is the one it was committed on; once merged, the one its merge names",
+                     "ein Urteil gehört zu dem Branch, auf dem es committet wurde; nach dem Merge zu dem, den die Merge-Nachricht nennt"),
+    "reviews.notknown": ("not known", "nicht bekannt"),
+    "reviews.notknown.own": ("the verdict names no session", "das Urteil nennt keine Session"),
+    "reviews.notknown.range": ("no commit on it names a session, merges and verdicts aside", "kein Commit darauf außer Merges und Urteilen nennt eine Session"),
+    "reviews.notknown.unread": ("the reviewed commit is not here", "der Commit des Reviews fehlt hier"),
+    "reviews.branch": ("{0}", "{0}"),
+    "reviews.branch.ambiguous": ("{0}: {1}", "{1} ({0})"),
+    "reviews.branch.none": ("committed on no branch here", "auf keinem Branch hier committet"),
+    "reviews.branch.unnamed": ("its merge {0} names no branch", "der Merge {0} nennt keinen Branch")}
+
+
+def _rw_repo(root):
+    """A repository grown through every case of a verdict's row, HEAD on a branch that merges them all: {verdict: its case}."""
+    out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+    verdict_ = lambda word, tip, sid: commit_(f"review: {word}\n\nReviewed: {tip}" + (f"\nSession: {sid}" if sid else ""))
+    cases_ = {}
+
+    def branch_(name, sessions, word, sid, case):
+        git(root, "checkout", "-q", "-b", name, "main")
+        for n_, s_ in enumerate(sessions):
+            built_ = commit_(f"{name}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
+        cases_[verdict_(word, built_, sid)] = case
+    git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+    branch_("fm/line", ("b1",), "READY", "r1", "a branch on its own line")
+    for name_, merge_, word_, case_ in (("fm/named", "Merge branch 'fm/named'", "NOT READY", "a branch its merge names"),
+                                        ("fm/unnamed", "the Owner merges it", "READY WITH FINDINGS", "not known: its merge names no branch")):
+        branch_(name_, ("b2",), word_, "r2", case_)
+        git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", merge_, name_); git(root, "branch", "-q", "-D", name_)
+    cases_[verdict_("READY", commit_("work on the trunk itself\n\nSession: t1"), "r3")] = "on the trunk"
+    branch_("fm/amb", ("b4",), "NOT READY", "r4", "ambiguous")
+    git(root, "checkout", "-q", "-b", "fm/amb-grown"); commit_("grown from its verdict\n\nSession: b4")
+    git(root, "checkout", "-q", "--detach", "main"); built_ = commit_("detached work\n\nSession: b5")
+    cases_[verdict_("READY", built_, "r5")] = "not known: no branch holds it"; detached_ = out_("rev-parse", "HEAD")
+    branch_("fm/own", ("b6",), "READY", "", "untraced: its own commit names no session")
+    branch_("fm/range", (None,), "READY", "r7", "untraced: no commit of the branch names one")
+    branch_("fm/neither", (None,), "NOT READY", "", "untraced: both")
+    git(root, "checkout", "-q", "-b", "fm/unread", "main")
+    cases_[verdict_("READY", _RW_ABSENT, "r8")] = "untraced: the reviewed commit is not here"
+    branch_("fm/many", ("zz9", "aa1", "mm5"), "READY", "r9", "by another session, the branch's three")
+    branch_("fm/same", ("s10",), "READY", "s10/reviewer-1", "by the same session")
+    git(root, "checkout", "-q", "-b", "together", "main")
+    for name_ in ("fm/line", "fm/amb", "fm/amb-grown", detached_, "fm/own", "fm/range", "fm/neither", "fm/unread", "fm/many", "fm/same"):
+        git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+    return cases_
+
+
+def _rw_draw(script, labels, verdicts):
+    """Each verdict's row as the board's script draws it, in Node: [{id, what, ty, st, cls}] — or a str, what went wrong."""
+    r_ = subprocess.run([shutil.which("node"), "-e", _RW_NODE], input=json.dumps({"script": script, "labels": labels, "verdicts": verdicts}),
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, env=_ENV)
+    try:
+        return json.loads(r_.stdout)
+    except ValueError:
+        return f"Node said: {r_.stderr.strip()[-300:]}"
+
+
+def _rw_want(v, labels):
+    """Verdict data `v`'s row as its labels make it, the guide's row, with no forge configured: {line1, state, branch, commit, said} — `said`
+    each session not known, by its reason's label."""
+    e_ = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    put_ = lambda t, a: re.sub(r"\{(\d)\}", lambda m: a[int(m[1])] if int(m[1]) < len(a) else "", t)
+    lh_ = lambda k, *a: put_(e_(labels.get(k, k)), a)
+    l_ = lambda k, *a: e_(put_(labels.get(k, k), a))
+    code_ = lambda s: f"<code>{e_(s)}</code>"
+    b, commit = v[6], code_(v[1][:7])
+    if b[0] in ("line", "merge"):
+        branch, why = lh_("reviews.branch", code_(b[1])), ""
+    elif b[0] == "ambiguous":
+        branch, why = lh_("reviews.branch.ambiguous", l_("reviews.ambiguous"), ", ".join(code_(n) for n in b[1])), ""
+    else:
+        branch = f"<i>{l_('reviews.branch.notknown')}</i>"
+        why = f" <i>— {lh_('reviews.branch.unnamed', code_(b[1][:7])) if b[0] == 'unnamed' else l_('reviews.branch.none')}</i>"
+    line1 = put_(re.sub(r" (?=\{\d\})", "&nbsp;", e_(labels.get("reviews.on", "reviews.on"))), (commit, branch)) + why
+    sid_ = lambda s: f'<span class="sid">{e_(s)}</span>'
+    said = {k: f"<i>{l_('reviews.notknown')} — {l_(k)}</i>" for k in ("reviews.notknown.own", "reviews.notknown.range", "reviews.notknown.unread")}
+    word = f"<b>{l_('reviews.word.same')}</b>" if v[4] == "same session" else l_({"independent": "reviews.word.another", "on trunk": "reviews.word.trunk"}
+                                                                                    .get(v[4], "reviews.word.untraced"))
+    out = {"line1": line1, "state": word, "branch": branch, "commit": commit, "said": said}
+    if v[4] != "on trunk":
+        own = sid_(v[2]) if v[2] else said["reviews.notknown.own"]
+        theirs = (lh_("reviews.sessions.more", sid_(v[7]), str(len(v[3]) - 1)) if len(v[3]) > 1 else sid_(v[3][0]) if v[3]
+                  else said["reviews.notknown.range" if v[9] else "reviews.notknown.unread"])
+        out["state"] = word + " · " + lh_("reviews.sessions", own, theirs)
+    return out
+
+
+def _rw_faults(page, verdicts, labels, cases):
+    """What is wrong with the reviews rows of a board's `page` drawn for `verdicts` with `labels`, one line each: [] where none."""
+    script_ = next((p_ for p_ in page.split("<script>") if "\n  const cid=" in p_), "")
+    style_ = page[page.find("<style>"):page.find("</style>")]
+    drawn_ = _rw_draw(script_, labels, verdicts)
+    if isinstance(drawn_, str):
+        return [drawn_]
+    bad = [f"the help line is not the section's first line: {_RW_HELP!r} stands {script_.count(_RW_HELP)} times"] if script_.count(_RW_HELP) != 1 else []
+    bad += [] if style_.count(_RW_CSS) == 1 and style_.count(".sid") == 1 else [f"a session id is not kept whole by one rule, {_RW_CSS!r}"]
+    bad += [] if script_.count('"reviews.branch.notknown")') == 1 and script_.count('[`<i>${l("reviews.branch.notknown")}</i>`,') == 1 else [
+        "the branch not known's label is drawn somewhere else than line 1's branch place"]
+    if sorted(v[0] for v in verdicts) != sorted(cases):
+        bad.append(f"the board's data holds {len(verdicts)} verdicts, the repository {len(cases)}")
+    for v, d_ in zip(verdicts, drawn_):
+        case, w_, b = cases.get(v[0], v[0][:7]), _rw_want(v, labels), v[6]
+        what_, st_ = d_["what"], d_["st"]
+        if (what_, st_) != (w_["line1"], w_["state"]):
+            bad.append(f"{case}: drawn {what_!r} · {st_!r}, wanted {w_['line1']!r} · {w_['state']!r}")
+        at_, name_ = what_.find("&nbsp;" + w_["commit"]), what_.find("&nbsp;" + w_["branch"])
+        if not 0 <= name_ < at_:
+            bad.append(f"{case}: line 1 is not its branch, then its commit, each held to the word before it: {what_!r}")
+        if b[0] == "merge" and b[2][:7] in what_ + st_:
+            bad.append(f"{case}: the merge that names the branch stands in the row: {what_!r}")
+        if b[0] not in ("line", "merge", "ambiguous") and (what_.count("<i>") != 2 or what_.rfind("<i>— ") < at_
+                                                          or (b[0] == "unnamed" and f"<code>{b[1][:7]}</code>" not in what_[at_ + 1:])):
+            bad.append(f"{case}: the branch not known is not said in its place, its reason after the commit, in italics: {what_!r}")
+        if labels["reviews.branch.notknown"] in st_ or what_.count(labels["reviews.branch.notknown"]) != (0 if b[0] in ("line", "merge", "ambiguous") else 1):
+            bad.append(f"{case}: the branch not known's label stands outside line 1's branch place: {what_!r} · {st_!r}")
+        if v[4] == "on trunk":
+            continue
+        ids_ = [s for s in (v[2], v[7] if len(v[3]) > 1 else v[3][0] if v[3] else "") if s]
+        if re.search("[—–]", re.sub(r"<i>[^<]*</i>", "", st_.split(" · ", 1)[-1])):
+            bad.append(f"{case}: a dash stands for a session: {st_!r}")
+        if st_.count('<span class="sid">') != len(ids_) or not all(f'<span class="sid">{s}</span>' in st_ for s in ids_):
+            bad.append(f"{case}: a session id is not in one span of its own: {st_!r}")
+        here_ = v[1] != _RW_ABSENT
+        if v[9] is not here_:
+            bad.append(f"{case}: the board's data says the reviewed commit is {'' if v[9] else 'not '}here, and it is {'' if here_ else 'not '}here")
+        for k_, held_ in {"reviews.notknown.own": not v[2], "reviews.notknown.range": not v[3] and here_, "reviews.notknown.unread": not v[3] and not here_}.items():
+            if held_ != (w_["said"][k_] in st_):
+                bad.append(f"{case}: {k_} is {'missing' if held_ else 'said where its test does not hold'}: {st_!r}")
+    return bad
+
+
+def _rw_board(tool_src=None):
+    """A board built on `_rw_repo`'s repository: (its page, its verdicts' data, {verdict: case}) — the data from the page, or from a mutant of the
+    tool's source where `tool_src` is given."""
+    with tempfile.TemporaryDirectory() as d_:
+        root_ = Path(d_).resolve()
+        cases_ = _rw_repo(root_)
+        run(root_, "--html-only")
+        page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        if tool_src is None:
+            reg_ = json.JSONDecoder().raw_decode(page_, page_.index(",REG=") + len(",REG="))[0]
+        else:
+            tool_ = _tool_module(tool_src, "fm_rw_mutant"); tool_.configure(root_)
+            reg_ = tool_.board_sessions(); sys.modules.pop("fm_rw_mutant", None)
+        rm_git(root_)
+    fm.configure(HERE)
+    return page_, (reg_ or {}).get("verdicts") or [], cases_
+
+
+def _rw_class(board, page_edits=()):
+    """The class test on `board` (`_rw_board`), its page with `page_edits` made: (faults on the English table, faults on the German table the
+    tool ships, merged over the English as a board merges it)."""
+    page_, verdicts_, cases_ = board
+    for a_, b_ in page_edits:
+        page_ = page_.replace(a_, b_) if page_.count(a_) == 1 else ""
+    if not page_:
+        return ["a mutant's edit is not on the page once"], []
+    en_ = json.JSONDecoder().raw_decode(page_, page_.index(",L=") + len(",L="))[0]
+    shipped_ = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+    de_ = dict(en_, **{k: v for k, v in shipped_.items() if k in en_})
+    places_ = lambda t: sorted(re.findall(r"\{\d\}", t))
+    de_bad = [f"the German table: {k} " + ("is not there" if k not in shipped_ else f"has the places {places_(de_[k])}, the English {places_(en_[k])}")
+              for k in _RW_KEYS if k not in shipped_ or places_(de_[k]) != places_(en_[k])]
+    return _rw_faults(page_, verdicts_, en_, cases_), de_bad or _rw_faults(page_, verdicts_, de_, cases_)
+
+
+with tempfile.TemporaryDirectory() as _rw_d:
+    _rw_root = Path(_rw_d).resolve()
+    git(_rw_root, "init", "-q", "-b", "main"); run(_rw_root, "--init", "--key", "msr"); tracker(_rw_root, "MSR-001")
+    (_rw_root / "docs/work-tracker/brand").mkdir(parents=True, exist_ok=True)
+    (_rw_root / "docs/work-tracker/brand/labels.yaml").write_text("reviews.branch.merged: branch {0}, as its merge {1} names it\n"
+                                                                  "reviews.branch.unknown: branch not known — {0}\n", encoding="utf-8")
+    _rw_gone = run(_rw_root, "--html-only")
+    rm_git(_rw_root)
+fm.configure(HERE)
+check(f"the reviews row as one: a labels.yaml that still sets a retired label of the row, the merged branch's or the branch not known's with its "
+      f"reason, is named on the run, each with what replaces it, and not refused "
+      f"(saw {_rw_gone[0]}, {_rw_gone[2].strip()[-200:]!r})",
+      _rw_gone[0] == 0 and all(f"labels.yaml: {k_} is no longer read — " + fm.LABELS_GONE.get(k_, "?") in _rw_gone[2] and k_ not in fm.LABELS
+                               for k_ in ("reviews.branch.merged", "reviews.branch.unknown")))
+_rw_de_table = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+_rw_pinned = lambda en, de: [f"{k}: {(en.get(k), de.get(k))!r}" for k, w in _RW_WORDS.items() if (en.get(k), de.get(k)) != w]
+check(f"the reviews row as one: each of its labels says its words, in English and in the German table the tool ships (differ: "
+      f"{_rw_pinned(fm.LABELS, _rw_de_table)})", _rw_pinned(fm.LABELS, _rw_de_table) == [])
+check("the reviews row as one · its words' mutant, the German on-label with its places swapped: the pin FAILS on it",
+      _rw_pinned(fm.LABELS, dict(_rw_de_table, **{"reviews.on": "auf {0} @ {1}"})) != [])
+if shutil.which("node"):
+    _rw_b = _rw_board()
+    _rw_en, _rw_de = _rw_class(_rw_b)
+    _rw_kinds = {_rw_b[2].get(v[0]): v[6][0] for v in _rw_b[1]}
+    check(f"the reviews row as one, on the English table: line 1 is *on <branch> @ <commit>* for every kind of branch, a branch not known said in its "
+          f"place with its reason after the commit; line 2 says each session not known with its test's reason, never a dash, each id kept whole; the "
+          f"help line leads the section (kinds drawn: {sorted(set(_rw_kinds.values()))}; problems: {_rw_en})",
+          _rw_en == [] and set(_rw_kinds.values()) == {"line", "merge", "ambiguous", "unnamed", "none"} and len(_rw_kinds) == 12)
+    check(f"the reviews row as one, on the German table the tool ships: each of the row's labels is there with the English one's places, and the row "
+          f"draws as on the English table (problems: {_rw_de})", _rw_de == [])
+    _rw_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    _RW_MUTANTS = {
+        "the commit before the branch": (('rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1]))',
+                                          'lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]).join("")'),),
+        "the merge that names the branch back in the row": (('?[lh("reviews.branch",`<code>${esc(b[1])}</code>`),""]',
+                                                             '?[lh("reviews.branch",`<code>${esc(b[1])}</code>`)+(b[2]?" "+cid(b[2],u):""),""]'),),
+        "a word not held to its name": (('.replace(/ (?=\\{\\d\\})/g,"&nbsp;")', ""),),
+        "the reason of a branch not known before the commit": (('</i>`,` <i>— ${b[0]=="unnamed"', '</i>`+` <i>— ${b[0]=="unnamed"'),
+                                                               (':l("reviews.branch.none")}</i>`],', ':l("reviews.branch.none")}</i>`,""],')),
+        "no branch here, said with no reason": ((':l("reviews.branch.none")}</i>`],', ':""}</i>`],'),),
+        "a dash for the verdict's own session": (('v[2]?sid(v[2]):nk("reviews.notknown.own")', 'sid(v[2]||"—")'),),
+        "a dash for the branch's session": ((':v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread")', ':sid(v[3][0]||"—")'),),
+        "the verdict's own session not known, given the range's reason": (('v[2]?sid(v[2]):nk("reviews.notknown.own")', 'v[2]?sid(v[2]):nk("reviews.notknown.range")'),),
+        "the oldest session's id not kept whole": (('lh("reviews.sessions.more",sid(v[7]),v[3].length-1)', 'lh("reviews.sessions.more",esc(v[7]),v[3].length-1)'),),
+        "no rule keeps a session id whole": ((_RW_CSS, ""),),
+        "no help line": ((_RW_HELP, 'week.filter(v=>!folds(v)).map(vr).join("")'),)}
+    for what_, edits_ in _RW_MUTANTS.items():
+        check(f"the reviews row as one · its mutant, {what_}: the class test FAILS on it", _rw_class(_rw_b, edits_)[0] != [])
+    _RW_GEN = ('oldest_session(history, tip, own) if tip else "",\n                    bool(tip)))', 'oldest_session(history, tip, own) if tip else "",\n                    True))')
+    check("the reviews row as one · its mutant, the reviewed commit taken as here where it is not, so the range's reason is given: the class test FAILS on it",
+          _rw_src.count(_RW_GEN[0]) == 1 and _rw_class(_rw_board(_rw_src.replace(*_RW_GEN)))[0] != [])
+    fm.configure(HERE)
+else:
+    _skipped("the reviews row as one, drawn by the board's script", 14, "no Node here")
+
+# --- a label's places keep their meaning. A key the board ships never changes what its places mean: an adopter's labels.yaml overrides its
+#     words, and a place a label no longer fills shows as nothing, with no line to say so. A new meaning takes a new key, and the old key
+#     retires into LABELS_GONE, named on the run. What a place means cannot be read from the text; what can is held here: for every key in both
+#     the release base's LABELS and this tool's, each place the base's English uses is still used. The base's source is read from git and parsed
+#     with `ast`, never imported; a retired key is exempt, and named -----------------------------------------------------------------------------
+_PK_BASE = "a07d5a1"
+
+
+def _pk_labels(src):
+    """`LABELS` of a tool's source `src`, read with `ast`: the dict's own items, each name it reads taken from that name's literal assignment."""
+    tree = ast.parse(src)
+    consts = {}
+    for n in tree.body:
+        if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+            try:
+                consts[n.targets[0].id] = ast.literal_eval(n.value)
+            except ValueError:
+                pass
+    node = next(n for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "LABELS" for t in n.targets))
+    names = {x.id for x in ast.walk(node.value) if isinstance(x, ast.Name)} & set(consts)
+    return eval(compile(ast.Expression(body=node.value), "<LABELS>", "eval"), {"__builtins__": {}, **{k: consts[k] for k in names}})
+
+
+def _pk_problems(base, head, gone):
+    """(each key in both `base` and `head` whose head no longer uses a place the base's English uses, the base's keys retired into `gone`)."""
+    places = lambda s: set(re.findall(r"\{\d\}", s))
+    return ([f"{k}: the base's {sorted(places(base[k]))}, now {sorted(places(head[k]))}" for k in sorted(set(base) & set(head))
+             if not places(base[k]) <= places(head[k])], sorted(k for k in base if k in gone and k not in head))
+
+
+_pk_said = subprocess.run(["git", "-C", str(HERE), "show", f"{_PK_BASE}:shoalmark.py"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+_pk_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+if _pk_said.returncode == 0:
+    _pk_base, _pk_head = _pk_labels(_pk_said.stdout), _pk_labels(_pk_src)
+    _pk_bad, _pk_exempt = _pk_problems(_pk_base, _pk_head, fm.LABELS_GONE)
+    check(f"a label's places keep their meaning: every key in both {_PK_BASE}'s LABELS and this tool's still uses each place the base's English uses "
+          f"(keys compared: {len(set(_pk_base) & set(_pk_head))}; retired into LABELS_GONE and exempt: {_pk_exempt}; problems: {_pk_bad})",
+          _pk_bad == [] and len(set(_pk_base) & set(_pk_head)) > 200 and _pk_head == fm.LABELS
+          and {"reviews.branch.merged", "reviews.branch.unknown"} <= set(_pk_exempt))
+    _PK_MUTANT = ('"reviews.sessions.more": "{0} and {1} more",', '"reviews.sessions.more": "{0} and more",')
+    check("a label's places keep their meaning · its mutant, a kept key that drops one of its places: the test FAILS on it",
+          _pk_src.count(_PK_MUTANT[0]) == 1 and _pk_problems(_pk_base, _pk_labels(_pk_src.replace(*_PK_MUTANT)), fm.LABELS_GONE)[0] != [])
+    _pk_back = dict(_pk_head, **{"reviews.branch.unknown": _pk_head["reviews.branch.notknown"]})
+    _pk_ctl = _pk_problems(_pk_base, _pk_back, set(fm.LABELS_GONE) - {"reviews.branch.unknown"})
+    check(f"a label's places keep their meaning · its control: the branch not known's old key, kept at the new meaning and not retired, FAILS it, "
+          f"and retired it is exempt and named (saw {_pk_ctl})",
+          any(p_.startswith("reviews.branch.unknown:") for p_ in _pk_ctl[0]) and "reviews.branch.unknown" not in _pk_ctl[1]
+          and "reviews.branch.unknown" in _pk_exempt)
+else:
+    check(f"a label's places keep their meaning: {_PK_BASE}'s shoalmark.py could not be read from git (saw {_pk_said.stderr.strip()[-200:]!r})", False)
+
 # --- FM-053, BF-7: the reviews heading's counts put the number first, as its other counts do — in English and in the German table the tool ships
 _de_shipped = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
 check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{0}} ohne Spur* and *{{0}} auf dem Trunk* in the German table "
@@ -8242,7 +8558,6 @@ def _m_repo(root, forge=False):
     merges_ = {v_: out_("rev-parse", "HEAD") for v_ in list(cases_)[-2:]}
     git(root, "checkout", "-q", "-b", "fm/f", "main"); b_ = commit_("f, built\n\nSession: b9"); v_ = verdict_("NOT READY", b_, "r9"); cases_[v_] = "shows"
     git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/f'", "fm/f"); git(root, "branch", "-q", "-D", "fm/f")
-    merges_[v_] = out_("rev-parse", "HEAD")
     git(root, "checkout", "-q", "-b", "together", "main")
     for name_ in ("fm/a", "fm/b-a-branch-with-a-long-name", "fm/c", "fm/d"):
         git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
@@ -8288,8 +8603,9 @@ check("FM-053, BF-61, BF-62, BF-64 · the reviews section folds exactly the verd
       "verdict's row is `rv`, its second line a block of text; an id is seven characters, and links where the generator gives its commit's page",
       _m_src.count(_M_FOLDS) == 1 and _m_src.count(_M_FLOW) == 1 and fm.LABELS.get("reviews.more") == "and {0} more verdicts by another session this week"
       and 'slice(0,10)' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")]
-      and _m_src.count('[page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]') == 1
-      and _m_src.count('lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))') == 1 and _m_src.count('lh("reviews.branch.unnamed",cid(b[1],u))') == 1)
+      and _m_src.count('[page(v), page(r), page(branch[1] if branch[0] == "unnamed" else "")], read]') == 1
+      and 'reviews.branch.merged",' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")]
+      and _m_src.count('lh("reviews.branch.unnamed",cid(b[1],u))') == 1)
 _ONE = 'more.length==1?l("reviews.more.one"):l("reviews.more",more.length)'
 _one_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
 check("FM-053 · the reviews' fold counts one verdict in the singular — `reviews.more.one`, picked where the count is 1 — and more in the plural, in "
@@ -8311,7 +8627,7 @@ if _browser("reviews"):
                   f"and folds the READY and READY TO TAG by another session into *and 3 more verdicts by another session this week*; each id is seven "
                   f"characters, and each row's state starts on its word's line (saw {seen_})", not any(seen_.values()))
             check(f"FM-053, BF-64, RV-3664 · with a forge named, each id on a verdict's row links to its commit's page where origin holds the commit — the "
-                  f"verdict's, the reviewed commit's, and the merge's that names its branch or names none — and none links where origin does not; with no "
+                  f"verdict's, the reviewed commit's, and the merge's that names no branch — and none links where origin does not; with no "
                   f"forge none links (saw {linked_})", not linked_ and any(len(l_[1]) == 2 and l_[1][1] for l_ in flinks_.values())
                   and any(l_ == ("", []) for l_ in flinks_.values()))
             flat_ = _m_faults(_header_at(wt_, page_.replace(_M_FOLDS, "folds=v=>false"), 1024, _M_PROBE), 1024, cases_, links_)
@@ -9018,23 +9334,27 @@ path.line: 1 line
 day.title: the day
 day.span: the last 24 hours
 reviews.reports: reports, not proofs
-reviews.on: on {0}
+reviews.on: on {1} @ {0}
 reviews.notready: {0} not ready
 reviews.findings: {0} with findings
 reviews.branch: branch {0}
-reviews.branch.merged: branch {0}, as its merge {1} names it
 reviews.branch.ambiguous: branch {0}: {1} each hold the verdict on their own line
 reviews.ambiguous: ambiguous
-reviews.branch.unknown: branch not known — {0}
+reviews.branch.notknown: branch not known
 reviews.branch.none: no branch here holds the verdict on its own line
 reviews.branch.unnamed: its merge {0} names no branch
+reviews.help: a verdict's branch is the one it was committed on; once merged, the one its merge names
+reviews.notknown: not known
+reviews.notknown.own: the verdict names no session
+reviews.notknown.range: no commit on it names a session, merges and verdicts aside
+reviews.notknown.unread: the reviewed commit is not here
 verdict.READY: ready
 verdict.READY WITH FINDINGS: ready with findings
 verdict.READY TO TAG: ready to tag
 verdict.NOT READY: not ready
 next.owner: you
 waiting.more: and {0} more: the oldest are above
-reviews.sessions: its session {0}, the branch's {1}
+reviews.sessions: {0}, the branch's {1}
 reviews.sessions.more: {0} and {1} more
 reviews.more: and {0} more verdicts by another session this week
 reviews.more.one: und 1 weiteres Urteil von einer anderen Session in dieser Woche
@@ -9166,9 +9486,9 @@ with tempfile.TemporaryDirectory() as d:
         _shipped_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
         check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
               set(fm.LABELS) - set(_shipped_de) <= {"tagline"} and not set(_shipped_de) - set(fm.LABELS))
-        _en_de = sorted(k_ for k_, v_ in fm.LABELS.items() if v_ and _shipped_de.get(k_) == v_)
+        _en_de = sorted(k_ for k_, v_ in fm.LABELS.items() if re.sub(r"\{\d\}", "", v_).strip() and _shipped_de.get(k_) == v_)
         check(f"FM-053 · the German table the tool ships carries the go-to-market seat's words rows: no label in it keeps its English but one whose German "
-              f"is the same word, `brand.gone.theme`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Session in dieser Woche* (saw {_en_de})",
+              f"is the same word, `brand.gone.theme`, and none that is only its places, as `reviews.branch`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Session in dieser Woche* (saw {_en_de})",
               _en_de == ["brand.gone.theme"] and _shipped_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Session in dieser Woche"
               and fm.LABELS["reviews.more"] == "and {0} more verdicts by another session this week")
         if _browser("german"):

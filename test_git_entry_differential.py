@@ -1432,6 +1432,25 @@ SEAT_ICON_EDITS = (
      '<details class="grp"><summary>${esc(g[0])} <span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} (${esc(g[2])})'),
 )
 
+# the reviews row as one: each change it makes to this fixture's page — (the joined page's text, the candidate's), the template's lines and the
+# labels item by item, each where it occurs once — applied in order after the join's edits
+REVIEWS_ROW_EDITS = (
+    ('.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}',
+     '.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv .sid{white-space:nowrap}'),
+    ('  brn=(b,u)=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))\n    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))\n    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none"))}</i>`;\n',
+     '  brn=(b,u)=>b[0]=="line"||b[0]=="merge"?[lh("reviews.branch",`<code>${esc(b[1])}</code>`),""]\n    :b[0]=="ambiguous"?[lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", ")),""]\n    :[`<i>${l("reviews.branch.notknown")}</i>`,` <i>— ${b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none")}</i>`],\n  rvon=(b,c)=>esc(L["reviews.on"]??"reviews.on").replace(/ (?=\\{\\d\\})/g,"&nbsp;").replace(/\\{(\\d)\\}/g,(m,i)=>[c,b[0]][i]??"")+b[1],\n  sid=s=>`<span class="sid">${esc(s)}</span>`,nk=k=>`<i>${l("reviews.notknown")} — ${l(k)}</i>`;\n'),
+    ('    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]),v[5]?l("verdict."+v[5]):l("type.verdict"),\n',
+     '    vr=v=>row(cid(v[0],(v[8]||[])[0]),rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1])),v[5]?l("verdict."+v[5]):l("type.verdict"),\n'),
+    ('+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),',
+     '+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1):v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))),'),
+    ('      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?',
+     '      `<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")+(more.length?'),
+    ('"reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch\'s {1}", ',
+     '"reviews.on": "on {1} @ {0}", "reviews.sessions": "{0}, the branch\'s {1}", '),
+    ('"reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it", "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous", "reviews.branch.unknown": "branch not known — {0}", "reviews.branch.none": "no branch here holds the verdict on its own line", "reviews.branch.unnamed": "its merge {0} names no branch", ',
+     '"reviews.branch": "{0}", "reviews.branch.ambiguous": "{0}: {1}", "reviews.ambiguous": "ambiguous", "reviews.branch.notknown": "branch not known", "reviews.branch.none": "committed on no branch here", "reviews.branch.unnamed": "its merge {0} names no branch", "reviews.help": "a verdict\'s branch is the one it was committed on; once merged, the one its merge names", "reviews.notknown": "not known", "reviews.notknown.own": "the verdict names no session", "reviews.notknown.range": "no commit on it names a session, merges and verdicts aside", "reviews.notknown.unread": "the reviewed commit is not here", '),
+)
+
 
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
@@ -1440,7 +1459,7 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS + REVIEWS_ROW_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
@@ -2059,6 +2078,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                            page != new_page and marker_only(page) and not snapshots_match(old, with_board(new, PAGE_PATH, page)))
         assert_control(v2 + "the controls' anchors are real: WORK-001, the dialog's element and WORK-001's hook are each on the candidate's page",
                        new_page.count(b"WORK-001") >= 1 and new_page.count(section) == 1 and new_page.count(hook) == 1)
+        # the reviews row's allowance, held the same way: literal text, each after found once, and a row changed beyond it does not match
+        rv = "Git entry reviews-row allowance: "
+        assert_control(rv + "REVIEWS_ROW_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(REVIEWS_ROW_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in REVIEWS_ROW_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in REVIEWS_ROW_EDITS))
+        row_variants = {
+            "the session id's rule widened to the row": new_page.replace(b".rv .sid{white-space:nowrap}", b".rv .sid,.rv{white-space:nowrap}", 1),
+            "the help line dropped": new_page.replace(b'`<p class="help">${l("reviews.help")}</p>`+week', b"week", 1),
+            "one byte more in line 1": new_page.replace(b'cid(v[1],(v[8]||[])[1])),v[5]', b'cid(v[1],(v[8]||[])[1])) ,v[5]', 1),
+            "a label beyond the allowance": new_page.replace(b'"reviews.notknown": ', b'"reviews.notknown.more": "x", "reviews.notknown": ', 1)}
+        made_rows = {what: page != new_page for what, page in row_variants.items()}
+        assert_control(rv + "a page whose reviews row differs from REVIEWS_ROW_EDITS' after — a rule widened, the help line dropped, one byte more, "
+                       f"a label beyond them — does not match (each variant made: {made_rows})",
+                       all(made_rows.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in row_variants.values()))
         before_schema, after_schema = (next(row for row in rows if row["case"] == SCHEMA_CASE and row["version"] == version) for version in ("baseline", "candidate"))
         schema_old, schema_new = before_schema["stdout"], after_schema["stdout"]
         takes = lambda stdout: schema_matches(before_schema, dict(after_schema, stdout=stdout))

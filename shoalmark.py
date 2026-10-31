@@ -4180,7 +4180,7 @@ details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>
    on the row coloured */
 .row.vok,.row.vwarn,.row.vfail{margin:0 -2ch;padding:3px 2ch}.row.vok{background:var(--okbg)}.row.vwarn{background:var(--warnbg)}.row.vfail{background:var(--failbg)}
 .vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}
-.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
+.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv .sid{white-space:nowrap}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
 details.more{border-top:1px solid var(--line)}details.more>summary{color:var(--dim);padding:3px 0 3px 9ch}
 details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.more[open]>summary:before{content:"v ";content:"v " / ""}
 .ty{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
@@ -4433,16 +4433,18 @@ function box(){
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
   const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
-  brn=(b,u)=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))
-    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
-    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none"))}</i>`;
+  brn=(b,u)=>b[0]=="line"||b[0]=="merge"?[lh("reviews.branch",`<code>${esc(b[1])}</code>`),""]
+    :b[0]=="ambiguous"?[lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", ")),""]
+    :[`<i>${l("reviews.branch.notknown")}</i>`,` <i>— ${b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none")}</i>`],
+  rvon=(b,c)=>esc(L["reviews.on"]??"reviews.on").replace(/ (?=\{\d\})/g,"&nbsp;").replace(/\{(\d)\}/g,(m,i)=>[c,b[0]][i]??"")+b[1],
+  sid=s=>`<span class="sid">${esc(s)}</span>`,nk=k=>`<i>${l("reviews.notknown")} — ${l(k)}</i>`;
   if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"},
-    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]),v[5]?l("verdict."+v[5]):l("type.verdict"),
-        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),
+    vr=v=>row(cid(v[0],(v[8]||[])[0]),rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1])),v[5]?l("verdict."+v[5]):l("type.verdict"),
+        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1):v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),
     folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG"),week=REG.verdicts||[],more=week.filter(folds);
     S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
         "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
-      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
+      `<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
     S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
@@ -4625,15 +4627,22 @@ LABELS = {
     # the heading, led by what failed and what warns where there is any, then who gave the verdicts (the guide, §1)
     "reviews.title": "reviews · this week", "reviews.counts": "{0} by another session · {1} by the same session",
     "reviews.untraced": "{0} untraced", "reviews.trunk": "{0} on trunk",          # the number first, as the heading's other counts (BF-7)
-    "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
-    # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
+    "reviews.reports": "reports, not proofs", "reviews.on": "on {1} @ {0}", "reviews.sessions": "{0}, the branch's {1}",
+    # the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none not known with its reason
     "reviews.sessions.more": "{0} and {1} more",
     "reviews.more": "and {0} more verdicts by another session this week", "reviews.more.one": "and 1 more verdict by another session this week",
-    # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous*
-    "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
-    "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
-    "reviews.branch.unknown": "branch not known — {0}", "reviews.branch.none": "no branch here holds the verdict on its own line",
+    # a verdict's row, line 1, `reviews.on`: `{0}` the reviewed commit, and `{1}` its branch, as markup the page builds — a branch; the word
+    # *ambiguous* and the branches; or the branch not known, in italics, its reason after the commit, a merge's commit in it
+    "reviews.branch": "{0}",
+    "reviews.branch.ambiguous": "{0}: {1}", "reviews.ambiguous": "ambiguous",
+    "reviews.branch.notknown": "branch not known", "reviews.branch.none": "committed on no branch here",
     "reviews.branch.unnamed": "its merge {0} names no branch",
+    # the section's one help line: how a verdict's branch is known
+    "reviews.help": "a verdict's branch is the one it was committed on; once merged, the one its merge names",
+    # line 2: a session not known, in italics, with the reason the tool's own test gives — the verdict's commit names none; no commit of the
+    # branch's own, merges and verdicts aside, names one; or the reviewed commit is not in this repository, so its range is not read
+    "reviews.notknown": "not known", "reviews.notknown.own": "the verdict names no session",
+    "reviews.notknown.range": "no commit on it names a session, merges and verdicts aside", "reviews.notknown.unread": "the reviewed commit is not here",
     "reviews.notready": "{0} not ready", "reviews.findings": "{0} with findings",
     # a verdict's word as the reviewer gave it, its row's TYPE (G3) — `--queue` reads it from the verdict commit's subject
     "verdict.READY": "ready", "verdict.READY WITH FINDINGS": "ready with findings", "verdict.READY TO TAG": "ready to tag", "verdict.NOT READY": "not ready",
@@ -4738,7 +4747,9 @@ LABELS = {
     "brand.gone.wordmark": "the name", "brand.gone.themes": "[palette], by name",
 }
 LABELS_GONE = {**{k: "light or dark is one switch, its word `scheme.toggle`" for k in ("scheme.auto", "scheme.light", "scheme.dark", "scheme.button")},
-               "footer": "the board ends with the running line alone: no claim stands under it"}
+               "footer": "the board ends with the running line alone: no claim stands under it",
+               "reviews.branch.merged": "a verdict's branch is named alone, its word `reviews.branch`; the section's help line, `reviews.help`, says a merge may name it",
+               "reviews.branch.unknown": "a branch not known is said alone, its word `reviews.branch.notknown`, and its reason follows the commit on the row"}
 BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
 # THE BOARD'S COLOURS (the design guide, §5 and §13; FM-053's answer, and the guide's amendment G1–G2): every colour is a token on `:root`, so a
 # palette is a token swap, and the page writes the one it wears from here. Three meanings, one colour each: `teal` done or success, `amber` a
@@ -9735,13 +9746,14 @@ def oldest_session(history, tip, own):
 
 
 def verdict_reports(days=None):
-    """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
-    its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
-    range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
-    is on the trunk's first-parent line (not a branch verdict) — and the verdict's own word, read from its subject as `--queue` reads it
-    (`VERDICT_WORD_RE`; "" where it names none), its branch (`verdict_branch`, RV-3343: ["merge", name, merge] where the merge's message
-    names it, ["unnamed", merge] where it names none), and the session of the range's oldest commit that carries one (`oldest_session`, BF-6). The range is the branch's own commits, less other
-    verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
+    """Each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed, its session, the reviewed range's
+    sessions, the word): *independent* when the verdict's session root is none of the range's, *same session* when it is one of them, *untraced*
+    when either side names no session, *on trunk* when the tip is on the trunk's first-parent line (not a branch verdict) — and the verdict's own
+    word, read from its subject as `--queue` reads it (`VERDICT_WORD_RE`; "" where it names none), its branch (`verdict_branch`: ["merge", name,
+    merge] where the merge's message names it, ["unnamed", merge] where it names none), the session of the range's oldest commit that carries one
+    (`oldest_session`), and whether the reviewed commit is in this repository: where it is not, its range is not read, which is why no session of
+    the range is known. The range is the branch's own commits, less other verdicts (`History.reviewed_commits`, read from one `git log`). A
+    report, never a refusal."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
     found = []
@@ -9778,7 +9790,8 @@ def verdict_reports(days=None):
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")
-        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict], branches[verdict], oldest_session(history, tip, own) if tip else ""))
+        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict], branches[verdict], oldest_session(history, tip, own) if tip else "",
+                    bool(tip)))
     return out
 
 
@@ -9794,7 +9807,7 @@ def sessions_report():
         lines.append(f"reviews this week · {len(reps)} verdict(s) · independent {count['independent']} · same session {count['same session']}"
                      + (f" · untraced {count['untraced']}" if count["untraced"] else "") + (f" · on trunk {count['on trunk']}" if count["on trunk"] else ""))
         lines += [f"  verdict {v[:10]} on {r[:10]}: " + ("on trunk — not a branch verdict" if w == "on trunk" else
-                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word, _branch, _first in reps]
+                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word, _branch, _first, _read in reps]
     return lines
 
 
@@ -9869,8 +9882,8 @@ def board_sessions():
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
-            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first, [page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]]
-                         for v, r, sid, ranged, w, word, branch, first in reps]}
+            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first, [page(v), page(r), page(branch[1] if branch[0] == "unnamed" else "")], read]
+                         for v, r, sid, ranged, w, word, branch, first, read in reps]}
 
 
 def sessions_digest():
