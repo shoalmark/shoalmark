@@ -13,6 +13,7 @@ PROMPT = 'Please check honestly whether shoalmark fits this project; the answer 
 LABELS = {"en": "Copy the prompt", "de": "Prompt kopieren"}
 CUES = {"en": "— press start —", "de": "— Start drücken —"}
 COIN = '<span class="gcoin" aria-hidden="true"><svg class="cab cab-coin" aria-hidden="true"></svg></span>'
+TWIN = '<p class="door-again"><a class="btn door" href="probe.txt" aria-haspopup="dialog">%s' + COIN + '</a></p>'
 TWIN_TEXT = "# How it works\n\nTry it: the button \"Hand your agents the note\" leads to a note.\n\n```\nnext: owner\n```\n"
 
 
@@ -24,6 +25,8 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
     primary = (f'<span class="cue" aria-hidden="true"><span class="cue-t">{CUES[lang]}</span></span>'
                f'<a class="btn door" id="probe-open" href="probe.txt" aria-haspopup="dialog">{label}{COIN}</a>' if probe else
                f'<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT{"" if en else ".de"}.md">{label}</a>')
+    start = ('<section class="band wrap" id="start"><div class="coins"><div class="coin">coin</div></div>' + (TWIN % label if probe else "")
+             + '<p class="small">tell</p></section>')
     short = SITE_URL + ("" if en else "de/") + "probe.txt"
     dialog = (f'<dialog class="probe" id="probe" aria-labelledby="probe-h"><h2 id="probe-h">The probe prompt</h2>'
               f'<textarea id="probe-text" readonly>{PROMPT.replace(chr(34), "&#34;")}</textarea>'
@@ -39,7 +42,7 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
             f'<a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{tag}">release<b>{tag}</b></a>'
             f'<a class="lang" href="{"de/index.html" if en else "../index.html"}" hreflang="{"de" if en else "en"}">{"DE" if en else "EN"}</a>'
             f'{primary}<a class="btn alt" href="{"" if en else "../"}{"" if en else "de/"}how-it-works.html">How</a>'
-            f'<footer><a href="https://github.com/shoalmark/shoalmark/releases/tag/{footer_tag or tag}">{footer_tag or tag}</a></footer>'
+            f'{start}<footer><a href="https://github.com/shoalmark/shoalmark/releases/tag/{footer_tag or tag}">{footer_tag or tag}</a></footer>'
             f'{dialog}<script>const a = 1; addEventListener("resize", () => a);</script></body></html>')
 
 
@@ -225,8 +228,8 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("probe.txt", "I decide.", "I decide!"), "probe.txt is missing or is not, byte for byte", probe=True)
         self.refused(self.edit("index.html", ' aria-labelledby="probe-h"', ""), "not one labelled dialog", probe=True)
         self.refused(self.edit("de/index.html", '<textarea id="probe-text" readonly>', '<textarea id="other" readonly>'), "not one labelled dialog", probe=True)
-        self.refused(self.edit("index.html", '<a class="btn door" id="probe-open" href="probe.txt" aria-haspopup="dialog">', '<a class="btn door" id="probe-open" href="index.html" aria-haspopup="dialog">'),
-                     "does not copy the prompt", probe=True)
+        both = lambda site: [self.edit("index.html", 'href="probe.txt" aria-haspopup="dialog">', 'href="index.html" aria-haspopup="dialog">')(site) for _ in range(2)]
+        self.refused(both, "does not copy the prompt", probe=True)
         self.refused(self.edit("index.html", ">shoalmark.tools/<wbr>probe.txt</a>", ">probe.txt</a>"), "second step does not link to", probe=True)
         self.refused(self.edit("de/index.html", ">shoalmark.tools/<wbr>de/<wbr>probe.txt</a>", ">https://shoalmark.tools/de/probe.txt</a>"), "second step does not link to", probe=True)
         self.refused(self.edit("de/index.html", ">shoalmark.tools/<wbr>de/<wbr>probe.txt</a>", ">shoalmark.tools/<wbr>probe.txt</a>"), "second step does not link to", probe=True)
@@ -456,6 +459,21 @@ class States(unittest.TestCase):
             ("the door with the probe off", dict(probe=False, change=self.put(note, note.replace('class="btn"', 'class="btn door"'))),
              "the probe switch is off, but the coin door or its coin is built"),
             ("the coin with the probe off", dict(probe=False, change=self.put(note, note.replace("</a>", COIN + "</a>"))),
+             "the probe switch is off, but the coin door or its coin is built"),
+            ("the door's twin left out of #start, with the probe on", dict(probe=True, change=self.put(TWIN % LABELS["en"], "")),
+             "#start does not hold the door's twin with its own"),
+            ("the twin without its coin", dict(probe=True, change=self.put(COIN + "</a></p>", "</a></p>")), "#start does not hold the door's twin with its own"),
+            ("a plain button in #start in the twin's place", dict(probe=True, change=self.put(TWIN % LABELS["en"], '<p><a class="btn" href="#top">%s</a></p>' % LABELS["en"])),
+             "#start does not hold the door's twin with its own"),
+            ("the twin leading to the top, not where the door leads", dict(probe=True, change=self.put('<p class="door-again"><a class="btn door" href="probe.txt"',
+                                                                                                         '<p class="door-again"><a class="btn door" href="#top"')),
+             "the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words"),
+            ("the twin in other words", dict(probe=True, change=self.put(TWIN % LABELS["en"], TWIN % ("↑ " + LABELS["en"]))),
+             "the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words"),
+            ("the twin in the German landing's other words", dict(probe=True, change=self.put(TWIN % LABELS["de"], TWIN % ("↑ " + LABELS["de"]), "de/index.html")),
+             "de/index.html: the probe switch is on, but the door's twin in #start does not lead where the door leads"),
+            ("the twin with the probe off", dict(probe=False, change=self.put('<p class="small">tell</p>', TWIN.replace('href="probe.txt"', 'href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"')
+                                                                                % "Hand your agents the note" + '<p class="small">tell</p>')),
              "the probe switch is off, but the coin door or its coin is built"),
             ("a pitch page whose try row is styled, and nothing of the tape", dict(probe=True, change=self.pitch()), None),
             ("the taped try row's style back on the pitch page", dict(probe=True, change=self.pitch(".tldr dl>div.try.taped{background:#8595a2}")),

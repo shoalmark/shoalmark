@@ -246,12 +246,12 @@ class Page(HTMLParser):
         kinds = (a.get("class") or "").split()
         if "gcoin" in kinds:
             holder = next((el for el in reversed(self.stack) if el["tag"] in ("a", "button")), None)
-            in_door = bool(holder) and holder["tag"] == "a" and "door" in (holder["attrs"].get("class") or "").split() and holder["attrs"].get("id") == "probe-open"
+            in_door = bool(holder) and holder["tag"] == "a" and "door" in (holder["attrs"].get("class") or "").split()
             self.coins.append((in_door, a.get("aria-hidden")))
         if TAPE_KINDS & set(kinds) or a.get("id") == "taped-why":
             self.tapes.append(".".join([tag] + kinds))
         if "door" in kinds:
-            self.doors.append((tag, a))
+            self.doors.append((tag, a, any(up["attrs"].get("id") == "start" for up in self.stack)))
         if "cue-t" in kinds:
             self.cues.append(kinds)
         if tag == "html":
@@ -292,7 +292,8 @@ class Page(HTMLParser):
             if el["attrs"].get("id"):
                 self.texts[el["attrs"]["id"]] = el["text"]
             if el["tag"] == "a":
-                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["name"].split()), "footer": any(up["tag"] == "footer" for up in self.stack)})
+                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["name"].split()), "footer": any(up["tag"] == "footer" for up in self.stack),
+                                     "start": any(up["attrs"].get("id") == "start" for up in self.stack)})
             elif el["tag"] == "style":
                 self.styles.append(el["text"])
             elif el["tag"] == "textarea" and el["attrs"].get("id"):
@@ -353,20 +354,26 @@ for rel, lang, other, canonical, image, adopt, how in (
         fail(f"{rel} has no language switch to {other}, named by its hreflang")
     if p.meta.get("og:image") != SITE_URL + "assets/" + image or p.meta.get("og:locale") != ("en_GB" if lang == "en" else "de_DE") or not (p.title and p.meta.get("description")):
         fail(f"{rel}'s link preview is not its language's: image {image}, its locale, title and description")
-    # what each launch state draws: with the probe on, the primary link is the coin door, lit, with its one coin in it, hidden from screen readers; with
-    # the probe off, neither the door nor its coin; and in both, no tape over a button, no taped button or line that says why, no second line in the cue
-    # and no style for any of them
+    # what each launch state draws: with the probe on, the primary link is the coin door, lit, with its one coin in it, hidden from screen readers, and #start
+    # holds its twin, with a coin of its own, leading where the door leads, in the door's words; with the probe off, neither door nor coin; and in both, no
+    # tape over a button, no taped button or line that says why, no second line in the cue and no style for any of them
     styled = TAPE_CSS.search(" ".join(p.styles))
     if p.tapes or len(p.cues) > 1 or any({"was", "now"} & set(kinds) for kinds in p.cues) or styled:
         fail(f"{rel}: the landing draws a tape, the taped state or a second cue line, or styles one: {(p.tapes + [' '.join(k) for k in p.cues[1:]] + ([styled.group(0)] if styled else []))[:3]}")
     if probe_on:
-        if len(p.doors) != 1 or p.doors[0][0] != "a" or p.doors[0][1].get("id") != "probe-open" or [in_door for in_door, _ in p.coins] != [True]:
-            fail(f"{rel}: the probe switch is on, but the primary link is not the coin door with its one coin in it")
+        hero, twins = [a for tag, a, start in p.doors if tag == "a" and not start], [a for tag, a, start in p.doors if tag == "a" and start]
+        if len(p.doors) != 2 or len(hero) != 1 or hero[0].get("id") != "probe-open" or [in_door for in_door, _ in p.coins] != [True, True]:
+            fail(f"{rel}: the probe switch is on, but the primary link is not the coin door with its one coin in it, or #start does not hold the door's twin with its own")
         if any(hidden != "true" for _, hidden in p.coins):
             fail(f"{rel}: the probe switch is on, but the door's coin is read by screen readers")
+        door = next(a for a in p.anchors if a["attrs"].get("id") == "probe-open")
+        twin = [a for a in p.anchors if a["start"] and "door" in classes(a)]
+        if (len(twins) != 1 or twins[0].get("id") or len(twin) != 1 or leads_to(rel, twin[0]["attrs"].get("href") or "") != leads_to(rel, door["attrs"].get("href") or "")
+                or twin[0]["attrs"].get("aria-haspopup") != "dialog" or twin[0]["text"] != door["text"]):
+            fail(f"{rel}: the probe switch is on, but the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words")
     elif p.doors or p.coins:
         fail(f"{rel}: the probe switch is off, but the coin door or its coin is built")
-    buttons = [a for a in p.anchors if "btn" in classes(a)]
+    buttons = [a for a in p.anchors if "btn" in classes(a) and not a["start"]]
     primary, second = [a for a in buttons if "alt" not in classes(a)], [a for a in buttons if "alt" in classes(a)]
     if len(primary) != 1 or len(second) != 1 or leads_to(rel, second[0]["attrs"].get("href") or "") != how:
         fail(f"{rel} has not one primary button and one second button that leads to {how}")
@@ -410,7 +417,7 @@ if not probe_on:
 
 # How it works: each language's page is in its language and names the primary button as its landing labels it; its twin carries no raw HTML and no include
 for rel, landing, twin, lang, quote in (("how-it-works.html", "index.html", "how-it-works/index.md", "en", '"%s"'), ("de/how-it-works.html", "de/index.html", "de/how-it-works/index.md", "de", "„%s“")):
-    label = [a["text"] for a in pages[landing].anchors if "btn" in classes(a) and "alt" not in classes(a)][0]
+    label = [a["text"] for a in pages[landing].anchors if "btn" in classes(a) and "alt" not in classes(a) and not a["start"]][0]
     if pages[rel].lang != lang:
         fail(f"{rel} says lang={pages[rel].lang!r}, not {lang!r}")
     text = (site / twin).read_text(encoding="utf-8") if (site / twin).is_file() else fail(f"missing {twin}")

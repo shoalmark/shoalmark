@@ -12,7 +12,8 @@
 // the page does not scroll sideways and the door is the live link; the door, 55 px tall on a desktop and 59 px on a phone, shows its copy icon centred under its
 // label; under reduced motion the coin is not drawn and the cue stands lit, and in print the coin is not drawn and the cue stands lit and still; the door's name is
 // its label; after a mouse press the dialog opens when the coin has landed, 0.36 s after the press, the copy made in the click, and at once for the keyboard and
-// under reduced motion.
+// under reduced motion. The door's twin after the coins in #start, there with the probe alone, in the door's words and leading where it leads, does the same
+// on hover and on a press, gets focus back when the dialog closes, and draws no coin under reduced motion or in print.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
 // names; focus is inside it; Tab and Shift+Tab never reach the page behind; the prompt stands in step 1 as a box of two lines with a fade whose button opens it whole
 // and folds it back by keyboard; the approvals' fold opens and closes by keyboard; Escape closes it and focus is back on the
@@ -116,6 +117,10 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
   if (page.endsWith("index.html") && !page.startsWith("how")) {   // the ticker's words are long; it clips its own band and takes no room of the page
     const tk = await t.js(`(() => { const e = document.querySelector(".ticker"), r = e.getBoundingClientRect(); return {overflowX: getComputedStyle(e).overflowX, right: Math.round(r.right), iw: innerWidth, sw: document.documentElement.scrollWidth} })()`);
     verdict(page, w, h, "the ticker clips its own band and takes no room of the page", tk.overflowX == "hidden" && tk.right <= tk.iw && tk.sw <= tk.iw, JSON.stringify(tk));
+    const dr = await t.js(`(() => { const c = document.querySelector("#start .coins"), d = document.querySelector("#start .btn.door");
+      return {doors: document.querySelectorAll(".btn.door").length, twins: document.querySelectorAll("#start .btn.door").length, after: !!(c && d && (c.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING))} })()`);
+    verdict(page, w, h, state == "probe" ? "the door's twin stands after the coins in #start, beside the hero's door" : "with the probe off no coin door is drawn, nor its twin",
+      state == "probe" ? dr.doors == 2 && dr.twins == 1 && dr.after : dr.doors == 0, JSON.stringify(dr));
     const bd = await t.js(`(() => { const head = document.querySelector(".board thead"), rows = [...document.querySelectorAll(".board tbody tr")].map(r => { const g = s => r.querySelector(s).getBoundingClientRect(), tr = r.getBoundingClientRect(), sc = g(".sc"), pd = g(".pd"), rk = g(".rk");
       return {under: pd.top >= Math.max(sc.bottom, rk.bottom) - 1, full: pd.width >= tr.width - 1, beside: pd.left >= sc.right - 1 && Math.abs(pd.top - tr.top) <= 14} });
       return {heads: head ? getComputedStyle(head).display : null, rows, tall: Math.round(document.querySelector(".board table").getBoundingClientRect().height)} })()`);
@@ -261,6 +266,15 @@ const TIMES = `(() => { window.__t = {}; const d = document.getElementById("prob
   navigator.clipboard.writeText = x => { window.__t.copy = performance.now(); return w(x) };
   new MutationObserver(() => { if (g.open && window.__t.open == null) window.__t.open = performance.now() }).observe(g, {attributes: true, attributeFilter: ["open"]});
   d.scrollIntoView({block: "center"}); const r = d.getBoundingClientRect(); return {x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2)} })()`;
+// the door's twin in #start: the same timings as the door's, its place, and whether it holds the door's words and leads where the door leads
+const TWIN = `(() => { const d = document.querySelector("#start .btn.door"), g = document.getElementById("probe"), door = document.getElementById("probe-open"); if (!d || !door) return null;
+  window.__t = {}; const w = navigator.clipboard.writeText;
+  d.addEventListener("pointerdown", () => { window.__t.down = performance.now() }, true); d.addEventListener("click", () => { window.__t.click = performance.now() }, true);
+  navigator.clipboard.writeText = x => { window.__t.copy = performance.now(); return w(x) };
+  new MutationObserver(() => { if (g.open && window.__t.open == null) window.__t.open = performance.now() }).observe(g, {attributes: true, attributeFilter: ["open"]});
+  const label = e => [...e.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
+  d.scrollIntoView({block: "center"}); const r = d.getBoundingClientRect();
+  return {x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), same: !!label(d) && label(d) == label(door) && d.getAttribute("href") == door.getAttribute("href")} })()`;
 if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
   for (const [w, h] of [[360, 780], [390, 844], [1024, 768], [1440, 900]]) {
     const t = await open(page, {w, h, reduce: false});
@@ -315,6 +329,35 @@ if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("i
     verdict(page, w, h, "in print the coin is not drawn and the cue stands lit and still, one line",
       pr.coin == "none" && pr.lines == 1 && pr.cue == "1" && pr.moving == 0, JSON.stringify(pr));
     await t.close();
+  }
+  for (const [w, h] of [[390, 844], [1440, 900]]) {
+    for (const reduce of [false, true]) {
+      const t = await open(page, {w, h, reduce});
+      const at = await t.js(TWIN);
+      verdict(page, w, h, "the door's twin is in #start, in the door's words, leading where the door leads", at && at.same, JSON.stringify(at));
+      if (!at) { await t.close(); continue }
+      await t.call("Input.dispatchMouseEvent", {type: "mouseMoved", x: at.x, y: at.y}); await sleep(300);
+      const hov = await t.js(`(() => { const d = document.querySelector("#start .btn.door"); return {coin: getComputedStyle(d.querySelector(".gcoin")).display, lift: getComputedStyle(d).transform} })()`);
+      await t.call("Input.dispatchMouseEvent", {type: "mousePressed", x: at.x, y: at.y, button: "left", clickCount: 1});
+      const coin = await t.js(`getComputedStyle(document.querySelector("#start .btn.door .gcoin")).display`);
+      await t.call("Input.dispatchMouseEvent", {type: "mouseReleased", x: at.x, y: at.y, button: "left", clickCount: 1});
+      await sleep(900);
+      const T_ = (await t.js(`window.__t`)) || {};
+      const hold = T_.open - T_.down, after = T_.open - T_.click, copied = T_.copy - T_.click;
+      if (!reduce) verdict(page, w, h, "the door's twin: on hover its coin comes to the slot and it does not lift; on a press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click",
+        hov.coin == "block" && hov.lift == "none" && coin == "block" && hold >= 340 && hold <= 470 && after >= 150 && copied >= 0 && copied < 50, JSON.stringify({hov, coin, ...T_}));
+      else verdict(page, w, h, "the door's twin under reduced motion: no coin on hover or on a press, and the dialog at once, the copy made in the click",
+        hov.coin == "none" && coin == "none" && after >= 0 && after < 150 && copied >= 0 && copied < 50, JSON.stringify({hov, coin, ...T_}));
+      await t.press("Escape");
+      const back = await t.js(`!!document.querySelector("#start .btn.door") && document.activeElement === document.querySelector("#start .btn.door")`);
+      verdict(page, w, h, "Escape closes the dialog and focus is back on the door's twin that opened it", back, String(back));
+      if (reduce) {
+        await t.call("Emulation.setEmulatedMedia", {media: "print", features: [{name: "prefers-reduced-motion", value: "no-preference"}]});
+        const pc = await t.js(`(e => e ? getComputedStyle(e).display : null)(document.querySelector("#start .btn.door .gcoin"))`);
+        verdict(page, w, h, "in print the door's twin draws no coin", pc == "none", pc);
+      }
+      await t.close();
+    }
   }
 }
 // the top bar, with the widest three-digit hi-score (888/888) set in it, at every whole width from 360 to 1920 px: its items (the mark, each score figure, the switch, each anchor shown, the

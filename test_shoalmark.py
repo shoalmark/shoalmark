@@ -6451,12 +6451,16 @@ check(f"FM-006 · B1 · the launch check is not blind: each of {'the switch off 
 
 
 # What each launch state draws. With the probe on: one cue line, the live one, over the coin door, which is the primary link with its label, its copy icon
-# and its coin after them, the coin hidden from screen readers. With the probe off: the note's link alone. Neither state, nor the styles, the words or the
+# and its coin after them, the coin hidden from screen readers; and the door's twin after the coins in #start, drawn by the same macro. With the probe off: the
+# note's link alone, and no twin. Neither state, nor the styles, the words or the
 # script, holds anything of the tape: the tape over the door, its box and flap, the unlit window, the taped cue, the taped button and the line that says why;
 # nor do the pitch page's styles. The dialog and its script are built under the probe switch alone.
 _STATE_CUE = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
-_STATE_DOOR = ('<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false">',
-               '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a></div>')
+_STATE_DOOR = '{{ coin_door("probe-open") }}</div>'
+_DOOR_MACRO = ('{%- macro coin_door(id) -%}<a class="btn door"{% if id %} id="{{ id }}"{% endif %} href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" '
+               'aria-hidden="true" focusable="false">', '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>{%- endmacro -%}')
+_STATE_TWIN = ('{{ T(w.coin_3) }}</span></div>\n  </div>\n  {%- if probe %}\n  <p class="door-again">{{ coin_door("") }}</p>\n  {%- endif %}\n'
+               '  <p class="small" style="margin-top:16px">{{ T(w.dlg_tell) }}</p>')
 _STATE_NOTE = '<a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>'
 _TAPE_CSS = re.compile(r"@keyframes\s*tape-[\w-]*|animation:[^;{}]*\btape-[\w-]*|@property\s*--p\b|\.btn\.door::after|\.(?:tape|tapebox|flap|taped|taped-why|is-taped)\b|\.btn\.taped\b"
                        r"|\.cue\s+\.(?:was|now)\b")
@@ -6465,7 +6469,8 @@ _TAPE_WORDS = ("cue_taped", "taped_why", "btn_tape")
 
 def _state_problems(src):
     """What is wrong with what each launch state draws, one line each; none where the probe state draws the live cue over the lit coin door and its coin,
-    the interim state the note's link alone, and nothing of the tape is drawn, styled, worded or scripted on the landing, nor styled on the pitch page."""
+    the interim state the note's link alone, the door's twin stands after the coins in #start with the probe alone, drawn by the door's own macro, and nothing
+    of the tape is drawn, styled, worded or scripted on the landing, nor styled on the pitch page."""
     words, bad = _landing_words(src)
     code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
     css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S)
@@ -6474,11 +6479,17 @@ def _state_problems(src):
     if not parts:
         bad.append("the actions are not one probe branch and one interim branch, with the door's class in the probe state alone")
     else:
-        door = re.escape(_STATE_CUE) + r"\s*" + re.escape(_STATE_DOOR[0]) + r"(?:(?!</svg>).)*" + re.escape(_STATE_DOOR[1])
-        if not re.fullmatch(door, parts.group(1).strip(), re.S):
-            bad.append("the probe state does not draw the live cue alone over the coin door: its label, its copy icon and its coin after them, hidden from screen readers")
+        if not re.fullmatch(re.escape(_STATE_CUE) + r"\s*" + re.escape(_STATE_DOOR), parts.group(1).strip()):
+            bad.append("the probe state does not draw the live cue alone over the coin door, drawn by the door's macro")
         if parts.group(2).strip() != _STATE_NOTE:
             bad.append("the interim state does not draw the note's link alone")
+    macro = re.search(re.escape(_DOOR_MACRO[0]) + r"(?:(?!</svg>).)*" + re.escape(_DOOR_MACRO[1]), code, re.S)
+    if not macro or code.count("{%- macro coin_door(") != 1 or code.count("coin_door(") != 3:
+        bad.append("the door's macro does not draw the coin door, its label, its copy icon and its coin after them, hidden from screen readers, or it is not called "
+                   "twice, by the hero and by its twin")
+    twin = code.find(_STATE_TWIN)
+    if code.count(_STATE_TWIN) != 1 or not code.find('id="start"') < twin < code.find('<div class="ticker"'):
+        bad.append("the door's twin does not stand after the coins in #start, drawn by the door's macro with the probe alone")
     drawn = re.search(r"\btaped\b|\bw\.(?:" + "|".join(_TAPE_WORDS) + r")\b|class=\"[^\"]*\b(?:tape|tapebox|flap|taped-why|is-taped|was|now)\b", code)
     if drawn:
         bad.append(f"the template draws the tape, the taped state or the taped cue again: {drawn.group(0)!r}")
@@ -6504,7 +6515,8 @@ def _state_problems(src):
 
 _st_src = _sources((*_LANDING_FILES, "overrides/why.html"))
 _st_p = _state_problems(_st_src)
-check("FM-006 · the landing's launch states · with the probe on the live cue alone stands over the coin door, its label, copy icon and coin, the coin hidden from screen readers; with "
+check("FM-006 · the landing's launch states · with the probe on the live cue alone stands over the coin door, its label, copy icon and coin, the coin hidden from screen readers, "
+      "and the door's twin, by the same macro, stands after the coins in #start; with "
       "it off the note's link stands alone; nothing of the tape-off ceremony or the taped state is drawn, styled, worded in either language or scripted, and the pitch page "
       "styles none of it; the dialog and its script "
       f"are built under the probe switch alone (problems found: {_st_p})", _st_p == [])
@@ -6530,12 +6542,22 @@ _st_ctl = {
     "the door in the interim state": _with(_st_src, _LH, _STATE_NOTE, _STATE_NOTE.replace('class="btn"', 'class="btn door"')),
     "the coin in the interim state": _with(_st_src, _LH, _STATE_NOTE, _STATE_NOTE.replace("</a>", '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>')),
     "the coin left out of the door": _with(_st_src, _LH, '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>', "</a>"),
-    "the taped try row's style back on the pitch page": _with(_st_src, "overrides/why.html", "</style>", ".tldr dl>div.try.taped{background:var(--closed)}\n</style>")}
+    "the taped try row's style back on the pitch page": _with(_st_src, "overrides/why.html", "</style>", ".tldr dl>div.try.taped{background:var(--closed)}\n</style>"),
+    "the twin in every state": _with(_st_src, _LH, '  {%- if probe %}\n  <p class="door-again">{{ coin_door("") }}</p>\n  {%- endif %}\n',
+                                     '  <p class="door-again">{{ coin_door("") }}</p>\n'),
+    "the twin left out": _with(_st_src, _LH, '  {%- if probe %}\n  <p class="door-again">{{ coin_door("") }}</p>\n  {%- endif %}\n', ""),
+    "the twin as a copy of the door's markup": _with(_st_src, _LH, '<p class="door-again">{{ coin_door("") }}</p>',
+                                                     '<p class="door-again"><a class="btn door" href="{{ urls.probe_txt }}" aria-haspopup="dialog">{{ w.btn_probe }}'
+                                                     '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a></p>'),
+    "the hero's door as a copy of the macro's markup": _with(_st_src, _LH, '{{ coin_door("probe-open") }}</div>',
+                                                             '<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog">{{ w.btn_probe }}'
+                                                             '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a></div>')}
 _st_ctl_saw = {name: len(_state_problems(src)) for name, src in _st_ctl.items()}
 check("FM-006 · the landing's launch states · the check is not blind: each of the ceremony's tape back in the door, its CSS, its keyframes or the unlit window back, the taped "
       "cue back in the cue, a taped cue in the English words or the reason in the German words, the taped branch back, the line that says why back, a dialog built outside the "
-      "probe state, a script that reads the tape, the door or the coin in the interim state, the coin left out of the door and the taped try row's style back on the pitch "
-      f"page leaves a problem (problems found: {_st_ctl_saw})", all(_st_ctl_saw.values()) and len(_st_ctl_saw) == 15)
+      "probe state, a script that reads the tape, the door or the coin in the interim state, the coin left out of the door, the taped try row's style back on the pitch "
+      "page, the twin in every state or left out, the twin as a copy of the door's markup and the hero's door as a copy of the macro's markup leaves a problem "
+      f"(problems found: {_st_ctl_saw})", all(_st_ctl_saw.values()) and len(_st_ctl_saw) == 19)
 
 
 # --- FM-006 · B1 · what the tool needs, as M4 builds it to v0.20.0's plan: Subversion without git, from the release archive -----------------
@@ -6675,7 +6697,7 @@ def _cue_problems(src):
     # the words
     probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
     cue = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
-    if (cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue |") != 1 or re.search(r"w\.cue\b", code.replace(cue, ""))
+    if (cue not in probe_part or probe_part.find(cue) > probe_part.find('coin_door("probe-open")') or probe_part.count("{{ w.cue |") != 1 or re.search(r"w\.cue\b", code.replace(cue, ""))
             or code.count('class="cue-t') != 1):
         bad.append("the cue is not, in the probe state alone, one strip over the primary button, hidden from screen readers, with the dome after its first dash")
     # the animation: only the cue's words and icon blink, from the page's start, at most 5 s in all, then they stay lit; nothing else of the cue and the
@@ -6717,7 +6739,7 @@ check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue sta
       "wreck on the issue tracker's, the fleet's, the high scores' and the register's, every icon is "
       f"aria-hidden, and the labels keep their words (problems found: {_cp})", _cp == [])
 _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html", "{%- else %}\n      <a class=\"btn\" href=\"{{ urls.adopt }}\">", "{%- else %}\n      <span class=\"cue\" aria-hidden=\"true\">{{ w.cue }}</span><a class=\"btn\" href=\"{{ urls.adopt }}\">"),
-         "the cue under the button": _with(_cs, "overrides/landing.html", '<div class="cta-main"><span class="cue" aria-hidden="true">', '<div class="cta-main"><a id="probe-open"></a><span class="cue" aria-hidden="true">'),
+         "the cue under the button": _with(_cs, "overrides/landing.html", '<div class="cta-main"><span class="cue" aria-hidden="true">', '<div class="cta-main">{{ coin_door("probe-open") }}<span class="cue" aria-hidden="true">'),
          "the cue read by screen readers": _with(_cs, "overrides/landing.html", '<span class="cue" aria-hidden="true">', '<span class="cue">'),
          "the cue's German words changed": _with(_cs, "overrides/partials/landing/de.html", '"cue": "— Start drücken —"', '"cue": "— Los —"'),
          "the cue blinking for ever": _with(_cs, "overrides/landing.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}"),
@@ -6742,13 +6764,13 @@ check("FM-006 · B1 · the cue's check is not blind: each of the cue in the inte
 
 
 # --- the probe state's coin door and the golden coin -----------------------------------------------------------------------------------------------------
-# With the probe on, the primary link is the coin door, lit from the first frame, its copy icon under its label; a mouse that hovers it holds the golden coin
+# With the probe on, the primary link is the coin door, lit from the first frame, its copy icon under its label, drawn by its macro, which also draws its twin
+# in #start; the twin takes the door's own CSS and handler by class, with no copy of the coin's animation. A mouse that hovers a door holds the golden coin
 # at the slot, and a press or a tap drops the coin into the slot; the dialog opens when it has landed, at most 0.36 s after the press, at once for the keyboard
 # and under reduced motion; the copy stays inside the click. The coin is hidden from screen readers and is drawn neither under reduced motion nor in print; the
 # interim state carries none of it; nothing is stored.
 _DOOR_STORAGE = re.compile(r"\b(localStorage|sessionStorage|indexedDB|cookieStore)\b|document\.cookie|\bcaches\s*\.")
-_DOOR_MARKUP = ('<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false">',
-                '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>')
+_DOOR_MARKUP = _DOOR_MACRO
 _DOOR_LIT = ".btn.door{position:relative;isolation:isolate;padding-left:50px;border:2px solid var(--contour);background:linear-gradient(90deg,#0b1520 0 36px,var(--watt) 36px);"
 
 
@@ -6772,9 +6794,14 @@ def _door_problems(src):
     code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)
     css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S).replace(" {", "{")
     probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
-    door = re.search(re.escape(_DOOR_MARKUP[0]) + r"(?:(?!</svg>).)*" + re.escape(_DOOR_MARKUP[1]), probe_part, re.S)
-    if not door or code.count('class="btn door"') != 1 or code.count('<span class="gcoin"') != 1:
-        bad.append("the probe state's primary link is not the coin door, its label read and its coin after it, hidden from screen readers, or the door or the coin stands elsewhere")
+    door = re.search(re.escape(_DOOR_MARKUP[0]) + r"(?:(?!</svg>).)*" + re.escape(_DOOR_MARKUP[1]), code, re.S)
+    if not door or probe_part.count('{{ coin_door("probe-open") }}') != 1 or code.count('class="btn door"') != 1 or code.count('<span class="gcoin"') != 1:
+        bad.append("the probe state's primary link is not the coin door, drawn by its macro, its label read and its coin after it, hidden from screen readers, or the door or "
+                   "the coin stands elsewhere")
+    coin_rules = [sel.strip() for sel, body in re.findall(r"([^{}@]+)\{([^{}]*)\}", css) if "golden-coin" in body or "golden-coin" in sel or ".gcoin" in sel]
+    if any(css.count(f"@keyframes golden-coin-{k}") != 1 for k in ("near", "in", "slit")) or any(not sel.startswith(".btn.door") for sel in coin_rules):
+        bad.append("the coin's animation is not one copy by the door's class: a keyframe defined twice, or a rule outside .btn.door that draws or moves the coin "
+                   f"({[sel for sel in coin_rules if not sel.startswith('.btn.door')]})")
     if 'class="cta{% if probe %} is-door{% endif %}"' not in code:
         bad.append("the actions do not take the door's place in the probe state alone")
     if _DOOR_LIT not in css.replace("\n  ", "") or re.search(r"\.btn\.door::after|\.btn\.door\{[^}]*animation", css):
@@ -6822,11 +6849,15 @@ _crctl = {"the coin read by screen readers": _with(_crs, "overrides/landing.html
           "the door lifting on hover": _with(_crs, "overrides/landing.html", ".btn.door:hover{transform:none}", ""),
           "the door's icon beside its label": _with(_crs, "overrides/landing.html", ".btn.door{flex-direction:column;gap:4px;padding-bottom:10px}", ".btn.door{gap:4px;padding-bottom:10px}"),
           "a storage API": _with(_crs, "overrides/landing.html", 'downAt = performance.now();', 'downAt = performance.now(); sessionStorage.setItem("seen", "1");'),
+          "a second copy of the coin's keyframes": _with(_crs, "overrides/landing.html", "@keyframes golden-coin-slit", "@keyframes golden-coin-in{to{opacity:0}}\n@keyframes golden-coin-slit"),
+          "a coin animation of the twin's own": _with(_crs, "overrides/landing.html", ".door-again{margin:24px 0 0}",
+                                                      ".door-again{margin:24px 0 0}\n.door-again .gcoin{animation:golden-coin-in .36s steps(4) forwards}"),
           "the door in every state": _with(_crs, "overrides/landing.html", '{% if probe %} is-door{% endif %}', " is-door")}
 _crctl_saw = {name: len(_door_problems(src)) for name, src in _crctl.items()}
 check("FM-006 · the coin door · its source check is not blind: each of the coin read by screen readers, as the cards' coin or in the interim state, reduced motion or print drawing "
       "the coin, the coin dropping for ever, the window unlit, the unlit window drawn over the door, the door lighting late, the door's icon hidden or beside its label, the door "
-      f"lifting on hover, a storage API and the door in every state leaves a problem (problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 14)
+      f"lifting on hover, a storage API, the door in every state, a second copy of the coin's keyframes and a coin animation of the twin's own leaves a problem "
+      f"(problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 16)
 
 _BOARD_STACK = ("@media(max-width:640px){.board thead{display:none}.board tbody{display:block}.board tr{display:grid;grid-template-columns:auto 1fr;column-gap:14px;"
                 "align-items:baseline;border-top:1px dashed var(--contour);padding:12px 0}.board td{border-top:0;padding:0}.board td.pd{grid-column:1/-1;padding-top:8px}}")
@@ -7278,18 +7309,19 @@ function run(o) {
   const t0 = 1000; let clock = t0; const timers = [], log = [];
   const make = id => { const h = {}, cls = new Set();
     return {id, value: "PROMPT\n", dataset: {}, style: {}, textContent: "", open: false, offsetWidth: 0, scrollHeight: 0, clientHeight: 0, selectionStart: 0, selectionEnd: 0,
-      addEventListener: (t, f) => { (h[t] = h[t] || []).push(f) }, setAttribute() {}, getAttribute() { return null }, focus() {}, select() {}, blur() {},
+      addEventListener: (t, f) => { (h[t] = h[t] || []).push(f) }, setAttribute() {}, getAttribute() { return null }, focus() { log.push(["focus", id]) }, select() {}, blur() {},
       classList: {add: c => cls.add(c), remove: c => cls.delete(c), contains: c => cls.has(c)}, querySelector: q => make(q),
       fire(t, e) { (h[t] || []).forEach(f => f(Object.assign({preventDefault() {}, button: 0, detail: 1}, e || {}))) }} };
   const ids = {}, get = id => ids[id] || (ids[id] = make(id)), dlg = get("probe");
   dlg.showModal = () => { log.push(["open", clock]); dlg.open = true };
-  const sandbox = {document: {getElementById: get, documentElement: {classList: {add() {}, remove() {}}}, execCommand: () => false},
+  const sandbox = {document: {getElementById: get, querySelectorAll: q => q == ".btn.door" ? [get("probe-open"), get("twin")] : [], documentElement: {classList: {add() {}, remove() {}}},
+                              execCommand: () => false},
     navigator: {clipboard: {writeText: () => { log.push(["copy", clock]); return Promise.resolve(true) }}},
     matchMedia: q => ({matches: !!o.reduce && q.includes("reduce")}), performance: {now: () => clock},
     setTimeout: (f, ms) => { timers.push({f, ms: ms || 0, at: clock}); return timers.length }, clearTimeout: n => { if (n && timers[n - 1]) timers[n - 1].f = null },
     getComputedStyle: () => ({lineHeight: "20px"}), addEventListener() {}, Promise};
   vm.createContext(sandbox); vm.runInContext(code, sandbox);
-  const door = get("probe-open");
+  const door = get(o.twin ? "twin" : "probe-open");
   if (o.press !== undefined) door.fire("pointerdown", {button: o.press});
   const coin = door.classList.contains("golden-coin");
   clock += o.after || 0;
@@ -7297,18 +7329,21 @@ function run(o) {
   const before = log.filter(([k]) => k == "open").length;
   for (const t of timers) if (t.f) { clock = t.at + t.ms; t.f() }
   const opened = log.find(([k]) => k == "open"), copied = log.find(([k]) => k == "copy");
-  return {coin, openedInClick: before > 0, hold: opened ? opened[1] - t0 : null, copyAt: copied ? copied[1] - t0 : null, clickAt: clickAt - t0, waits: timers.map(t => t.ms)};
+  if (opened) dlg.fire("close");
+  const back = log.filter(([k]) => k == "focus").map(([, id]) => id).pop() || null;
+  return {coin, openedInClick: before > 0, hold: opened ? opened[1] - t0 : null, copyAt: copied ? copied[1] - t0 : null, clickAt: clickAt - t0, waits: timers.map(t => t.ms), back};
 }
 const out = {press: run({press: 0}), late: run({press: 0, after: 100}), slow: run({press: 0, after: 500}), keyboard: run({key: true}),
-             keyAfterPress: run({press: 0, after: 100, key: true}), reduced: run({press: 0, reduce: true}), right: run({press: 2})};
+             keyAfterPress: run({press: 0, after: 100, key: true}), reduced: run({press: 0, reduce: true}), right: run({press: 2}),
+             twinPress: run({press: 0, twin: true}), twinKey: run({key: true, twin: true}), twinReduced: run({press: 0, reduce: true, twin: true})};
 console.log(JSON.stringify(out));
 """
 
 
 def _hold_run(tpl):
     """What the probe dialog's script of `tpl` does on a press, a late or a slow click after it, the keyboard alone and after a press that made no click, a press under
-    reduced motion and a right-button press
-    (the harness's own clock, in ms from the press): {} where Node or the script is missing."""
+    reduced motion and a right-button press, on the hero's door; and on a press, the keyboard and a press under reduced motion, on its twin in #start, the second
+    `.btn.door` (the harness's own clock, in ms from the press; and the door focus goes back to when the dialog closes): {} where Node or the script is missing."""
     node_ = shutil.which("node")
     start_ = tpl.find("(function () {", tpl.find("THE PROBE DIALOG"))
     end_ = tpl.find("})();", start_)
@@ -7326,8 +7361,8 @@ def _hold_run(tpl):
 
 
 def _hold_problems(o):
-    """What is wrong with the hold and the coin, one line each, from `_hold_run`'s output."""
-    if set(o) != {"press", "late", "slow", "keyboard", "keyAfterPress", "reduced", "right"}:
+    """What is wrong with the hold and the coin, on the door and on its twin, one line each, from `_hold_run`'s output."""
+    if set(o) != {"press", "late", "slow", "keyboard", "keyAfterPress", "reduced", "right", "twinPress", "twinKey", "twinReduced"}:
         return [f"the probe dialog's script did not run: {o}"]
     bad = []
     if not (0 < o["press"]["hold"] <= 360) or o["press"]["openedInClick"] or o["late"]["hold"] > 360 or o["late"]["hold"] <= o["late"]["clickAt"]:
@@ -7339,6 +7374,13 @@ def _hold_problems(o):
         bad.append("the copy is not made inside the click")
     if not o["press"]["coin"] or o["keyboard"]["coin"] or o["right"]["coin"]:
         bad.append("the coin does not drop on a press alone")
+    if not (0 < (o["twinPress"]["hold"] or 0) <= 360) or o["twinPress"]["openedInClick"] or not o["twinPress"]["coin"] or o["twinKey"]["coin"]:
+        bad.append("the twin in #start does not drop its coin on a press and wait for it, as the door does")
+    for k in ("twinKey", "twinReduced"):
+        if not o[k]["openedInClick"] or o[k]["waits"]:
+            bad.append(f"the twin's dialog does not open at once ({k})")
+    if any(o[k]["back"] != ("twin" if k.startswith("twin") else "probe-open") for k in o if o[k]["hold"] is not None):
+        bad.append("closing the dialog does not give focus back to the door that opened it")
     return bad
 
 
@@ -7346,17 +7388,20 @@ if shutil.which("node"):
     _ho = _hold_run(_crs["overrides/landing.html"])
     _hp = _hold_problems(_ho)
     check("FM-006 · the golden coin · the dialog's hold, run: after a press the dialog opens when the coin has landed, at most 0.36 s after the press and not inside the click; "
-          "a slow click, the keyboard (even just after a press that made no click) and reduced motion get it at once; the copy is made inside the click every time; the coin drops on a press alone "
+          "a slow click, the keyboard (even just after a press that made no click) and reduced motion get it at once; the copy is made inside the click every time; the coin drops on a press alone; "
+          "the door's twin in #start does the same on a press, the keyboard and reduced motion; closing gives focus back to the door that opened the dialog "
           f"(problems found: {_hp}; saw {_ho})", _hp == [])
     _hctl_ = {"a hold of 0.6 s": _with(_crs, "overrides/landing.html", "Math.max(0, 360 - (performance.now() - downAt))", "Math.max(0, 600 - (performance.now() - downAt))"),
               "a hold for the keyboard": _with(_crs, "overrides/landing.html", " || !downAt || !e.detail ? 0 : ", " || !downAt ? 0 : "),
               "a hold under reduced motion": _with(_crs, "overrides/landing.html", 'matchMedia("(prefers-reduced-motion: reduce)").matches || !downAt', "!downAt"),
               "the copy after the hold": _with(_with(_crs, "overrides/landing.html", "    const p = write();\n    const wait", "    const wait"), "overrides/landing.html",
                                                 "const opening = () => { say", "const opening = () => { const p = write(); say"),
-              "the coin on every button": _with(_crs, "overrides/landing.html", "    if (e.button) return;\n", "")}
+              "the coin on every button": _with(_crs, "overrides/landing.html", "    if (e.button) return;\n", ""),
+              "the twin left unbound": _with(_crs, "overrides/landing.html", 'document.querySelectorAll(".btn.door").forEach(door => {', "[open].forEach(door => {"),
+              "focus back to the hero's door alone": _with(_crs, "overrides/landing.html", "clearTimeout(timer); from.focus();", "clearTimeout(timer); open.focus();")}
     _hctl_saw = {name: _hold_problems(_hold_run(src["overrides/landing.html"])) for name, src in _hctl_.items()}
-    check("FM-006 · the golden coin · the hold's run is not blind: each of a hold of 0.6 s, a hold for the keyboard, a hold under reduced motion, the copy after the hold and the coin "
-          f"on every button leaves a problem (saw {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 5)
+    check("FM-006 · the golden coin · the hold's run is not blind: each of a hold of 0.6 s, a hold for the keyboard, a hold under reduced motion, the copy after the hold, the coin "
+          f"on every button, the twin left unbound and focus back to the hero's door alone leaves a problem (saw {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 7)
 else:
     SKIPS.append(("FM-006 · the golden coin · the dialog's hold, run", 2, "no Node here"))
 
@@ -17991,7 +18036,8 @@ else:
                                             "copy and, with its fold closed, shows its label, Close, the copied line, Copy again and step 3 without scrolling at 360×780, 375×667 and 390×844 and does not "
                                             "scroll inside itself at 1024×768; the coin door is lit and still from the first frame, with no tape, unlit window or second cue "
                                             "line, keeps the page's width, draws no coin under reduced motion or in print, where the cue stands still, is named by its label, and the dialog waits 0.36 s from a press for the coin, "
-                                            "not for the keyboard or under reduced motion" if _state == "probe" else "")
+                                            "not for the keyboard or under reduced motion; the door's twin after the coins in #start does the same, draws no coin under reduced "
+                                            "motion or in print and gets focus back" if _state == "probe" else ", and no coin door is drawn")
                       + f" (exit {_saw[_state][0]}, {_saw[_state][2]} checks, failing {_saw[_state][1]})", _saw[_state][0] == 0 and not _saw[_state][1] and _saw[_state][2] > 40)
             # the controls: one thing changed in a copy of the probe site, and the browser finds exactly that
             _probe = _work / "probe" / "site"
@@ -18063,7 +18109,7 @@ else:
                              "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways"),
                 "bar-ring": ("header buttons without their focus ring", _mutate("bar-ring", "index.html", "</head>", "<style>.hud a:focus-visible{outline:none!important}</style></head>", "bar"),
                              "both header buttons show the focus ring when the keyboard reaches them, whole inside the window and the bar"),
-                "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
+                "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); from.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
                 "door-tape": ("a tape drawn over the door again", _mutate("door-tape", "index.html", '<span class="gcoin" aria-hidden="true">',
                                                                     '<span class="tape" aria-hidden="true">not yet</span><span class="gcoin" aria-hidden="true">', "door"),
@@ -18098,13 +18144,20 @@ else:
                                "in print the coin is not drawn and the cue stands lit and still, one line"),
                 "door-name": ("a door named with a tape's words", _mutate("door-name", "index.html", '<span class="gcoin" aria-hidden="true">', '<span class="tape">not yet</span><span class="gcoin" aria-hidden="true">', "door"),
                               "the door's name is its label alone: the coin is hidden from screen readers"),
+                "twin-gone": ("a twin in #start that is not the door", _mutate("twin-gone", "index.html", '<p class="door-again"><a class="btn door"', '<p class="door-again"><a class="btn"', "door"),
+                              "the door's twin is in #start, in the door's words, leading where the door leads"),
+                "twin-unbound": ("a twin the door's handler does not reach", _mutate("twin-unbound", "index.html", 'document.querySelectorAll(".btn.door").forEach(door => {', "[open].forEach(door => {", "door"),
+                                 "the door's twin: on hover its coin comes to the slot and it does not lift; on a press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click"),
+                "twin-print": ("a twin whose coin is drawn in print", _mutate("twin-print", "index.html", "@media print{.btn.door .gcoin{display:none!important}", "@media print{", "door"),
+                               "in print the door's twin draws no coin"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
                   "modal, a dialog whose third step is out of view on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
                   "a cue that blinks only from 2.8 s, as the ceremony had it, "
                   "and of the coin door a tape drawn over it again, the taped cue back beside the live one, a door without its copy icon, a door that lifts on hover, a door that grows in its first seconds, an unlit window drawn over it, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
-                  "a coin drawn under reduced motion, a cue that blinks in print and a door named with a tape's words makes it exit 1 with that check failing "
+                  "a coin drawn under reduced motion, a cue that blinks in print and a door named with a tape's words, and of the door's twin a twin that is not the door, one the "
+                  "door's handler does not reach and one whose coin is drawn in print makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
