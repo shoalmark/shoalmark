@@ -439,6 +439,63 @@ class States(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertIn(name + ": the probe switch is on, but the primary link is not the coin door with its one coin in it", result.stderr)
 
+    def test_twin_padding_cascade(self):
+        own = ".door-again .btn.door{padding-left:50px}\n"
+        phone = "@media (max-width:700px){.btn.door{padding-left:18px}"
+        rows = [
+            ("the landing's real door styles", DOOR_STYLE, None),
+            ("the twin's own padding dropped", DOOR_STYLE.replace(own, ""), (320, ".btn.door", "18px")),
+            ("a phone rule heavier than the twin's padding", DOOR_STYLE.replace(phone, phone + "#start .btn.door{padding-left:18px}"),
+             (320, "#start .btn.door", "18px")),
+            ("an important phone rule", DOOR_STYLE.replace("padding-left:18px}", "padding-left:18px!important}"), (320, ".btn.door", "18px !important")),
+            ("a phone padding shorthand", DOOR_STYLE.replace(phone, phone + "#start .btn.door{padding:0 18px}"), (320, "#start .btn.door", "18px")),
+            ("a phone pseudo-class", DOOR_STYLE.replace(phone, phone + ".btn.door:first-child{padding-left:18px}"), (320, ".btn.door:first-child", "18px")),
+        ]
+        for name, css, winner in (
+                ("a heavier top-level rule", "#start .btn.door{padding-left:18px}", (320, "#start .btn.door", "18px")),
+                ("a harmless heavier top-level rule", "#start .btn.door{padding-left:60px}", None),
+                ("a one-value shorthand", "#start .btn.door{padding:18px}", (320, "#start .btn.door", "18px")),
+                ("a three-value shorthand uses its second value", "#start .btn.door{padding:0 60px 18px}", None),
+                ("a four-value shorthand", "#start .btn.door{padding:0 60px 0 18px}", (320, "#start .btn.door", "18px")),
+                ("an important shorthand", ".btn.door{padding:18px!important}", (320, ".btn.door", "18px !important")),
+                ("the last declaration wins", "#start .btn.door{padding-left:60px;padding:18px}", (320, "#start .btn.door", "18px")),
+                ("a later safe declaration wins", "#start .btn.door{padding:18px;padding-left:60px}", None),
+                ("importance precedes declaration order", "#start .btn.door{padding-left:60px!important;padding:18px}", None),
+                ("equal specificity uses source order", ".door-again .btn.door{padding-left:18px}", (320, ".door-again .btn.door", "18px")),
+                ("an attribute selector adds specificity", ".btn.door[aria-haspopup]{padding-left:18px}", (320, ".btn.door[aria-haspopup]", "18px")),
+                ("a type breaks a specificity tie", "a.btn.door:first-child{padding-left:18px}", (320, "a.btn.door:first-child", "18px")),
+                ("where contributes no specificity", ":where(#start) .btn.door{padding-left:18px}", None),
+                ("is counts its heaviest argument", ":is(.band,#start) .btn.door{padding-left:18px}", (320, ":is(.band,#start) .btn.door", "18px")),
+                ("not counts its heaviest argument", ".btn.door:not(.other,#other){padding-left:18px}", (320, ".btn.door:not(.other,#other)", "18px")),
+                ("has counts its heaviest argument", ".btn.door:has(> .coin,#other){padding-left:18px}", (320, ".btn.door:has(> .coin,#other)", "18px")),
+                ("a pseudo-element adds no specificity", ".btn.door::before{padding-left:18px}", None),
+                ("another final class cannot reach the twin", "#start .btn.door.alt{padding-left:18px}", None),
+                ("another final tag cannot reach the twin", "#start button.btn.door{padding-left:18px}", None),
+                ("a final id cannot reach the twin", "#start .btn.door#other{padding-left:18px}", None),
+                ("a nonmatching list part lends no specificity", "#start .other,.btn.door{padding-left:18px}", None),
+                ("a reaching list part with reversed classes", "#start .other,#start a.door.btn{padding-left:18px}", (320, "#start a.door.btn", "18px")),
+                ("an ancestor is assumed to match", ".unseen > .btn.door{padding-left:18px}", (320, ".unseen > .btn.door", "18px")),
+                ("a non-pixel winner", "#start .btn.door{padding-left:4rem}", (320, "#start .btn.door", "4rem")),
+                ("a print-only rule", "@media print{#start .btn.door{padding-left:18px}}", None),
+                ("a print and screen list", "@media print, screen and (max-width:700px){#start .btn.door{padding-left:18px}}", (320, "#start .btn.door", "18px")),
+                ("a desktop-only rule", "@media (min-width:701px){#start .btn.door{padding-left:18px}}", None),
+                ("a rule starting at 360px", "@media (min-width:360px){#start .btn.door{padding-left:18px}}", (360, "#start .btn.door", "18px")),
+                ("a bounded rule at 390px", "@media screen and (min-width:390px) and (max-width:390px){#start .btn.door{padding-left:18px}}", (390, "#start .btn.door", "18px")),
+                ("a rule starting at 700px", "@media (min-width:700px){#start .btn.door{padding-left:18px}}", (700, "#start .btn.door", "18px")),
+                ("an unknown media feature", "@media (hover:hover){#start .btn.door{padding-left:18px}}", (320, "#start .btn.door", "18px")),
+                ("an unread width unit", "@media (max-width:40rem){#start .btn.door{padding-left:18px}}", (320, "#start .btn.door", "18px")),
+                ("nested media retain their outer bound", "@media (min-width:701px){@media (max-width:900px){#start .btn.door{padding-left:18px}}}", None)):
+            rows.append((name, DOOR_STYLE.replace("</style>", css + "</style>"), winner))
+        for page in ("index.html", "de/index.html"):
+            for name, css, winner in rows:
+                with self.subTest(page=page, name=name):
+                    result = self.checked(probe=True, change=self.put(DOOR_STYLE, css, page))
+                    self.assertEqual(result.returncode, 0 if winner is None else 1, result.stdout + result.stderr)
+                    if winner is not None:
+                        width, selector, value = winner
+                        self.assertIn(page + ": the probe switch is on, but the door's twin does not keep its own padding-left of 50px", result.stderr)
+                        self.assertIn("width: %spx; winning selector: %s; value: %s;" % (width, selector, value), result.stderr)
+
     def test_each_state_draws_its_own_and_nothing_of_the_tape(self):
         note = '<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>'
         tape = '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">%s</span><span class="flap"></span></span>'
@@ -487,11 +544,6 @@ class States(unittest.TestCase):
              "the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words"),
             ("the twin in the German landing's other words", dict(probe=True, change=self.put(TWIN % LABELS["de"], TWIN % ("↑ " + LABELS["de"]), "de/index.html")),
              "de/index.html: the probe switch is on, but the door's twin in #start does not lead where the door leads"),
-            ("the twin's own padding dropped", dict(probe=True, change=self.put(".door-again .btn.door{padding-left:50px}\n", "")),
-             "the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts on the slot"),
-            ("a phone rule heavier than the twin's padding", dict(probe=True, change=self.put("@media (max-width:700px){.btn.door{padding-left:18px}",
-                                                                                                "@media (max-width:700px){#start .btn.door{padding-left:18px}.btn.door{padding-left:18px}")),
-             "the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts on the slot"),
             ("the twin with the probe off", dict(probe=False, change=self.put('<p class="small">tell</p>', TWIN.replace('href="probe.txt"', 'href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"')
                                                                                 % "Hand your agents the note" + '<p class="small">tell</p>')),
              "the probe switch is off, but the coin door or its coin is built"),

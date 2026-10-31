@@ -184,29 +184,125 @@ CSS_IMAGE_SET = re.compile(r"(?i)image-set\(((?:[^()]|\([^()]*\))*)\)")
 LEGAL = {"en": ("imprint.html", "privacy.html"), "de": ("de/impressum.html", "de/datenschutz.html")}
 TAPE_KINDS = {"tape", "tapebox", "flap", "taped", "taped-why", "is-taped"}
 TWIN_PAD = ".door-again .btn.door"
+PHONE_WIDTHS = (320, 360, 390, 700)
+
+
+def css_parts(tokens):
+    parts = [[]]
+    for token in tokens:
+        if token.type == "literal" and token.value == ",":
+            parts.append([])
+        elif token.type != "comment":
+            parts[-1].append(token)
+    return parts
+
+
+def selector_items(tokens):
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token.type == "literal" and token.value in {".", ":"}:
+            kind = "class" if token.value == "." else "pseudo"
+            i += 1
+            if i < len(tokens) and tokens[i].type == "literal" and tokens[i].value == ":":
+                kind = "element"
+                i += 1
+            if i < len(tokens):
+                yield kind, tokens[i]
+        else:
+            yield token.type, token
+        i += 1
+
+
+def weight(tokens):
+    weights = []
+    for part in css_parts(tokens):
+        ids, classes, types = 0, 0, 0
+        for kind, token in selector_items(part):
+            if kind == "hash" and token.is_identifier:
+                ids += 1
+            elif kind in {"class", "[] block"}:
+                classes += 1
+            elif kind == "ident":
+                types += 1
+            elif kind == "pseudo":
+                name = token.lower_name if token.type == "function" else token.value.lower()
+                if name in {"is", "not", "has"} and token.type == "function":
+                    extra = weight(token.arguments)
+                    ids, classes, types = ids + extra[0], classes + extra[1], types + extra[2]
+                elif name not in {"where", "before", "after", "first-line", "first-letter"}:
+                    classes += 1
+        weights.append((ids, classes, types))
+    return max(weights)
+
+
+def reaches_twin(tokens):
+    tokens = [token for token in tokens if token.type != "comment"]
+    while tokens and tokens[-1].type == "whitespace":
+        tokens.pop()
+    compound = []
+    for token in tokens:
+        if token.type == "whitespace" or (token.type == "literal" and token.value in {">", "+", "~", "||"}):
+            compound = []
+        else:
+            compound.append(token)
+    for kind, token in selector_items(compound):
+        if kind == "hash" or (kind == "class" and token.value not in {"btn", "door"}) or (kind == "ident" and token.value.lower() != "a"):
+            return False
+    return True
+
+
+def media_applies(tokens, width):
+    for part in css_parts(tokens):
+        terms = [t for t in part if t.type != "whitespace"]
+        if terms and terms[0].type == "ident" and terms[0].lower_value == "only":
+            terms = terms[1:]
+        applies = True
+        if terms and terms[0].type == "ident" and terms[0].lower_value in {"screen", "all", "print"}:
+            applies = terms.pop(0).lower_value != "print"
+            if terms:
+                if terms[0].type != "ident" or terms.pop(0).lower_value != "and":
+                    return True
+        for i, term in enumerate(terms):
+            if i % 2:
+                if term.type != "ident" or term.lower_value != "and":
+                    return True
+            elif term.type == "() block":
+                feature = [t for t in term.content if t.type not in {"whitespace", "comment"}]
+                if (len(feature) == 3 and feature[0].type == "ident" and feature[0].lower_value in {"min-width", "max-width"}
+                        and feature[1].type == "literal" and feature[1].value == ":"
+                        and feature[2].type == "dimension" and feature[2].lower_unit == "px"):
+                    applies = applies and (width >= feature[2].value if feature[0].lower_value == "min-width" else width <= feature[2].value)
+            else:
+                return True
+        if applies:
+            return True
+    return False
 
 
 def door_paddings(css):
-    """Each rule of `css` that sets padding-left on a coin door, in order: (its @media prelude, or "" at the top level, its selector, the value)."""
     found = []
 
     def walk(rules, media):
         for rule in rules:
             if rule.type == "qualified-rule":
-                selector = " ".join(tinycss2.serialize(rule.prelude).split())
-                if ".btn.door" in selector:
-                    found.extend((media, selector, tinycss2.serialize(d.value).strip())
-                                 for d in tinycss2.parse_declaration_list(rule.content, skip_comments=True, skip_whitespace=True)
-                                 if d.type == "declaration" and d.lower_name == "padding-left")
+                selectors = [part for part in css_parts(rule.prelude) if reaches_twin(part)]
+                for d in tinycss2.parse_declaration_list(rule.content, skip_comments=True, skip_whitespace=True):
+                    if d.type != "declaration" or d.lower_name not in {"padding-left", "padding"}:
+                        continue
+                    values = [t for t in d.value if t.type not in {"whitespace", "comment"}]
+                    if d.lower_name == "padding" and 1 <= len(values) <= 4:
+                        values = [values[3] if len(values) == 4 else values[1] if len(values) > 1 else values[0]]
+                    value = tinycss2.serialize(values).strip()
+                    pixels = values[0].value if len(values) == 1 and values[0].type == "dimension" and values[0].lower_unit == "px" else None
+                    for part in selectors:
+                        selector = " ".join(tinycss2.serialize(part).split())
+                        own = not media and selector == TWIN_PAD and d.lower_name == "padding-left" and pixels == 50
+                        found.append((media, selector, value, pixels, d.important, weight(part), own))
             elif rule.type == "at-rule" and rule.lower_at_keyword == "media" and rule.content is not None:
-                walk(tinycss2.parse_rule_list(rule.content, skip_comments=True, skip_whitespace=True), " ".join(tinycss2.serialize(rule.prelude).split()))
-    walk(tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True), "")
+                walk(tinycss2.parse_rule_list(rule.content, skip_comments=True, skip_whitespace=True), media + (rule.prelude,))
+    walk(tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True), ())
     return found
-
-
-def weight(selector):
-    """A selector's specificity as these selectors spell it: (its ids, its classes), the heaviest of a list's parts."""
-    return max((part.count("#"), part.count(".")) for part in selector.split(","))
 
 
 TAPE_CSS = re.compile(r"@keyframes\s+tape-[\w-]*|\.btn\.door::after|\.(?:tape|tapebox|flap|taped|taped-why|is-taped)\b|\.btn\.taped\b|\.cue\s+\.(?:was|now)\b")
@@ -398,13 +494,15 @@ for rel, lang, other, canonical, image, adopt, how in (
         if (len(twins) != 1 or twins[0].get("id") or len(twin) != 1 or leads_to(rel, twin[0]["attrs"].get("href") or "") != leads_to(rel, door["attrs"].get("href") or "")
                 or twin[0]["attrs"].get("aria-haspopup") != "dialog" or twin[0]["text"] != door["text"]):
             fail(f"{rel}: the probe switch is on, but the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words")
-        # the twin shrinks to its label, so on a phone its own padding keeps the label clear of the slot: its rule at the top level, and no phone rule as heavy
         pads = door_paddings(" ".join(p.styles))
-        own = [value for media, selector, value in pads if not media and selector == TWIN_PAD]
-        undone = [(selector, value) for media, selector, value in pads if "max-width" in media and weight(selector) >= weight(TWIN_PAD) and value != "50px"]
-        if own != ["50px"] or undone:
-            fail(f"{rel}: the probe switch is on, but the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts "
-                 f"on the slot (its rule: {own}; phone rules as heavy: {undone})")
+        own = any(pad[6] for pad in pads)
+        for width in PHONE_WIDTHS:
+            candidates = [(pad[4], pad[5], order, pad) for order, pad in enumerate(pads) if all(media_applies(media, width) for media in pad[0])]
+            winner = max(candidates)[3] if candidates else None
+            if not own or winner is None or winner[3] is None or winner[3] < 50:
+                selector, value = (winner[1], winner[2] + (" !important" if winner[4] else "")) if winner else ("none", "unset")
+                fail(f"{rel}: the probe switch is on, but the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts "
+                     f"on the slot (width: {width}px; winning selector: {selector}; value: {value}; top-level own rule: {own})")
     elif p.doors or p.coins:
         fail(f"{rel}: the probe switch is off, but the coin door or its coin is built")
     buttons = [a for a in p.anchors if "btn" in classes(a) and not a["start"]]
