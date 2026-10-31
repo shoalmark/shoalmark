@@ -4343,13 +4343,16 @@ VERDICT={"READY":"vok","READY TO TAG":"vok","READY WITH FINDINGS":"vwarn","NOT R
 // a verb button names its act; its spoken name adds what it acts on, so a list of them never reads as one button said many times
 btn=(key,id,on)=>`<button class="act" aria-label="${l(key)} ${id}" onclick="${on}">${l(key)}</button>`,
 split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},
+// a browser breaks a line at any space: inside a count every space is a no-break space, and each "·" holds to the count before it
+// by one, so a line of counts breaks only after a "·"
+cnt=s=>s.split(" · ").map(g=>g.replace(/ /g,"\u00a0")).join("\u00a0· "),
 idl=id=>`<a href="#=${id}">${id}</a>`,
 days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
 // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
 const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
 const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[29][12]||t[0],cmd="__CMD__";
-  const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
+  const meta=[k?l("ask."+k):"",days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join("\u00a0· ");
   // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
   // which is offered first. A proposal alone is a list of one. Last always comes Other, with the box — and when
   // there is nothing to choose from, Other is the only row and the box is the answer.
@@ -4411,12 +4414,12 @@ function box(){
   const old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
   w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
   S.push(sec(hd("h2",`${l("waiting.title")}: <span class="${w.length?"owed":""}">${w.length}</span>`,
-      w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",w.length>__BOTTLE__?l("waiting.bottleneck",w.length,held.length):"",
+      w.length?[old>=0?cnt(l("waiting.oldest",old)):"",held.length?cnt(l("waiting.holds",held.length)):"",w.length>__BOTTLE__?l("waiting.bottleneck",w.length,held.length):"",
       // FM-007: how an answer here is proved — the same for every ask on one repository's board, so said once, here, before *accept*:
       // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour's (PROOF, `proof_page`)
-      lh("proof.here",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join(" "):""),
+      lh("proof.here",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join("\u00a0"):""),
     (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(t[29][12]?`<a href="#=${t[0]}">${t[29][12]}</a>`:idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",
-      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),
+      [days(t)!=null?cnt(l("waiting.days",days(t))):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join("\u00a0· "),
       t[29][0]?btn("answer.accept",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'accept')`)+btn("answer.reject",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'reject')`):"")).join("")
     +(w.length>14?`<p class="sub">${l("waiting.more",w.length-14)}</p>`:"")
     +(sent.length?`<p class="sub">${sent.length==1?l("waiting.malformed.one"):l("waiting.malformed",sent.length)}</p>`+sent.map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`,"",esc(t[29][7][0]).replace(/`([^`]+)`/g,"<code>$1</code>"),"")).join(""):""),w.length?"wait":""));
@@ -4442,12 +4445,12 @@ function box(){
     vr=v=>row(cid(v[0],(v[8]||[])[0]),rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1])),v[5]?l("verdict."+v[5]):l("type.verdict"),
         (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1):v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),
     folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG"),week=REG.verdicts||[],more=week.filter(folds);
-    S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
-        "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
+    S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${cnt(l("reviews.notready",r[4]))}</b>`:"",r[5]?`· <b class="warn">${cnt(l("reviews.findings",r[5]))}</b>`:"",
+        "· "+cnt(l("reviews.counts",r[0],r[1])),r[2]?"· "+cnt(l("reviews.untraced",r[2])):"",r[3]?"· "+cnt(l("reviews.trunk",r[3])):"","· "+l("reviews.reports")].filter(Boolean).join("\u00a0")),
       `<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
-    S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
+    S.push(fold(hd("h2",l("path.title"),"· "+cnt(l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__")),`<p class="lim">${ids(HOME.path)}</p>`,false))}
   return S.join("");
 }
 let all=false,gi=0,shut=new Set(),touched=new Set();
@@ -4471,13 +4474,13 @@ function draw(){
   $("b").innerHTML=keys.map(k=>{
     const g=groups.get(k);
     const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),shipped=kids.filter(t=>t[2]=="Shipped").length,closed=kids.filter(t=>t[2]=="Closed").length,folded=shut.has(gname+k)&&!q;
-    const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
+    const story=kids.length?` · ${cnt(`${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}:`)} ${cnt(`${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")}`)}\u00a0· <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${cnt(`${open.length} ${l("story.open")}`)}</span>${open.some(t=>t[17])?`\u00a0· ${cnt(`${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`)}`:""}`:"";
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
     const head=`<tr class="g${folded?" f":""}" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m"><b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?(BOARD[k]?" · "+BOARD[k]:""):BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>`;   // a header sums its rows up by the board's columns
     return head+(folded?"":state+g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
-  $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
+  $("n").textContent=cnt(`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`);
   $("ov").hidden=gname=="board";
   for(const r of document.querySelectorAll("#gv input,#ov input"))r.checked=r.name=="gv"?+r.value==gi:(r.value=="all")==all;
   $("p").hidden=!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(!q?box():"");
@@ -4514,7 +4517,7 @@ ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&ago(t[24][0])>__DAYS__?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?(t[21]=="owner"?"<code>owner</code>":esc(t[21])):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
-<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${k=="owner"?"<code>owner</code>":esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
+<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?cnt(`${v.length} ${l("viewer.no_move")}`):`${k=="owner"?"<code>owner</code>":esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join("\u00a0· ")||l("viewer.none_in_progress")}\u00a0· ${cnt(`${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`)}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
   for(const i of v.querySelectorAll(".md img"))if(!safeUrl(i.getAttribute("src")||"")||/^mailto:/i.test((i.getAttribute("src")||"").trim()))i.replaceWith(document.createTextNode(i.alt||""));      // the DOM's last word on what an image loads
   for(const a of v.querySelectorAll(".md a")){const h=a.getAttribute("href")||"",m=h.match(new RegExp("^("+TID.source+")-[^/]*\\.md"));
     if(!safeUrl(h)){a.removeAttribute("href");continue}

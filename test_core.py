@@ -368,7 +368,7 @@ check("FM-021 · the progress line says it is empty until a first pass while non
       and 'triaged:PASSED?l("desc.triaged",PASSED):l("desc.triaged.none")' in _tri and "LAST||HOME.last" not in _tri and '"desc.progress.none": "empty until a first triage pass has run — --triage"' in _tri)
 check("a story's header says how much of it a pass has judged, and counts its chapters shipped, closed and open apart — a closed chapter is not shipped, and is not done",
       '${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}' in _tri and 'shipped=kids.filter(t=>t[2]=="Shipped").length' in _tri
-      and 'closed=kids.filter(t=>t[2]=="Closed").length' in _tri and '${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · <span class=' in _tri
+      and 'closed=kids.filter(t=>t[2]=="Closed").length' in _tri and '${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")}`)}\\u00a0· <span class=' in _tri
       and '${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}' in _tri and "story.done" not in _tri)
 check("FM-005 · no label calls a `Closed` tracker done: not the board's fifth section, its description, nor a story's count — in English and in the German table the tool ships",
       not any(re.search(r"\bdone\b", v, re.I) for k, v in gti.LABELS.items() if k.startswith(("story.", "section.", "desc.")))

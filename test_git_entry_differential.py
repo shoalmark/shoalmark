@@ -1452,6 +1452,40 @@ REVIEWS_ROW_EDITS = (
 )
 
 
+# a line of counts breaks only after a "·": each count goes through one helper that keeps it whole and holds each "·" to the count before it
+COUNT_LINE_EDITS = (
+    ('split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},\n',
+     'split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},\n'
+     '// a browser breaks a line at any space: inside a count every space is a no-break space, and each "·" holds to the count before it\n'
+     '// by one, so a line of counts breaks only after a "·"\n'
+     'cnt=s=>s.split(" · ").map(g=>g.replace(/ /g,"\\u00a0")).join("\\u00a0· "),\n'),
+    ('days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");',
+     'days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join("\\u00a0· ");'),
+    ('w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",',
+     'w.length?[old>=0?cnt(l("waiting.oldest",old)):"",held.length?cnt(l("waiting.holds",held.length)):"",'),
+    ('.filter(Boolean).map(s=>"· "+s).join(" "):""),', '.filter(Boolean).map(s=>"· "+s).join("\\u00a0"):""),'),
+    ('[days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),',
+     '[days(t)!=null?cnt(l("waiting.days",days(t))):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join("\\u00a0· "),'),
+    ('[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",\n'
+     '        "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),',
+     '[st,r[4]?`· <b class="hot">${cnt(l("reviews.notready",r[4]))}</b>`:"",r[5]?`· <b class="warn">${cnt(l("reviews.findings",r[5]))}</b>`:"",\n'
+     '        "· "+cnt(l("reviews.counts",r[0],r[1])),r[2]?"· "+cnt(l("reviews.untraced",r[2])):"",r[3]?"· "+cnt(l("reviews.trunk",r[3])):"","· "+l("reviews.reports")].filter(Boolean).join("\\u00a0")),'),
+    ('"· "+l(n==1?"path.line":"path.lines",n)+" · ', '"· "+cnt(l(n==1?"path.line":"path.lines",n)+" · '),
+    ('TRIAGE.md"),`<p class="lim">', 'TRIAGE.md")),`<p class="lim">'),
+    ('const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · '
+     '<span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";',
+     'const story=kids.length?` · ${cnt(`${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}:`)} ${cnt(`${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")}`)}\\u00a0· '
+     '<span class="${open.some(t=>t[1]<"P2")?"hot":""}">${cnt(`${open.length} ${l("story.open")}`)}</span>${open.some(t=>t[17])?`\\u00a0· ${cnt(`${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`)}`:""}`:"";'),
+    ('$("n").textContent=`${rows.length} ', '$("n").textContent=cnt(`${rows.length} '),
+    ('${L["count.untriaged"]}`:""}`;', '${L["count.untriaged"]}`:""}`);'),
+    ('k=="no move named"?`${v.length} ${l("viewer.no_move")}`:', 'k=="no move named"?cnt(`${v.length} ${l("viewer.no_move")}`):'),
+    ('.join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · '
+     '${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")',
+     '.join("\\u00a0· ")||l("viewer.none_in_progress")}\\u00a0· ${cnt(`${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · '
+     '${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`)}`:"")'),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
     occurs exactly once — else None; then its rows, each ask cell carrying its id (`ask_id_rows`)."""
@@ -1459,7 +1493,7 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS + REVIEWS_ROW_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS + REVIEWS_ROW_EDITS + COUNT_LINE_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
@@ -2078,6 +2112,23 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                            page != new_page and marker_only(page) and not snapshots_match(old, with_board(new, PAGE_PATH, page)))
         assert_control(v2 + "the controls' anchors are real: WORK-001, the dialog's element and WORK-001's hook are each on the candidate's page",
                        new_page.count(b"WORK-001") >= 1 and new_page.count(section) == 1 and new_page.count(hook) == 1)
+        # the count line's allowance, held the same way: literal text, each after found once, and a count place changed beyond it does not match
+        counts = "Git entry count-line allowance: "
+        assert_control(counts + "COUNT_LINE_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(COUNT_LINE_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in COUNT_LINE_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in COUNT_LINE_EDITS))
+        helper_end = '.join("\\u00a0· "),\nidl='
+        count_variants = {
+            "the helper's join as a plain \" · \"": new_page.replace(helper_end.encode("utf-8"), '.join(" · "),\nidl='.encode("utf-8"), 1),
+            "the count line without the helper": new_page.replace(b'$("n").textContent=cnt(`', b'$("n").textContent=`', 1)
+                                                          .replace(b'${L["count.untriaged"]}`:""}`);', b'${L["count.untriaged"]}`:""}`;', 1),
+            "one byte more at a count place, the trunk's": new_page.replace(b'cnt(l("reviews.trunk",r[3]))', b'cnt(l("reviews.trunk",r[3])) ', 1),
+            "the reviews heading's join as a plain space": new_page.replace(b'.filter(Boolean).join("\\u00a0")),', b'.filter(Boolean).join(" ")),', 1)}
+        made_counts = {what: page != new_page for what, page in count_variants.items()}
+        assert_control(counts + "a page whose count places differ from COUNT_LINE_EDITS' after — the helper's join, the count line without the "
+                       f"helper, one byte more, a heading's join — does not match (each variant made: {made_counts})",
+                       all(made_counts.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in count_variants.values()))
         # the reviews row's allowance, held the same way: literal text, each after found once, and a row changed beyond it does not match
         rv = "Git entry reviews-row allowance: "
         assert_control(rv + "REVIEWS_ROW_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "

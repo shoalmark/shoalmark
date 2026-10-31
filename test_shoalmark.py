@@ -8293,7 +8293,7 @@ if _browser("search"):
                 return rows, (re.search(r'id="n"[^>]*>([^<]*)<', d_) or [None, ""])[1]
             whole, low, hood, part, word = (found(f) for f in ("#MSR-001", "#msr-001%20", "#~MSR-001", "#MSR-00", "#stock"))
             check(f"FM-020 · a whole id searched shows that tracker alone — not the tracker whose body links to it (saw {whole}, {low[0]})",
-                  whole[0] == ["MSR-001"] and whole[1].startswith("1 tracker · MSR-001 ·") and low[0] == ["MSR-001"])
+                  whole[0] == ["MSR-001"] and html.unescape(whole[1]).startswith("1\u00a0tracker\u00a0· MSR-001\u00a0·") and low[0] == ["MSR-001"])
             check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
                   sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
             # a view with open/all (every view but the board), *open* pressed, a closed tracker searched by its id: it is shown,
@@ -8304,7 +8304,8 @@ if _browser("search"):
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()]).stdout
             seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
             check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
-                  seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
+                  html.unescape(seen).startswith("1\u00a0tracker\u00a0· MSR-003\u00a0·") and seen.endswith("|MSR-003")
+                  and " open" not in html.unescape(seen).replace("\u00a0", " "))
             # the placeholder fits the box at its CSS minimum (200 px) — measured with the box's own font, not by a window —
             # in both shipped languages, and the whole help is the box's title (R6, R12)
             import html as _html, json as _json
@@ -10083,6 +10084,110 @@ _S11_MUTANTS = {
     "teal on a row's state, beside no command (DF-3)": ('.st{color:var(--dim)}', '.st{color:var(--teal)}')}
 for what_, (a_, b_) in _S11_MUTANTS.items():
     check(f"FM-053 · §11 · 2 · the meanings · its mutant, {what_}: test 2 FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))[2][0])
+fm.configure(HERE)
+
+# --- a line of the board's counts breaks only after a "·", never inside a count: one helper in the board's script keeps each count whole, its
+#     spaces no-break spaces, and holds each "·" to the count before it by one, so the space after the "·" is where the line breaks; every place
+#     that sets counts in a line goes through it. Read from the script of a board built in English and one built in German, with the labels each
+#     carries; the helper's join without its no-break space, and a place without the helper, fail it ----------------------------------------
+_CNT_DEF = re.compile(r'\ncnt=s=>s\.split\("((?:[^"\\]|\\.)*)"\)\.map\(g=>g\.replace\(/((?:[^/\\]|\\.)*)/g,"((?:[^"\\]|\\.)*)"\)\)'
+                      r'\.join\("((?:[^"\\]|\\.)*)"\),\n')
+_CNT_PLACES = {
+    "the header's count line": ('$("n").textContent=cnt(`${rows.length} ', '${L["count.untriaged"]}`:""}`);'),
+    "the reviews heading": ('`· <b class="hot">${cnt(l("reviews.notready",r[4]))}</b>`', '`· <b class="warn">${cnt(l("reviews.findings",r[5]))}</b>`',
+                            '"· "+cnt(l("reviews.counts",r[0],r[1]))', '"· "+cnt(l("reviews.untraced",r[2]))', '"· "+cnt(l("reviews.trunk",r[3]))',
+                            '"· "+l("reviews.reports")].filter(Boolean).join("\\u00a0")'),
+    "the waiting heading": ('old>=0?cnt(l("waiting.oldest",old)):""', 'held.length?cnt(l("waiting.holds",held.length)):""',
+                            '.filter(Boolean).map(s=>"· "+s).join("\\u00a0"):""'),
+    "a waiting ask's row": ('[days(t)!=null?cnt(l("waiting.days",days(t))):"",t[29][3].length?', 'l("ask.legacy"):""].filter(Boolean).join("\\u00a0· ")'),
+    "the answer dialog's head": ('const meta=[k?l("ask."+k):"",days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""]'
+                                 '.filter(Boolean).join("\\u00a0· ");',),
+    "the current path's heading": ('"· "+cnt(l(n==1?"path.line":"path.lines",n)+" · ',),
+    "a story's row": ('${cnt(`${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}:`)} ${cnt(`${shipped} ${l("story.shipped")} · ${closed} '
+                      '${l("story.closed")}`)}\\u00a0· <span', '${cnt(`${open.length} ${l("story.open")}`)}</span>${open.some(t=>t[17])?`\\u00a0· ${cnt(`${l("word.triaged")} '),
+    "a story's chapters in the viewer": ('k=="no move named"?cnt(`${v.length} ${l("viewer.no_move")}`):',
+                                         '.join("\\u00a0· ")||l("viewer.none_in_progress")}\\u00a0· ${cnt(`${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ')}
+_CNT_KEYS = ("reviews.notready", "reviews.findings", "reviews.counts", "reviews.untraced", "reviews.trunk", "waiting.oldest", "waiting.holds", "waiting.days")
+
+
+def _cnt_lines(labels):
+    """What each place hands the helper, said with `labels` as the board says them: {where: text}."""
+    L_ = lambda k, *a: re.sub(r"\{(\d)\}", lambda m: str(a[int(m[1])]) if int(m[1]) < len(a) else "", labels.get(k, k))
+    tail = f' · 1 P0/P1 · 2 {L_("count.in_progress")} · 1 {L_("count.blocked")} · 1 {L_("count.untriaged")}'
+    return {"the header, the board's view": f'4 {L_("count.trackers")}{tail}', "the header, open work": f'3 {L_("count.open")}{tail}',
+            "the header, an id searched": f'1 {L_("count.id", "MSR-001")}{tail}', "the header, around an id": f'2 {L_("count.around", "MSR-001")}{tail}',
+            **{f"the reviews heading, {k}": L_(k, 2, 1) for k in _CNT_KEYS[:5]}, **{f"the waiting heading and rows, {k}": L_(k, 3) for k in _CNT_KEYS[5:]},
+            "the current path's heading": f'{L_("path.lines", 3)} · work-tracker/TRIAGE.md',
+            "a story's row, its chapters": f'3 {L_("story.chapters")}:', "a story's row, shipped and closed": f'1 {L_("story.shipped")} · 0 {L_("story.closed")}',
+            "a story's row, open": f'2 {L_("story.open")}', "a story's row, triaged": f'{L_("word.triaged")} 1/2',
+            "the viewer, no move named": f'1 {L_("viewer.no_move")}', "the viewer, the rest": f'0 {L_("story.parked")} · 1 {L_("story.shipped")} · 0 {L_("story.closed")}'}
+
+
+def _cnt_problems(source, langs=("en", "de")):
+    """What is wrong with the counts' line breaks in the boards a copy of the tool whose source is `source` builds, in each of `langs`: one line
+    each, [] where none."""
+    bad, spaced = [], {}
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_ = base_ / "tool"
+        (tool_ / "vendor").mkdir(parents=True)
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        for lang_ in langs:
+            root_ = base_ / lang_; root_.mkdir()
+            tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+            git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+            tracker(root_, "MSR-001", extra="tier: P1\n", title="in progress")
+            tracker(root_, "MSR-002", status="Proposed", extra="tier: P2\nblocked-by: MSR-001\n", title="blocked")
+            tracker(root_, "MSR-003", status="Proposed", title="not judged yet")
+            if lang_ == "de":
+                (root_ / "docs/work-tracker/brand").mkdir(parents=True, exist_ok=True)
+                (root_ / "docs/work-tracker/brand/labels.yaml").write_text((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+            tr_("--html-only"); page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+            rm_git(root_)
+            script_ = page_.split("<script>")[2]
+            labels_ = json.JSONDecoder().raw_decode(script_, script_.index(",L=") + len(",L="))[0]
+            defs_ = _CNT_DEF.findall(script_)
+            if len(defs_) != 1:
+                bad.append(f"{lang_}: the helper is defined {len(defs_)} times as one split, one replace and one join")
+                continue
+            sep_, pat_, rep_, join_ = defs_[0]
+            sep_, rep_, join_ = (json.loads(f'"{s_}"') for s_ in (sep_, rep_, join_))
+            bad += [f"{lang_}: {where_} does not go through the helper ({frag_!r} is there {script_.count(frag_)} times)"
+                    for where_, frags_ in _CNT_PLACES.items() for frag_ in frags_ if script_.count(frag_) != 1]
+            for k_ in _CNT_KEYS:
+                said_, held_ = script_.count(f'l("{k_}"'), script_.count(f'cnt(l("{k_}"')
+                if not said_ or held_ != said_:
+                    bad.append(f"{lang_}: {k_} is said {said_} times, {held_} of them through the helper")
+            lines_ = _cnt_lines(labels_)
+            spaced[lang_] = sum(" " in g_ for line_ in lines_.values() for g_ in line_.split(" · "))
+            for where_, line_ in lines_.items():
+                out_ = join_.join(re.sub(pat_, rep_, g_) for g_ in line_.split(sep_))
+                if out_.replace("\u00a0", " ") != line_:
+                    bad.append(f"{lang_}: {where_}: the helper changes more than spaces ({out_!r})")
+                if not all(0 < i_ < len(out_) - 1 and out_[i_ - 1] == "\u00a0" and out_[i_ + 1] == " " for i_, c_ in enumerate(out_) if c_ == "·"):
+                    bad.append(f"{lang_}: {where_}: a \"·\" is not held to the count before it, or the space after it is no break ({out_!r})")
+                if " " in out_.replace("\u00a0· ", ""):
+                    bad.append(f"{lang_}: {where_}: a count holds a space a line may break at ({out_!r})")
+    bad += [f"{lang_}: only {n_} counts with a space in their words, so the check would be blind" for lang_, n_ in spaced.items() if n_ < 12]
+    return bad
+
+
+_cnt_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_cnt_bad = _cnt_problems(_cnt_src)
+check(f"a line of the board's counts breaks only after a \"·\": in the English and the German board, every count is whole, its spaces no-break "
+      f"spaces, and each \"·\" holds to the count before it, the space after it the break, at every place that sets counts in a line (problems: {_cnt_bad})",
+      _cnt_bad == [])
+_CNT_MUTANTS = {
+    "the header's count line without the helper": (('$("n").textContent=cnt(`${rows.length} ', '$("n").textContent=`${rows.length} '),
+                                                    ('${L["count.untriaged"]}`:""}`);', '${L["count.untriaged"]}`:""}`;')),
+    "the helper's join without its no-break space": (('.map(g=>g.replace(/ /g,"\\u00a0")).join("\\u00a0· "),', '.map(g=>g.replace(/ /g,"\\u00a0")).join(" · "),'),),
+    "the reviews heading's trunk count without the helper": (('"· "+cnt(l("reviews.trunk",r[3]))', '"· "+l("reviews.trunk",r[3])'),)}
+for what_, edits_ in _CNT_MUTANTS.items():
+    mutant_ = _cnt_src
+    for a_, b_ in edits_:
+        mutant_ = mutant_.replace(a_, b_) if mutant_.count(a_) == 1 else ""
+    check(f"the counts' line breaks · its mutant, {what_}: the class test FAILS on it", bool(mutant_) and _cnt_problems(mutant_, ("en",)) != [])
 fm.configure(HERE)
 
 # --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
