@@ -4193,6 +4193,7 @@ details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{pa
    own, so the switch reaches it; a word outside the seven keeps the slot, empty */
 .seat{display:inline-block;width:20px;height:20px;vertical-align:top}.seat img{display:block}
 .seat img{filter:grayscale(1) invert(1)}
+@media print{.seat img{visibility:hidden}}
 @media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}
 code{font:inherit}
 /* a name in a row moves to the next line whole, and breaks only where it is longer than a line (BF-11) */

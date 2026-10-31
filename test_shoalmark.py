@@ -8022,8 +8022,8 @@ else:
     _skipped("the work table's folds, run in Node", 5, "Node is not installed here")
 
 # --- a seat's icon in today's session row, before the seat's word (the guide, §4): the tool's own copy of `brand/seats/<seat>.svg` without its
-#     ground, found by the seat's exact word, aria-hidden beside it; any other word keeps an empty 20 px slot. Grey, and inverted on the light board
-#     and on paper; the dark rule is the page's own, so the switch reaches it. The seven sources stay byte for byte. The page's own script runs in
+#     ground, found by the seat's exact word, aria-hidden beside it; any other word keeps an empty 20 px slot. Grey, and inverted on the light board;
+#     paper draws none and keeps its slot; the dark rule is the page's own, so the switch reaches it. The seven sources stay byte for byte. The page's own script runs in
 #     Node from a board a copy of the tool builds, on a stylesheet read from the page; each mutant fails it where it should ---------------------
 import base64
 _SEAT_GROUND = '<rect width="20" height="20" fill="#15293d"/>\n'
@@ -8107,8 +8107,8 @@ def _seat_holds(media, system, printing):
     return any(said)
 
 
-def _seat_filter(css, medias, system, printing):
-    """`.seat img`'s filter as the cascade gives it: the last rule that holds, in order — None where none does, "?" where a media text is unread."""
+def _seat_value(css, medias, system, printing, target=".seat img", prop="filter"):
+    """`target`'s `prop` as the cascade gives it: the last rule that holds, in order — None where none does, "?" where a media text is unread."""
     got, at = None, 0
     for r in css:
         pairs = [(r["sel"], r["decls"])] if "sel" in r else r.get("rules", [])
@@ -8120,8 +8120,8 @@ def _seat_filter(css, medias, system, printing):
             if not holds:
                 continue
         for sel, decls in pairs:
-            if ".seat img" in [s.strip() for s in sel.split(",")] and "filter" in decls:
-                got = decls["filter"]
+            if target in [s.strip() for s in sel.split(",")] and prop in decls:
+                got = decls[prop]
     return got
 
 
@@ -8197,9 +8197,21 @@ def _seat_problems(o, seats=HERE / "brand/seats"):
     for state_, systems_ in (("light", {"light": "light", "dark": "light"}), ("dark", {"light": "dark", "dark": "dark"}),
                              ("auto", {"light": "light", "dark": "dark"}), ("print", {"light": "light", "dark": "light"})):
         for system_, looks_ in systems_.items():
-            got_ = _seat_filter(o["css"], o["medias"].get(state_, []), system_, state_ == "print")
+            got_ = _seat_value(o["css"], o["medias"].get(state_, []), system_, state_ == "print")
             if got_ != want[looks_]:
                 bad.append(f"{state_}: the switch at {state_}, the system {system_}: `.seat img` is {got_!r}, not {want[looks_]!r}")
+    for state_ in ("light", "dark", "auto"):
+        for system_ in ("light", "dark"):
+            shown_ = [_seat_value(o["css"], o["medias"].get(state_, []), system_, False, ".seat img", p_) for p_ in ("visibility", "display")]
+            if shown_[0] == "hidden" or shown_[1] == "none":
+                bad.append(f"screen: the switch at {state_}, the system {system_}: `.seat img` is not shown ({shown_})")
+    for system_ in ("light", "dark"):
+        medias_ = o["medias"].get("print", [])
+        if _seat_value(o["css"], medias_, system_, True, ".seat img", "visibility") != "hidden":
+            bad.append(f"printed: on paper, the system {system_}: `.seat img` is not hidden, so its colours print where a filter is dropped")
+        if _seat_value(o["css"], medias_, system_, True, ".seat img", "display") == "none" or not all(
+                _seat_value(o["css"], medias_, system_, True, ".seat", k_) == v_ for k_, v_ in (("display", "inline-block"), ("width", "20px"), ("height", "20px"))):
+            bad.append(f"box: on paper, the system {system_}: the icon's box, or its 20 px slot, is not kept")
     return bad
 
 
@@ -8208,8 +8220,8 @@ if shutil.which("node"):
     _seat_got = _seat_run(_seat_src)
     _seat_bad = _seat_problems(_seat_got)
     check("a seat's icon stands before its word in today's session row: the seven, each its source without the ground line alone and aria-hidden; any "
-          "other word an empty 20 px slot, escaped; grey on the dark board, inverted on the light one and on paper, the switch reaching both; the "
-          f"seven sources as committed (problems: {_seat_bad})", _seat_bad == [])
+          "other word an empty 20 px slot, escaped; grey on the dark board, inverted on the light one, the switch reaching both; on paper no icon, its "
+          f"slot kept; the seven sources as committed (problems: {_seat_bad})", _seat_bad == [])
     _SEAT_ROW = '<span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} ('
     _SEAT_MUTANTS = {
         "the ground kept in the builder's embedded copy": ((("'<title>builder — the shipwright</title>\\n'",
@@ -8224,7 +8236,11 @@ if shutil.which("node"):
         "the table read with its prototype": (((_SEAT_ROW, _SEAT_ROW.replace('Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""', 'SEAT[g[1]]||""')),), None, {"borrowed"}),
         "the icon not aria-hidden": ((("""return f'<img alt="" aria-hidden="true" width="20" """, """return f'<img alt="" width="20" """),), None, {"aria"}),
         "the seat's word unescaped": (((_SEAT_ROW, _SEAT_ROW.replace("${esc(g[1])} (", "${g[1]} (")),), None, {"esc"}),
-        "no 20 px slot": (((".seat{display:inline-block;width:20px;height:20px;vertical-align:top}", ".seat{vertical-align:top}"),), None, {"slot"})}
+        "no 20 px slot": (((".seat{display:inline-block;width:20px;height:20px;vertical-align:top}", ".seat{vertical-align:top}"),), None, {"slot"}),
+        "the print rule dropped": ((("@media print{.seat img{visibility:hidden}}", ""),), None, {"printed"}),
+        "the print rule as display:none": ((("@media print{.seat img{visibility:hidden}}", "@media print{.seat img{display:none}}"),), None, {"box"}),
+        "the rule out of its print media, the icon hidden on screen too": ((("@media print{.seat img{visibility:hidden}}", ".seat img{visibility:hidden}"),),
+                                                                          None, {"screen"})}
     for what_, (edits_, source_edit_, want_) in _SEAT_MUTANTS.items():
         mutant_ = _seat_src
         for a_, b_ in edits_:
@@ -8241,7 +8257,7 @@ if shutil.which("node"):
               bool(mutant_) and want_ <= seen_ and "run" not in seen_)
     fm.configure(HERE)
 else:
-    _skipped("the seat icons, run in Node", 11, "Node is not installed here")
+    _skipped("the seat icons, run in Node", 14, "Node is not installed here")
 
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
