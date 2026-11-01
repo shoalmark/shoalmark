@@ -22,6 +22,19 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 
 ## What is true now
 
+**2026-11-01 — the Designer's final look at the closing pass:** `2026-10-31-closing-pass.md` reports no P1;
+P2 BF-109 is fixed in `41866c8` and `5b87cc2`; the seat icons' print is fixed in `42bb087` and `8f4072b`;
+P3s BF-106 to BF-108 move to v0.20.3.
+
+**2026-11-01:** BF-83, a note from the Designer's final look of 23 October: in the probe build, the landing footer's GitHub part breaks at its inner space below about 450 px in English and 410 px in German, in WebKit (one line at 460 and 420, two at 440 and 400). That is about 20 px above the 432 and 390 the look was asked to confirm. The behaviour is as described, and no change is needed.
+
+**2026-11-01 — v0.20.3's site and gate rows, from 30 and 31 October:**
+- The twin padding gate in `check_site.py`: its why-comment and `door_paddings`' docstring came out in `5b87cc2`,
+  and the new helpers have no docstrings.
+- `weight()` counts pseudo-classes: done in `5b87cc2`; this row is closed.
+- `scripts/test_check_site.py` on Python 3.9: five `write_text(newline=)` errors.
+- The Cloudflare gate, on the Owner's yes of 30 October.
+
 **2026-10-29 — BF-95: fenced code builds to a code block again, in English and German.** Since `e0a21dd` the site's
 `[project.markdown_extensions]` table held only the snippets extension. Setting that table replaces Zensical's
 default extensions, all but `toc` and `tables`, so every fenced block built as inline code inside a paragraph.
@@ -123,6 +136,10 @@ The re-check of the morning round is READY WITH FINDINGS (`3a0c673`):
 The Designer's look at the lane (`fa1819c`) finds that it fits. BF-96 (signing's footer title cut at 390 px) and BF-97
 (the stand-up title's last word alone at 375 px) are the theme's own title behaviour, in English too. They are
 recorded as seen, with no fix. BF-95, found in the same look, is a lane of its own on main.
+
+**2026-11-01 — the German rows for v0.20.3, from 30 October:**
+- C4 on the shipped German table.
+- *Bestätigung* / *Freigabe* for the meaning pass.
 
 **2026-10-28 — the why page, on the Owner's word on the live site:** the story stands as a quote again, in its figure with its blockquote, left rule and caption and their rules on screen, on a phone and in print, where BF-86 and RV-3930 had made it running text; its words stay in the first person. Its caption is the Owner's attribution in their own words, after its dash and linked to the X profile, and the portdive sentence is said there once. Its last paragraph tells the timeline from shoalmark's first commit on 21 September. The tile *Measured, not promised.* reads *Reports, not proofs.*, the Board's own words, and the TL;DR's Try-it line says what the prompt asks: to try the setup on a copy in a throwaway folder, and to change nothing in the repository without the reader's yes. The German says the same in the page's *du* voice.
 
@@ -1264,6 +1281,7 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 
 | Date | Event |
 |---|---|
+| 2026-11-01 05:03:32 CET | The Designer's final look at the closing pass, BF-83's unchanged behaviour, and the site, gate and German rows for v0.20.3 are recorded above; `weight()`'s pseudo-classes are closed in `5b87cc2`. Records only. |
 | 2026-10-29 09:30:19 CET | **BF-95: fenced code builds to a code block again**, in English and German (`ccf5cd1`), and the site check refuses a fenced block that does not (`67ba698`). Records only. |
 | 2026-10-29 07:48:56 CET | **The German rewrite: the Owner's three ruled lines pinned** (`a9064f1`, RV-3970), and the Designer's look: the lane fits; BF-96 and BF-97 seen, with no fix. Records only. |
 | 2026-10-29 07:20:53 CET | **The German rewrite: the Owner's words for the lane.** The quote's *Sessions* stands. The English seats page's line on the German pages (RV-3965) and three German lines (RV-3967) take the Owner's words (`5194717`), and RV-3960's new lines stand as written. The check reads the issue form's values and paragraphs whole (`4661793`, RV-3968), and the earlier entry's count of markup kinds is corrected (RV-3969). Records only. |
