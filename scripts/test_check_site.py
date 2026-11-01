@@ -1,6 +1,7 @@
 """Regression controls for the published site's checks: font sources, link previews, the landing in two languages with its launch state, How it
 works, the Markdown twins and the requests a page makes, and fenced code; run with requirements-docs installed."""
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -10,6 +11,11 @@ CHECKER = Path(__file__).with_name("check_site.py")
 SITE_URL = "https://shoalmark.tools/"
 PROMPT = 'Please check honestly whether shoalmark fits this project; the answer may be "no fit".\nI decide.\n'
 LABELS = {"en": "Copy the prompt", "de": "Prompt kopieren"}
+CUES = {"en": "— press start —", "de": "— Start drücken —"}
+COIN = '<span class="gcoin" aria-hidden="true"><svg class="cab cab-coin" aria-hidden="true"></svg></span>'
+TWIN = '<p class="door-again"><a class="btn door" href="probe.txt" aria-haspopup="dialog">%s' + COIN + '</a></p>'
+DOOR_STYLE = ('<style>.btn.door{position:relative;padding-left:50px}\n.door-again{margin:24px 0 0}\n.door-again .btn.door{padding-left:50px}\n'
+              '@media (max-width:700px){.btn.door{padding-left:18px}.btn.door::before{top:9px;bottom:9px}}</style>')
 TWIN_TEXT = "# How it works\n\nTry it: the button \"Hand your agents the note\" leads to a note.\n\n```\nnext: owner\n```\n"
 
 
@@ -18,8 +24,11 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
     en = lang == "en"
     where, other = (SITE_URL, SITE_URL + "de/") if en else (SITE_URL + "de/", SITE_URL)
     label = LABELS[lang] if probe else ("Hand your agents the note" if en else "Gib deinen Agenten die Notiz")
-    primary = (f'<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">{label}</a>' if probe else
+    primary = (f'<span class="cue" aria-hidden="true"><span class="cue-t">{CUES[lang]}</span></span>'
+               f'<a class="btn door" id="probe-open" href="probe.txt" aria-haspopup="dialog">{label}{COIN}</a>' if probe else
                f'<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT{"" if en else ".de"}.md">{label}</a>')
+    start = ('<section class="band wrap" id="start"><div class="coins"><div class="coin">coin</div></div>' + (TWIN % label if probe else "")
+             + '<p class="small">tell</p></section>')
     short = SITE_URL + ("" if en else "de/") + "probe.txt"
     dialog = (f'<dialog class="probe" id="probe" aria-labelledby="probe-h"><h2 id="probe-h">The probe prompt</h2>'
               f'<textarea id="probe-text" readonly>{PROMPT.replace(chr(34), "&#34;")}</textarea>'
@@ -31,11 +40,11 @@ def landing(lang, probe, tag="v1.2.3", footer_tag=None):
             f'<link rel="alternate" hreflang="x-default" href="{SITE_URL}">'
             f'<meta property="og:locale" content="{"en_GB" if en else "de_DE"}">'
             f'<meta property="og:image" content="{SITE_URL}assets/{"preview.png" if en else "preview-de.png"}">'
-            f'<link rel="stylesheet" href="{"" if en else "../"}stylesheets/x.css"></head><body>'
+            f'<link rel="stylesheet" href="{"" if en else "../"}stylesheets/x.css">{DOOR_STYLE if probe else ""}</head><body>'
             f'<a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{tag}">release<b>{tag}</b></a>'
             f'<a class="lang" href="{"de/index.html" if en else "../index.html"}" hreflang="{"de" if en else "en"}">{"DE" if en else "EN"}</a>'
             f'{primary}<a class="btn alt" href="{"" if en else "../"}{"" if en else "de/"}how-it-works.html">How</a>'
-            f'<footer><a href="https://github.com/shoalmark/shoalmark/releases/tag/{footer_tag or tag}">{footer_tag or tag}</a></footer>'
+            f'{start}<footer><a href="https://github.com/shoalmark/shoalmark/releases/tag/{footer_tag or tag}">{footer_tag or tag}</a></footer>'
             f'{dialog}<script>const a = 1; addEventListener("resize", () => a);</script></body></html>')
 
 
@@ -63,10 +72,39 @@ def good_site(site, probe=False):
     (site.parent / "docs/index.md").write_text("# shoalmark\n", encoding="utf-8")
 
 
-def run(site, probe=False):
+LEGAL_PAGES = {"en": ("imprint.html", "privacy.html"), "de": ("de/impressum.html", "de/datenschutz.html")}
+
+
+def footer(rel, links=None):
+    """The footer of the page at `rel`: its language's imprint and privacy notice, linked from where the page stands, or the `links` given."""
+    up = "../" * rel.count("/")
+    links = links or [up + target for target in LEGAL_PAGES["de" if rel.startswith("de/") else "en"]]
+    return "<footer>" + "".join(f'<a href="{href}">{href}</a>' for href in links) + "</footer>"
+
+
+def footed(site):
+    """The four legal pages, where they are missing, and every page of the site with its footer."""
+    for lang, pair in LEGAL_PAGES.items():
+        for rel in pair:
+            if not (site / rel).is_file():
+                (site / rel).parent.mkdir(parents=True, exist_ok=True)
+                (site / rel).write_text(f'<html lang="{lang}"><body><h1>{rel}</h1></body></html>', encoding="utf-8")
+    for page in sorted(site.rglob("*.html")):
+        text = page.read_text(encoding="utf-8")
+        foot = footer(page.relative_to(site).as_posix())
+        page.write_text(text.replace("</body>", foot + "</body>", 1) if "</body>" in text else text + foot, encoding="utf-8")
+
+
+def checked_site(site, toml):
+    return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+
+
+def run(site, probe=False, foot=True):
+    if foot:
+        footed(site)
     toml = site.parent / ("zensical-%s.toml" % ("on" if probe else "off"))
     toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\n" % ("true" if probe else "false"), encoding="utf-8")
-    return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+    return checked_site(site, toml)
 
 
 class FontSources(unittest.TestCase):
@@ -192,7 +230,8 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("probe.txt", "I decide.", "I decide!"), "probe.txt is missing or is not, byte for byte", probe=True)
         self.refused(self.edit("index.html", ' aria-labelledby="probe-h"', ""), "not one labelled dialog", probe=True)
         self.refused(self.edit("de/index.html", '<textarea id="probe-text" readonly>', '<textarea id="other" readonly>'), "not one labelled dialog", probe=True)
-        self.refused(self.edit("index.html", '<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">', '<a class="btn" href="probe.txt">'), "does not copy the prompt", probe=True)
+        both = lambda site: [self.edit("index.html", 'href="probe.txt" aria-haspopup="dialog">', 'href="index.html" aria-haspopup="dialog">')(site) for _ in range(2)]
+        self.refused(both, "does not copy the prompt", probe=True)
         self.refused(self.edit("index.html", ">shoalmark.tools/<wbr>probe.txt</a>", ">probe.txt</a>"), "second step does not link to", probe=True)
         self.refused(self.edit("de/index.html", ">shoalmark.tools/<wbr>de/<wbr>probe.txt</a>", ">https://shoalmark.tools/de/probe.txt</a>"), "second step does not link to", probe=True)
         self.refused(self.edit("de/index.html", ">shoalmark.tools/<wbr>de/<wbr>probe.txt</a>", ">shoalmark.tools/<wbr>probe.txt</a>"), "second step does not link to", probe=True)
@@ -232,6 +271,123 @@ class Landings(unittest.TestCase):
         self.refused(self.edit("how-it-works.html", "<body>", '<body><iframe src="http://example.org/"></iframe>'), "(iframe), from outside the site")
 
 
+class EveryPage(unittest.TestCase):
+    """Three rules every built page keeps: its footer links its language's imprint and privacy notice, none of its elements carries the theme's
+    source component, and nothing it loads comes from another host. A site that passes, and controls that each change one thing in it."""
+
+    def checked(self, change=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            good_site(site)
+            for rel, text in (("seats/index.html", '<html lang="en"><body><h1>Seats</h1></body></html>'),
+                              ("404.html", '<html lang="en"><body><h1>404</h1></body></html>')):
+                (site / rel).parent.mkdir(parents=True, exist_ok=True)
+                (site / rel).write_text(text, encoding="utf-8")
+            footed(site)
+            if change:
+                change(site)
+            toml = Path(tmp) / "zensical.toml"
+            toml.write_text('[project]\nsite_name = "x"\n\n[project.extra]\nprobe = false\n', encoding="utf-8")
+            return checked_site(site, toml)
+
+    def put(self, name, old, new):
+        def change(site):
+            text = (site / name).read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
+        return change
+
+    def rows(self, passing, refused):
+        for name, change in passing:
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for name, change, message in refused:
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+    def test_a_good_site_passes(self):
+        result = self.checked()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("site check: each of the 14 pages links its language's imprint and privacy notice in its footer", result.stdout)
+
+    def test_each_footer_links_its_languages_imprint_and_privacy_notice(self):
+        self.rows(
+            (("root-relative links, as the 404 page writes them", self.put("404.html", footer("404.html"), footer("404.html", ["/imprint.html", "/privacy.html"]))),
+             ("the site's own address, and a link with a fragment", self.put("de/signing.html", footer("de/signing.html"),
+                                                                             footer("de/signing.html", ["https://shoalmark.tools/de/impressum.html", "datenschutz.html#rechte"])))),
+            (("an English page's footer without its privacy link", self.put("setup.html", '<a href="privacy.html">privacy.html</a>', ""), "setup.html lacks privacy.html"),
+             ("a German page's footer with the English pair", self.put("de/signing.html", footer("de/signing.html"), footer("de/signing.html", ["../imprint.html", "../privacy.html"])),
+              "de/signing.html lacks de/impressum.html, de/datenschutz.html"),
+             ("the links outside the footer", self.put("how-it-works.html", footer("how-it-works.html"), footer("how-it-works.html").replace("footer>", "p>")),
+              "how-it-works.html lacks imprint.html, privacy.html"),
+             ("a page in a folder without its footer", self.put("seats/index.html", footer("seats/index.html"), ""), "seats/index.html lacks imprint.html, privacy.html"),
+             ("a link to a page of the same name in the page's own folder", self.put("seats/index.html", '<a href="../privacy.html">', '<a href="privacy.html">'),
+              "seats/index.html lacks privacy.html"),
+             ("the German landing's footer without the links", self.put("de/index.html", footer("de/index.html"), ""), "de/index.html lacks de/impressum.html, de/datenschutz.html"),
+             ("a footer link to another host's imprint", self.put("setup.html", '<a href="imprint.html">', '<a href="https://example.org/imprint.html">'), "setup.html lacks imprint.html"),
+             ("the imprint without its own footer", self.put("imprint.html", footer("imprint.html"), ""), "imprint.html lacks imprint.html, privacy.html"),
+             ("the German privacy notice not built, and no page linking it", self.unbuilt("de/datenschutz.html"), "missing de/datenschutz.html, which every page's footer links")))
+
+    def unbuilt(self, rel):
+        def change(site):
+            (site / rel).unlink()
+            for page in site.rglob("*.html"):
+                text = page.read_text(encoding="utf-8")
+                page.write_text(re.sub(r'<a href="[^"]*%s">[^<]*</a>' % re.escape(rel.rsplit("/", 1)[-1]), "", text), encoding="utf-8")
+        return change
+
+    def test_no_element_carries_the_source_component(self):
+        self.rows(
+            (("the repository link drawn without it", self.put("setup.html", "Get", '<a href="https://github.com/shoalmark/shoalmark" title="Go to repository" class="md-source">'
+                                                                                   '<div class="md-source__repository">shoalmark/shoalmark</div></a>Get')),
+             ("another component", self.put("setup.html", "Get", '<form class="md-header__option" data-md-component="palette"></form>Get')),
+             ("its name shown in code", self.put("setup.html", "Get", "<code>data-md-component=&quot;source&quot;</code>Get"))),
+            (("double-quoted, on an English page", self.put("setup.html", "Get", '<a class="md-source" data-md-component="source" href="https://github.com/shoalmark/shoalmark">x</a>Get'),
+              "setup.html lets the theme's script ask api.github.com"),
+             ("single-quoted, on a German page", self.put("de/signing.html", "<footer>", "<a class='md-source' data-md-component='source' href='https://github.com/shoalmark/shoalmark'>x</a><footer>"),
+              "de/signing.html lets the theme's script ask api.github.com"),
+             ("unquoted, on a page in a folder", self.put("seats/index.html", "<h1>", "<div data-md-component=source></div><h1>"),
+              "seats/index.html lets the theme's script ask api.github.com")))
+
+    def test_nothing_loads_from_another_host(self):
+        local = ('<img src="assets/a.png" srcset="assets/a.png 1x, /assets/a@2x.png 2x"><img src="data:image/png;base64,AAAA"><svg><use href="#pricke"/></svg>'
+                 '<iframe src="about:blank"></iframe><p style="background:url(&quot;data:image/svg+xml;utf8,&lt;svg xmlns=\'http://www.w3.org/2000/svg\'/&gt;&quot;)">x</p>Get')
+        elsewhere = ('<a href="https://github.com/shoalmark/shoalmark">repo</a><link rel="canonical" href="https://shoalmark.tools/setup.html">'
+                     '<meta http-equiv="refresh" content="0; url=https://github.com/shoalmark/shoalmark/issues/new">Get')
+        put = lambda markup: self.put("setup.html", "Get", markup + "Get")
+        self.rows(
+            (("relative and root-relative loads, a data: image, the mark's own symbol and a blank frame", self.put("setup.html", "Get", local)),
+             ("a link, the canonical address and a forward to another host, none of them a load", self.put("setup.html", "Get", elsewhere))),
+            (("a script", put('<script src="https://example.org/x.js"></script>'), "setup.html loads https://example.org/x.js (script), from outside the site"),
+             ("a stylesheet by a protocol-relative address, its rel capitalised", put('<link rel="Stylesheet" href="//example.org/x.css">'), "loads //example.org/x.css (link)"),
+             ("a connection opened ahead", put('<link rel="preconnect" href="https://fonts.example.org">'), "loads https://fonts.example.org (link)"),
+             ("an image's second srcset candidate", put('<img src="a.png" srcset="a.png 1x,https://example.org/b.png 2x">'), "loads https://example.org/b.png (img)"),
+             ("a picture's source", put('<picture><source srcset="https://example.org/c.webp"><img src="c.png"></picture>'), "loads https://example.org/c.webp (source)"),
+             ("a video's poster", put('<video poster="https://example.org/p.jpg"></video>'), "loads https://example.org/p.jpg (video)"),
+             ("a frame", put('<frame src="https://example.org/">'), "(frame), from outside the site"),
+             ("an iframe whose address a tab splits", put('<iframe src="/&#9;/example.org/"></iframe>'), "(iframe), from outside the site"),
+             ("an image addressed with backslashes", put('<img src="\\\\example.org\\x.png">'), "(img), from outside the site"),
+             ("an SVG image", put('<svg><image href="https://example.org/i.png"/></svg>'), "loads https://example.org/i.png (image)"),
+             ("an SVG symbol from another file", put('<svg><use xlink:href="https://example.org/s.svg#a"/></svg>'), "loads https://example.org/s.svg#a (use)"),
+             ("an image button", put('<input type="image" src="https://example.org/go.png">'), "loads https://example.org/go.png (input)"),
+             ("a base address", put('<base href="https://example.org/">'), "loads https://example.org/ (base)"),
+             ("an image from the site's own host by its absolute address", put('<img src="https://shoalmark.tools/assets/x.png">'), "loads https://shoalmark.tools/assets/x.png (img)"),
+             ("a style attribute's background", put('<p style="background:url(https://example.org/a.png)">x</p>'), "setup.html loads a stylesheet resource from outside the site"),
+             ("an image-set's second image in a style element", put('<style>body{background:image-set("a.png" 1x, "https://example.org/b.png" 2x)}</style>'),
+              "setup.html loads a stylesheet resource from outside the site: https://example.org/b.png"),
+             ("an image-set in a stylesheet", lambda site: (site / "stylesheets/x.css").write_text("body{background:-webkit-image-set(url(a.png) 1x, 'https://example.org/b.png' 2x)}"),
+              "stylesheets/x.css loads a stylesheet resource from outside the site: https://example.org/b.png"),
+             ("an image-set in a style attribute", put('<p style="background:image-set(&quot;https://example.org/b.png&quot; 1x)">x</p>'),
+              "setup.html loads a stylesheet resource from outside the site: https://example.org/b.png"),
+             ("an image by its scheme with no slashes, which a page served over https loads from that host", put('<img src="http:example.org/x.png">'),
+              "loads http:example.org/x.png (img)"),
+             ("an inline module's import", put('<script type="module">import {a} from "https://example.org/m.js";</script>'),
+              "an inline script of setup.html imports https://example.org/m.js, from outside the site")))
+
+
 LLMS = Path(__file__).with_name("llms_txt.py")
 FIGURE = ('<figure class="week" markdown="0">\n<div class="week-card"><h3 class="t">FM-024</h3><p class="src">work-tracker/FM-024-….md · 2026-09-28</p>\n'
           '<pre lang="en">next: owner\nask: "x"</pre></div>\n<p class="week-arrow" aria-hidden="true">↓</p>\n'
@@ -242,97 +398,18 @@ FIGURE = ('<figure class="week" markdown="0">\n<div class="week-card"><h3 class=
           '<figcaption>One question, a signed commit that sets <code>next</code> to <code>build</code>.</figcaption>\n</figure>')
 
 
-class Taped(unittest.TestCase):
-    """The taped state: the probe switch off and the tape on. The primary button is a taped, aria-disabled button described by its reason line; each control
-    changes one thing in a taped site that passes, and the check names it."""
+class States(unittest.TestCase):
+    """What each launch state draws on the landing. With the probe on, the primary link is the coin door, lit, with its one coin in it, hidden from screen
+    readers; with the probe off, neither. In both, nothing of the tape-off ceremony or the taped state is drawn or styled, and no other page, the pitch page
+    among them, styles it. Each control puts one part of them back, or moves the door or its coin, in a site that passes, and the check names it."""
 
-    def taped_site(self, site):
-        good_site(site)
-        for name, en in (("index.html", True), ("de/index.html", False)):
-            note = "https://github.com/shoalmark/shoalmark/blob/main/ADOPT%s.md" % ("" if en else ".de")
-            old = '<a class="btn" href="%s">%s</a>' % (note, "Hand your agents the note" if en else "Gib deinen Agenten die Notiz")
-            new = ('<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">%s</span></button>'
-                   % (LABELS["en" if en else "de"], "not yet" if en else "noch nicht"))
-            why = '<p class="taped-why" id="taped-why">%s <a href="%s">%s</a>.</p>' % ("Not open yet. Until then, hand your agents" if en else "Noch nicht offen. Bis dahin gibst du deinen Agenten",
-                                                                                     note, "the note" if en else "die Notiz")
-            text = (site / name).read_text(encoding="utf-8")
-            self.assertIn(old, text)
-            (site / name).write_text(text.replace(old, new).replace("<footer>", why + "<footer>"), encoding="utf-8")
-        for name, old, new in (("how-it-works.html", "Hand your agents the note", LABELS["en"]), ("how-it-works/index.md", "Hand your agents the note", LABELS["en"]),
-                               ("de/how-it-works.html", "Gib deinen Agenten die Notiz", LABELS["de"]), ("de/how-it-works/index.md", "Gib deinen Agenten die Notiz", LABELS["de"])):
-            text = (site / name).read_text(encoding="utf-8")       # How it works names the taped button, as the taped state's words do
-            self.assertIn(old, text)
-            (site / name).write_text(text.replace(old, new), encoding="utf-8")
-
-    def checked(self, change=None, probe=False):
+    def checked(self, probe, change=None):
         with tempfile.TemporaryDirectory() as tmp:
             site = Path(tmp) / "site"
-            self.taped_site(site)
+            good_site(site, probe)
             if change:
                 change(site)
-            toml = Path(tmp) / "zensical-taped.toml"
-            toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = true\n" % ("true" if probe else "false"), encoding="utf-8")
-            return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
-
-    def edit(self, old, new):
-        def change(site):
-            text = (site / "index.html").read_text(encoding="utf-8")
-            self.assertIn(old, text)
-            (site / "index.html").write_text(text.replace(old, new, 1), encoding="utf-8")
-        return change
-
-    def test_a_taped_site_passes(self):
-        result = self.checked()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_each_control_is_refused(self):
-        for name, change, probe, message in (
-                ("the tape left off", self.edit('<span class="tape" aria-hidden="true">not yet</span>', ""), False, "carries no tape hidden from screen readers"),
-                ("a dialog built", self.edit("<footer>", '<dialog id="probe" aria-labelledby="h"><h2 id="h">x</h2></dialog><footer>'), False, "a dialog is built"),
-                ("a click handler on the button", self.edit('aria-disabled="true"', 'aria-disabled="true" onclick="copy()"'), False, "with no id, link or handler"),
-                ("a script that handles the button", self.edit("</body>", '<script>document.querySelector(".taped").addEventListener("click", () => 0)</script></body>'), False,
-                 "a script handles the taped button"),
-                ("aria-describedby missing", self.edit(' aria-describedby="taped-why"', ""), False, "is not described by the line that says why"),
-                ("the button a link", self.edit('<button type="button" class="btn taped"', '<a href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md" class="btn">x</a><button type="button" class="btn taped"'), False,
-                 "does not lead to how-it-works.html alone"),
-                ("the switch on with the tape", None, True, "the two exclude each other")):
-            with self.subTest(name):
-                result = self.checked(change, probe)
-                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
-                self.assertIn(message, result.stderr)
-
-
-class Ceremony(unittest.TestCase):
-    """The tape-off ceremony beside the taped state. With the probe on, the primary link is the coin door: its tape and its coin stand in it, hidden from
-    screen readers, and the site passes; the taped state's tape, on its taped button, is refused with the probe on, and the ceremony's door is refused with
-    the probe off, taped or not."""
-
-    TAPE = {"en": "not yet", "de": "noch nicht"}
-
-    def door(self, lang, href, extra=""):
-        return ('<span class="cue" aria-hidden="true"><span class="cue-t was">— x —</span><span class="cue-t now">— y —</span></span>'
-                '<a class="btn door"%s href="%s" aria-haspopup="dialog">%s<span class="gcoin" aria-hidden="true"><svg class="cab cab-coin" aria-hidden="true"></svg></span>'
-                '<span class="tape" aria-hidden="true">%s</span></a>' % (extra, href, LABELS[lang], self.TAPE[lang]))
-
-    def checked(self, probe, taped=False, change=None):
-        with tempfile.TemporaryDirectory() as tmp:
-            site = Path(tmp) / "site"
-            if taped:
-                Taped.taped_site(self, site)
-            else:
-                good_site(site, probe)
-            for name, lang in (("index.html", "en"), ("de/index.html", "de")):
-                text = (site / name).read_text(encoding="utf-8")
-                if probe:
-                    old = '<a class="btn" id="probe-open" href="probe.txt" aria-haspopup="dialog">%s</a>' % LABELS[lang]
-                    self.assertIn(old, text)
-                    text = text.replace(old, self.door(lang, "probe.txt", ' id="probe-open"'))
-                (site / name).write_text(text, encoding="utf-8")
-            if change:
-                change(site)
-            toml = Path(tmp) / "zensical-ceremony.toml"
-            toml.write_text("[project]\nsite_name = \"x\"\n\n[project.extra]\nprobe = %s\ntaped = %s\n" % ("true" if probe else "false", "true" if taped else "false"), encoding="utf-8")
-            return subprocess.run([sys.executable, str(CHECKER), str(site), str(toml)], capture_output=True, text=True)
+            return run(site, probe)
 
     def put(self, old, new, name="index.html"):
         def change(site):
@@ -341,22 +418,138 @@ class Ceremony(unittest.TestCase):
             (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
         return change
 
-    def test_the_ceremony_with_the_probe_and_the_taped_tape_without_it(self):
-        taped_button = '<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">not yet</span></button>' % LABELS["en"]
+    def pitch(self, css=""):
+        """A pitch page built beside the landings, its try row styled, with `css` in its styles."""
+        def change(site):
+            (site / "why-shoalmark.html").write_text('<!doctype html><html lang="en"><head><title>Why shoalmark?</title><style>.tldr dl>div.try{background:#bccd8f}%s</style>'
+                                                     '</head><body><section class="tldr"><dl><div class="try"><dt>Try it</dt><dd>x</dd></div></dl></section></body></html>' % css,
+                                                     encoding="utf-8")
+        return change
+
+    def test_each_door_has_its_own_coin(self):
+        for name in ("index.html", "de/index.html"):
+            for hero_coins, twin_coins in ((2, 0), (0, 2)):
+                with self.subTest(page=name, hero=hero_coins, twin=twin_coins):
+                    def redistribute(site):
+                        page = site / name
+                        parts = page.read_text(encoding="utf-8").split(COIN)
+                        self.assertEqual(len(parts), 3)
+                        page.write_text(parts[0] + COIN * hero_coins + parts[1] + COIN * twin_coins + parts[2], encoding="utf-8")
+                    result = self.checked(probe=True, change=redistribute)
+                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn(name + ": the probe switch is on, but the primary link is not the coin door with its one coin in it", result.stderr)
+
+    def test_twin_padding_cascade(self):
+        own = ".door-again .btn.door{padding-left:50px}\n"
+        phone = "@media (max-width:700px){.btn.door{padding-left:18px}"
+        rows = [
+            ("the landing's real door styles", DOOR_STYLE, None),
+            ("the twin's own padding dropped", DOOR_STYLE.replace(own, ""), (320, ".btn.door", "18px")),
+            ("a phone rule heavier than the twin's padding", DOOR_STYLE.replace(phone, phone + "#start .btn.door{padding-left:18px}"),
+             (320, "#start .btn.door", "18px")),
+            ("an important phone rule", DOOR_STYLE.replace("padding-left:18px}", "padding-left:18px!important}"), (320, ".btn.door", "18px !important")),
+            ("a phone padding shorthand", DOOR_STYLE.replace(phone, phone + "#start .btn.door{padding:0 18px}"), (320, "#start .btn.door", "18px")),
+            ("a phone pseudo-class", DOOR_STYLE.replace(phone, phone + ".btn.door:first-child{padding-left:18px}"), (320, ".btn.door:first-child", "18px")),
+        ]
+        for name, css, winner in (
+                ("a heavier top-level rule", "#start .btn.door{padding-left:18px}", (320, "#start .btn.door", "18px")),
+                ("a harmless heavier top-level rule", "#start .btn.door{padding-left:60px}", None),
+                ("a one-value shorthand", "#start .btn.door{padding:18px}", (320, "#start .btn.door", "18px")),
+                ("a three-value shorthand uses its second value", "#start .btn.door{padding:0 60px 18px}", None),
+                ("a four-value shorthand", "#start .btn.door{padding:0 60px 0 18px}", (320, "#start .btn.door", "18px")),
+                ("an important shorthand", ".btn.door{padding:18px!important}", (320, ".btn.door", "18px !important")),
+                ("the last declaration wins", "#start .btn.door{padding-left:60px;padding:18px}", (320, "#start .btn.door", "18px")),
+                ("a later safe declaration wins", "#start .btn.door{padding:18px;padding-left:60px}", None),
+                ("importance precedes declaration order", "#start .btn.door{padding-left:60px!important;padding:18px}", None),
+                ("equal specificity uses source order", ".door-again .btn.door{padding-left:18px}", (320, ".door-again .btn.door", "18px")),
+                ("an attribute selector adds specificity", ".btn.door[aria-haspopup]{padding-left:18px}", (320, ".btn.door[aria-haspopup]", "18px")),
+                ("a type breaks a specificity tie", "a.btn.door:first-child{padding-left:18px}", (320, "a.btn.door:first-child", "18px")),
+                ("where contributes no specificity", ":where(#start) .btn.door{padding-left:18px}", None),
+                ("is counts its heaviest argument", ":is(.band,#start) .btn.door{padding-left:18px}", (320, ":is(.band,#start) .btn.door", "18px")),
+                ("not counts its heaviest argument", ".btn.door:not(.other,#other){padding-left:18px}", (320, ".btn.door:not(.other,#other)", "18px")),
+                ("has counts its heaviest argument", ".btn.door:has(> .coin,#other){padding-left:18px}", (320, ".btn.door:has(> .coin,#other)", "18px")),
+                ("a pseudo-element adds no specificity", ".btn.door::before{padding-left:18px}", None),
+                ("another final class cannot reach the twin", "#start .btn.door.alt{padding-left:18px}", None),
+                ("another final tag cannot reach the twin", "#start button.btn.door{padding-left:18px}", None),
+                ("a final id cannot reach the twin", "#start .btn.door#other{padding-left:18px}", None),
+                ("a nonmatching list part lends no specificity", "#start .other,.btn.door{padding-left:18px}", None),
+                ("a reaching list part with reversed classes", "#start .other,#start a.door.btn{padding-left:18px}", (320, "#start a.door.btn", "18px")),
+                ("an ancestor is assumed to match", ".unseen > .btn.door{padding-left:18px}", (320, ".unseen > .btn.door", "18px")),
+                ("a non-pixel winner", "#start .btn.door{padding-left:4rem}", (320, "#start .btn.door", "4rem")),
+                ("a print-only rule", "@media print{#start .btn.door{padding-left:18px}}", None),
+                ("a print and screen list", "@media print, screen and (max-width:700px){#start .btn.door{padding-left:18px}}", (320, "#start .btn.door", "18px")),
+                ("a desktop-only rule", "@media (min-width:701px){#start .btn.door{padding-left:18px}}", None),
+                ("a rule starting at 360px", "@media (min-width:360px){#start .btn.door{padding-left:18px}}", (360, "#start .btn.door", "18px")),
+                ("a bounded rule at 390px", "@media screen and (min-width:390px) and (max-width:390px){#start .btn.door{padding-left:18px}}", (390, "#start .btn.door", "18px")),
+                ("a rule starting at 700px", "@media (min-width:700px){#start .btn.door{padding-left:18px}}", (700, "#start .btn.door", "18px")),
+                ("an unknown media feature", "@media (hover:hover){#start .btn.door{padding-left:18px}}", (320, "#start .btn.door", "18px")),
+                ("an unread width unit", "@media (max-width:40rem){#start .btn.door{padding-left:18px}}", (320, "#start .btn.door", "18px")),
+                ("nested media retain their outer bound", "@media (min-width:701px){@media (max-width:900px){#start .btn.door{padding-left:18px}}}", None)):
+            rows.append((name, DOOR_STYLE.replace("</style>", css + "</style>"), winner))
+        for page in ("index.html", "de/index.html"):
+            for name, css, winner in rows:
+                with self.subTest(page=page, name=name):
+                    result = self.checked(probe=True, change=self.put(DOOR_STYLE, css, page))
+                    self.assertEqual(result.returncode, 0 if winner is None else 1, result.stdout + result.stderr)
+                    if winner is not None:
+                        width, selector, value = winner
+                        self.assertIn(page + ": the probe switch is on, but the door's twin does not keep its own padding-left of 50px", result.stderr)
+                        self.assertIn("width: %spx; winning selector: %s; value: %s;" % (width, selector, value), result.stderr)
+
+    def test_each_state_draws_its_own_and_nothing_of_the_tape(self):
         note = '<a class="btn" href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md">Hand your agents the note</a>'
+        tape = '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">%s</span><span class="flap"></span></span>'
+        taped_button = ('<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">%s<span class="tape" aria-hidden="true">not yet</span></button>'
+                        % LABELS["en"])
+        style = lambda css: self.put("</head>", "<style>%s</style></head>" % css)
         rows = (
-            ("the probe build with the ceremony", dict(probe=True), None),
-            ("the taped tape beside the door, with the probe on", dict(probe=True, change=self.put('<a class="btn alt"', taped_button + '<a class="btn alt"')),
-             "the taped state's tape is built"),
-            ("the door's tape moved onto a taped button, with the probe on", dict(probe=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span></a>', '</a>' + taped_button)),
-             "the taped state's tape is built"),
-            ("the door's tape read by screen readers, with the probe on", dict(probe=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span>', '<span class="tape">not yet</span>')),
-             "the ceremony's tape or coin is read by screen readers"),
-            ("the ceremony's door with the probe off", dict(probe=False, change=self.put(note, self.door("en", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"))),
-             "the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built"),
-            ("the ceremony's coin in the taped state", dict(probe=False, taped=True, change=self.put('<span class="tape" aria-hidden="true">not yet</span></button>',
-                                                                                                 '<span class="tape" aria-hidden="true">not yet</span><span class="gcoin" aria-hidden="true"></span></button>')),
-             "the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built"))
+            ("the probe build: the lit door with its coin", dict(probe=True), None),
+            ("the interim build: the note's link, no door", dict(probe=False), None),
+            ("the ceremony's tape back over the door", dict(probe=True, change=self.put(COIN + "</a>", COIN + tape % "not yet" + "</a>")),
+             "the landing draws a tape, the taped state or a second cue line"),
+            ("the ceremony's tape back over the German door", dict(probe=True, change=self.put(COIN + "</a>", COIN + tape % "noch nicht" + "</a>", "de/index.html")),
+             "de/index.html: the landing draws a tape"),
+            ("the taped cue back beside the live one", dict(probe=True, change=self.put('<span class="cue-t">%s</span>' % CUES["en"],
+                                                                                         '<span class="cue-t was">— after v0.20.1 —</span><span class="cue-t now">%s</span>' % CUES["en"])),
+             "the landing draws a tape, the taped state or a second cue line, or styles one: ['cue-t now']"),
+            ("the ceremony's keyframes back in the page's style", dict(probe=True, change=style("@keyframes tape-pull{from{--p:.06}to{--p:1}}")),
+             "or styles one: ['@keyframes tape-pull']"),
+            ("the ceremony's tape style back", dict(probe=True, change=style(".btn.door .tape{position:absolute;inset:0}")), "or styles one: ['.tape']"),
+            ("the unlit window back over the door", dict(probe=True, change=style('.btn.door::after{content:"";background:#8595a2}')), "or styles one: ['.btn.door::after']"),
+            ("the taped cue's style back", dict(probe=True, change=style(".cue .was{visibility:hidden}")), "or styles one: ['.cue .was']"),
+            ("the taped button back, with the probe off", dict(probe=False, change=self.put(note, taped_button)),
+             "the landing draws a tape, the taped state or a second cue line, or styles one: ['button.btn.taped', 'span.tape']"),
+            ("the line that says why back, with the probe off", dict(probe=False, change=self.put("<footer>", '<p class="taped-why" id="taped-why">Not open yet.</p><footer>')),
+             "or styles one: ['p.taped-why']"),
+            ("the taped button's style back, with the probe off", dict(probe=False, change=style(".btn.taped{background:#8595a2}")), "or styles one: ['.btn.taped']"),
+            ("the coin left out of the door", dict(probe=True, change=self.put(COIN, "")), "the primary link is not the coin door with its one coin in it"),
+            ("a second coin, outside the door", dict(probe=True, change=self.put('<a class="btn alt"', COIN + '<a class="btn alt"')),
+             "the primary link is not the coin door with its one coin in it"),
+            ("the door without its id", dict(probe=True, change=self.put(' id="probe-open"', "")), "the primary link is not the coin door with its one coin in it"),
+            ("the coin read by screen readers", dict(probe=True, change=self.put('<span class="gcoin" aria-hidden="true">', '<span class="gcoin">')),
+             "the door's coin is read by screen readers"),
+            ("the door with the probe off", dict(probe=False, change=self.put(note, note.replace('class="btn"', 'class="btn door"'))),
+             "the probe switch is off, but the coin door or its coin is built"),
+            ("the coin with the probe off", dict(probe=False, change=self.put(note, note.replace("</a>", COIN + "</a>"))),
+             "the probe switch is off, but the coin door or its coin is built"),
+            ("the door's twin left out of #start, with the probe on", dict(probe=True, change=self.put(TWIN % LABELS["en"], "")),
+             "#start does not hold the door's twin with its own"),
+            ("the twin without its coin", dict(probe=True, change=self.put(COIN + "</a></p>", "</a></p>")), "#start does not hold the door's twin with its own"),
+            ("a plain button in #start in the twin's place", dict(probe=True, change=self.put(TWIN % LABELS["en"], '<p><a class="btn" href="#top">%s</a></p>' % LABELS["en"])),
+             "#start does not hold the door's twin with its own"),
+            ("the twin leading to the top, not where the door leads", dict(probe=True, change=self.put('<p class="door-again"><a class="btn door" href="probe.txt"',
+                                                                                                         '<p class="door-again"><a class="btn door" href="#top"')),
+             "the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words"),
+            ("the twin in other words", dict(probe=True, change=self.put(TWIN % LABELS["en"], TWIN % ("↑ " + LABELS["en"]))),
+             "the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words"),
+            ("the twin in the German landing's other words", dict(probe=True, change=self.put(TWIN % LABELS["de"], TWIN % ("↑ " + LABELS["de"]), "de/index.html")),
+             "de/index.html: the probe switch is on, but the door's twin in #start does not lead where the door leads"),
+            ("the twin with the probe off", dict(probe=False, change=self.put('<p class="small">tell</p>', TWIN.replace('href="probe.txt"', 'href="https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md"')
+                                                                                % "Hand your agents the note" + '<p class="small">tell</p>')),
+             "the probe switch is off, but the coin door or its coin is built"),
+            ("a pitch page whose try row is styled, and nothing of the tape", dict(probe=True, change=self.pitch()), None),
+            ("the taped try row's style back on the pitch page", dict(probe=True, change=self.pitch(".tldr dl>div.try.taped{background:#8595a2}")),
+             "why-shoalmark.html styles the tape-off ceremony or the taped state: .taped"))
         for name, args, message in rows:
             with self.subTest(name):
                 result = self.checked(**args)
@@ -500,6 +693,7 @@ class FencedBlocks(unittest.TestCase):
                 (root / name).write_text(text, encoding="utf-8")
             if change:
                 change(site)
+            footed(site)
             toml = root / "zensical-fenced.toml"
             toml.write_text('[project]\nsite_name = "x"\ndocs_dir = "%s"\nuse_directory_urls = false\n\n[project.extra]\nprobe = false\n\n'
                             "[project.markdown_extensions]\npymdownx.superfences = {}\npymdownx.snippets.base_path = %s\n" % (named, bases), encoding="utf-8")

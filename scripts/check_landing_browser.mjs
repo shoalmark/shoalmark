@@ -6,20 +6,21 @@
 // wrap and are cut nowhere, and nothing scrolls sideways; the anchors and the separator with them first show at 1208 px (English) and 1273 px (German); both header buttons show the
 // focus ring when the keyboard reaches them.
 // In the probe state, on each landing: the hero's cue is as wide as the primary button and centred on it (over the stacked buttons on a phone), hidden from screen readers,
-// clear of every chart label; with motion allowed the taped cue turns to the live one at 2.8 s and only the live cue's icon and words blink, 5 s at most, then lit;
-// under reduced motion the document has no animation.
-// In the probe state, the tape-off ceremony on each landing: in every frame from 0 to 2.9 s the page does not scroll sideways, nothing moves the door and the door is the live
-// link; the tape is picked at 0.6 s, pulled off by 1.9 s and gone after 2.2 s; at the end the window is lit and the live cue shown, and the door, 55 px tall on a desktop
-// and 59 px on a phone, shows its copy icon centred under its label; under reduced motion and in print the tape, the unlit window, the coin and the taped cue are not
-// drawn; the door's name is its label; after a mouse press the dialog opens when the coin has landed, 0.36 s after the press, the copy made in the click, and at once
-// for the keyboard and under reduced motion.
+// clear of every chart label; with motion allowed only its icon and words blink, from the start, 5 s at most, then lit; under reduced motion the document has no
+// animation.
+// In the probe state, the coin door on each landing: in every frame from 0 to 2.9 s the door is lit and still, with no tape, unlit window or second cue line drawn,
+// the page does not scroll sideways and the door is the live link; the door, 55 px tall on a desktop and 59 px on a phone, shows its copy icon centred under its
+// label; under reduced motion the coin is not drawn and the cue stands lit, and in print the coin is not drawn and the cue stands lit and still; the door's name is
+// its label; after a mouse press the dialog opens when the coin has landed, 0.36 s after the press, the copy made in the click, and at once for the keyboard and
+// under reduced motion. The door's twin after the coins in #start, there with the probe alone, in the door's words and leading where it leads, does the same
+// on hover and on a press, gets focus back when the dialog closes, and draws no coin under reduced motion or in print.
 // In the probe state, for each landing at those widths: the primary button opens the dialog by keyboard; the dialog is a modal that the accessibility tree
 // names; focus is inside it; Tab and Shift+Tab never reach the page behind; the prompt stands in step 1 as a box of two lines with a fade whose button opens it whole
 // and folds it back by keyboard; the approvals' fold opens and closes by keyboard; Escape closes it and focus is back on the
 // button; it fits the window and the page does not scroll sideways under it; and, with the fold closed, its label, Close, the copied line, Copy again and step 3
 // are in view without scrolling at 360×780, 375×667 and 390×844. Writes OUT.json (every check of every visit, with its verdict) and exits 1 where any check failed.
 // In the probe state, at 1024×768 on each landing, with the fold closed, nothing in the dialog scrolls inside itself.
-// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors, `cue` for the hero's cue, `door` for the ceremony, `desk` for the dialog at
+// PAGES (a comma-separated list) and SIZES (360x780,… and `bar` for the top bar's anchors, `cue` for the hero's cue, `door` for the coin door, `desk` for the dialog at
 // 1024×768) narrow the run to what is named; the whole run is every page at 360×780, 375×667, 390×844 and 1440×900, the bar, the cue, the door and the desk.
 import {spawn} from "node:child_process";
 import {createServer} from "node:http";
@@ -116,6 +117,10 @@ for (const page of PAGES) for (const [w, h] of SIZES) {
   if (page.endsWith("index.html") && !page.startsWith("how")) {   // the ticker's words are long; it clips its own band and takes no room of the page
     const tk = await t.js(`(() => { const e = document.querySelector(".ticker"), r = e.getBoundingClientRect(); return {overflowX: getComputedStyle(e).overflowX, right: Math.round(r.right), iw: innerWidth, sw: document.documentElement.scrollWidth} })()`);
     verdict(page, w, h, "the ticker clips its own band and takes no room of the page", tk.overflowX == "hidden" && tk.right <= tk.iw && tk.sw <= tk.iw, JSON.stringify(tk));
+    const dr = await t.js(`(() => { const c = document.querySelector("#start .coins"), d = document.querySelector("#start .btn.door");
+      return {doors: document.querySelectorAll(".btn.door").length, twins: document.querySelectorAll("#start .btn.door").length, after: !!(c && d && (c.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING))} })()`);
+    verdict(page, w, h, state == "probe" ? "the door's twin stands after the coins in #start, beside the hero's door" : "with the probe off no coin door is drawn, nor its twin",
+      state == "probe" ? dr.doors == 2 && dr.twins == 1 && dr.after : dr.doors == 0, JSON.stringify(dr));
     const bd = await t.js(`(() => { const head = document.querySelector(".board thead"), rows = [...document.querySelectorAll(".board tbody tr")].map(r => { const g = s => r.querySelector(s).getBoundingClientRect(), tr = r.getBoundingClientRect(), sc = g(".sc"), pd = g(".pd"), rk = g(".rk");
       return {under: pd.top >= Math.max(sc.bottom, rk.bottom) - 1, full: pd.width >= tr.width - 1, beside: pd.left >= sc.right - 1 && Math.abs(pd.top - tr.top) <= 14} });
       return {heads: head ? getComputedStyle(head).display : null, rows, tall: Math.round(document.querySelector(".board table").getBoundingClientRect().height)} })()`);
@@ -221,35 +226,33 @@ if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("
   if (w >= 1280 && (w == 1440 || w == 1600 || w == 2560)) info.push({page, w, h, state: "the cue's clearance of the chart's labels", gap: q.gap, nearest: q.nearest});
   await t.close();
 }
-// the blink: with motion allowed, the taped cue and the live cue each turn once at 2.8 s, with a step of 1 ms; the live cue's icon and words alone blink, 5 s at most, and are lit
-// and at rest afterwards, the taped cue gone; the rules, the buttons and the labels never animate
+// the blink: with motion allowed, the cue is one line from the first frame, and its icon and words alone blink, from the start, 5 s at most, and are lit and at rest
+// afterwards; the rules, the buttons and the labels never animate
 if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
   const t = await open(page, {w: 1440, h: 900, reduce: false});
   const during = await t.js(`(() => { const an = e => e ? e.getAnimations().map(a => [a.animationName, a.effect.getComputedTiming().activeDuration, (i => Number.isFinite(i) ? i : -1)(a.effect.getComputedTiming().iterations), a.effect.getComputedTiming().delay]) : [];
-    return {now: an(document.querySelector(".cue-t.now")), was: an(document.querySelector(".cue-t.was")), others: [".cue", "#probe-open", ".btn.alt", ".sec-h .n"].flatMap(s => [...document.querySelectorAll(s)].flatMap(an)), icons: [...document.querySelectorAll(".cab")].flatMap(e => e.getAnimations()).length} })()`);
-  const blinks = during.now.filter(a => a[0] == "blink"), shows = during.now.filter(a => a[0] == "tape-show");
-  const blink = during.now.length == 2 && blinks.length == 1 && blinks[0][1] <= 5000 && blinks[0][2] > 0 && blinks[0][3] == 2800 && shows.length == 1 && shows[0][1] <= 1 && shows[0][3] == 2800
-    && during.was.length == 1 && during.was[0][0] == "tape-gone" && during.was[0][1] <= 1 && during.was[0][3] == 2800;
-  verdict(page, 1440, 900, "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does", blink && during.others.length == 0 && during.icons == 0, JSON.stringify(during));
-  await t.js(`Promise.race([Promise.all(document.querySelector(".cue-t.now").getAnimations().map(a => a.finished)), new Promise(r => setTimeout(r, 9000))]).then(() => 1)`); await sleep(200);
-  const after = await t.js(`(() => { const w = document.querySelector(".cue-t.now"), was = document.querySelector(".cue-t.was"), c = document.querySelector(".cue");
-    return {blinking: w ? w.getAnimations().filter(a => a.animationName == "blink").length : -1, op: w ? getComputedStyle(w).opacity : null, shown: w ? getComputedStyle(w).visibility : null, was: was ? getComputedStyle(was).visibility : null, rules: c ? getComputedStyle(c).opacity : null} })()`);
-  verdict(page, 1440, 900, "after the blink the cue is at rest and lit", after.blinking == 0 && after.op == "1" && after.shown == "visible" && after.was == "hidden" && after.rules == "1", JSON.stringify(after));
+    return {cue: an(document.querySelector(".cue-t")), lines: document.querySelectorAll(".cue .cue-t").length, others: [".cue", "#probe-open", ".btn.alt", ".sec-h .n"].flatMap(s => [...document.querySelectorAll(s)].flatMap(an)), icons: [...document.querySelectorAll(".cab")].flatMap(e => e.getAnimations()).length} })()`);
+  const blink = during.lines == 1 && during.cue.length == 1 && during.cue[0][0] == "blink" && during.cue[0][1] <= 5000 && during.cue[0][2] > 0 && during.cue[0][3] == 0;
+  verdict(page, 1440, 900, "with motion allowed only the cue's icon and words blink, from the start, 5 s at most, and nothing else of the cue, the buttons and the labels does", blink && during.others.length == 0 && during.icons == 0, JSON.stringify(during));
+  await t.js(`Promise.race([Promise.all(document.querySelector(".cue-t").getAnimations().map(a => a.finished)), new Promise(r => setTimeout(r, 9000))]).then(() => 1)`); await sleep(200);
+  const after = await t.js(`(() => { const w = document.querySelector(".cue-t"), c = document.querySelector(".cue");
+    return {blinking: w ? w.getAnimations().filter(a => a.animationName == "blink").length : -1, op: w ? getComputedStyle(w).opacity : null, shown: w ? getComputedStyle(w).visibility : null, rules: c ? getComputedStyle(c).opacity : null} })()`);
+  verdict(page, 1440, 900, "after the blink the cue is at rest and lit", after.blinking == 0 && after.op == "1" && after.shown == "visible" && after.rules == "1", JSON.stringify(after));
   await t.close();
 }
-// the tape-off ceremony, held frame by frame by the page's own animation clock: the page never scrolls sideways, nothing moves the door, which is the live link from the first frame;
-// at the start the tape is on and the window unlit; the peel's value --p is 0 to 0.6 s, rises and never falls, and is 1 from 1.9 s, while the tape stays whole in sight until
-// 1.9 s and is gone after 2.2 s; at the end the window is lit, the taped cue gone and the live cue shown
+// the coin door, held frame by frame by the page's own animation clock from 0 to 2.9 s: it is lit and still from the first frame, with no tape over it, no unlit
+// window drawn on it and one cue line over it; the page never scrolls sideways, nothing moves the door, and it is the live link
 const FRAME = `(t => { document.getAnimations().forEach(a => { a.pause(); a.currentTime = t });
-  const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), cs = e => e ? getComputedStyle(e) : {};
+  const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), after = getComputedStyle(d, "::after");
+  const laid = e => getComputedStyle(e).display != "none" && getComputedStyle(e).visibility != "hidden" && e.getClientRects().length > 0, shown = e => laid(e) && +getComputedStyle(e).opacity > 0;
   return {sw: document.documentElement.scrollWidth, iw: innerWidth, box: [r.left, r.top, r.width, r.height].map(Math.round).join(","), live: d.tagName == "A" && /probe\.txt$/.test(d.getAttribute("href") || ""),
-    tape: +cs(d.querySelector(".tapebox")).opacity, p: +cs(d.querySelector(".tapebox")).getPropertyValue("--p"), unlit: +getComputedStyle(d, "::after").opacity,
-    was: cs(document.querySelector(".cue-t.was")).visibility, now: cs(document.querySelector(".cue-t.now")).visibility} })`;
+    tape: [...document.querySelectorAll(".tape, .tapebox, .flap")].filter(shown).length, unlit: after.content != "none" && after.display != "none" && +after.opacity > 0,
+    lines: [...document.querySelectorAll(".cue .cue-t")].filter(laid).length} })`;
 const FRAMES = Array.from({length: 30}, (_, i) => i * 100);
-// what is drawn of the ceremony, and the door's name as the accessibility tree has it (as the label is drawn, in capitals)
-const DRAWN = `(() => { const d = document.getElementById("probe-open"), cs = (e, p) => e ? getComputedStyle(e, p) : {}, label = [...d.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
-  return {tape: cs(d.querySelector(".tapebox")).display, unlit: cs(d, "::after").display, coin: cs(d.querySelector(".gcoin")).display, was: cs(document.querySelector(".cue-t.was")).display,
-    now: cs(document.querySelector(".cue-t.now")).visibility, label, tapeWords: (d.querySelector(".tape") || {}).textContent || ""} })()`;
+// what is drawn of the coin and the cue, and the door's name as the accessibility tree has it (as the label is drawn, in capitals)
+const DRAWN = `(() => { const d = document.getElementById("probe-open"), c = document.querySelector(".cue-t"), label = [...d.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
+  return {coin: getComputedStyle(d.querySelector(".gcoin")).display, lines: document.querySelectorAll(".cue .cue-t").length, cue: c ? getComputedStyle(c).opacity : null,
+    moving: c ? c.getAnimations().length : -1, label} })()`;
 const ICON = `(() => { const d = document.getElementById("probe-open"), r = d.getBoundingClientRect(), ic = d.querySelector(".ic"), i = ic ? ic.getBoundingClientRect() : null;
   const words = [...d.childNodes].filter(n => n.nodeType == 3 && n.textContent.trim()), range = document.createRange();
   if (words.length) { range.setStartBefore(words[0]); range.setEndAfter(words[words.length - 1]) }
@@ -263,26 +266,30 @@ const TIMES = `(() => { window.__t = {}; const d = document.getElementById("prob
   navigator.clipboard.writeText = x => { window.__t.copy = performance.now(); return w(x) };
   new MutationObserver(() => { if (g.open && window.__t.open == null) window.__t.open = performance.now() }).observe(g, {attributes: true, attributeFilter: ["open"]});
   d.scrollIntoView({block: "center"}); const r = d.getBoundingClientRect(); return {x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2)} })()`;
+// the door's twin in #start: the same timings as the door's, its place, and whether it holds the door's words and leads where the door leads
+const TWIN = `(() => { const d = document.querySelector("#start .btn.door"), g = document.getElementById("probe"), door = document.getElementById("probe-open"); if (!d || !door) return null;
+  window.__t = {}; const w = navigator.clipboard.writeText;
+  d.addEventListener("pointerdown", () => { window.__t.down = performance.now() }, true); d.addEventListener("click", () => { window.__t.click = performance.now() }, true);
+  navigator.clipboard.writeText = x => { window.__t.copy = performance.now(); return w(x) };
+  new MutationObserver(() => { if (g.open && window.__t.open == null) window.__t.open = performance.now() }).observe(g, {attributes: true, attributeFilter: ["open"]});
+  const label = e => [...e.childNodes].filter(n => n.nodeType == 3).map(n => n.textContent).join("").trim();
+  d.scrollIntoView({block: "center"}); const r = d.getBoundingClientRect();
+  return {x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), same: !!label(d) && label(d) == label(door) && d.getAttribute("href") == door.getAttribute("href")} })()`;
 if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("index.html"))) {
   for (const [w, h] of [[360, 780], [390, 844], [1024, 768], [1440, 900]]) {
     const t = await open(page, {w, h, reduce: false});
-    if (w == 360 || w == 1440) {   // the name, with motion allowed, while the tape is drawn: reduced motion does not draw it, which would hide it from the tree in any case
+    if (w == 360 || w == 1440) {   // the name, with motion allowed
       const at = await t.js(DRAWN), root = (await t.call("DOM.getDocument", {depth: 0})).root.nodeId, node = (await t.call("DOM.querySelector", {nodeId: root, selector: "#probe-open"})).nodeId;
       const ax = (await t.call("Accessibility.getPartialAXTree", {nodeId: node, fetchRelatives: false})).nodes?.find(n => !n.ignored) ?? {};
-      verdict(page, w, h, "the door's name is its label alone: the tape and the coin are hidden from screen readers", at.tape != "none" && ax.role?.value == "link" && !!at.label && (ax.name?.value ?? "").toLowerCase() == at.label.toLowerCase() && !ax.name.value.toLowerCase().includes(at.tapeWords.trim().toLowerCase()), JSON.stringify([at.tape, ax.role?.value, ax.name?.value, at.label]));
+      verdict(page, w, h, "the door's name is its label alone: the coin is hidden from screen readers", ax.role?.value == "link" && !!at.label && (ax.name?.value ?? "").toLowerCase() == at.label.toLowerCase(), JSON.stringify([ax.role?.value, ax.name?.value, at.label]));
     }
     const seen = [];
     for (const f of FRAMES) seen.push({f, ...(await t.js(`${FRAME}(${f})`))});
-    const wide = seen.filter(s => s.sw > s.iw), moved = seen.filter(s => s.box != seen[0].box || !s.live), first = seen[0], last = seen[seen.length - 1];
-    verdict(page, w, h, "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link", !wide.length && !moved.length, JSON.stringify([...wide, ...moved].slice(0, 3)));
+    const wrong = seen.filter(s => s.sw > s.iw || s.box != seen[0].box || !s.live || s.tape || s.unlit || s.lines != 1);
+    verdict(page, w, h, "from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link",
+      !wrong.length, JSON.stringify(wrong.slice(0, 3)));
     const lit = await t.js(ICON);
     verdict(page, w, h, "the lit door is 55 px tall on a desktop and 59 px on a phone, its copy icon centred under its label", lit.h == (w <= 700 ? 59 : 55) && lit.centred, JSON.stringify(lit));
-    verdict(page, w, h, "the ceremony starts taped and unlit with the taped cue, and ends with the tape gone, the window lit and the live cue shown",
-      first.tape == 1 && first.unlit == 1 && first.was == "visible" && first.now == "hidden" && last.tape == 0 && last.unlit == 0 && last.was == "hidden" && last.now == "visible", JSON.stringify([first, last]));
-    const peel = seen.map(s => [s.f, s.p, s.tape]), rises = seen.every((s, i) => i == 0 || s.p >= seen[i - 1].p);
-    verdict(page, w, h, "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and gone once lifted away, after 2.2 s",
-      rises && seen.every(s => s.f > 600 || s.p == 0) && seen.every(s => s.f < 1900 || s.p == 1) && seen.some(s => s.p > 0.06 && s.p < 1)
-        && seen.every(s => s.f >= 1900 || s.tape == 1) && seen.every(s => s.f <= 2200 || s.tape == 0), JSON.stringify(peel));   // at 2.2 s exactly a paused Chrome still draws the lift's last step
     await t.close();
   }
   for (const [w, h] of [[390, 844], [1440, 900]]) {
@@ -315,13 +322,42 @@ if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("i
   for (const [w, h] of [[360, 780], [1440, 900]]) {
     const t = await open(page, {w, h});   // reduced motion
     const rm = await t.js(DRAWN);
-    verdict(page, w, h, "under reduced motion the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown",
-      rm.tape == "none" && rm.unlit == "none" && rm.coin == "none" && rm.was == "none" && rm.now == "visible", JSON.stringify(rm));
+    verdict(page, w, h, "under reduced motion the coin is not drawn and the cue stands lit, one line",
+      rm.coin == "none" && rm.lines == 1 && rm.cue == "1" && rm.moving == 0, JSON.stringify(rm));
     await t.call("Emulation.setEmulatedMedia", {media: "print", features: [{name: "prefers-reduced-motion", value: "no-preference"}]});
     const pr = await t.js(DRAWN);
-    verdict(page, w, h, "in print the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown",
-      pr.tape == "none" && pr.unlit == "none" && pr.coin == "none" && pr.was == "none" && pr.now == "visible", JSON.stringify(pr));
+    verdict(page, w, h, "in print the coin is not drawn and the cue stands lit and still, one line",
+      pr.coin == "none" && pr.lines == 1 && pr.cue == "1" && pr.moving == 0, JSON.stringify(pr));
     await t.close();
+  }
+  for (const [w, h] of [[390, 844], [1440, 900]]) {
+    for (const reduce of [false, true]) {
+      const t = await open(page, {w, h, reduce});
+      const at = await t.js(TWIN);
+      verdict(page, w, h, "the door's twin is in #start, in the door's words, leading where the door leads", at && at.same, JSON.stringify(at));
+      if (!at) { await t.close(); continue }
+      await t.call("Input.dispatchMouseEvent", {type: "mouseMoved", x: at.x, y: at.y}); await sleep(300);
+      const hov = await t.js(`(() => { const d = document.querySelector("#start .btn.door"); return {coin: getComputedStyle(d.querySelector(".gcoin")).display, lift: getComputedStyle(d).transform} })()`);
+      await t.call("Input.dispatchMouseEvent", {type: "mousePressed", x: at.x, y: at.y, button: "left", clickCount: 1});
+      const coin = await t.js(`getComputedStyle(document.querySelector("#start .btn.door .gcoin")).display`);
+      await t.call("Input.dispatchMouseEvent", {type: "mouseReleased", x: at.x, y: at.y, button: "left", clickCount: 1});
+      await sleep(900);
+      const T_ = (await t.js(`window.__t`)) || {};
+      const hold = T_.open - T_.down, after = T_.open - T_.click, copied = T_.copy - T_.click;
+      if (!reduce) verdict(page, w, h, "the door's twin: on hover its coin comes to the slot and it does not lift; on a press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click",
+        hov.coin == "block" && hov.lift == "none" && coin == "block" && hold >= 340 && hold <= 470 && after >= 150 && copied >= 0 && copied < 50, JSON.stringify({hov, coin, ...T_}));
+      else verdict(page, w, h, "the door's twin under reduced motion: no coin on hover or on a press, and the dialog at once, the copy made in the click",
+        hov.coin == "none" && coin == "none" && after >= 0 && after < 150 && copied >= 0 && copied < 50, JSON.stringify({hov, coin, ...T_}));
+      await t.press("Escape");
+      const back = await t.js(`!!document.querySelector("#start .btn.door") && document.activeElement === document.querySelector("#start .btn.door")`);
+      verdict(page, w, h, "Escape closes the dialog and focus is back on the door's twin that opened it", back, String(back));
+      if (reduce) {
+        await t.call("Emulation.setEmulatedMedia", {media: "print", features: [{name: "prefers-reduced-motion", value: "no-preference"}]});
+        const pc = await t.js(`(e => e ? getComputedStyle(e).display : null)(document.querySelector("#start .btn.door .gcoin"))`);
+        verdict(page, w, h, "in print the door's twin draws no coin", pc == "none", pc);
+      }
+      await t.close();
+    }
   }
 }
 // the top bar, with the widest three-digit hi-score (888/888) set in it, at every whole width from 360 to 1920 px: its items (the mark, each score figure, the switch, each anchor shown, the

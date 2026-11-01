@@ -15,7 +15,7 @@ Autor. Weiter bei *Dem Werkzeug sagen, wer antwortet*.
 
 **Eine Signatur beweist den Schlüssel, nicht die Hand.** Alles, was unter deinem Konto auf deinem Rechner läuft, kann
 deinen Schlüssel benutzen wie du — auch deine Agenten. Was es signiert, gilt als von dir signiert. Weder das Werkzeug
-noch git noch die Forge können das unterscheiden. Es zählt also, was es braucht, den Schlüssel zu benutzen. Vier
+noch git noch die Git-Plattform können das unterscheiden. Es zählt also, was es braucht, den Schlüssel zu benutzen. Vier
 Stufen, die schwächste zuerst:
 
 | Stufe | Der Schlüssel, der signiert | Kann ein Agent unter deinem Konto in deinem Namen signieren? |
@@ -49,7 +49,7 @@ Hardware-Schlüssel sehen gleich aus. Eine kommende Version liest die Schlüssel
 welcher signiert hat:
 
 - *mit einem Software-Schlüssel signiert — alles, was unter dem Konto des Eigners läuft, kann das erzeugen*
-- *mit einem Hardware-Schlüssel signiert — braucht die Berührung des Eigners*
+- *mit einem Hardware-Schlüssel signiert — braucht die Freigabe des Eigners am Gerät*
 
 Auf den Stufen 0 bis 2 signiert ein Software-Schlüssel, und der Beleg kann sie nicht unterscheiden: Stufe 2 schützt
 dich, ohne es zu zeigen. Stufe 3 ist der Schritt, den der Beleg sehen kann. Ein Schlüssel aus der Secure Enclave ist die
@@ -59,13 +59,13 @@ Signierer-Datei angegeben (siehe Stufe 3).
 ## Auf Verlangen signieren — und was das nicht aufhält
 
 Steht `commit.gpgsign` auf `true`, signiert git jeden Commit im Repository, auch die deiner Agenten. Auf Stufe 0 gilt
-jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Berührung hängen.
+jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Freigabe am Gerät hängen.
 Lass es also ungesetzt, und signiere deine Antworten, wenn du sie gibst: Der Befehl `--answer` vom Board
 tut das für dich, von Hand ist es `git commit -S`. Hast du es schon gesetzt, macht `git config --unset commit.gpgsign`
 es rückgängig.
 
 **Ein ungesetztes `commit.gpgsign` hält keinen Agenten fern.** Ein Agent kann `-S` selbst übergeben. Nur Stufe 2
-oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Berührung, die der Agent nicht hat.
+oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Freigabe am Gerät, die der Agent nicht hat.
 Stufe 2 hält den Agenten auf, der aus Versehen signiert; Stufe 3 auch den, der es absichtlich tut.
 
 ## Weg A — ein eigener Signierschlüssel (git)
@@ -89,7 +89,7 @@ Diese Passphrase nie speichern. Den Schlüssel weder dem `ssh-agent` noch dem Sc
 und `ssh-add -l` darf ihn nicht auflisten. Sein eigener Dateiname, wie hier, verhindert, dass ssh ihn beim Pushen
 anbietet. Weiter bei *Danach, für jede Stufe*.
 
-### Stufe 3, der starke Weg — ein Hardware-Schlüssel, der deine Berührung braucht
+### Stufe 3, der starke Weg — Freigabe am Gerät
 
 Zwei Wege führen dorthin: zwei FIDO2-Sicherheitsschlüssel, oder, ohne Kauf, die Secure Enclave eines Macs mit
 Touch ID. Ein Passkey auf deinem Telefon gehört heute nicht dazu: OpenSSH signiert über libfido2 per USB oder NFC und
@@ -139,7 +139,7 @@ Secure Enclave erzeugen. Eine quelloffene SSH-Agent-App wie [Secretive](https://
 (englisch) erzeugt ihn dort und kann bei jeder Signatur nach Touch ID fragen. Der Schlüssel lässt sich nicht
 exportieren, jede Signatur braucht deinen Finger, und die App meldet jede Verwendung. Die Grenzen:
 
-- Die App erzeugt nur P-256-ECDSA-Schlüssel. Die Forge nimmt sie an.
+- Die App erzeugt nur P-256-ECDSA-Schlüssel. Die Git-Plattform nimmt sie an.
 - Der Schlüssel ist an diesen einen Mac gebunden. Trage auch einen zweiten Signierer ein — einen Schlüssel auf
   einem anderen Mac oder einen FIDO2-Schlüssel —, sonst sperrt dich der Verlust des Macs vom Antworten aus.
 - An seiner Art kann das Werkzeug ihn nicht von einem Software-ECDSA-Schlüssel unterscheiden. Gib die Stufe
@@ -181,7 +181,7 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
     prüft den eben gemachten Commit gegen diese Fassung und sagt, wenn die Signatur nicht verifiziert wird, dass du den
     Commit nicht pushen sollst.
 
-3. **Ihn auf der Forge als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,
+3. **Ihn auf deiner Git-Plattform als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,
    Typ **Signing Key** ([die Schritte bei GitHub](https://docs.github.com/de/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
    Auf GitLab: *Preferences → SSH Keys*, Verwendung *Signing*. Dann zeigen deine Commits dort *Verified*. Stufe 3:
    beide Signierer. Nur als Signierschlüssel — dieser Schlüssel pusht nie.
@@ -190,7 +190,7 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
    dahin signiert alles, was ihn benutzen kann, weiter, und was er signiert, lässt sich weiter verifizieren. Lege
    ihn still, sobald keine der Antworten, die er signiert hat, mehr offen ist: Eine offene Antwort, die der alte
    Schlüssel signiert hat, gälte als unverifiziert, sobald seine Zeile die Signierer-Datei verlässt. Dann seine Zeile
-   aus der Signierer-Datei nehmen und ihn auf der Forge unter *Signing keys* löschen. Unter *Authentication keys*
+   aus der Signierer-Datei nehmen und ihn auf der Git-Plattform unter *Signing keys* löschen. Unter *Authentication keys*
    bleibt er stehen und pusht weiter.
 
 **Eine signierte Zeile wird nur über SSH geprüft.** Eine GPG-Signatur darauf lehnt das Werkzeug ab: `sign with SSH; GPG returns with a fingerprint binding`.
@@ -232,7 +232,7 @@ python3 tools/shoalmark/shoalmark.py --answer AP-007-Q1 accept
 
 `AP-007-Q1` ist die eigene ID der Frage: die ID ihres Arbeitspakets, dann `Q` und die Nummer der Frage. Der Befehl
 schreibt die drei Zeilen auf deinem aktuellen Branch und committet sie, mit deinem Schlüssel signiert (Stufe 2 fragt
-nach deiner Passphrase, Stufe 3 nach deiner Berührung), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet
+nach deiner Passphrase, Stufe 3 nach deiner Freigabe am Gerät: entweder PIN und Berührung des Sicherheitsschlüssels oder Touch ID), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet
 jeden Schritt, bevor er ihn ausführt, legt keinen Branch an und pusht nichts. Scheitert etwas vor dem Commit, nimmt der
 Befehl alles Geschriebene zurück und gibt die Befehlszeile aus, mit der du die Antwort erneut gibst; ist der Commit
 gemacht, lässt sich die Signatur aber nicht verifizieren, meldet der Befehl das und sagt, dass du den Commit nicht
@@ -246,7 +246,7 @@ Arbeitspakets: `--answer AP-007 accept`.
 Die beiden Abschnitte der `TRIAGE.md`, die dir gehören — *Die Absicht* und *Der aktuelle Weg* —, ändern sich nur in
 einem Commit, den du signierst. Auf einem Branch lehnt `--check` jeden anderen Commit ab, der ihren Text ändert (ein
 Wort, eine Zeile, eine Leerzeile: Leerraum zählt), ihre Überschriften umbenennt oder entfernt, die `TRIAGE.md` löscht
-oder aus dem Tracker-Verzeichnis verschiebt oder `tracker_dir` woandershin zeigen lässt; der Commit-Hook lehnt einen
+oder aus dem Verzeichnis der Arbeitspakete verschiebt oder `tracker_dir` woandershin zeigen lässt; der Commit-Hook lehnt einen
 solchen Commit einer Rolle ab, bevor er entsteht, und `--queue` liest seinen Pull Request als *wait: TRIAGE.md changed
 unsigned*. Dein Commit geht durch, wenn `git log -1 --format='%G? %GS %ae'` `G` und zweimal deine E-Mail ausgibt — die
 Probe unter *Prüfen*. Ein Agent, der einen der beiden Abschnitte geändert haben will, fragt dich mit einem `ask:`; die

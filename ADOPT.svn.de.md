@@ -106,8 +106,8 @@ Probe ins Wegwerf-Repository: zuerst das Werkzeug laufen lassen, dann `svn add -
      *Verlauf*. TortoiseSVN lehnt den Commit ab und zeigt die Zeile des Gates. Danach `svn revert`.
 
   Haltet fest, was der Eigner gesehen hat. Ein Feldbericht aus einer Windows-Arbeitskopie zeigte: Nach der Korrektur
-  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte einen Eintrag ab,
-  der ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um
+  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte ein Arbeitspaket ab,
+  das ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um
   den Pfad beruhen auf TortoiseSVNs Quellcode und wurden unter Windows noch nicht erprobt. Ist es anders, ist das ein
   Befund, und Bericht und Rückmeldung sagen es. Unter macOS und Linux gibt es kein TortoiseSVN: Der Schritt entfällt.
 

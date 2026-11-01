@@ -38,11 +38,8 @@
   "founder": "Ich habe das gebaut, nachdem meine Agenten mich zu ihrem Abnicker gemacht hatten. <a href=\"warum-shoalmark.html\">Warum shoalmark →</a>",
   "btn_adopt": "Gib deinen Agenten die Notiz",
   "btn_probe": "Prompt kopieren",
-  "btn_tape": "noch nicht",
   "btn_how": "So funktioniert's",
-  "taped_why": "Nicht defekt, nur noch nicht offen: Der Prompt hinter diesem Knopf geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind. Bis dahin gibst du deinen Agenten <a href=\"{adopt}\">die Notiz</a>.",
   "cue": "— Start drücken —",
-  "cue_taped": "— nach v0.20.1 —",
   "chart_note": "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.",
 
   "inc_h": "Vorfall",
@@ -96,7 +93,7 @@
   "p1_triage": "Die Rolle urteilt, der Befehl setzt um – Stufe, Rang und Parken kommen aus dem Arbeitsblatt, nie von Hand.",
   "p1_check": "Prüft den Beleg der Arbeit und gibt bei Verstößen einen Rückgabewert ungleich null zurück.",
   "rules_aria": "Hausregeln",
-  "rule_1": "<b>Der Tracker ist maßgeblich.</b> Nie ein Nebenplan, ein Chat oder ein TODO-Kommentar.",
+  "rule_1": "<b>Das Arbeitspaket ist maßgeblich.</b> Nie ein Nebenplan, ein Chat oder ein TODO-Kommentar.",
   "rule_2": "<b>Erst schauen, dann erfassen.</b>",
   "rule_3": "<b>Eine Id ändert sich nie und sagt nichts, was sich ändern kann.</b>",
   "rule_4": "<b>Die Rolle urteilt, der Befehl setzt um.</b>",
@@ -111,7 +108,7 @@
   "p2_standup": "Wann immer es dir passt: Die ersten Zeilen des Boards sind seine Tagesordnung, und der Stand-up-Prompt des Boards bittet eine Session, sie mit dir durchzugehen, einen Punkt nach dem anderen.",
   "p2_answer": "Ein Befehl pro Antwort: Er schreibt deine Antwort als Commit, mit deinem Schlüssel signiert, sobald du das Signieren einschaltest.",
   "p2_sig_dt": "Deine Signatur",
-  "p2_sig": "Sobald du das Signieren einschaltest, zählt als Antwort nur dein signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Berührung braucht.",
+  "p2_sig": "Sobald du das Signieren einschaltest, zählt als Antwort nur dein signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht.",
   "peek_aria": "Ein Auszug aus shoalmarks eigenem Board",
   "peek_t": "owed to the owner",
   "peek_1": "waiting for you: {waiting}",
@@ -202,6 +199,8 @@
 
   "foot_claim": "<span><a href=\"warum-shoalmark.html\">Warum shoalmark?</a></span><span class=\"sep\"> · </span><span>Offen gebaut: <a href=\"https://github.com/shoalmark/shoalmark\">github.com/shoalmark/shoalmark</a></span><span class=\"sep\"> · </span><span>Folge mir beim Bauen auf X: <a href=\"https://x.com/holgo99\">@holgo99</a></span>",
   "foot_fine": "{tag}, veröffentlicht am {date} – das neue Aussehen des Boards und der fertige Probe-Prompt. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.",
+  "foot_imprint": "Impressum",
+  "foot_privacy": "Datenschutz",
 
   "dlg_h": "Der Probe-Prompt",
   "dlg_close": "Schließen",
@@ -261,7 +260,9 @@
   "how": "how-it-works.html",
   "probe_txt": "probe.txt",
   "probe_abs": "https://shoalmark.tools/de/probe.txt",
-  "discuss": "https://shoalmark.tools/feedback"
+  "discuss": "https://shoalmark.tools/feedback",
+  "imprint": "impressum.html",
+  "privacy": "datenschutz.html"
 } %}
 {% import "partials/landing/facts.html" as F %}
 {%- set ADOPT_COMMIT = F.pins.ADOPT_COMMIT -%}{%- set TAG = F.pins.TAG -%}{%- set ARCHIVE_URL = F.pins.ARCHIVE_URL -%}{%- set ARCHIVE_SHA256 = F.pins.ARCHIVE_SHA256 -%}

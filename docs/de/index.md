@@ -29,7 +29,7 @@ Commit, signiert mit einem Schlüssel, dem du vertraust, und eine unsignierte le
 `owner`-Zeile als `signed` markiert ist, wie es die [Einrichtungsseite](setup.md) tut. Unter Subversion zählt sie nur als
 Commit, den der Server als deinen authentifiziert hat. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort.
 Wie stark diese Signatur ist, wählst du — [vier Stufen](signing.md), vom Schlüssel, den alles unter deinem Konto
-benutzen kann, bis zu einem, der deine Berührung braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt
+benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt
 hat.
 
 ## Warum nicht mein Ticketsystem?
@@ -52,7 +52,7 @@ Im eigenen Repository von shoalmark, das selbst mit shoalmark arbeitet:
 eigenen Antwort-Branches des Eigners (`answer/…`). Einer zählt, wenn ein Commit, der eine Datei unter
 `work-tracker/evidence/reviews/` anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull
 Requests datiert ist. Das Datum eines Commits sagt, wann er entstand, nicht wann er gepusht wurde: Die
-Push-Ereignisse der Forge bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet
+Push-Ereignisse der Git-Plattform bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet
 sie nicht mehr. Die Regel ist die signierte Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ.*
 
 Was shoalmark dazu ausgibt, jeden Tag:
@@ -65,7 +65,7 @@ Was shoalmark dazu ausgibt, jeden Tag:
 
 1. Sie holen shoalmark beim Git-Tag eines Releases und legen eine festgeschriebene Kopie ins Repository, jede Datei
    mit Prüfsumme (`--vendor`).
-2. `--init` schreibt die Konfiguration, die Triage-Datei und den Vertrag für Agenten.
+2. `--init` schreibt die Konfiguration, die Datei `TRIAGE.md` und den Vertrag für Agenten.
 3. Die Agenten lesen den Vertrag, das [README](../agents/README.md), und legen die Arbeit an: eine Markdown-Datei je
    Arbeitspaket.
 4. **Du** schreibst drei Zeilen in deinen eigenen Worten: wofür das Repository da ist, was gilt, wenn es

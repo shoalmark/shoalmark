@@ -39,7 +39,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 
 **Not everything needs you.** A seat that holds the right to close closes work without asking you. Shipped with the tool are three seats with fixed rights: the planner may ask, close and triage, the reviewer may triage, the builder holds none of the four. For any other seat you set the rights yourself. Only a seat you give the right may answer, and by default that is you alone.
 
-**How firmly "no agent answers for you" holds is set by your signature.** A signature proves the key, not the hand: whoever can use your key can answer as you. There are four tiers, from a key anything on your account can use to one that needs your touch. [Your answer is your commit](signing.md) helps you choose.
+**How firmly "no agent answers for you" holds is set by your signature.** A signature proves the key, not the hand: whoever can use your key can answer as you. There are four tiers, from a key anything on your account can use to one that needs your confirmation on the device. [Your answer is your commit](signing.md) helps you choose.
 
 ## Your part
 

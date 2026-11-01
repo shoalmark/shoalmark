@@ -1073,14 +1073,26 @@ FM057_KEYS_SHOWN = ("read.git.branch", "read.git.detached", "read.git.unborn", "
                     "read.about", "read.about.git", "read.about.svn", "read.about.none", "link.unpushed", "link.noforge", "link.unknown", "link.noviewer",
                     "link.nocommit", "read.copied")
 FM057_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in FM057_KEYS_SHOWN)
+# the read-at fold's edits to the read-at line's own text on the page — (the text as the read-at line's allowance pins it, the candidate's), literal,
+# each after standing once on the candidate's page: the fold's wrapping rule beside the read-at line's rules, and the plain folder's fold label, which
+# names the folder's path. Each is put back as pinned before the read-at line's parts are taken out
+READ_AT_FOLD_EDITS = (
+    ('details.about[open]>summary:before{content:"v ";content:"v " / ""}\n',
+     'details.about[open]>summary:before{content:"v ";content:"v " / ""}details.about .help{overflow-wrap:anywhere}\n'),
+    ('"read.about.none": "read from the folder at {0}"', '"read.about.none": "read from the folder {1} at {0}"'),
+)
 
 
 def fm057_page_dropped(data):
     """The candidate's board page without the read-at line's parts, each taken out exactly once as specified above — the style line, the read-at
-    line and its fold, the three script lines, the twenty-five words — and the reload's comment put back as the baseline's. None where any part is
-    not there exactly once as written."""
+    line and its fold, the three script lines, the twenty-five words — and the reload's comment put back as the baseline's; before that, each of
+    READ_AT_FOLD_EDITS' afters put back as its before. None where an after or a part is not there exactly once as written."""
     if data is None:
         return None
+    for old, new in READ_AT_FOLD_EDITS:
+        if data.count(new.encode("utf-8")) != 1:
+            return None
+        data = data.replace(new.encode("utf-8"), old.encode("utf-8"), 1)
     for line in FM057_PAGE_LINES:
         if data.count(line + b"\n") != 1:
             return None
@@ -1392,6 +1404,88 @@ ASK_ID_EDITS = (
 )
 
 
+# a shut group of the work table is its heading alone: its paragraph, the newest pass under `triaged` or a story's state, folds with its rows
+GROUP_FOLD_EDITS = (
+    ("what is kept and what is owed stay open; `triaged` keeps its pass paragraph\n",
+     "what is kept and what is owed stay open; a shut group is its heading alone: its paragraph (the newest pass, a story's state) folds with its rows\n"),
+    ("</tr>${state}`;   // a header sums its rows up by the board's columns\n", "</tr>`;   // a header sums its rows up by the board's columns\n"),
+    ('    return head+(folded?"":g.map(t=>', '    return head+(folded?"":state+g.map(t=>'),
+)
+
+
+# a seat's icon in today's session row: the row's rules and the slot, the tool's seven icons in the page's data, and the icon before the
+# seat's word, found by its exact word
+SEAT_ICON_EDITS = (
+    ('details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}\n',
+     'details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}\n/* a seat\'s icon in a session\'s row: 20 px, grey, without its ground; inverted on the light board; paper draws none and keeps its slot. The dark rule is the page\'s\n   own, so the switch reaches it; a word outside the seven keeps the slot, empty */\n.seat{display:inline-block;width:20px;height:20px;vertical-align:top}.seat img{display:block}\n.seat img{filter:grayscale(1) invert(1)}\n@media print{.seat img{visibility:hidden}}\n@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}\n'),
+    ('},ICO={"copy": ',
+     '},SEAT={'
+     '"auditor": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmF1ZGl0b3Ig4oCUIHRoZSBvd2w8L3RpdGxlPgo8cGF0aCBmaWxsPSIjMzQ1NDZjIiBkPSJNNCAxN2gzdjFoLTNaTTEzIDE3aDN2MWgtM1oiLz48IS0tIHRoZSB3YXRlciAtLT4KPHBhdGggZmlsbD0iI2JjY2Q4ZiIgZD0iTTkgMTRoMnY2aC0yWiIvPjwhLS0gdGhlIHN0YWtlIC0tPgo8cGF0aCBmaWxsPSIjODU5NWEyIiBkPSJNNSA0aDF2MmgtMVpNNiA1aDF2MWgtMVpNMTQgNGgxdjJoLTFaTTEzIDVoMXYxaC0xWiIvPjwhLS0gdGhlIGVhciB0dWZ0cyAtLT4KPHBhdGggZmlsbD0iIzg1OTVhMiIgZD0iTTQgNmgxMnYxaC0xMlpNMyA3aDE0djZoLTE0Wk00IDEzaDEydjFoLTEyWk01IDE0aDEwdjFoLTEwWiIvPjwhLS0gdGhlIGhlYWQgLS0+CjxwYXRoIGZpbGw9IiNkOWU0ZWMiIGQ9Ik01IDhoM3YzaC0zWk0xMiA4aDN2M2gtM1oiLz48IS0tIHRoZSBleWVzLCB3aWRlIGF3YWtlIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNNSA3aDN2MWgtM1pNMTIgN2gzdjFoLTNaTTQgOGgxdjNoLTFaTTE1IDhoMXYzaC0xWk04IDhoNHYxaC00Wk04IDloMXYyaC0xWk0xMSA5aDF2MmgtMVpNNSAxMWgzdjFoLTNaTTEyIDExaDN2MWgtM1oiLz48IS0tIHRoZSBzcGVjdGFjbGVzIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNNiA5aDF2MWgtMVpNMTMgOWgxdjFoLTFaIi8+PCEtLSB0aGUgcHVwaWxzIC0tPgo8cGF0aCBmaWxsPSIjZjFkNDdhIiBkPSJNOSAxMWgydjJoLTJaIi8+PCEtLSB0aGUgYmVhayAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"builder": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmJ1aWxkZXIg4oCUIHRoZSBzaGlwd3JpZ2h0PC90aXRsZT4KPHBhdGggZmlsbD0iIzM0NTQ2YyIgZD0iTTQgMTdoM3YxaC0zWk0xMyAxN2gzdjFoLTNaIi8+PCEtLSB0aGUgd2F0ZXIgLS0+CjxwYXRoIGZpbGw9IiNiY2NkOGYiIGQ9Ik05IDE0aDJ2NmgtMloiLz48IS0tIHRoZSBzdGFrZSAtLT4KPHBhdGggZmlsbD0iI2JjY2Q4ZiIgZD0iTTYgOGg4djFoLThaTTUgOWgxMHY1aC0xMFpNNiAxNGg4djFoLThaIi8+PCEtLSB0aGUgaGVhZCwgdGhlIHN0YWtlJ3Mgb3duIGdyZWVuIC0tPgo8cGF0aCBmaWxsPSIjZjFkNDdhIiBkPSJNOCA0aDR2MWgtNFpNNyA1aDZ2MWgtNlpNNiA2aDh2MWgtOFpNNSA3aDEwdjFoLTEwWiIvPjwhLS0gdGhlIGhhcmQgaGF0IC0tPgo8cGF0aCBmaWxsPSIjZThkNGEwIiBkPSJNOSA0aDJ2M2gtMloiLz48IS0tIGl0cyByaWRnZSAtLT4KPHBhdGggZmlsbD0iIzE1MjkzZCIgZD0iTTcgMTBoMXYyaC0xWk0xMiAxMGgxdjJoLTFaIi8+PCEtLSB0aGUgZXllcyAtLT4KPHBhdGggZmlsbD0iI2YzOGE4MCIgZD0iTTYgMTJoMXYxaC0xWk0xMyAxMmgxdjFoLTFaIi8+PCEtLSB0aGUgYmx1c2ggLS0+Cjwvc3ZnPgo=\\"\\u003e", '
+     '"designer": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmRlc2lnbmVyIOKAlCB0aGUgcGFpbnRlcjwvdGl0bGU+CjxwYXRoIGZpbGw9IiMzNDU0NmMiIGQ9Ik00IDE3aDN2MWgtM1pNMTMgMTdoM3YxaC0zWiIvPjwhLS0gdGhlIHdhdGVyIC0tPgo8cGF0aCBmaWxsPSIjYmNjZDhmIiBkPSJNOSAxNGgydjZoLTJaIi8+PCEtLSB0aGUgc3Rha2UgLS0+CjxwYXRoIGZpbGw9IiNmMWQ0N2EiIGQ9Ik04IDdoNHYxaC00Wk03IDhoNnYxaC02Wk02IDloOHYxaC04Wk01IDEwaDEwdjRoLTEwWk02IDE0aDh2MWgtOFoiLz48IS0tIHRoZSBoZWFkLCBhIHBlYXIgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik05IDRoMXYxaC0xWk03IDVoNnYxaC02Wk02IDZoOXYxaC05WiIvPjwhLS0gdGhlIGJlcmV0LCB0aWx0ZWQgLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik0xMCAxMGgxdjJoLTFaTTEzIDEwaDF2MmgtMVoiLz48IS0tIHRoZSBleWVzLCBvbiBpdHMgZHJhd2luZyAtLT4KPHBhdGggZmlsbD0iI2YzOGE4MCIgZD0iTTEzIDEyaDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"go-to-market": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmdvLXRvLW1hcmtldCDigJQgdGhlIGhlcmFsZDwvdGl0bGU+CjxwYXRoIGZpbGw9IiMzNDU0NmMiIGQ9Ik00IDE3aDN2MWgtM1pNMTMgMTdoM3YxaC0zWiIvPjwhLS0gdGhlIHdhdGVyIC0tPgo8cGF0aCBmaWxsPSIjYmNjZDhmIiBkPSJNOSAxNGgydjZoLTJaIi8+PCEtLSB0aGUgc3Rha2UgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik01IDZoN3YxaC03Wk00IDdoOXY2aC05Wk01IDEzaDd2MWgtN1oiLz48IS0tIHRoZSBoZWFkLCBsZWFuaW5nIGJhY2sgZnJvbSB0aGUgaG9ybiAtLT4KPHBhdGggZmlsbD0iIzE1MjkzZCIgZD0iTTYgOGgxdjJoLTFaTTExIDhoMXYyaC0xWiIvPjwhLS0gdGhlIGV5ZXMsIG9wZW4gb24gdGhlIHN0cmFuZ2VyIC0tPgo8cGF0aCBmaWxsPSIjZDllNGVjIiBkPSJNMTMgMTBoMnYxaC0yWk0xNSA5aDF2M2gtMVpNMTYgOGgxdjVoLTFaIi8+PCEtLSB0aGUgaG9ybiAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"planner": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPnBsYW5uZXIg4oCUIHRoZSBza2lwcGVyPC90aXRsZT4KPHBhdGggZmlsbD0iIzM0NTQ2YyIgZD0iTTQgMTdoM3YxaC0zWk0xMyAxN2gzdjFoLTNaIi8+PCEtLSB0aGUgd2F0ZXIgLS0+CjxwYXRoIGZpbGw9IiNiY2NkOGYiIGQ9Ik05IDE0aDJ2NmgtMloiLz48IS0tIHRoZSBzdGFrZSAtLT4KPHBhdGggZmlsbD0iI2Q5ZTRlYyIgZD0iTTYgOGg4djFoLThaTTUgOWgxMHY1aC0xMFpNNiAxNGg4djFoLThaIi8+PCEtLSB0aGUgaGVhZCAtLT4KPHBhdGggZmlsbD0iI2Q5ZTRlYyIgZD0iTTYgNGg4djFoLThaTTUgNWgxMHYxaC0xMFoiLz48IS0tIHRoZSBjYXAncyBjcm93biAtLT4KPHBhdGggZmlsbD0iIzViODNhMyIgZD0iTTYgNmg4djFoLThaIi8+PCEtLSBpdHMgYmFuZCAtLT4KPHBhdGggZmlsbD0iI2YxZDQ3YSIgZD0iTTkgNmgydjFoLTJaIi8+PCEtLSBpdHMgYmFkZ2UgLS0+CjxwYXRoIGZpbGw9IiMwNzExMWIiIGQ9Ik02IDdoOHYxaC04WiIvPjwhLS0gaXRzIHBlYWsgLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik03IDEwaDF2MmgtMVpNMTIgMTBoMXYyaC0xWiIvPjwhLS0gdGhlIGV5ZXMsIGxldmVsIC0tPgo8cGF0aCBmaWxsPSIjZjM4YTgwIiBkPSJNNiAxMmgxdjFoLTFaTTEzIDEyaDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"research": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPnJlc2VhcmNoIOKAlCB0aGUgdGlkZSBnYXVnZTwvdGl0bGU+CjxwYXRoIGZpbGw9IiMzNDU0NmMiIGQ9Ik00IDE3aDN2MWgtM1pNMTMgMTdoM3YxaC0zWiIvPjwhLS0gdGhlIHdhdGVyIC0tPgo8cGF0aCBmaWxsPSIjYmNjZDhmIiBkPSJNOSAxNGgydjZoLTJaIi8+PCEtLSB0aGUgc3Rha2UgLS0+CjxwYXRoIGZpbGw9IiM3ZmQ5YmYiIGQ9Ik04IDNoNHYxaC00Wk03IDRoNnYxaC02Wk02IDVoOHYxMGgtOFpNNyAxNWg2djFoLTZaIi8+PCEtLSB0aGUgc3RhZmYgLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik03IDZoMnYyaC0yWk0xMSA2aDJ2MmgtMloiLz48IS0tIHRoZSBleWVzLCB3aWRlIG9wZW4gLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik0xMSA5aDJ2MWgtMlpNMTIgMTFoMXYxaC0xWk0xMSAxM2gydjFoLTJaIi8+PCEtLSB0aGUgbWFya3MgaXQgcmVhZHMgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik03IDhoMXYxaC0xWk0xMiA4aDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"reviewer": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPnJldmlld2VyIOKAlCB0aGUgaW5zcGVjdG9yPC90aXRsZT4KPHBhdGggZmlsbD0iIzM0NTQ2YyIgZD0iTTQgMTdoM3YxaC0zWk0xMyAxN2gzdjFoLTNaIi8+PCEtLSB0aGUgd2F0ZXIgLS0+CjxwYXRoIGZpbGw9IiNiY2NkOGYiIGQ9Ik05IDE0aDJ2NmgtMloiLz48IS0tIHRoZSBzdGFrZSAtLT4KPHBhdGggZmlsbD0iIzhmYjlmMyIgZD0iTTYgNmg4djFoLThaTTUgN2gxMHY2aC0xMFpNNiAxM2g4djFoLThaIi8+PCEtLSB0aGUgaGVhZCAtLT4KPHBhdGggZmlsbD0iI2Q5ZTRlYyIgZD0iTTExIDdoNHYxaC00Wk0xMCA4aDF2NGgtMVpNMTUgOGgxdjRoLTFaTTExIDEyaDR2MWgtNFpNMTUgMTNoMXYyaC0xWiIvPjwhLS0gdGhlIG1vbm9jbGUsIGl0cyBjb3JkIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNMTIgOWgydjJoLTJaIi8+PCEtLSB0aGUgZXllIGJlaGluZCBpdCwgbWFnbmlmaWVkIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNNiAxMGgydjFoLTJaIi8+PCEtLSB0aGUgb3RoZXIgZXllLCBzcXVpbnRpbmcgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik02IDEyaDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e"'
+     '},ICO={"copy": '),
+    ('<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})',
+     '<details class="grp"><summary>${esc(g[0])} <span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} (${esc(g[2])})'),
+)
+
+# the reviews row as one: each change it makes to this fixture's page — (the joined page's text, the candidate's), the template's lines and the
+# labels item by item, each where it occurs once — applied in order after the join's edits
+REVIEWS_ROW_EDITS = (
+    ('.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}',
+     '.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv .sid{white-space:nowrap}'),
+    ('  brn=(b,u)=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))\n    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))\n    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none"))}</i>`;\n',
+     '  brn=(b,u)=>b[0]=="line"||b[0]=="merge"?[lh("reviews.branch",`<code>${esc(b[1])}</code>`),""]\n    :b[0]=="ambiguous"?[lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", ")),""]\n    :[`<i>${l("reviews.branch.notknown")}</i>`,` <i>— ${b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none")}</i>`],\n  rvon=(b,c)=>esc(L["reviews.on"]??"reviews.on").replace(/ (?=\\{\\d\\})/g,"&nbsp;").replace(/\\{(\\d)\\}/g,(m,i)=>[c,b[0]][i]??"")+b[1],\n  sid=s=>`<span class="sid">${esc(s)}</span>`,nk=k=>`<i>${l("reviews.notknown")} — ${l(k)}</i>`;\n'),
+    ('    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]),v[5]?l("verdict."+v[5]):l("type.verdict"),\n',
+     '    vr=v=>row(cid(v[0],(v[8]||[])[0]),rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1])),v[5]?l("verdict."+v[5]):l("type.verdict"),\n'),
+    ('+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),',
+     '+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1):v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))),'),
+    ('      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?',
+     '      `<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")+(more.length?'),
+    ('"reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch\'s {1}", ',
+     '"reviews.on": "on {1} @ {0}", "reviews.sessions": "{0}, the branch\'s {1}", '),
+    ('"reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it", "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous", "reviews.branch.unknown": "branch not known — {0}", "reviews.branch.none": "no branch here holds the verdict on its own line", "reviews.branch.unnamed": "its merge {0} names no branch", ',
+     '"reviews.branch": "{0}", "reviews.branch.ambiguous": "{0}: {1}", "reviews.ambiguous": "ambiguous", "reviews.branch.notknown": "branch not known", "reviews.branch.none": "committed on no branch here", "reviews.branch.unnamed": "its merge {0} names no branch", "reviews.help": "a verdict\'s branch is the one it was committed on; once merged, the one its merge names", "reviews.notknown": "not known", "reviews.notknown.own": "the verdict names no session", "reviews.notknown.range": "no commit on it names a session, merges and verdicts aside", "reviews.notknown.unread": "the reviewed commit is not here", '),
+)
+
+
+# a line of counts breaks only after a "·": each count goes through one helper that keeps it whole and holds each "·" to the count before it
+COUNT_LINE_EDITS = (
+    ('split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},\n',
+     'split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},\n'
+     '// a browser breaks a line at any space: inside a count every space is a no-break space, and each "·" holds to the count before it\n'
+     '// by one, so a line of counts breaks only after a "·"\n'
+     'cnt=s=>s.split(" · ").map(g=>g.replace(/ /g,"\\u00a0")).join("\\u00a0· "),\n'),
+    ('days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");',
+     'days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join("\\u00a0· ");'),
+    ('w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",',
+     'w.length?[old>=0?cnt(l("waiting.oldest",old)):"",held.length?cnt(l("waiting.holds",held.length)):"",'),
+    ('.filter(Boolean).map(s=>"· "+s).join(" "):""),', '.filter(Boolean).map(s=>"· "+s).join("\\u00a0"):""),'),
+    ('[days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),',
+     '[days(t)!=null?cnt(l("waiting.days",days(t))):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join("\\u00a0· "),'),
+    ('[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",\n'
+     '        "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),',
+     '[st,r[4]?`· <b class="hot">${cnt(l("reviews.notready",r[4]))}</b>`:"",r[5]?`· <b class="warn">${cnt(l("reviews.findings",r[5]))}</b>`:"",\n'
+     '        "· "+cnt(l("reviews.counts",r[0],r[1])),r[2]?"· "+cnt(l("reviews.untraced",r[2])):"",r[3]?"· "+cnt(l("reviews.trunk",r[3])):"","· "+l("reviews.reports")].filter(Boolean).join("\\u00a0")),'),
+    ('"· "+l(n==1?"path.line":"path.lines",n)+" · ', '"· "+cnt(l(n==1?"path.line":"path.lines",n)+" · '),
+    ('TRIAGE.md"),`<p class="lim">', 'TRIAGE.md")),`<p class="lim">'),
+    ('const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · '
+     '<span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";',
+     'const story=kids.length?` · ${cnt(`${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}:`)} ${cnt(`${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")}`)}\\u00a0· '
+     '<span class="${open.some(t=>t[1]<"P2")?"hot":""}">${cnt(`${open.length} ${l("story.open")}`)}</span>${open.some(t=>t[17])?`\\u00a0· ${cnt(`${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`)}`:""}`:"";'),
+    ('$("n").textContent=`${rows.length} ', '$("n").textContent=cnt(`${rows.length} '),
+    ('${L["count.untriaged"]}`:""}`;', '${L["count.untriaged"]}`:""}`);'),
+    ('k=="no move named"?`${v.length} ${l("viewer.no_move")}`:', 'k=="no move named"?cnt(`${v.length} ${l("viewer.no_move")}`):'),
+    ('.join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · '
+     '${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")',
+     '.join("\\u00a0· ")||l("viewer.none_in_progress")}\\u00a0· ${cnt(`${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · '
+     '${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`)}`:"")'),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
     occurs exactly once — else None; then its rows, each ask cell carrying its id (`ask_id_rows`)."""
@@ -1399,7 +1493,7 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS + REVIEWS_ROW_EDITS + COUNT_LINE_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
@@ -1900,16 +1994,34 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        "byte; the baseline's page holds neither", bool(read_at) and fm057_page_dropped(day_dropped_joined(new_page)) == joined_transform(old_page)
                        and day_dropped(old_page) is None and fm057_page_dropped(old_page) is None)
         at = read_at.group(0) if read_at else b"\n"
+        rule057 = b"details.about .help{overflow-wrap:anywhere}"
+        style057 = FM057_PAGE_LINES[0] + rule057 + b"\n"
         variants057 = {
             "one byte more in the read-at line": new_page.replace(at, at.replace(b"nothing polls", b"nothing polls!"), 1),
             "the read-at line twice": new_page.replace(at, at * 2, 1),
-            "the read-at line's style gone": new_page.replace(FM057_PAGE_LINES[0] + b"\n", b"\n", 1),
+            "the read-at line's style gone": new_page.replace(style057, b"\n", 1),
             "a word FM-057 does not name, beside its own": new_page.replace(b'"read.copy": "rebuild command"', b'"read.copy": "rebuild command", "read.more": "more"', 1),
         }
         made057 = {name: page != new_page for name, page in variants057.items()}
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
                        f"does not name does not match (each variant made: {made057})",
                        all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
+        # the read-at fold's edits, held the same way: literal text, each after found once and no before, and a fold changed beyond them does not match
+        fold057, label057 = "Git entry read-at fold allowance: ", b'"read.about.none": "read from the folder {1} at {0}"'
+        assert_control(fold057 + "READ_AT_FOLD_EDITS is literal text alone, each pair a before and an after that differ, each after standing once on "
+                       "the candidate's page and no before",
+                       bool(READ_AT_FOLD_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in READ_AT_FOLD_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 and new_page.count(a.encode("utf-8")) == 0 for a, b in READ_AT_FOLD_EDITS))
+        fold_variants = {
+            "the fold's rule as `break-word`": new_page.replace(rule057, b"details.about .help{overflow-wrap:break-word}", 1),
+            "one byte more in the fold's rule": new_page.replace(rule057, b"details.about .help{overflow-wrap:anywhere;}", 1),
+            "the fold's rule on every help line": new_page.replace(rule057, b".help{overflow-wrap:anywhere}", 1),
+            "the folder's fold label one byte more": new_page.replace(label057, label057[:-1] + b'!"', 1),
+            "the folder's fold label as it was": new_page.replace(label057, b'"read.about.none": "read from the folder at {0}"', 1)}
+        made_fold = {what: page != new_page for what, page in fold_variants.items()}
+        assert_control(fold057 + "a page whose read-at fold differs from READ_AT_FOLD_EDITS' after — its rule as `break-word`, one byte more, or on every "
+                       f"help line; the folder's fold label one byte more, or as it was — does not match (each variant made: {made_fold})",
+                       all(made_fold.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in fold_variants.values()))
         settings = "Git entry board settings allowance: "
         raw = new["starts_raw"]
         reads = [i for i, row in enumerate(raw) if "GIT_CONFIG_PARAMETERS" in (row.get("environment") or {}) and git_words(row)[:1] == ("log",)
@@ -2000,6 +2112,38 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                            page != new_page and marker_only(page) and not snapshots_match(old, with_board(new, PAGE_PATH, page)))
         assert_control(v2 + "the controls' anchors are real: WORK-001, the dialog's element and WORK-001's hook are each on the candidate's page",
                        new_page.count(b"WORK-001") >= 1 and new_page.count(section) == 1 and new_page.count(hook) == 1)
+        # the count line's allowance, held the same way: literal text, each after found once, and a count place changed beyond it does not match
+        counts = "Git entry count-line allowance: "
+        assert_control(counts + "COUNT_LINE_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(COUNT_LINE_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in COUNT_LINE_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in COUNT_LINE_EDITS))
+        helper_end = '.join("\\u00a0· "),\nidl='
+        count_variants = {
+            "the helper's join as a plain \" · \"": new_page.replace(helper_end.encode("utf-8"), '.join(" · "),\nidl='.encode("utf-8"), 1),
+            "the count line without the helper": new_page.replace(b'$("n").textContent=cnt(`', b'$("n").textContent=`', 1)
+                                                          .replace(b'${L["count.untriaged"]}`:""}`);', b'${L["count.untriaged"]}`:""}`;', 1),
+            "one byte more at a count place, the trunk's": new_page.replace(b'cnt(l("reviews.trunk",r[3]))', b'cnt(l("reviews.trunk",r[3])) ', 1),
+            "the reviews heading's join as a plain space": new_page.replace(b'.filter(Boolean).join("\\u00a0")),', b'.filter(Boolean).join(" ")),', 1)}
+        made_counts = {what: page != new_page for what, page in count_variants.items()}
+        assert_control(counts + "a page whose count places differ from COUNT_LINE_EDITS' after — the helper's join, the count line without the "
+                       f"helper, one byte more, a heading's join — does not match (each variant made: {made_counts})",
+                       all(made_counts.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in count_variants.values()))
+        # the reviews row's allowance, held the same way: literal text, each after found once, and a row changed beyond it does not match
+        rv = "Git entry reviews-row allowance: "
+        assert_control(rv + "REVIEWS_ROW_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(REVIEWS_ROW_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in REVIEWS_ROW_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in REVIEWS_ROW_EDITS))
+        row_variants = {
+            "the session id's rule widened to the row": new_page.replace(b".rv .sid{white-space:nowrap}", b".rv .sid,.rv{white-space:nowrap}", 1),
+            "the help line dropped": new_page.replace(b'`<p class="help">${l("reviews.help")}</p>`+week', b"week", 1),
+            "one byte more in line 1": new_page.replace(b'cid(v[1],(v[8]||[])[1])),v[5]', b'cid(v[1],(v[8]||[])[1])) ,v[5]', 1),
+            "a label beyond the allowance": new_page.replace(b'"reviews.notknown": ', b'"reviews.notknown.more": "x", "reviews.notknown": ', 1)}
+        made_rows = {what: page != new_page for what, page in row_variants.items()}
+        assert_control(rv + "a page whose reviews row differs from REVIEWS_ROW_EDITS' after — a rule widened, the help line dropped, one byte more, "
+                       f"a label beyond them — does not match (each variant made: {made_rows})",
+                       all(made_rows.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in row_variants.values()))
         before_schema, after_schema = (next(row for row in rows if row["case"] == SCHEMA_CASE and row["version"] == version) for version in ("baseline", "candidate"))
         schema_old, schema_new = before_schema["stdout"], after_schema["stdout"]
         takes = lambda stdout: schema_matches(before_schema, dict(after_schema, stdout=stdout))
@@ -2033,6 +2177,42 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         for what, stdout in schemas.items():
             assert_control(v2 + f"--schema with A2's two lines, one of them not as approved, does not match — {what}",
                            bool(brand) and stdout != schema_new and two_lines(stdout) and not takes(stdout))
+        # the group fold's allowance, held as the page's other edits are: literal text, each after found once on the candidate's page, and a page
+        # whose group fold differs from it beyond the allowance does not match
+        group_fold = "Git entry group-fold allowance: "
+        assert_control(group_fold + "GROUP_FOLD_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(GROUP_FOLD_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in GROUP_FOLD_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in GROUP_FOLD_EDITS))
+        drawn = b'return head+(folded?"":state+g.map('
+        fold_variants = {
+            "the paragraph in the group's heading again": new_page.replace(b"</tr>`;   // a header sums", b"</tr>${state}`;   // a header sums", 1)
+                                                                   .replace(drawn, b'return head+(folded?"":g.map(', 1),
+            "the paragraph under a shut group as well": new_page.replace(drawn, b'return head+state+(folded?"":g.map(', 1),
+            "one byte more in the comment": new_page.replace(b"(the newest pass, a story's state) folds with its rows\n",
+                                                             b"(the newest pass, a story's state) folds with its rows \n", 1)}
+        made_folds = {what: page != new_page for what, page in fold_variants.items()}
+        assert_control(group_fold + "a page whose group fold differs from GROUP_FOLD_EDITS' after — the paragraph in the heading again, the paragraph "
+                       f"under a shut group as well, one byte more in the comment — does not match (each variant made: {made_folds})",
+                       all(made_folds.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in fold_variants.values()))
+        # the seat icons' allowance, held as the group fold's is: literal text, each after found once on the candidate's page, and a page whose
+        # icons differ from it beyond the allowance does not match
+        seat_icons = "Git entry seat-icon allowance: "
+        assert_control(seat_icons + "SEAT_ICON_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(SEAT_ICON_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in SEAT_ICON_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in SEAT_ICON_EDITS))
+        builder_icon = re.search(rb'"builder": "(?:[^"\\]|\\.)*?base64,([A-Za-z0-9+/=]+)', new_page)
+        grounded = (base64.b64encode(base64.b64decode(builder_icon[1]).replace(b"<title>builder", b'<rect width="20" height="20" fill="#15293d"/>\n<title>builder'))
+                    if builder_icon else b"")
+        seat_variants = {
+            "the builder's icon with a ground again": new_page.replace(builder_icon[1], grounded, 1) if builder_icon else b"",
+            "a word outside the seven given the builder's icon": new_page.replace(b'SEAT[g[1]]:""}</span>', b'SEAT[g[1]]:SEAT.builder}</span>', 1),
+            "one byte more in the row's rules": new_page.replace(b".seat img{filter:grayscale(1) invert(1)}", b".seat img{filter:grayscale(1) invert(1) }", 1)}
+        made_seats = {what: bool(page) and page != new_page for what, page in seat_variants.items()}
+        assert_control(seat_icons + "a page whose seat icons differ from SEAT_ICON_EDITS' after — the builder's icon with a ground again, a word outside "
+                       f"the seven given an icon, one byte more in the rules — does not match (each variant made: {made_seats})",
+                       all(made_seats.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in seat_variants.values()))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),

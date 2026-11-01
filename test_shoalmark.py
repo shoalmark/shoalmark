@@ -1549,6 +1549,11 @@ with tempfile.TemporaryDirectory() as d:
     check("FM-040 · the reader reads nothing where it is given nothing (not HEAD by default)", fm.read_history().parents == {} and fm.read_history("", None).parents == {})
     fm.configure(HERE)
 
+def _lbl(key, *values):
+    """The English label `key` with `values` in its places, as a row's text reads once its tags are gone: no-break spaces read as spaces."""
+    return re.sub(r"\{(\d)\}", lambda m: str(values[int(m[1])]) if int(m[1]) < len(values) else "", fm.LABELS.get(key, key))
+
+
 # --- FM-024 S6: each verdict reported as independent or same session — the reviewed range's sessions against its own --
 with tempfile.TemporaryDirectory() as d:
     root = Path(d).resolve()
@@ -1598,7 +1603,7 @@ with tempfile.TemporaryDirectory() as d:
         try:
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            strip_ = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1]))
+            strip_ = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", (re.search(r'<div id="p"[^>]*>([\s\S]*?)</div>\n<div id="vt">', pdom) or [None, ""])[1])))
         except _ChromeFailed as e_:
             strip_ = None
             _hung("strip", e_)
@@ -1606,8 +1611,9 @@ with tempfile.TemporaryDirectory() as d:
           "SESSIONS WITH A COMMIT IN THE LAST 24 HOURS · 2 (4 with their sub-sessions)\n  a9 t@t (—) · implementer 1 · reviewer 1\n  k3 t@t (—)" in digest_ and (strip_ is None or (
               "the day · the last 24 hoursstand-up" in strip_ and "stand-up promptsessions · 2 with a commit in the last 24 hours (4 with their sub-sessions)a9 t@t (—)+ implementer 1 · reviewer 1a9 (—) · — · — a9/implementer-1 (—) · claude-sonnet-5-5 · xhigh a9/reviewer-1 (—) · — · —k3 t@t (—)k3 (—) · — · —close-out" in strip_
               and "reviews · this week · 2 by another session · 1 by the same session · 1 untraced · reports, not proofs" in strip_
-              and "by the same session · its session a9/reviewer-1, the branch's a9 and 1 more" in strip_ and "independent" not in strip_
-              and strip_.count("· branch feat") == 4)))      # RV-3343: each row names its branch, the one its verdict was committed to
+              and _lbl("reviews.word.same") + " · " + _lbl("reviews.sessions", "a9/reviewer-1", _lbl("reviews.sessions.more", "a9", 1)) in strip_
+              and "independent" not in strip_
+              and strip_.count(_lbl("reviews.on", "", _lbl("reviews.branch", "feat"))) == 4)))      # each row names its branch
 # --- FM-053, RV-3343: a verdict's row names its branch — the one that holds the verdict commit on its own line, or the merge that brought that line
 #     in, by its message; ambiguous or not known, with why; never a ref that merely points at the reviewed commit. The class test, run on the tool
 #     and on two mutants, each of which it must fail
@@ -1697,14 +1703,15 @@ if _browser("branch"):
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
             what_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code><span>(.*?)</span></div><div class="how">', pdom) or [None, ""])[1] for v in (v_known, v_amb, v_none)}
-            said_ = {v: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", w_)) for v, w_ in what_.items()}
+            said_ = {v: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", w_))) for v, w_ in what_.items()}
             check(f"FM-053, RV-3343 · a review row, rendered, names its branch beside the reviewed commit: known, the word *ambiguous* in the row's own colour (BF-10) with "
                   f"each branch that holds it, and *not known* in italics with why (saw {said_})",
-                  said_[v_known] == f"on {built[:7]} · branch fm/a"
-                  and said_[v_amb] == f"on {built[:7]} · branch ambiguous: fm/a, fm/b each hold the verdict on their own line"
+                  said_[v_known] == _lbl("reviews.on", built[:7], _lbl("reviews.branch", "fm/a"))
+                  and said_[v_amb] == _lbl("reviews.on", built[:7], _lbl("reviews.branch.ambiguous", _lbl("reviews.ambiguous"), "fm/a, fm/b"))
                   and 'class="warn"' not in what_[v_amb] and "<span" not in what_[v_amb]      # BF-10: no colour on a verdict's row but its word
-                  and said_[v_none] == f"on {built[:7]} · branch not known — no branch here holds the verdict on its own line"
-                  and "<i>branch not known — no branch here holds the verdict on its own line</i>" in what_[v_none])
+                  and said_[v_none] == _lbl("reviews.on", built[:7], _lbl("reviews.branch.notknown")) + " — " + _lbl("reviews.branch.none")
+                  and f"<i>{html.escape(_lbl('reviews.branch.notknown'), False)}</i>" in what_[v_none]
+                  and f"<i>— {html.escape(_lbl('reviews.branch.none'), False)}</i>" in what_[v_none])
     except _ChromeFailed as e_:
         _hung("branch", e_)
         fm.configure(HERE)
@@ -1742,13 +1749,15 @@ _old_ok, _old_saw = _oldest_class(fm)
 check(f"FM-053, BF-6 · a review row's branch sessions: none, one and many — the oldest commit's session carried beside the sorted list, in the "
       f"report and in the board's data, never the first by name (saw {_old_saw})", _old_ok)
 _tool_src_old = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-_OLD_MUTANT = ('oldest_session(history, tip, own) if tip else ""))', 'sorted(ranged)[0] if ranged else ""))')
+_OLD_MUTANT = ('oldest_session(history, tip, own) if tip else "",\n', 'sorted(ranged)[0] if ranged else "",\n')
 check("FM-053, BF-6 · the class test FAILS on its mutant, the branch's first session taken by name",
       _tool_src_old.count(_OLD_MUTANT[0]) == 1 and not _oldest_class(_tool_module(_tool_src_old.replace(*_OLD_MUTANT), "fm_oldest_mutant"))[0])
 sys.modules.pop("fm_oldest_mutant", None); fm.configure(HERE)
 _rv_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
-check("FM-053, BF-6 · the row renders the branch's sessions as the oldest's id and *and n more*, one alone as its id, none as —, the verdict's own session as it was",
-      _rv_src.count('lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))') == 1
+check("FM-053, BF-6 · the row renders the branch's sessions as the oldest's id and *and n more*, one alone as its id, none not known with its reason, "
+      "the verdict's own session as it was",
+      _rv_src.count('lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1)'
+                    ':v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))') == 1
       and fm.LABELS.get("reviews.sessions.more") == "{0} and {1} more" and 'v[3].join(", ")' not in _rv_src)
 if _browser("sessions"):
     try:
@@ -1759,8 +1768,9 @@ if _browser("sessions"):
             git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
             git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk")
             rows_ = {}
-            for name_, sessions_, want_ in (("fm/none", (None,), "its session r-none, the branch's —"), ("fm/one", ("k1", "k1"), "its session r-one, the branch's k1"),
-                                            ("fm/many", ("zz9", "aa1", "mm5"), "its session r-many, the branch's zz9 and 2 more")):
+            for name_, sessions_, want_ in (("fm/none", (None,), _lbl("reviews.sessions", "r-none", _lbl("reviews.notknown") + " — " + _lbl("reviews.notknown.range"))),
+                                            ("fm/one", ("k1", "k1"), _lbl("reviews.sessions", "r-one", "k1")),
+                                            ("fm/many", ("zz9", "aa1", "mm5"), _lbl("reviews.sessions", "r-many", _lbl("reviews.sessions.more", "zz9", 2)))):
                 git(root, "checkout", "-q", "-b", name_, "main")
                 for n_, s_ in enumerate(sessions_):
                     built_ = commit_(f"{name_}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
@@ -1770,18 +1780,324 @@ if _browser("sessions"):
                 git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
             run_safe(root, "--html-only")
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            said_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code>.*?<span class="st">(.*?)</span>', pdom) or [None, ""])[1] for v in rows_}
+            said_ = {v: (re.search(rf'<div class="what"><code>{v[:7]}</code>.*?<span class="st">(.*?)</span>(?= <span class="acts">| </div>)', pdom.replace("&nbsp;", " ").replace("\u00a0", " ")) or [None, ""])[1] for v in rows_}
             check(f"FM-053, BF-6 · rendered: none reads —, one its id, many the oldest's id and *and 2 more* (saw {list(said_.values())})",
                   all(re.sub(r"<[^>]+>", "", said_[v]).endswith(w_) for v, w_ in rows_.items()))
     except _ChromeFailed as e_:
         _hung("sessions", e_)
         fm.configure(HERE)
+# --- the reviews row as one. Line 1 reads *on <branch> @ <commit>* for every kind of branch: one that holds the verdict on its own line or that
+#     its merge names, the merge itself out of the row; the word *ambiguous* with the branches; a branch not known, said in its place in italics,
+#     its reason after the commit. The word before each name holds to it. Line 2 says who gave the verdict: a session not known says so, in
+#     italics, with the reason the tool's own test gives, never a dash, and each session id is kept whole. How a branch is known is the section's
+#     one help line. The rows are drawn by the board's own script, in Node, from the data of a board built on a repository grown through every
+#     case, and compared with the row its labels make; the German table keeps each of the row's labels and its places. Each fault's mutant fails
+#     the class test ---------------------------------------------------------------------------------------------------------------------------
+_RW_NODE = r"""
+const fs = require("fs"), inp = JSON.parse(fs.readFileSync(0, "utf8")), s = inp.script, L = inp.labels;
+const REG = {reviews: [0, 0, 0, 0, 0, 0], verdicts: inp.verdicts};
+const grab = (re, what) => { const m = s.match(re); if (!m) throw new Error("not in the board's script: " + what); return m[1]; };
+const esc = eval(grab(/\nesc=(s=>[^\n]*),\n/, "esc"));
+const l = eval(grab(/\nl=(\(k,\.\.\.a\)=>[^\n]*?),sl=/, "l"));
+const lh = eval(grab(/\nlh=(\(k,\.\.\.a\)=>[^\n]*),\n/, "lh"));
+const split = eval(grab(/\nsplit=(s=>[^\n]*),\n/, "split"));
+const VERDICT = eval("(" + grab(/\nVERDICT=(\{[^\n]*?\}),\n/, "VERDICT") + ")");
+const row = (id, what, ty, st, acts, more, cls) => ({id, what, ty, st, cls});
+const body = grab(/\n(  const cid=[\s\S]*?),\n    folds=v=>/, "the reviews row");
+const vr = new Function("esc", "l", "lh", "split", "VERDICT", "L", "REG", "row", body.replace("if(REG&&REG.reviews){const ", "const ") + ";\nreturn vr;")(
+  esc, l, lh, split, VERDICT, L, REG, row);
+process.stdout.write(JSON.stringify(inp.verdicts.map(vr)));
+"""
+_RW_KEYS = ("reviews.on", "reviews.branch", "reviews.branch.ambiguous", "reviews.ambiguous", "reviews.branch.notknown", "reviews.branch.none",
+            "reviews.branch.unnamed", "reviews.help", "reviews.sessions", "reviews.sessions.more", "reviews.notknown", "reviews.notknown.own",
+            "reviews.notknown.range", "reviews.notknown.unread")
+_RW_HELP = '`<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")'
+_RW_CSS = ".rv .sid{white-space:nowrap}"
+_RW_ABSENT = "0123456789abcdef0123456789abcdef01234567"      # a reviewed commit no repository here holds
+_RW_WORDS = {      # the row's words, English and German, as they ship
+    "reviews.on": ("on {1} @ {0}", "auf {1} @ {0}"),
+    "reviews.sessions": ("{0}, the branch's {1}", "{0}, Session des Branches {1}"),
+    "reviews.branch.notknown": ("branch not known", "unbekanntem Branch"),
+    "reviews.help": ("a verdict's branch is the one it was committed on; once merged, the one its merge names",
+                     "ein Urteil gehört zu dem Branch, auf dem es committet wurde; nach dem Merge zu dem, den die Merge-Nachricht nennt"),
+    "reviews.notknown": ("not known", "nicht bekannt"),
+    "reviews.notknown.own": ("the verdict names no session", "das Urteil nennt keine Session"),
+    "reviews.notknown.range": ("no commit on it names a session, merges and verdicts aside", "kein Commit darauf außer Merges und Urteilen nennt eine Session"),
+    "reviews.notknown.unread": ("the reviewed commit is not here", "der Commit des Reviews fehlt hier"),
+    "reviews.branch": ("{0}", "{0}"),
+    "reviews.branch.ambiguous": ("{0}: {1}", "{1} ({0})"),
+    "reviews.branch.none": ("committed on no branch here", "auf keinem Branch hier committet"),
+    "reviews.branch.unnamed": ("its merge {0} names no branch", "der Merge {0} nennt keinen Branch")}
+
+
+def _rw_repo(root):
+    """A repository grown through every case of a verdict's row, HEAD on a branch that merges them all: {verdict: its case}."""
+    out_ = lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV).stdout.strip()
+    commit_ = lambda subject: (git(root, "commit", "-q", "--allow-empty", "-m", subject), out_("rev-parse", "HEAD"))[1]
+    verdict_ = lambda word, tip, sid: commit_(f"review: {word}\n\nReviewed: {tip}" + (f"\nSession: {sid}" if sid else ""))
+    cases_ = {}
+
+    def branch_(name, sessions, word, sid, case):
+        git(root, "checkout", "-q", "-b", name, "main")
+        for n_, s_ in enumerate(sessions):
+            built_ = commit_(f"{name}, commit {n_}" + (f"\n\nSession: {s_}" if s_ else ""))
+        cases_[verdict_(word, built_, sid)] = case
+    git(root, "init", "-q", "-b", "main"); run(root, "--init", "--key", "msr"); tracker(root, "MSR-001"); run(root)
+    git(root, "add", "-A"); git(root, "commit", "-qm", "the trunk\n\nSession: t0")
+    branch_("fm/line", ("b1",), "READY", "r1", "a branch on its own line")
+    for name_, merge_, word_, case_ in (("fm/named", "Merge branch 'fm/named'", "NOT READY", "a branch its merge names"),
+                                        ("fm/unnamed", "the Owner merges it", "READY WITH FINDINGS", "not known: its merge names no branch")):
+        branch_(name_, ("b2",), word_, "r2", case_)
+        git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", merge_, name_); git(root, "branch", "-q", "-D", name_)
+    cases_[verdict_("READY", commit_("work on the trunk itself\n\nSession: t1"), "r3")] = "on the trunk"
+    branch_("fm/amb", ("b4",), "NOT READY", "r4", "ambiguous")
+    git(root, "checkout", "-q", "-b", "fm/amb-grown"); commit_("grown from its verdict\n\nSession: b4")
+    git(root, "checkout", "-q", "--detach", "main"); built_ = commit_("detached work\n\nSession: b5")
+    cases_[verdict_("READY", built_, "r5")] = "not known: no branch holds it"; detached_ = out_("rev-parse", "HEAD")
+    branch_("fm/own", ("b6",), "READY", "", "untraced: its own commit names no session")
+    branch_("fm/range", (None,), "READY", "r7", "untraced: no commit of the branch names one")
+    branch_("fm/neither", (None,), "NOT READY", "", "untraced: both")
+    git(root, "checkout", "-q", "-b", "fm/unread", "main")
+    cases_[verdict_("READY", _RW_ABSENT, "r8")] = "untraced: the reviewed commit is not here"
+    branch_("fm/many", ("zz9", "aa1", "mm5"), "READY", "r9", "by another session, the branch's three")
+    branch_("fm/same", ("s10",), "READY", "s10/reviewer-1", "by the same session")
+    git(root, "checkout", "-q", "-b", "together", "main")
+    for name_ in ("fm/line", "fm/amb", "fm/amb-grown", detached_, "fm/own", "fm/range", "fm/neither", "fm/unread", "fm/many", "fm/same"):
+        git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
+    return cases_
+
+
+def _rw_draw(script, labels, verdicts):
+    """Each verdict's row as the board's script draws it, in Node: [{id, what, ty, st, cls}] — or a str, what went wrong."""
+    r_ = subprocess.run([shutil.which("node"), "-e", _RW_NODE], input=json.dumps({"script": script, "labels": labels, "verdicts": verdicts}),
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60, env=_ENV)
+    try:
+        return json.loads(r_.stdout)
+    except ValueError:
+        return f"Node said: {r_.stderr.strip()[-300:]}"
+
+
+def _rw_want(v, labels):
+    """Verdict data `v`'s row as its labels make it, the guide's row, with no forge configured: {line1, state, branch, commit, said} — `said`
+    each session not known, by its reason's label."""
+    e_ = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    put_ = lambda t, a: re.sub(r"\{(\d)\}", lambda m: a[int(m[1])] if int(m[1]) < len(a) else "", t)
+    lh_ = lambda k, *a: put_(e_(labels.get(k, k)), a)
+    l_ = lambda k, *a: e_(put_(labels.get(k, k), a))
+    code_ = lambda s: f"<code>{e_(s)}</code>"
+    b, commit = v[6], code_(v[1][:7])
+    if b[0] in ("line", "merge"):
+        branch, why = lh_("reviews.branch", code_(b[1])), ""
+    elif b[0] == "ambiguous":
+        branch, why = lh_("reviews.branch.ambiguous", l_("reviews.ambiguous"), ", ".join(code_(n) for n in b[1])), ""
+    else:
+        branch = f"<i>{l_('reviews.branch.notknown')}</i>"
+        why = f" <i>— {lh_('reviews.branch.unnamed', code_(b[1][:7])) if b[0] == 'unnamed' else l_('reviews.branch.none')}</i>"
+    line1 = put_(re.sub(r" (?=\{\d\})", "&nbsp;", e_(labels.get("reviews.on", "reviews.on"))), (commit, branch)) + why
+    sid_ = lambda s: f'<span class="sid">{e_(s)}</span>'
+    said = {k: f"<i>{l_('reviews.notknown')} — {l_(k)}</i>" for k in ("reviews.notknown.own", "reviews.notknown.range", "reviews.notknown.unread")}
+    word = f"<b>{l_('reviews.word.same')}</b>" if v[4] == "same session" else l_({"independent": "reviews.word.another", "on trunk": "reviews.word.trunk"}
+                                                                                    .get(v[4], "reviews.word.untraced"))
+    out = {"line1": line1, "state": word, "branch": branch, "commit": commit, "said": said}
+    if v[4] != "on trunk":
+        own = sid_(v[2]) if v[2] else said["reviews.notknown.own"]
+        theirs = (lh_("reviews.sessions.more", sid_(v[7]), str(len(v[3]) - 1)) if len(v[3]) > 1 else sid_(v[3][0]) if v[3]
+                  else said["reviews.notknown.range" if v[9] else "reviews.notknown.unread"])
+        out["state"] = word + " · " + lh_("reviews.sessions", own, theirs)
+    return out
+
+
+def _rw_faults(page, verdicts, labels, cases):
+    """What is wrong with the reviews rows of a board's `page` drawn for `verdicts` with `labels`, one line each: [] where none."""
+    script_ = next((p_ for p_ in page.split("<script>") if "\n  const cid=" in p_), "")
+    style_ = page[page.find("<style>"):page.find("</style>")]
+    drawn_ = _rw_draw(script_, labels, verdicts)
+    if isinstance(drawn_, str):
+        return [drawn_]
+    bad = [f"the help line is not the section's first line: {_RW_HELP!r} stands {script_.count(_RW_HELP)} times"] if script_.count(_RW_HELP) != 1 else []
+    bad += [] if style_.count(_RW_CSS) == 1 and style_.count(".sid") == 1 else [f"a session id is not kept whole by one rule, {_RW_CSS!r}"]
+    bad += [] if script_.count('"reviews.branch.notknown")') == 1 and script_.count('[`<i>${l("reviews.branch.notknown")}</i>`,') == 1 else [
+        "the branch not known's label is drawn somewhere else than line 1's branch place"]
+    if sorted(v[0] for v in verdicts) != sorted(cases):
+        bad.append(f"the board's data holds {len(verdicts)} verdicts, the repository {len(cases)}")
+    for v, d_ in zip(verdicts, drawn_):
+        case, w_, b = cases.get(v[0], v[0][:7]), _rw_want(v, labels), v[6]
+        what_, st_ = d_["what"], d_["st"]
+        if (what_, st_) != (w_["line1"], w_["state"]):
+            bad.append(f"{case}: drawn {what_!r} · {st_!r}, wanted {w_['line1']!r} · {w_['state']!r}")
+        at_, name_ = what_.find("&nbsp;" + w_["commit"]), what_.find("&nbsp;" + w_["branch"])
+        if not 0 <= name_ < at_:
+            bad.append(f"{case}: line 1 is not its branch, then its commit, each held to the word before it: {what_!r}")
+        if b[0] == "merge" and b[2][:7] in what_ + st_:
+            bad.append(f"{case}: the merge that names the branch stands in the row: {what_!r}")
+        if b[0] not in ("line", "merge", "ambiguous") and (what_.count("<i>") != 2 or what_.rfind("<i>— ") < at_
+                                                          or (b[0] == "unnamed" and f"<code>{b[1][:7]}</code>" not in what_[at_ + 1:])):
+            bad.append(f"{case}: the branch not known is not said in its place, its reason after the commit, in italics: {what_!r}")
+        if labels["reviews.branch.notknown"] in st_ or what_.count(labels["reviews.branch.notknown"]) != (0 if b[0] in ("line", "merge", "ambiguous") else 1):
+            bad.append(f"{case}: the branch not known's label stands outside line 1's branch place: {what_!r} · {st_!r}")
+        if v[4] == "on trunk":
+            continue
+        ids_ = [s for s in (v[2], v[7] if len(v[3]) > 1 else v[3][0] if v[3] else "") if s]
+        if re.search("[—–]", re.sub(r"<i>[^<]*</i>", "", st_.split(" · ", 1)[-1])):
+            bad.append(f"{case}: a dash stands for a session: {st_!r}")
+        if st_.count('<span class="sid">') != len(ids_) or not all(f'<span class="sid">{s}</span>' in st_ for s in ids_):
+            bad.append(f"{case}: a session id is not in one span of its own: {st_!r}")
+        here_ = v[1] != _RW_ABSENT
+        if v[9] is not here_:
+            bad.append(f"{case}: the board's data says the reviewed commit is {'' if v[9] else 'not '}here, and it is {'' if here_ else 'not '}here")
+        for k_, held_ in {"reviews.notknown.own": not v[2], "reviews.notknown.range": not v[3] and here_, "reviews.notknown.unread": not v[3] and not here_}.items():
+            if held_ != (w_["said"][k_] in st_):
+                bad.append(f"{case}: {k_} is {'missing' if held_ else 'said where its test does not hold'}: {st_!r}")
+    return bad
+
+
+def _rw_board(tool_src=None):
+    """A board built on `_rw_repo`'s repository: (its page, its verdicts' data, {verdict: case}) — the data from the page, or from a mutant of the
+    tool's source where `tool_src` is given."""
+    with tempfile.TemporaryDirectory() as d_:
+        root_ = Path(d_).resolve()
+        cases_ = _rw_repo(root_)
+        run(root_, "--html-only")
+        page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        if tool_src is None:
+            reg_ = json.JSONDecoder().raw_decode(page_, page_.index(",REG=") + len(",REG="))[0]
+        else:
+            tool_ = _tool_module(tool_src, "fm_rw_mutant"); tool_.configure(root_)
+            reg_ = tool_.board_sessions(); sys.modules.pop("fm_rw_mutant", None)
+        rm_git(root_)
+    fm.configure(HERE)
+    return page_, (reg_ or {}).get("verdicts") or [], cases_
+
+
+def _rw_class(board, page_edits=()):
+    """The class test on `board` (`_rw_board`), its page with `page_edits` made: (faults on the English table, faults on the German table the
+    tool ships, merged over the English as a board merges it)."""
+    page_, verdicts_, cases_ = board
+    for a_, b_ in page_edits:
+        page_ = page_.replace(a_, b_) if page_.count(a_) == 1 else ""
+    if not page_:
+        return ["a mutant's edit is not on the page once"], []
+    en_ = json.JSONDecoder().raw_decode(page_, page_.index(",L=") + len(",L="))[0]
+    shipped_ = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+    de_ = dict(en_, **{k: v for k, v in shipped_.items() if k in en_})
+    places_ = lambda t: sorted(re.findall(r"\{\d\}", t))
+    de_bad = [f"the German table: {k} " + ("is not there" if k not in shipped_ else f"has the places {places_(de_[k])}, the English {places_(en_[k])}")
+              for k in _RW_KEYS if k not in shipped_ or places_(de_[k]) != places_(en_[k])]
+    return _rw_faults(page_, verdicts_, en_, cases_), de_bad or _rw_faults(page_, verdicts_, de_, cases_)
+
+
+with tempfile.TemporaryDirectory() as _rw_d:
+    _rw_root = Path(_rw_d).resolve()
+    git(_rw_root, "init", "-q", "-b", "main"); run(_rw_root, "--init", "--key", "msr"); tracker(_rw_root, "MSR-001")
+    (_rw_root / "docs/work-tracker/brand").mkdir(parents=True, exist_ok=True)
+    (_rw_root / "docs/work-tracker/brand/labels.yaml").write_text("reviews.branch.merged: branch {0}, as its merge {1} names it\n"
+                                                                  "reviews.branch.unknown: branch not known — {0}\n", encoding="utf-8")
+    _rw_gone = run(_rw_root, "--html-only")
+    rm_git(_rw_root)
+fm.configure(HERE)
+check(f"the reviews row as one: a labels.yaml that still sets a retired label of the row, the merged branch's or the branch not known's with its "
+      f"reason, is named on the run, each with what replaces it, and not refused "
+      f"(saw {_rw_gone[0]}, {_rw_gone[2].strip()[-200:]!r})",
+      _rw_gone[0] == 0 and all(f"labels.yaml: {k_} is no longer read — " + fm.LABELS_GONE.get(k_, "?") in _rw_gone[2] and k_ not in fm.LABELS
+                               for k_ in ("reviews.branch.merged", "reviews.branch.unknown")))
+_rw_de_table = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+_rw_pinned = lambda en, de: [f"{k}: {(en.get(k), de.get(k))!r}" for k, w in _RW_WORDS.items() if (en.get(k), de.get(k)) != w]
+check(f"the reviews row as one: each of its labels says its words, in English and in the German table the tool ships (differ: "
+      f"{_rw_pinned(fm.LABELS, _rw_de_table)})", _rw_pinned(fm.LABELS, _rw_de_table) == [])
+check("the reviews row as one · its words' mutant, the German on-label with its places swapped: the pin FAILS on it",
+      _rw_pinned(fm.LABELS, dict(_rw_de_table, **{"reviews.on": "auf {0} @ {1}"})) != [])
+if shutil.which("node"):
+    _rw_b = _rw_board()
+    _rw_en, _rw_de = _rw_class(_rw_b)
+    _rw_kinds = {_rw_b[2].get(v[0]): v[6][0] for v in _rw_b[1]}
+    check(f"the reviews row as one, on the English table: line 1 is *on <branch> @ <commit>* for every kind of branch, a branch not known said in its "
+          f"place with its reason after the commit; line 2 says each session not known with its test's reason, never a dash, each id kept whole; the "
+          f"help line leads the section (kinds drawn: {sorted(set(_rw_kinds.values()))}; problems: {_rw_en})",
+          _rw_en == [] and set(_rw_kinds.values()) == {"line", "merge", "ambiguous", "unnamed", "none"} and len(_rw_kinds) == 12)
+    check(f"the reviews row as one, on the German table the tool ships: each of the row's labels is there with the English one's places, and the row "
+          f"draws as on the English table (problems: {_rw_de})", _rw_de == [])
+    _rw_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    _RW_MUTANTS = {
+        "the commit before the branch": (('rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1]))',
+                                          'lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]).join("")'),),
+        "the merge that names the branch back in the row": (('?[lh("reviews.branch",`<code>${esc(b[1])}</code>`),""]',
+                                                             '?[lh("reviews.branch",`<code>${esc(b[1])}</code>`)+(b[2]?" "+cid(b[2],u):""),""]'),),
+        "a word not held to its name": (('.replace(/ (?=\\{\\d\\})/g,"&nbsp;")', ""),),
+        "the reason of a branch not known before the commit": (('</i>`,` <i>— ${b[0]=="unnamed"', '</i>`+` <i>— ${b[0]=="unnamed"'),
+                                                               (':l("reviews.branch.none")}</i>`],', ':l("reviews.branch.none")}</i>`,""],')),
+        "no branch here, said with no reason": ((':l("reviews.branch.none")}</i>`],', ':""}</i>`],'),),
+        "a dash for the verdict's own session": (('v[2]?sid(v[2]):nk("reviews.notknown.own")', 'sid(v[2]||"—")'),),
+        "a dash for the branch's session": ((':v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread")', ':sid(v[3][0]||"—")'),),
+        "the verdict's own session not known, given the range's reason": (('v[2]?sid(v[2]):nk("reviews.notknown.own")', 'v[2]?sid(v[2]):nk("reviews.notknown.range")'),),
+        "the oldest session's id not kept whole": (('lh("reviews.sessions.more",sid(v[7]),v[3].length-1)', 'lh("reviews.sessions.more",esc(v[7]),v[3].length-1)'),),
+        "no rule keeps a session id whole": ((_RW_CSS, ""),),
+        "no help line": ((_RW_HELP, 'week.filter(v=>!folds(v)).map(vr).join("")'),)}
+    for what_, edits_ in _RW_MUTANTS.items():
+        check(f"the reviews row as one · its mutant, {what_}: the class test FAILS on it", _rw_class(_rw_b, edits_)[0] != [])
+    _RW_GEN = ('oldest_session(history, tip, own) if tip else "",\n                    bool(tip)))', 'oldest_session(history, tip, own) if tip else "",\n                    True))')
+    check("the reviews row as one · its mutant, the reviewed commit taken as here where it is not, so the range's reason is given: the class test FAILS on it",
+          _rw_src.count(_RW_GEN[0]) == 1 and _rw_class(_rw_board(_rw_src.replace(*_RW_GEN)))[0] != [])
+    fm.configure(HERE)
+else:
+    _skipped("the reviews row as one, drawn by the board's script", 14, "no Node here")
+
+# --- a label's places keep their meaning. A key the board ships never changes what its places mean: an adopter's labels.yaml overrides its
+#     words, and a place a label no longer fills shows as nothing, with no line to say so. A new meaning takes a new key, and the old key
+#     retires into LABELS_GONE, named on the run. What a place means cannot be read from the text; what can is held here: for every key in both
+#     the release base's LABELS and this tool's, each place the base's English uses is still used. The base's source is read from git and parsed
+#     with `ast`, never imported; a retired key is exempt, and named -----------------------------------------------------------------------------
+_PK_BASE = "a07d5a1"
+
+
+def _pk_labels(src):
+    """`LABELS` of a tool's source `src`, read with `ast`: the dict's own items, each name it reads taken from that name's literal assignment."""
+    tree = ast.parse(src)
+    consts = {}
+    for n in tree.body:
+        if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+            try:
+                consts[n.targets[0].id] = ast.literal_eval(n.value)
+            except ValueError:
+                pass
+    node = next(n for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "LABELS" for t in n.targets))
+    names = {x.id for x in ast.walk(node.value) if isinstance(x, ast.Name)} & set(consts)
+    return eval(compile(ast.Expression(body=node.value), "<LABELS>", "eval"), {"__builtins__": {}, **{k: consts[k] for k in names}})
+
+
+def _pk_problems(base, head, gone):
+    """(each key in both `base` and `head` whose head no longer uses a place the base's English uses, the base's keys retired into `gone`)."""
+    places = lambda s: set(re.findall(r"\{\d\}", s))
+    return ([f"{k}: the base's {sorted(places(base[k]))}, now {sorted(places(head[k]))}" for k in sorted(set(base) & set(head))
+             if not places(base[k]) <= places(head[k])], sorted(k for k in base if k in gone and k not in head))
+
+
+_pk_said = subprocess.run(["git", "-C", str(HERE), "show", f"{_PK_BASE}:shoalmark.py"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
+_pk_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+if _pk_said.returncode == 0:
+    _pk_base, _pk_head = _pk_labels(_pk_said.stdout), _pk_labels(_pk_src)
+    _pk_bad, _pk_exempt = _pk_problems(_pk_base, _pk_head, fm.LABELS_GONE)
+    check(f"a label's places keep their meaning: every key in both {_PK_BASE}'s LABELS and this tool's still uses each place the base's English uses "
+          f"(keys compared: {len(set(_pk_base) & set(_pk_head))}; retired into LABELS_GONE and exempt: {_pk_exempt}; problems: {_pk_bad})",
+          _pk_bad == [] and len(set(_pk_base) & set(_pk_head)) > 200 and _pk_head == fm.LABELS
+          and {"reviews.branch.merged", "reviews.branch.unknown"} <= set(_pk_exempt))
+    _PK_MUTANT = ('"reviews.sessions.more": "{0} and {1} more",', '"reviews.sessions.more": "{0} and more",')
+    check("a label's places keep their meaning · its mutant, a kept key that drops one of its places: the test FAILS on it",
+          _pk_src.count(_PK_MUTANT[0]) == 1 and _pk_problems(_pk_base, _pk_labels(_pk_src.replace(*_PK_MUTANT)), fm.LABELS_GONE)[0] != [])
+    _pk_back = dict(_pk_head, **{"reviews.branch.unknown": _pk_head["reviews.branch.notknown"]})
+    _pk_ctl = _pk_problems(_pk_base, _pk_back, set(fm.LABELS_GONE) - {"reviews.branch.unknown"})
+    check(f"a label's places keep their meaning · its control: the branch not known's old key, kept at the new meaning and not retired, FAILS it, "
+          f"and retired it is exempt and named (saw {_pk_ctl})",
+          any(p_.startswith("reviews.branch.unknown:") for p_ in _pk_ctl[0]) and "reviews.branch.unknown" not in _pk_ctl[1]
+          and "reviews.branch.unknown" in _pk_exempt)
+else:
+    check(f"a label's places keep their meaning: {_PK_BASE}'s shoalmark.py could not be read from git (saw {_pk_said.stderr.strip()[-200:]!r})", False)
+
 # --- FM-053, BF-7: the reviews heading's counts put the number first, as its other counts do — in English and in the German table the tool ships
 _de_shipped = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
-check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{0}} ohne Spur* and *{{0}} auf dem Stamm* in the German table "
+check(f"FM-053, BF-7 · *1 untraced* and *1 on trunk*, the number first, and *{{0}} ohne Spur* and *{{0}} auf dem Trunk* in the German table "
       f"(saw {fm.LABELS.get('reviews.untraced')!r}, {fm.LABELS.get('reviews.trunk')!r}, {_de_shipped.get('reviews.untraced')!r}, {_de_shipped.get('reviews.trunk')!r})",
       (fm.LABELS.get("reviews.untraced"), fm.LABELS.get("reviews.trunk"), _de_shipped.get("reviews.untraced"), _de_shipped.get("reviews.trunk"))
-      == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Stamm"))
+      == ("{0} untraced", "{0} on trunk", "{0} ohne Spur", "{0} auf dem Trunk"))
 
 # --- FM-053, BF-8: the guide's §10 puts *ended* among the words never on a board — the last group's heading reads *shipped or closed*; its key
 #     and its description stay; the German table the tool ships says *ausgeliefert oder geschlossen*, never *beendet*, which says *ended* too
@@ -2584,6 +2900,7 @@ if _browser("board"):
             dom = lambda frag: _chrome_run(["--virtual-time-budget=4000", "--dump-dom",
                                                (root / "docs/work-tracker/index.html").as_uri() + frag]).stdout
             board_dom, view_dom = dom(""), dom("#=MSR-001")
+            board_dom = board_dom.replace("&nbsp;", " ").replace("\u00a0", " ")
             shown = re.sub(r"<[^>]+>", " ", board_dom[board_dom.find("<tbody"):board_dom.find("</tbody>")])     # what is rendered, not the data rows in the script
             check("the board renders in a browser: five sections in order, the open tracker under `triage`, the shipped one folded away",
                   re.search(r"progress.*?triage.*?triaged.*?backlog.*?shipped or closed", shown, re.S) is not None
@@ -6103,8 +6420,7 @@ def _landing_problems(src):
         bad.append("a language's lang, title or description is not its own")
     if 'import "partials/landing/" ~ ("de" if de else "en") ~ ".html" as L' not in code or 'import "partials/landing/facts.html" as F' not in code:
         bad.append("the template does not choose its words by the page's path, or does not read facts.html")
-    untaped = {lang: {k: v for k, v in d.items() if k not in ("cue_taped", "taped_why")} for lang, d in words.items()}   # the taped state names the release it ends at
-    if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(untaped, ensure_ascii=False)):
+    if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(words, ensure_ascii=False)):
         bad.append("a release is typed where the build's figures give it")
     if code.count('<b id="hud-w">{{ F.counts.wrecks }}</b>') != 1 or code.count('<b id="hud-o">{{ F.counts.open }}</b>') != 1 or re.search(r'id="hud-[wo]">\d', code):
         bad.append("the top bar's wrecks and open counts are not facts.html's `counts`, or a count is typed in the HTML")
@@ -6288,14 +6604,13 @@ _FOUNDER_LEDE = {"en": "For one person in charge and their agent fleet. See wher
                  "de": "Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit steht,"}
 _FOUNDER_TWIN = {"docs/index.md": ('--8<-- "start.en.md"\n\nI built this after my agents turned me into their rubber stamp. [Why shoalmark →](why-shoalmark.md)\n', "en"),
                  "docs/de/index.md": ('--8<-- "start.de.md"\n\nIch habe das gebaut, nachdem meine Agenten mich zu ihrem Abnicker gemacht hatten. [Warum shoalmark →](warum-shoalmark.md)\n', "de")}
-_FOUNDER_AT = ('{{ w.btn_how }}</a>\n    </div>\n    {%- if taped %}\n    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    {%- endif %}\n'
-               '    <p class="founder">{{ w.founder }}</p>\n  </div>\n</section>')
+_FOUNDER_AT = '{{ w.btn_how }}</a>\n    </div>\n    <p class="founder">{{ w.founder }}</p>\n  </div>\n</section>'
 
 
 def _founder_problems(src):
     """What is wrong with the start page's first-person line, one line each: each words file holds it as a key of its own, the lede opens with whom the tool is
-    for and holds no part of the line, the template draws it once, under the two buttons and the taped state's reason line, as the hero's last line, with its
-    link kept on one line, and each Markdown twin holds it right after the page's action."""
+    for and holds no part of the line, the template draws it once, under the two buttons, as the hero's last line, with its link kept on one line, and each
+    Markdown twin holds it right after the page's action."""
     words, bad = _landing_words(src)
     code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
     for lang in ("en", "de"):
@@ -6305,7 +6620,7 @@ def _founder_problems(src):
         if not lede.startswith(_FOUNDER_LEDE[lang]) or re.search(r"<br|<a\b", lede) or _FOUNDER[lang].split(" <a ")[0] in lede:
             bad.append(f"{lang}.html's lede does not open with whom it is for, or still holds the first-person line")
     if code.count(_FOUNDER_AT) != 1 or code.count("{{ w.founder }}") != 1:
-        bad.append("the template does not draw the first-person line once, under the two buttons and the reason line, as the hero's last line")
+        bad.append("the template does not draw the first-person line once, under the two buttons, as the hero's last line")
     if ".founder a{white-space:nowrap}" not in code:
         bad.append("the first-person line's link may break across two lines")
     for rel, (line, lang) in _FOUNDER_TWIN.items():
@@ -6383,8 +6698,7 @@ check(f"FM-006 · B1 · the docs' stand-up check is not blind: each of a word of
 # The switch `probe` in zensical.toml's [project.extra] and the folder "How it works" takes its words from (the snippets' base path) are two places for one
 # fact; the pages name the button as the landing labels it; and no page says that shoalmark scans.
 _LAUNCH_FILES = (*_LANDING_FILES, "docs/how-it-works.md", "docs/de/how-it-works.md",
-                 *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")),
-                 "launch/taped/how-it-works.en.md", "launch/taped/how-it-works.de.md")
+                 *(f"launch/{s}/{page}.{l}.md" for s in ("interim", "probe") for page in ("how-it-works", "start") for l in ("en", "de")))
 _SCAN_FREE = ("It does not scan your code for security problems or data leaks.", "Es prüft deinen Code nicht auf Sicherheitsprobleme und sucht nicht nach Datenlecks.")
 
 
@@ -6393,18 +6707,20 @@ def _launch_problems(src):
     words from one include, names the button as the landing labels it, and says nothing of scanning that the Owner did not rule."""
     words, bad = _landing_words(src)
     toml = src["zensical.toml"]
-    switch = re.search(r"(?ms)^\[project\.extra\]\n(?:#[^\n]*\n)*probe = (true|false)\n(?:taped = (true|false)\n)?", toml)
+    switch = re.search(r"(?ms)^\[project\.extra\]\n(?:#[^\n]*\n)*probe = (true|false)\n", toml)
     folder = re.search(r"(?m)^pymdownx\.snippets\.base_path = \[(.*)\]$", toml)
-    state = {("true", None): "probe", ("true", "false"): "probe", ("false", None): "interim", ("false", "false"): "interim", ("false", "true"): "taped"}.get(switch.groups()) if switch else None
-    if state is None or not folder or re.findall(r'"launch/(\w+)"', folder.group(1)) != {"probe": ["probe"], "interim": ["interim"], "taped": ["taped", "interim"]}[state]:
-        bad.append("zensical.toml: the probe switch, the tape and the launch folders in the snippets' base path disagree, or one is missing (the tape goes with the switch off, its folder before the interim one)")
+    state = {"true": "probe", "false": "interim"}[switch.group(1)] if switch else None
+    if state is None or not folder or re.findall(r'"launch/(\w+)"', folder.group(1)) != [state]:
+        bad.append("zensical.toml: the probe switch and the launch folder in the snippets' base path disagree, or one is missing")
+    if re.search(r"(?m)^\s*taped\s*=", toml):
+        bad.append("zensical.toml still sets `taped`, which nothing reads: the landing has no tape, so the line goes")
     if '= "how-it-works.md" }' not in toml or '= "de/how-it-works.md" }' not in toml:
         bad.append("zensical.toml: How it works is not in the navigation in both languages")
     for lang, page in (("en", "docs/how-it-works.md"), ("de", "docs/de/how-it-works.md")):
         if src[page].count(f'--8<-- "how-it-works.{lang}.md"') != 1 or "<!-- state" in src[page]:
             bad.append(f"how it works ({lang}) does not take its launch state's words from one include")
         quote = '"%s"' if lang == "en" else "„%s“"
-        for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe"), ("taped", "btn_probe")):
+        for launch, key in (("interim", "btn_adopt"), ("probe", "btn_probe")):
             if quote % words[lang].get(key, "?") not in src[f"launch/{launch}/how-it-works.{lang}.md"]:
                 bad.append(f"how it works ({lang}), {launch}: it does not name the button as the landing labels it ({words[lang].get(key)})")
     # the start pages' Markdown twins lead with the page's own action in each state: the note, or the prompt's short address under the button's own label
@@ -6428,14 +6744,16 @@ def _launch_problems(src):
 _ls = _sources(_LAUNCH_FILES)
 _lp = _launch_problems(_ls)
 _on = "\nprobe = true\n" in _ls["zensical.toml"]
-check(f"FM-006 · B1 · the launch state is one fact in two places that agree ({'the probe switch, on, the tape, off, and the probe folder' if _on else 'the probe switch, off, the tape, on, and the taped and interim folders'} "
-      "of the snippets' base path), How it works stands in the navigation "
-      "and takes its words from those folders in English and German, names the button as the landing labels it in each state, and no page says that shoalmark scans for security problems "
+check(f"FM-006 · B1 · the launch state is one fact in two places that agree ({'the probe switch, on, and the probe folder' if _on else 'the probe switch, off, and the interim folder'} "
+      "of the snippets' base path, with no `taped` line), How it works stands in the navigation "
+      "and takes its words from that folder in English and German, names the button as the landing labels it in each state, and no page says that shoalmark scans for security problems "
       f"or data leaks (problems found: {_lp})", _lp == [])
-_ctl = {**({"the switch off, its folder on": _with(_ls, "zensical.toml", "\nprobe = true\n", "\nprobe = false\n"),
-           "the tape on beside the switch": _with(_ls, "zensical.toml", "\ntaped = false\n", "\ntaped = true\n")} if _on else
-           {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n"),
-            "the tape on, its folder left out": _with(_ls, "zensical.toml", '"launch/taped", ', "")}),
+_lstate = "probe" if _on else "interim"
+_lswitch = "\nprobe = true\n" if _on else "\nprobe = false\n"
+_ctl = {**({"the switch off, its folder on": _with(_ls, "zensical.toml", "\nprobe = true\n", "\nprobe = false\n")} if _on else
+           {"the switch on, its folder off": _with(_ls, "zensical.toml", "\nprobe = false\n", "\nprobe = true\n")}),
+        "the tape's line back": _with(_ls, "zensical.toml", _lswitch, _lswitch + "taped = false\n"),
+        "the taped folder back in the base path": _with(_ls, "zensical.toml", f'"launch/{_lstate}"]', f'"launch/taped", "launch/{_lstate}"]'),
         "a button named differently in How it works": _with(_ls, "launch/probe/how-it-works.en.md", '"Copy the prompt"', '"Run probe prompt"'),
         "a scan claimed": _with(_ls, "docs/how-it-works.md", "It does not scan your code for security problems or data leaks.", "It scans your code for security problems."),
         "a state fence left in the page": _with(_ls, "docs/de/how-it-works.md", '--8<-- "how-it-works.de.md"', "<!-- state: interim -->"),
@@ -6443,52 +6761,120 @@ _ctl = {**({"the switch off, its folder on": _with(_ls, "zensical.toml", "\nprob
         "a start twin leading with the other state's action": _with(_ls, "launch/probe/start.de.md", "de/probe.txt)", "ADOPT.de.md)"),
         "a start page's action typed in the page": _with(_ls, "docs/index.md", '--8<-- "start.en.md"', "**[Hand your agents the note](https://github.com/shoalmark/shoalmark/blob/main/ADOPT.md)**")}
 _ctl_saw = {name: len(_launch_problems(src)) for name, src in _ctl.items()}
-check(f"FM-006 · B1 · the launch check is not blind: each of {'the switch off with its folder on, the tape on beside the switch' if _on else 'the switch on with its folder off, the tape on with its folder left out'}, "
-      "a button named differently in How it works, a scan claimed, "
+check(f"FM-006 · B1 · the launch check is not blind: each of {'the switch off with its folder on' if _on else 'the switch on with its folder off'}, the tape's line back, the taped folder "
+      "back in the base path, a button named differently in How it works, a scan claimed, "
       f"a state fence left in the page, the English page out of the navigation, a start twin leading with the other state's action and a start page's action typed in the page leaves a problem "
-      f"(problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 8)
+      f"(problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 9)
 
 
-_TAPED_BUTTON = '<button type="button" class="btn taped" aria-disabled="true" aria-describedby="taped-why">'
+# What each launch state draws. With the probe on: one cue line, the live one, over the coin door, which is the primary link with its label, its copy icon
+# and its coin after them, the coin hidden from screen readers; and the door's twin after the coins in #start, drawn by the same macro. With the probe off: the
+# note's link alone, and no twin. Neither state, nor the styles, the words or the
+# script, holds anything of the tape: the tape over the door, its box and flap, the unlit window, the taped cue, the taped button and the line that says why;
+# nor do the pitch page's styles. The dialog and its script are built under the probe switch alone.
+_STATE_CUE = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
+_STATE_DOOR = '{{ coin_door("probe-open") }}</div>'
+_DOOR_MACRO = ('{%- macro coin_door(id) -%}<a class="btn door"{% if id %} id="{{ id }}"{% endif %} href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" '
+               'aria-hidden="true" focusable="false">', '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>{%- endmacro -%}')
+_STATE_TWIN = ('{{ T(w.coin_3) }}</span></div>\n  </div>\n  {%- if probe %}\n  <p class="door-again">{{ coin_door("") }}</p>\n  {%- endif %}\n'
+               '  <p class="small" style="margin-top:16px">{{ T(w.dlg_tell) }}</p>')
+_STATE_NOTE = '<a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>'
+_TAPE_CSS = re.compile(r"@keyframes\s*tape-[\w-]*|animation:[^;{}]*\btape-[\w-]*|@property\s*--p\b|\.btn\.door::after|\.(?:tape|tapebox|flap|taped|taped-why|is-taped)\b|\.btn\.taped\b"
+                       r"|\.cue\s+\.(?:was|now)\b")
+_TAPE_WORDS = ("cue_taped", "taped_why", "btn_tape")
 
 
-def _taped_problems(src):
-    """What is wrong with the taped state's markup, one line each; none where it is as the Designer drew it."""
-    bad = []
+def _state_problems(src):
+    """What is wrong with what each launch state draws, one line each; none where the probe state draws the live cue over the lit coin door and its coin,
+    the interim state the note's link alone, the door's twin stands after the coins in #start with the probe alone, drawn by the door's own macro, and nothing
+    of the tape is drawn, styled, worded or scripted on the landing, nor styled on the pitch page."""
+    words, bad = _landing_words(src)
     code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
-    part = code.split("{%- elif taped %}")[1].split("{%- else %}")[0] if code.count("{%- elif taped %}") == 1 else ""
-    button = re.search(r"<button\b[^>]*>.*?</button>", part, re.S)
-    if not button or not button.group(0).startswith(_TAPED_BUTTON) or re.search(r"\s(href|id|on\w+)=", button.group(0).split(">")[0]):
-        bad.append("the taped button is not a button, aria-disabled and described by its reason line, with no link, id or handler")
-    if not button or '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span>' not in button.group(0) or "{{ w.btn_probe }}" not in button.group(0):
-        bad.append("the taped button does not keep its label with the tape across it, hidden from screen readers")
-    if '{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}' not in part:
-        bad.append("the taped cue is not its words with the coin after the first dash")
-    if '{%- if taped %}\n    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    {%- endif %}' not in code:
-        bad.append("the reason line is not under the actions, in the taped state alone, with the id the button names")
+    css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S)
+    cta = code[code.find('<div class="cta'):code.find('<a class="btn alt"')]
+    parts = re.fullmatch(r'<div class="cta\{% if probe %\} is-door\{% endif %\}">\s*\{%- if probe %\}(.*?)\{%- else %\}(.*?)\{%- endif %\}\s*', cta, re.S)
+    if not parts:
+        bad.append("the actions are not one probe branch and one interim branch, with the door's class in the probe state alone")
+    else:
+        if not re.fullmatch(re.escape(_STATE_CUE) + r"\s*" + re.escape(_STATE_DOOR), parts.group(1).strip()):
+            bad.append("the probe state does not draw the live cue alone over the coin door, drawn by the door's macro")
+        if parts.group(2).strip() != _STATE_NOTE:
+            bad.append("the interim state does not draw the note's link alone")
+    macro = re.search(re.escape(_DOOR_MACRO[0]) + r"(?:(?!</svg>).)*" + re.escape(_DOOR_MACRO[1]), code, re.S)
+    if not macro or code.count("{%- macro coin_door(") != 1 or code.count("coin_door(") != 3:
+        bad.append("the door's macro does not draw the coin door, its label, its copy icon and its coin after them, hidden from screen readers, or it is not called "
+                   "twice, by the hero and by its twin")
+    twin = code.find(_STATE_TWIN)
+    if code.count(_STATE_TWIN) != 1 or not code.find('id="start"') < twin < code.find('<div class="ticker"'):
+        bad.append("the door's twin does not stand after the coins in #start, drawn by the door's macro with the probe alone")
+    drawn = re.search(r"\btaped\b|\bw\.(?:" + "|".join(_TAPE_WORDS) + r")\b|class=\"[^\"]*\b(?:tape|tapebox|flap|taped-why|is-taped|was|now)\b", code)
+    if drawn:
+        bad.append(f"the template draws the tape, the taped state or the taped cue again: {drawn.group(0)!r}")
+    styled = _TAPE_CSS.search(css)
+    if styled:
+        bad.append(f"the landing's styles hold the tape-off ceremony or the taped state again: {styled.group(0)!r}")
+    why = re.sub(r"\{#.*?#\}", "", src["overrides/why.html"], flags=re.S)
+    styled = _TAPE_CSS.search(re.sub(r"/\*.*?\*/", "", why[why.find("<style>"):why.find("</style>")], flags=re.S))
+    if "<style>" not in why or styled:
+        bad.append(f"the pitch page's styles are not read, or hold the tape or the taped state: {styled.group(0) if styled else 'no <style>'!r}")
+    for lang in ("en", "de"):
+        kept = [k for k in _TAPE_WORDS if k in words.get(lang, {})]
+        if kept:
+            bad.append(f"{lang}.html still holds the taped state's words: {', '.join(kept)}")
     for what, mark in (("the dialog", '<dialog class="probe"'), ("the dialog's script", ".showModal()")):
         tags = re.findall(r"\{%-?\s*(.*?)\s*-?%\}", code[:code.find(mark)]) if mark in code else []
         if not tags or tags[-1] != "if probe":
             bad.append(f"{what} is not built under the probe switch alone")
-    script = code[code.find("<script>"):]
-    if "taped" in script:
-        bad.append("a script reads the taped button")
+    if re.search(r"\btaped?\b|tapebox|\.flap\b", code[code.find("<script>"):]):
+        bad.append("a script reads the tape")
     return bad
 
 
-_tape_src = _sources(_LANDING_FILES)
-_tape_p = _taped_problems(_tape_src)
-check("FM-006 · the taped coin slot: the button the probe will open is a button, aria-disabled and described by the line under the actions, with no link, id or handler; it keeps "
-      f"its label with the tape across it, hidden from screen readers, under the coin's cue; the dialog and its script are built under the probe switch alone (problems found: {_tape_p})", _tape_p == [])
-_tape_ctl = {"the tape left off": _with(_tape_src, "overrides/landing.html", '<span class="tape" aria-hidden="true">{{ w.btn_tape }}</span></button>', "</button>"),
-         "a dialog built": _with(_tape_src, "overrides/landing.html", '{%- if probe %}\n{#', '{%- if probe or taped %}\n{#'),
-         "a click handler on the button": _with(_tape_src, "overrides/landing.html", 'aria-disabled="true" aria-describedby="taped-why">', 'aria-disabled="true" aria-describedby="taped-why" onclick="copy()">'),
-         "a script that handles the button": _with(_tape_src, "overrides/landing.html", "</script>", 'document.querySelector(".btn.taped").addEventListener("click", () => 0);\n</script>'),
-         "aria-describedby missing": _with(_tape_src, "overrides/landing.html", ' aria-describedby="taped-why">', ">"),
-         "the button a link": _with(_tape_src, "overrides/landing.html", '<button type="button" class="btn taped"', '<button type="button" href="probe.txt" class="btn taped"')}
-_tape_ctl_saw = {name: len(_taped_problems(src)) for name, src in _tape_ctl.items()}
-check("FM-006 · the taped state's check is not blind: each of the tape left off, a dialog built, a click handler on the button, a script that handles it, aria-describedby missing and the "
-      f"button a link leaves a problem (problems found: {_tape_ctl_saw})", all(_tape_ctl_saw.values()) and len(_tape_ctl_saw) == 6)
+_st_src = _sources((*_LANDING_FILES, "overrides/why.html"))
+_st_p = _state_problems(_st_src)
+check("FM-006 · the landing's launch states · with the probe on the live cue alone stands over the coin door, its label, copy icon and coin, the coin hidden from screen readers, "
+      "and the door's twin, by the same macro, stands after the coins in #start; with "
+      "it off the note's link stands alone; nothing of the tape-off ceremony or the taped state is drawn, styled, worded in either language or scripted, and the pitch page "
+      "styles none of it; the dialog and its script "
+      f"are built under the probe switch alone (problems found: {_st_p})", _st_p == [])
+_LH = "overrides/landing.html"
+_st_ctl = {
+    "the ceremony's tape back in the door": _with(_st_src, _LH, '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>',
+                                                   '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tapebox" aria-hidden="true"><span class="tape" '
+                                                   'aria-hidden="true">{{ w.btn_tape }}</span><span class="flap"></span></span></a>'),
+    "the ceremony's CSS back": _with(_st_src, _LH, "</style>", ".btn.door .tapebox{position:absolute;left:-7px;right:-7px;bottom:5px;height:17px}\n</style>"),
+    "the ceremony's keyframes back": _with(_st_src, _LH, "</style>", "@keyframes tape-pull{from{--p:.06}to{--p:1}}\n</style>"),
+    "the unlit window back": _with(_st_src, _LH, "</style>", '.btn.door::after{content:"";position:absolute;inset:0 0 0 36px;z-index:-1;background:var(--closed)}\n</style>'),
+    "the taped cue back in the cue": _with(_st_src, _LH, '<span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue',
+                                           '<span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped }}</span><span class="cue-t now">{{ w.cue'),
+    "a taped cue in the English words": _with(_st_src, "overrides/partials/landing/en.html", '  "cue": "— press start —",\n',
+                                              '  "cue": "— press start —",\n  "cue_taped": "— after v0.20.1 —",\n'),
+    "the reason in the German words": _with(_st_src, "overrides/partials/landing/de.html", '  "cue": "— Start drücken —",\n',
+                                            '  "cue": "— Start drücken —",\n  "taped_why": "Nicht defekt, nur noch nicht offen.",\n'),
+    "the taped branch back": _with(_st_src, _LH, "      {%- else %}\n      " + _STATE_NOTE,
+                                   '      {%- elif taped %}\n      <button type="button" class="btn taped" aria-disabled="true">{{ w.btn_probe }}</button>\n      {%- else %}\n      ' + _STATE_NOTE),
+    "the line that says why back": _with(_st_src, _LH, '    <p class="founder">', '    <p class="taped-why" id="taped-why">{{ T(w.taped_why) }}</p>\n    <p class="founder">'),
+    "a dialog built outside the probe state": _with(_st_src, _LH, "{%- if probe %}\n{#", "{%- if probe or true %}\n{#"),
+    "a script that reads the tape": _with(_st_src, _LH, "</script>", 'document.querySelector(".tapebox");\n</script>'),
+    "the door in the interim state": _with(_st_src, _LH, _STATE_NOTE, _STATE_NOTE.replace('class="btn"', 'class="btn door"')),
+    "the coin in the interim state": _with(_st_src, _LH, _STATE_NOTE, _STATE_NOTE.replace("</a>", '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>')),
+    "the coin left out of the door": _with(_st_src, _LH, '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>', "</a>"),
+    "the taped try row's style back on the pitch page": _with(_st_src, "overrides/why.html", "</style>", ".tldr dl>div.try.taped{background:var(--closed)}\n</style>"),
+    "the twin in every state": _with(_st_src, _LH, '  {%- if probe %}\n  <p class="door-again">{{ coin_door("") }}</p>\n  {%- endif %}\n',
+                                     '  <p class="door-again">{{ coin_door("") }}</p>\n'),
+    "the twin left out": _with(_st_src, _LH, '  {%- if probe %}\n  <p class="door-again">{{ coin_door("") }}</p>\n  {%- endif %}\n', ""),
+    "the twin as a copy of the door's markup": _with(_st_src, _LH, '<p class="door-again">{{ coin_door("") }}</p>',
+                                                     '<p class="door-again"><a class="btn door" href="{{ urls.probe_txt }}" aria-haspopup="dialog">{{ w.btn_probe }}'
+                                                     '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a></p>'),
+    "the hero's door as a copy of the macro's markup": _with(_st_src, _LH, '{{ coin_door("probe-open") }}</div>',
+                                                             '<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog">{{ w.btn_probe }}'
+                                                             '<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a></div>')}
+_st_ctl_saw = {name: len(_state_problems(src)) for name, src in _st_ctl.items()}
+check("FM-006 · the landing's launch states · the check is not blind: each of the ceremony's tape back in the door, its CSS, its keyframes or the unlit window back, the taped "
+      "cue back in the cue, a taped cue in the English words or the reason in the German words, the taped branch back, the line that says why back, a dialog built outside the "
+      "probe state, a script that reads the tape, the door or the coin in the interim state, the coin left out of the door, the taped try row's style back on the pitch "
+      "page, the twin in every state or left out, the twin as a copy of the door's markup and the hero's door as a copy of the macro's markup leaves a problem "
+      f"(problems found: {_st_ctl_saw})", all(_st_ctl_saw.values()) and len(_st_ctl_saw) == 19)
 
 
 # --- FM-006 · B1 · what the tool needs, as M4 builds it to v0.20.0's plan: Subversion without git, from the release archive -----------------
@@ -6604,9 +6990,9 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
 
 
 # --- FM-006 · B1 · the hero's cue and the arcade labels' cabinet parts ------------------------------------------------------------------------------------
-# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green, the taped cue
-# "— [coin] …" under it until the tape-off ceremony turns the one into the other at 2.8 s; only the live cue's icon and words blink, four blinks of a second each,
-# then stay lit, and under reduced motion nothing blinks. The players label has a joystick and the start label a coin,
+# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green, one line from
+# the first frame; only its icon and words blink, four blinks of a second each from the page's start, then stay lit; under reduced motion nothing blinks, and
+# in print the cue stands still. The players label has a joystick and the start label a coin,
 # neither blinking; the issue tracker's, the fleet's, the high scores' and the register's labels have a ticket, a ship, a screen and a wreck, none blinking. Every icon is
 # aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
 _CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
@@ -6624,15 +7010,15 @@ def _cue_problems(src):
         for key, want in _CUE_WORDS[lang].items():
             if words[lang].get(key) != want:
                 bad.append(f"the {lang} word {key} is not {want!r}")
-    # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, its icon the dome after the first dash of the words;
-    # the taped cue, its coin after the first dash, shares its place until the ceremony turns it
-    probe_part = code.split("{%- elif taped %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- elif taped %}" in code else ""
-    cue = ('<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t was">{{ w.cue_taped | replace("— ", "— " ~ icon_coin ~ " ") }}</span>'
-           '<span class="cue-t now">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>')
-    if cue not in probe_part or probe_part.find(cue) > probe_part.find('id="probe-open"') or probe_part.count("{{ w.cue |") != 1 or re.search(r"w\.cue\b", code.replace(cue, "")):
-        bad.append("the cue is not, in the probe state alone, the strip over the primary button, hidden from screen readers, with the dome after its first dash")
-    # the animation: only a cue's words and icon blink, at most 5 s in all, then they stay lit — the taped state's cue from the start, the live cue from 2.8 s,
-    # when the taped cue and the live cue each turn with one step of 1 ms; nothing else of the cue and the labels animates, and nothing blinks under reduced motion
+    # the cue: in the probe branch only, before the primary button, over it, hidden from screen readers, one line, its icon the dome after the first dash of
+    # the words
+    probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
+    cue = '<div class="cta-main"><span class="cue" aria-hidden="true"><span class="cue-t">{{ w.cue | replace("— ", "— " ~ icon_dome ~ " ") }}</span></span>'
+    if (cue not in probe_part or probe_part.find(cue) > probe_part.find('coin_door("probe-open")') or probe_part.count("{{ w.cue |") != 1 or re.search(r"w\.cue\b", code.replace(cue, ""))
+            or code.count('class="cue-t') != 1):
+        bad.append("the cue is not, in the probe state alone, one strip over the primary button, hidden from screen readers, with the dome after its first dash")
+    # the animation: only the cue's words and icon blink, from the page's start, at most 5 s in all, then they stay lit; nothing else of the cue and the
+    # labels animates, nothing blinks under reduced motion, and in print the cue stands still
     rules = re.findall(r"([^{}]+)\{([^{}]*animation[^{}]*)\}", re.sub(r"/\*.*?\*/", "", code, flags=re.S))
     mine = [(sel.strip().split(".")[-1], body) for sel, body in rules if re.search(r"\.(cue|cab|n-ic|n|cta-main)\b", sel)]
     seen, wrong = {}, []
@@ -6640,15 +7026,15 @@ def _cue_problems(src):
         for one in re.search(r"animation:\s*([^;]*)", body).group(1).split(","):
             one = one.strip()
             blink = re.fullmatch(r"blink ([\d.]+)s steps\(1\)(?: ([\d.]+)s)? (\d+)", one)
-            turn = re.fullmatch(r"(tape-gone|tape-show) 1ms 2\.8s both", one)
-            if blink and (sel, blink.group(2)) in (("cue-t", None), ("now", "2.8")) and float(blink.group(1)) * int(blink.group(3)) <= 5:
+            if blink and sel == "cue-t" and blink.group(2) is None and float(blink.group(1)) * int(blink.group(3)) <= 5:
                 seen.setdefault(sel, []).append("blink")
-            elif turn and (sel, turn.group(1)) in (("was", "tape-gone"), ("now", "tape-show")):
-                seen.setdefault(sel, []).append(turn.group(1))
             elif one != "none":
                 wrong.append(sel + ": " + one)
-    if wrong or seen != {"cue-t": ["blink"], "was": ["tape-gone"], "now": ["tape-show", "blink"]}:
-        bad.append(f"the cue's words and icon are not the only things of the cue and the labels that animate, blinking at most 5 s in all and then lit ({wrong or seen})")
+    if wrong or seen != {"cue-t": ["blink"]}:
+        bad.append(f"the cue's words and icon are not the only things of the cue and the labels that animate, blinking from the start, at most 5 s in all and then lit ({wrong or seen})")
+    printed = re.finditer(r"@media print\{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}", re.sub(r"/\*.*?\*/", "", code, flags=re.S).replace("@media print {", "@media print{"))
+    if not any(re.search(r"(?:^|\})\s*\.cue-t\{animation:none\}", m.group(1)) for m in printed):
+        bad.append("in print the cue's words and icon may still blink")
     if "*,*::before,*::after{animation:none!important" not in code:
         bad.append("the rule that ends every animation under reduced motion is not there")
     # the icons: seven, each aria-hidden and not focusable; every label keeps its words and takes its icon after the first dash
@@ -6665,12 +7051,12 @@ def _cue_problems(src):
 
 _cs = _sources(_CUE_FILES)
 _cp = _cue_problems(_cs)
-check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue stands over the primary button in the probe state alone, in both languages' words; only its icon and words blink, "
-      "four seconds at most and then lit, and nothing blinks under reduced motion; the joystick and the coin stand on the players and start labels, the ticket, the ship, the screen and the "
+check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue stands over the primary button in the probe state alone, one line, in both languages' words; only its icon and "
+      "words blink, from the start, four seconds at most and then lit, nothing blinks under reduced motion and in print the cue stands still; the joystick and the coin stand on the players and start labels, the ticket, the ship, the screen and the "
       "wreck on the issue tracker's, the fleet's, the high scores' and the register's, every icon is "
       f"aria-hidden, and the labels keep their words (problems found: {_cp})", _cp == [])
 _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html", "{%- else %}\n      <a class=\"btn\" href=\"{{ urls.adopt }}\">", "{%- else %}\n      <span class=\"cue\" aria-hidden=\"true\">{{ w.cue }}</span><a class=\"btn\" href=\"{{ urls.adopt }}\">"),
-         "the cue under the button": _with(_cs, "overrides/landing.html", '<div class="cta-main"><span class="cue" aria-hidden="true">', '<div class="cta-main"><a id="probe-open"></a><span class="cue" aria-hidden="true">'),
+         "the cue under the button": _with(_cs, "overrides/landing.html", '<div class="cta-main"><span class="cue" aria-hidden="true">', '<div class="cta-main">{{ coin_door("probe-open") }}<span class="cue" aria-hidden="true">'),
          "the cue read by screen readers": _with(_cs, "overrides/landing.html", '<span class="cue" aria-hidden="true">', '<span class="cue">'),
          "the cue's German words changed": _with(_cs, "overrides/partials/landing/de.html", '"cue": "— Start drücken —"', '"cue": "— Los —"'),
          "the cue blinking for ever": _with(_cs, "overrides/landing.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}"),
@@ -6682,23 +7068,27 @@ _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html"
          "the scores label without its icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_screen ~ " ") }}</span>', '<span class="n">{{ w.scores_n }}</span>'),
          "the register label with another icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_wreck ~ " ") }}</span>', '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_stick ~ " ") }}</span>'),
          "the players label reworded": _with(_cs, "overrides/partials/landing/en.html", '"players_n": "— select player —"', '"players_n": "— choose —"'),
-         "the start label's German reworded": _with(_cs, "overrides/partials/landing/de.html", '"start_n": "— Münze einwerfen —"', '"start_n": "— Los —"')}
+         "the start label's German reworded": _with(_cs, "overrides/partials/landing/de.html", '"start_n": "— Münze einwerfen —"', '"start_n": "— Los —"'),
+         "the taped cue beside the live one": _with(_cs, "overrides/landing.html", '<span class="cue" aria-hidden="true"><span class="cue-t">',
+                                                    '<span class="cue" aria-hidden="true"><span class="cue-t was">— after v0.20.1 —</span><span class="cue-t">'),
+         "the cue blinking late, as the ceremony had it": _with(_cs, "overrides/landing.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 2.8s 4}"),
+         "the cue blinking in print": _with(_cs, "overrides/landing.html", ".cue-t{animation:none}}", "}")}
 _cctl_saw = {name: len(_cue_problems(src)) for name, src in _cctl.items()}
-check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s or "
-      "with its rules, a label blinking, the reduced-motion rule gone, an icon read by screen readers, the scores label without its icon, the register label with another, and a label reworded leaves a problem "
-      f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 14)
+check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s, "
+      "late as the ceremony had it, in print or with its rules, the taped cue beside the live one, a label blinking, the reduced-motion rule gone, an icon read by screen readers, the scores "
+      "label without its icon, the register label with another, and a label reworded leaves a problem "
+      f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 17)
 
 
-# --- the probe state's coin door: the tape-off ceremony and the golden coin -----------------------------------------------------------------------------
-# With the probe on, the primary link is the coin door, lit. Once per page load the tape over it is picked at its right end (0.6–0.9 s), pulled off towards its
-# left end (0.9–1.9 s) and lifted away (1.9–2.2 s), the window lights (2.2–2.8 s) and the taped cue turns to the live one (2.8 s); a press or a tap drops the golden coin into the slot, and the dialog opens when it has landed, at most 0.36 s after
-# the press, at once for the keyboard and under reduced motion; the copy stays inside the click. The tape, the coin and the taped cue are hidden from screen
-# readers and are drawn neither under reduced motion nor in print; the taped and the interim states carry none of it; nothing is stored.
-_CEREMONY_STORAGE = re.compile(r"\b(localStorage|sessionStorage|indexedDB|cookieStore)\b|document\.cookie|\bcaches\s*\.")
-_CEREMONY_DOOR = ('<a class="btn door" id="probe-open" href="{{ urls.probe_txt }}" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 7 8" aria-hidden="true" focusable="false">',
-                  '</svg>{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">'
-                  '{{ w.btn_tape }}</span><span class="flap"></span></span></a>')
-_CEREMONY_HIDES = (".btn.door .tapebox", ".btn.door .tape", ".btn.door .flap", ".btn.door::after", ".btn.door .gcoin", ".cue .was")
+# --- the probe state's coin door and the golden coin -----------------------------------------------------------------------------------------------------
+# With the probe on, the primary link is the coin door, lit from the first frame, its copy icon under its label, drawn by its macro, which also draws its twin
+# in #start; the twin takes the door's own CSS and handler by class, with no copy of the coin's animation. A mouse that hovers a door holds the golden coin
+# at the slot, and a press or a tap drops the coin into the slot; the dialog opens when it has landed, at most 0.36 s after the press, at once for the keyboard
+# and under reduced motion; the copy stays inside the click. The coin is hidden from screen readers and is drawn neither under reduced motion nor in print; the
+# interim state carries none of it; nothing is stored.
+_DOOR_STORAGE = re.compile(r"\b(localStorage|sessionStorage|indexedDB|cookieStore)\b|document\.cookie|\bcaches\s*\.")
+_DOOR_MARKUP = _DOOR_MACRO
+_DOOR_LIT = ".btn.door{position:relative;isolation:isolate;padding-left:50px;border:2px solid var(--contour);background:linear-gradient(90deg,#0b1520 0 36px,var(--watt) 36px);"
 
 
 def _css_rules(css, media):
@@ -6715,81 +7105,76 @@ def _css_rules(css, media):
     return found
 
 
-def _ceremony_problems(src):
-    """What is wrong with the probe state's coin door and its ceremony in the template, one line each; none where it is drawn as the Designer's plan has it."""
+def _door_problems(src):
+    """What is wrong with the probe state's coin door and its golden coin in the template, one line each; none where it is drawn as the Designer's plan has it."""
     bad, tpl = [], src["overrides/landing.html"]
     code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)
     css = re.sub(r"/\*.*?\*/", "", code[code.find("<style>"):code.find("</style>")], flags=re.S).replace(" {", "{")
-    probe_part = code.split("{%- elif taped %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- elif taped %}" in code else ""
-    door = re.search(re.escape(_CEREMONY_DOOR[0]) + r"(?:(?!</svg>).)*" + re.escape(_CEREMONY_DOOR[1]), probe_part, re.S)
-    if not door or code.count('class="btn door"') != 1 or code.count('<span class="gcoin"') != 1 or code.count('<span class="tape"') != 2:
-        bad.append("the probe state's primary link is not the coin door, its label read and its coin and tape after it, each hidden from screen readers, "
-                   "or the door, the coin or a tape stands elsewhere")
-    if 'class="cta{% if taped %} is-taped{% endif %}{% if probe %} is-door{% endif %}"' not in code:
+    probe_part = code.split("{%- else %}")[0].split("{%- if probe %}")[-1] if "{%- if probe %}" in code and "{%- else %}" in code else ""
+    door = re.search(re.escape(_DOOR_MARKUP[0]) + r"(?:(?!</svg>).)*" + re.escape(_DOOR_MARKUP[1]), code, re.S)
+    if not door or probe_part.count('{{ coin_door("probe-open") }}') != 1 or code.count('class="btn door"') != 1 or code.count('<span class="gcoin"') != 1:
+        bad.append("the probe state's primary link is not the coin door, drawn by its macro, its label read and its coin after it, hidden from screen readers, or the door or "
+                   "the coin stands elsewhere")
+    coin_rules = [sel.strip() for sel, body in re.findall(r"([^{}@]+)\{([^{}]*)\}", css) if "golden-coin" in body or "golden-coin" in sel or ".gcoin" in sel]
+    if any(css.count(f"@keyframes golden-coin-{k}") != 1 for k in ("near", "in", "slit")) or any(not sel.startswith(".btn.door") for sel in coin_rules):
+        bad.append("the coin's animation is not one copy by the door's class: a keyframe defined twice, or a rule outside .btn.door that draws or moves the coin "
+                   f"({[sel for sel in coin_rules if not sel.startswith('.btn.door')]})")
+    if 'class="cta{% if probe %} is-door{% endif %}"' not in code:
         bad.append("the actions do not take the door's place in the probe state alone")
+    if _DOOR_LIT not in css.replace("\n  ", "") or re.search(r"\.btn\.door::after|\.btn\.door\{[^}]*animation", css):
+        bad.append("the door's window is not lit from the first frame: it is not in the button's green, or something is drawn over it or animates it")
     rm, pr = _css_rules(css, "(prefers-reduced-motion:reduce)"), _css_rules(css, "print")
     for what, rules in (("under reduced motion", rm), ("in print", pr)):
-        if not all("display:none!important" in rules.get(sel, "") for sel in _CEREMONY_HIDES) or "visibility:visible" not in rules.get(".cue .now", ""):
-            bad.append(f"{what} the tape, the unlit window, the coin or the taped cue is drawn, or the live cue is not shown")
+        if "display:none!important" not in rules.get(".btn.door .gcoin", ""):
+            bad.append(f"{what} the coin is drawn")
     if "*,*::before,*::after{animation:none!important" not in css.replace(" ", ""):
         bad.append("the rule that ends every animation under reduced motion is not there")
-    timing = ("animation:tape-pick .3s steps(3) .6s both,tape-pull 1s steps(12) .9s forwards,tape-off .3s steps(2) 1.9s forwards",
-              "@keyframes tape-pick{from{--p:0}to{--p:.06}}", "@keyframes tape-pull{from{--p:.06}to{--p:1}}",
-              "animation:tape-unlit .6s steps(1) 2.2s both", ".cue .was{animation:tape-gone 1ms 2.8s both}",
-              ".cue .now{visibility:hidden;animation:tape-show 1ms 2.8s both,blink 1s steps(1) 2.8s 4}",
-              "@media (hover:hover) and (pointer:fine){.btn.door:hover .gcoin{display:block;animation:golden-coin-near .24s steps(2) both}}",
-              ".btn.door.golden-coin .gcoin{display:block;animation:golden-coin-in .36s steps(4) forwards}")
-    if not all(t.replace(" {", "{") in css for t in timing) or re.search(r"(tape|golden-coin)-[\w-]*[^;{}]*infinite", css):
-        bad.append("the ceremony does not play once, picking the tape 0.6–0.9 s, pulling it 0.9–1.9 s, lifting it 1.9–2.2 s, lighting 2.2–2.8 s and turning the cue at 2.8 s, "
-                   "or the coin does not come on a mouse's hover "
-                   "and drop on a press")
+    timing = ("@media (hover:hover) and (pointer:fine){.btn.door:hover .gcoin{display:block;animation:golden-coin-near .24s steps(2) both}}",
+              ".btn.door.golden-coin .gcoin{display:block;animation:golden-coin-in .36s steps(4) forwards}",
+              ".btn.door.golden-coin::before{animation:golden-coin-slit .3s steps(1) .22s}")
+    if not all(t.replace(" {", "{") in css for t in timing) or re.search(r"golden-coin-[\w-]*[^;{}]*infinite", css):
+        bad.append("the coin does not come on a mouse's hover and drop on a press, once, with the slit's flash")
     if ".btn.door{flex-direction:column;gap:4px;padding-bottom:10px}" not in css or ".btn.door .ic{order:2}" not in css or re.search(r"\.btn\.door \.ic\{[^}]*display:none", css):
-        bad.append("the lit door does not show its copy icon under its label, in the room the tape leaves")
+        bad.append("the lit door does not show its copy icon under its label")
     if ".btn.door:hover{transform:none}" not in css:
         bad.append("the door lifts on hover, where the coin coming to the slot is its hover")
-    peel = ('@property --p{syntax:"<number>";inherits:true;initial-value:0}', "clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)",
-            "left:calc((1 - var(--p)) * 100%);width:calc(var(--p) * 100%)")
-    if not all(t in css for t in peel) or ".hero{overflow-x:clip}" not in css:
-        bad.append("the tape is not peeled by one registered value, --p, that cuts the stuck part back from the right and grows the loose flap, or the hero does "
-                   "not clip it sideways")
-    if _CEREMONY_STORAGE.search(tpl):
-        bad.append(f"landing.html names a storage API: {_CEREMONY_STORAGE.search(tpl).group(0)}")
+    if _DOOR_STORAGE.search(tpl):
+        bad.append(f"landing.html names a storage API: {_DOOR_STORAGE.search(tpl).group(0)}")
     if "url(" in css:
         bad.append("the landing's styles load a file")
     return bad
 
 
 _crs = _sources(_CUE_FILES)
-_crp = _ceremony_problems(_crs)
-check("FM-006 · the tape-off ceremony · with the probe on the primary link is the coin door, its label read, its copy icon under the label and its coin and tape hidden from "
-      "screen readers; the taped and interim states "
-      "carry none of it; neither reduced motion nor print draws the tape, the unlit window, the coin or the taped cue; the ceremony plays once, the tape peeled by --p "
-      "inside a hero that clips it sideways, its cue turning at 2.8 s; "
+_crp = _door_problems(_crs)
+check("FM-006 · the coin door · with the probe on the primary link is the coin door, lit from the first frame, its label read, its copy icon under the label and its coin hidden "
+      "from screen readers; the interim state carries none of it; neither reduced motion nor print draws the coin; the coin comes on a mouse's hover and drops on a press, once; "
       f"landing.html names no storage API and its styles load no file (problems found: {_crp})", _crp == [])
 _crctl = {"the coin read by screen readers": _with(_crs, "overrides/landing.html", '<span class="gcoin" aria-hidden="true">', '<span class="gcoin">'),
-          "the door's tape read by screen readers": _with(_crs, "overrides/landing.html", '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">{{ w.btn_tape }}',
-                                                          '<span class="tapebox"><span class="tape">{{ w.btn_tape }}'),
-          "the coin in the taped state too": _with(_crs, "overrides/landing.html", '{{ w.btn_probe }}<span class="tape" aria-hidden="true">', '{{ w.btn_probe }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span><span class="tape" aria-hidden="true">'),
           "the coin as the cards' coin": _with(_crs, "overrides/landing.html", '<span class="gcoin" aria-hidden="true">', '<span class="coin" aria-hidden="true">'),
-          "reduced motion drawing the tape": _with(_crs, "overrides/landing.html", "@media (prefers-reduced-motion:reduce){.btn.door .tapebox,", "@media (prefers-reduced-motion:reduce){"),
-          "print drawing the flap": _with(_crs, "overrides/landing.html", "@media print{.btn.door .tapebox,.btn.door .tape,.btn.door .flap,", "@media print{.btn.door .tapebox,.btn.door .tape,"),
-          "print drawing the taped cue": _with(_crs, "overrides/landing.html", ".btn.door .gcoin,.cue .was{display:none!important}.cue .now{visibility:visible;animation:none}}",
-                                               ".btn.door .gcoin{display:none!important}.cue .now{visibility:visible;animation:none}}"),
-          "the tape pulled for ever": _with(_crs, "overrides/landing.html", "tape-pull 1s steps(12) .9s forwards", "tape-pull 1s steps(12) .9s infinite forwards"),
-          "the tape swung off whole, as before": _with(_crs, "overrides/landing.html", "clip-path:inset(-4px calc(var(--p) * 100%) -4px 0)", "clip-path:none"),
-          "--p not registered": _with(_crs, "overrides/landing.html", '@property --p{syntax:"<number>";inherits:true;initial-value:0}', ""),
-          "the hero not clipping the tape": _with(_crs, "overrides/landing.html", ".hero{overflow-x:clip}", ""),
+          "the coin in the interim state too": _with(_crs, "overrides/landing.html", '<a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}</a>',
+                                                     '<a class="btn" href="{{ urls.adopt }}">{{ w.btn_adopt }}<span class="gcoin" aria-hidden="true">{{ icon_coin }}</span></a>'),
+          "reduced motion drawing the coin": _with(_crs, "overrides/landing.html", "@media (prefers-reduced-motion:reduce){.btn.door .gcoin{display:none!important}}", ""),
+          "print drawing the coin": _with(_crs, "overrides/landing.html", "@media print{.btn.door .gcoin{display:none!important}", "@media print{"),
+          "the coin dropping for ever": _with(_crs, "overrides/landing.html", "golden-coin-in .36s steps(4) forwards", "golden-coin-in .36s steps(4) infinite forwards"),
+          "the window unlit": _with(_crs, "overrides/landing.html", "#0b1520 0 36px,var(--watt) 36px", "#0b1520 0 36px,var(--closed) 36px"),
+          "the unlit window drawn over the door": _with(_crs, "overrides/landing.html", ".btn.door:hover{transform:none}",
+                                                        '.btn.door:hover{transform:none}\n.btn.door::after{content:"";position:absolute;inset:0 0 0 36px;z-index:-1;background:var(--closed)}'),
+          "the door lighting late": _with(_crs, "overrides/landing.html", ".btn.door:hover{transform:none}",
+                                          ".btn.door:hover{transform:none}\n.btn.door{animation:door-lit .6s steps(1) 2.2s both}"),
           "the door's icon hidden": _with(_crs, "overrides/landing.html", ".btn.door .ic{order:2}", ".btn.door .ic{order:2;display:none}"),
           "the door lifting on hover": _with(_crs, "overrides/landing.html", ".btn.door:hover{transform:none}", ""),
           "the door's icon beside its label": _with(_crs, "overrides/landing.html", ".btn.door{flex-direction:column;gap:4px;padding-bottom:10px}", ".btn.door{gap:4px;padding-bottom:10px}"),
-          "the cue turning late": _with(_crs, "overrides/landing.html", ".cue .was{animation:tape-gone 1ms 2.8s both}", ".cue .was{animation:tape-gone .6s steps(1) 2.8s both}"),
           "a storage API": _with(_crs, "overrides/landing.html", 'downAt = performance.now();', 'downAt = performance.now(); sessionStorage.setItem("seen", "1");'),
+          "a second copy of the coin's keyframes": _with(_crs, "overrides/landing.html", "@keyframes golden-coin-slit", "@keyframes golden-coin-in{to{opacity:0}}\n@keyframes golden-coin-slit"),
+          "a coin animation of the twin's own": _with(_crs, "overrides/landing.html", ".door-again{margin:24px 0 0}",
+                                                      ".door-again{margin:24px 0 0}\n.door-again .gcoin{animation:golden-coin-in .36s steps(4) forwards}"),
           "the door in every state": _with(_crs, "overrides/landing.html", '{% if probe %} is-door{% endif %}', " is-door")}
-_crctl_saw = {name: len(_ceremony_problems(src)) for name, src in _crctl.items()}
-check("FM-006 · the tape-off ceremony · its source check is not blind: each of the coin or the door's tape read by screen readers, the coin in the taped state, the coin as the cards' coin, "
-      "reduced motion drawing the tape, print drawing the flap or the taped cue, the tape pulled for ever, the tape swung off whole, --p not registered, the hero not clipping the "
-      "tape, the door's icon hidden or beside its label, the door lifting on hover, the cue turning late, a storage API and the door in every state leaves a problem "
-      f"(problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 17)
+_crctl_saw = {name: len(_door_problems(src)) for name, src in _crctl.items()}
+check("FM-006 · the coin door · its source check is not blind: each of the coin read by screen readers, as the cards' coin or in the interim state, reduced motion or print drawing "
+      "the coin, the coin dropping for ever, the window unlit, the unlit window drawn over the door, the door lighting late, the door's icon hidden or beside its label, the door "
+      f"lifting on hover, a storage API, the door in every state, a second copy of the coin's keyframes and a coin animation of the twin's own leaves a problem "
+      f"(problems found: {_crctl_saw})", all(_crctl_saw.values()) and len(_crctl_saw) == 16)
 
 _BOARD_STACK = ("@media(max-width:640px){.board thead{display:none}.board tbody{display:block}.board tr{display:grid;grid-template-columns:auto 1fr;column-gap:14px;"
                 "align-items:baseline;border-top:1px dashed var(--contour);padding:12px 0}.board td{border-top:0;padding:0}.board td.pd{grid-column:1/-1;padding-top:8px}}")
@@ -7086,6 +7471,89 @@ check(f"FM-006 · the pitch page · its check is not blind: each of a row droppe
       f"the caption emptied, the story's gap changed, the quote's measure gone, the phone's gap removed or outside its block, the print gap merged into the print "
       f"block's rule, the print size changed and the German print size removed leaves a problem (problems found: {_wctl_saw})", all(_wctl_saw.values()) and len(_wctl_saw) == 19)
 
+_WHY_DE_PRINT_STEP = (
+    "html[lang=de] body,html[lang=de] .tldr dl,html[lang=de] .lead,html[lang=de] .for,html[lang=de] .never,html[lang=de] .intro{font-size:7.3pt}",
+    "html[lang=de] .tldr dl,html[lang=de] .tldr dl>div.try{grid-template-columns:16.5ch 1fr}",
+)
+_WHY_EN_PRINT_SHADOWED = (
+    "body{font-size:8pt;line-height:1.3}",
+    ".tldr dl{grid-template-columns:13ch 1fr;gap:1.5pt 8pt;font-size:7.9pt;line-height:1.22}",
+    ".lead,.for,.never,.intro,.move .pre{font-size:7.9pt;text-align:left;margin:0 0 3pt;max-width:none}",
+    ".tldr dl>div.try{margin:2pt -9pt -2pt;padding:3pt 9pt 2pt;background:none;box-shadow:none;border-top:1.2pt solid var(--watt);gap:1.5pt 8pt;grid-template-columns:13ch 1fr}",
+)
+
+
+def _why_de_print_problems(src):
+    """What is wrong with the pitch page's German print step, one line each, in three parts: `step` where its two rules do not stand once each, as
+    rules of their own, in print, or another German rule sets what they set; `scope` where a rule that names a language is not in print or names
+    any selector without the German page's `html[lang=de] `, or the words files do not give each page its own language; `english` where the English
+    print rules the step shadows do not stand as they are, or the page leaves its one A4 @page rule. The step is the German print text at 7.3 pt with
+    its TL;DR label column at 16.5ch, which holds AUSPROBIEREN: whole: WebKit's print sets each line box in whole CSS pixels, rounded down, so below
+    about 7.37 pt the TL;DR's lines and the running text's are each a pixel shorter, where a smaller step changes no line's height."""
+    bad = []
+    tpl = src["overrides/why.html"]
+    css = re.sub(r"/\*.*?\*/", "", tpl.split("<style>", 1)[-1].split("</style>", 1)[0], flags=re.S)
+    at = lambda rule: [m.start() for m in re.finditer(r"(?<![^\s}])" + re.escape(rule), css)]
+    for rule in _WHY_DE_PRINT_STEP:
+        found = at(rule)
+        if len(found) != 1 or _css_scope(css, found[0]) != "@media print":
+            bad.append(f"step: the rule {rule} is not there once, as a rule of its own, in @media print")
+    sets = {}
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+        sels = [s.strip() for s in m.group(1).split(",")]
+        if not any("[lang" in s or ":lang(" in s for s in sels):
+            continue
+        if _css_scope(css, m.start(1)) != "@media print" or not all(s.startswith("html[lang=de] ") for s in sels):
+            bad.append(f"scope: the rule {m.group(1).strip()}{{…}} names a language outside print, or a selector without the German page's html[lang=de]")
+        for sel in sels:
+            for prop in (d.split(":", 1)[0].strip() for d in m.group(2).split(";") if ":" in d):
+                sets[(sel, prop)] = sets.get((sel, prop), 0) + 1
+    for rule in _WHY_DE_PRINT_STEP:
+        sels, body = rule[:-1].split("{", 1)
+        for sel in sels.split(","):
+            for prop in (d.split(":", 1)[0] for d in body.split(";")):
+                if sets.get((sel, prop), 0) != 1:
+                    bad.append(f"step: {sel} {{{prop}}} is set by {sets.get((sel, prop), 0)} German rules, not the step's alone")
+    langs = {lang: _why_words(src[f"overrides/partials/why/{lang}.html"]).get("lang") for lang in ("en", "de")}
+    if langs != {"en": "en", "de": "de"} or tpl.count('<html lang="{{ w.lang }}">') != 1:
+        bad.append(f"scope: the page does not take its html lang from its words, or the words files' languages are not their own (saw {langs})")
+    for rule in _WHY_EN_PRINT_SHADOWED:
+        found = at(rule)
+        if len(found) != 1 or _css_scope(css, found[0]) != "@media print":
+            bad.append(f"english: the print rule {rule} is not there once as it stands, in @media print")
+    found = at("@page{size:A4;margin:7.5mm 12mm}")
+    if len(found) != 1 or _css_scope(css, found[0]) != "" or len(re.findall(r"@page\b", css)) != 1:
+        bad.append("english: the page does not keep its one @page rule, A4 with its margins, outside every @media block")
+    return bad
+
+
+_WHY_DE_PRINT_FILES = ("overrides/why.html", "overrides/partials/why/en.html", "overrides/partials/why/de.html")
+_wds = _sources(_WHY_DE_PRINT_FILES)
+_wdp = _why_de_print_problems(_wds)
+check(f"FM-006 · BF-81 · the pitch page in German print · its step stands once in print: the German print text at 7.3 pt and its TL;DR label column "
+      f"at 16.5ch, set by no other German rule; every rule that names a language is in print and names the German page in each selector, and each "
+      f"page's html lang is its words'; the English print rules it shadows stand as they are, and the page stays A4 (problems found: {_wdp})", _wdp == [])
+_wd_step = " " + _WHY_DE_PRINT_STEP[0] + "\n"
+_wdctl = {"the step's size as it was": _with(_wds, "overrides/why.html", _WHY_DE_PRINT_STEP[0], _WHY_DE_PRINT_STEP[0].replace("7.3pt", "7.7pt")),
+          "the label column as it was": _with(_wds, "overrides/why.html", _WHY_DE_PRINT_STEP[1], _WHY_DE_PRINT_STEP[1].replace("16.5ch", "15.5ch")),
+          "the step undone by a later German rule": _with(_wds, "overrides/why.html", " a{text-decoration:none}\n}", " html[lang=de] body{font-size:7.7pt}\n a{text-decoration:none}\n}"),
+          "the step's body for every language": _with(_wds, "overrides/why.html", _WHY_DE_PRINT_STEP[0], _WHY_DE_PRINT_STEP[0].replace("html[lang=de] body,", "body,", 1)),
+          "the step on screen": _with(_with(_wds, "overrides/why.html", _wd_step, ""), "overrides/why.html", "@page{size:A4;", _WHY_DE_PRINT_STEP[0] + "\n@page{size:A4;"),
+          "a German rule for every language": _with(_wds, "overrides/why.html", "html[lang=de] .tiles li{font-size:7pt}", ".tiles li,html[lang=de] .tiles li{font-size:7pt}"),
+          "the English words as German": _with(_wds, "overrides/partials/why/en.html", '"lang": "en"', '"lang": "de"'),
+          "the English print size changed": _with(_wds, "overrides/why.html", _WHY_EN_PRINT_SHADOWED[0], _WHY_EN_PRINT_SHADOWED[0].replace("8pt", "7.3pt")),
+          "the English label column changed": _with(_wds, "overrides/why.html", _WHY_EN_PRINT_SHADOWED[1], _WHY_EN_PRINT_SHADOWED[1].replace("13ch", "16.5ch")),
+          "the page on US Letter": _with(_wds, "overrides/why.html", "@page{size:A4;", "@page{size:letter;")}
+_wdctl_saw = {name: sorted({p.split(":", 1)[0] for p in _why_de_print_problems(src)}) for name, src in _wdctl.items()}
+_wd_want = {"the step's size as it was": "step", "the label column as it was": "step", "the step undone by a later German rule": "step",
+            "the step's body for every language": "scope", "the step on screen": "scope", "a German rule for every language": "scope",
+            "the English words as German": "scope", "the English print size changed": "english", "the English label column changed": "english",
+            "the page on US Letter": "english"}
+check(f"FM-006 · BF-81 · the pitch page in German print · its check is not blind: each of the step's size or its label column as it was, the step undone "
+      f"by a later German rule, its body rule for every language, the step on screen, a German rule for every language, the English words as German, the "
+      f"English print size or label column changed and the page on US Letter leaves a problem in its own part (parts found: {_wdctl_saw})",
+      len(_wdctl_saw) == 10 and all(_wd_want[name] in parts for name, parts in _wdctl_saw.items()))
+
 _WHY_ENGLISH = {
     "W40": "shoalmark — the agents do the work; you have the final word",
     "W41": "The agents do the work; you have the final word.",
@@ -7158,18 +7626,19 @@ function run(o) {
   const t0 = 1000; let clock = t0; const timers = [], log = [];
   const make = id => { const h = {}, cls = new Set();
     return {id, value: "PROMPT\n", dataset: {}, style: {}, textContent: "", open: false, offsetWidth: 0, scrollHeight: 0, clientHeight: 0, selectionStart: 0, selectionEnd: 0,
-      addEventListener: (t, f) => { (h[t] = h[t] || []).push(f) }, setAttribute() {}, getAttribute() { return null }, focus() {}, select() {}, blur() {},
+      addEventListener: (t, f) => { (h[t] = h[t] || []).push(f) }, setAttribute() {}, getAttribute() { return null }, focus() { log.push(["focus", id]) }, select() {}, blur() {},
       classList: {add: c => cls.add(c), remove: c => cls.delete(c), contains: c => cls.has(c)}, querySelector: q => make(q),
       fire(t, e) { (h[t] || []).forEach(f => f(Object.assign({preventDefault() {}, button: 0, detail: 1}, e || {}))) }} };
   const ids = {}, get = id => ids[id] || (ids[id] = make(id)), dlg = get("probe");
   dlg.showModal = () => { log.push(["open", clock]); dlg.open = true };
-  const sandbox = {document: {getElementById: get, documentElement: {classList: {add() {}, remove() {}}}, execCommand: () => false},
+  const sandbox = {document: {getElementById: get, querySelectorAll: q => q == ".btn.door" ? [get("probe-open"), get("twin")] : [], documentElement: {classList: {add() {}, remove() {}}},
+                              execCommand: () => false},
     navigator: {clipboard: {writeText: () => { log.push(["copy", clock]); return Promise.resolve(true) }}},
     matchMedia: q => ({matches: !!o.reduce && q.includes("reduce")}), performance: {now: () => clock},
     setTimeout: (f, ms) => { timers.push({f, ms: ms || 0, at: clock}); return timers.length }, clearTimeout: n => { if (n && timers[n - 1]) timers[n - 1].f = null },
     getComputedStyle: () => ({lineHeight: "20px"}), addEventListener() {}, Promise};
   vm.createContext(sandbox); vm.runInContext(code, sandbox);
-  const door = get("probe-open");
+  const door = get(o.twin ? "twin" : "probe-open");
   if (o.press !== undefined) door.fire("pointerdown", {button: o.press});
   const coin = door.classList.contains("golden-coin");
   clock += o.after || 0;
@@ -7177,18 +7646,21 @@ function run(o) {
   const before = log.filter(([k]) => k == "open").length;
   for (const t of timers) if (t.f) { clock = t.at + t.ms; t.f() }
   const opened = log.find(([k]) => k == "open"), copied = log.find(([k]) => k == "copy");
-  return {coin, openedInClick: before > 0, hold: opened ? opened[1] - t0 : null, copyAt: copied ? copied[1] - t0 : null, clickAt: clickAt - t0, waits: timers.map(t => t.ms)};
+  if (opened) dlg.fire("close");
+  const back = log.filter(([k]) => k == "focus").map(([, id]) => id).pop() || null;
+  return {coin, openedInClick: before > 0, hold: opened ? opened[1] - t0 : null, copyAt: copied ? copied[1] - t0 : null, clickAt: clickAt - t0, waits: timers.map(t => t.ms), back};
 }
 const out = {press: run({press: 0}), late: run({press: 0, after: 100}), slow: run({press: 0, after: 500}), keyboard: run({key: true}),
-             keyAfterPress: run({press: 0, after: 100, key: true}), reduced: run({press: 0, reduce: true}), right: run({press: 2})};
+             keyAfterPress: run({press: 0, after: 100, key: true}), reduced: run({press: 0, reduce: true}), right: run({press: 2}),
+             twinPress: run({press: 0, twin: true}), twinKey: run({key: true, twin: true}), twinReduced: run({press: 0, reduce: true, twin: true})};
 console.log(JSON.stringify(out));
 """
 
 
 def _hold_run(tpl):
     """What the probe dialog's script of `tpl` does on a press, a late or a slow click after it, the keyboard alone and after a press that made no click, a press under
-    reduced motion and a right-button press
-    (the harness's own clock, in ms from the press): {} where Node or the script is missing."""
+    reduced motion and a right-button press, on the hero's door; and on a press, the keyboard and a press under reduced motion, on its twin in #start, the second
+    `.btn.door` (the harness's own clock, in ms from the press; and the door focus goes back to when the dialog closes): {} where Node or the script is missing."""
     node_ = shutil.which("node")
     start_ = tpl.find("(function () {", tpl.find("THE PROBE DIALOG"))
     end_ = tpl.find("})();", start_)
@@ -7206,8 +7678,8 @@ def _hold_run(tpl):
 
 
 def _hold_problems(o):
-    """What is wrong with the hold and the coin, one line each, from `_hold_run`'s output."""
-    if set(o) != {"press", "late", "slow", "keyboard", "keyAfterPress", "reduced", "right"}:
+    """What is wrong with the hold and the coin, on the door and on its twin, one line each, from `_hold_run`'s output."""
+    if set(o) != {"press", "late", "slow", "keyboard", "keyAfterPress", "reduced", "right", "twinPress", "twinKey", "twinReduced"}:
         return [f"the probe dialog's script did not run: {o}"]
     bad = []
     if not (0 < o["press"]["hold"] <= 360) or o["press"]["openedInClick"] or o["late"]["hold"] > 360 or o["late"]["hold"] <= o["late"]["clickAt"]:
@@ -7219,37 +7691,41 @@ def _hold_problems(o):
         bad.append("the copy is not made inside the click")
     if not o["press"]["coin"] or o["keyboard"]["coin"] or o["right"]["coin"]:
         bad.append("the coin does not drop on a press alone")
+    if not (0 < (o["twinPress"]["hold"] or 0) <= 360) or o["twinPress"]["openedInClick"] or not o["twinPress"]["coin"] or o["twinKey"]["coin"]:
+        bad.append("the twin in #start does not drop its coin on a press and wait for it, as the door does")
+    for k in ("twinKey", "twinReduced"):
+        if not o[k]["openedInClick"] or o[k]["waits"]:
+            bad.append(f"the twin's dialog does not open at once ({k})")
+    if any(o[k]["back"] != ("twin" if k.startswith("twin") else "probe-open") for k in o if o[k]["hold"] is not None):
+        bad.append("closing the dialog does not give focus back to the door that opened it")
     return bad
 
 
 if shutil.which("node"):
     _ho = _hold_run(_crs["overrides/landing.html"])
     _hp = _hold_problems(_ho)
-    check("FM-006 · the tape-off ceremony · the dialog's hold, run: after a press the dialog opens when the coin has landed, at most 0.36 s after the press and not inside the click; "
-          "a slow click, the keyboard (even just after a press that made no click) and reduced motion get it at once; the copy is made inside the click every time; the coin drops on a press alone "
+    check("FM-006 · the golden coin · the dialog's hold, run: after a press the dialog opens when the coin has landed, at most 0.36 s after the press and not inside the click; "
+          "a slow click, the keyboard (even just after a press that made no click) and reduced motion get it at once; the copy is made inside the click every time; the coin drops on a press alone; "
+          "the door's twin in #start does the same on a press, the keyboard and reduced motion; closing gives focus back to the door that opened the dialog "
           f"(problems found: {_hp}; saw {_ho})", _hp == [])
     _hctl_ = {"a hold of 0.6 s": _with(_crs, "overrides/landing.html", "Math.max(0, 360 - (performance.now() - downAt))", "Math.max(0, 600 - (performance.now() - downAt))"),
               "a hold for the keyboard": _with(_crs, "overrides/landing.html", " || !downAt || !e.detail ? 0 : ", " || !downAt ? 0 : "),
               "a hold under reduced motion": _with(_crs, "overrides/landing.html", 'matchMedia("(prefers-reduced-motion: reduce)").matches || !downAt', "!downAt"),
               "the copy after the hold": _with(_with(_crs, "overrides/landing.html", "    const p = write();\n    const wait", "    const wait"), "overrides/landing.html",
                                                 "const opening = () => { say", "const opening = () => { const p = write(); say"),
-              "the coin on every button": _with(_crs, "overrides/landing.html", "    if (e.button) return;\n", "")}
+              "the coin on every button": _with(_crs, "overrides/landing.html", "    if (e.button) return;\n", ""),
+              "the twin left unbound": _with(_crs, "overrides/landing.html", 'document.querySelectorAll(".btn.door").forEach(door => {', "[open].forEach(door => {"),
+              "focus back to the hero's door alone": _with(_crs, "overrides/landing.html", "clearTimeout(timer); from.focus();", "clearTimeout(timer); open.focus();")}
     _hctl_saw = {name: _hold_problems(_hold_run(src["overrides/landing.html"])) for name, src in _hctl_.items()}
-    check("FM-006 · the tape-off ceremony · the hold's run is not blind: each of a hold of 0.6 s, a hold for the keyboard, a hold under reduced motion, the copy after the hold and the coin "
-          f"on every button leaves a problem (saw {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 5)
+    check("FM-006 · the golden coin · the hold's run is not blind: each of a hold of 0.6 s, a hold for the keyboard, a hold under reduced motion, the copy after the hold, the coin "
+          f"on every button, the twin left unbound and focus back to the hero's door alone leaves a problem (saw {_hctl_saw})", all(_hctl_saw.values()) and len(_hctl_saw) == 7)
 else:
-    SKIPS.append(("FM-006 · the tape-off ceremony · the dialog's hold, run", 2, "no Node here"))
+    SKIPS.append(("FM-006 · the golden coin · the dialog's hold, run", 2, "no Node here"))
 
 
-_RULED_WORDS = {"en": {"cue_taped": "— after v0.20.1 —",
-                       "taped_why": "Not out of order, just not open yet: the prompt behind this button goes live after v0.20.1, once its last test runs are through. "
-                                    "Until then, hand your agents <a href=\"{adopt}\">the note</a>.",
-                       "board_t": "pull requests with a review on record when opened", "rk_3": "3rd", "pd_3_b": "reviewed by commit",
+_RULED_WORDS = {"en": {"board_t": "pull requests with a review on record when opened", "rk_3": "3rd", "pd_3_b": "reviewed by commit",
                        "pd_3": "pull requests {c3_first}–{c3_last}, from {cohort_end} to {read_date}", "pd_2_b": "before the rule"},
-                "de": {"cue_taped": "— nach v0.20.1 —",
-                       "taped_why": "Nicht defekt, nur noch nicht offen: Der Prompt hinter diesem Knopf geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind. "
-                                    "Bis dahin gibst du deinen Agenten <a href=\"{adopt}\">die Notiz</a>.",
-                       "board_t": "Pull Requests mit festgehaltenem Review beim Öffnen", "rk_3": "3.", "pd_3_b": "per Commit geprüft",
+                "de": {"board_t": "Pull Requests mit festgehaltenem Review beim Öffnen", "rk_3": "3.", "pd_3_b": "per Commit geprüft",
                        "pd_3": "Pull Requests {c3_first}–{c3_last}, vom {cohort_end} bis {read_date}", "pd_2_b": "vor der Regel"}}
 
 
@@ -7267,14 +7743,16 @@ def _ruled_problems(src):
 
 _rws = _sources(_CUE_FILES)
 _rwp = _ruled_problems(_rws)
-check("FM-006 · the ruled words · T1 and T3 are the ruled rows byte for byte in English and German, and the high scores' box title, third rank, review-commit row "
-      f"and the row before the rule are too; the template draws the third row with them (problems found: {_rwp})", _rwp == [])
-_rwctl = {"T1 as it was": _with(_rws, "overrides/partials/landing/en.html", '"cue_taped": "— after v0.20.1 —"', '"cue_taped": "— opens at v0.20.1 —"'),
-          "T3's German as it was": _with(_rws, "overrides/partials/landing/de.html", "geht nach v0.20.1 live, sobald seine letzten Testläufe durch sind", "wird noch fertiggestellt und geht mit v0.20.1 live"),
-          "a byte off in T3": _with(_rws, "overrides/partials/landing/en.html", "once its last test runs are through.", "once its last test runs are through"),
+check("FM-006 · the ruled words · the high scores' box title, third rank, review-commit row and the row before the rule are the ruled rows byte for byte in English and "
+      f"German; the template draws the third row with them (problems found: {_rwp})", _rwp == [])
+_rwctl = {"the German box title as it was": _with(_rws, "overrides/partials/landing/de.html", '"board_t": "Pull Requests mit festgehaltenem Review beim Öffnen"',
+                                                  '"board_t": "Pull Requests mit einer Reviewer-Datei, als sie geöffnet wurden"'),
+          "a byte off in the review-commit row": _with(_rws, "overrides/partials/landing/en.html", '"pd_3": "pull requests {c3_first}–{c3_last},', '"pd_3": "pull requests {c3_first}-{c3_last},'),
+          "the row before the rule reworded": _with(_rws, "overrides/partials/landing/en.html", '"pd_2_b": "before the rule"', '"pd_2_b": "before the review rule"'),
           "the third rank left out of the template": _with(_rws, "overrides/landing.html", "{%- set ranks = [w.rk_1, w.rk_2, w.rk_3] -%}", "{%- set ranks = [w.rk_1, w.rk_2] -%}")}
 _rwctl_saw = {name: len(_ruled_problems(src)) for name, src in _rwctl.items()}
-check("FM-006 · the ruled words · their check is not blind: each of T1 as it was, T3's German as it was, a byte off in T3 and the third rank left out of the template "
+check("FM-006 · the ruled words · their check is not blind: each of the German box title as it was, a byte off in the review-commit row, the row before the rule reworded "
+      "and the third rank left out of the template "
       f"leaves a problem (problems found: {_rwctl_saw})", all(_rwctl_saw.values()) and len(_rwctl_saw) == 4)
 
 
@@ -7366,7 +7844,7 @@ check("FM-006 · a private security report · the README's entries for a reposit
       and "shoalmark's own `--install-hook` is the safe default" in _readme_ and not (HERE / "lefthook.yml").exists())
 check("FM-006 · a private security report · both notes' way back removes what calls the copy, then the copy in the git directory (RV-2300), and the rest of it is as it was",
       "the shoalmark block in `AGENTS.md` and the copy in the git directory\n  (`shoalmark-trusted/`; `git rev-parse --git-common-dir` names the directory). The tracker folder can stay: its entries" in _rd("ADOPT.md")
-      and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Tracker-Ordner kann bleiben" in _rd("ADOPT.de.md")
+      and "den shoalmark-Block in `AGENTS.md` und die Kopie im Git-Verzeichnis löschen\n  (`shoalmark-trusted/`; das Verzeichnis nennt `git rev-parse --git-common-dir`). Der\n  Ordner mit den Arbeitspaketen kann bleiben" in _rd("ADOPT.de.md")
       and "everything that calls\n  the copy of the tool in the git directory: the hooks marked `# shoalmark`" in _rd("ADOPT.md") and "Delete the copy — on\n  Subversion, the tool — before that, and commits are refused." in _rd("ADOPT.md")
       and "alles entfernen, was\n  die Kopie des Werkzeugs im Git-Verzeichnis aufruft" in _rd("ADOPT.de.md") and "Löscht ihr die Kopie — unter Subversion das Werkzeug — vorher, werden Commits abgelehnt." in _rd("ADOPT.de.md"))
 
@@ -7437,6 +7915,350 @@ console.log(JSON.stringify(out));
         SKIPS.append(("FM-006 · the board reloads · its logic, run", 3, "no Node here"))
     rm_git(root)
 
+# --- a shut group of the work table is its heading alone (the guide, §8: a fold's `> ` is closed): the newest pass under *triaged* and a story's
+#     state fold with the group's rows, and stand under its heading, before its rows, where it is opened, by a click or by a search, which opens
+#     every group. The page's own script, run in Node from the board a copy of the tool builds; a mutant that keeps a paragraph under a shut
+#     group, or drops it from an open one, fails it ------------------------------------------------------------------------------------------
+_FOLD_HARNESS = r"""
+const vm=require("vm"),fs=require("fs"),code=fs.readFileSync(process.argv[2],"utf8");
+const any=new Proxy(function(){},{get:(t,k)=>k===Symbol.toPrimitive?()=>"":k==="then"?undefined:any,apply:()=>any,construct:()=>any});
+const els=new Map(),el=id=>{if(!els.has(id))els.set(id,new Proxy({id,value:"",hidden:false,innerHTML:"",textContent:"",dataset:{}},
+  {get:(t,k)=>k in t?t[k]:any,set:(t,k,v)=>(t[k]=v,true)}));return els.get(id)};
+const store={getItem:()=>null,setItem(){},removeItem(){}};
+const sandbox={document:{getElementById:el,querySelectorAll:()=>[],querySelector:()=>null,styleSheets:[],documentElement:{style:{}},addEventListener(){},
+  head:{append(){}},createElement:()=>any,createTextNode:()=>any,activeElement:null,visibilityState:"visible"},marked:{use(){},parse:()=>""},
+  matchMedia:()=>({matches:false,addEventListener(){}}),localStorage:store,sessionStorage:store,history:{replaceState(){}},location:{hash:"",reload(){}},
+  navigator:{},addEventListener(){},scrollTo(){},scrollY:0,TextDecoder,atob};
+sandbox.window=sandbox;vm.createContext(sandbox);
+const go=s=>vm.runInContext(s,sandbox),body=()=>go('$("b").innerHTML'),
+  click=k=>go(`$("b").onclick({target:{closest:s=>s=="tr.g"?{dataset:{k:${JSON.stringify(k)}}}:null}})`),out={};
+go(code);
+out.board=body();click("boardtriaged");out.boardOpened=body();click("boardtriaged");out.boardShut=body();
+go('$("q").value="msr";draw()');out.searched=body();
+go('$("q").value="";gi=GROUPS.findIndex(g=>g[0]=="epic");draw()');out.story=body();click("epicMSR-001");out.storyOpened=body();
+process.stdout.write(JSON.stringify(out));
+"""
+_FOLD_PASS, _FOLD_STATE = "the pass ranked the story first", "one chapter is left to write"
+_FOLD_SEEN = (("board", "boardtriaged", True, _FOLD_PASS), ("boardOpened", "boardtriaged", False, _FOLD_PASS), ("boardShut", "boardtriaged", True, _FOLD_PASS),
+              ("searched", "boardtriaged", False, _FOLD_PASS), ("story", "epicMSR-001", True, _FOLD_STATE), ("storyOpened", "epicMSR-001", False, _FOLD_STATE))
+
+
+def _fold_run(source):
+    """The work table's body as the board a copy of the tool whose source is `source` builds draws it, run in Node: the board at load, its *triaged*
+    group opened by a click and shut by another, a search typed, then the story view at load and its story opened by a click — {state: html};
+    {"error": …} where the page did not run."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+        tracker(root_, "MSR-001", extra="tier: P1\ntriaged: 2026-10-01\n", title="a story", body=f"## What is true now\n\n{_FOLD_STATE}.\n\n## Done when\n\nit is.\n")
+        tracker(root_, "MSR-002", status="Proposed", extra="tier: P2\nepic: MSR-001\ntriaged: 2026-10-01\n", title="its chapter")
+        home_ = root_ / "docs/work-tracker/TRIAGE.md"; said_ = home_.read_text(encoding="utf-8")
+        home_.write_text(said_.replace("*None yet.*", f"2026-10-01 — {_FOLD_PASS}: MSR-001, then MSR-002."), encoding="utf-8")
+        tr_("--html-only")
+        page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        rm_git(root_)
+        if said_.count("*None yet.*") != 1 or page_.count("<script>") != 2:
+            return {"error": "the fixture's triage home, or its page, is not the one this check reads"}
+        (base_ / "board.js").write_text(page_.split("<script>")[2].rsplit("</script>", 1)[0], encoding="utf-8")
+        (base_ / "harness.js").write_text(_FOLD_HARNESS, encoding="utf-8")
+        r_ = subprocess.run([shutil.which("node"), str(base_ / "harness.js"), str(base_ / "board.js")], capture_output=True, text=True, encoding="utf-8",
+                            errors="replace", timeout=60, env=_ENV)
+    try:
+        return json.loads(r_.stdout)
+    except ValueError:
+        return {"error": r_.stderr[-300:]}
+
+
+def _fold_problems(o):
+    """What is wrong with the work table's folds in `_fold_run`'s output, one line each, led by the state it was seen in: [] where nothing is."""
+    if set(o) != {s_ for s_, _k, _f, _t in _FOLD_SEEN}:
+        return [f"run: the page's script did not run: {o}"]
+    bad = []
+    for state_, key_, shut_, text_ in _FOLD_SEEN:
+        html_ = o[state_]
+        m_ = re.search(r'<tr class="g( f)?" data-k="' + re.escape(key_) + '">', html_)
+        if not m_:
+            bad.append(f"{state_}: no heading for {key_}")
+            continue
+        end_ = html_.find("</tr>", m_.end()) + len("</tr>")
+        next_ = html_.find('<tr class="g', end_)
+        under_ = html_[end_:next_ if next_ >= 0 else len(html_)]
+        if bool(m_.group(1)) != shut_:
+            bad.append(f"{state_}: {key_} is {'shut' if m_.group(1) else 'open'} where it should be {'shut' if shut_ else 'open'}")
+        elif shut_ and (under_ or text_ in html_):
+            bad.append(f"{state_}: the shut {key_} shows more than its heading: {under_[:160]!r}")
+        elif not shut_ and not (re.match(r'<tr class="s"><td colspan="\d+">', under_) and text_ in under_[:under_.find("</tr>")] and '<tr class="t' in under_):
+            bad.append(f"{state_}: the open {key_} does not show its paragraph under its heading, then its rows: {under_[:160]!r}")
+    return bad
+
+
+if shutil.which("node"):
+    _fold_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    _fold_bad = _fold_problems(_fold_run(_fold_src))
+    check("a shut group of the work table is its heading alone: the newest pass under *triaged* and a story's state fold with the group's rows, at load "
+          f"and when a click shuts it again, and stand under its heading, before its rows, where a click or a search opens it (problems: {_fold_bad})", _fold_bad == [])
+    _FOLD_KEEP = 'return head+(folded?"":state+g.map('
+    _FOLD_MUTANTS = {
+        "the paragraph in the group's heading again, under a shut group as under an open one":
+            ((("</tr>`;   // a header sums its rows up", "</tr>${state}`;   // a header sums its rows up"), (_FOLD_KEEP, 'return head+(folded?"":g.map(')),
+             {"board", "boardShut", "story"}),
+        "the newest pass kept under a shut *triaged* group": (((_FOLD_KEEP, 'return head+(folded?(k=="triaged"?state:""):state+g.map('),), {"board", "boardShut"}),
+        "a story's state kept under a shut story": (((_FOLD_KEEP, 'return head+(folded?(gname=="epic"?state:""):state+g.map('),), {"story"}),
+        "the paragraph dropped from an open group": (((_FOLD_KEEP, 'return head+(folded?"":g.map('),), {"boardOpened", "searched", "storyOpened"})}
+    for what_, (edits_, want_) in _FOLD_MUTANTS.items():
+        mutant_ = _fold_src
+        for a_, b_ in edits_:
+            mutant_ = mutant_.replace(a_, b_) if mutant_.count(a_) == 1 else ""
+        seen_ = {p_.split(":", 1)[0] for p_ in _fold_problems(_fold_run(mutant_))} if mutant_ else set()
+        check(f"the work table's folds · its mutant, {what_}: the check FAILS on it, in each of {sorted(want_)} (failed in {sorted(seen_)})",
+              bool(mutant_) and want_ <= seen_)
+    fm.configure(HERE)
+else:
+    _skipped("the work table's folds, run in Node", 5, "Node is not installed here")
+
+# --- a seat's icon in today's session row, before the seat's word (the guide, §4): the tool's own copy of `brand/seats/<seat>.svg` without its
+#     ground, found by the seat's exact word, aria-hidden beside it; any other word keeps an empty 20 px slot. Grey, and inverted on the light board;
+#     paper draws none and keeps its slot; the dark rule is the page's own, so the switch reaches it. The seven sources stay byte for byte. The page's own script runs in
+#     Node from a board a copy of the tool builds, on a stylesheet read from the page; each mutant fails it where it should ---------------------
+import base64
+_SEAT_GROUND = '<rect width="20" height="20" fill="#15293d"/>\n'
+_SEAT_PINS = {   # each source's sha256, its line ends as committed: an edit to one turns the check red
+              "auditor": "e301a564aba8bae81330baea593c9bc042aed340f7c17ac4a6cfe672dc84d100",
+              "builder": "d855ae89bcab29f96e34a76b104e7970ee3099c0f76b6a20d99e0c468857050d",
+              "designer": "9cf45f2d5c376e9d54ff90c22ea2b1f505f2eba048c65f21a54f5c31a85e36aa",
+              "go-to-market": "d09eaf7a0597b6d3c9dd1e4d87c37be384ad29175c4f6e8451c645da25598772",
+              "planner": "d8a61f1d85d4a82aeea6eca35b15079aea9c2aa69d575dd86d10bd4a48d3515e",
+              "research": "132b61f879d8b1fdfed0f6a3be7e7508daa51fe17822c67ab6559b7b52b0a978",
+              "reviewer": "fc86797e1e9bdd5b0d93f48af100a38c1a9727bfd90a5ab3c3352ae52b7ad2b2",
+}
+_SEAT_HARNESS = r"""
+const vm=require("vm"),fs=require("fs"),code=fs.readFileSync(process.argv[2],"utf8"),css=JSON.parse(fs.readFileSync(process.argv[3],"utf8"));
+const any=new Proxy(function(){},{get:(t,k)=>k===Symbol.toPrimitive?()=>"":k==="then"?undefined:any,apply:()=>any,construct:()=>any});
+const els=new Map(),el=id=>{if(!els.has(id))els.set(id,new Proxy({id,value:"",hidden:false,innerHTML:"",textContent:"",dataset:{}},
+  {get:(t,k)=>k in t?t[k]:any,set:(t,k,v)=>(t[k]=v,true)}));return els.get(id)};
+const store={getItem:()=>null,setItem(){},removeItem(){}},
+  rules=css.map(r=>"media" in r?{media:{mediaText:r.media},cssRules:[]}:{selectorText:r.sel||r.at||""}),sheets=[{cssRules:rules}];
+const sandbox={document:{getElementById:el,querySelectorAll:()=>[],querySelector:()=>null,styleSheets:sheets,documentElement:{style:{}},addEventListener(){},
+  head:{append(){}},createElement:()=>any,createTextNode:()=>any,activeElement:null,visibilityState:"visible"},marked:{use(){},parse:()=>""},
+  matchMedia:()=>({matches:false,addEventListener(){}}),localStorage:store,sessionStorage:store,history:{replaceState(){}},location:{hash:"",reload(){}},
+  navigator:{},addEventListener(){},scrollTo(){},scrollY:0,TextDecoder,atob};
+sandbox.window=sandbox;vm.createContext(sandbox);
+const go=s=>vm.runInContext(s,sandbox),medias=()=>rules.filter(r=>r.media).map(r=>r.media.mediaText),out={medias:{}};
+go(code);
+out.box=go('$("p").innerHTML');
+for(const m of ["light","dark","auto"]){go(`setScheme(${JSON.stringify(m)})`);out.medias[m]=medias()}
+go('setScheme("dark");onbeforeprint()');out.medias.print=medias();go("onafterprint()");
+process.stdout.write(JSON.stringify(out));
+"""
+_SEAT_WORDS = {"a0000001": "auditor", "a0000002": "builder", "a0000003": "designer", "a0000004": "go-to-market", "a0000005": "planner",
+               "a0000006": "research", "a0000007": "reviewer"}
+_SEAT_OTHER = {"b0000001": "qa", "b0000002": "constructor", "b0000003": 'o"&x@odd'}      # a seat outside the seven, a key on every object, a word to escape
+
+
+def _seat_css(page):
+    """The page's stylesheet as a list of its top-level rules, in order: {"media": text, "rules": [[selector, {property: value}]]}, {"sel", "decls"}
+    or {"at"} — read by brace depth, its comments taken out."""
+    css = re.sub(r"/\*.*?\*/", "", page.split("<style>", 1)[1].split("</style>", 1)[0], flags=re.S)
+
+    def close(i):
+        depth = 0
+        for j in range(i, len(css)):
+            depth += {"{": 1, "}": -1}.get(css[j], 0)
+            if depth == 0:
+                return j
+        raise ValueError("an unclosed rule")
+
+    def rules(a, b):
+        out = []
+        while True:
+            k = css.find("{", a, b)
+            if k < 0:
+                return out
+            head, end = css[a:k].strip(), close(k)
+            if head.startswith("@media"):
+                out.append({"media": head[len("@media"):].strip(), "rules": [[r["sel"], r["decls"]] for r in rules(k + 1, end) if "sel" in r]})
+            elif head.startswith("@"):
+                out.append({"at": head})
+            else:
+                out.append({"sel": head, "decls": dict((p.split(":", 1)[0].strip(), p.split(":", 1)[1].strip()) for p in css[k + 1:end].split(";") if ":" in p)})
+            a = end + 1
+    return rules(0, len(css))
+
+
+def _seat_holds(media, system, printing):
+    """Whether a media rule's text holds on a 1024 px screen or on paper, the system's scheme `system`: None where a part is not one this reads."""
+    said = []
+    for one in media.split(","):
+        parts = []
+        for part in re.split(r"\s+and\s+", one.strip()):
+            p = re.sub(r"\s+", "", part)
+            m = re.fullmatch(r"\((min|max)-width:(\d+)px\)", p)
+            c = re.fullmatch(r"\(prefers-color-scheme:(dark|light)\)", p)
+            parts.append(printing if p == "print" else not printing if p == "screen" else True if p == "all" else
+                         (1024 >= int(m[2]) if m[1] == "min" else 1024 <= int(m[2])) if m else c[1] == system if c else None)
+        if None in parts:
+            return None
+        said.append(all(parts))
+    return any(said)
+
+
+def _seat_value(css, medias, system, printing, target=".seat img", prop="filter"):
+    """`target`'s `prop` as the cascade gives it: the last rule that holds, in order — None where none does, "?" where a media text is unread."""
+    got, at = None, 0
+    for r in css:
+        pairs = [(r["sel"], r["decls"])] if "sel" in r else r.get("rules", [])
+        if "media" in r:
+            holds = _seat_holds(medias[at], system, printing)
+            at += 1
+            if holds is None:
+                return "?"
+            if not holds:
+                continue
+        for sel, decls in pairs:
+            if target in [s.strip() for s in sel.split(",")] and prop in decls:
+                got = decls[prop]
+    return got
+
+
+def _seat_run(source):
+    """A copy of the tool whose source is `source`, its board built in a repository where the seven seats, three words outside them and a parent
+    with no commit of its own each committed in the last day; the page's script run in Node: {"page", "box", "medias", "css"} — {"error"} where it
+    did not run."""
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_, root_ = base_ / "tool", base_ / "repo"
+        (tool_ / "vendor").mkdir(parents=True); root_.mkdir()
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+        git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+        cfg_ = root_ / "shoalmark.toml"
+        cfg_.write_text(cfg_.read_text(encoding="utf-8") + '\n[seats]\nowner = "owner@example.org"\n' + "".join(
+            f'{w_} = "{"gtm" if w_ == "go-to-market" else w_}@seat"\n' for w_ in _SEAT_WORDS.values()) + 'qa = "qa@seat"\nconstructor = "ctor@seat"\n', encoding="utf-8")
+        tracker(root_, "MSR-001"); git(root_, "add", "-A"); commit_as(root_, "owner@example.org", "the tree")
+        for sid_, w_ in _SEAT_WORDS.items():
+            commit_as(root_, f'{"gtm" if w_ == "go-to-market" else w_}@seat', f"{w_}\n\nSession: {sid_}\nWorktree: wt-{w_}")
+        for sid_, who_ in (("b0000001", "qa@seat"), ("b0000002", "ctor@seat"), ("b0000003", 'o"&x@odd')):
+            commit_as(root_, who_, f"another\n\nSession: {sid_}\nWorktree: wt-{sid_}")
+        commit_as(root_, "builder@seat", "a sub-session alone\n\nSession: c0000001/builder-1\nWorktree: wt-sub")
+        tr_("--html-only")
+        page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+        rm_git(root_)
+        if page_.count("<script>") != 2 or page_.count("<style>") != 1:
+            return {"error": "the page is not the one this check reads"}
+        css_ = _seat_css(page_)
+        (base_ / "board.js").write_text(page_.split("<script>")[2].rsplit("</script>", 1)[0], encoding="utf-8")
+        (base_ / "css.json").write_text(json.dumps([{"media": r["media"]} if "media" in r else r for r in css_]), encoding="utf-8")
+        (base_ / "harness.js").write_text(_SEAT_HARNESS, encoding="utf-8")
+        r_ = subprocess.run([shutil.which("node"), str(base_ / "harness.js"), str(base_ / "board.js"), str(base_ / "css.json")], capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", timeout=60, env=_ENV)
+    try:
+        return dict(json.loads(r_.stdout), page=page_, css=css_)
+    except ValueError:
+        return {"error": r_.stderr[-300:]}
+
+
+def _seat_problems(o, seats=HERE / "brand/seats"):
+    """What is wrong with the seat icons in `_seat_run`'s output and the sources in `seats`, one line each, led by what it breaks: [] where nothing is."""
+    if "error" in o or not {"page", "box", "medias", "css"} <= set(o):
+        return [f"run: the page did not run: {o.get('error', o)}"]
+    bad, sources = [], {p_.stem: p_.read_bytes().replace(b"\r\n", b"\n") for p_ in sorted(Path(seats).glob("*.svg"))}
+    moved = sorted(k_ for k_ in set(sources) | set(_SEAT_PINS) if hashlib.sha256(sources.get(k_, b"")).hexdigest() != _SEAT_PINS.get(k_))
+    if moved:
+        bad.append(f"pin: brand/seats is not the seven sources as committed: {moved}")
+    rows = dict(re.findall(r'<details class="grp"><summary>([0-9a-f]{8}) (.*?)(?:<span class="subs">|</summary>)', o["box"]))
+    for sid_, w_ in _SEAT_WORDS.items():
+        m_ = re.fullmatch(r'<span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)"></span> '
+                          + re.escape(w_) + r" \(wt-" + re.escape(w_) + r"\)", rows.get(sid_, ""))
+        if not m_:
+            bad.append(f"aria: {w_}'s row is not its icon, aria-hidden, then its word: {rows.get(sid_, '')[:160]!r}")
+            continue
+        drawn_ = base64.b64decode(m_[1]).decode("utf-8")
+        if "<rect" in drawn_ or _SEAT_GROUND.strip() in drawn_:
+            bad.append(f"ground: {w_}'s icon keeps a ground")
+        if drawn_ != sources.get(w_, b"").decode("utf-8").replace(_SEAT_GROUND, "", 1) or sources.get(w_, b"").decode("utf-8").count(_SEAT_GROUND) != 1:
+            bad.append(f"equal: {w_}'s icon is not its source without the ground line alone")
+    for sid_, w_ in {**_SEAT_OTHER, "c0000001": "—"}.items():
+        said_ = html.escape(w_, quote=True).replace("&#x27;", "'")
+        if rows.get(sid_) != f'<span class="seat"></span> {said_} (' + ("—" if sid_ == "c0000001" else f"wt-{sid_}") + ")":
+            kind_ = "esc" if "&" in w_ and rows.get(sid_, "").startswith('<span class="seat"></span>') else "borrowed"
+            bad.append(f"{kind_}: {w_!r}'s row is not an empty slot, then its word: {rows.get(sid_, '')[:160]!r}")
+    if '"&x@odd' in o["box"]:
+        bad.append("esc: a seat's word stands unescaped in the box")
+    slot = [r_["decls"] for r_ in o["css"] if r_.get("sel") == ".seat"]
+    if not slot or not all(slot[-1].get(k_) == v_ for k_, v_ in (("display", "inline-block"), ("width", "20px"), ("height", "20px"))):
+        bad.append(f"slot: `.seat` is not an inline 20 px slot: {slot}")
+    want = {"light": "grayscale(1) invert(1)", "dark": "grayscale(1)"}
+    for state_, systems_ in (("light", {"light": "light", "dark": "light"}), ("dark", {"light": "dark", "dark": "dark"}),
+                             ("auto", {"light": "light", "dark": "dark"}), ("print", {"light": "light", "dark": "light"})):
+        for system_, looks_ in systems_.items():
+            got_ = _seat_value(o["css"], o["medias"].get(state_, []), system_, state_ == "print")
+            if got_ != want[looks_]:
+                bad.append(f"{state_}: the switch at {state_}, the system {system_}: `.seat img` is {got_!r}, not {want[looks_]!r}")
+    for state_ in ("light", "dark", "auto"):
+        for system_ in ("light", "dark"):
+            shown_ = [_seat_value(o["css"], o["medias"].get(state_, []), system_, False, ".seat img", p_) for p_ in ("visibility", "display")]
+            if shown_[0] == "hidden" or shown_[1] == "none":
+                bad.append(f"screen: the switch at {state_}, the system {system_}: `.seat img` is not shown ({shown_})")
+    for system_ in ("light", "dark"):
+        medias_ = o["medias"].get("print", [])
+        if _seat_value(o["css"], medias_, system_, True, ".seat img", "visibility") != "hidden":
+            bad.append(f"printed: on paper, the system {system_}: `.seat img` is not hidden, so its colours print where a filter is dropped")
+        if _seat_value(o["css"], medias_, system_, True, ".seat img", "display") == "none" or not all(
+                _seat_value(o["css"], medias_, system_, True, ".seat", k_) == v_ for k_, v_ in (("display", "inline-block"), ("width", "20px"), ("height", "20px"))):
+            bad.append(f"box: on paper, the system {system_}: the icon's box, or its 20 px slot, is not kept")
+    return bad
+
+
+if shutil.which("node"):
+    _seat_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+    _seat_got = _seat_run(_seat_src)
+    _seat_bad = _seat_problems(_seat_got)
+    check("a seat's icon stands before its word in today's session row: the seven, each its source without the ground line alone and aria-hidden; any "
+          "other word an empty 20 px slot, escaped; grey on the dark board, inverted on the light one, the switch reaching both; on paper no icon, its "
+          f"slot kept; the seven sources as committed (problems: {_seat_bad})", _seat_bad == [])
+    _SEAT_ROW = '<span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} ('
+    _SEAT_MUTANTS = {
+        "the ground kept in the builder's embedded copy": ((("'<title>builder — the shipwright</title>\\n'",
+                                                            "'<title>builder — the shipwright</title>\\n' '<rect width=\"20\" height=\"20\" fill=\"#15293d\"/>\\n'"),), None, {"ground", "equal"}),
+        "a source edited, the builder's hard hat recoloured, and the tool not rebuilt": ((), ("builder.svg", 'fill="#f1d47a" d="M8 4h4v1h-4Z', 'fill="#f1d47b" d="M8 4h4v1h-4Z'), {"pin", "equal"}),
+        "no invert on the light board": (((".seat img{filter:grayscale(1) invert(1)}", ".seat img{filter:grayscale(1)}"),), None, {"light", "auto", "print"}),
+        "the dark rule out of its media rule, out of the switch's reach": ((("@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}", ".seat img{filter:grayscale(1)}"),),
+                                                                           None, {"light", "auto", "print"}),
+        "paper given the dark board's grey": ((("@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}",
+                                                "@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}@media print{.seat img{filter:grayscale(1)}}"),), None, {"print"}),
+        "a word outside the seven given the builder's icon": (((_SEAT_ROW, _SEAT_ROW.replace('SEAT[g[1]]:""', "SEAT[g[1]]:SEAT.builder")),), None, {"borrowed"}),
+        "the table read with its prototype": (((_SEAT_ROW, _SEAT_ROW.replace('Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""', 'SEAT[g[1]]||""')),), None, {"borrowed"}),
+        "the icon not aria-hidden": ((("""return f'<img alt="" aria-hidden="true" width="20" """, """return f'<img alt="" width="20" """),), None, {"aria"}),
+        "the seat's word unescaped": (((_SEAT_ROW, _SEAT_ROW.replace("${esc(g[1])} (", "${g[1]} (")),), None, {"esc"}),
+        "no 20 px slot": (((".seat{display:inline-block;width:20px;height:20px;vertical-align:top}", ".seat{vertical-align:top}"),), None, {"slot"}),
+        "the print rule dropped": ((("@media print{.seat img{visibility:hidden}}", ""),), None, {"printed"}),
+        "the print rule as display:none": ((("@media print{.seat img{visibility:hidden}}", "@media print{.seat img{display:none}}"),), None, {"box"}),
+        "the rule out of its print media, the icon hidden on screen too": ((("@media print{.seat img{visibility:hidden}}", ".seat img{visibility:hidden}"),),
+                                                                          None, {"screen"})}
+    for what_, (edits_, source_edit_, want_) in _SEAT_MUTANTS.items():
+        mutant_ = _seat_src
+        for a_, b_ in edits_:
+            mutant_ = mutant_.replace(a_, b_) if mutant_.count(a_) == 1 else ""
+        with tempfile.TemporaryDirectory() as sd_:
+            seats_ = Path(sd_) / "seats"
+            shutil.copytree(HERE / "brand/seats", seats_)
+            if source_edit_:
+                f_ = seats_ / source_edit_[0]; t_ = f_.read_bytes().decode("utf-8")
+                f_.write_bytes(t_.replace(source_edit_[1], source_edit_[2]).encode("utf-8") if t_.count(source_edit_[1]) == 1 else b"")
+            got_ = _seat_got if mutant_ == _seat_src else _seat_run(mutant_) if mutant_ else {"error": "the mutant's text is not in the tool"}
+            seen_ = {p_.split(":", 1)[0] for p_ in _seat_problems(got_, seats_)}
+        check(f"the seat icons · its mutant, {what_}: the check FAILS on it, in each of {sorted(want_)} (failed in {sorted(seen_)})",
+              bool(mutant_) and want_ <= seen_ and "run" not in seen_)
+    fm.configure(HERE)
+else:
+    _skipped("the seat icons, run in Node", 14, "Node is not installed here")
+
 # --- FM-005: the board stops counting `Closed` as done — a story's header counts its chapters shipped, closed and open apart ------------
 if _browser("story"):
     try:
@@ -7463,7 +8285,7 @@ if _browser("story"):
             check(f"FM-005 · …and in the German table the tool ships: *3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen* (saw {heads_['de']})",
                   any(h_.endswith("3 Kapitel: 1 ausgeliefert · 1 geschlossen · 1 offen") for h_ in heads_["de"]) and not any("erledigt" in h_ for h_ in heads_["de"]))
             (wt_ / "brand/labels.yaml").unlink(); run(root)
-            story_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "index.html").as_uri() + "#=MSR-001"]).stdout))
+            story_ = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "index.html").as_uri() + "#=MSR-001"]).stdout.replace("&nbsp;", " ").replace("\u00a0", " ")))
             check("FM-005 · the story's own page counts its chapters the same way: *1 shipped · 1 closed* — never *2 done*",
                   re.search(r"chapters — 3: .*? · 0 parked · 1 shipped · 1 closed", story_) is not None and " done" not in story_[story_.find("chapters —"):story_.find("chapters —") + 200])
     except _ChromeFailed as e_:
@@ -7488,7 +8310,7 @@ if _browser("search"):
                 return rows, (re.search(r'id="n"[^>]*>([^<]*)<', d_) or [None, ""])[1]
             whole, low, hood, part, word = (found(f) for f in ("#MSR-001", "#msr-001%20", "#~MSR-001", "#MSR-00", "#stock"))
             check(f"FM-020 · a whole id searched shows that tracker alone — not the tracker whose body links to it (saw {whole}, {low[0]})",
-                  whole[0] == ["MSR-001"] and whole[1].startswith("1 tracker · MSR-001 ·") and low[0] == ["MSR-001"])
+                  whole[0] == ["MSR-001"] and html.unescape(whole[1]).startswith("1\u00a0tracker\u00a0· MSR-001\u00a0·") and low[0] == ["MSR-001"])
             check(f"FM-020 · ~ID still shows the neighbourhood, a partial id and a word still match by substring (saw {hood[0]}, {part[0]}, {word[0]})",
                   sorted(hood[0]) == ["MSR-001", "MSR-002"] and sorted(part[0]) == ["MSR-001", "MSR-002", "MSR-003"] and sorted(word[0]) == ["MSR-001", "MSR-002"])
             # a view with open/all (every view but the board), *open* pressed, a closed tracker searched by its id: it is shown,
@@ -7499,7 +8321,8 @@ if _browser("search"):
             pdom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (wt_ / "probe.html").as_uri()]).stdout
             seen = (re.search(r'data-probe="([^"]*)"', pdom) or [None, ""])[1]
             check(f"FM-020 · a shipped tracker searched by its id in the story view with *open* pressed is shown and counted as itself, never as open (saw: {seen!r})",
-                  seen.startswith("1 tracker · MSR-003 ·") and seen.endswith("|MSR-003") and " open" not in seen)
+                  html.unescape(seen).startswith("1\u00a0tracker\u00a0· MSR-003\u00a0·") and seen.endswith("|MSR-003")
+                  and " open" not in html.unescape(seen).replace("\u00a0", " "))
             # the placeholder fits the box at its CSS minimum (200 px) — measured with the box's own font, not by a window —
             # in both shipped languages, and the whole help is the box's title (R6, R12)
             import html as _html, json as _json
@@ -7753,7 +8576,6 @@ def _m_repo(root, forge=False):
     merges_ = {v_: out_("rev-parse", "HEAD") for v_ in list(cases_)[-2:]}
     git(root, "checkout", "-q", "-b", "fm/f", "main"); b_ = commit_("f, built\n\nSession: b9"); v_ = verdict_("NOT READY", b_, "r9"); cases_[v_] = "shows"
     git(root, "checkout", "-q", "main"); git(root, "merge", "-q", "--no-ff", "-m", "Merge branch 'fm/f'", "fm/f"); git(root, "branch", "-q", "-D", "fm/f")
-    merges_[v_] = out_("rev-parse", "HEAD")
     git(root, "checkout", "-q", "-b", "together", "main")
     for name_ in ("fm/a", "fm/b-a-branch-with-a-long-name", "fm/c", "fm/d"):
         git(root, "merge", "-q", "--no-ff", "-m", f"together with {name_}", name_)
@@ -7799,8 +8621,9 @@ check("FM-053, BF-61, BF-62, BF-64 · the reviews section folds exactly the verd
       "verdict's row is `rv`, its second line a block of text; an id is seven characters, and links where the generator gives its commit's page",
       _m_src.count(_M_FOLDS) == 1 and _m_src.count(_M_FLOW) == 1 and fm.LABELS.get("reviews.more") == "and {0} more verdicts by another session this week"
       and 'slice(0,10)' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")]
-      and _m_src.count('[page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]') == 1
-      and _m_src.count('lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))') == 1 and _m_src.count('lh("reviews.branch.unnamed",cid(b[1],u))') == 1)
+      and _m_src.count('[page(v), page(r), page(branch[1] if branch[0] == "unnamed" else "")], read]') == 1
+      and 'reviews.branch.merged",' not in _m_src[_m_src.index("const cid="):_m_src.index("// your current path")]
+      and _m_src.count('lh("reviews.branch.unnamed",cid(b[1],u))') == 1)
 _ONE = 'more.length==1?l("reviews.more.one"):l("reviews.more",more.length)'
 _one_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
 check("FM-053 · the reviews' fold counts one verdict in the singular — `reviews.more.one`, picked where the count is 1 — and more in the plural, in "
@@ -7822,7 +8645,7 @@ if _browser("reviews"):
                   f"and folds the READY and READY TO TAG by another session into *and 3 more verdicts by another session this week*; each id is seven "
                   f"characters, and each row's state starts on its word's line (saw {seen_})", not any(seen_.values()))
             check(f"FM-053, BF-64, RV-3664 · with a forge named, each id on a verdict's row links to its commit's page where origin holds the commit — the "
-                  f"verdict's, the reviewed commit's, and the merge's that names its branch or names none — and none links where origin does not; with no "
+                  f"verdict's, the reviewed commit's, and the merge's that names no branch — and none links where origin does not; with no "
                   f"forge none links (saw {linked_})", not linked_ and any(len(l_[1]) == 2 and l_[1][1] for l_ in flinks_.values())
                   and any(l_ == ("", []) for l_ in flinks_.values()))
             flat_ = _m_faults(_header_at(wt_, page_.replace(_M_FOLDS, "folds=v=>false"), 1024, _M_PROBE), 1024, cases_, links_)
@@ -8296,7 +9119,7 @@ GERMAN = """# ein deutsches Board
 tagline: Lagerverwaltung
 lang: de
 search: Suche — Id, Stufe, Status, Wörter
-search.help: Eine ganze Id zeigt diesen Eintrag.
+search.help: Eine ganze Id zeigt dieses Arbeitspaket.
 view.by: nach {0}
 view.board: Board
 view.epic: Vorhaben
@@ -8345,19 +9168,19 @@ read.copy.spoken: den Neubau-Befehl kopieren
 read.about: "was diese Seite liest, und was sie nicht sehen kann"
 read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
 read.about.svn: "gelesen von der Arbeitskopie um {0}"
-read.about.none: "gelesen aus dem Ordner um {0}"
+read.about.none: "gelesen aus dem Ordner {1} um {0}"
 read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
 day.copied: der Prompt ist in deiner Zwischenablage
 day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."
 link.unpushed: noch nicht auf origin, darum nicht verlinkt
-link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt
-link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
+link.noforge: keine Git-Plattform in der Konfiguration, darum nicht verlinkt
+link.unknown: "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"
 link.noviewer: "kein Subversion-Betrachter konfiguriert (`commit_url`), darum nicht verlinkt"
 link.nocommit: kein Commit zu verlinken
 reviews.title: reviews · this week
 reviews.counts: {0} by another session · {1} by the same session
 reviews.untraced: {0} ohne Spur
-reviews.trunk: {0} auf dem Stamm
+reviews.trunk: {0} auf dem Trunk
 ask.ruling: eine Entscheidung
 ask.action: nur deine Hände
 ask.determination: ließe sich durch einen Versuch klären
@@ -8398,7 +9221,7 @@ act.give.title: deine Handlung festhalten
 answer.give.intro: "Deine Entscheidung steht. Ein Browser kann sie nicht ins Repository schreiben — dein Terminal tut es, unter deinem Namen. Diesen Befehl ausführen:"
 answer.give.step.commit: "committet sie unter deinem Namen: dieses Repository verlangt keine Signatur, also belegt der Commit nur den Autor"
 answer.give.step.commit.login: "Autor des Commits ist deine Server-Anmeldung, wie Subversion sie festhält — ohne Signatur"
-answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"
+answer.give.step.commit.none: "ohne Versionsverwaltung hält nichts fest, wer sie geschrieben hat"
 answer.give.check.text: "{0} gibt deinen Namen aus — den Autor, den git meldet, eine Zeichenkette, die jeder eintippen kann."
 answer.give.fail.text: "Er meldet, was ihn abgewiesen hat, und nimmt zurück, was er geschrieben hat; deine Worte werden erneut ausgegeben, mit dem Befehl, der sie wieder gibt."
 proof.here: "deine Antworten hier: {0}"
@@ -8424,20 +9247,20 @@ status.Blocked: Blockiert
 section.progress: in Arbeit
 section.triage: zu sichten
 section.triaged: gesichtet
-section.backlog: Vorrat
+section.backlog: Backlog
 section.ended: beendet
 desc.progress: von der Sichtung behalten — nach Rang, dann Stufe
 desc.progress.none: leer, bis eine erste Sichtung gelaufen ist — --triage
-desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge
+desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Arbeitspakete
 desc.triaged: bewertet am {0} — jeder steht auch in seinem eigenen Abschnitt
 desc.triaged.none: noch keine Sichtung gelaufen
 desc.backlog: wartet — P0 bis P3, dann ohne Stufe, dann geparkt
 desc.ended: ausgeliefert oder ohne Auslieferung geschlossen
 group.none: ohne {0}
-count.trackers: Einträge
+count.trackers: Arbeitspakete
 count.open: offen
 count.around: rund um {0}
-count.id: Eintrag · {0}
+count.id: Arbeitspaket · {0}
 count.in_progress: in Arbeit
 count.blocked: blockiert
 count.untriaged: ungesichtet
@@ -8461,11 +9284,11 @@ word.stated: benannt
 viewer.board: ← Board
 viewer.neighbours: Nachbarn
 viewer.file: Datei
-viewer.forge: Ablage
+viewer.forge: Plattform
 viewer.no_copy: keine gerenderte Fassung von {0} — bitte {1} ausführen
 viewer.intent: Absicht
 viewer.from: aus {0}
-viewer.intent.missing: fehlt — der Eigner nennt sie am Eintrag oder am Vorhaben
+viewer.intent.missing: fehlt — der Eigner nennt sie am Arbeitspaket oder am Vorhaben
 viewer.verdict: Urteil
 viewer.verdict.none: noch keines — keine Sichtung hat ihn bewertet
 viewer.answer: die Antwort des Eigners
@@ -8499,10 +9322,10 @@ day.copy: Prompt
 day.asks: Worum er bittet
 day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält der Befehl fest, den du in deinem eigenen Terminal ausführst."
 day.standup.asks.svn: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst und committest."
-day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionskontrolle treibt er nichts voran. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."
+day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionsverwaltung treibt er nichts voran. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."
 day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."
 day.runs: Was die Session ausführen soll
-day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."
+day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh GitHub lesen kann, holt er origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."
 day.standup.runs.git: "In deinem Ordner, nur lesend: {0} und git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Was deine Antworten festhält, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."
 day.standup.runs.local: "In deinem Ordner, nur lesend: {0} und nur lesendes git. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Befehle, die den Branch deiner Runde beginnen und deine Antworten festhalten, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."
 day.standup.runs.svn: "In deiner Arbeitskopie, nur lesend: {0} und svn status -u. In ihrer eigenen Arbeitskopie: svn update, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Session hält keine deiner Antworten fest: sie nennt dir die Zeilen, die du schreibst und committest."
@@ -8529,23 +9352,27 @@ path.line: 1 line
 day.title: the day
 day.span: the last 24 hours
 reviews.reports: reports, not proofs
-reviews.on: on {0}
+reviews.on: on {1} @ {0}
 reviews.notready: {0} not ready
 reviews.findings: {0} with findings
 reviews.branch: branch {0}
-reviews.branch.merged: branch {0}, as its merge {1} names it
 reviews.branch.ambiguous: branch {0}: {1} each hold the verdict on their own line
 reviews.ambiguous: ambiguous
-reviews.branch.unknown: branch not known — {0}
+reviews.branch.notknown: branch not known
 reviews.branch.none: no branch here holds the verdict on its own line
 reviews.branch.unnamed: its merge {0} names no branch
+reviews.help: a verdict's branch is the one it was committed on; once merged, the one its merge names
+reviews.notknown: not known
+reviews.notknown.own: the verdict names no session
+reviews.notknown.range: no commit on it names a session, merges and verdicts aside
+reviews.notknown.unread: the reviewed commit is not here
 verdict.READY: ready
 verdict.READY WITH FINDINGS: ready with findings
 verdict.READY TO TAG: ready to tag
 verdict.NOT READY: not ready
 next.owner: you
 waiting.more: and {0} more: the oldest are above
-reviews.sessions: its session {0}, the branch's {1}
+reviews.sessions: {0}, the branch's {1}
 reviews.sessions.more: {0} and {1} more
 reviews.more: and {0} more verdicts by another session this week
 reviews.more.one: und 1 weiteres Urteil von einer anderen Session in dieser Woche
@@ -8559,7 +9386,7 @@ type.verdict: verdict
 answer.sign.copy.name: copy the command
 """
 def _c4_english(shown):
-    return sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "backlog", "done", "ended", "trackers", "proposed", "shipped",
+    return sorted({w for w in ("open", "all", "title", "tier", "progress", "triage", "triaged", "done", "ended", "trackers", "proposed", "shipped",
                               "closed", "parked", "blocked", "neighbours", "file", "intent", "verdict", "missing", "stated", "handover", "untriaged", "waiting", "kept")
                    if re.search(rf"(?<![\w-]){w}(?![\w-])", shown.replace("docs/work-tracker", ""), re.I)})
 
@@ -8610,6 +9437,13 @@ _c4_prompt_controls(check)
 _c4_board = " ".join(fm.read_flat(GERMAN)[k] for k in ("view.board", "viewer.board"))
 check(f"C4 · without a browser, the German board's name and its back link ({_c4_board!r}) hold no English word, and with open beside them only open is "
       f"found (saw {_c4_english(_c4_board)}, {_c4_english(_c4_board + ' open')})", _c4_english(_c4_board) == [] and _c4_english(_c4_board + " open") == ["open"])
+# German names the backlog with the English word itself: the board's heading reads "Backlog", and the English-word list does not count it.
+_c4_backlog = lambda table: fm.read_flat(table).get("section.backlog") == "Backlog" and not _c4_english(fm.read_flat(table)["section.backlog"])
+_c4_vorrat = GERMAN.replace("section.backlog: Backlog\n", "section.backlog: Vorrat\n", 1)
+check(f"C4 · without a browser, the German board's backlog heading reads „Backlog“, in the suite's German table and in the one the tool ships, and the "
+      f"English-word list does not count it; with „Vorrat“ in its place the check is red (saw {fm.read_flat(GERMAN).get('section.backlog')!r})",
+      _c4_backlog(GERMAN) and _c4_backlog((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
+      and _c4_vorrat != GERMAN and not _c4_backlog(_c4_vorrat))
 
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><script>document.title="PWNED"</script><rect width="16" height="16" fill="#0a7"/></svg>'
 _GONE_NAMES = ("theme.css", "wordmark.svg")       # the two files R10's look half stopped reading, which a check below writes and removes again
@@ -8670,9 +9504,9 @@ with tempfile.TemporaryDirectory() as d:
         _shipped_de = fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))
         check("C4 · the German table the tool SHIPS (examples/de/labels.yaml) carries every label and none that is not one — a new word of the chrome lands in every language at once",
               set(fm.LABELS) - set(_shipped_de) <= {"tagline"} and not set(_shipped_de) - set(fm.LABELS))
-        _en_de = sorted(k_ for k_, v_ in fm.LABELS.items() if v_ and _shipped_de.get(k_) == v_)
+        _en_de = sorted(k_ for k_, v_ in fm.LABELS.items() if re.sub(r"\{\d\}", "", v_).strip() and _shipped_de.get(k_) == v_)
         check(f"FM-053 · the German table the tool ships carries the go-to-market seat's words rows: no label in it keeps its English but one whose German "
-              f"is the same word, `brand.gone.theme`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Session in dieser Woche* (saw {_en_de})",
+              f"is the same word, `brand.gone.theme`, and none that is only its places, as `reviews.branch`; the fold of the reviews is G2's, *und {{0}} weitere Urteile von einer anderen Session in dieser Woche* (saw {_en_de})",
               _en_de == ["brand.gone.theme"] and _shipped_de.get("reviews.more") == "und {0} weitere Urteile von einer anderen Session in dieser Woche"
               and fm.LABELS["reviews.more"] == "and {0} more verdicts by another session this week")
         if _browser("german"):
@@ -8685,6 +9519,8 @@ with tempfile.TemporaryDirectory() as d:
                 english = _c4_english(shown)
                 check(f"C4 · rendered in a browser, the German board's chrome holds no English word (found: {english}; {counts})",
                       cut_ok and not english and "In Arbeit" in shown and "Lagerverwaltung" in shown)
+                check("C4 · rendered in a browser, the German board's backlog heading reads „Backlog“",
+                      bool(re.search(r"(?<![\w-])Backlog(?![\w-])", shown)))
                 _, labelled_page, _, _, _ = board_with(repo_labels_yaml=GERMAN + "\nday.asks: open\n")
                 shown, cut_ok, counts = _c4_cut_prompts([dom(""), chrome(dom("#=MSR-001"))], day_data(labelled_page), text)
                 english = _c4_english(shown)
@@ -8921,9 +9757,9 @@ def _snippet_bases(conf_):
 
 
 def _probe_turned(conf_):
-    """zensical.toml with the probe state's switch turned, as a probe build turns it: probe = true, taped = false, and `base_path` on launch/probe. A
+    """zensical.toml with the probe state's switch turned, as a probe build turns it: probe = true, and `base_path` on launch/probe. A
     copy, never written; one already turned stays as it is. None where a key the switch turns is not there exactly once."""
-    for pat_, new_ in ((r"^probe = (?:true|false)$", "probe = true"), (r"^taped = (?:true|false)$", "taped = false"),
+    for pat_, new_ in ((r"^probe = (?:true|false)$", "probe = true"),
                        (r"^pymdownx\.snippets\.base_path = \[[^\]]*\]$", 'pymdownx.snippets.base_path = [".", "launch/probe"]')):
         conf_, n_ = re.subn(pat_, new_, conf_, flags=re.M)
         if n_ != 1:
@@ -8974,7 +9810,7 @@ check(f"R10 · the docs keep their look · the committed state: each include a l
 _dturned = _probe_turned((HERE / "zensical.toml").read_text(encoding="utf-8"))
 _dprobe = _docs_refs(bases=_snippet_bases(_dturned)) if _dturned else []
 _dprobe_gone = [p_.relative_to(HERE).as_posix() if HERE in p_.parents else str(p_) for p_ in _dprobe if not p_.exists()]
-check(f"R10 · the docs keep their look · the probe state, zensical.toml turned in a copy as a probe build turns it (probe = true, taped = false, "
+check(f"R10 · the docs keep their look · the probe state, zensical.toml turned in a copy as a probe build turns it (probe = true, "
       f"`base_path` on launch/probe): every file is there, and each include a launch state holds is found in launch/probe ({len(_dprobe)} files; "
       f"missing: {_dprobe_gone}; from the launch states: {[p_.relative_to(HERE).as_posix() for p_ in _dlaunch(_dprobe)]})",
       _dturned is not None and _snippet_bases(_dturned) == [".", "launch/probe"] and len(_dprobe) >= 30 and not _dprobe_gone
@@ -9267,6 +10103,110 @@ for what_, (a_, b_) in _S11_MUTANTS.items():
     check(f"FM-053 · §11 · 2 · the meanings · its mutant, {what_}: test 2 FAILS on it", _tool_src.count(a_) == 1 and not _accept(_tool_src.replace(a_, b_))[2][0])
 fm.configure(HERE)
 
+# --- a line of the board's counts breaks only after a "·", never inside a count: one helper in the board's script keeps each count whole, its
+#     spaces no-break spaces, and holds each "·" to the count before it by one, so the space after the "·" is where the line breaks; every place
+#     that sets counts in a line goes through it. Read from the script of a board built in English and one built in German, with the labels each
+#     carries; the helper's join without its no-break space, and a place without the helper, fail it ----------------------------------------
+_CNT_DEF = re.compile(r'\ncnt=s=>s\.split\("((?:[^"\\]|\\.)*)"\)\.map\(g=>g\.replace\(/((?:[^/\\]|\\.)*)/g,"((?:[^"\\]|\\.)*)"\)\)'
+                      r'\.join\("((?:[^"\\]|\\.)*)"\),\n')
+_CNT_PLACES = {
+    "the header's count line": ('$("n").textContent=cnt(`${rows.length} ', '${L["count.untriaged"]}`:""}`);'),
+    "the reviews heading": ('`· <b class="hot">${cnt(l("reviews.notready",r[4]))}</b>`', '`· <b class="warn">${cnt(l("reviews.findings",r[5]))}</b>`',
+                            '"· "+cnt(l("reviews.counts",r[0],r[1]))', '"· "+cnt(l("reviews.untraced",r[2]))', '"· "+cnt(l("reviews.trunk",r[3]))',
+                            '"· "+l("reviews.reports")].filter(Boolean).join("\\u00a0")'),
+    "the waiting heading": ('old>=0?cnt(l("waiting.oldest",old)):""', 'held.length?cnt(l("waiting.holds",held.length)):""',
+                            '.filter(Boolean).map(s=>"· "+s).join("\\u00a0"):""'),
+    "a waiting ask's row": ('[days(t)!=null?cnt(l("waiting.days",days(t))):"",t[29][3].length?', 'l("ask.legacy"):""].filter(Boolean).join("\\u00a0· ")'),
+    "the answer dialog's head": ('const meta=[k?l("ask."+k):"",days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""]'
+                                 '.filter(Boolean).join("\\u00a0· ");',),
+    "the current path's heading": ('"· "+cnt(l(n==1?"path.line":"path.lines",n)+" · ',),
+    "a story's row": ('${cnt(`${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}:`)} ${cnt(`${shipped} ${l("story.shipped")} · ${closed} '
+                      '${l("story.closed")}`)}\\u00a0· <span', '${cnt(`${open.length} ${l("story.open")}`)}</span>${open.some(t=>t[17])?`\\u00a0· ${cnt(`${l("word.triaged")} '),
+    "a story's chapters in the viewer": ('k=="no move named"?cnt(`${v.length} ${l("viewer.no_move")}`):',
+                                         '.join("\\u00a0· ")||l("viewer.none_in_progress")}\\u00a0· ${cnt(`${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ')}
+_CNT_KEYS = ("reviews.notready", "reviews.findings", "reviews.counts", "reviews.untraced", "reviews.trunk", "waiting.oldest", "waiting.holds", "waiting.days")
+
+
+def _cnt_lines(labels):
+    """What each place hands the helper, said with `labels` as the board says them: {where: text}."""
+    L_ = lambda k, *a: re.sub(r"\{(\d)\}", lambda m: str(a[int(m[1])]) if int(m[1]) < len(a) else "", labels.get(k, k))
+    tail = f' · 1 P0/P1 · 2 {L_("count.in_progress")} · 1 {L_("count.blocked")} · 1 {L_("count.untriaged")}'
+    return {"the header, the board's view": f'4 {L_("count.trackers")}{tail}', "the header, open work": f'3 {L_("count.open")}{tail}',
+            "the header, an id searched": f'1 {L_("count.id", "MSR-001")}{tail}', "the header, around an id": f'2 {L_("count.around", "MSR-001")}{tail}',
+            **{f"the reviews heading, {k}": L_(k, 2, 1) for k in _CNT_KEYS[:5]}, **{f"the waiting heading and rows, {k}": L_(k, 3) for k in _CNT_KEYS[5:]},
+            "the current path's heading": f'{L_("path.lines", 3)} · work-tracker/TRIAGE.md',
+            "a story's row, its chapters": f'3 {L_("story.chapters")}:', "a story's row, shipped and closed": f'1 {L_("story.shipped")} · 0 {L_("story.closed")}',
+            "a story's row, open": f'2 {L_("story.open")}', "a story's row, triaged": f'{L_("word.triaged")} 1/2',
+            "the viewer, no move named": f'1 {L_("viewer.no_move")}', "the viewer, the rest": f'0 {L_("story.parked")} · 1 {L_("story.shipped")} · 0 {L_("story.closed")}'}
+
+
+def _cnt_problems(source, langs=("en", "de")):
+    """What is wrong with the counts' line breaks in the boards a copy of the tool whose source is `source` builds, in each of `langs`: one line
+    each, [] where none."""
+    bad, spaced = [], {}
+    with tempfile.TemporaryDirectory() as d_:
+        base_ = Path(d_).resolve(); tool_ = base_ / "tool"
+        (tool_ / "vendor").mkdir(parents=True)
+        (tool_ / "shoalmark.py").write_text(source, encoding="utf-8"); shutil.copy(HERE / "VERSION", tool_ / "VERSION")
+        for f_ in (HERE / "vendor").glob("marked-*.js"):
+            shutil.copy(f_, tool_ / "vendor" / f_.name)
+        for lang_ in langs:
+            root_ = base_ / lang_; root_.mkdir()
+            tr_ = lambda *a: _tool_run(tool_ / "shoalmark.py", root_, *a, env=dict(_ENV, XDG_CONFIG_HOME=str(base_ / "nobody")))
+            git(root_, "init", "-q"); tr_("--init", "--key", "msr")
+            tracker(root_, "MSR-001", extra="tier: P1\n", title="in progress")
+            tracker(root_, "MSR-002", status="Proposed", extra="tier: P2\nblocked-by: MSR-001\n", title="blocked")
+            tracker(root_, "MSR-003", status="Proposed", title="not judged yet")
+            if lang_ == "de":
+                (root_ / "docs/work-tracker/brand").mkdir(parents=True, exist_ok=True)
+                (root_ / "docs/work-tracker/brand/labels.yaml").write_text((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+            tr_("--html-only"); page_ = (root_ / "docs/work-tracker/index.html").read_text(encoding="utf-8")
+            rm_git(root_)
+            script_ = page_.split("<script>")[2]
+            labels_ = json.JSONDecoder().raw_decode(script_, script_.index(",L=") + len(",L="))[0]
+            defs_ = _CNT_DEF.findall(script_)
+            if len(defs_) != 1:
+                bad.append(f"{lang_}: the helper is defined {len(defs_)} times as one split, one replace and one join")
+                continue
+            sep_, pat_, rep_, join_ = defs_[0]
+            sep_, rep_, join_ = (json.loads(f'"{s_}"') for s_ in (sep_, rep_, join_))
+            bad += [f"{lang_}: {where_} does not go through the helper ({frag_!r} is there {script_.count(frag_)} times)"
+                    for where_, frags_ in _CNT_PLACES.items() for frag_ in frags_ if script_.count(frag_) != 1]
+            for k_ in _CNT_KEYS:
+                said_, held_ = script_.count(f'l("{k_}"'), script_.count(f'cnt(l("{k_}"')
+                if not said_ or held_ != said_:
+                    bad.append(f"{lang_}: {k_} is said {said_} times, {held_} of them through the helper")
+            lines_ = _cnt_lines(labels_)
+            spaced[lang_] = sum(" " in g_ for line_ in lines_.values() for g_ in line_.split(" · "))
+            for where_, line_ in lines_.items():
+                out_ = join_.join(re.sub(pat_, rep_, g_) for g_ in line_.split(sep_))
+                if out_.replace("\u00a0", " ") != line_:
+                    bad.append(f"{lang_}: {where_}: the helper changes more than spaces ({out_!r})")
+                if not all(0 < i_ < len(out_) - 1 and out_[i_ - 1] == "\u00a0" and out_[i_ + 1] == " " for i_, c_ in enumerate(out_) if c_ == "·"):
+                    bad.append(f"{lang_}: {where_}: a \"·\" is not held to the count before it, or the space after it is no break ({out_!r})")
+                if " " in out_.replace("\u00a0· ", ""):
+                    bad.append(f"{lang_}: {where_}: a count holds a space a line may break at ({out_!r})")
+    bad += [f"{lang_}: only {n_} counts with a space in their words, so the check would be blind" for lang_, n_ in spaced.items() if n_ < 12]
+    return bad
+
+
+_cnt_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+_cnt_bad = _cnt_problems(_cnt_src)
+check(f"a line of the board's counts breaks only after a \"·\": in the English and the German board, every count is whole, its spaces no-break "
+      f"spaces, and each \"·\" holds to the count before it, the space after it the break, at every place that sets counts in a line (problems: {_cnt_bad})",
+      _cnt_bad == [])
+_CNT_MUTANTS = {
+    "the header's count line without the helper": (('$("n").textContent=cnt(`${rows.length} ', '$("n").textContent=`${rows.length} '),
+                                                    ('${L["count.untriaged"]}`:""}`);', '${L["count.untriaged"]}`:""}`;')),
+    "the helper's join without its no-break space": (('.map(g=>g.replace(/ /g,"\\u00a0")).join("\\u00a0· "),', '.map(g=>g.replace(/ /g,"\\u00a0")).join(" · "),'),),
+    "the reviews heading's trunk count without the helper": (('"· "+cnt(l("reviews.trunk",r[3]))', '"· "+l("reviews.trunk",r[3])'),)}
+for what_, edits_ in _CNT_MUTANTS.items():
+    mutant_ = _cnt_src
+    for a_, b_ in edits_:
+        mutant_ = mutant_.replace(a_, b_) if mutant_.count(a_) == 1 else ""
+    check(f"the counts' line breaks · its mutant, {what_}: the class test FAILS on it", bool(mutant_) and _cnt_problems(mutant_, ("en",)) != [])
+fm.configure(HERE)
+
 # --- R10: the German triage home an adopter copies before --init has the same way in, in the form a pass drops ------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
@@ -9394,6 +10334,160 @@ _de_red = (_de_mutant_old is not None and not _de_scaffold_controls(_de_mutant_o
 check(f"the German triage home's controls are not blind: the old forms dropped from the scaffold turn the first red, and the path note "
       f"as it ships dropped turns the second red (red: {_de_red})", all(_de_red))
 
+# --- the closing pass's German wording, each complete line once -------------------------------------------------------------------------
+_DE_CLOSING_PINS = {
+    'ADOPT.de.md': (
+        ('  Ordner mit den Arbeitspaketen kann bleiben: Es sind einfache Markdown-Dateien.',
+         '  Tracker-Ordner kann bleiben: Seine Einträge sind einfaches Markdown.'),
+    ),
+    'ADOPT.svn.de.md': (
+        ('  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte ein Arbeitspaket ab,',
+         '  der Hook-Properties von Hand fragte TortoiseSVN nach Zustimmung, und der Start-Commit-Hook lehnte einen Eintrag ab,'),
+        ('  das ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um',
+         '  der ohne Revision auf `Shipped` gesetzt war. Der Installer schreibt jetzt dieses Format; die Anführungszeichen um'),
+    ),
+    'docs/de/how-it-works.md': (
+        ('**Wie fest „kein Agent antwortet für dich“ gilt, bestimmt deine Signatur.** Eine Signatur beweist den Schlüssel, nicht die Hand: Wer deinen Schlüssel benutzen kann, kann in deinem Namen antworten. Es gibt vier Stufen, von einem Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht. [Deine Antwort ist dein Commit](signing.md) hilft dir bei der Wahl.',
+         '**Wie fest „kein Agent antwortet für dich“ gilt, bestimmt deine Signatur.** Eine Signatur beweist den Schlüssel, nicht die Hand: Wer deinen Schlüssel benutzen kann, kann in deinem Namen antworten. Es gibt vier Stufen, von einem Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Berührung braucht. [Deine Antwort ist dein Commit](signing.md) hilft dir bei der Wahl.'),
+    ),
+    'docs/de/index.md': (
+        ('benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt',
+         'benutzen kann, bis zu einem, der deine Berührung braucht —, und jede Signatur nennt den Schlüssel, der sie erzeugt'),
+        ('Push-Ereignisse der Git-Plattform bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet',
+         'Push-Ereignisse der Forge bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet'),
+        ('2. `--init` schreibt die Konfiguration, die Datei `TRIAGE.md` und den Vertrag für Agenten.',
+         '2. `--init` schreibt die Konfiguration, die Triage-Datei und den Vertrag für Agenten.'),
+    ),
+    'docs/de/signing.md': (
+        ('noch git noch die Git-Plattform können das unterscheiden. Es zählt also, was es braucht, den Schlüssel zu benutzen. Vier',
+         'noch git noch die Forge können das unterscheiden. Es zählt also, was es braucht, den Schlüssel zu benutzen. Vier'),
+        ('- *mit einem Hardware-Schlüssel signiert — braucht die Freigabe des Eigners am Gerät*',
+         '- *mit einem Hardware-Schlüssel signiert — braucht die Berührung des Eigners*'),
+        ('jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Freigabe am Gerät hängen.',
+         'jeder davon als von dir signiert; auf Stufe 2 und 3 bleibt jeder an deiner Passphrase oder deiner Berührung hängen.'),
+        ('oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Freigabe am Gerät, die der Agent nicht hat.',
+         'oder 3 hält das auf: Die Signatur wartet dann auf eine Passphrase oder eine Berührung, die der Agent nicht hat.'),
+        ('### Stufe 3, der starke Weg — Freigabe am Gerät',
+         '### Stufe 3, der starke Weg — ein Hardware-Schlüssel, der deine Berührung braucht'),
+        ('- Die App erzeugt nur P-256-ECDSA-Schlüssel. Die Git-Plattform nimmt sie an.',
+         '- Die App erzeugt nur P-256-ECDSA-Schlüssel. Die Forge nimmt sie an.'),
+        ('3. **Ihn auf deiner Git-Plattform als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,',
+         '3. **Ihn auf der Forge als Signierschlüssel eintragen.** Auf GitHub: *Settings → SSH and GPG keys → New SSH key*,'),
+        ('   aus der Signierer-Datei nehmen und ihn auf der Git-Plattform unter *Signing keys* löschen. Unter *Authentication keys*',
+         '   aus der Signierer-Datei nehmen und ihn auf der Forge unter *Signing keys* löschen. Unter *Authentication keys*'),
+        ('nach deiner Passphrase, Stufe 3 nach deiner Freigabe am Gerät: entweder PIN und Berührung des Sicherheitsschlüssels oder Touch ID), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet',
+         'nach deiner Passphrase, Stufe 3 nach deiner Berührung), mit `Answers: AP-007-Q1` in der Commit-Nachricht. Er meldet'),
+        ('oder aus dem Verzeichnis der Arbeitspakete verschiebt oder `tracker_dir` woandershin zeigen lässt; der Commit-Hook lehnt einen',
+         'oder aus dem Tracker-Verzeichnis verschiebt oder `tracker_dir` woandershin zeigen lässt; der Commit-Hook lehnt einen'),
+    ),
+    'docs/de/triage.md': (
+        ('Die `TRIAGE.md` liegt im Verzeichnis der Arbeitspakete, `docs/work-tracker/`, wenn du kein anderes gewählt hast. Sie hat drei',
+         'Die `TRIAGE.md` liegt im Tracker-Verzeichnis, `docs/work-tracker/`, wenn du kein anderes gewählt hast. Sie hat drei'),
+        ('  das Verzeichnis der Arbeitspakete woandershin zeigen lässt. Durch kommt nur dein signierter Commit: `%G?` G, die E-Mail des',
+         '  das Tracker-Verzeichnis woandershin zeigen lässt. Durch kommt nur dein signierter Commit: `%G?` G, die E-Mail des'),
+    ),
+    'examples/de/labels.yaml': (
+        ('search: Suche · ~ID',
+         'search: Suche · ~Id'),
+        ('search.help: Eine vollständige ID zeigt das zugehörige Arbeitspaket. Was darauf verweist: ~ID (nur Markdown-Verweise). Die Kapitel eines Vorhabens: die Ansicht nach Vorhaben. Alles andere sucht nach Teilwörtern — Stufe, Status, Wörter, blockiert, ungesichtet.',
+         'search.help: Eine ganze Id zeigt diesen Eintrag. Was darauf verweist: ~Id (nur Markdown-Verweise). Die Kapitel eines Vorhabens: die Ansicht nach Vorhaben. Alles andere sucht nach Teilwörtern — Stufe, Status, Wörter, blockiert, ungesichtet.'),
+        ('col.id: ID',
+         'col.id: Id'),
+        ('section.backlog: Backlog',
+         'section.backlog: Vorrat'),
+        ('desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Arbeitspakete',
+         'desc.triage: was die nächste Sichtung auflistet — in Arbeit und nicht oder vor über {0} Tagen bewertet, dazu neue Einträge'),
+        ('count.trackers: Arbeitspakete',
+         'count.trackers: Einträge'),
+        ('count.id: Arbeitspaket · {0}',
+         'count.id: Eintrag · {0}'),
+        ('viewer.forge: Plattform',
+         'viewer.forge: Ablage'),
+        ('read.about.none: "gelesen aus dem Ordner {1} um {0}"',
+         'read.about.none: "gelesen aus dem Ordner um {0}"'),
+        ('link.noforge: keine Git-Plattform in der Konfiguration, darum nicht verlinkt',
+         'link.noforge: keine Forge in der Konfiguration, darum nicht verlinkt'),
+        ('link.unknown: "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"',
+         'link.unknown: "die Commit-Adresse der Forge ist nicht konfiguriert (`commit_url`), darum nicht verlinkt"'),
+        ('reviews.trunk: "{0} auf dem Trunk"',
+         'reviews.trunk: "{0} auf dem Stamm"'),
+        ('answer.give.step.commit.none: "ohne Versionsverwaltung hält nichts fest, wer sie geschrieben hat"',
+         'answer.give.step.commit.none: "ohne Versionskontrolle hält nichts fest, wer sie geschrieben hat"'),
+        ('day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge ist deiner. Ein Prompt bittet; er kann nicht sicherstellen, dass die Session ihm folgt. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält der Befehl fest, den du in deinem eigenen Terminal ausführst."',
+         'day.standup.asks: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält der Befehl fest, den du in deinem eigenen Terminal ausführst."'),
+        ('day.standup.asks.svn: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge ist deiner. Ein Prompt bittet; er kann nicht sicherstellen, dass die Session ihm folgt. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst und committest."',
+         'day.standup.asks.svn: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen und auf dein Zeichen den Tag über die Builder- und Reviewer-Rollen zu führen, jeder Merge der deine. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst und committest."'),
+        ('day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionsverwaltung treibt er nichts voran. Ein Prompt bittet; er kann nicht sicherstellen, dass die Session ihm folgt. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."',
+         'day.standup.asks.folder: "Er bittet die Session, einen Punkt nach dem anderen zu nehmen und auf dein Wort zu warten, dir dann jeden Blocker und den Weg des Tages vorzulegen; ohne Versionskontrolle treibt er nichts voran. Ein Prompt bittet; er kann keine Session zum Gehorchen bringen. Eine Nachricht ist nie eine Antwort: Deine Entscheidung hält fest, was du selbst schreibst."'),
+        ('day.closeout.asks: "Er bittet die Session, den Tag aus dem Beleg wiederzugeben, jede Zeile mit ihrem Commit oder ihrer ID — der Bericht einer Session über den Beleg, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."',
+         'day.closeout.asks: "Er bittet die Session, den Tag aus dem Verlauf vorzulesen, jede Zeile mit ihrem Commit oder ihrer Id — der Bericht einer Session über den Verlauf, kein Beweis. Er bittet um keine Übergabe und hält deine Zahl getragener Nachrichten aus den Händen der Session. Eine Nachricht ist nie eine Antwort."'),
+        ('day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. Im eigenen Worktree der Session, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt; wo gh GitHub lesen kann, holt {0} außerdem origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."',
+         'day.standup.runs: "In deinem Ordner: {0} und nur lesendes git, etwa git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0}, {3} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches und ihren geöffneten Pull Requests. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt; und wo gh die Ablage lesen kann, holt er origin und fragt gh nach den Pull Requests. Was deine Antworten festhält und in den Standard-Branch bringt, gibt die Session dir zum Ausführen aus."'),
+        ('day.standup.runs.git: "In deinem Ordner, nur lesend: {0} und git ls-remote. Im eigenen Worktree der Session, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Was deine Antworten festhält, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."',
+         'day.standup.runs.git: "In deinem Ordner, nur lesend: {0} und git ls-remote. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: ein Fetch, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages, mit gepushten Arbeits-Branches. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Was deine Antworten festhält, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."'),
+        ('day.standup.runs.local: "In deinem Ordner, nur lesend: {0} und nur lesendes git. Im eigenen Worktree der Session, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: {0} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Die Befehle, die den Branch deiner Runde anlegen und deine Antworten festhalten, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."',
+         'day.standup.runs.local: "In deinem Ordner, nur lesend: {0} und nur lesendes git. In ihrem eigenen Worktree, den {5} nennt, mit git worktree add angelegt, wo sie keinen hat: {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Befehle, die den Branch deiner Runde beginnen und deine Antworten festhalten, gibt die Session dir zum Ausführen aus; jeder Merge ist deiner, in deinem Checkout."'),
+        ('day.standup.runs.svn: "In deiner Arbeitskopie, nur lesend: {0} und svn status -u. In der eigenen Arbeitskopie der Session: svn update, {0} und {4}, der die Sichtungsurteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Die Session hält keine deiner Antworten fest, sondern nennt dir die Zeilen, die du schreibst und committest."',
+         'day.standup.runs.svn: "In deiner Arbeitskopie, nur lesend: {0} und svn status -u. In ihrer eigenen Arbeitskopie: svn update, {0} und {4}, der die Triage-Urteile von heute anwendet; auf dein Zeichen die Arbeit des Tages. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Session hält keine deiner Antworten fest: sie nennt dir die Zeilen, die du schreibst und committest."'),
+        ('day.standup.runs.folder: "In deinem Ordner: {0}, und sonst nichts. {0} liest die Arbeitspakete und startet das eigene Ableitungsprogramm dieses Repositorys, {2}, falls es eines gibt. Die Session hält keine deiner Antworten fest, sondern nennt dir die Zeilen, die du schreibst."',
+         'day.standup.runs.folder: "In deinem Ordner: {0}, und sonst nichts. {0} liest die Arbeitspakete; er startet das eigene Ableitungsprogramm dieses Repositorys, {2}, wo es eines gibt. Die Session hält keine deiner Antworten fest: sie nennt dir die Zeilen, die du schreibst."'),
+        ('reviews.sessions: "{0}, Session des Branches {1}"',
+         'reviews.sessions: "Session des Urteils {0}, Session des Branches {1}"'),
+        ('reviews.word.trunk: auf dem Trunk — kein Urteil zu einem Branch',
+         'reviews.word.trunk: auf dem Stamm — kein Urteil zu einem Branch'),
+        ('reviews.on: "auf {1} @ {0}"',
+         'reviews.on: "auf {0}"'),
+        ('reviews.branch: "{0}"',
+         'reviews.branch: "Branch {0}"'),
+        ('reviews.branch.ambiguous: "{1} ({0})"',
+         'reviews.branch.ambiguous: "Branch {0}: {1} enthalten das Urteil jeweils in ihrer eigenen Linie"'),
+        ('reviews.branch.notknown: unbekanntem Branch',
+         'reviews.branch.unknown: "Branch nicht bekannt — {0}"'),
+        ('reviews.branch.none: auf keinem Branch hier committet',
+         'reviews.branch.none: kein Branch hier enthält das Urteil in seiner eigenen Linie'),
+        ('reviews.help: "ein Urteil gehört zu dem Branch, auf dem es committet wurde; nach dem Merge zu dem, den die Merge-Nachricht nennt"',
+         None),
+        ('reviews.notknown: "nicht bekannt"',
+         None),
+        ('reviews.notknown.own: "das Urteil nennt keine Session"',
+         None),
+        ('reviews.notknown.range: "kein Commit darauf außer Merges und Urteilen nennt eine Session"',
+         None),
+        ('reviews.notknown.unread: "der Commit des Reviews fehlt hier"',
+         None),
+    ),
+    'overrides/partials/landing/de.html': (
+        ('  "rule_1": "<b>Das Arbeitspaket ist maßgeblich.</b> Nie ein Nebenplan, ein Chat oder ein TODO-Kommentar.",',
+         '  "rule_1": "<b>Der Tracker ist maßgeblich.</b> Nie ein Nebenplan, ein Chat oder ein TODO-Kommentar.",'),
+        ('  "p2_sig": "Sobald du das Signieren einschaltest, zählt als Antwort nur dein signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht.",',
+         '  "p2_sig": "Sobald du das Signieren einschaltest, zählt als Antwort nur dein signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Berührung braucht.",'),
+    ),
+}
+
+
+def _de_closing_pins_hold(text, pins):
+    lines = text.splitlines()
+    return all(lines.count(line) == 1 for line, _ in pins)
+
+
+_de_closing_entries = sum(len(pins) for pins in _DE_CLOSING_PINS.values())
+_de_closing_restorations = sum(old is not None for pins in _DE_CLOSING_PINS.values() for _, old in pins)
+print(f"German wording pins: {_de_closing_entries} entries; {_de_closing_restorations} old-line mutants; "
+      f"{_de_closing_entries - _de_closing_restorations} removal mutants")
+for _de_path, _de_pins in _DE_CLOSING_PINS.items():
+    _de_text = (HERE / _de_path).read_text(encoding="utf-8")
+    check(f"German wording: {_de_path}, untouched file has every pinned line exactly once",
+          _de_closing_pins_hold(_de_text, _de_pins))
+    for _de_new, _de_old in _de_pins:
+        _de_label = _de_new.split(":", 1)[0] if _de_path.endswith("labels.yaml") else _de_new[:64]
+        _de_mutant = "\n".join(_de_old if line == _de_new else line for line in _de_text.splitlines()) if _de_old is not None else "\n".join(
+            line for line in _de_text.splitlines() if line != _de_new)
+        _de_change = "old line restored" if _de_old is not None else "added line removed"
+        check(f"German wording: {_de_path}, {_de_label!r}, {_de_change} turns the pin check red",
+              _de_mutant != _de_text and not _de_closing_pins_hold(_de_mutant, _de_pins))
+        check(f"German wording: {_de_path}, {_de_label!r}, a duplicate turns the pin check red",
+              not _de_closing_pins_hold(_de_text + "\n" + _de_new + "\n", _de_pins))
+
 # --- the lane's German prose speaks as du: no formal address and no retired term, each exception and each pending place named by its text -----
 def _de_prose_files():
     """Every German prose source of the lane, by its path."""
@@ -9407,7 +10501,8 @@ def _de_prose_files():
 
 
 _DE_FORMAL = re.compile(r"\b(Sie|Ihnen|Ihr|Ihre|Ihren|Ihrem|Ihrer|Ihres)\b")
-_DE_RETIRED = re.compile(r"\b(?:\w*(?<![Bb]e)[Ss]itz(?:e|es)?|\w*[Ss]itzung\w*|Owners?|\w*[Tt]afel\w*|\w*[Ss]tandup\w*|Prüfer\w*|Nachweis\w*|\w*(?<![Bb]irken)[Zz]weig\w*)\b")
+_DE_RETIRED = re.compile(r"\b(?:\w*(?<![Bb]e)[Ss]itz(?:e|es)?|\w*[Ss]itzung\w*|Owners?|\w*[Tt]afel\w*|\w*[Ss]tandup\w*|Prüfer\w*|Nachweis\w*"
+                         r"|\w*(?<![Bb]irken)[Zz]weig\w*|\w*[Vv]ersionskontroll\w*|Stamm(?:e?s)?|Stämmen?|\w*Vorr[aä]t\w*|\w+vorrat\w*|\w*Forge[sn]?|Ablagen?)\b")
 # What is not prose, by kind. Config keys are not read at all: each reader takes only the values of its file's keys.
 _DE_NOT_PROSE = (
     ("code blocks", re.compile(r"(?ms)^[ \t]*(`{3,})[^`\n]*$.*?^[ \t]*\1`*[ \t]*$|<pre\b.*?</pre>")),
@@ -9457,8 +10552,13 @@ _DE_ALLOWED = (
     ("launch/interim/how-it-works.de.md", "Sie lädt zu einer Messung ein", "third person: the note"),
     ("overrides/partials/why/de.html", "Sie nennt, was nie passieren darf", "third person: the intent"),
 )
+# Formal address allowed, each by its page and on the whole page. A retired term stays refused there.
+_DE_FORMAL_PAGES = (
+    ("docs/de/impressum.md", "a legal text: it speaks to its reader as Sie"),
+    ("docs/de/datenschutz.md", "a legal text: it speaks to its reader as Sie"),
+)
 # Pending, each by file and exact text: a German text not yet rewritten. The set is empty, and a check below keeps it so; nothing is
-# exempt by its path.
+# exempt by its path but the legal pages' formal address, above.
 _DE_PENDING = ()
 _DE_CONSTANTS = {}
 
@@ -9552,12 +10652,14 @@ def _de_prose(rel, text):
 
 
 def _de_guard(src, pending=None):
-    """What the guard refuses, one line each: a formal form or a retired term left in a source's German prose once its allowed and
-    pending texts are taken out, and an allowed or pending text its source no longer holds. The pending set is the suite's, or the one
-    given."""
+    """What the guard refuses, one line each: a formal form outside the pages allowed formal address, or a retired term on any page, left in
+    a source's German prose once its allowed and pending texts are taken out; an allowed or pending text its source no longer holds; and a
+    page allowed formal address that is not among the sources. The pending set is the suite's, or the one given."""
     bad = []
     pending = _DE_PENDING if pending is None else pending
     named = [(rel_, text_, "allowed") for rel_, text_, _why in _DE_ALLOWED] + [(rel_, text_, "pending") for rel_, text_ in pending]
+    formal_ = {rel_ for rel_, _why in _DE_FORMAL_PAGES}
+    bad += [f"{rel_}: its page, allowed formal address, is not there" for rel_ in sorted(formal_ - set(src))]
     for rel_ in sorted(src):
         prose_ = _de_prose(rel_, src[rel_])
         for nrel_, text_, what_ in named:
@@ -9566,6 +10668,8 @@ def _de_guard(src, pending=None):
                     bad.append(f"{rel_}: its {what_} text is not there: {text_[:60]!r}")
                 prose_ = prose_.replace(text_, " ", 1)
         for rx_, what_ in ((_DE_FORMAL, "a formal form"), (_DE_RETIRED, "a retired term")):
+            if rx_ is _DE_FORMAL and rel_ in formal_:
+                continue
             for m_ in rx_.finditer(prose_):
                 bad.append(f"{rel_}: {what_}, {m_.group(0)!r}: …{prose_[max(0, m_.start() - 40):m_.end() + 30]}…")
     return bad
@@ -9601,17 +10705,61 @@ def _de_inject(src, rel, word):
 _DE_FILES = _de_prose_files()
 _ds_de = _sources(_DE_FILES)
 _dg = _de_guard(_ds_de)
-check(f"the lane's German prose speaks as du: in {len(_DE_FILES)} sources, no formal address and no retired term is left outside "
-      f"{len(_DE_ALLOWED)} allowed texts and {len(_DE_PENDING)} pending ones, each named by its file and exact text, and each still there "
-      f"(saw {_dg[:6]})", not _dg)
+check(f"the lane's German prose speaks as du: in {len(_DE_FILES)} sources, no formal address is left outside {len(_DE_ALLOWED)} allowed "
+      f"texts and {len(_DE_PENDING)} pending ones, each named by its file and exact text, and the {len(_DE_FORMAL_PAGES)} legal pages, each named "
+      f"by its file; no retired term is left outside the allowed and pending texts; and each named text and page is still there (saw {_dg[:6]})",
+      not _dg)
 _de_pending_files = {rel_ for rel_, _t in _DE_PENDING}
 _de_outside = [rel_ for rel_ in _DE_FILES if rel_ not in _de_pending_files]
 check(f"nothing in the German prose is pending: the pending set holds no text, so each of the {len(_DE_FILES)} sources is read whole "
       f"outside it (pending: {[(rel_, text_[:40]) for rel_, text_ in _DE_PENDING][:4]})", not _DE_PENDING and len(_de_outside) == len(_DE_FILES))
-_de_blind = {"a formal form": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
+_de_legal = sorted(rel_ for rel_, _why in _DE_FORMAL_PAGES)
+_de_blind = {"a formal form": [rel_ for rel_ in _de_outside if rel_ not in _de_legal and not _de_guard(_de_inject(_ds_de, rel_, "Ihnen"))],
              "a retired term": [rel_ for rel_ in _de_outside if not _de_guard(_de_inject(_ds_de, rel_, "Owner"))]}
-check(f"the guard is not blind outside the pending set: a formal form, and a retired term, put into each of the {len(_de_outside)} German "
-      f"sources outside it turns it red (sources where it stayed green: {_de_blind})", not any(_de_blind.values()) and len(_de_outside) >= 20)
+check(f"the guard is not blind outside the pending set: a formal form put into each of the {len(_de_outside) - len(_de_legal)} German sources "
+      f"outside it but the legal pages, and a retired term put into each of all {len(_de_outside)}, turns it red (sources where it stayed green: "
+      f"{_de_blind})", not any(_de_blind.values()) and len(_de_outside) >= 20 and set(_de_legal) <= set(_de_outside))
+# The legal pages keep Sie by their path alone: their text on another page is refused, and a retired term on them is refused as on any other.
+_de_legal_line = "Wenn Sie uns per E-Mail schreiben, verarbeiten wir Ihre Adresse"
+_de_legal_out = {"a Sie sentence of the privacy notice in the setup page": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", _de_legal_line + ". Das ist alles."),
+                 "the privacy notice's whole text under another page's name": {**_ds_de, "docs/de/kontakt.md": _ds_de["docs/de/datenschutz.md"]},
+                 "the imprint gone from the sources": {rel_: text_ for rel_, text_ in _ds_de.items() if rel_ != "docs/de/impressum.md"}}
+_de_legal_out_green = [name_ for name_, src_ in _de_legal_out.items() if not _de_guard(src_)]
+check(f"the legal pages' formal address is theirs alone: a Sie sentence of the privacy notice put into the setup page, the privacy notice's whole "
+      f"text under another page's name, and the imprint gone from the sources each turn the guard red (stayed green: {_de_legal_out_green})",
+      not _dg and _de_legal == ["docs/de/datenschutz.md", "docs/de/impressum.md"] and _de_legal_line in " ".join(_ds_de["docs/de/datenschutz.md"].split())
+      and not _de_legal_out_green)
+_de_legal_terms = ("Owner", "Sitzung", "Standup", "Tafel", "Prüfer", "Nachweis", "Zweig", "Versionskontrolle", "Stamm", "Vorrat", "Forge", "Ablage")
+_de_legal_elsewhere = {term_: bool(_de_guard(_de_inject(_ds_de, "docs/de/setup.md", term_))) for term_ in _de_legal_terms}
+_de_legal_wrong = [(rel_, term_) for rel_ in _de_legal for term_ in _de_legal_terms
+                   if bool(_de_guard(_de_inject(_ds_de, rel_, term_))) != _de_legal_elsewhere[term_]]
+check(f"a retired term stays refused on the legal pages, as on any other: each of {', '.join(_de_legal_terms)} turns the guard red in the "
+      f"setup page and in each legal page (green in the setup page: {[term_ for term_, red_ in _de_legal_elsewhere.items() if not red_]}; "
+      f"wrong: {_de_legal_wrong})", not _dg and not _de_legal_wrong and all(_de_legal_elsewhere.values()) and len(_de_legal_terms) == 12)
+# Five more retired words: each refused in its forms and compounds, and each where it stood, put back; what only holds their letters stays
+# green, and so does forge as code or as a placeholder.
+_de_five = ("Versionskontrolle", "Versionskontrollsystem", "Stamm", "Stammes", "Vorrat", "Vorräte", "Arbeitsvorrat", "Forge", "Forges",
+            "Git-Forge", "Ablage", "Ablagen", "Git-Ablage")
+_de_five_stay = ("Stammverzeichnis", "stammt", "stammen", "Stammdaten", "Zwischenablage", "Ablagefach")
+_de_five_seen = {term_: bool(_de_guard(_de_inject(_ds_de, "docs/de/setup.md", term_))) for term_ in _de_five + _de_five_stay}
+_de_five_wrong = [term_ for term_, red_ in _de_five_seen.items() if red_ != (term_ in _de_five)]
+check(f"the guard reads five more retired words, inflected or in a compound: each of {', '.join(_de_five)} put into a German page turns it red, "
+      f"and {', '.join(_de_five_stay)} leave it green (wrong: {_de_five_wrong})", not _dg and not _de_five_wrong)
+_de_five_back = {"Versionskontrolle": _with(_ds_de, "examples/de/labels.yaml", "ohne Versionsverwaltung hält", "ohne Versionskontrolle hält"),
+                 "Stamm": _with(_ds_de, "examples/de/labels.yaml", '"{0} auf dem Trunk"', '"{0} auf dem Stamm"'),
+                 "Vorrat": _with(_ds_de, "examples/de/labels.yaml", "section.backlog: Backlog", "section.backlog: Vorrat"),
+                 "Forge": _with(_ds_de, "docs/de/signing.md", "Die Git-Plattform nimmt sie an.", "Die Forge nimmt sie an."),
+                 "Ablage": _with(_ds_de, "examples/de/labels.yaml", "viewer.forge: Plattform", "viewer.forge: Ablage")}
+_de_five_back_green = [word_ for word_, src_ in _de_five_back.items() if not _de_guard(src_)]
+check(f"no retired word comes back where it stood: each of the five put back in one of its old lines, in the labels or on the signing page, "
+      f"turns the guard red (stayed green: {_de_five_back_green})", not _dg and not _de_five_back_green and len(_de_five_back) == 5)
+_de_forge_code = {"inline code": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Setze `Forge = \"github\"` oder `[Forge]`. Das ist alles."),
+                  "a code block": {**_ds_de, "docs/de/setup.md": _ds_de["docs/de/setup.md"] + "\n\n```toml\n[Forge]\nForge = \"github\"\n```\n"},
+                  "a config key": {**_ds_de, "examples/de/shoalmark.toml": _ds_de["examples/de/shoalmark.toml"] + "\nForge = \"github\"\n"},
+                  "a placeholder": _with(_ds_de, "docs/de/setup.md", "Das ist alles.", "Mit --forge <forge> ist das alles.")}
+_de_forge_code_red = [name_ for name_, src_ in _de_forge_code.items() if _de_guard(src_)]
+check(f"forge as code is not read as prose: Forge in inline code, in a code block and as a config key, and <forge> as a placeholder, each "
+      f"leave the guard green (read as prose: {_de_forge_code_red})", not _dg and not _de_forge_code_red and len(_de_forge_code) == 4)
 # The suite's pending set is empty, so the pending controls give the guard one of their own: a text each of four sources holds now.
 _de_try_pending = (("docs/de/warum-shoalmark.md", "du hast das letzte Wort"), ("overrides/partials/why/de.html", "du hast das letzte Wort"),
                    ("overrides/partials/landing/de.html", "„Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.“"),
@@ -9875,7 +11023,7 @@ with tempfile.TemporaryDirectory() as tmp:
     if _browser("queue"):
         try:
             dom = _chrome_run(["--virtual-time-budget=4000", "--dump-dom", (root / "docs/work-tracker/index.html").as_uri()]).stdout
-            shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom))
+            shown = re.sub(r"\s+", " ", re.sub(r"<(script|style)[\s\S]*?</\1>|<[^>]+>", " ", dom.replace("&nbsp;", " ").replace("\u00a0", " ")))
             check("rendered: the board's first words are the answer — how many wait, the oldest, what is held up — then each question, the oldest first, before the path and before any table",
                   "waiting for you: 2 · oldest 3 days · holding up 2 more" in shown and shown.index("DATEV format, or a plain CSV?") < shown.index("read the scraper log") and "not yet stated as a question" in shown
                   and "decision" in shown and "a ruling" not in shown and "your hands" in shown and "holds up AP-037, AP-041" in shown and shown.index("waiting for you") < shown.index("AP-022 ") )
@@ -10145,6 +11293,9 @@ with tempfile.TemporaryDirectory() as tmp:
           -1 not in steps_ and steps_ == sorted(steps_) and "cutting" not in err and "pushing" not in err
           and out.startswith(f"AP-070 answered: accepted - count one week first\n  signed, committed on `{start_}` as {sha_}\n"
                              "  it counts once this commit is on the default branch: push it, or merge the branch that carries it\n"))
+    step3_ = next((l_ for l_ in err.splitlines() if "3/3 committing, signed" in l_), "")
+    check(f"--answer's signing step names a confirmation on the device, and no touch (saw {step3_!r})",
+          "your key may ask for its passphrase or a confirmation on the device" in step3_ and "touch" not in step3_.lower())
     sig = sh_("log", "-1", "--format=%G? %GS %an %s"); parent_ = sh_("rev-parse", "HEAD^")
     fm.configure(root); t_ = next(t for t in fm.load_trackers() if t["id"] == "AP-070")
     check("--answer accept with a change: writes the three lines on the branch it stands on and commits them SIGNED under the answerer, one commit on top of where it stood — "
@@ -14997,7 +16148,7 @@ def _q4_case(shape, root, tool):
         want_, record_, keys_ = [f"read from the working copy @ r{rev_}"], dict(vcs="svn", revision=rev_), {"built_at", "vcs", "revision"}
         about_ = ["read from the working copy at"]
     else:
-        want_, about_ = [f"read from the folder {root}"], ["read from the folder at", "no version control: no commit or revision to name"]
+        want_, about_ = [f"read from the folder {root.name} at "], [f"read from the folder {root} at ", "no version control: no commit or revision to name"]
         record_, keys_ = dict(vcs="none", folder=str(root)), {"built_at", "vcs", "folder"}
     at_ = None
     try:
@@ -15120,11 +16271,13 @@ def _ln_saw(root, tool):
             _q4_html.unescape(re.sub(r"<[^>]+>", "", fold_.group(1))) if fold_ else "")
 def _ln_ok(rows, tool):
     """Every row as asserted: exit 0; its link, exactly, where it must make one — and then no reason; else no link at all, and the fold beneath the line
-    carries the reason's own words. No other reason anywhere in the line or the fold. (all held, what was seen)"""
+    carries the reason's own words, as a reader sees them: a code span shown as code, without its backticks. No other reason anywhere in the line or the
+    fold. (all held, what was seen)"""
     seen_ = []
+    said_ = lambda k_: re.sub(r"`([^`]+)`", r"\1", fm.LABELS[k_])
     for what_, root_, want_, why_ in rows:
         code_, href_, line_, fold_ = _ln_saw(root_, tool)
-        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or fm.LABELS[why_] in fold_) and not any(fm.LABELS[k_] in line_ + " " + fold_ for k_ in fm.LINK_WHY if k_ != why_)
+        ok_ = code_ == 0 and href_ == want_ and (why_ == "" or said_(why_) in fold_) and not any(said_(k_) in line_ + " " + fold_ for k_ in fm.LINK_WHY if k_ != why_)
         seen_.append((what_, ok_, href_, fold_[:160]))
     return all(o_ for _w, o_, _h, _l in seen_), seen_
 with tempfile.TemporaryDirectory() as d:
@@ -15192,6 +16345,160 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-057 · the board's own run · …the mutant, {_CN_MUTANT[0]}: this tool with that one change FAILS the row — the board's run is stopped, exit 4, "
           f"before it compares the working tree, and its folder stays empty (saw {_cn_saw(c_) if c_ else 'the change is not there to make'})",
           c_ is not None and not _cn_ok(c_) and c_["code"] == fm.EXIT_LINT and not c_["marker"])
+fm.configure(HERE)
+
+# --- the read-at line outside version control, and its fold: in a plain folder the line names the folder by its name alone, and the fold names its
+#     full path at the full time; on git and on Subversion the line and the fold read as their labels say, in English and in the German table the tool
+#     ships. Each code span a label writes in backticks shows as code, as the page's script shows a sent-back reason's: the two reasons a commit is no
+#     link that name `commit_url`, in both languages; a value's own backticks stay text. The fold's text breaks anywhere, so a long path in it never
+#     makes the page wider than the screen. Rendered by `read_at_html` in process, at one fixed moment, with the reason a commit is no link given; each
+#     mutant is this tool with that one change, loaded beside it, and must fail the part it breaks ----------------------------------------------------
+_RA_AT, _RA_WHEN, _RA_FULL = "2026-10-30T16:50:00+01:00", "10-30 16:50", "2026-10-30 16:50 +01:00"
+_RA_PATH = "/home/someone/work/stock_ledger"
+_RA_TABLES = {"en": {}, "de": fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))}
+_RA_SHAPES = (      # (what, the read, the reason a commit is no link, the line's label and values, the fold's labels and values)
+    ("a plain folder", {"vcs": "none", "folder": _RA_PATH}, "", ("read.none", "stock_ledger", _RA_WHEN),
+     (("read.about.none", _RA_FULL, _RA_PATH), ("read.none.why",))),
+    ("git, on a branch", {"vcs": "git", "commit": "c" * 40, "branch": "main", "changes": 2}, "link.unknown", ("read.git.branch", "main", "c" * 7, _RA_WHEN),
+     (("read.about.git", "main", _RA_FULL), ("link.unknown",), ("read.git.changed", 2))),
+    ("git, a detached HEAD", {"vcs": "git", "commit": "c" * 40, "branch": None, "changes": None}, "link.noforge", ("read.git.detached", "c" * 7, _RA_WHEN),
+     (("read.about.git", "HEAD", _RA_FULL), ("link.noforge",), ("read.git.unread",))),
+    ("git, no commit yet", {"vcs": "git", "commit": "", "branch": "main", "changes": 1}, "", ("read.git.unborn", "main", _RA_WHEN),
+     (("read.about.git", "main", _RA_FULL), ("read.git.changed.one",))),
+    ("Subversion, at a revision", {"vcs": "svn", "revision": "12"}, "link.noviewer", ("read.svn", "r12", _RA_WHEN),
+     (("read.about.svn", _RA_FULL), ("link.noviewer",))),
+    ("Subversion, its revision not read", {"vcs": "svn", "revision": None}, "", ("read.svn.unread", _RA_WHEN), (("read.about.svn", _RA_FULL),)),
+    ("Subversion, no revision yet", {"vcs": "svn", "revision": ""}, "", ("read.svn.new", _RA_WHEN), (("read.about.svn", _RA_FULL),)),
+)
+_RA_CODE = {    # (language, the reason): its words in the fold, as the page's markup — the code span as code
+    ("en", "link.unknown"): "the forge's commit address is not configured (<code>commit&#95;url</code>), so not linked",
+    ("en", "link.noviewer"): "no Subversion viewer configured (<code>commit&#95;url</code>), so not linked",
+    ("de", "link.unknown"): "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (<code>commit&#95;url</code>), darum nicht verlinkt",
+    ("de", "link.noviewer"): "kein Subversion-Betrachter konfiguriert (<code>commit&#95;url</code>), darum nicht verlinkt"}
+_RA_PRECEDENT = 'esc(t[29][7][0]).replace(/`([^`]+)`/g,"<code>$1</code>")'
+_RA_RULE = "details.about .help{overflow-wrap:anywhere}"
+
+
+def _ra_parts(mod, read, lang, why=""):
+    """The read-at line's first fact and the fold's text, as the page's markup, from `mod`'s `read_at_html`: in English, or in the German table the tool
+    ships over it, at `_RA_AT`, the reason a commit is no link being `why` (none: a link). (the fact, the fold's text), each None where it is not there."""
+    keep_ = mod.commit_link
+    mod.commit_link = lambda commit, tool=False: (None, why) if why else (f"https://forge.example/commit/{commit}", "")
+    try:
+        page_ = mod.read_at_html(dict(read, built_at=_RA_AT), dict(mod.LABELS, **_RA_TABLES[lang]))
+    finally:
+        mod.commit_link = keep_
+    fact_ = re.match(r'<p id="ra" class="m"><span><span class="fact">(.*?)&nbsp;·</span> ', page_)
+    fold_ = re.search(r'<p class="help">(.*?)</p></details>$', page_)
+    return fact_.group(1) if fact_ else None, fold_.group(1) if fold_ else None
+
+
+def _ra_said(lang, key, *values):
+    """A label of the tool's as the page must show it, worked out here: its text escaped as the tool escapes text, each code span in it as code, each
+    value escaped in its place."""
+    esc_ = lambda s_: str(s_).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("_", "&#95;")
+    text_ = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc_(_RA_TABLES[lang].get(key, fm.LABELS[key])))
+    return re.sub(r"\{(\d)\}", lambda m_: esc_(values[int(m_.group(1))]) if int(m_.group(1)) < len(values) else "", text_)
+
+
+def _ra_faults(mod):
+    """What `mod` renders wrong, part by part — {part: [faults]}, each list empty where the part holds:
+    - `words`: each shape's line and fold read as their labels say, in both languages; in a plain folder the line names the folder by its name and
+      nothing of the path above it — the filesystem's root by its path —, and the fold names the full path at the full time, in English and in
+      German;
+    - `code`: the two reasons that name `commit_url` show it as code in both languages, no rendered part keeps a backtick, the labels that hold a code
+      span are those two reasons alone, in English and in German, and the page's script still shows a sent-back reason's code spans as code;
+    - `values`: a folder's own backticks and markup stay text, on the line and in the fold;
+    - `wrap`: the fold's text breaks anywhere, by one rule beside the read-at line's, and no other help line's rule is changed."""
+    out_ = {"words": [], "code": [], "values": [], "wrap": []}
+    for lang_ in ("en", "de"):
+        for what_, read_, why_, line_, fold_ in _RA_SHAPES:
+            got_ = _ra_parts(mod, read_, lang_, why_)
+            want_ = (_ra_said(lang_, *line_), " · ".join(_ra_said(lang_, *f_) for f_ in fold_))
+            if got_ != want_:
+                out_["words"].append(f"{lang_}, {what_}: {got_} for {want_}")
+            if "`" in "".join(p_ or "" for p_ in got_):
+                out_["code"].append(f"{lang_}, {what_}: a backtick shown in {got_}")
+            if why_ in ("link.unknown", "link.noviewer") and _RA_CODE[(lang_, why_)] not in (got_[1] or ""):
+                out_["code"].append(f"{lang_}, {what_}: {why_} not as {_RA_CODE[(lang_, why_)]!r} in {got_[1]!r}")
+        line_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, lang_)[0] or ""
+        if "stock&#95;ledger" not in line_ or "someone" in line_ or "home" in line_:
+            out_["words"].append(f"{lang_}: the plain folder's line names more or less than the folder's name: {line_!r}")
+        root_ = _ra_parts(mod, {"vcs": "none", "folder": "/"}, lang_)[0]
+        if root_ != _ra_said(lang_, "read.none", "/", _RA_WHEN):
+            out_["words"].append(f"{lang_}: the filesystem's root named as {root_!r}")
+        odd_ = _ra_parts(mod, {"vcs": "none", "folder": "/home/some`one`/led`ger`<b>&"}, lang_)
+        if (odd_[0] != _ra_said(lang_, "read.none", "led`ger`<b>&", _RA_WHEN) or "led`ger`&lt;b&gt;&amp;" not in odd_[0]
+                or "<code>" in "".join(p_ or "" for p_ in odd_) or (lang_ == "en" and "/home/some`one`/led`ger`&lt;b&gt;&amp;" not in (odd_[1] or ""))):
+            out_["values"].append(f"{lang_}: {odd_}")
+    plain_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, "en")
+    if plain_ != ("read from the folder stock&#95;ledger at 10-30 16:50",
+                  "read from the folder /home/someone/work/stock&#95;ledger at 2026-10-30 16:50 +01:00 · no version control: no commit or revision to name"):
+        out_["words"].append(f"en: the plain folder reads {plain_}")
+    plain_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, "de")
+    if plain_ != ("gelesen aus dem Ordner stock&#95;ledger um 10-30 16:50", "gelesen aus dem Ordner /home/someone/work/stock&#95;ledger um 2026-10-30 16:50 +01:00 · "
+                  "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"):
+        out_["words"].append(f"de: the plain folder reads {plain_}")
+    coded_ = {lang_: sorted(k_ for k_, v_ in dict(mod.LABELS, **_RA_TABLES[lang_]).items() if re.search(r"`[^`]+`", v_)) for lang_ in ("en", "de")}
+    if coded_ != {"en": ["link.noviewer", "link.unknown"], "de": ["link.noviewer", "link.unknown"]} or not set(coded_["en"]) <= set(mod.LINK_WHY):
+        out_["code"].append(f"the labels that hold a code span: {coded_}")
+    if mod.HTML_PAGE.count(_RA_PRECEDENT) != 1:
+        out_["code"].append("the page's script no longer shows a sent-back reason's code spans as code")
+    style_ = mod.HTML_PAGE[mod.HTML_PAGE.find("<style>"):mod.HTML_PAGE.find("</style>")]
+    ra_ = next((l_ for l_ in style_.splitlines() if l_.startswith("#ra{")), "")
+    if style_.count(_RA_RULE) != 1 or not ra_.endswith(_RA_RULE) or re.search(r"(?:^|[}\s,])\.help\{[^}]*overflow-wrap", style_.replace(_RA_RULE, ""), re.M):
+        out_["wrap"].append(f"the read-at line's rules end {ra_[-90:]!r}; the fold's rule stands {style_.count(_RA_RULE)} times")
+    return out_
+
+
+_RA_MUTANTS = (     # (what, the part it must fail, its changes to the tool's text)
+    ("the full path on the line again", "words",
+     (('line = show("read.none", os.path.basename(folder) or folder, when)', 'line = show("read.none", folder, when)'),)),
+    ("the fold without the folder's path", "words",
+     (('about = [show("read.about.none", full, folder), show("read.none.why")]', 'about = [show("read.about.none", full), show("read.none.why")]'),)),
+    ("a label's {0} read as the path, not the time, so an older table's fold puts the path where its time stands", "words",
+     (('"read.about.none": "read from the folder {1} at {0}"', '"read.about.none": "read from the folder {0} at {1}"'),
+      ('about = [show("read.about.none", full, folder), show("read.none.why")]', 'about = [show("read.about.none", folder, full), show("read.none.why")]'))),
+    ("the code spans printed with their backticks", "code",
+     ((r'text = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(labels.get(key, LABELS[key])))', "text = esc(labels.get(key, LABELS[key]))"),)),
+    ("the sent-back reasons' code spans printed with their backticks", "code", ((_RA_PRECEDENT, "esc(t[29][7][0])"),)),
+    ("a value's backticks shown as code, the code spans read after the values are in", "values",
+     ((r'text = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(labels.get(key, LABELS[key])))' "\n"
+       r'        return re.sub(r"\{(\d)\}", lambda m: esc(str(args[int(m.group(1))])) if int(m.group(1)) < len(args) else "", text)',
+       "text = esc(labels.get(key, LABELS[key]))\n"
+       r'        return re.sub(r"`([^`]+)`", r"<code>\1</code>", re.sub(r"\{(\d)\}", lambda m: esc(str(args[int(m.group(1))])) if int(m.group(1)) < len(args) else "", text))'),)),
+    ("the fold's wrapping rule gone", "wrap", ((_RA_RULE + "\n", "\n"),)),
+    ("`break-word` in its place", "wrap", ((_RA_RULE + "\n", "details.about .help{overflow-wrap:break-word}\n"),)),
+    ("the rule on every help line", "wrap", ((_RA_RULE + "\n", ".help{overflow-wrap:anywhere}\n"),)),
+)
+_ra_real = _ra_faults(fm)
+check(f"FM-053, BF-30 · the read-at line and its fold read as their labels say, in each shape, on git, on Subversion and in a plain folder, in English "
+      f"and in the German table the tool ships; a plain folder's line names the folder by its name alone, and its fold names its full path at the full "
+      f"time, in both languages (saw {_ra_real['words'][:3]})", not _ra_real["words"])
+check(f"FM-053, BF-30 · the class: each code span a label writes shows as code — the two reasons a commit is no link, `link.unknown` and "
+      f"`link.noviewer`, in English and in German, the only labels that hold one — as the page's script shows a sent-back reason's; and a folder's own "
+      f"backticks and markup stay text (saw {_ra_real['code'][:3]}, {_ra_real['values'][:2]})", not _ra_real["code"] and not _ra_real["values"])
+check(f"FM-053, BF-49 · the read-at fold's text breaks anywhere, by one rule beside the read-at line's, scoped to that fold (saw {_ra_real['wrap']})",
+      not _ra_real["wrap"])
+_ra_src = (HERE / "shoalmark.py").read_text(encoding="utf-8")
+for what_, part_, changes_ in _RA_MUTANTS:
+    src_ = _ra_src
+    for a_, b_ in changes_:
+        src_ = src_.replace(a_, b_, 1) if src_.count(a_) == 1 else None
+        if src_ is None:
+            break
+    seen_ = _ra_faults(_tool_module(src_, "fm_read_at_mutant")) if src_ is not None else None
+    sys.modules.pop("fm_read_at_mutant", None)
+    check(f"FM-053, BF-30, BF-49 · …the mutant, {what_}: this tool with that one change FAILS the {part_} part "
+          f"(saw {seen_[part_][:1] if seen_ else 'the change is not there to make'})", seen_ is not None and bool(seen_[part_]))
+_ra_de_now, _RA_DE_OLD = _RA_TABLES["de"], "gelesen aus dem Ordner um {0}"
+_RA_TABLES["de"] = dict(_ra_de_now, **{"read.about.none": _RA_DE_OLD})
+try:
+    _ra_old_row = _ra_faults(fm)
+finally:
+    _RA_TABLES["de"] = _ra_de_now
+check(f"FM-053, BF-30 · …the mutant, the German table's old row for the fold, *{_RA_DE_OLD}*: the German fold names no path, and the words part "
+      f"FAILS (saw {_ra_old_row['words'][:1]})", _ra_de_now.get("read.about.none") != _RA_DE_OLD and bool(_ra_old_row["words"]))
 fm.configure(HERE)
 
 # --- revoke: `--revoke <id> "<why>"` takes back what he last did on a tracker — a new signed commit on the branch he
@@ -17245,7 +18552,7 @@ fm.configure(HERE)
 # 375, 390 and 1440 px no sideways scroll, no script error, no failed request, no request to another host; and in the probe state the dialog is a real
 # modal (labelled, focus in and back out, Escape, Tab inside, its folds by keyboard) that shows, with its fold closed and without scrolling, its label, Close, the
 # copied line, Copy again and step 3 on a phone and does not scroll inside itself at 1024×768, and the
-# tape-off ceremony holds its frames, its reduced-motion and print states, the door's name and the dialog's hold.
+# coin door holds its frames, lit and still, its reduced-motion and print states, its name and the dialog's hold.
 # Behind SHOALMARK_REGENERATE=1, like the other browser rebuilds: the site is built twice, as docs.yml builds it (the figures first, Zensical as
 # requirements-docs.txt pins it, then llms_txt.py); each control changes one thing in a built site and the browser must find it.
 _B1_NAME = "FM-006 · B1 · the landings in a real browser"
@@ -17262,26 +18569,26 @@ else:
         _pin = re.search(r"(?m)^zensical==(\S+)", (HERE / "requirements-docs.txt").read_text(encoding="utf-8")).group(1)
         _head = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
 
-        _B1_FORMS = {"interim": ("probe = false\ntaped = false\n", 'pymdownx.snippets.base_path = [".", "launch/interim"]\n'),
-                     "probe": ("probe = true\ntaped = false\n", 'pymdownx.snippets.base_path = [".", "launch/probe"]\n')}
+        _B1_FORMS = {"interim": ("probe = false\n", 'pymdownx.snippets.base_path = [".", "launch/interim"]\n'),
+                     "probe": ("probe = true\n", 'pymdownx.snippets.base_path = [".", "launch/probe"]\n')}
 
         def _b1_form(toml):
-            """The launch state a zensical.toml holds, "interim" or "probe", when it holds exactly one of the two forms: its switch with the tape off, and its
-            launch folder alone in the snippets' base path, each line once. None when it holds neither form, or both."""
+            """The launch state a zensical.toml holds, "interim" or "probe", when it holds exactly one of the two forms: its switch, and its launch folder
+            alone in the snippets' base path, each line once. None when it holds neither form, or both."""
             text = "\n" + toml
             held = [state for state, (switch, folder) in _B1_FORMS.items() if text.count("\n" + switch) == 1 and text.count("\n" + folder) == 1]
             return held[0] if len(held) == 1 else None
 
         def _b1_site(work, state, name=None, facts_edit=None, template_edit=None):
             """This tree built as docs.yml would build it in the launch state `state`, whichever state zensical.toml holds. The stage's zensical.toml is set to
-            that state first (its probe switch, the tape off, and its launch folder in the snippets' base path), since the figures follow the switch; then the
+            that state first (its probe switch and its launch folder in the snippets' base path), since the figures follow the switch; then the
             figures (scripts/landing_facts.py, read from this history at HEAD, the pull requests from the response recorded to #211), Zensical, then llms_txt.py.
             The file must hold exactly one of the two forms. `facts_edit` and `template_edit` change what was written or what the landing is, for a control."""
             stage = work / (name or state)
             shutil.copytree(HERE, stage, ignore=shutil.ignore_patterns(".git", "site", "__pycache__", ".cache", "work-tracker"))
             toml = (stage / "zensical.toml").read_text(encoding="utf-8")
             held = _b1_form(toml)
-            assert held, "zensical.toml holds neither launch form, or both: the probe switch with the tape off and its one launch folder"
+            assert held, "zensical.toml holds neither launch form, or both: the probe switch and its one launch folder"
             for have, want in zip(_B1_FORMS[held], _B1_FORMS[state]):
                 toml = toml.replace(have, want)
             (stage / "zensical.toml").write_text(toml, encoding="utf-8")
@@ -17309,12 +18616,12 @@ else:
         _b1_held = _b1_form(_b1_toml)
         _b1_other = "interim" if _b1_held == "probe" else "probe"
         _b1_ctl = {} if _b1_held is None else {
-            "the tape on beside the switch": _b1_toml.replace("\ntaped = false\n", "\ntaped = true\n", 1),
+            "the switch written twice": _b1_toml.replace("\n" + _B1_FORMS[_b1_held][0], "\n" + _B1_FORMS[_b1_held][0] + "\n" + _B1_FORMS[_b1_held][0], 1),
             "the switch with the other state's folder": _b1_toml.replace(_B1_FORMS[_b1_held][1], _B1_FORMS[_b1_other][1], 1),
             "both forms": _b1_toml + "".join(_B1_FORMS[_b1_other])}
         _b1_ctl_saw = {name: _b1_form(text) for name, text in _b1_ctl.items()}
         check(f"FM-006 · B1 · the site is built in each launch state from the one form zensical.toml holds ({_b1_held}), and the reading is not blind: each of "
-              f"the tape on beside the switch, the switch with the other state's folder and both forms holds no form (saw {_b1_ctl_saw})",
+              f"the switch written twice, the switch with the other state's folder and both forms holds no form (saw {_b1_ctl_saw})",
               _b1_held in _B1_FORMS and len(_b1_ctl_saw) == 3 and all(v is None for v in _b1_ctl_saw.values()))
 
         with tempfile.TemporaryDirectory() as d:
@@ -17326,9 +18633,10 @@ else:
                 check(f"{_B1_NAME}, {_state} state: both landings and both How it works pages at 360, 375, 390 and 1440 px — no sideways scroll, no script error, no failed request, no request "
                       f"to another host, the top bar's anchors in one row where they first show, the high scores' rows stacked on a phone and in columns wider" + (", and the dialog is a labelled modal that takes focus in and gives it back, closes on Escape, keeps Tab inside, opens its folds by keyboard, shows a refused "
                                             "copy and, with its fold closed, shows its label, Close, the copied line, Copy again and step 3 without scrolling at 360×780, 375×667 and 390×844 and does not "
-                                            "scroll inside itself at 1024×768; the tape-off ceremony keeps the page's width and the door's place in "
-                                            "every frame, peels the tape and ends lit, draws nothing under reduced motion or in print, leaves the door named by its label, and the dialog waits 0.36 s from a press for the coin, "
-                                            "not for the keyboard or under reduced motion" if _state == "probe" else "")
+                                            "scroll inside itself at 1024×768; the coin door is lit and still from the first frame, with no tape, unlit window or second cue "
+                                            "line, keeps the page's width, draws no coin under reduced motion or in print, where the cue stands still, is named by its label, and the dialog waits 0.36 s from a press for the coin, "
+                                            "not for the keyboard or under reduced motion; the door's twin after the coins in #start does the same, draws no coin under reduced "
+                                            "motion or in print and gets focus back" if _state == "probe" else ", and no coin door is drawn")
                       + f" (exit {_saw[_state][0]}, {_saw[_state][2]} checks, failing {_saw[_state][1]})", _saw[_state][0] == 0 and not _saw[_state][1] and _saw[_state][2] > 40)
             # the controls: one thing changed in a copy of the probe site, and the browser finds exactly that
             _probe = _work / "probe" / "site"
@@ -17386,11 +18694,13 @@ else:
                               "the cue stands clear of every chart label, by at least 2 px"),
                 "cue-motion": ("a cue that blinks under reduced motion", _mutate("cue-motion", "index.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}", "1440x900"),
                                "under reduced motion nothing animates: the document has no animation"),
-                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "blink 1s steps(1) 2.8s 4}", "blink 1s steps(1) 2.8s infinite}", "cue"),
-                                "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}", "cue"),
+                                "with motion allowed only the cue's icon and words blink, from the start, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-late": ("a cue that blinks only from 2.8 s, as the ceremony had it", _mutate("cue-late", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 2.8s 4}", "cue"),
+                             "with motion allowed only the cue's icon and words blink, from the start, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
                 "cue-rules": ("a cue whose rules blink too", _mutate("cue-rules", "index.html", "</head>", "<style>.cue{animation:blink 1s steps(1) 4}</style></head>", "cue"),
-                              "with motion allowed only the cue's icon and words blink, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
-                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "blink 1s steps(1) 2.8s 4}", "blink 1s steps(1) 2.8s 4 forwards}", "cue"),
+                              "with motion allowed only the cue's icon and words blink, from the start, 5 s at most, and nothing else of the cue, the buttons and the labels does"),
+                "cue-fill": ("a cue that stays in its animation", _mutate("cue-fill", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) 4 forwards}", "cue"),
                              "after the blink the cue is at rest and lit"),
                 "bar-docs": ("a Docs button wider than the bar has room for", _mutate("bar-docs", "index.html", "</head>", "<style>.hud nav a.docs{padding-inline:40px!important}</style></head>", "bar"),
                              "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways"),
@@ -17398,24 +18708,27 @@ else:
                              "the top bar, with the widest hi-score, at every whole width from 360 to 1920 px: nothing overlaps, wraps, is cut or leaves the bar's padding, and nothing scrolls sideways"),
                 "bar-ring": ("header buttons without their focus ring", _mutate("bar-ring", "index.html", "</head>", "<style>.hud a:focus-visible{outline:none!important}</style></head>", "bar"),
                              "both header buttons show the focus ring when the keyboard reaches them, whole inside the window and the bar"),
-                "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); open.focus();", "clearTimeout(timer); document.activeElement.blur();"),
+                "no-return": ("a dialog that does not give focus back", _mutate("no-return", "index.html", "clearTimeout(timer); from.focus();", "clearTimeout(timer); document.activeElement.blur();"),
                               "Escape closes the dialog and focus is back on the button"),
-                "door-wide": ("a tape that peels off past the window's edge", _mutate("door-wide", "index.html", "</head>", "<style>.hero{overflow-x:visible}@keyframes tape-off{to{transform:translateX(900px)}}</style></head>", "door"),
-                              "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
+                "door-tape": ("a tape drawn over the door again", _mutate("door-tape", "index.html", '<span class="gcoin" aria-hidden="true">',
+                                                                    '<span class="tape" aria-hidden="true">not yet</span><span class="gcoin" aria-hidden="true">', "door"),
+                              'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
                 "board-columns": ("high scores left in their columns on a phone", _mutate("board-columns", "index.html", "@media(max-width:640px){.board thead{display:none}", "@media(max-width:1px){.board thead{display:none}"),
                                   "on a phone each high scores row stacks, its period's words under the rank and the score at full width, the column heads gone"),
                 "desk-scrolls": ("a German dialog that scrolls at 1024×768", _mutate("desk-scrolls", "de/index.html", "max-height:calc(100dvh - 96px);overflow:auto", "max-height:calc(100dvh - 400px);overflow:auto", "desk"),
                                  "at 1024×768, with its fold closed, nothing in the dialog scrolls inside itself"),
-                "door-peel": ("a tape never pulled off", _mutate("door-peel", "index.html", ",tape-pull 1s steps(12) .9s forwards", "", "door"),
-                              "the tape peels: whole to 0.6 s, picked and pulled off from its right end by 1.9 s, never stuck back, and gone once lifted away, after 2.2 s"),
+                "door-cue": ("the taped cue back beside the live one", _mutate("door-cue", "index.html", '<span class="cue" aria-hidden="true"><span class="cue-t">',
+                                                                               '<span class="cue" aria-hidden="true"><span class="cue-t was">— after v0.20.1 —</span><span class="cue-t">', "door"),
+                             'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
                 "door-icon": ("a door without its copy icon", _mutate("door-icon", "index.html", ".btn.door .ic{order:2}", ".btn.door .ic{display:none}", "door"),
                               "the lit door is 55 px tall on a desktop and 59 px on a phone, its copy icon centred under its label"),
                 "door-lift": ("a door that lifts on hover", _mutate("door-lift", "index.html", ".btn.door:hover{transform:none}", "", "door"),
                               "on hover the door does not lift: the coin coming to the slot is its hover"),
-                "door-moves": ("a door that grows during the ceremony", _mutate("door-moves", "index.html", "</head>", "<style>.btn.door{animation:door-grow 1s steps(1) 1s both}@keyframes door-grow{to{padding-bottom:60px}}</style></head>", "door"),
-                               "in every frame of the ceremony the page does not scroll sideways, nothing moves the door, and the door is the live link"),
-                "door-unlit": ("a window that stays unlit", _mutate("door-unlit", "index.html", "84%,100%{opacity:0}", "84%,100%{opacity:1}", "door"),
-                               "the ceremony starts taped and unlit with the taped cue, and ends with the tape gone, the window lit and the live cue shown"),
+                "door-moves": ("a door that grows in its first seconds", _mutate("door-moves", "index.html", "</head>", "<style>.btn.door{animation:door-grow 1s steps(1) 1s both}@keyframes door-grow{to{padding-bottom:60px}}</style></head>", "door"),
+                               'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
+                "door-unlit": ("an unlit window drawn over the door", _mutate("door-unlit", "index.html", "</head>",
+                                                                       '<style>.btn.door::after{content:"";position:absolute;left:36px;top:0;right:0;bottom:0;z-index:-1;background:#8595a2}</style></head>', "door"),
+                               'from the first frame the door is lit and still: in no frame from 0 to 2.9 s is a tape, an unlit window or a second cue line drawn, the door moved or the page wider than the window, and the door is the live link'),
                 "door-hold": ("a dialog that waits 0.9 s for the coin", _mutate("door-hold", "index.html", "Math.max(0, 360 - (performance.now() - downAt))", "Math.max(0, 900 - (performance.now() - downAt))", "door"),
                               "after a mouse press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click"),
                 "door-copy": ("a copy made after the hold", _mutate("door-copy", "index.html", "const opening = () => { say", "const opening = () => { write(); say", "door"),
@@ -17424,18 +18737,26 @@ else:
                                  "under reduced motion a mouse press draws no coin and the dialog opens at once, the copy made in the click"),
                 "door-key": ("a keyboard that waits for the coin", _mutate("door-key", "index.html", " || !downAt || !e.detail ? 0 : Math.max(0, 360 - (performance.now() - downAt))", " ? 0 : 360", "door"),
                              "the keyboard gets the dialog at once, the copy made in the click"),
-                "door-motion": ("a tape drawn under reduced motion", _mutate("door-motion", "index.html", "@media (prefers-reduced-motion:reduce){.btn.door .tapebox,.btn.door .tape,.btn.door .flap,", "@media (prefers-reduced-motion:reduce){", "door"),
-                                "under reduced motion the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown"),
-                "door-print": ("a tape drawn in print", _mutate("door-print", "index.html", "@media print{.btn.door .tapebox,.btn.door .tape,.btn.door .flap,", "@media print{", "door"),
-                               "in print the tape, the unlit window, the coin and the taped cue are not drawn, and the live cue is shown"),
-                "door-name": ("a tape read by screen readers", _mutate("door-name", "index.html", '<span class="tapebox" aria-hidden="true"><span class="tape" aria-hidden="true">not yet</span>', '<span class="tapebox"><span class="tape">not yet</span>', "door"),
-                              "the door's name is its label alone: the tape and the coin are hidden from screen readers"),
+                "door-motion": ("a coin drawn under reduced motion", _mutate("door-motion", "index.html", "@media (prefers-reduced-motion:reduce){.btn.door .gcoin{display:none!important}}", "", "door"),
+                                "under reduced motion a mouse press draws no coin and the dialog opens at once, the copy made in the click"),
+                "door-print": ("a cue that blinks in print", _mutate("door-print", "index.html", ".cue-t{animation:none}}", "}", "door"),
+                               "in print the coin is not drawn and the cue stands lit and still, one line"),
+                "door-name": ("a door named with a tape's words", _mutate("door-name", "index.html", '<span class="gcoin" aria-hidden="true">', '<span class="tape">not yet</span><span class="gcoin" aria-hidden="true">', "door"),
+                              "the door's name is its label alone: the coin is hidden from screen readers"),
+                "twin-gone": ("a twin in #start that is not the door", _mutate("twin-gone", "index.html", '<p class="door-again"><a class="btn door"', '<p class="door-again"><a class="btn"', "door"),
+                              "the door's twin is in #start, in the door's words, leading where the door leads"),
+                "twin-unbound": ("a twin the door's handler does not reach", _mutate("twin-unbound", "index.html", 'document.querySelectorAll(".btn.door").forEach(door => {', "[open].forEach(door => {", "door"),
+                                 "the door's twin: on hover its coin comes to the slot and it does not lift; on a press the coin drops and the dialog opens when it has landed, 0.36 s after the press, the copy made in the click"),
+                "twin-print": ("a twin whose coin is drawn in print", _mutate("twin-print", "index.html", "@media print{.btn.door .gcoin{display:none!important}", "@media print{", "door"),
+                               "in print the door's twin draws no coin"),
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
                   "modal, a dialog whose third step is out of view on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
-                  "and of the tape-off ceremony a tape that peels off past the window's edge, a tape never pulled off, a door without its copy icon, a door that lifts on hover, a door that grows during it, a window that stays unlit, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
-                  "a tape drawn under reduced motion or in print and a tape read by screen readers makes it exit 1 with that check failing "
+                  "a cue that blinks only from 2.8 s, as the ceremony had it, "
+                  "and of the coin door a tape drawn over it again, the taped cue back beside the live one, a door without its copy icon, a door that lifts on hover, a door that grows in its first seconds, an unlit window drawn over it, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
+                  "a coin drawn under reduced motion, a cue that blinks in print and a door named with a tape's words, and of the door's twin a twin that is not the door, one the "
+                  "door's handler does not reach and one whose coin is drawn in print makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
             # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
             # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
@@ -18092,25 +19413,26 @@ else:
               and '"Parked": ["open held", T.status_parked]' in tpl_ and 'const ORDER = {"In Progress": 0, "Proposed": 1, "Parked": 1.5, "Shipped": 2, "Closed": 3};' in tpl_
               and '<symbol id="wo" viewBox="0 0 9 6">' in tpl_ and 'STATUS[w.status][0].startsWith("open")' in tpl_)
 
-def _taped_state(lf, text):
-    """landing_facts.py's launch state for a zensical.toml of `text`: (switch, taped), or the one line it stops with."""
+def _switch_read(lf, text):
+    """landing_facts.py's probe switch for a zensical.toml of `text`, or the one line it stops with."""
     with tempfile.TemporaryDirectory() as d:
         config = Path(d) / "zensical.toml"
         config.write_text(text, encoding="utf-8")
         try:
-            return lf.launch_state(config)
+            return lf.probe_switch(config)
         except lf.Stop as e:
             return str(e)
 
 
 _tape_lf = _lf_module()
-_tape_states = {name: _taped_state(_tape_lf, text) for name, text in (
-    ("both", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\ntaped = true\n'),
-    ("taped", '[project]\nsite_name = "t"\n# the tape, in a comment: taped = maybe\n\n[project.extra]\nprobe = false\ntaped = true  # until the release that opens it\n'),
+_tape_states = {name: _switch_read(_tape_lf, text) for name, text in (
+    ("on", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\n'),
+    ("on, a tape line left", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = true\ntaped = true\n'),
     ("off", '[project]\nsite_name = "t"\n\n[project.extra]\nprobe = false\n'))}
-check("FM-006 · the tape and the probe switch exclude each other: landing_facts.py stops a build with both on, in one line that says so; with the switch off it reads the tape on, "
-      f"its comments left alone, or off where it is not written (saw {_tape_states})",
-      isinstance(_tape_states["both"], str) and "exclude each other" in _tape_states["both"] and _tape_states["taped"] == (False, True) and _tape_states["off"] == (False, False))
+_tape_readers = [n for n in ("taped_switch", "launch_state") if hasattr(_tape_lf, n)]
+check("FM-006 · landing_facts.py reads the probe switch alone: no tape is read, so a `taped` line left in zensical.toml neither stops the build nor turns the switch "
+      f"(saw {_tape_states}; the tape's own readers still there: {_tape_readers})",
+      _tape_states == {"on": True, "on, a tape line left": True, "off": False} and not _tape_readers)
 
 
 if _lf_why:
@@ -18747,13 +20069,19 @@ _FEEDBACK_WORDS = ("<title>shoalmark · feedback · Rückmeldung</title>", "<p>T
                    f'<p>If nothing happens: <a href="{_TELL_URL}">open the form</a>.</p>', "<p>What you send there is public, under your GitHub name.</p>",
                    "<p>Weiter zum Rückmeldeformular von shoalmark auf GitHub.</p>", f'<p>Falls nichts passiert: <a href="{_TELL_URL}">Formular öffnen</a>.</p>',
                    "<p>Was du dort absendest, ist öffentlich, unter deinem GitHub-Namen.</p>")
+_FEEDBACK_LEGAL = ["../imprint.html", "../privacy.html", "../de/impressum.html", "../de/datenschutz.html"]
 
 
 def _feedback_problems(page):
     bad = []
-    targets = re.findall(r'<a [^>]*href="([^"]*)"', page) + re.findall(r'<meta http-equiv="refresh" content="0; url=([^"]*)">', page)
+    feet = re.findall(r"<footer>(.*?)</footer>", page, re.S)
+    legal = re.findall(r'<a [^>]*href="([^"]*)"', feet[0]) if len(feet) == 1 else []
+    rest = re.sub(r"<footer>.*?</footer>", "", page, count=1, flags=re.S) if len(feet) == 1 else page
+    targets = re.findall(r'<a [^>]*href="([^"]*)"', rest) + re.findall(r'<meta http-equiv="refresh" content="0; url=([^"]*)">', page)
     if len(targets) != 3 or set(targets) != {_TELL_URL}:
         bad.append(f"the page does not lead to the issue form alone, by its refresh and its two links: {targets}")
+    if legal != _FEEDBACK_LEGAL:
+        bad.append(f"the page's one footer does not link the imprint and the privacy notice, in English and then in German, and nothing else: {legal}")
     if '<meta name="robots" content="noindex">' not in page or re.search(r"<script|\bon\w+=", page, re.I):
         bad.append("the page is indexed, or carries a script")
     if not all(w in page for w in _FEEDBACK_WORDS) or '<section lang="en">' not in page or '<section lang="de">' not in page:
@@ -18764,14 +20092,16 @@ def _feedback_problems(page):
 _fbp = (HERE / _FEEDBACK).read_text(encoding="utf-8") if (HERE / _FEEDBACK).is_file() else ""
 _fbprob = _feedback_problems(_fbp) if _fbp else [f"there is no {_FEEDBACK}"]
 check(f"FM-006 · the feedback page · {_FEEDBACK} leads to the issue form by a refresh and a plain link, in English and German, in the ruled words, with no "
-      f"script and not indexed (problems found: {_fbprob})", _fbprob == [])
+      f"script and not indexed, and its one footer links the imprint and the privacy notice in both languages (problems found: {_fbprob})", _fbprob == [])
 _fbctl = {"the refresh to another address": _fbp.replace("content=\"0; url=" + _TELL_URL, "content=\"0; url=https://github.com/shoalmark/shoalmark/issues/new", 1),
           "a link to the discussions": _fbp.replace(f'href="{_TELL_URL}">Formular', 'href="https://github.com/shoalmark/shoalmark/discussions">Formular', 1),
           "a script that carries a query on": _fbp.replace("</body>", "<script>location.replace(location.search)</script></body>", 1),
-          "the page indexed": _fbp.replace('<meta name="robots" content="noindex">\n', "", 1)}
+          "the page indexed": _fbp.replace('<meta name="robots" content="noindex">\n', "", 1),
+          "the German privacy link gone from the footer": _fbp.replace(' · <a href="../de/datenschutz.html">Datenschutz</a>', "", 1),
+          "a refresh inside the footer": _fbp.replace("</footer>", '<meta http-equiv="refresh" content="0; url=https://github.com/shoalmark/shoalmark/discussions">\n</footer>', 1)}
 _fbctl_saw = {name: len(_feedback_problems(page)) for name, page in _fbctl.items()}
-check("FM-006 · the feedback page · its check is not blind: each of the refresh to another address, a link to the discussions, a script that carries a query on "
-      f"and the page indexed leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 4)
+check("FM-006 · the feedback page · its check is not blind: each of the refresh to another address, a link to the discussions, a script that carries a query on, "
+      f"the page indexed, the German privacy link gone from the footer and a refresh inside the footer leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 6)
 
 
 # --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:

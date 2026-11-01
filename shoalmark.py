@@ -3793,7 +3793,7 @@ def owner_change(tid, t, how):
         return undo(f"could not write {rel} — {e}")
     if git("add", "--", rel).returncode:
         return undo(f"could not stage {rel}")
-    step(3, "committing, signed — your key may ask for a touch or its passphrase; the pre-commit gate runs" if signed
+    step(3, "committing, signed — your key may ask for its passphrase or a confirmation on the device; the pre-commit gate runs" if signed
          else "committing — the pre-commit gate runs")
     r = git("commit", *(["-S"] if signed else []), "-m", how["subject"], *[x for line in how.get("trailers") or [] for x in ("-m", line)])
     if r.returncode:
@@ -4180,7 +4180,7 @@ details.fold>summary .sh:before{content:">";content:">" / ""}details.fold[open]>
    on the row coloured */
 .row.vok,.row.vwarn,.row.vfail{margin:0 -2ch;padding:3px 2ch}.row.vok{background:var(--okbg)}.row.vwarn{background:var(--warnbg)}.row.vfail{background:var(--failbg)}
 .vok .ty{color:var(--teal);font-weight:600}.vwarn .ty{color:var(--amber);font-weight:600}.vfail .ty{color:var(--coral);font-weight:600}
-.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
+.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv .sid{white-space:nowrap}.rv a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mute)}
 details.more{border-top:1px solid var(--line)}details.more>summary{color:var(--dim);padding:3px 0 3px 9ch}
 details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.more[open]>summary:before{content:"v ";content:"v " / ""}
 .ty{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
@@ -4189,6 +4189,12 @@ details.more>summary:before{content:"> ";content:"> " / "";color:var(--mute)}det
 .lim{white-space:pre-line;color:var(--dim);padding:2px 0 0 2ch}
 details.grp>summary{padding:3px 0}details.grp .subs{display:block;padding-left:2ch;color:var(--dim)}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
 details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
+/* a seat's icon in a session's row: 20 px, grey, without its ground; inverted on the light board; paper draws none and keeps its slot. The dark rule is the page's
+   own, so the switch reaches it; a word outside the seven keeps the slot, empty */
+.seat{display:inline-block;width:20px;height:20px;vertical-align:top}.seat img{display:block}
+.seat img{filter:grayscale(1) invert(1)}
+@media print{.seat img{visibility:hidden}}
+@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}
 code{font:inherit}
 /* a name in a row moves to the next line whole, and breaks only where it is longer than a line (BF-11) */
 .row code{display:inline-block}
@@ -4250,7 +4256,7 @@ tr.t{cursor:pointer}#b tr.c td:first-child{padding-left:3ch}
 .dfl{display:grid;grid-template-columns:3ch 3ch 1ch 1fr;gap:0 1ch;padding:0 1ch;white-space:pre-wrap;word-break:break-word}
 .dfl.add{background:var(--okbg)}.dfl.add .s{color:var(--teal)}.dfl.del{background:var(--failbg)}.dfl.del .s{color:var(--coral)}#dlg .sign a{text-decoration:underline}#dlg button.copy{margin:0}
 #p .pw,#dlg .pw{color:var(--ink);font-weight:600}.cq{color:var(--amber)}#p .cq{display:block;margin:0 0 4px}#dlg .cq{margin:0 0 8px}#p .pw.au,#dlg .pw.au{color:var(--amber)}
-#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block;overflow-wrap:anywhere}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}details.about>summary{color:var(--dim)}details.about>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.about[open]>summary:before{content:"v ";content:"v " / ""}
+#ra{color:var(--dim);margin:0 0 2px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 2ch}#ra>span:first-child{flex:1 1 30ch}#ra .fact{display:inline-block;overflow-wrap:anywhere}#rb{margin-left:auto}#ra code{font:inherit}#ra .said{margin-left:6px}#ra .said.ok{background:var(--okbg)}details.about>summary{color:var(--dim)}details.about>summary:before{content:"> ";content:"> " / "";color:var(--mute)}details.about[open]>summary:before{content:"v ";content:"v " / ""}details.about .help{overflow-wrap:anywhere}
 #r{display:flex;justify-content:flex-end;gap:1ch;align-items:center;margin:28px 0 0;color:var(--mute);font-size:12px;line-height:16px}#r a:first-child{display:flex;gap:6px;align-items:center}#r svg{flex:none}#r svg.ico{margin:0}
 @media(max-width:640px){button.act,#dlg button{min-height:24px;padding:3px 1ch}.rd{min-height:24px}.rv .how{padding-left:0}.sh{display:block}.sh:before{margin-right:1ch}.how .acts{display:block;margin:4px 0 0}
 #sb{flex-basis:100%;order:1}#n{flex-basis:100%}#n:before{display:none}}
@@ -4275,7 +4281,7 @@ __DAY__
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask's id — "" before ask ids],
 //        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
-const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,SEAT=__SEATS__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -4338,13 +4344,16 @@ VERDICT={"READY":"vok","READY TO TAG":"vok","READY WITH FINDINGS":"vwarn","NOT R
 // a verb button names its act; its spoken name adds what it acts on, so a list of them never reads as one button said many times
 btn=(key,id,on)=>`<button class="act" aria-label="${l(key)} ${id}" onclick="${on}">${l(key)}</button>`,
 split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},
+// a browser breaks a line at any space: inside a count every space is a no-break space, and each "·" holds to the count before it
+// by one, so a line of counts breaks only after a "·"
+cnt=s=>s.split(" · ").map(g=>g.replace(/ /g,"\u00a0")).join("\u00a0· "),
 idl=id=>`<a href="#=${id}">${id}</a>`,
 days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
 // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
 const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
 const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[29][12]||t[0],cmd="__CMD__";
-  const meta=[k?l("ask."+k):"",days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");
+  const meta=[k?l("ask."+k):"",days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join("\u00a0· ");
   // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
   // which is offered first. A proposal alone is a list of one. Last always comes Other, with the box — and when
   // there is nothing to choose from, Other is the only row and the box is the answer.
@@ -4406,12 +4415,12 @@ function box(){
   const old=Math.max(-1,...w.map(t=>days(t)??-1)),held=[...new Set(w.flatMap(t=>t[29][3]))];
   w.sort((a,b)=>(days(b)??-1)-(days(a)??-1));
   S.push(sec(hd("h2",`${l("waiting.title")}: <span class="${w.length?"owed":""}">${w.length}</span>`,
-      w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",w.length>__BOTTLE__?l("waiting.bottleneck",w.length,held.length):"",
+      w.length?[old>=0?cnt(l("waiting.oldest",old)):"",held.length?cnt(l("waiting.holds",held.length)):"",w.length>__BOTTLE__?l("waiting.bottleneck",w.length,held.length):"",
       // FM-007: how an answer here is proved — the same for every ask on one repository's board, so said once, here, before *accept*:
       // a state, its word in ink; where the author is all it proves, its consequence the line beneath, the warning colour's (PROOF, `proof_page`)
-      lh("proof.here",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join(" "):""),
+      lh("proof.here",`<b class="pw${PROOF.state=="author"?" au":""}">${l(PROOF.word)}</b>`)].filter(Boolean).map(s=>"· "+s).join("\u00a0"):""),
     (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(t[29][12]?`<a href="#=${t[0]}">${t[29][12]}</a>`:idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",
-      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),
+      [days(t)!=null?cnt(l("waiting.days",days(t))):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join("\u00a0· "),
       t[29][0]?btn("answer.accept",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'accept')`)+btn("answer.reject",t[0],`ACT(T.find(x=>x[0]=='${t[0]}'),'reject')`):"")).join("")
     +(w.length>14?`<p class="sub">${l("waiting.more",w.length-14)}</p>`:"")
     +(sent.length?`<p class="sub">${sent.length==1?l("waiting.malformed.one"):l("waiting.malformed",sent.length)}</p>`+sent.map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i>`,"",esc(t[29][7][0]).replace(/`([^`]+)`/g,"<code>$1</code>"),"")).join(""):""),w.length?"wait":""));
@@ -4424,23 +4433,25 @@ function box(){
       btn("acts.done",t[0],`OWE(T.find(x=>x[0]=='${t[0]}'),'done')`)+btn("acts.reschedule",t[0],`OWE(T.find(x=>x[0]=='${t[0]}'),'due')`),
       a[5]?`<span class="aq">${l("acts.asked",a[5])}</span>`:"")}).join("")));
   {const [t0,st]=REG&&REG.groups.length?split(l("sessions.recent",REG.parents,REG.all)):["",""];
-    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
+    S.push(sec(hd("h2",l("day.title"),"· "+l("day.span")),`<div class="day"><h3 class="sh dr">${$("day-row-standup").innerHTML}</h3>`+(REG&&REG.groups.length?fold(hd("h3",t0,st),REG.groups.map(g=>`<details class="grp"><summary>${esc(g[0])} <span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} (${esc(g[2])})${g[3].length?`<span class="subs">+ ${g[3].map(esc).join(" · ")}</span>`:""}</summary>`
       +g[4].map(m=>`<span class="aq">${esc(m[0])} (${esc(m[1])}) · ${esc(m[2])} · ${esc(m[3])}</span>`).join("\n")+"</details>").join(""),!PHONE):"")
       +`<h3 class="sh dr">${$("day-row-closeout").innerHTML}</h3></div>`))}
   const cid=(sha,url)=>url?`<a href="${esc(url)}" target="_blank" rel="noopener"><code>${esc(sha.slice(0,7))}</code></a>`:`<code>${esc(sha.slice(0,7))}</code>`,
-  brn=(b,u)=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))
-    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))
-    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none"))}</i>`;
+  brn=(b,u)=>b[0]=="line"||b[0]=="merge"?[lh("reviews.branch",`<code>${esc(b[1])}</code>`),""]
+    :b[0]=="ambiguous"?[lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", ")),""]
+    :[`<i>${l("reviews.branch.notknown")}</i>`,` <i>— ${b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none")}</i>`],
+  rvon=(b,c)=>esc(L["reviews.on"]??"reviews.on").replace(/ (?=\{\d\})/g,"&nbsp;").replace(/\{(\d)\}/g,(m,i)=>[c,b[0]][i]??"")+b[1],
+  sid=s=>`<span class="sid">${esc(s)}</span>`,nk=k=>`<i>${l("reviews.notknown")} — ${l(k)}</i>`;
   if(REG&&REG.reviews){const r=REG.reviews,[t0,st]=split(l("reviews.title")),word={"independent":"reviews.word.another","untraced":"reviews.word.untraced","on trunk":"reviews.word.trunk"},
-    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]),v[5]?l("verdict."+v[5]):l("type.verdict"),
-        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),
+    vr=v=>row(cid(v[0],(v[8]||[])[0]),rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1])),v[5]?l("verdict."+v[5]):l("type.verdict"),
+        (v[4]=="same session"?`<b>${l("reviews.word.same")}</b>`:l(word[v[4]]||"reviews.word.untraced"))+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1):v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))),"","",["rv",VERDICT[v[5]]].filter(Boolean).join(" ")),
     folds=v=>v[4]=="independent"&&(v[5]=="READY"||v[5]=="READY TO TAG"),week=REG.verdicts||[],more=week.filter(folds);
-    S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",
-        "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),
-      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
+    S.push(fold(hd("h2",t0,[st,r[4]?`· <b class="hot">${cnt(l("reviews.notready",r[4]))}</b>`:"",r[5]?`· <b class="warn">${cnt(l("reviews.findings",r[5]))}</b>`:"",
+        "· "+cnt(l("reviews.counts",r[0],r[1])),r[2]?"· "+cnt(l("reviews.untraced",r[2])):"",r[3]?"· "+cnt(l("reviews.trunk",r[3])):"","· "+l("reviews.reports")].filter(Boolean).join("\u00a0")),
+      `<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")+(more.length?`<details class="more"><summary>${more.length==1?l("reviews.more.one"):l("reviews.more",more.length)}</summary>${more.map(vr).join("")}</details>`:""),false))}
   // your current path: your own words, known by heart — folded, its heading carrying its line count
   if(HOME.path){const n=HOME.path.split("\n").filter(s=>s.trim()).length;
-    S.push(fold(hd("h2",l("path.title"),"· "+l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__"),`<p class="lim">${ids(HOME.path)}</p>`,false))}
+    S.push(fold(hd("h2",l("path.title"),"· "+cnt(l(n==1?"path.line":"path.lines",n)+" · __HOME_PATH__")),`<p class="lim">${ids(HOME.path)}</p>`,false))}
   return S.join("");
 }
 let all=false,gi=0,shut=new Set(),touched=new Set();
@@ -4459,18 +4470,18 @@ function draw(){
   if(gname=="board"&&!q&&!hood)for(const k of order)groups.set(k,groups.get(k)||[]);   // the board always shows its five — an empty section is an answer
   const keys=[...groups.keys()].sort(gname=="board"?(a,b)=>order.indexOf(a)-order.indexOf(b):gname=="epic"?(a,b)=>(a=="—")-(b=="—")||(a<b?-1:a>b):vcmp);
   // epics start folded — the list of stories is the answer; a search or a neighbourhood opens them
-  // …so does "no tag", and so does the board below `triage` — what is kept and what is owed stay open; `triaged` keeps its pass paragraph
+  // …so does "no tag", and so does the board below `triage` — what is kept and what is owed stay open; a shut group is its heading alone: its paragraph (the newest pass, a story's state) folds with its rows
   for(const k of keys)if((gname=="epic"||gname=="board"&&order.indexOf(k)>1)&&!q&&!touched.has(gname+k))shut.add(gname+k);
   $("b").innerHTML=keys.map(k=>{
     const g=groups.get(k);
     const kids=gname=="epic"&&byId.has(k)?T.filter(t=>t[13]==k):[],open=kids.filter(t=>OPEN.has(t[2])),shipped=kids.filter(t=>t[2]=="Shipped").length,closed=kids.filter(t=>t[2]=="Closed").length,folded=shut.has(gname+k)&&!q;
-    const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";
+    const story=kids.length?` · ${cnt(`${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}:`)} ${cnt(`${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")}`)}\u00a0· <span class="${open.some(t=>t[1]<"P2")?"hot":""}">${cnt(`${open.length} ${l("story.open")}`)}</span>${open.some(t=>t[17])?`\u00a0· ${cnt(`${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`)}`:""}`:"";
     const state=gname=="epic"&&byId.has(k)&&byId.get(k)[14]?`<tr class="s"><td colspan="__COLSPAN__">${esc(byId.get(k)[14])}</tr>`:gname=="board"&&k=="triaged"&&HOME.last?`<tr class="s"><td colspan="__COLSPAN__">${ids(HOME.last)}</tr>`:"";
     g.sort((x,y)=>(y[0]==k)-(x[0]==k));
-    const head=`<tr class="g${folded?" f":""}" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m"><b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?(BOARD[k]?" · "+BOARD[k]:""):BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>${state}`;   // a header sums its rows up by the board's columns
-    return head+(folded?"":g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
+    const head=`<tr class="g${folded?" f":""}" data-k="${esc(gname+k)}"><td colspan="__COLSPAN__" class="m"><b>${k=="—"?l("group.none",vn(gname)):gname=="board"?l("section."+k):esc(k)}</b>${gname=="epic"&&byId.has(k)?" "+esc(byId.get(k)[6]):""}${story||" · "+g.length}${gname=="board"?(BOARD[k]?" · "+BOARD[k]:""):BCOLS.filter(c=>c.toLowerCase()!=gname).map(c=>[...new Set(g.map(t=>xv(t,c)).filter(v=>v!="—"))].sort(vcmp)).filter(v=>v.length).map(v=>" · "+esc(v.slice(0,6).join(" / "))+(v.length>6?" …":"")).join("")}</tr>`;   // a header sums its rows up by the board's columns
+    return head+(folded?"":state+g.map(t=>`<tr class="t${gname=="epic"&&byId.has(k)&&t[0]!=k?" c":""}"><td class="m"><i class="q ${mark(t)}"></i><a href="#=${t[0]}">${t[0]}</a><td class="m ${t[1]<"P2"?"hot":""}">${t[18]?"#"+t[18]+" ":""}${t[1]}${t[21]?" → "+(t[21]=="owner"?l("next.owner"):esc(t[21])):""}<td class="m">${esc(sl(blocked(t)?"Blocked":t[2]))}${BCOLS.map(c=>`<td class="m x">${esc((t[28]||{})[c]||xv(t,c))}`).join("")}<td><a href="${esc(BLOB)+esc(t[5])}">${esc(t[6])}</a>${t[15].map(x=>`<a href="#${encodeURIComponent(x)}" class="m k">${esc(x)}</a>`).join("")}</tr><tr class="h" hidden><td colspan="__COLSPAN__">${esc(t[7])}${blocked(t)?`<div class="m">${esc(sl(t[2]))} · ${l("word.blocked_by")} ${t[16].map(b=>byId.has(b)?`<a href="#~${b}">${b}</a>`:esc(b)).join(" ")}</div>`:""}${t[17]?`<div class="m">${l("word.triaged")} ${esc(t[17])}${t[20].length?" · "+l("word.needs")+" "+t[20].join(", "):""}</div>`:""}${chips(t[12],"→")}${chips(inb.get(t[0])||[],"←")}</tr>`).join(""))}).join("");
   const hot=rows.filter(t=>OPEN.has(t[2])&&t[1]<"P2").length,go=rows.filter(t=>t[2]=="In Progress").length,stuck=rows.filter(blocked).length;
-  $("n").textContent=`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`;
+  $("n").textContent=cnt(`${rows.length} ${hood?L["count.around"].replace("{0}",hood[0]):exact?L["count.id"].replace("{0}",exact[0]):every?L["count.trackers"]:L["count.open"]} · ${hot} P0/P1 · ${go} ${L["count.in_progress"]}${stuck?` · ${stuck} ${L["count.blocked"]}`:""}${rows.some(t=>t[17])?` · ${rows.filter(untriaged).length} ${L["count.untriaged"]}`:""}`);
   $("ov").hidden=gname=="board";
   for(const r of document.querySelectorAll("#gv input,#ov input"))r.checked=r.name=="gv"?+r.value==gi:(r.value=="all")==all;
   $("p").hidden=!!q;$("p").innerHTML=`<span class="pt">${l("owner.title")}</span>`+(!q?box():"");
@@ -4507,7 +4518,7 @@ ${t[29][4]?`<p class="m hd"><b>${l("viewer.answer")}</b> — ${esc(t[29][4])}${(
 ${OPEN.has(t[2])||t[22]||t[24].length?`<p class="m hd"><b>${l("viewer.intent")}</b> — ${t[22]?esc(t[22])+(t[23]?` <a href="#=${esc(t[23])}">(${l("viewer.from",t[23])})</a>`:""):"<i>"+l("viewer.intent.missing")+"</i>"}<br>
 <b>${l("viewer.verdict")}</b> — ${t[24].length?`<code>${esc(t[24][1])}</code> · ${esc(t[24][0])}${t[2]=="In Progress"&&ago(t[24][0])>__DAYS__?" · <i>"+l("viewer.stale","__DAYS__")+"</i>":""}${t[24][2]?" · "+esc(t[24][2]):""}`:"<i>"+l("viewer.verdict.none")+"</i>"}<br>
 <b>${l("viewer.handover")}</b> — ${l("viewer.next")}: ${t[21]?(t[21]=="owner"?"<code>owner</code>":esc(t[21])):"<i>"+l("word.missing")+"</i>"}${t[21]?" · "+l("viewer.kind")+": "+(t[26][0]?esc(t[26][0])+(t[26][1]?"":" <i>("+l("viewer.from_move")+")</i>"):"<i>"+l("word.missing")+"</i>"):""} · ${l("viewer.true_now")}: ${t[20].includes("stated")?"<i>"+l("word.missing")+"</i>":l("word.stated")}${(c=>c.length?`<br>
-<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?`${v.length} ${l("viewer.no_move")}`:`${k=="owner"?"<code>owner</code>":esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
+<b>${l("story.chapters")}</b> — ${c.length}: ${Object.entries(c.filter(x=>x[2]=="In Progress"||x[2]=="Proposed").reduce((m,x)=>(m[x[21]||"no move named"]=[...(m[x[21]||"no move named"]||[]),x[0]],m),{})).map(([k,v])=>k=="no move named"?cnt(`${v.length} ${l("viewer.no_move")}`):`${k=="owner"?"<code>owner</code>":esc(k)} ${v.map(i=>`<a href="#=${i}">${i}</a>`).join(" ")}`).join("\u00a0· ")||l("viewer.none_in_progress")}\u00a0· ${cnt(`${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · ${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`)}`:"")(T.filter(x=>x[13]==t[0]))}${t[20].filter(n=>n!="stated"&&n!="intended").length?" · "+l("word.needs")+" "+t[20].filter(n=>n!="stated"&&n!="intended").join(", "):""}</p>`:""}${chips(t[16].filter(b=>byId.has(b)),l("word.blocked_by"),"=")}${chips(t[12],"→","=")}${chips(inb.get(id)||[],"←","=")}<div class="md">${marked.parse(MD.get(id))}</div>`;
   for(const i of v.querySelectorAll(".md img"))if(!safeUrl(i.getAttribute("src")||"")||/^mailto:/i.test((i.getAttribute("src")||"").trim()))i.replaceWith(document.createTextNode(i.alt||""));      // the DOM's last word on what an image loads
   for(const a of v.querySelectorAll(".md a")){const h=a.getAttribute("href")||"",m=h.match(new RegExp("^("+TID.source+")-[^/]*\\.md"));
     if(!safeUrl(h)){a.removeAttribute("href");continue}
@@ -4611,7 +4622,7 @@ LABELS = {
     "read.none": "read from the folder {0} at {1}", "read.none.why": "no version control: no commit or revision to name",
     "read.self": "it reads its file again when you come back to it; nothing polls", "read.copy": "rebuild command", "read.copy.spoken": "copy the rebuild command",
     "read.about": "what this page reads, and what it cannot see", "read.about.git": "read from {0}'s history at {1}",
-    "read.about.svn": "read from the working copy at {0}", "read.about.none": "read from the folder at {0}",
+    "read.about.svn": "read from the working copy at {0}", "read.about.none": "read from the folder {1} at {0}",
     "link.unpushed": "not on origin yet, so not linked", "link.noforge": "no forge named in the configuration, so not linked",
     "link.unknown": "the forge's commit address is not configured (`commit_url`), so not linked",
     "link.noviewer": "no Subversion viewer configured (`commit_url`), so not linked", "link.nocommit": "no commit to link",
@@ -4620,15 +4631,22 @@ LABELS = {
     # the heading, led by what failed and what warns where there is any, then who gave the verdicts (the guide, §1)
     "reviews.title": "reviews · this week", "reviews.counts": "{0} by another session · {1} by the same session",
     "reviews.untraced": "{0} untraced", "reviews.trunk": "{0} on trunk",          # the number first, as the heading's other counts (BF-7)
-    "reviews.reports": "reports, not proofs", "reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch's {1}",
-    # BF-6: the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none stays —
+    "reviews.reports": "reports, not proofs", "reviews.on": "on {1} @ {0}", "reviews.sessions": "{0}, the branch's {1}",
+    # the branch's sessions as the session of its oldest commit and a count of the rest — one alone is its id, none not known with its reason
     "reviews.sessions.more": "{0} and {1} more",
     "reviews.more": "and {0} more verdicts by another session this week", "reviews.more.one": "and 1 more verdict by another session this week",
-    # a verdict's branch (RV-3343): `{0}` and `{1}` are markup the page builds — a branch, a merge's commit, the word *ambiguous*
-    "reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it",
-    "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous",
-    "reviews.branch.unknown": "branch not known — {0}", "reviews.branch.none": "no branch here holds the verdict on its own line",
+    # a verdict's row, line 1, `reviews.on`: `{0}` the reviewed commit, and `{1}` its branch, as markup the page builds — a branch; the word
+    # *ambiguous* and the branches; or the branch not known, in italics, its reason after the commit, a merge's commit in it
+    "reviews.branch": "{0}",
+    "reviews.branch.ambiguous": "{0}: {1}", "reviews.ambiguous": "ambiguous",
+    "reviews.branch.notknown": "branch not known", "reviews.branch.none": "committed on no branch here",
     "reviews.branch.unnamed": "its merge {0} names no branch",
+    # the section's one help line: how a verdict's branch is known
+    "reviews.help": "a verdict's branch is the one it was committed on; once merged, the one its merge names",
+    # line 2: a session not known, in italics, with the reason the tool's own test gives — the verdict's commit names none; no commit of the
+    # branch's own, merges and verdicts aside, names one; or the reviewed commit is not in this repository, so its range is not read
+    "reviews.notknown": "not known", "reviews.notknown.own": "the verdict names no session",
+    "reviews.notknown.range": "no commit on it names a session, merges and verdicts aside", "reviews.notknown.unread": "the reviewed commit is not here",
     "reviews.notready": "{0} not ready", "reviews.findings": "{0} with findings",
     # a verdict's word as the reviewer gave it, its row's TYPE (G3) — `--queue` reads it from the verdict commit's subject
     "verdict.READY": "ready", "verdict.READY WITH FINDINGS": "ready with findings", "verdict.READY TO TAG": "ready to tag", "verdict.NOT READY": "not ready",
@@ -4733,7 +4751,9 @@ LABELS = {
     "brand.gone.wordmark": "the name", "brand.gone.themes": "[palette], by name",
 }
 LABELS_GONE = {**{k: "light or dark is one switch, its word `scheme.toggle`" for k in ("scheme.auto", "scheme.light", "scheme.dark", "scheme.button")},
-               "footer": "the board ends with the running line alone: no claim stands under it"}
+               "footer": "the board ends with the running line alone: no claim stands under it",
+               "reviews.branch.merged": "a verdict's branch is named alone, its word `reviews.branch`; the section's help line, `reviews.help`, says a merge may name it",
+               "reviews.branch.unknown": "a branch not known is said alone, its word `reviews.branch.notknown`, and its reason follows the commit on the row"}
 BRAND_FILES = ("logo.svg", "logo.png", "labels.yaml")   # what a brand place gives the board: a logo and its words, read where they are read today
 # THE BOARD'S COLOURS (the design guide, §5 and §13; FM-053's answer, and the guide's amendment G1–G2): every colour is a token on `:root`, so a
 # palette is a token swap, and the page writes the one it wears from here. Three meanings, one colour each: `teal` done or success, `amber` a
@@ -4859,6 +4879,87 @@ BRAND_GONE_TOOL = (("themes/", "no theme is copied: the board's colours are `[pa
 # The tool's own mark, the Pricke (FM-006) — the site's `overrides/.icons/shoalmark/pricke.svg`, one path on a 16-unit
 # grid. The running line ends every page with it: the tool's name and version, not a brand, not a label, in every repository.
 PRICKE = "M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"
+
+# The seven seat icons (the design guide, §4): `brand/seats/<seat>.svg` on a 20-unit grid, each as its file holds it but for the
+# ground square, which a session's row leaves out; the files keep it for their use as avatars. A row finds its seat's icon by the
+# seat's exact word, and any other word keeps an empty slot.
+SEAT_ICONS = {
+    "auditor": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                '<title>auditor — the owl</title>\n'
+                '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                '<path fill="#8595a2" d="M5 4h1v2h-1ZM6 5h1v1h-1ZM14 4h1v2h-1ZM13 5h1v1h-1Z"/><!-- the ear tufts -->\n'
+                '<path fill="#8595a2" d="M4 6h12v1h-12ZM3 7h14v6h-14ZM4 13h12v1h-12ZM5 14h10v1h-10Z"/><!-- the head -->\n'
+                '<path fill="#d9e4ec" d="M5 8h3v3h-3ZM12 8h3v3h-3Z"/><!-- the eyes, wide awake -->\n'
+                '<path fill="#15293d" d="M5 7h3v1h-3ZM12 7h3v1h-3ZM4 8h1v3h-1ZM15 8h1v3h-1ZM8 8h4v1h-4ZM8 9h1v2h-1ZM11 9h1v2h-1ZM5 11h3v1h-3ZM12 11h3v1h-3Z"/><!-- the spectacles -->\n'
+                '<path fill="#15293d" d="M6 9h1v1h-1ZM13 9h1v1h-1Z"/><!-- the pupils -->\n'
+                '<path fill="#f1d47a" d="M9 11h2v2h-2Z"/><!-- the beak -->\n'
+                '</svg>\n'),
+    "builder": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                '<title>builder — the shipwright</title>\n'
+                '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                '<path fill="#bccd8f" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><!-- the head, the stake\'s own green -->\n'
+                '<path fill="#f1d47a" d="M8 4h4v1h-4ZM7 5h6v1h-6ZM6 6h8v1h-8ZM5 7h10v1h-10Z"/><!-- the hard hat -->\n'
+                '<path fill="#e8d4a0" d="M9 4h2v3h-2Z"/><!-- its ridge -->\n'
+                '<path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><!-- the eyes -->\n'
+                '<path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/><!-- the blush -->\n'
+                '</svg>\n'),
+    "designer": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                 '<title>designer — the painter</title>\n'
+                 '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                 '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                 '<path fill="#f1d47a" d="M8 7h4v1h-4ZM7 8h6v1h-6ZM6 9h8v1h-8ZM5 10h10v4h-10ZM6 14h8v1h-8Z"/><!-- the head, a pear -->\n'
+                 '<path fill="#f38a80" d="M9 4h1v1h-1ZM7 5h6v1h-6ZM6 6h9v1h-9Z"/><!-- the beret, tilted -->\n'
+                 '<path fill="#15293d" d="M10 10h1v2h-1ZM13 10h1v2h-1Z"/><!-- the eyes, on its drawing -->\n'
+                 '<path fill="#f38a80" d="M13 12h1v1h-1Z"/><!-- the blush -->\n'
+                 '</svg>\n'),
+    "go-to-market": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                     '<title>go-to-market — the herald</title>\n'
+                     '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                     '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                     '<path fill="#f38a80" d="M5 6h7v1h-7ZM4 7h9v6h-9ZM5 13h7v1h-7Z"/><!-- the head, leaning back from the horn -->\n'
+                     '<path fill="#15293d" d="M6 8h1v2h-1ZM11 8h1v2h-1Z"/><!-- the eyes, open on the stranger -->\n'
+                     '<path fill="#d9e4ec" d="M13 10h2v1h-2ZM15 9h1v3h-1ZM16 8h1v5h-1Z"/><!-- the horn -->\n'
+                     '</svg>\n'),
+    "planner": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                '<title>planner — the skipper</title>\n'
+                '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                '<path fill="#d9e4ec" d="M6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><!-- the head -->\n'
+                '<path fill="#d9e4ec" d="M6 4h8v1h-8ZM5 5h10v1h-10Z"/><!-- the cap\'s crown -->\n'
+                '<path fill="#5b83a3" d="M6 6h8v1h-8Z"/><!-- its band -->\n'
+                '<path fill="#f1d47a" d="M9 6h2v1h-2Z"/><!-- its badge -->\n'
+                '<path fill="#07111b" d="M6 7h8v1h-8Z"/><!-- its peak -->\n'
+                '<path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><!-- the eyes, level -->\n'
+                '<path fill="#f38a80" d="M6 12h1v1h-1ZM13 12h1v1h-1Z"/><!-- the blush -->\n'
+                '</svg>\n'),
+    "research": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                 '<title>research — the tide gauge</title>\n'
+                 '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                 '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                 '<path fill="#7fd9bf" d="M8 3h4v1h-4ZM7 4h6v1h-6ZM6 5h8v10h-8ZM7 15h6v1h-6Z"/><!-- the staff -->\n'
+                 '<path fill="#15293d" d="M7 6h2v2h-2ZM11 6h2v2h-2Z"/><!-- the eyes, wide open -->\n'
+                 '<path fill="#15293d" d="M11 9h2v1h-2ZM12 11h1v1h-1ZM11 13h2v1h-2Z"/><!-- the marks it reads -->\n'
+                 '<path fill="#f38a80" d="M7 8h1v1h-1ZM12 8h1v1h-1Z"/><!-- the blush -->\n'
+                 '</svg>\n'),
+    "reviewer": ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">\n'
+                 '<title>reviewer — the inspector</title>\n'
+                 '<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->\n'
+                 '<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->\n'
+                 '<path fill="#8fb9f3" d="M6 6h8v1h-8ZM5 7h10v6h-10ZM6 13h8v1h-8Z"/><!-- the head -->\n'
+                 '<path fill="#d9e4ec" d="M11 7h4v1h-4ZM10 8h1v4h-1ZM15 8h1v4h-1ZM11 12h4v1h-4ZM15 13h1v2h-1Z"/><!-- the monocle, its cord -->\n'
+                 '<path fill="#15293d" d="M12 9h2v2h-2Z"/><!-- the eye behind it, magnified -->\n'
+                 '<path fill="#15293d" d="M6 10h2v1h-2Z"/><!-- the other eye, squinting -->\n'
+                 '<path fill="#f38a80" d="M6 12h1v1h-1Z"/><!-- the blush -->\n'
+                 '</svg>\n'),
+}
+
+
+def seat_icon(seat):
+    """A seat's icon as a session's row draws it: 20 px, an image beside the seat's word, never read."""
+    data = base64.b64encode(SEAT_ICONS[seat].encode("utf-8")).decode("ascii")
+    return f'<img alt="" aria-hidden="true" width="20" height="20" src="data:image/svg+xml;base64,{data}">'
 LOGO_MAX = 200_000            # bytes — a logo is inlined into the page; past this it is skipped, with a warning
 
 
@@ -5332,13 +5433,20 @@ def svn_revision():
 
 def read_at_html(read, labels):
     """The board's line of what it read, and when (`read_at`), in its labels — `labels.yaml` over `LABELS` —, as the page shows it, and the fold beneath it
-    that says the rest: the line names where the board was read and when, that the page reads its file again, and the rebuild command's copy button, the
-    command itself hidden behind it; the fold names the history or the folder it was read from at the full time, why the commit is not a link, and what
-    is changed and not committed. Each part escaped; every `_` is written as a character reference, so no placeholder of the page can match inside it.
-    Each part names a fact read, or that it was not read; none says *current*, *live* or *up to date*."""
+    that says the rest: the line names where the board was read and when — a folder by its name alone —, that the page reads its file again, and the
+    rebuild command's copy button, the command itself hidden behind it; the fold names the history, the working copy or the folder's full path it was read
+    from, at the full time, why the commit is not a link, and what is changed and not committed. Each part escaped, and each code span a label writes in
+    backticks shown as code, as the page's script shows a sent-back reason's; a value's own backticks stay text. Every `_` is written as a character
+    reference, so no placeholder of the page can match inside it. Each part names a fact read, or that it was not read; none says *current*, *live* or
+    *up to date*."""
     def say(key, *args):
         return re.sub(r"\{(\d)\}", lambda m: str(args[int(m.group(1))]) if int(m.group(1)) < len(args) else "", labels.get(key, LABELS[key]))
     esc = lambda text: html_escape(text).replace("_", "&#95;")
+    def show(key, *args):
+        """The label `key` as the page's text: its own text escaped, each code span it writes in backticks as `<code>`, then each value, escaped, in
+        its place."""
+        text = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(labels.get(key, LABELS[key])))
+        return re.sub(r"\{(\d)\}", lambda m: esc(str(args[int(m.group(1))])) if int(m.group(1)) < len(args) else "", text)
     def head(shown, commit):
         """The commit as the line shows it — a link to its page on the forge (`commit_link`), or the commit alone — and the label of why it is no link."""
         url, why = commit_link(commit)
@@ -5350,25 +5458,26 @@ def read_at_html(read, labels):
     if read.get("vcs") == "git":
         sha, branch, n = (read.get("commit") or "")[:7], read.get("branch"), read.get("changes")
         shown, why = head(sha, read.get("commit")) if sha else ("", "")
-        where = say("read.git.unborn", branch or "HEAD", when) if not sha else say("read.git.detached", held, when) if branch is None else say("read.git.branch", branch, held, when)
-        line = esc(where).replace(held, shown)
-        about = [say("read.about.git", branch or "HEAD", full), say(why) if why else "",
-                 say("read.git.unread") if n is None else say("read.git.clean") if n == 0 else say("read.git.changed.one") if n == 1 else say("read.git.changed", n)]
+        where = show("read.git.unborn", branch or "HEAD", when) if not sha else show("read.git.detached", held, when) if branch is None else show("read.git.branch", branch, held, when)
+        line = where.replace(held, shown)
+        about = [show("read.about.git", branch or "HEAD", full), show(why) if why else "",
+                 show("read.git.unread") if n is None else show("read.git.clean") if n == 0 else show("read.git.changed.one") if n == 1 else show("read.git.changed", n)]
     elif read.get("vcs") == "svn":
         revision = read.get("revision")
         shown, why = head("r" + revision, revision) if revision else ("", "")
-        line = (esc(say("read.svn.unread", when)) if revision is None else esc(say("read.svn.new", when)) if not revision
-                else esc(say("read.svn", held, when)).replace(held, shown))
-        about = [say("read.about.svn", full), say(why) if why else ""]
+        line = (show("read.svn.unread", when) if revision is None else show("read.svn.new", when) if not revision
+                else show("read.svn", held, when).replace(held, shown))
+        about = [show("read.about.svn", full), show(why) if why else ""]
     else:
-        line = esc(say("read.none", read.get("folder", ""), when))
-        about = [say("read.about.none", full), say("read.none.why")]
-    facts = [line, esc(say("read.self"))]
+        folder = read.get("folder", "")
+        line = show("read.none", os.path.basename(folder) or folder, when)
+        about = [show("read.about.none", full, folder), show("read.none.why")]
+    facts = [line, show("read.self")]
     return ('<p id="ra" class="m"><span>' + " ".join(f'<span class="fact">{f}{"&nbsp;·" if i < len(facts) - 1 else ""}</span>' for i, f in enumerate(facts))
             + f'</span><code id="rc" hidden>{esc(CMD + " --html-only")}</code>'
-            f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{esc(say("read.copy"))}</button>'
+            f'<button type="button" id="rb" class="act" aria-label="{esc(say("read.copy.spoken"))}">{icon("copy")}{show("read.copy")}</button>'
             '<span id="rs" class="said" aria-live="polite"></span></p>\n'
-            f'<details class="about"><summary>{esc(say("read.about"))}</summary><p class="help">{" · ".join(esc(f) for f in about if f)}</p></details>')
+            f'<details class="about"><summary>{show("read.about")}</summary><p class="help">{" · ".join(f for f in about if f)}</p></details>')
 
 
 def board_basis():
@@ -5547,7 +5656,7 @@ def render_html(trackers, read=None):
     unwrap = lambda md: re.sub(r" {2,}", " ", re.sub(r"(?<!\n)\n(?!\s*\n|\s*\d+\. |\s*- )", " ", md))   # source line breaks are not the reader's
     plain = lambda md: strip_md(re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", unwrap(md)))
     home = {k: plain(v) for k, v in triage_home().items()}
-    page = (HTML_PAGE.replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
+    page = (HTML_PAGE.replace("__SEATS__", script_json({k: seat_icon(k) for k in SEAT_ICONS})).replace("__KINDS__", "|".join(sorted(KINDS, key=len, reverse=True))).replace("__NAME__", html_escape(CONFIG["name"] or ROOT.name))
             .replace("__COLHEADS__", "".join(f'<th class="x">{html_escape(c.lower())}' for c in BOARD_COLUMNS)).replace("__COLSPAN__", str(4 + len(BOARD_COLUMNS))).replace("__BCOLS__", script_json(BOARD_COLUMNS)).replace("__COLS__", script_json(DERIVED_COLUMNS)).replace("__HOME_PATH__", script_json(html_escape(str((TRACKER_DIR / "TRIAGE.md").relative_to(ROOT).as_posix())))[1:-1]).replace("__CMD__", script_json(CMD)[1:-1])
             .replace("__ACTS_HEAD__", script_json(HEAD["acts"])[1:-1]).replace("__PROOF__", script_json(proof_page())))     # before any text of the repository's is in the page
     logo, labels, _src, warnings, gone = brand()
@@ -9641,13 +9750,14 @@ def oldest_session(history, tip, own):
 
 
 def verdict_reports(days=None):
-    """S6 — each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed,
-    its session, the reviewed range's sessions, the word): *independent* when the verdict's session root is none of the
-    range's, *same session* when it is one of them, *untraced* when either side names no session, *on trunk* when the tip
-    is on the trunk's first-parent line (not a branch verdict) — and the verdict's own word, read from its subject as `--queue` reads it
-    (`VERDICT_WORD_RE`; "" where it names none), its branch (`verdict_branch`, RV-3343: ["merge", name, merge] where the merge's message
-    names it, ["unnamed", merge] where it names none), and the session of the range's oldest commit that carries one (`oldest_session`, BF-6). The range is the branch's own commits, less other
-    verdicts (`History.reviewed_commits`, read from one `git log`, FM-040). A report, never a refusal (slice 2 refuses, after a week of counts)."""
+    """Each verdict commit (it carries `Reviewed: <sha>`) of the last `days` days on HEAD, as (verdict, reviewed, its session, the reviewed range's
+    sessions, the word): *independent* when the verdict's session root is none of the range's, *same session* when it is one of them, *untraced*
+    when either side names no session, *on trunk* when the tip is on the trunk's first-parent line (not a branch verdict) — and the verdict's own
+    word, read from its subject as `--queue` reads it (`VERDICT_WORD_RE`; "" where it names none), its branch (`verdict_branch`: ["merge", name,
+    merge] where the merge's message names it, ["unnamed", merge] where it names none), the session of the range's oldest commit that carries one
+    (`oldest_session`), and whether the reviewed commit is in this repository: where it is not, its range is not read, which is why no session of
+    the range is known. The range is the branch's own commits, less other verdicts (`History.reviewed_commits`, read from one `git log`). A
+    report, never a refusal."""
     days = TRIAGE_DAYS if days is None else days
     log = git_out("log", f"--since={days}.days", f"--format=%H%x01{TRAILERS}%x02", "HEAD") or ""
     found = []
@@ -9684,7 +9794,8 @@ def verdict_reports(days=None):
         roots = {s.split("/")[0] for s in ranged}
         word = ("on trunk" if own is None else "untraced" if not sid or not ranged
                 else "same session" if sid.split("/")[0] in roots else "independent")
-        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict], branches[verdict], oldest_session(history, tip, own) if tip else ""))
+        out.append((verdict, reviewed, sid, sorted(ranged), word, said[verdict], branches[verdict], oldest_session(history, tip, own) if tip else "",
+                    bool(tip)))
     return out
 
 
@@ -9700,7 +9811,7 @@ def sessions_report():
         lines.append(f"reviews this week · {len(reps)} verdict(s) · independent {count['independent']} · same session {count['same session']}"
                      + (f" · untraced {count['untraced']}" if count["untraced"] else "") + (f" · on trunk {count['on trunk']}" if count["on trunk"] else ""))
         lines += [f"  verdict {v[:10]} on {r[:10]}: " + ("on trunk — not a branch verdict" if w == "on trunk" else
-                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word, _branch, _first in reps]
+                  f"{w} — its session {s or '(none)'}; the branch's {', '.join(rs) or '(none)'}") for v, r, s, rs, w, _word, _branch, _first, _read in reps]
     return lines
 
 
@@ -9775,8 +9886,8 @@ def board_sessions():
     return {"groups": [[g["id"], g["seat"], g["worktree"], g["runs"], [list(m) for m in g["members"]]] for g in groups],
             "parents": parents, "all": everyone,
             "reviews": [count["independent"], count["same session"], count["untraced"], count["on trunk"], words["NOT READY"], words["READY WITH FINDINGS"]] if reps else None,
-            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first, [page(v), page(r), page(branch[2] if branch[0] == "merge" else branch[1] if branch[0] == "unnamed" else "")]]
-                         for v, r, sid, ranged, w, word, branch, first in reps]}
+            "verdicts": [[v, r, sid, list(ranged), w, word, branch, first, [page(v), page(r), page(branch[1] if branch[0] == "unnamed" else "")], read]
+                         for v, r, sid, ranged, w, word, branch, first, read in reps]}
 
 
 def sessions_digest():

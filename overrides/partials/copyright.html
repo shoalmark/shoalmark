@@ -1,0 +1,20 @@
+<div class="md-copyright">
+  {% if config.copyright %}
+    <div class="md-copyright__highlight">
+      {{ config.copyright }}
+    </div>
+  {% endif %}
+  <div class="md-copyright__highlight">
+    {%- if page and page.url and page.url[:3] == "de/" %}
+    <a href="{{ 'de/impressum.html' | url }}">Impressum</a> · <a href="{{ 'de/datenschutz.html' | url }}">Datenschutz</a>
+    {%- else %}
+    <a href="{{ 'imprint.html' | url }}">Imprint</a> · <a href="{{ 'privacy.html' | url }}">Privacy</a>
+    {%- endif %}
+  </div>
+  {% if not config.extra.generator == false %}
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  {% endif %}
+</div>
