@@ -43,6 +43,13 @@ as the Auditor relays it.
   since the Owner's #229, and each release that carries it gets one chapter.
 - **Candidates for v0.20.3's chapter:** FM-095 to FM-098, filed for v0.20.x. The allocation pulls in what fits.
 
+**2026-11-01 — v0.20.3's allocation, rows from 30 and 31 October:**
+- `--check` prints "(none)", on the Owner's yes of 30 October.
+- The help lines' hide mark, on the Owner's yes of 30 October.
+- RV-4233: recorded privately.
+- RV-4192: recorded privately.
+- RV-4193: recorded privately.
+
 **2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
 Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
 relayed commits are optional", and "cut-off Fri 14:00 approved".
@@ -72,6 +79,7 @@ relayed commits are optional", and "cut-off Fri 14:00 approved".
   follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
 - **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
 - **2026-10-30:** FM-076 moves to v0.20.3, on the Owner's word of 29 October.
+- **2026-11-01:** The stand-up agenda's "· 15 min ·" in code moves to v0.20.3, as the Owner ruled on 30 October.
 - **FM-065, quick win 10, and the CI class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
   29 October, 20:00. The CI class fix makes every root `test_*.py` run in CI, directly or through `test_core.py`, or
   be named as excluded. Its three findings are RV-3920 to RV-3922, from the review of the CI item that #219 merged. It
@@ -493,6 +501,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-11-01 05:03:32 CET | The stand-up agenda's timing text moves to v0.20.3; its allocation gains the check output and help-line hide-mark rows above. Records only. |
 | 2026-10-30 | FM-076 moves to v0.20.3, on the Owner's word of 29 October. Records only. |
 | 2026-10-29 | FM-095 to FM-098 are named as candidates for v0.20.3's chapter, filed for v0.20.x. Records only. |
 | 2026-10-29 | The Auditor's re-check of 6fd3099, which fixed RV-3994, is READY, and #240 merged it into main (8fbdf0c). Records only. |
