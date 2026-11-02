@@ -27,7 +27,6 @@
 
 | # | Tier | Next | Kind | Needs | ID | Hook | Status |
 |---|------|------|------|-------|----|------|--------|
-| 1 | P1 | build | — | intended, kind | [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress |
 | 2 | P1 | build | — | intended, kind | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress |
 
 
@@ -41,8 +40,6 @@
 | [FM-057](FM-057-the-board-rebuilds-itself-after-every-checkout-and-never.md) | P2 | The board rebuilds itself after every checkout, merge and rebase, and never says what it read or when | In Progress | progress | 2026-10-15 |
 | [FM-054](FM-054-the-board-and-the-terminal-say-signed-where-nothing-is.md) | P1 | The board's answer dialog and the terminal say signed on every repository, though --answer signs only where the owner l… | In Progress | progress | 2026-10-15 |
 | [FM-041](FM-041-the-board-places-a-ranked-proposed-tracker-in-the-backlog.md) | P3 | the board places a ranked Proposed tracker in the backlog while the progress caption promises rank order | In Progress | progress | 2026-09-30 |
-| [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | P1 | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | In Progress | progress | 2026-10-13 |
-| [FM-031](FM-031-the-streams-run-in-parallel-and-only-the-owner-sees-the.md) | P2 | In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By… | In Progress | progress | 2026-10-13 |
 | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | P2 | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress | progress | 2026-10-15 |
 | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | P1 | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress | progress | 2026-10-13 |
 | [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | P3 | fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs… | In Progress | progress | 2026-09-23 |
@@ -54,6 +51,11 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-138](FM-138-a-moved-submodule-pointer-alone-stops-a-tracker-only-write.md) | — | When the only change in the Owner's checkout is a moved submodule pointer, a tracker-only write refuses. It should not… | Proposed | triage | — |
+| [FM-137](FM-137-a-run-sheet-has-no-guided-dialog-for-a-person-who-is-not.md) | — | A run sheet asks a person who is not technical to read and run commands alone. The Owner's requirement of 28 September:… | Proposed | triage | — |
+| [FM-136](FM-136-a-tracker-s-evidence-folder-is-not-listed-on-the-tracker.md) | — | A tracker's evidence folder is not listed on the tracker. The Owner's requirement of 28 September: list evidence/<ID>/… | Proposed | triage | — |
+| [FM-135](FM-135-d1-no-review-file-outside-a-critical-tier-was-never-asked.md) | — | D1, no review file outside a critical tier, changes S1, the Owner's signed rule. FM-032 planned its ask, and it was nev… | Proposed | triage | — |
+| [FM-134](FM-134-every-change-to-fm-007-s-tracker-runs-the-full-suites-though.md) | — | ci.yml treats FM-007's tracker as read by the suites, so a pull request that changes only FM-007 runs the five full job… | Proposed | triage | — |
 | [FM-133](FM-133-a-memory-entry-is-never-tested-or-retired.md) | — | A memory entry is never tested and never retired. Each prose entry in team.md gets its scenario, run with and without i… | Proposed | triage | — |
 | [FM-132](FM-132-nothing-moves-a-lesson-out-of-a-harness-s-memory.md) | — | A lesson stays in the harness's memory where it was learned. The Board raises consider a memory sync per seat, and /syn… | Proposed | triage | — |
 | [FM-131](FM-131-a-session-starts-without-the-team-s-memory.md) | — | A session starts without the team's memory and its seat's own. --next loads both and names them, and the close-out prom… | Proposed | triage | — |
@@ -120,7 +122,6 @@
 | [FM-051](FM-051-dependency-updates-have-no-path-the-gate-refuses-every.md) | — | Dependency updates have no path: the gate refuses every Dependabot pull request, and the site's dependencies are first… | Proposed | triage | — |
 | [FM-043](FM-043-the-upgrade-notes-leave-an-adopter-with-a-hook-runner-short.md) | — | the upgrade notes leave an adopter with a hook runner short of 0.19.0 | Proposed | triage | — |
 | [FM-038](FM-038-the-pre-commit-hook-hides-the-suites-skip-lines-a-test-that.md) | P3 | the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time | Proposed | backlog | 2026-09-27 |
-| [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Proposed | backlog | 2026-09-23 |
 | [FM-091](FM-091-the-site-has-no-imprint-and-no-privacy-notice-and-its.md) | P2 | The site has no imprint and no privacy notice, though a German provider must have both, easy to find from every page. A… | Shipped | ended | 2026-10-29 |
 | [FM-085](FM-085-the-suite-starts-chrome-with-a-mock-keychain-and-a-fresh.md) | P2 | The suite's browser blocks rely on whoever runs them to start Chrome with a mock keychain and a profile of its own. A r… | Shipped | ended | 2026-10-29 |
 | [FM-070](FM-070-the-gate-s-text-shows-as-mojibake-in-tortoisesvn.md) | P3 | the gate's text shows as mojibake in TortoiseSVN | Shipped | ended | 2026-10-27 |
@@ -162,4 +163,7 @@
 | [FM-005](FM-005-the-human-is-asked-for-many-small-decisions-mid-flight-he.md) | P1 | Measured: 200 pull requests merged in 22 days, 85 % under a minute after opening, none reviewed — and in a rehearsal th… | Shipped | ended | 2026-10-13 |
 | [FM-003](FM-003-the-tool-is-proven-only-on-macos-with-git-a-first-outside.md) | — | Every proof so far is macOS, git, one Owner. The first outside user works on Windows, with Subversion and TortoiseSVN,… | Shipped | ended | — |
 | [FM-002](FM-002-a-board-anyone-can-brand-the-person-the-repository-the.md) | P2 | The board can carry a name in the browser tab and a theme.css — nothing else: no name on the page, no logo, English onl… | Shipped | ended | 2026-09-27 |
+| [FM-032](FM-032-the-loop-costs-the-same-for-a-docs-row-as-for-a-migration.md) | P1 | The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as fo… | Closed | ended | 2026-10-13 |
+| [FM-031](FM-031-the-streams-run-in-parallel-and-only-the-owner-sees-the.md) | P2 | In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests, and only the Owner sees the whole queue. By… | Closed | ended | 2026-10-13 |
+| [FM-018](FM-018-the-answer-flow-must-be-convenient-and-fail-safe-for-a-normal.md) | P1 | Answering takes a normal user through branch switches, a checkout a seat's worktree may hold, an older pinned tool on t… | Closed | ended | 2026-09-23 |
 | [FM-016](FM-016-an-answered-ask-still-shows-as-unanswered-on-the-branch-the.md) | — | After `--answer` the Owner switches back to his main branch, and that branch's board still shows the ask with accept an… | Closed | ended | 2026-09-23 |

@@ -1,6 +1,6 @@
 ---
 id: FM-018
-status: Proposed
+status: Closed
 considered: FM-012, FM-013, FM-016, FM-017, FM-007, FM-005
 tags: bug
 next: wait
@@ -12,6 +12,29 @@ hook: "Answering takes a normal user through branch switches, a checkout a seat'
 # FM-018 — The answer flow must be convenient and fail-safe for a normal user
 
 ## What is true now
+
+**2026-11-03 — Closed; three of its parts are filed anew as FM-136 to FM-138.** Proposed since 23 September, with no
+design chosen here. Its answer-from-any-branch item goes with S1, where R4 commits the Owner's answer on the branch they
+stand on, with no cut, no push and no switch, and restores a refused write (`732d9fb`); and with
+[FM-115](FM-115-the-owner-answers-each-ask-in-the-board-s-one-dialog-and-no.md)'s prepared run. Its seven points,
+checked against them:
+1. a switch by hand to the ask's branch: gone with R4, which answers on the branch the Owner stands on;
+2. a seat's worktree holding that branch: gone with R4, which checks nothing out;
+3. an answer from the wrong branch, with an older pinned copy: not shown gone; FM-115's prepared run brings each branch
+   that carries an ask;
+4. a failed run's leftovers: gone with FM-017, and R4 restores a refused write;
+5. a silent minute: gone with FM-012;
+6. the board on main offering an ask already answered: gone with R4, whose answer lands on the branch the Owner
+   stands on, and S1's board reads no answer branch (`9f81c3e`);
+7. the dialog's last button, *abort*: gone with FM-013.
+
+**Filed anew:**
+- [FM-136](FM-136-a-tracker-s-evidence-folder-is-not-listed-on-the-tracker.md): the evidence folder on each
+  tracker, the first dashboard requirement;
+- [FM-137](FM-137-a-run-sheet-has-no-guided-dialog-for-a-person-who-is-not.md): a guided run-sheet dialog, the
+  second;
+- [FM-138](FM-138-a-moved-submodule-pointer-alone-stops-a-tracker-only-write.md): a moved submodule pointer, the
+  Auditor's raise of 28 September.
 
 **2026-10-15 — next: wait.** The Owner's answer of 12 October keeps the two dashboard requirements here until v0.20.0's deletions are done.
 
@@ -54,11 +77,13 @@ routed around the gate is the one thing the gate exists to prevent.
 
 ## Done when
 
-- The Owner has ruled on the design — the candidate above or another — and it is recorded here.
-- He answers from whichever branch he stands on, and his checkout is never switched, never dirtied and never left
-  behind, whether the answer succeeds or fails.
-- The seven points above are each either gone or named here with why they remain.
-- **A moved submodule pointer alone does not stop him.** When the only change in his checkout is a submodule pointer, a tracker-only write (`--answer`, `--done`, `--due`) either does not count it, or the refusal names the fix — `git submodule update <path>`; the builder chooses. Raised 2026-09-28 12:50:35 by the Auditor through the Owner (60 %).
+- [ ] The Owner has ruled on the design — the candidate above or another — and it is recorded here.
+  — not ruled here; R4, in FM-050's adopted design, takes its place
+- [ ] He answers from whichever branch he stands on, and his checkout is never switched, never dirtied and never left
+  behind, whether the answer succeeds or fails. — goes with S1 (`732d9fb`) and FM-115
+- [ ] The seven points above are each either gone or named here with why they remain. — checked at the close, above
+- [ ] **A moved submodule pointer alone does not stop him.** When the only change in his checkout is a submodule pointer, a tracker-only write (`--answer`, `--done`, `--due`) either does not count it, or the refusal names the fix — `git submodule update <path>`; the builder chooses. Raised 2026-09-28 12:50:35 by the Auditor through the Owner (60 %).
+  — moves to [FM-138](FM-138-a-moved-submodule-pointer-alone-stops-a-tracker-only-write.md)
 
 ## Merged in from FM-016 — the answered ask offered again (2026-09-23, the first triage pass)
 
@@ -111,6 +136,7 @@ quotes included, with the tracker's unquoted one, so a quoted ask never reads as
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Closed:** its answer-from-any-branch item goes with S1 (`732d9fb`) and FM-115, and its seven points are checked against them. FM-136 to FM-138 are filed anew. Records only. |
 | 2026-09-28 | The docs pass `992fb5d` on `3a417db` NOT READY (reviewer-48; RV-755 P2 — the options did not say what each does to his rule, and the lift read narrower than it is; RV-756…759 P3), closed in the next commit: the ask names the freeze's two routes — fold, hold — as his rule as written (`--new`'s refusal, `--schema`) and the lift's reach (any seat's feature filing while it stands at 24; set back to 8 on the pass's branch); the line numbers read at `9e9fcb33` (:2018, :2031 — the first commit cited the board build's tree); the paste's closing line is the Auditor's; after his answer the seat clears the exchange and `next:` returns to `wait` (RV-759). |
 | 2026-09-28 | **Asked, kind ruling — the proposal *lift for one pass: `freeze_at` 24*** (`next: owner`; FEAT-190's ledger row 57 written first; after his answer the seat clears the exchange and `next:` returns to `wait`): where the Owner's two dashboard requirements of 12:43:02 — the evidence folder listed on each tracker; a guided run-sheet dialog for non-technical users (the Auditor's counsel, paste sha256 `4a6f20c85637094e3528c3f5ef780e0c9e942115d93df572a255a22b02cc8a7a`) — go under the filing freeze (FM-032 S4, his *all four now*; 22 open, bugs only): lift for them, fold here, or hold. Hosted here because FM-032's S5 exchange waits for its build and this is the normal user's tracker. **Raised, 12:50:35**: `--done` refused him on a moved submodule pointer alone (portdive-webhooks; the Auditor, 60 %, paste sha256 `436b4c6a727058117fab253e56f698555ea4ccaadd390f3df6cbcd25627144d0`) — the Done-when bullet *A moved submodule pointer alone does not stop him*. Item 1 of the 12:43:02 paste went to FM-030, the 12:49:43 counsel to FM-040. |
 | 2026-09-23 | **FM-016 merged in by the first triage pass** — its open scope (part b: the answered ask still offered on the branch the Owner returns to) lives here now; E0 at the 09-24 sitting decides whether any of the flow is built. |
