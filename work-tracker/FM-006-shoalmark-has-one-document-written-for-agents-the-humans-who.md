@@ -42,20 +42,13 @@ terms; BF-95's fenced code (`ccf5cd1`, `67ba698`); and B1's browser block. Its o
 - **The founder's voice and the why page:** the start and pitch pages in the founder's voice (`5e1c14a`, merged as
   #225, `bc5da4e`) and the why page's fixes of 28 October (#228, `d526547`) are on main, so they are live. Their German
   in *du* came with the German lane (`b8581fd`), and ships with v0.20.2's tag.
-- **Its v0.20.3 rows of 1 November** move to v0.20.3's allocation tracker, filed on the same records branch.
+- **Its v0.20.3 rows of 1 November** are in [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's allocation tracker.
 
 **2026-11-01 — the Designer's final look at the closing pass:** `2026-10-31-closing-pass.md` reports no P1;
 P2 BF-109 is fixed in `41866c8` and `5b87cc2`; the seat icons' print is fixed in `42bb087` and `8f4072b`;
 P3s BF-106 to BF-108 move to v0.20.3.
 
 **2026-11-01:** BF-83, a note from the Designer's final look of 23 October: in the probe build, the landing footer's GitHub part breaks at its inner space below about 450 px in English and 410 px in German, in WebKit (one line at 460 and 420, two at 440 and 400). That is about 20 px above the 432 and 390 the look was asked to confirm. The behaviour is as described, and no change is needed.
-
-**2026-11-01 — v0.20.3's site and gate rows, from 30 and 31 October:**
-- The twin padding gate in `check_site.py`: its why-comment and `door_paddings`' docstring came out in `5b87cc2`,
-  and the new helpers have no docstrings.
-- `weight()` counts pseudo-classes: done in `5b87cc2`; this row is closed.
-- `scripts/test_check_site.py` on Python 3.9: five `write_text(newline=)` errors.
-- The Cloudflare gate, on the Owner's yes of 30 October.
 
 **2026-10-29 — BF-95: fenced code builds to a code block again, in English and German.** Since `e0a21dd` the site's
 `[project.markdown_extensions]` table held only the snippets extension. Setting that table replaces Zensical's
@@ -158,10 +151,6 @@ The re-check of the morning round is READY WITH FINDINGS (`3a0c673`):
 The Designer's look at the lane (`fa1819c`) finds that it fits. BF-96 (signing's footer title cut at 390 px) and BF-97
 (the stand-up title's last word alone at 375 px) are the theme's own title behaviour, in English too. They are
 recorded as seen, with no fix. BF-95, found in the same look, is a lane of its own on main.
-
-**2026-11-01 — the German rows for v0.20.3, from 30 October:**
-- C4 on the shipped German table.
-- *Bestätigung* / *Freigabe* for the meaning pass.
 
 **2026-10-28 — the why page, on the Owner's word on the live site:** the story stands as a quote again, in its figure with its blockquote, left rule and caption and their rules on screen, on a phone and in print, where BF-86 and RV-3930 had made it running text; its words stay in the first person. Its caption is the Owner's attribution in their own words, after its dash and linked to the X profile, and the portdive sentence is said there once. Its last paragraph tells the timeline from shoalmark's first commit on 21 September. The tile *Measured, not promised.* reads *Reports, not proofs.*, the Board's own words, and the TL;DR's Try-it line says what the prompt asks: to try the setup on a copy in a throwaway folder, and to change nothing in the repository without the reader's yes. The German says the same in the page's *du* voice.
 
