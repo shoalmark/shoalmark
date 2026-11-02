@@ -1,19 +1,11 @@
 ---
 id: FM-006
-status: In Progress
+status: Shipped
 considered: FM-005, FM-003
 tags: process
 next: build
 triaged: 2026-10-13
 tier: P2
-ask: "Do the corrections in the body, M1 to M10, S3, S4 and Board for Tafel, land in v0.20.1, integrated now and re-read at the words freeze after v0.20.0's tag, with the signing page stating your key file as it stands after FM-007's act of 15 October?"
-ask-kind: ruling
-ask-since: 2026-10-14
-ask-options: "M1 to M10, S3, S4 and Board for Tafel | all except the signing page's key state, which you describe yourself | only the lines the B1 handoff already names: M4, M9 and M1's push, and Board for Tafel"
-ask-proposal: "M1 to M10, S3, S4 and Board for Tafel"
-answer: "accepted - M1 to M10, S3, S4 and Board for Tafel. The latest design-guide.md, `v2` design and the go-to-market wordings override any collision and GTM wording takes precedence"
-answered: 2026-10-15
-answered-by: holgo99
 done: "2026-09-30T08:14:56+02:00 · Public repository: https://github.com/shoalmark/shoalmark/ · Documentation: https://shoalmark.github.io/shoalmark/ · Migration merged: 80d0811974a1d39b679cfd374c80109ddd62acce · Independent migration review: 5e26a88e75b992c243148c2786e44f443e0f7437 · Port-evidence cleanup merged: b041cb2dca136623ee9160d74ae5b39b0f1a7ba2 · Publication gates merged and deployed: 792dbca9caa74629d12645dcc5ae7f55a2bb2340 · Independent publication review: b9b3971c21f3b84f332249bbc976fe9af7580f0d · Scoring completed; publication preceded scoring under my previously recorded risk acceptance."
 hook: "One README, written for the agent that has to use the tool, is the whole documentation. The people who own the repositories — the first two are German, one runs Windows and Subversion — have no page: not for setting up, not for signing an answer, not for what the first week looks like. And the README must stay the agents' contract, not become a website's copy."
 ---
@@ -21,6 +13,36 @@ hook: "One README, written for the agent that has to use the tool, is the whole 
 # FM-006 — shoalmark has one document, written for agents — the humans who own the repositories have no page of their own
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2. This is FM-006's final state, and nothing joins it after.** The v0.20.2 lane's base
+is `release/v0.20.2-rebuilt`; `release/v0.20.2-signed`, named below, is retired. Its v0.20.2 work: the German rewrite to
+*du* with the Owner's words, merged as #243 (`4eaf6b0`), with the suite check that refuses formal German and the retired
+terms; BF-95's fenced code (`ccf5cd1`, `67ba698`); and B1's browser block. Its one chapter,
+[FM-049](FM-049-b1-s-probe-dialog-gives-a-visitor-one-opt-in-line-to-say.md), closes with it.
+- **Its *Done when*:** four states are met. The fifth, one outside Owner who follows the setup page without asking
+  anything, waits in [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md), with that tracker's first
+  outside run.
+- **Met, of its checks:** what the measured counts measure (`c376afa`); *Eigner* in German prose (`1bac80e`); the
+  incident panel's cycle (`9307cf8`); F3, the twins' relative links (`da9ff0c`); F7, the German board's `lang`
+  (`d929ca0`); the Owner's pronouns in code comments (`f88546f`); the release's archive and checksum (`94f6bc2`); two
+  of Slice L's qualifiers, that independence is a report and that a signature proves the key, not the hand (`d252648`,
+  `56d08bb`); the v0.20.1 footer sentence (`bd6d881`); and A3's rewrite of `ADOPT.de.md` (`1bac80e`).
+- **Kept, each a tracker of its own,** on the Owner's word of 2 November:
+  - in the epic [FM-107](FM-107-what-fm-006-left-open-on-the-pages-for-the-people-who-own-a.md): the signing page's key
+    state, which FM-007 shares (FM-108); release notes from the CHANGELOG (FM-109); a release attestation (FM-110); a
+    source and date on the landing's measurement box (FM-111); the push-time qualifier on the rendered English landing
+    (FM-112); and the landing's wreck chart (FM-113);
+  - alone: fork-queue provenance, [FM-114](FM-114-a-fork-can-hide-a-same-repository-pushed-branch-from-queue.md);
+  - descriptions of their own for the other German pages: a row in v0.20.3's allocation.
+- **Dropped, on the Owner's word of 2 November:** pages of their own for the board and the first week; a decision flow
+  near the landing's top; the Apps' "brief" wording; a light landing scheme; a picture of the board; the seat and
+  review load, which moves to separate vision work; a way back on the start pages; *What it is not* becoming *What
+  stays yours*; and a GitLab queue reader.
+- **The native read** of the release head's German is FM-107's first *Done when* item.
+- **The founder's voice and the why page:** the start and pitch pages in the founder's voice (`5e1c14a`, merged as
+  #225, `bc5da4e`) and the why page's fixes of 28 October (#228, `d526547`) are on main, so they are live. Their German
+  in *du* came with the German lane (`b8581fd`), and ships with v0.20.2's tag.
+- **Its v0.20.3 rows of 1 November** move to v0.20.3's allocation tracker, filed on the same records branch.
 
 **2026-11-01 — the Designer's final look at the closing pass:** `2026-10-31-closing-pass.md` reports no P1;
 P2 BF-109 is fixed in `41866c8` and `5b87cc2`; the seat icons' print is fixed in `42bb087` and `8f4072b`;
@@ -523,9 +545,14 @@ Principal `01a0ec25`, worktree `shoalmark-principal-migration`; changes authoriz
 
 ## Done when
 
-The site builds in CI from `docs/` and is served; the README is rendered there and not copied; `llms.txt` and the
-`.md` twins exist; the human pages exist in English and German — set up · sign · standup · board · the first week; and
-one outside Owner has followed the setup page without asking anything.
+- [x] The site builds in CI from `docs/` and is served. · `ae1f05e`, `eea5331`
+- [x] The README is rendered there and not copied. · `ae1f05e`, `4c638a8`
+- [x] `llms.txt` and the `.md` twins exist. · `ae1f05e`, `da9ff0c`
+- [x] The human pages exist in English and German — set up · sign · standup · board · the first week. The board and
+  the first week are met by *How it works*, on the Owner's word of 2 November: `docs/how-it-works.md` and
+  `docs/de/how-it-works.md`.
+- [ ] One outside Owner has followed the setup page without asking anything.
+  — it waits in [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md), with its first outside run
 
 ## The landing page names the authority — the Owner's finding of 2026-09-25 09:52:49
 
@@ -1277,10 +1304,16 @@ the switch merged, and the CHANGELOG's cut and the notes' checksum last, after i
 **relation** — accepted the proposal
 **signed** — 8defe63 · G
 
+**2026-10-15** · Do the corrections in the body, M1 to M10, S3, S4 and Board for Tafel, land in v0.20.1, integrated now and re-read at the words freeze after v0.20.0's tag, with the signing page stating your key file as it stands after FM-007's act of 15 October?
+**answered** — accepted - M1 to M10, S3, S4 and Board for Tafel. The latest design-guide.md, `v2` design and the go-to-market wordings override any collision and GTM wording takes precedence · holgo99
+**relation** — accepted with a change
+**signed** — 51c4179 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Shipped with v0.20.2.** The final state above: four states met, the fifth in FM-004; its checks met, kept as FM-107 to FM-114, or dropped, on the Owner's word of 2 November; FM-049 closes with it, and its v0.20.3 rows of 1 November move to v0.20.3's allocation tracker. This is its last row: what comes back is a new tracker. Records only. |
 | 2026-11-01 05:03:32 CET | The Designer's final look at the closing pass, BF-83's unchanged behaviour, and the site, gate and German rows for v0.20.3 are recorded above; `weight()`'s pseudo-classes are closed in `5b87cc2`. Records only. |
 | 2026-10-29 09:30:19 CET | **BF-95: fenced code builds to a code block again**, in English and German (`ccf5cd1`), and the site check refuses a fenced block that does not (`67ba698`). Records only. |
 | 2026-10-29 07:48:56 CET | **The German rewrite: the Owner's three ruled lines pinned** (`a9064f1`, RV-3970), and the Designer's look: the lane fits; BF-96 and BF-97 seen, with no fix. Records only. |
