@@ -1,25 +1,29 @@
 ---
 id: FM-062
-status: In Progress
+status: Shipped
 considered: FM-042, FM-037, FM-026, FM-023
 tags: process
 next: build
 triaged: 2026-10-19
 tier: P2
 hook: "an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live"
-ask: "Do /find-drift's five layers keep your order of 18 October, with a skill below a rule a reviewer checks, as FM-062's section The layer order, for the Owner sets out?"
-ask-kind: ruling
-ask-since: 2026-10-27
-ask-options: "yes, the order stays | no: a skill ranks above a rule a reviewer checks"
-ask-proposal: "yes, the order stays"
-answer: "accepted - yes, the order stays"
-answered: 2026-10-28
-answered-by: holgo99
 ---
 
 # FM-062 — an agent drifts off track where a rule is held only as prose, two sources disagree, or obsolete text still reads as live
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2, for the two skills; its other work leaves as FM-117 to FM-120.** `/find-drift` and
+`/prune-drift` are in the Claude plugin, each reviewed like code (`49072b8`, READY `a3b01ee`; `24fb70e`, READY
+`6d0bafa`), merged into the v0.20.2 lane as `8b24e91` (#220), with the plugin suite in CI. The five-part change, merged
+by #252 (`cc6bfb8`): the two skills stop only on a weakness no record names, and close by putting the person's decisions
+to them. Item 2 waits in [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md). Item 3 is met:
+shoalmark's own first run is in the record, and its report is held privately.
+- [FM-117](FM-117-find-drift-does-not-read-decisions-against-git-find-stranded.md): `/find-drift`'s next round of 27 October.
+- [FM-118](FM-118-shoalmark-py-s-prose-is-not-pruned-and-nothing-holds-code.md): the prose prune, with its ratchet, for v0.20.3.
+- [FM-119](FM-119-five-rules-held-only-as-prose-are-not-checks.md): the five rules held only as prose become checks, for v0.20.3.
+- [FM-120](FM-120-the-rule-files-hold-the-disagreements-and-obsolete-text-that.md): the rule files' disagreements and
+  obsolete text, from a fresh run, v0.20.3's first lane, on the Owner's word of 2 November.
 
 **2026-10-27 — its layer-order ask filed on main.** It was put on 19 October on `fm/062-prune-drift`, a branch main
 never received, so the Board never showed it. It comes to main now, so the Owner can answer it before `/find-drift`
@@ -108,14 +112,25 @@ only prose are where an agent drifts. Finding them is the first step to making t
 
 ## Done when
 
-- `/find-drift` and `/prune-drift` ship in v0.20.2's Claude plugin, each reviewed like code.
-- A second run, on a codebase shoalmark did not shape, has corrected `/find-drift`'s spec.
-- shoalmark's own report is in the record.
+- [x] `/find-drift` and `/prune-drift` ship in v0.20.2's Claude plugin, each reviewed like code.
+  · `49072b8`, `24fb70e`, `8b24e91`
+- [ ] A second run, on a codebase shoalmark did not shape, has corrected `/find-drift`'s spec.
+  — evidence owed: [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md)
+- [x] shoalmark's own report is in the record.
+  · shoalmark's own first run is in the record, and its report is held privately
+
+## Asks
+
+**2026-10-28** · Do /find-drift's five layers keep your order of 18 October, with a skill below a rule a reviewer checks, as FM-062's section The layer order, for the Owner sets out?
+**answered** — accepted - yes, the order stays · holgo99
+**relation** — accepted the proposal
+**signed** — dcc3e75 · G
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Shipped with v0.20.2,** for the two skills (`49072b8`, `24fb70e`), merged as `8b24e91` (#220), with the five-part change of #252. The layer-order answer moves under *Asks*. Item 2 waits in FM-106; FM-117 to FM-120 are filed. Records only. |
 | 2026-10-27 | Its layer-order ask of 19 October filed on main, from `fm/062-prune-drift`, which main never received; the section *The layer order, for the Owner* with it. Records only. |
 | 2026-10-27 | `/prune-drift` stays in v0.20.2; the prose prune with the comment ratchet, the five conversions and the text fixes move to v0.20.3, on the Owner's word of 27 October. Records only. |
 | 2026-10-27 | Its next round recorded, from v0.20.1's debrief and a user's question, as relayed by the Auditor: decisions as sources, the record against git, stranded work, and an evidence chain for each finding. Briefed after the v0.20.2 lane is pushed. Records only. |

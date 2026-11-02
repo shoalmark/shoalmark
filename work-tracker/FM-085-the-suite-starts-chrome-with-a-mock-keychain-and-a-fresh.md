@@ -1,6 +1,6 @@
 ---
 id: FM-085
-status: In Progress
+status: Shipped
 considered: FM-023, FM-035, FM-039, FM-021
 tags: process
 next: build
@@ -12,6 +12,13 @@ hook: "The suite's browser blocks rely on whoever runs them to start Chrome with
 # FM-085 — the suite starts Chrome with a mock keychain and a fresh profile itself
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2, for items 1 and 2; items 3 and 4 leave as
+[FM-128](FM-128-the-agents-contract-does-not-say-that-the-suite-sets-chrome.md).** Every Chrome the suite starts gets
+the mock keychain and a fresh profile of its own, with a test of each launch path (`51cc442`, `20119ed`), merged into
+`release/v0.20.2-rebuilt` as `fa5137a` (#241). Item 3's real green block and the removal of its profile folder after
+that run are not both in the record, so item 3 joins FM-128, on the Owner's word of 2 November. Item 4, the contract's
+line, waits there for the Owner's word on a contract change.
 
 **Filed 2026-10-29, and judged In Progress, P2, for v0.20.2, before the first build commit.** It is v0.20.2's row "the
 suite's Chrome keychain flag" in [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md)'s
@@ -35,12 +42,14 @@ holds only while every runner remembers it, one forgotten flag breaks it.
 
 ## Done when
 
-- [ ] Every launch path of Chrome in the suite passes `--use-mock-keychain` and a fresh `--user-data-dir` under a
-  temporary folder the suite makes, whatever the runner passes.
-- [ ] A test reads each launch path's arguments, and fails where either flag is missing or the profile folder is not
-  the suite's own.
+- [x] Every launch path of Chrome in the suite passes `--use-mock-keychain` and a fresh `--user-data-dir` under a
+  temporary folder the suite makes, whatever the runner passes. · `51cc442`, `20119ed`
+- [x] A test reads each launch path's arguments, and fails where either flag is missing or the profile folder is not
+  the suite's own. · `51cc442`, `20119ed`
 - [ ] One browser block runs green with the flags, and its temporary profile folder is gone after the run.
+  — moves to [FM-128](FM-128-the-agents-contract-does-not-say-that-the-suite-sets-chrome.md)
 - [ ] The agents' contract says the suite sets both flags itself.
+  — moves to [FM-128](FM-128-the-agents-contract-does-not-say-that-the-suite-sets-chrome.md)
 
 ## Ship log
 
@@ -48,3 +57,4 @@ holds only while every runner remembers it, one forgotten flag breaks it.
 |---|---|
 | 2026-10-29 | Filed, and judged In Progress, P2, for v0.20.2, before the first build commit. Records only. |
 | 2026-10-29 | Built, test-only: every launch path of Chrome in the suite passes both flags itself, with a stand-in test and its mutants. |
+| 2026-11-03 | **Shipped with v0.20.2,** for items 1 and 2 (`51cc442`, `20119ed`), merged as `fa5137a` (#241). Items 3 and 4 leave as FM-128. Records only. |

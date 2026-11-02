@@ -1,6 +1,6 @@
 ---
 id: FM-033
-status: In Progress
+status: Shipped
 considered: FM-005, FM-021, FM-024, FM-029, FM-030, FM-031, FM-032
 tags: bug
 next: wait
@@ -12,6 +12,12 @@ hook: "On 2026-09-24 the board showed the day's release work under triage and fo
 # FM-033 — Work is built on trackers no pass has judged, and the board shows the person that work as waiting for triage
 
 ## What is true now
+
+**2026-11-03 — Shipped in v0.19.4, for R14; the board's activity line leaves as
+[FM-124](FM-124-the-board-does-not-show-activity-beside-judgement.md).** The gate refuses a build commit on an unjudged,
+not-In-Progress or unnamed tracker (`c36c44d`, `1367e41`), READY in round 4 (`723a8f0`), merged to main as `e5a1a9e`
+(#164). The violation rows are recorded below. The ledger row that links them waits in
+[FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md).
 
 **R14 shipped in v0.19.4, 2026-10-13: merged to main as `e5a1a9e` (#164), tagged `v0.19.4` on `39e5763`. It passed round-4 independent critical review at `31a4e93`. The Owner test fixtures write UTF-8 text with explicit LF line endings on every OS.** Configured Owner authors pass the session and judged-before-build hooks before signing, and may file any tag while the filing freeze holds. On commits reachable from HEAD and not from the default branch, `--check` requires every signed Owner identity to verify as an Owner principal against the default branch's policy and signers. This includes the Owner's configured GitHub identity and commits carried by nested merges. Owner signature refusals print alongside the index, ledger, guard and answer findings, using the existing exit precedence and remedies. Build judgement uses that same branch-owned range with any number of merge bases. The shared CI gate checks the PR head for both records and code using `SHOALMARK_CMD: python3 shoalmark.py` on every OS, then restores the merge checkout for the suites. Seat authors retain their session, build, filing and rights rules. RV-3026 is fixed, with local controls for Owner-signed branches, judged and unjudged seat work, and work carried from another unmerged branch. Local hook, signature, history, freeze, preservation and CI-path checks passed. Local Windows command controls pass for records and code. For all four submodule ignore settings, local controls show a seat's unjudged pointer change refused by its hook and an Owner's unsigned pointer change accepted by its hook and refused by `--check`; combined index, ledger, identity and unsigned-answer controls pass.
 
@@ -87,9 +93,12 @@ Today the seats read *"all four now"* and *"all three rules now"* as leave to bu
 
 ## Done when
 
-- The gate above refuses a build commit on an unjudged, not-In-Progress, or unnamed tracker (suite cases for the four rows above).
-- The board shows activity beside judgement: a tracker with commits on a pushed branch in the last day says so, in whichever section it sits.
-- The four rows above are recorded against this tracker as the violation, and the seat's ledger row links here.
+- [x] The gate above refuses a build commit on an unjudged, not-In-Progress, or unnamed tracker (suite cases for the four rows above).
+  · `c36c44d`, `1367e41`, `e5a1a9e`
+- [ ] The board shows activity beside judgement: a tracker with commits on a pushed branch in the last day says so, in whichever section it sits.
+  — moves to [FM-124](FM-124-the-board-does-not-show-activity-beside-judgement.md)
+- [ ] The four rows above are recorded against this tracker as the violation, and the seat's ledger row links here.
+  — the rows: `140edb6`, `cac48a5`; the ledger's link: evidence owed, [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md)
 
 ## Asks
 
@@ -111,3 +120,4 @@ Today the seats read *"all four now"* and *"all three rules now"* as leave to bu
 | 2026-09-24 | In Progress — 0.18.3 builds the raise in the worksheet and on the board, the gate keyed on the build commit, and the tool's rule 4 reworded (path 5); the status set here, on the pass branch, before the first build commit (the Auditor's AU-20). |
 | 2026-09-24 | 0.18.3 builds the gate on the build commit — `judged_before_build`, off by default and on in this repository (the Auditor's check 26) — beside the raise rule on the board and the worksheet and the tool's rule 4 reworded, on `fm/029-0-18-3-the-relation-recovered-the-authority-named-the-queue-tested`. What *What would have refused all four* also names — `--queue` and the board marking a pushed branch whose commits name an unjudged tracker — and *Done when*'s activity beside judgement are 0.18.4. |
 | 2026-10-13 | **R14 shipped in v0.19.4:** reviewed READY in round 4 (`31a4e93`), merged to main as `e5a1a9e` (#164); tagged `v0.19.4` on `39e5763`. FM-033 stays In Progress; R12 follows separately. |
+| 2026-11-03 | **Shipped in v0.19.4,** for R14 (`c36c44d`, merged as `e5a1a9e`, #164). The activity line leaves as FM-124; the ledger's link waits in FM-106. Records only. |

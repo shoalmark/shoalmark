@@ -1,6 +1,6 @@
 ---
 id: FM-070
-status: In Progress
+status: Shipped
 considered: FM-068, FM-069
 tags: bug
 next: build
@@ -12,6 +12,12 @@ hook: "the gate's text shows as mojibake in TortoiseSVN"
 # FM-070 — the gate's text shows as mojibake in TortoiseSVN
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2, on simulated code pages; the real dialog on Windows leaves as
+[FM-129](FM-129-no-real-windows-run-has-yet-shown-the-gate-s-text-in.md).** In `--tsvn-hook` mode the hook writes the
+ANSI code page with errors replaced, and a test pins the bytes for a line with an em dash on 1252, 932 and 65001
+(`35bf50b`, `a570f03`, `b65b817`). It is merged into `release/v0.20.2-rebuilt` with FM-068, as `43ac2f1` (#246). The
+confinement failures it found are FM-075's.
 
 **Built 2026-10-27.** Windows TortoiseSVN runs configure stdout and stderr with the Windows ANSI code page through Python's built-in `mbcs` codec (`CP_ACP`), replacing characters it cannot encode. Both entry-time configuration diagnostics and `main` use this choice. Other modes retain UTF-8 and LF, including `--print-written`. Byte controls simulate Windows with code pages 1252, 932 and 65001, and reject a UTF-8 hook mutant. The watchdog's direct stderr bytes use that configured encoding too, with a byte control and UTF-8 mutant. Hook fixture readers decode the captured output with `mbcs` on Windows and UTF-8 elsewhere. This is simulated evidence; TortoiseSVN dialog display still needs a Windows run. Critical review remains next.
 
@@ -29,8 +35,9 @@ A refusal a person cannot read is a refusal they cannot act on.
 
 ## Done when
 
-- In `--tsvn-hook` mode the hook writes the ANSI code page with errors replaced, or ASCII alone.
-- A test pins the bytes the hook writes for a line with an em dash.
+- [x] In `--tsvn-hook` mode the hook writes the ANSI code page with errors replaced, or ASCII alone.
+  · `35bf50b`, `b65b817`
+- [x] A test pins the bytes the hook writes for a line with an em dash. · `35bf50b`, `a570f03`
 
 ## Ship log
 
@@ -38,3 +45,4 @@ A refusal a person cannot read is a refusal they cannot act on.
 |---|---|
 | 2026-10-27 | Filed and judged In Progress, P3, for v0.20.2, from a field report from a Windows working copy. |
 | 2026-10-27 | Built ANSI hook output and byte controls, from a field report from a Windows working copy. |
+| 2026-11-03 | **Shipped with v0.20.2,** on simulated code pages (`35bf50b`), merged with FM-068 as `43ac2f1` (#246). The real dialog on Windows leaves as FM-129. Records only. |

@@ -1,35 +1,28 @@
 ---
 id: FM-053
-status: In Progress
+status: Shipped
 considered: FM-002, FM-023, FM-024, FM-031, FM-006
 tags: process
 next: build
 triaged: 2026-10-15
 tier: P2
 hook: "The board's design for v0.20.1 is the Owner's word in a design sitting, and a Builder acts only on a signed word"
-ask: "Do you adopt the guide's six new lines for the board's settings, header, footer, phone rows, seat icons and reviews, as brand/design-guide.md states them at the commit that last filed this ask, and as FM-053's *What is true now* entry of 22 October sets them out?"
-ask-kind: ruling
-ask-since: 2026-10-22
-ask-options: "yes | yes, with the change I name | no: the guide stays as its answers of 16 October left it"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-22
-answered-by: holgo99
 ---
 
 # FM-053 — the board's design for v0.20.1 is the Owner's word in a sitting, not yet a signed answer
 
 ## What is true now
 
-**2026-11-01 — v0.20.3's design rows, from 31 October:**
-- BF-106: the answer dialog's holds-up group stays whole. Its drafted edit must pass each held id through `esc()`.
-- BF-107: a long repository name wraps in the header on phones.
-- BF-108: the 29-branch ambiguous row is cut ("a, b and 27 more").
-- A grey, inverted copy of each seat icon for paper.
-- The design guide's print line (`brand/design-guide.md:112`).
+**2026-11-03 — Shipped in v0.20.1, for its design; the polish it left leaves as
+[FM-123](FM-123-the-board-s-polish-that-v0-20-1-left-is-not-built-a-verdict.md).** The Owner's signed answers adopt the
+guide (`1281a75`, `fee3874`, `578973d`, and `3ec78eb`, which moves under *Asks* now). The board build is reviewed
+against the guide's §11 (A2, READY at `93589f5`, joined by `8c000d0`; the polish, READY at `6b01836`, merged as
+`04a2f11`). Item 1's brief citation waits in
+[FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md). The polish left, a verdict's state
+labels (BF-62), BF-65 and a seat icon in a row without its ground square, and v0.20.3's design rows of 1 November are
+FM-123.
 
-BF-106 to BF-108 follow the Owner's "1-3. go into v0.20.3"; the paper icons follow "(b) done for v0.20.3".
-The guide's print line stays allocated to v0.20.3 unless the Owner says yes before the merge.
+**2026-11-01 — v0.20.3's design rows, from 31 October,** moved to [FM-123](FM-123-the-board-s-polish-that-v0-20-1-left-is-not-built-a-verdict.md) on 2026-11-03.
 
 **The polish's fix round (2026-10-22), after its review NOT READY at `4c1441e`:** the switch drawn as a track and a knob (BF-68) and the pressed-button rule gone (RV-3660) — `b7c91c7`; one space between a day row's state and its warning (BF-69) — `8b91b91`; the German table takes the go-to-market seat's words rows, revision 3, G1 and G3 to G41, its §3's two changes, F1 to F7, F9 and F10 — `cf81e41`, not F8; the reviews' fold takes its row, G2 (RV-3663) — `b8ec2ae`, so `b4901a5` stays in v0.20.1; the lane's narrating comments go (RV-3662) — `53815d7`; a branch's merge id links where the forge holds it (RV-3664) — `372c089`; and BF-62 is recorded as layout only (RV-3661) — `068de48`.
 
@@ -128,8 +121,10 @@ and 6, on `fm/053-board-polish`. Line 5 waits for the session rows, which v0.20.
 
 ## Done when
 
-- The Owner's signed answer stands here, and the board build's brief cites it.
-- The board build's review checks the board against the guide's acceptance tests (§11).
+- [ ] The Owner's signed answer stands here, and the board build's brief cites it.
+  — the answers: `1281a75`, `fee3874`, `578973d`, `3ec78eb`; the brief's citation: [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md)
+- [x] The board build's review checks the board against the guide's acceptance tests (§11).
+  · `93589f5`, `8c000d0`, `6b01836`, `04a2f11`
 
 ## Asks
 
@@ -147,6 +142,11 @@ and 6, on `fm/053-board-polish`. Line 5 waits for the session rows, which v0.20.
 **answered** — accepted - yes · holgo99
 **relation** — accepted the proposal
 **signed** — 578973d · G
+
+**2026-10-22** · Do you adopt the guide's six new lines for the board's settings, header, footer, phone rows, seat icons and reviews, as brand/design-guide.md states them at the commit that last filed this ask, and as FM-053's *What is true now* entry of 22 October sets them out?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 3ec78eb · G
 
 ## Ship log
 
@@ -175,3 +175,4 @@ and 6, on `fm/053-board-polish`. Line 5 waits for the session rows, which v0.20.
 | 2026-10-22 | Correction (RV-3661): `b4901a5`'s message says it closes BF-62; it builds BF-62's layout only, a verdict's second line that flows as text. BF-62's state labels are not built, and go with BF-65 to v0.20.2. The rows above stand as written. |
 | 2026-10-22 | The polish's fix round on `fm/053-board-polish`: BF-68 and RV-3660 (`b7c91c7`), BF-69 (`8b91b91`), the German of revision 3 (`cf81e41`), RV-3663 with G2 (`b8ec2ae`), RV-3662 (`53815d7`), RV-3664 (`372c089`) and RV-3661 (`068de48`); `b4901a5` stays in v0.20.1. |
 | 2026-11-01 05:03:32 CET | BF-106 to BF-108, the grey seat icons for paper and the guide's print line are recorded for v0.20.3. BF-106's drafted edit must escape each held id. Records only. |
+| 2026-11-03 | **Shipped in v0.20.1,** for its design: reviewed against §11 (`93589f5`), the polish merged as `04a2f11`. The fourth answer moves under *Asks*; v0.20.3's design rows move to FM-123; item 1's brief citation waits in FM-106. Records only. |

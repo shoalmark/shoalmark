@@ -1,6 +1,6 @@
 ---
 id: FM-037
-status: In Progress
+status: Shipped
 considered: FM-008, FM-033, FM-007, FM-019, FM-022, FM-014
 tags: bug
 triaged: 2026-09-25
@@ -13,6 +13,16 @@ hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and t
 # FM-037 — a seat can change the Owner's intent and current path in TRIAGE.md, and the gate lets it through
 
 ## What is true now
+
+**2026-11-03 — Shipped, for the guard over the Owner's two sections and R24's minimum; its later work leaves as FM-121
+and FM-122.** The guard holds the seven clauses, each with its test (`d0fa174`, `2b860d4`, `8835670`, `b5ed854`,
+`6ac7288`), merged as #83 (`fa58260`) for 0.18.4. R24's minimum for v0.20.0 is in place and verified (`b91ebd1`,
+`34600d9`, `c9bf5aa`). The cold session's reviews are in the record (`8185a5c`, `b4fbc98`); the Auditor's verification
+against its sealed plan waits in [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md).
+- [FM-121](FM-121-a-seat-can-change-the-seat-definitions-and-the-skills-folder.md): the guard over the seat
+  definitions and the skills folder, for v0.20.3 after a design round.
+- [FM-122](FM-122-r24-s-boundary-work-beyond-its-minimum-has-no-tracker-of-its.md): R24's broader boundary
+  work, with its scope as the Owner states it.
 
 **2026-10-27 — the guard over the seat definitions and the skills folder moves to v0.20.3,** on the Owner's word of 27 October, as relayed by the Auditor. FM-023's ask of 27 October puts the move to the Owner.
 
@@ -65,9 +75,13 @@ state), FM-019 (a merge is never judged as the merger's own change — the merge
 
 ## Done when
 
-The seven clauses of the Owner's word above, as written, each with its synthetic test and the real history accepted (clause 7).
-**Tier: the gate — critical under path line 3; the Owner's cold session reviews it; the Auditor seat verifies after, against its plan
-sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as enforced by the tool, with its tier-0 limit stated.
+- [x] The seven clauses of the Owner's word above, as written, each with its synthetic test and the real history accepted (clause 7).
+  · `d0fa174`, `2b860d4`, `8835670`, `b5ed854`, `6ac7288`, `fa58260`
+- [ ] **Tier: the gate — critical under path line 3; the Owner's cold session reviews it; the Auditor seat verifies after, against its plan
+  sealed at 18:57:38.** — the cold session's reviews: `8185a5c`, `b4fbc98`; the Auditor's verification: evidence owed,
+  [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md)
+
+Then FM-006's site page may say *only you change it* as enforced by the tool, with its tier-0 limit stated.
 
 ## Asks
 
@@ -84,6 +98,7 @@ sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as en
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Shipped,** for the guard (`d0fa174`, merged as `fa58260`, #83) and R24's minimum (`34600d9`). The review condition's verification waits in FM-106; FM-121 and FM-122 are filed. Records only. |
 | 2026-10-27 | The guard moves to v0.20.3, on the Owner's word of 27 October; FM-023's ask puts it to the Owner. Records only. |
 | 2026-10-19 | The Owner's action ask answered and cleared (`b91ebd1` · G): R24's minimum for v0.20.0 is in place and independently verified. FM-037 stays open for the broader boundary work. |
 | 2026-09-26 | The cold re-review's R1 and R2 on `b0d863e` (`b4fbc98`, READY WITH FINDINGS, both P3), fixed forward before the 0.18.4 cut. R1: `--answer` asks `verified_as` — the gate's test, against the default branch's signers file — before it pushes; it read the clone's own file, so mid key rotation it said *pushed* and the gate then refused the answer, telling him to sign a commit he had signed. Neither says *sign it* now to an SSH-signed commit whose key that file does not hold for the identity; each names where the key must land first. R2: where the signers file sits in a checkout and the default branch does not carry it, nothing verifies against it until its first version lands there — a checkout on a branch that writes one let `--queue` read another pull request's change, signed with that branch's key, as clean. A suite case each. |
