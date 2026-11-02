@@ -8,6 +8,8 @@
   file of a person's own, at the top or nested, and one reached through a symlinked file or folder, are not named.
 - `--standup`, `--owner`, `--due` and `--done` print, on a fixture with nothing left over, what they printed at 36d4961, the
   tool R9 joins in PR B (the d-batch's head), and `--due` and `--done` write the same record.
+- The acts are compared as they are said now that each commits on the branch the Owner stands on and pushes nothing, where the
+  base cut `answer/<id>` and pushed it.
 
 Run: `python3 test_r9_removals.py` — exit 1 on a failure. `SHOALMARK_R9_TOOL=<path>` runs it against another copy of the tool:
 that is how its mutants are run (a leftover deleted; a leftover not named), and each must fail it. test_shoalmark.py runs it at
@@ -27,22 +29,58 @@ import tempfile
 HERE = Path(__file__).resolve().parent
 BASE = "36d4961"                    # the tool R9 joins in PR B: the d-batch's head, before R9 as b84b8af was, which R9 was built on
 FM054_SAID = ("\n  signed, on `answer/", "\n  author only, on `answer/")
+# an act commits on the branch the Owner stands on and pushes nothing — the base's cut, push and switch back, as the joined tool says each
+R4_SAID = (re.compile(r"\n  author only, on `answer/[a-z0-9-]+`, pushed\n"),
+           "\n  author only, committed on `main` as <SHA>\n  it counts once this commit is on origin/main: push it, or merge the branch that carries it\n")
+R4_STEPS = ((re.compile(r" — 1/4 reading the trackers"), " — 1/3 reading the trackers"),
+            (re.compile(r" — 2/4 cutting `answer/[a-z0-9-]+` from `main` …\n"), None),
+            (re.compile(r" — 3/4 committing"), " — 3/3 committing"),
+            (re.compile(r"[^\n]* — 4/4 pushing to `origin` …\n"), ""))
 
 
 FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
+# the board reads no answer branch: the base's line that the board was older than what it shows, where the answer branches alone had changed
+R4_BASIS = re.compile(r"\nthe board is older than what it shows — the answer branches changed since it was built: `[^`\n]*` rebuilds it\n\Z")
+# the base put every ask before ask ids, and names a fixture's ask that carries an id by its tracker: `--owner` and `--standup` name such an
+# ask by its id, and say of every other one that it was asked before ask ids — on `--owner` after its age, on `--standup` inside its first
+# age bracket. One reading, `as_before_ids`, for every comparison of those two with an older tool: this test's and test_standup_repos.py's.
+OWNER_ASK = re.compile(r"(?m)^(\S+)( · [^·\n]+ · asked [^\n]*)$")
+STANDUP_AGE = re.compile(r"(?m)^(  \d+\. )(\S+)( — [^\n]*?  \[\d+ day\(s\))\]")
+LEGACY_NOTE = " · asked before ask ids"
+R9_IDS = {"AP-005": "AP-005-Q1"}
+
+
+def as_before_ids(flag, text, ids):
+    """A base run's `--owner` or `--standup` stdout with each ask line as the tool says it now: an ask whose tracker `ids` names (tracker id →
+    ask id) by that id, and every other ask said as asked before ask ids — once per line, in its first age bracket on the stand-up. Any
+    other flag's text as it was."""
+    if flag == "--owner":
+        return OWNER_ASK.sub(lambda m: ids[m.group(1)] + m.group(2) if m.group(1) in ids else m.group(0) + LEGACY_NOTE, text)
+    if flag == "--standup":
+        return STANDUP_AGE.sub(lambda m: m.group(1) + (ids[m.group(2)] + m.group(3) if m.group(2) in ids else m.group(2) + m.group(3) + LEGACY_NOTE) + "]",
+                               text)
+    return text
 
 
 def as_proved(entry):
     """A base run's (flag, exit, stdout, stderr) as the joined tool says it: for `--due` and `--done`, the one line naming how the commit is
-    proved, once; for `--standup`, the two kinds the board renames; anything else as it was."""
-    if entry[0] == "--standup" and isinstance(entry[2], str):
-        out = entry[2]
-        for old, new in FM053_AGENDA:
+    proved, once; for `--standup`, the two kinds the board renames; for `--standup` and `--owner`, the line naming the answer branches alone
+    as what changed since the board was built, which the board no longer reads, and each ask as the tool says it now (`as_before_ids`);
+    anything else as it was."""
+    if entry[0] in ("--standup", "--owner") and isinstance(entry[2], str):
+        out = R4_BASIS.sub("", entry[2], count=1)
+        out = as_before_ids(entry[0], out, R9_IDS)
+        for old, new in FM053_AGENDA if entry[0] == "--standup" else ():
             out = out.replace(old, new) if out.count(old) == 1 else out
         return entry[:2] + (out,) + entry[3:]
     if entry[0] not in ("--due", "--done") or not isinstance(entry[2], str) or entry[2].count(FM054_SAID[0]) != 1:
         return entry
-    return entry[:2] + (entry[2].replace(*FM054_SAID),) + entry[3:]
+    out = R4_SAID[0].sub(R4_SAID[1], entry[2].replace(*FM054_SAID), count=1)
+    out = out.replace("\n  back on `main`\n", "\n").replace("the board is rebuilt — it reads the branch just pushed", "the board is rebuilt")
+    err, tid = entry[3], entry[4]
+    for rx, new in R4_STEPS:
+        err = rx.sub(new if new is not None else f" — 2/3 writing docs/work-tracker/{tid}-x.md on `main` …\n", err, count=1)
+    return entry[:2] + (out, err) + entry[4:]
 OWNER = "owner@example.invalid"
 REMOVED = (("--invite", ["--invite", "AP-001"]), ("--notify", ["--notify"]), ("--standup FILE.ics", ["--standup", "cal.ics"]))
 ACT_ICS = (b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//shoalmark//act//EN\r\nBEGIN:VEVENT\r\nUID:act-ap-001-0000000000000000@shoalmark\r\n"
@@ -110,6 +148,8 @@ def fixture(base, tool, env, clock):
     tracker(root, "AP-002", f"next: run\ndue: {at(-10)}\n", "the overdue run")
     tracker(root, "AP-003", f'next: owner\nask: "Shall the launcher ship first?"\nask-kind: ruling\nask-since: {since}\nask-proposal: "the launcher"\n', "a ruling")
     tracker(root, "AP-004", ask("Will you set up the key?", "accepted - this week"), "the key")
+    tracker(root, "AP-005", f'next: owner\nask-id: AP-005-Q1\nask: "Shall the importer wait?"\nask-kind: ruling\nask-since: {since}\n'
+                            'ask-proposal: "it waits"\n', "an ask that carries its id")
     (root / "docs/work-tracker/evidence/AP-001").mkdir(parents=True)
     write(root / "docs/work-tracker/evidence/AP-001/read.md", "the read, done\n")
     run(tool, root, env)                                         # INDEX.md and the board, as this tool writes them
@@ -270,16 +310,19 @@ def run_checks(*, results=None):
         for name, t in (("then", old), ("now", tool)):
             base = area / f"same-{name}"
             r = fixture(base, t, cenv, clock)
-            seq = (["--standup"], ["--owner"], ["--due", "AP-002", clock[1](120)], ["--done", "AP-001", "evidence/AP-001/read.md"], ["--standup"], ["--owner"])
-            got = [(argv[0],) + tuple(normal(x, base) if isinstance(x, str) else x for x in run(t, r, cenv, *argv)) for argv in seq]
-            got.append(("records",) + tuple(normal(git(r, "show", f"origin/answer/{tid}:docs/work-tracker/{tid.upper()}-x.md", env=cenv), base)
+            # the base cut `answer/<id>` and pushed each act there, and its digests read those branches; this tool commits each act on `main`:
+            # the digests before the acts are compared, the acts as this tool says them, and each record where each tool committed it
+            seq = (["--standup"], ["--owner"], ["--due", "AP-002", clock[1](120)], ["--done", "AP-001", "evidence/AP-001/read.md"])
+            got = [(argv[0],) + tuple(normal(x, base) if isinstance(x, str) else x for x in run(t, r, cenv, *argv)) + ((argv[1],) if argv[0] in ("--due", "--done") else ())
+                   for argv in seq]
+            got.append(("records",) + tuple(normal(git(r, "show", f"{f'origin/answer/{tid}' if name == 'then' else 'HEAD'}:docs/work-tracker/{tid.upper()}-x.md", env=cenv), base)
                                             for tid in ("ap-002", "ap-001")))
             pair[name] = got
         for a, b in zip(pair["then"], pair["now"]):
             a = as_proved(a)
             add(f"R9 · {a[0]} prints what it printed at {BASE} — exit, both streams" + (", its proof as FM-054 says it" if a[0] in ("--due", "--done") else
                                                                                          ", its kinds as A2 names them" if a[0] == "--standup" else "")
-                if a[0] != "records" else f"R9 · `--due` and `--done` write the record they wrote at {BASE}, on `answer/<id>`", a == b,
+                if a[0] != "records" else f"R9 · `--due` and `--done` write the record they wrote at {BASE} — there on `answer/<id>`, here on `main`", a == b,
                 "" if a == b else f"then {a!r}\nnow  {b!r}")
         acted = pair["now"][3]
         add("R9 · …and on that fixture `--done` did its act — the control that the comparison compared a run that worked",

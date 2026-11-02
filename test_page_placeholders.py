@@ -38,6 +38,7 @@ SID, UUID = "abcd1234", "abcd1234-1111-4222-8333-444455556666"
 
 # Each value no input can reach, and why: the tool's own text, or an input it puts in only in a form that holds no `_`.
 UNREACHED = {
+    "__SEATS__": "the tool's own seat icons",
     "__KINDS__": "the id prefixes of `kinds`, refused unless they are upper-case letters and digits",
     "__COLSPAN__": "a count",
     "__PROOF__": "the tool's own words for how the configuration asks an answer to be proved",

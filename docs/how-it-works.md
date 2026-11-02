@@ -39,7 +39,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 
 **Not everything needs you.** A seat that holds the right to close closes work without asking you. Shipped with the tool are three seats with fixed rights: the planner may ask, close and triage, the reviewer may triage, the builder holds none of the four. For any other seat you set the rights yourself. Only a seat you give the right may answer, and by default that is you alone.
 
-**How firmly "no agent answers for you" holds is set by your signature.** A signature proves the key, not the hand: whoever can use your key can answer as you. There are four tiers, from a key anything on your account can use to one that needs your touch. [Your answer is your commit](signing.md) helps you choose.
+**How firmly "no agent answers for you" holds is set by your signature.** A signature proves the key, not the hand: whoever can use your key can answer as you. There are four tiers, from a key anything on your account can use to one that needs your confirmation on the device. [Your answer is your commit](signing.md) helps you choose.
 
 ## Your part
 
@@ -53,7 +53,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 - It does not prove that work is right. Its checks report a move to *Shipped* with no commit behind it; whether that commit did the job is what a review is for.
 - It is not a migration tool: it imports no ticket system and starts from your repository's own work.
 - Today it fits a project with one person in charge. Several people in charge are not tested in this beta.
-- It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.
+- It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities.
   It needs no server, database or account of its own.
 
 ## Try it

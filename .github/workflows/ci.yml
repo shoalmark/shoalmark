@@ -138,6 +138,8 @@ jobs:
         run: python -u test_shoalmark.py
       - if: steps.tier.outputs.records != 'true'
         run: python -u test_core.py
+      - if: steps.tier.outputs.records != 'true'
+        run: python -u test_plugin.py
       # Both suites again under the entry's time zone, far from UTC (the Owner's word of 2026-10-09): reported in the run's summary, and
       # not required until they are green (2026-10-10) — a failure here is a finding for its tracker, and the check stays as UTC leaves it.
       - name: the suites under ${{ matrix.tz }} — reported, not yet required
@@ -148,6 +150,7 @@ jobs:
         run: |
           python -u test_shoalmark.py && suite=0 || suite=$?
           python -u test_core.py && core=0 || core=$?
-          if [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]; then said="both suites passed"; else said="FAILED — test_shoalmark.py exit $suite, test_core.py exit $core"; fi
+          python -u test_plugin.py && plugin=0 || plugin=$?
+          if [ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]; then said="all three suites passed"; else said="FAILED — test_shoalmark.py exit $suite, test_core.py exit $core, test_plugin.py exit $plugin"; fi
           echo "Under TZ=$TZ: $said (reported, not yet required)." >> "$GITHUB_STEP_SUMMARY"
-          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]
+          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]

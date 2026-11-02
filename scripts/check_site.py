@@ -170,12 +170,181 @@ import re
 
 config_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).resolve().parent.parent / "zensical.toml"
 probe_on = bool((tomllib.loads(config_path.read_text(encoding="utf-8"))["project"].get("extra") or {}).get("probe"))
-taped_on = bool((tomllib.loads(config_path.read_text(encoding="utf-8"))["project"].get("extra") or {}).get("taped"))
 SITE_URL = "https://shoalmark.tools/"
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
-LOADS = {"script": "src", "img": "src", "source": "src", "iframe": "src", "audio": "src", "video": "src", "embed": "src", "object": "data", "form": "action"}
-LOADING_RELS = {"stylesheet", "icon", "shortcut", "preload", "modulepreload", "prefetch", "manifest", "apple-touch-icon", "mask-icon"}
+LOADS = {"script": "src", "img": "src", "source": "src", "iframe": "src", "frame": "src", "audio": "src", "video": "src", "track": "src", "embed": "src",
+         "object": "data", "form": "action"}
+LOADING_RELS = {"stylesheet", "icon", "shortcut", "preload", "modulepreload", "prefetch", "prerender", "preconnect", "dns-prefetch", "manifest",
+                "apple-touch-icon", "mask-icon"}
+SVG_LOADS = {"image", "feimage", "use", "script"}
 REQUEST_APIS = re.compile(r"\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|importScripts)\s*\(|\bimport\s*\(|new\s+Image\b")
+STATIC_IMPORT = re.compile(r"\bimport\s*(?:[\w$*{},\s]+?\s*from\s*)?(['\"])(.+?)\1")
+CSS_URL = re.compile(r"(?i)url\(\s*(?:(['\"])(.*?)\1|([^'\")\s][^)\s]*))\s*\)|@import\s+(['\"])(.*?)\4")
+CSS_IMAGE_SET = re.compile(r"(?i)image-set\(((?:[^()]|\([^()]*\))*)\)")
+LEGAL = {"en": ("imprint.html", "privacy.html"), "de": ("de/impressum.html", "de/datenschutz.html")}
+TAPE_KINDS = {"tape", "tapebox", "flap", "taped", "taped-why", "is-taped"}
+TWIN_PAD = ".door-again .btn.door"
+PHONE_WIDTHS = (320, 360, 390, 700)
+
+
+def css_parts(tokens):
+    parts = [[]]
+    for token in tokens:
+        if token.type == "literal" and token.value == ",":
+            parts.append([])
+        elif token.type != "comment":
+            parts[-1].append(token)
+    return parts
+
+
+def selector_items(tokens):
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token.type == "literal" and token.value in {".", ":"}:
+            kind = "class" if token.value == "." else "pseudo"
+            i += 1
+            if i < len(tokens) and tokens[i].type == "literal" and tokens[i].value == ":":
+                kind = "element"
+                i += 1
+            if i < len(tokens):
+                yield kind, tokens[i]
+        else:
+            yield token.type, token
+        i += 1
+
+
+def weight(tokens):
+    weights = []
+    for part in css_parts(tokens):
+        ids, classes, types = 0, 0, 0
+        for kind, token in selector_items(part):
+            if kind == "hash" and token.is_identifier:
+                ids += 1
+            elif kind in {"class", "[] block"}:
+                classes += 1
+            elif kind == "ident":
+                types += 1
+            elif kind == "pseudo":
+                name = token.lower_name if token.type == "function" else token.value.lower()
+                if name in {"is", "not", "has"} and token.type == "function":
+                    extra = weight(token.arguments)
+                    ids, classes, types = ids + extra[0], classes + extra[1], types + extra[2]
+                elif name not in {"where", "before", "after", "first-line", "first-letter"}:
+                    classes += 1
+        weights.append((ids, classes, types))
+    return max(weights)
+
+
+def reaches_twin(tokens):
+    tokens = [token for token in tokens if token.type != "comment"]
+    while tokens and tokens[-1].type == "whitespace":
+        tokens.pop()
+    compound = []
+    for token in tokens:
+        if token.type == "whitespace" or (token.type == "literal" and token.value in {">", "+", "~", "||"}):
+            compound = []
+        else:
+            compound.append(token)
+    for kind, token in selector_items(compound):
+        if kind == "hash" or (kind == "class" and token.value not in {"btn", "door"}) or (kind == "ident" and token.value.lower() != "a"):
+            return False
+    return True
+
+
+def media_applies(tokens, width):
+    for part in css_parts(tokens):
+        terms = [t for t in part if t.type != "whitespace"]
+        if terms and terms[0].type == "ident" and terms[0].lower_value == "only":
+            terms = terms[1:]
+        applies = True
+        if terms and terms[0].type == "ident" and terms[0].lower_value in {"screen", "all", "print"}:
+            applies = terms.pop(0).lower_value != "print"
+            if terms:
+                if terms[0].type != "ident" or terms.pop(0).lower_value != "and":
+                    return True
+        for i, term in enumerate(terms):
+            if i % 2:
+                if term.type != "ident" or term.lower_value != "and":
+                    return True
+            elif term.type == "() block":
+                feature = [t for t in term.content if t.type not in {"whitespace", "comment"}]
+                if (len(feature) == 3 and feature[0].type == "ident" and feature[0].lower_value in {"min-width", "max-width"}
+                        and feature[1].type == "literal" and feature[1].value == ":"
+                        and feature[2].type == "dimension" and feature[2].lower_unit == "px"):
+                    applies = applies and (width >= feature[2].value if feature[0].lower_value == "min-width" else width <= feature[2].value)
+            else:
+                return True
+        if applies:
+            return True
+    return False
+
+
+def door_paddings(css):
+    found = []
+
+    def walk(rules, media):
+        for rule in rules:
+            if rule.type == "qualified-rule":
+                selectors = [part for part in css_parts(rule.prelude) if reaches_twin(part)]
+                for d in tinycss2.parse_declaration_list(rule.content, skip_comments=True, skip_whitespace=True):
+                    if d.type != "declaration" or d.lower_name not in {"padding-left", "padding"}:
+                        continue
+                    values = [t for t in d.value if t.type not in {"whitespace", "comment"}]
+                    if d.lower_name == "padding" and 1 <= len(values) <= 4:
+                        values = [values[3] if len(values) == 4 else values[1] if len(values) > 1 else values[0]]
+                    value = tinycss2.serialize(values).strip()
+                    pixels = values[0].value if len(values) == 1 and values[0].type == "dimension" and values[0].lower_unit == "px" else None
+                    for part in selectors:
+                        selector = " ".join(tinycss2.serialize(part).split())
+                        own = not media and selector == TWIN_PAD and d.lower_name == "padding-left" and pixels == 50
+                        found.append((media, selector, value, pixels, d.important, weight(part), own))
+            elif rule.type == "at-rule" and rule.lower_at_keyword == "media" and rule.content is not None:
+                walk(tinycss2.parse_rule_list(rule.content, skip_comments=True, skip_whitespace=True), media + (rule.prelude,))
+    walk(tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True), ())
+    return found
+
+
+TAPE_CSS = re.compile(r"@keyframes\s+tape-[\w-]*|\.btn\.door::after|\.(?:tape|tapebox|flap|taped|taped-why|is-taped)\b|\.btn\.taped\b|\.cue\s+\.(?:was|now)\b")
+
+
+def srcset_urls(value):
+    """The addresses of a srcset: each candidate's address runs to the first space, or ends at its own trailing comma."""
+    urls, i = [], 0
+    while i < len(value):
+        while i < len(value) and (value[i].isspace() or value[i] == ","):
+            i += 1
+        start = i
+        while i < len(value) and not value[i].isspace():
+            i += 1
+        url = value[start:i]
+        if url.endswith(","):
+            url = url.rstrip(",")
+        else:
+            depth = 0
+            while i < len(value) and (value[i] != "," or depth):
+                depth += {"(": 1, ")": -1}.get(value[i], 0)
+                i += 1
+        if url:
+            urls.append(url)
+    return urls
+
+
+def leaves_site(url):
+    """Whether a browser asks another host for `url`: it names a host, or a scheme other than data:, blob: or about:. Browsers drop tabs and line
+    breaks anywhere in an address and spaces and control characters around it, read a backslash as a slash, and take the host after any run of
+    slashes, so the address is read here as they read it."""
+    url = re.sub(r"[\t\n\r]", "", url).strip("".join(chr(c) for c in range(0x21))).replace("\\", "/")
+    parts = urlsplit(url)
+    return bool(parts.netloc) or url.startswith("//") or parts.scheme not in ("", "data", "blob", "about")
+
+
+def css_urls_of(css):
+    """Every address a piece of CSS names: in url(), in an @import's string, and in each string of an image-set()."""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    found = [m.group(2) if m.group(1) else m.group(3) if m.group(3) is not None else m.group(5) for m in CSS_URL.finditer(css)]
+    found += [s for m in CSS_IMAGE_SET.finditer(css) for s in re.findall(r"['\"]([^'\"]*)['\"]", m.group(1))]
+    return [url for url in found if url is not None]
 
 
 def fail(message):
@@ -190,34 +359,50 @@ class Page(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.lang = self.title = None
         self.meta, self.links, self.anchors, self.texts, self.textareas, self.dialogs, self.scripts, self.loads = {}, [], [], {}, {}, [], [], []
+        self.components, self.styles = [], []
         self.text, self.stack = "", []
-        self.buttons, self.tapes, self.button_texts, self.tape_texts = [], [], [], []
-        self.tape_holders, self.doors, self.coins = [], [], []
+        self.tapes, self.doors, self.coins, self.cues = [], [], [], []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
-        if "tape" in (a.get("class") or "").split() or "gcoin" in (a.get("class") or "").split():
+        kinds = (a.get("class") or "").split()
+        if "gcoin" in kinds:
             holder = next((el for el in reversed(self.stack) if el["tag"] in ("a", "button")), None)
-            kinds = (holder["attrs"].get("class") or "").split() if holder else []
-            where = ("door" if holder["tag"] == "a" and "door" in kinds and holder["attrs"].get("id") == "probe-open"
-                     else "taped" if holder["tag"] == "button" and "taped" in kinds else "elsewhere") if holder else "elsewhere"
-            (self.tape_holders if "tape" in (a.get("class") or "").split() else self.coins).append((where, a.get("aria-hidden")))
-        if "door" in (a.get("class") or "").split():
-            self.doors.append((tag, a))
+            in_door = bool(holder) and holder["tag"] == "a" and "door" in (holder["attrs"].get("class") or "").split()
+            self.coins.append((holder["attrs"] if in_door else None, a.get("aria-hidden")))
+        if TAPE_KINDS & set(kinds) or a.get("id") == "taped-why":
+            self.tapes.append(".".join([tag] + kinds))
+        if "door" in kinds:
+            self.doors.append((tag, a, any(up["attrs"].get("id") == "start" for up in self.stack)))
+        if "cue-t" in kinds:
+            self.cues.append(kinds)
         if tag == "html":
             self.lang = a.get("lang")
         elif tag == "meta" and (a.get("name") or a.get("property")):
             self.meta[a.get("name") or a.get("property")] = a.get("content")
         elif tag == "link":
             self.links.append(a)
-            if set((a.get("rel") or "").split()) & LOADING_RELS and a.get("href"):
-                self.loads.append((tag, a["href"]))
+            if set((a.get("rel") or "").lower().split()) & LOADING_RELS:
+                self.loads += [(tag, a["href"])] if a.get("href") else []
+                self.loads += [(tag, url) for url in srcset_urls(a.get("imagesrcset") or "")]
         elif tag == "dialog":
             self.dialogs.append(a)
-        if tag == "button" or "tape" in (a.get("class") or "").split():
-            (self.buttons if tag == "button" else self.tapes).append(a)
         if tag in LOADS and a.get(LOADS[tag]):
             self.loads.append((tag, a[LOADS[tag]]))
+        if tag in ("img", "source"):
+            self.loads += [(tag, url) for url in srcset_urls(a.get("srcset") or "")]
+        if tag == "video" and a.get("poster"):
+            self.loads.append((tag, a["poster"]))
+        if tag == "input" and (a.get("type") or "").lower() == "image" and a.get("src"):
+            self.loads.append((tag, a["src"]))
+        if tag in SVG_LOADS:
+            self.loads += [(tag, a[key]) for key in ("href", "xlink:href") if a.get(key)]
+        if tag == "base" and a.get("href"):
+            self.loads.append((tag, a["href"]))
+        if a.get("style"):
+            self.styles.append(a["style"])
+        if "data-md-component" in a:
+            self.components.append(a["data-md-component"])
         if tag not in VOID:
             self.stack.append({"tag": tag, "attrs": a, "text": "", "name": ""})
 
@@ -229,15 +414,16 @@ class Page(HTMLParser):
             if el["attrs"].get("id"):
                 self.texts[el["attrs"]["id"]] = el["text"]
             if el["tag"] == "a":
-                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["name"].split())})
+                self.anchors.append({"attrs": el["attrs"], "text": " ".join(el["name"].split()), "footer": any(up["tag"] == "footer" for up in self.stack),
+                                     "start": any(up["attrs"].get("id") == "start" for up in self.stack)})
+            elif el["tag"] == "style":
+                self.styles.append(el["text"])
             elif el["tag"] == "textarea" and el["attrs"].get("id"):
                 self.textareas[el["attrs"]["id"]] = el["text"]
             elif el["tag"] == "title":
                 self.title = el["text"].strip()
             elif el["tag"] == "script":
                 self.scripts.append(el["text"])
-            elif el["tag"] == "button" or "tape" in (el["attrs"].get("class") or "").split():
-                (self.button_texts if el["tag"] == "button" else self.tape_texts).append(el["text"])
             if el["tag"] == tag:
                 break
 
@@ -275,8 +461,6 @@ def leads_to(page, href):
 
 
 pages = {rel: parse(rel) for rel in ("index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html")}
-if taped_on and probe_on:
-    fail("the probe switch is on and the tape too: the two exclude each other")
 for rel, lang, other, canonical, image, adopt, how in (
         ("index.html", "en", "de/index.html", SITE_URL, "preview.png", "ADOPT.md", "how-it-works.html"),
         ("de/index.html", "de", "index.html", SITE_URL + "de/", "preview-de.png", "ADOPT.de.md", "de/how-it-works.html")):
@@ -292,41 +476,36 @@ for rel, lang, other, canonical, image, adopt, how in (
         fail(f"{rel} has no language switch to {other}, named by its hreflang")
     if p.meta.get("og:image") != SITE_URL + "assets/" + image or p.meta.get("og:locale") != ("en_GB" if lang == "en" else "de_DE") or not (p.title and p.meta.get("description")):
         fail(f"{rel}'s link preview is not its language's: image {image}, its locale, title and description")
-    # the tape-off ceremony, with the probe on alone: its tape and its coin stand in the primary link, the door, hidden from screen readers
+    # what each launch state draws: with the probe on, the primary link is the coin door, lit, with its one coin in it, hidden from screen readers, and #start
+    # holds its twin, with a coin of its own, leading where the door leads, in the door's words; with the probe off, neither door nor coin; and in both, no
+    # tape over a button, no taped button or line that says why, no second line in the cue and no style for any of them
+    styled = TAPE_CSS.search(" ".join(p.styles))
+    if p.tapes or len(p.cues) > 1 or any({"was", "now"} & set(kinds) for kinds in p.cues) or styled:
+        fail(f"{rel}: the landing draws a tape, the taped state or a second cue line, or styles one: {(p.tapes + [' '.join(k) for k in p.cues[1:]] + ([styled.group(0)] if styled else []))[:3]}")
     if probe_on:
-        if any(where != "door" for where, _ in p.tape_holders + p.coins) or any(tag != "a" or a.get("id") != "probe-open" for tag, a in p.doors):
-            fail(f"{rel}: the probe switch is on, but a tape or a coin stands outside the ceremony's door: the taped state's tape is built")
-        if any(hidden != "true" for _, hidden in p.tape_holders + p.coins):
-            fail(f"{rel}: the probe switch is on, but the ceremony's tape or coin is read by screen readers")
-    elif p.doors or p.coins or any(where == "door" for where, _ in p.tape_holders):
-        fail(f"{rel}: the probe switch is off, but the tape-off ceremony's door, its coin or its tape is built")
-    if taped_on:
-        # the taped state: the primary button is a button, not a link — shown, taped over (the tape hidden from screen readers), aria-disabled, named
-        # by its reason line through aria-describedby, with no handler; no dialog is built, the second button leads to How it works, the reason line
-        # hands the agents the note, and the Markdown twin leads with that note
-        taped = [b for b in p.buttons if "btn" in (b.get("class") or "").split()]
-        links = [a for a in p.anchors if "btn" in classes(a)]
-        note = "https://github.com/shoalmark/shoalmark/blob/main/" + adopt
-        if (len(taped) != 1 or "taped" not in (taped[0].get("class") or "").split() or taped[0].get("type") != "button" or taped[0].get("aria-disabled") != "true"
-                or taped[0].get("id") or taped[0].get("href") or any(k.startswith("on") for k in taped[0])):
-            fail(f"{rel}: the tape is on, but the primary button is not one button, aria-disabled, with no id, link or handler")
-        if [t.get("aria-hidden") for t in p.tapes] != ["true"]:
-            fail(f"{rel}: the tape is on, but the button carries no tape hidden from screen readers")
-        if taped[0].get("aria-describedby") != "taped-why" or not p.texts.get("taped-why", "").strip():
-            fail(f"{rel}: the tape is on, but the button is not described by the line that says why")
-        if p.dialogs or "probe-text" in p.textareas or any("taped" in script for script in p.scripts):
-            fail(f"{rel}: the tape is on, but a dialog is built or a script handles the taped button")
-        if len(links) != 1 or "alt" not in classes(links[0]) or leads_to(rel, links[0]["attrs"].get("href") or "") != how or not any(a["attrs"].get("href") == note for a in p.anchors):
-            fail(f"{rel}: the tape is on, but the second button does not lead to {how} alone, or no link hands the agents the note ({adopt})")
-        releases = [a["attrs"]["href"].rsplit("/", 1)[1] for a in p.anchors if (a["attrs"].get("href") or "").startswith("https://github.com/shoalmark/shoalmark/releases/tag/")]
-        label_of = [a["text"] for a in p.anchors if "rel" in classes(a)]
-        if len(releases) != 2 or len(set(releases)) != 1 or len(label_of) != 1 or not label_of[0].endswith(releases[0]):
-            fail(f"{rel}: the top bar's release label and its link and the footer's link do not name one release")
-        first_link = re.search(r"\]\(([^)\s]+)\)", (site / ("index.md" if lang == "en" else "de/index.md")).read_text(encoding="utf-8"))
-        if not first_link or first_link.group(1) != note:
-            fail(f"{rel}'s Markdown twin does not lead with the note, the action the taped page hands the agents ({note})")
-        continue
-    buttons = [a for a in p.anchors if "btn" in classes(a)]
+        hero, twins = [a for tag, a, start in p.doors if tag == "a" and not start], [a for tag, a, start in p.doors if tag == "a" and start]
+        if (len(p.doors) != 2 or len(hero) != 1 or len(twins) != 1 or hero[0].get("id") != "probe-open" or len(p.coins) != 2
+                or any(sum(holder is door for holder, _ in p.coins) != 1 for door in hero + twins)):
+            fail(f"{rel}: the probe switch is on, but the primary link is not the coin door with its one coin in it, or #start does not hold the door's twin with its own")
+        if any(hidden != "true" for _, hidden in p.coins):
+            fail(f"{rel}: the probe switch is on, but the door's coin is read by screen readers")
+        door = next(a for a in p.anchors if a["attrs"].get("id") == "probe-open")
+        twin = [a for a in p.anchors if a["start"] and "door" in classes(a)]
+        if (len(twins) != 1 or twins[0].get("id") or len(twin) != 1 or leads_to(rel, twin[0]["attrs"].get("href") or "") != leads_to(rel, door["attrs"].get("href") or "")
+                or twin[0]["attrs"].get("aria-haspopup") != "dialog" or twin[0]["text"] != door["text"]):
+            fail(f"{rel}: the probe switch is on, but the door's twin in #start does not lead where the door leads, to the same dialog, in the door's words")
+        pads = door_paddings(" ".join(p.styles))
+        own = any(pad[6] for pad in pads)
+        for width in PHONE_WIDTHS:
+            candidates = [(pad[4], pad[5], order, pad) for order, pad in enumerate(pads) if all(media_applies(media, width) for media in pad[0])]
+            winner = max(candidates)[3] if candidates else None
+            if not own or winner is None or winner[3] is None or winner[3] < 50:
+                selector, value = (winner[1], winner[2] + (" !important" if winner[4] else "")) if winner else ("none", "unset")
+                fail(f"{rel}: the probe switch is on, but the door's twin does not keep its own padding-left of 50px at every width, so on a phone its label starts "
+                     f"on the slot (width: {width}px; winning selector: {selector}; value: {value}; top-level own rule: {own})")
+    elif p.doors or p.coins:
+        fail(f"{rel}: the probe switch is off, but the coin door or its coin is built")
+    buttons = [a for a in p.anchors if "btn" in classes(a) and not a["start"]]
     primary, second = [a for a in buttons if "alt" not in classes(a)], [a for a in buttons if "alt" in classes(a)]
     if len(primary) != 1 or len(second) != 1 or leads_to(rel, second[0]["attrs"].get("href") or "") != how:
         fail(f"{rel} has not one primary button and one second button that leads to {how}")
@@ -368,13 +547,9 @@ if not probe_on:
         if found.is_file() and found.suffix in {".html", ".md", ".txt", ".json", ".xml"} and ("probe.txt" in found.read_text(encoding="utf-8") or "probe-open" in found.read_text(encoding="utf-8")):
             fail(f"the probe switch is off, but {found.relative_to(site)} speaks of the probe's prompt")
 
-if taped_on:   # the taped page's primary button is a button: the check below reads its label, the tape's words left out, beside the page's links
-    for landing in ("index.html", "de/index.html"):
-        label = " ".join(pages[landing].button_texts[0].replace(pages[landing].tape_texts[0], " ").split()) if pages[landing].button_texts and pages[landing].tape_texts else ""
-        pages[landing].anchors.append({"attrs": {"class": "btn taped"}, "text": label})
 # How it works: each language's page is in its language and names the primary button as its landing labels it; its twin carries no raw HTML and no include
 for rel, landing, twin, lang, quote in (("how-it-works.html", "index.html", "how-it-works/index.md", "en", '"%s"'), ("de/how-it-works.html", "de/index.html", "de/how-it-works/index.md", "de", "„%s“")):
-    label = [a["text"] for a in pages[landing].anchors if "btn" in classes(a) and "alt" not in classes(a)][0]
+    label = [a["text"] for a in pages[landing].anchors if "btn" in classes(a) and "alt" not in classes(a) and not a["start"]][0]
     if pages[rel].lang != lang:
         fail(f"{rel} says lang={pages[rel].lang!r}, not {lang!r}")
     text = (site / twin).read_text(encoding="utf-8") if (site / twin).is_file() else fail(f"missing {twin}")
@@ -394,19 +569,291 @@ listed = (site / "llms.txt").read_text(encoding="utf-8")
 if not all(f"]({twin})" in listed for twin in ("how-it-works/index.md", "de/index.md", "de/how-it-works/index.md")):
     fail("llms.txt does not list the German start page and both How it works pages")
 
-# no request to any other host: nothing a page loads is from outside the site, no inline script can ask for one, the theme's call to GitHub's API is not built in
-for rel in sorted(path.relative_to(site).as_posix() for path in site.rglob("*.html")):
-    page = pages.get(rel) or parse(rel)
+def source_component(rel, page):
+    """The theme's script asks api.github.com for the repository's facts from every element whose data-md-component is "source", and keeps them
+    in sessionStorage."""
+    if "source" in page.components or 'data-md-component="source"' in (site / rel).read_text(encoding="utf-8"):
+        fail(f"{rel} lets the theme's script ask api.github.com for the repository's facts (data-md-component=\"source\")")
+
+
+def other_hosts(rel, page):
     for tag, url in page.loads:
-        parts = urlsplit(url)
-        if parts.scheme in ("http", "https") and parts.netloc != "shoalmark.tools" or url.startswith("//"):
+        if leaves_site(url):
             fail(f"{rel} loads {url} ({tag}), from outside the site")
+    for script in page.scripts:
+        for found in STATIC_IMPORT.finditer(script):
+            if leaves_site(found.group(2)):
+                fail(f"an inline script of {rel} imports {found.group(2)}, from outside the site")
+    for css in page.styles:
+        for url in css_urls_of(css):
+            if leaves_site(url):
+                fail(f"{rel} loads a stylesheet resource from outside the site: {url[:80]}")
+    for found in re.finditer(r"url\(\s*['\"]?\s*((?:[a-zA-Z][\w+.-]*:)?//[^'\")\s]*)", re.sub(r"/\*.*?\*/", "", (site / rel).read_text(encoding="utf-8"), flags=re.S)):
+        if leaves_site(found.group(1)):
+            fail(f"{rel} loads a stylesheet resource from outside the site: {found.group(1)[:80]}")
+
+
+def footer_links(parsed):
+    """Each page's footer links the imprint and the privacy notice of its language: German under de/, English elsewhere."""
+    for target in [target for pair in LEGAL.values() for target in pair]:
+        if not (site / target).is_file():
+            fail(f"missing {target}, which every page's footer links")
+    lacking = {}
+    for rel, page in sorted(parsed.items()):
+        linked = {in_site(rel, a["attrs"].get("href") or "") for a in page.anchors if a.get("footer")}
+        want = LEGAL["de" if rel.startswith("de/") else "en"]
+        if not set(want) <= linked:
+            lacking[rel] = [target for target in want if target not in linked]
+    if lacking:
+        fail("a page's footer does not link its language's imprint and privacy notice: "
+             + "; ".join(f"{rel} lacks {', '.join(targets)}" for rel, targets in sorted(lacking.items())))
+
+
+def in_site(rel, href):
+    """The file of the site that `href`, on the page `rel`, leads to, relative to the site; None where it leads to another host."""
+    url = urlsplit(href)
+    if url.netloc == "shoalmark.tools" and url.scheme == "https":
+        path = unquote(url.path).lstrip("/")
+    elif not url.scheme and not url.netloc:
+        path = unquote(url.path)
+        path = path.lstrip("/") if path.startswith("/") else posixpath.normpath(posixpath.join(posixpath.dirname(rel), path))
+    else:
+        return None
+    return path + "index.html" if path.endswith("/") or path == "" else path
+
+
+# no request to any other host: nothing a page loads is from outside the site, no inline script can ask for one, the theme's call to GitHub's API is not built in
+parsed = {}
+for rel in sorted(path.relative_to(site).as_posix() for path in site.rglob("*.html")):
+    page = parsed[rel] = pages.get(rel) or parse(rel)
+    other_hosts(rel, page)
+    styled = TAPE_CSS.search(" ".join(page.styles))      # every page, the pitch pages among them: no style of the tape-off ceremony or the taped state
+    if styled:
+        fail(f"{rel} styles the tape-off ceremony or the taped state: {styled.group(0)}")
     for script in page.scripts:
         if REQUEST_APIS.search(script):
             fail(f"an inline script of {rel} can ask for something: {REQUEST_APIS.search(script).group(0)}")
-    if 'data-md-component="source"' in (site / rel).read_text(encoding="utf-8"):
-        fail(f"{rel} lets the theme's script ask api.github.com for the repository's facts (data-md-component=\"source\")")
-for css in [*site.rglob("*.css"), *site.rglob("*.html")]:
-    if re.search(r"url\(\s*['\"]?(?:https?:)?//", re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)):
-        fail(f"{css.relative_to(site)} loads a stylesheet resource from outside the site")
+    source_component(rel, page)
+for css in site.rglob("*.css"):
+    for url in css_urls_of(css.read_text(encoding="utf-8")):
+        if leaves_site(url):
+            fail(f"{css.relative_to(site)} loads a stylesheet resource from outside the site: {url[:80]}")
 print("site check: the landings in two languages, their launch state, How it works, the Markdown twins and requests to no other host passed")
+footer_links(parsed)
+print(f"site check: each of the {len(parsed)} pages links its language's imprint and privacy notice in its footer")
+
+
+# --- fenced code: every fenced block of the docs, and of what their includes bring in, builds to a code block, and no page shows a fence as text ----------
+# The pages are read where zensical.toml puts them: its docs_dir, its snippets' base_path for each include, in its one-line or its block form, and
+# use_directory_urls for the page each one builds to. Both languages are pages of the same docs folder.
+project = tomllib.loads(config_path.read_text(encoding="utf-8"))["project"]
+docs_dir = config_path.parent / project.get("docs_dir", "docs")
+snippets = ((project.get("markdown_extensions") or {}).get("pymdownx") or {}).get("snippets") or {}
+snippet_bases = [config_path.parent / base for base in (snippets.get("base_path") or ["."])]
+directory_urls = project.get("use_directory_urls", True)
+INCLUDE = re.compile(r"""^([ \t]*)(;*)-+8<-+[ \t]+(["'])(.+?)\3$""")
+INCLUDE_BLOCK = re.compile(r"^[ \t]*(;*)-+8<-+$")
+SECTION_MARK = re.compile(r"(?i)^.*?(;*)-+8<-+[ \t]+\[[ \t]*(start|end)[ \t]*:[ \t]*([a-z][-_0-9a-z]*)[ \t]*\].*$")
+PART = re.compile(r"(?i)(.*?)(?:((?::-?[0-9]*){1,2}(?:(?:,(?=[-0-9:])-?[0-9]*)(?::-?[0-9]*)?)*)|(:[a-z][-_0-9a-z]*))?$")
+QUOTE = re.compile(r"^[ \t]{0,3}(?:>[ \t]?)+")
+FENCE = re.compile(r"^([ \t]*)(`{3,}(?=[^`]*$)|~{3,})")
+FENCE_TEXT = ("```", "~~~")
+if not docs_dir.is_dir() or not any(docs_dir.rglob("*.md")):
+    fail(f"zensical.toml's docs_dir, {docs_dir}, holds no page: the fenced blocks are read from it")
+
+
+def section_of(lines, name, page, include):
+    """The lines between a file's `--8<-- [start:name]` and `--8<-- [end:name]`, as snippets extracts them: another section's markers left out, an
+    escaped marker kept with one `;` taken off."""
+    picked, inside, found = [], False, False
+    for line in lines:
+        mark = SECTION_MARK.match(line)
+        if mark and inside and mark.group(1):
+            line = line[:mark.start(1)] + line[mark.start(1) + 1:]
+        elif mark and mark.group(3) == name:
+            if not inside and mark.group(2) == "start":
+                inside = found = True
+                continue
+            if inside and mark.group(2) == "start":
+                continue
+            break
+        elif mark and inside:
+            continue
+        if inside:
+            picked.append(line)
+    if not found:
+        fail(f"{page} includes {include}, and that file holds no section {name}")
+    return picked
+
+
+def included(name, page):
+    """What an include brings in: (the file, its lines, whether they are a section). A trailing `:start:end` (or several, by commas) or `:name` is
+    split off before the file is looked for in the base paths, and only those lines or that section are taken, as snippets takes them."""
+    part = PART.match(name.strip())
+    file, ranges, section = part.group(1).strip(), part.group(2), part.group(3)
+    found = next((base / file for base in snippet_bases if file and (base / file).is_file()), None)
+    if found is None:
+        fail(f"{page} includes {name}, which none of the snippets' base paths {[str(base) for base in snippet_bases]} holds")
+    lines = found.read_text(encoding="utf-8").expandtabs(4).split("\n")
+    if ranges:
+        picked = []
+        for span in (piece.split(":") for piece in ranges[1:].split(",")):
+            start = int(span[0]) if span[0] else None
+            start = start if start is None or start < 0 else max(0, start - 1)
+            end = int(span[1]) if len(span) > 1 and span[1] else None
+            start = min(max(len(lines) + start, 0), len(lines)) if start and start < 0 else start
+            end = min(max(len(lines) + 1 + end, 0), len(lines)) if end and end < 0 else end
+            picked += lines[start:end]
+        return found, picked, False
+    if section:
+        return found, section_of(lines, section[1:], page, name), True
+    return found, lines, False
+
+
+def expanded(name, page, depth):
+    found, lines, section = included(name, page)
+    return source_lines(found, page, depth + 1, lines, section)
+
+
+def source_lines(path, page, depth=0, lines=None, section=False):
+    """A page's lines as the build reads them: each include, a `--8<-- "name"` line or a block of names between two `--8<--` lines, replaced by the lines
+    it brings in at its indentation; an include marker escaped with `;` kept as text with one `;` taken off, inside a block of names too; outside a section,
+    a section's marker lines left out, as snippets leaves them out."""
+    if lines is None:
+        lines = path.read_text(encoding="utf-8").expandtabs(4).split("\n")
+    out, names = [], False
+    for line in lines:
+        m, block = INCLUDE.match(line), INCLUDE_BLOCK.match(line)
+        if m and m.group(2) or block and block.group(1):
+            out.append(line.replace(";", "", 1))
+            continue
+        if names:
+            if block:
+                names = False
+            elif not m and not line.strip():
+                out.append("")
+            elif not m and not line.strip().startswith(";") and depth < 8:
+                out += [line[:len(line) - len(line.lstrip())] + inner for inner in expanded(line.strip(), page, depth)]
+            continue
+        if block:
+            names = True
+            continue
+        if m and depth < 8:
+            out += [m.group(1) + inner for inner in expanded(m.group(4).strip(), page, depth)]
+            continue
+        mark = None if section else SECTION_MARK.match(line)
+        if mark and not mark.group(1):
+            continue
+        out.append(line[:mark.start(1)] + line[mark.start(1) + 1:] if mark else line)
+    return out
+
+
+def trimmed(lines):
+    """A block's lines as a reader compares them: no trailing spaces, no blank line before the first or after the last."""
+    lines = [line.rstrip() for line in lines]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    return tuple(lines)
+
+
+def unquoted(line, depth):
+    """`line` with `depth` blockquote markers taken off, as its blockquote hands it on; None where the line holds none, so the quote has ended."""
+    if not depth:
+        return line
+    m = re.match(r"^[ \t]{0,3}(?:>[ \t]?){%d}" % depth, line)
+    return line[m.end():] if m else "" if not line.strip() else None
+
+
+def fenced_blocks(lines):
+    """The body of each fenced block, in a blockquote or not, with its quote's markers and its fence's own indentation taken off; a fence that is never
+    closed runs to the end of the page, or of its blockquote."""
+    blocks, i = [], 0
+    while i < len(lines):
+        quote = QUOTE.match(lines[i])
+        depth = quote.group(0).count(">") if quote else 0
+        m = FENCE.match(lines[i][quote.end():] if quote else lines[i])
+        if not m:
+            i += 1
+            continue
+        indent, fence = len(m.group(1)), m.group(2)
+        close = re.compile(r"^[ \t]*%s{%d,}[ \t]*$" % (re.escape(fence[0]), len(fence)))
+        body, j = [], i + 1
+        while j < len(lines):
+            inner = unquoted(lines[j], depth)
+            if inner is None or close.match(inner):
+                break
+            body.append(inner)
+            j += 1
+        blocks.append(trimmed(line[indent:] if not line[:indent].strip() else line.lstrip() for line in body))
+        i = j + 1 if j < len(lines) and unquoted(lines[j], depth) is not None else j
+    return blocks
+
+
+def built_page(rel):
+    if rel.name in ("index.md", "README.md"):
+        return (rel.parent / "index.html").as_posix()
+    return (rel.with_suffix("") / "index.html").as_posix() if directory_urls else rel.with_suffix(".html").as_posix()
+
+
+class CodeBlocks(HTMLParser):
+    """A built page's code blocks, each <pre>'s text, and the fences it shows as text: outside every <pre> and <code>, script, style and textarea."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack, self.pres, self.fences = [], [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "pre":
+            self.pres.append([])
+        if tag not in VOID:
+            self.stack.append(tag)
+
+    def handle_endtag(self, tag):
+        if tag in VOID or tag not in self.stack:
+            return
+        while self.stack and self.stack.pop() != tag:
+            pass
+
+    def handle_data(self, data):
+        if "pre" in self.stack and self.pres:
+            self.pres[-1].append(data)
+        elif not {"code", "script", "style", "textarea"} & set(self.stack) and any(f in data for f in FENCE_TEXT):
+            self.fences.append(" ".join(data.split())[:60])
+
+
+def code_blocks(rel):
+    found = CodeBlocks()
+    found.feed((site / rel).read_text(encoding="utf-8"))
+    found.close()
+    return found
+
+
+lost, shown, held = {}, {}, 0
+for md in sorted(docs_dir.rglob("*.md")):
+    rel = md.relative_to(docs_dir)
+    if md.name == "README.md" and (md.parent / "index.md").is_file():
+        continue                                              # the folder's index.md is its page; the build leaves this README out
+    blocks = fenced_blocks(source_lines(md, rel.as_posix()))
+    if not blocks:
+        continue
+    page = built_page(rel)
+    if not (site / page).is_file():
+        fail(f"{rel.as_posix()} holds {len(blocks)} fenced block(s), and no {page} is built from it")
+    pres = [trimmed("".join(text).split("\n")) for text in code_blocks(page).pres]
+    for body in blocks:
+        if body in pres:
+            pres.remove(body)
+        else:
+            lost.setdefault(page, []).append(body[0] if body else "(an empty block)")
+    held += len(blocks)
+for path in sorted(site.rglob("*.html")):
+    fences = code_blocks(path.relative_to(site).as_posix()).fences
+    if fences:
+        shown[path.relative_to(site).as_posix()] = fences
+if lost or shown:
+    fail("; ".join(
+        [f"{page}: {len(firsts)} fenced block(s) do not build to a code block, the first opening {firsts[0][:60]!r}" for page, firsts in sorted(lost.items())]
+        + [f"{page} shows a fence as text: {fences[0]!r}" for page, fences in sorted(shown.items())]))
+print(f"site check: the {held} fenced block(s) of the docs, in both languages, build to code blocks, and no page shows a fence as text")

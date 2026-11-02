@@ -194,7 +194,7 @@ def rows_drawn(page, script, env, area):
     b = script.find('+"</details>")', a) if a >= 0 and script.count("REG.groups.map(g=>") == 1 else -1
     parts = {"esc": line("esc=s=>"), "l": line("l=(k,...a)=>"), "lh": line("lh=(k,...a)=>"), "rse": line("rse=id=>"), "rsm": line("rsm=id=>", 2),
              "the row": script[a + len("REG.groups.map("):b + len('+"</details>"')] if b >= 0 else None}
-    data = {k: page_data(page, k) for k in ("REG", "L", "ICO")}
+    data = {k: page_data(page, k) for k in ("REG", "L", "ICO", "SEAT")}
     missing = [k for k, v in {**parts, **data}.items() if v is None]
     if missing:
         return f"not in the page once: {missing}"
@@ -419,7 +419,7 @@ def run_checks(mutants=False, *, results=None):
                 shown = {k: [v[0][:40], v[1][-120:]] for k, v in rows.items()} or drawn
                 add(f"{label} (saw {shown})",
                     {A, B, C, E, F, H} <= set(rows)
-                    and rows[C][0] == "" and rows[C][1] == rows[C][2] and rows[C][1].startswith(f'<details class="grp"><summary>{C} planner@seat (wt-{C})</summary>')
+                    and rows[C][0] == "" and rows[C][1] == rows[C][2] and rows[C][1].startswith(f'<details class="grp"><summary>{C} <span class="seat"></span> planner@seat (wt-{C})</summary>')
                     and all(v[0] == "" and v[1] == v[2] for k, v in rows.items() if kind(k) is None)
                     and all('onclick="RSM(event,this)"' in v[0] and '<p class="help">' in v[1] for k, v in rows.items() if kind(k) == "resume")
                     and all(v[0].startswith('<i class="rw') and '<p class="help">' not in v[1] for k, v in rows.items() if kind(k) not in (None, "resume")))

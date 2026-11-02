@@ -11,12 +11,16 @@ template: landing.html
 
 ## The agents do the work; you have the final word.
 
-See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.
+For one person in charge and their agent fleet. See where the work stands, what waits for your word, and what the next session picks up. Your agents keep that record in your repository; your decisions go into it as your own commits, beside the evidence behind the work.
 
 --8<-- "start.en.md"
 
+I built this after my agents turned me into their rubber stamp. [Why shoalmark →](why-shoalmark.md)
+
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
 sentence per question, for their stand-up, whenever it suits them, and make their answer one command.
+
+Tested with Claude Code and Codex. Any agent that can run Python 3.9 or later should work.
 
 **To the owner:** your agents ask mid-flight, and you stamp what you had no time to read. shoalmark collects those
 questions on the board until it suits you.
@@ -25,7 +29,7 @@ questions on the board until it suits you.
 signed by a key you trust, and the gate refuses an unsigned one: on git, once your `owner` line is marked `signed`, as
 [the set-up page](setup.md) writes it. Under Subversion, it counts only as a commit the server authenticated as you. A
 click, a merge or a line in chat is not an answer. How strong that signature is, you choose — [four tiers](signing.md),
-from a key anything on your account can use to one that needs your touch — and every signature names the key that
+from a key anything on your account can use to one that needs your confirmation on the device — and every signature names the key that
 made it.
 
 ## Why not my issue tracker?
@@ -73,7 +77,7 @@ your own commits.
 ## What a day costs you
 
 - **One stand-up, whenever it suits you**, one click copies the stand-up prompt; the board's first lines are its agenda.
-- **One command per answer:** `--answer AP-007 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
+- **One command per answer:** `--answer AP-007-Q1 accept`. It writes your answer as a commit, signed with your key once you turn signing on.
 - **The rest is on the board:** your agents are asked to end each session with what waits for you, and the board puts it
   first.
 
@@ -89,7 +93,7 @@ Licence: Apache-2.0 or MIT.
 - Not a migration tool: it imports no ticket system and starts from your repository's own work. A path for a fleet that already runs a system of its own is filed, not built.
 - For one person in charge and their agent fleet. Several people in charge are not tested in this beta; support for them may come later.
 - *Not proof that work is right.* Under Git or Subversion, a checked change that moves a work item to `Shipped` must name, in the item's ship log, a commit that is already in that change's history and changes something outside the records (on Subversion, a revision). This evidence rule does not cover `Closed`. Validation reports a violation and exits non-zero. An installed Git commit hook can refuse the commit on that failure, but is optional and can be skipped. To enforce the check before merge, require a passing `--check` on the branch through your project's CI and merge rules; shoalmark does not set those up for you. Whether that commit did the job is what a review is for.
-- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
+- Made and tested on `git` with GitHub. Subversion passes the test suite but has not been used in real work: try it, without a guarantee. On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities. Signed answers need a `git` repository, and the pull-request queue a `git` repository on GitHub and GitHub's command line, `gh`.
 
 ## Start here
 

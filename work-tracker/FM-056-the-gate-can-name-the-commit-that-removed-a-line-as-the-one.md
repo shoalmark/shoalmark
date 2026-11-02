@@ -11,6 +11,8 @@ hook: "The gate names who set a tracker's line with a pickaxe that also matches 
 
 ## What is true now
 
+**2026-10-27 — *who asked* moves to v0.20.3, and this fix goes with it, since *who asked* reads the same line,** on the Owner's word of 27 October, as relayed by the Auditor. FM-023's ask of 27 October puts the move to the Owner.
+
 **Filed 2026-10-15; nothing is built.** It ships in v0.20.1 with *who asked*, which reads the same line (FM-023's
 table of 2026-10-15).
 
@@ -51,4 +53,5 @@ its mutant and the merge probe are in CI.
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | *Who asked* moves to v0.20.3, and this fix with it, on the Owner's word of 27 October; FM-023's ask puts it to the Owner. Records only. |
 | 2026-10-15 | Filed. |

@@ -14,6 +14,8 @@ hook: "a seat can change the Owner's intent and current path in TRIAGE.md, and t
 
 ## What is true now
 
+**2026-10-27 — the guard over the seat definitions and the skills folder moves to v0.20.3,** on the Owner's word of 27 October, as relayed by the Auditor. FM-023's ask of 27 October puts the move to the Owner.
+
 **2026-10-19 — R24's minimum for v0.20.0 is in place and independently verified,** as the Owner's signed answer of
 19 October (`b91ebd1`) confirms. The broader boundary work stays here, after v0.20.0.
 
@@ -82,6 +84,7 @@ sealed at 18:57:38.** Then FM-006's site page may say *only you change it* as en
 
 | Date | Event |
 |---|---|
+| 2026-10-27 | The guard moves to v0.20.3, on the Owner's word of 27 October; FM-023's ask puts it to the Owner. Records only. |
 | 2026-10-19 | The Owner's action ask answered and cleared (`b91ebd1` · G): R24's minimum for v0.20.0 is in place and independently verified. FM-037 stays open for the broader boundary work. |
 | 2026-09-26 | The cold re-review's R1 and R2 on `b0d863e` (`b4fbc98`, READY WITH FINDINGS, both P3), fixed forward before the 0.18.4 cut. R1: `--answer` asks `verified_as` — the gate's test, against the default branch's signers file — before it pushes; it read the clone's own file, so mid key rotation it said *pushed* and the gate then refused the answer, telling him to sign a commit he had signed. Neither says *sign it* now to an SSH-signed commit whose key that file does not hold for the identity; each names where the key must land first. R2: where the signers file sits in a checkout and the default branch does not carry it, nothing verifies against it until its first version lands there — a checkout on a branch that writes one let `--queue` read another pull request's change, signed with that branch's key, as clean. A suite case each. |
 | 2026-09-25 | The Auditor seat's pass on `0be4f20`: NOT READY on AU-19 (P2 — a branch that appends its own key under the Owner's email to the signers file vouched for itself where the clone verifies against the checkout's own file) and AU-20 (P3 — the history test refused the root's 0.1.0 scaffold). Both fixed in one commit: signatures verified against the default branch's signers file, the file kept like the two sections, any known scaffold accepted. |

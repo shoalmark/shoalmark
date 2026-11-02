@@ -91,7 +91,6 @@ themselves, in the person's own commit.
 | `fetch` | `pushed_branches` | an act — the queue's contact with origin, asking its pull requests and branches and writing their refs | the person's |
 | `for-each-ref` | `answer_refs` | one of the board's reads | the board's |
 | `for-each-ref` | `commit_on_origin` | one of the board's reads | the board's |
-| `interpret-trailers` | `session_trailer` | an act — `--session-trailer`, in the person's commit: the message's trailers | the person's |
 | `log` | `acted_on` | one of the board's reads | the board's |
 | `log` | `addenda_between` | one of the board's reads | the board's |
 | `log` | `answer_branch_reading` | one of the board's reads | the board's |
@@ -208,6 +207,7 @@ the SSH signature check its `%G?` asks for: the comment above `BOARD_SETTINGS` i
 
 | Date | Event |
 |---|---|
+| 2026-10-29 | The `interpret-trailers` row goes: since FM-063's `ef7e8a3`, `session_trailer` reads the trailer block itself and starts no `interpret-trailers`. Records only. |
 | 2026-10-21 | Filed and judged In Progress, P1, by the Planner for v0.20.1, before the first build commit. |
 | 2026-10-21 | Built by the Builder seat (`27f31560/builder-18`): `6327661` — every git the tool starts is one of the board's reads, under the board's settings in every run but an act's, or an act, under the person's; each read that compares the working tree runs with every configured filter driver emptied, and what rests on it is right or not read; the class test `test_board_settings.py` and its fifteen mutants. `fc4433d` — the list of every git process the tool starts. The review comes next. |
 | 2026-10-21 | The one full run at `72d28ae`, by the Builder seat (`27f31560/builder-18`): 2205 ok and 5 FAIL, its browser checks skipped. The five, in `test_vcs_shared_callers.py`, were fixed at `96188eb` and pass in their blocks. `96188eb`'s message gives 2160 for that run's other checks, where the count is 2205. The review comes next. |

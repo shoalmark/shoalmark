@@ -21,6 +21,16 @@ answered-by: holgo99
 
 ## What is true now
 
+**2026-11-01 — v0.20.3's design rows, from 31 October:**
+- BF-106: the answer dialog's holds-up group stays whole. Its drafted edit must pass each held id through `esc()`.
+- BF-107: a long repository name wraps in the header on phones.
+- BF-108: the 29-branch ambiguous row is cut ("a, b and 27 more").
+- A grey, inverted copy of each seat icon for paper.
+- The design guide's print line (`brand/design-guide.md:112`).
+
+BF-106 to BF-108 follow the Owner's "1-3. go into v0.20.3"; the paper icons follow "(b) done for v0.20.3".
+The guide's print line stays allocated to v0.20.3 unless the Owner says yes before the merge.
+
 **The polish's fix round (2026-10-22), after its review NOT READY at `4c1441e`:** the switch drawn as a track and a knob (BF-68) and the pressed-button rule gone (RV-3660) — `b7c91c7`; one space between a day row's state and its warning (BF-69) — `8b91b91`; the German table takes the go-to-market seat's words rows, revision 3, G1 and G3 to G41, its §3's two changes, F1 to F7, F9 and F10 — `cf81e41`, not F8; the reviews' fold takes its row, G2 (RV-3663) — `b8ec2ae`, so `b4901a5` stays in v0.20.1; the lane's narrating comments go (RV-3662) — `53815d7`; a branch's merge id links where the forge holds it (RV-3664) — `372c089`; and BF-62 is recorded as layout only (RV-3661) — `068de48`.
 
 **The board's polish for v0.20.1, built on `fm/053-board-polish` from main after #183 (2026-10-22):** the header's search on one line and its count in the toolbar (BF-50), light or dark as one switch (BF-51), the toolbar's radios (BF-52), the box in the story view (BF-53), the logo by the board's scheme (BF-54), each work row stacked on a phone (BF-55) — `cb35bce`, `2bcab37`; the footer, the claim removed and the running line alone at the right — `c89fa3f`; and the riders BF-29, BF-56 and BF-57 — `172e2eb`. The reviews section's BF-61, BF-62 — its layout only — and BF-64, begun before the Designer's triage (recorded privately), stand at `b4901a5` for the Designer's check and the review to decide; BF-62's state labels are not built, and go with BF-65 to v0.20.2. The triage moves the rest to v0.20.2: BF-30 with BF-49, BF-58, BF-62's state labels, BF-63, BF-65 to BF-67, and the seat icons.
@@ -164,3 +174,4 @@ and 6, on `fm/053-board-polish`. Line 5 waits for the session rows, which v0.20.
 | 2026-10-22 | The board's polish built on `fm/053-board-polish`: BF-50 to BF-55 (`cb35bce`, `2bcab37`), the footer (`c89fa3f`) and the riders BF-29, BF-56, BF-57 (`172e2eb`); BF-61, BF-62 and BF-64 (`b4901a5`) wait for the Designer's check and the review; the rest moves to v0.20.2. |
 | 2026-10-22 | Correction (RV-3661): `b4901a5`'s message says it closes BF-62; it builds BF-62's layout only, a verdict's second line that flows as text. BF-62's state labels are not built, and go with BF-65 to v0.20.2. The rows above stand as written. |
 | 2026-10-22 | The polish's fix round on `fm/053-board-polish`: BF-68 and RV-3660 (`b7c91c7`), BF-69 (`8b91b91`), the German of revision 3 (`cf81e41`), RV-3663 with G2 (`b8ec2ae`), RV-3662 (`53815d7`), RV-3664 (`372c089`) and RV-3661 (`068de48`); `b4901a5` stays in v0.20.1. |
+| 2026-11-01 05:03:32 CET | BF-106 to BF-108, the grey seat icons for paper and the guide's print line are recorded for v0.20.3. BF-106's drafted edit must escape each held id. Records only. |

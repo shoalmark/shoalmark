@@ -77,7 +77,7 @@ def run_source_binding_controls(source, check, baseline=None, payload=None, repo
             # Available file:// history is explicit: no offline history acceptance is claimed.
             if kind == "pre":
                 setup = entry.invoke(tool, root, ["--tsvn-hook", "start", str(paths), str(message), str(affected)], launch, search)
-                assert setup["code"] == 0 and setup["notice_count"] == 1
+                assert setup["code"] == 0 and setup["notice_count"] == 0
             conflict_path = (tool.parent.parent if conflict == "ancestor" else tool.parent) / "shoalmark.toml"
             if conflict:
                 conflict_path.write_bytes((root / "shoalmark.toml").read_bytes() if conflict == "duplicate" else
@@ -104,7 +104,7 @@ def run_source_binding_controls(source, check, baseline=None, payload=None, repo
             current = results[-1]
             processes = [event for event in current["events"] if event["event"] == "subprocess.Popen"]
             writes = [event for event in current["events"] if event.get("write")]
-            check("source binding: " + name + " says its complete limit once", current["notice_count"] == 1)
+            check("source binding: " + name + " has no verification notice", current["notice_count"] == 0)
             check("source binding: " + name + " preserves both configuration bytes and appended inputs", current["configurations_unchanged"] and current["paths_message_unchanged"])
             check("source binding: " + name + " never reads the message", not any(event.get("path") == str(message) for event in current["events"]))
             check("source binding: " + name + " uses SVN-only PATH and no alternate network/process API", current["git_absent"] and all(event["argv"][0] == "svn" for event in processes) and not any(event.get("alternate_process_or_network") for event in current["events"]))

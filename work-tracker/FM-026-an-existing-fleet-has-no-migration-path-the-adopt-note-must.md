@@ -7,14 +7,6 @@ kind-of-problem: complex
 next: build
 triaged: 2026-09-24
 tier: P3
-ask: "Is shoalmark positioned as the record and the gate for one person directing agents, in its own built-in tracker, and presented on the site as a work tracker built for agents, not as a layer beside or beneath another tracker?"
-ask-kind: ruling
-ask-since: 2026-10-14
-ask-options: "yes | no: a ledger and gate beneath Linear, GitHub Issues or beads, with a coexistence path built first (FM-026, size L)"
-ask-proposal: "yes"
-answer: "accepted - yes"
-answered: 2026-10-15
-answered-by: holgo99
 hook: "Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because nothing tells an existing fleet how its trackers, seats and habits move over; the adopt note must carry that migration, and the case its agents make to their owner"
 ---
 
@@ -85,6 +77,13 @@ the measurement says they are the reason for *no*.
 The Owner has ruled the candidate; an outside fleet's agents can migrate what exists in one sitting from the note (or
 the command) without a person transcribing, and present the change to their owner in his numbers; FM-004's three
 prompts rerun give at least 2 of 3.
+
+## Asks
+
+**2026-10-15** · Is shoalmark positioned as the record and the gate for one person directing agents, in its own built-in tracker, and presented on the site as a work tracker built for agents, not as a layer beside or beneath another tracker?
+**answered** — accepted - yes · holgo99
+**relation** — accepted the proposal
+**signed** — 9a7b570 · G
 
 ## Ship log
 

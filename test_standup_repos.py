@@ -47,14 +47,17 @@ import zipfile
 HERE = Path(__file__).resolve().parent
 BASE = "ac8899d"                    # the commit Q7 was built on: R9's deletion
 FM053_AGENDA = (("\nRULINGS — ", "\nDECISIONS — "), ("\nBUTTONS — ", "\nONE CLICK — "))
+Q7_IDS = {"AP-005": "AP-005-Q1"}             # the fixture's one ask that carries its id
 
 
 def as_named(text):
-    """A base run's stdout with the agenda's headings as the board names them, each where it stands once."""
+    """A base run's stdout with the agenda's headings as the board names them, each where it stands once, and each ask as the tool says it
+    now — the reading test_r9_removals.py's class test uses, `as_before_ids`, the one both comparisons use."""
+    from test_r9_removals import as_before_ids
     for old, new in FM053_AGENDA:
         if text.count(old) == 1:
             text = text.replace(old, new)
-    return text
+    return as_before_ids("--standup", text, Q7_IDS)
 STANDUP_GIT = ("rev-parse --verify -q HEAD", "branch --show-current", "rev-parse --absolute-git-dir --git-common-dir")
 SVN_STATUS = "status --verbose --no-ignore --ignore-externals --depth infinity . --xml"
 HOOKS = ("applypatch-msg", "pre-applypatch", "post-applypatch", "pre-commit", "pre-merge-commit", "prepare-commit-msg", "commit-msg",
@@ -638,6 +641,7 @@ def run_checks(*, results=None):
             tracker(d, "AP-002", ask("Will you set up the key?", "action", "2026-10-13") + 'answer: "accepted - this week"\nanswered: 2026-10-13\nanswered-by: owner\n', "an act")
             tracker(d, "AP-003", "next: build\nblocked-by: AP-001\n", "held")
             tracker(d, "AP-004", ask("Is this a question", "ruling", "2026-10-14"), "sent back")
+            tracker(d, "AP-005", "ask-id: AP-005-Q1\n" + ask("Shall the importer wait?", "ruling", "2026-10-15"), "an ask that carries its id")
             g("add", "-A")
             g("commit", "-qm", "the trackers")
             pair[name] = tuple(normal(x, base) if isinstance(x, str) else x for x in run(t, base, env, "--standup"))

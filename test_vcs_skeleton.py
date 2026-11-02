@@ -138,7 +138,7 @@ PROCESS_APIS = {
 }
 PROCESS_METHODS = set().union(*PROCESS_APIS.values()) - {"get", "open"}     # ordinary mapping/file methods; webbrowser's resolved APIs are still checked
 LAUNCH_CEILING_SHA256 = "1eabbea359cde1c65db4a688c3ff609d6acda0a33e38bc0b84021f9fde9bf6a0"
-BOUNDARY_SHA256 = "a498b679dc5751b6a85f3ccd93a23959b2a4343c3b1aea5abfaf3efe4983cbdc"       # FM-061: the two source reads by object id (`tag_files`), SOURCE_GIT_ENV and SOURCE_GIT_PARAMETER
+BOUNDARY_SHA256 = "84acb62cf1d018a8261c9bd38cd404aa474d51093f995c63459363b1c3c6c4c7"
 ALLOWLIST_PATH = "test_vcs_launch_allowlist.json"
 CEILING_PATH = "test_vcs_launch_ceiling.json"
 
