@@ -37,14 +37,22 @@ description: "Prune recorded history from comments and unread docstrings in trac
    1 impossible to break; 2 the build fails; 3 a rule or a review; 4 a skill; 5 a style guide. A promotion is to a
    lower number; keep judgement rules apart, unranked. Build no check.
 8. Obsolete text and disagreements: in separate commits, fix obsolete text only with its superseding source
-   cited: rewrite to that source's rule, or delete an obsolete copy where that source already holds it. Fix a
-   disagreement only where one side cites a later ruling. Name every other disagreement for the person. Never
-   remove a live rule or keep part. Never edit an owner-only path; write its exact proposed fix for the owner.
+   cited: rewrite to that source's rule, or delete an obsolete copy where that source already holds it. Edit
+   directly only in documentation files and in Python files the step 6 proof shows prose-only; in any other code
+   or configuration file, write the exact proposed fix for the person instead. Fix a disagreement only where one
+   side cites a later ruling. Name every other disagreement for the person. Never remove a live rule or keep
+   part. Never edit an owner-only path; write its exact proposed fix for the owner.
 9. Report: write `<tracker folder>/evidence/drift/<date>-<short sha>-prune.md`, with date as `YYYY-MM-DD` and sha
    from the starting snapshot, or the agreed destination without a tracker folder. Include the sort (one row per
    part), each action and its commit, the proof's output, candidate conversions, what needs a look and why, and
    limits. Write its sha256 to `<file>.sha256` beside it, never inside it.
 10. Never delete a rule, a keep part or history on one seat's unsupported word; push, merge or rewrite history;
     run a test suite, a browser or the repository's own gates; use the network; print a secret; or open a record
-    on a security subject. The proof replaces a run; CI runs the suites. Stop on a secret or weakness met and
-    name only the class left out as a limit.
+    on a security subject. The proof replaces a run; CI runs the suites. Stop when you meet a secret (a credential,
+    key or token) or find a security weakness no record already names: write nothing about it, name only the
+    class left out as a limit, and tell the person. A gap the repository already documents between a rule and
+    its enforcement is not a stop.
+11. Close: in your last message, not only in the report, list for the person each disagreement and each proposed
+    fix that needs their decision, by id with one line, and ask whether to file them as asks. Name the repository's
+    own verification, its test suites and CI, and ask whether to run them before anything merges. This skill runs
+    none of them; the person's yes starts that run as a separate task.
