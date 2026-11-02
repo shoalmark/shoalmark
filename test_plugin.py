@@ -98,6 +98,44 @@ def run_checks(results=None):
             text = path.read_bytes().decode("utf-8", errors="replace")
             check(relative + " has no tracker or review id", PUBLIC_ID.search(text) is None)
             check(relative + " has no home folder path", HOME_PATH.search(text) is None)
+
+    find_folder = skills / "find-drift"
+    find_text = " ".join((find_folder / "SKILL.md").read_text(encoding="utf-8").split())
+    prune_text = " ".join((skills / "prune-drift" / "SKILL.md").read_text(encoding="utf-8").split())
+    check("find-drift closing paragraph: secrets and unrecorded weaknesses stop; documented gaps are drift",
+          all(clause in find_text for clause in (
+              "Stop when you meet a secret",
+              "write nothing about it and tell the person",
+              "drift, not a stop"))
+          and "Open no record on a security subject; name the class left out as a limit, "
+              "and stop on a secret or weakness met." not in find_text)
+
+    find_close = find_text.partition("11. Close:")[2].split(" Never run a test suite,", 1)[0]
+    prune_link = re.search(r"\[prune-drift\]\(([^)]+)\)", find_close)
+    check("find-drift step 11: close with decisions and the prune-drift link",
+          all(clause in find_text for clause in (
+              "11. Close:",
+              "in your last message, not only in the report",
+              "ask whether to file them as asks"))
+          and 0 <= find_text.find("10. ") < find_text.find("11. Close:")
+          and prune_link is not None and (find_folder / prune_link.group(1)).is_file())
+
+    check("prune-drift step 8: limit direct edits and propose other fixes",
+          all(clause in prune_text for clause in (
+              "Edit directly only in documentation files",
+              "write the exact proposed fix for the person instead")))
+    check("prune-drift step 10: secrets and unrecorded weaknesses stop; documented gaps do not",
+          all(clause in prune_text for clause in (
+              "Stop when you meet a secret",
+              "name only the class left out as a limit, and tell the person",
+              "is not a stop"))
+          and "Stop on a secret or weakness met and name only the class left out as a limit." not in prune_text)
+    check("prune-drift step 11: ask about verification as a separate task",
+          all(clause in prune_text for clause in (
+              "11. Close:",
+              "ask whether to run them before anything merges",
+              "This skill runs none of them"))
+          and 0 <= prune_text.find("10. ") < prune_text.find("11. Close:"))
     return results
 
 

@@ -51,6 +51,13 @@ Read the repository; write only the report and its hash, or the private suppleme
     their private records under version control. Use the existing public report's snapshot sha and hash as its key:
     counts only for its existing rule ids, with private references; it may rank again privately. Add no rule or
     sentence to the public report, and never quote the supplement in it.
+11. Close: in your last message, not only in the report, tell the person each disagreement and each obsolete text by
+    id with one line, and ask whether to file them as asks. Then name the next step:
+    [prune-drift](../prune-drift/SKILL.md) records and removes history and fixes obsolete text from this report. It
+    needs a report whose sources have not changed since its snapshot, so run this skill again first if they have.
 
 Never run a test suite, a browser or the repository's own gates, use the network, print a secret, or rule on what you
-find. Open no record on a security subject; name the class left out as a limit, and stop on a secret or weakness met.
+find. Open no record on a security subject and name the class left out as a limit. Stop when you meet a secret
+(a credential, key or token) or find a security weakness no record already names: write nothing about it and tell
+the person. A gap the repository already documents between a rule and its enforcement is drift, not a stop:
+report it like any other row.
