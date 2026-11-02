@@ -674,6 +674,13 @@ def sh_args(text_):
     return r.stdout.split("\0")[:-1]
 
 
+def windows_spelled(real, token):
+    """`real(token)`, the tool's `printed_arg`, as it spells on Windows: `sys.platform` patched for that one call alone."""
+    from unittest import mock
+    with mock.patch.object(fm.sys, "platform", "win32"):
+        return real(token)
+
+
 def rows_spelled(area, add):
     from unittest import mock
     with mock.patch.object(fm.sys, "platform", "win32"):
@@ -683,15 +690,22 @@ def rows_spelled(area, add):
     r = Repo(area / "spelled", {"FM-001": text("FM-001", ask(aid="FM-001-Q1")), "FM-003": text("FM-003", ask(aid="FM-003-Q1", q="Ship the third?"))})
     write(r.root, "FM-001", answered(r.read("FM-001"), answer=f"rejected - {reason}"))
     said = run(r.root, "--answer", "FM-003-Q1", "accept")
-    head = "--answer FM-001-Q1 reject "
+    head = "--answer 'FM-001-Q1' reject " if WIN_ARGS else "--answer FM-001-Q1 reject "
     printed = next((l.split(head, 1)[1] for l in said[2].splitlines() if head in l), None)
+    reason_win = "'not $(echo now), \"this\" `echo q` week'"
     if WIN_ARGS:
-        ok = printed == "'" + reason.replace("'", "''") + "'"
+        ok = printed == reason_win
     else:
         ok = printed is not None and subprocess.run(["sh", "-c", "sh -c 'printf %s \"$@\"' _ " + printed], capture_output=True, text=True,
                                                     encoding="utf-8", errors="replace").stdout == reason
     add("3c · the retry line spells its arguments as every copied command does: its reason comes back unchanged", said[0] == fm.EXIT_LINT and ok,
         seen(said) + f" · printed {printed!r}")
+    with mock.patch.object(fm, "printed_arg", lambda token, real=fm.printed_arg: windows_spelled(real, token)):
+        said_w = run(r.root, "--answer", "FM-003-Q1", "accept")
+    head_w = "--answer 'FM-001-Q1' reject "
+    printed_w = next((l.split(head_w, 1)[1] for l in said_w[2].splitlines() if head_w in l), None)
+    add("3c · …and the retry line as the tool prints it on Windows, read by the Windows text: the id and the reason as `printed_arg` makes them there",
+        said_w[0] == fm.EXIT_LINT and printed_w == reason_win, seen(said_w) + f" · printed {printed_w!r}")
     top = area / "spelled top"
     sub = top / "sub"
     sub.mkdir(parents=True)
