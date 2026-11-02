@@ -1,6 +1,6 @@
 ---
 id: FM-052
-status: Proposed
+status: Parked
 considered: FM-045, FM-039, FM-032
 tags: bug
 next: wait
@@ -10,6 +10,8 @@ hook: "A fixture that watches .git lets git's own housekeeping run inside the wa
 # FM-052 — a fixture that watches .git lets git's own housekeeping run inside the watch
 
 ## What is true now
+
+**2026-11-03 — Parked,** as the Owner's sweep words it: no commit since 15 October, and nothing is blocked on it.
 
 **Filed 2026-10-15; nothing is built.** Held against FM-045, which is Shipped and owns the board matrix watched by
 git's own trace.
@@ -52,3 +54,4 @@ before it records, and the class test with its mutant and its background-gc prob
 | Date | Event |
 |---|---|
 | 2026-10-15 | Filed. |
+| 2026-11-03 | Parked, as the Owner's sweep words it. Records only. |
