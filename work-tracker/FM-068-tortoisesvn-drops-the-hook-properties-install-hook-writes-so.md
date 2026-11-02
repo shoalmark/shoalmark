@@ -1,6 +1,6 @@
 ---
 id: FM-068
-status: In Progress
+status: Shipped
 considered: FM-003, FM-044
 tags: bug
 next: build
@@ -12,6 +12,12 @@ hook: "TortoiseSVN drops the hook properties --install-hook writes, so no Tortoi
 # FM-068 — TortoiseSVN drops the hook properties --install-hook writes, so no TortoiseSVN commit is gated
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2.** `--install-hook` writes both hook properties in TortoiseSVN's four lines, the
+type line first and the script's path quoted (`9e64e63`), and upgrades the earlier values (`b10ee91`). It is merged into
+`release/v0.20.2-rebuilt` as `43ac2f1` (#246): READY by its reviews and the Auditor's critical read, with CI green on
+`c2e3c9a`. On the Owner's word of 30 October, its words are approved. Its Windows evidence stays limited: the quoting is
+read from TortoiseSVN's source, and has not been tried on Windows.
 
 **Fix round built 2026-10-29.** RV-3900 now upgrades the exact unquoted four-line values for both hook properties after outer-whitespace normalization; a real Subversion control verifies the quoted bytes, exit 0 and an unchanged repeat, and its mutant rejects the former behavior. RV-3901 corrects the seven notice-frequency lines, with the changed German prose in du. RV-3902 adds the local signature and author-verification limit to the Board’s Subversion proof explanation in English and German. The obsolete proof-page docstring is removed. The upgrade note below stands. The full non-browser check uses only the suite’s own disposable Subversion server bound to 127.0.0.1, expressly allowed in the loopback clarification of 2026-10-29, with external network prohibited. The full-check attempt was interrupted by the process observer before completion; zero FAIL lines were observed, and no complete full-suite result is available. The interruption and its exit, wall time and observed FAIL count are handed back. Completion of the required full check remains before the independent bounded re-check and the Owner’s wording ruling; native Windows evidence is still limited as recorded below.
 
@@ -41,13 +47,15 @@ was wrong. The gate a person relies on in TortoiseSVN has not run.
 
 ## Done when
 
-- `--install-hook` writes each property with its type line first, and quotes the script's path, so a path with a space
-  stays one argument.
-- The format's basis is TortoiseSVN's own parser (`src/Utils/Hooks.cpp`, `CHooks::ParseAndInsertProjectProperty`). What
-  is read from that source and not tried on Windows is said to be so.
-- A test applies TortoiseSVN's rule to the value `--install-hook` writes, and fails on the three-line value.
-- The upgrade note says to run `--install-hook` again.
-- `ADOPT.svn.md`'s line that no person has yet seen it on Windows (and its German twin) says what the field report showed.
+- [x] `--install-hook` writes each property with its type line first, and quotes the script's path, so a path with a space
+  stays one argument. · `9e64e63`, `b10ee91`
+- [x] The format's basis is TortoiseSVN's own parser (`src/Utils/Hooks.cpp`, `CHooks::ParseAndInsertProjectProperty`). What
+  is read from that source and not tried on Windows is said to be so. · `9e64e63`
+- [x] A test applies TortoiseSVN's rule to the value `--install-hook` writes, and fails on the three-line value.
+  · `9e64e63`
+- [x] The upgrade note says to run `--install-hook` again. · `9e64e63`
+- [x] `ADOPT.svn.md`'s line that no person has yet seen it on Windows (and its German twin) says what the field report showed.
+  · `9e64e63`, `acd2469`
 
 ## Ship log
 
@@ -56,3 +64,4 @@ was wrong. The gate a person relies on in TortoiseSVN has not run.
 | 2026-10-27 | Filed and judged In Progress, P1, critical tier, for v0.20.2, from a field report from a Windows working copy. |
 | 2026-10-27 | Built the hook-property correction and its parser-based installer control; critical review remains next. |
 | 2026-10-29 | Built RV-3900, RV-3901 and RV-3902 from the critical review of a field report from a Windows working copy; the bounded re-check and wording ruling remain next. |
+| 2026-11-03 | **Shipped with v0.20.2:** merged into `release/v0.20.2-rebuilt` as `43ac2f1` (#246), READY with CI green on `c2e3c9a`; its words approved on the Owner's word of 30 October. Each item is met by `9e64e63`. Records only. |
