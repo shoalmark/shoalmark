@@ -1,6 +1,6 @@
 ---
 id: FM-061
-status: In Progress
+status: Shipped
 considered: FM-011, FM-009, FM-004, FM-023
 tags: security
 next: build
@@ -12,6 +12,11 @@ hook: "vendoring still takes an untagged or partial source, a weaker trusted pin
 # FM-061 — vendoring still takes an untagged or partial source, a weaker trusted pin than R17 allows
 
 ## What is true now
+
+**2026-11-03 — Shipped in v0.20.1,** on the Owner's word of 2 November. Built in `968e82a`, joined by `520d15d` with its
+correction `596aaf2`, merged into `release/v0.20.1` as `758f78c`, and on main with v0.20.1 (`daf3cea`, #212). READY at
+`39bc143`; the joined review, READY WITH FINDINGS at `c2e58a0`, corrected in `102c5d7`. CI: ci.yml's run 39973031540,
+green on `daf3cea`, which holds the join.
 
 **Rebuilt for public history 2026-10-21 on `fm/061-r17-public`, from `1148114`:** the reviewed tree is made again on this branch in commits 1 and 2, `91ede4a` and `968e82a`, but for three lines of this record, which now name their findings only as recorded privately. The review rounds' own commits stay on a private record, and the commits FM-061 names below are on that record.
 
@@ -44,11 +49,12 @@ The Owner's ruling R17: no seat may choose a weaker trusted pin than a tagged, v
 
 ## Done when
 
-- `--vendor` takes only a tagged, verified, complete release.
-- Each of the two flags is refused in one line, with exit 2.
-- A copy vendored earlier through either flag is named, never broken.
-- The class test holds, and each of its mutants fails it.
-- The Reviewer's verdict is READY, and CI is green.
+- [x] `--vendor` takes only a tagged, verified, complete release. · `968e82a`, `758f78c`
+- [x] Each of the two flags is refused in one line, with exit 2. · `968e82a`
+- [x] A copy vendored earlier through either flag is named, never broken. · `968e82a`
+- [x] The class test holds, and each of its mutants fails it. · `968e82a`, `39bc143`
+- [x] The Reviewer's verdict is READY, and CI is green.
+  · `39bc143`, `c2e58a0`, `102c5d7`; CI: ci.yml's run 39973031540, green on `daf3cea`
 
 ## Ship log
 
@@ -60,3 +66,4 @@ The Owner's ruling R17: no seat may choose a weaker trusted pin than a tagged, v
 | 2026-10-17 | Round 2 by the Builder seat on `fm/061-r17-round2`, cut at `1aa9d63` (`fm/061-r17` stays at `e87c073`, NOT READY): RV-3365: recorded privately (`7a7f1f7`); RV-3366: recorded privately (`f77ce01`); RV-3367: recorded privately (`1187b8b`); RV-3368: recorded privately (`8cb047f`). Class test (42 checks) and its 14 mutants green on 3.15 and 3.9.6. |
 | 2026-10-17 | Round 3 by the Builder seat on `fm/061-r17-round2`, from `693b1b7` (NOT READY): RV-3369: recorded privately (`f6c7b9f`); RV-3376: recorded privately (`e2c1d25`). Class test (49 checks) and its 17 mutants green on 3.15 and 3.9.6. |
 | 2026-10-21 | Rebuilt for public history on `fm/061-r17-public`, from `1148114`: the record by the Planner seat at `91ede4a`, and the build by the Builder seat at `968e82a`, as one commit. The tree is the one READY after round 3, but for three lines of this record, which now name their findings only as recorded privately; the review rounds' own commits stay on a private record. |
+| 2026-11-03 | **Shipped in v0.20.1,** on the Owner's word of 2 November: built in `968e82a`, merged as `758f78c`, on main as `daf3cea` (#212), with CI green there. Records only. |

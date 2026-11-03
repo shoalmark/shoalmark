@@ -1,6 +1,6 @@
 ---
 id: FM-038
-status: Proposed
+status: Parked
 considered: FM-035, FM-028, FM-017
 tags: bug
 triaged: 2026-09-27
@@ -12,6 +12,9 @@ hook: "the pre-commit hook hides the suites' skip lines: a test that skips by na
 # FM-038 — the pre-commit hook hides the suites' skip lines: a test that skips by name is never seen at commit time
 
 ## What is true now
+
+**2026-11-03 — Parked,** as the Owner's sweep words it: filed on 26 September, with no commit since, and nothing it
+holds is blocked on someone else.
 
 **Filed 2026-09-26 by the Principal seat, under the freeze as a bug, on two findings of the day; nothing is built.** (1) FM-035's review R3, carried in the 0.18.4 CHANGELOG as *open, for the release after* and, since the same-day pass of 2026-09-26, as a line on FM-035 (Shipped): the pre-commit hook runs the suites with their output sent to `/dev/null`, so a check that skips by name — FM-035's own rule for a check that cannot run on a platform — is never seen at commit time; only CI on the tag shows it. (2) The Owner's cold Reviewer session on the 0.18.4 cut (`evidence/reviews/review-0.18.4-cut-df48d67.md`, its line 3): the hook runs the suites only when a `.py` file is staged, so a docs-only commit — a release cut among them — never runs them, and a check that reads a page (the setup pages' clone tag against `VERSION`, added at `3fe7e3a`) first fails at the Reviewer's run or in CI. Both are the hook's, `lefthook.yml`; the tool is not changed by them. Held against FM-035 (the checks that skip by name), FM-028 (the suite refused after midnight — the same hook, another cause) and FM-017 (the pre-commit gate's refusal leaving writes behind): none holds this.
 
@@ -28,3 +31,4 @@ The pre-commit hook prints the suites' summary lines at commit time — the coun
 | Date | Event |
 |---|---|
 | 2026-09-26 | Filed by the Principal seat under the freeze as a bug, on FM-035's review R3 (carried since the 0.18.4 CHANGELOG, homed on a Shipped tracker by the same-day pass — the pass's Reviewer R4) and the cold session's line 3 on the 0.18.4 cut; the two facts, the why and the Done-when above. Nothing built. |
+| 2026-11-03 | Parked, as the Owner's sweep words it. Records only. |

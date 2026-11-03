@@ -1,6 +1,6 @@
 ---
 id: FM-043
-status: Proposed
+status: Parked
 considered: FM-006, FM-038, FM-040
 tags: bug
 next: review
@@ -13,6 +13,9 @@ Seat: Planner · filed 2026-10-02 on the Owner's ruling: the gaps an adopter's u
 0.19.1 docs item.
 
 ## What is true now
+
+**2026-11-03 — Parked,** as the Owner's sweep words it: no commit since 13 October, and its own text says its gaps are
+historical and unverified.
 
 **2026-10-13 — filing recovered on current main; nothing is built under this tracker.** This branch carries the
 FM-043 filing from `41fe62c`, including the Owner-ruled gap 7 wording. One records review precedes any implementation
@@ -64,3 +67,4 @@ Owner's answer before any dry-run implementation; this recovery authorizes none.
 |---|---|
 | 2026-10-02 | Filed. |
 | 2026-10-13 | Recovered the filing from `41fe62c` on current main, preserving Owner-ruled gap 7; 0.19.0 observations remain historical and unverified on 0.19.4, no build, one records review before prioritization. |
+| 2026-11-03 | Parked, as the Owner's sweep words it. Records only. |

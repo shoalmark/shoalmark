@@ -1,6 +1,6 @@
 ---
 id: FM-066
-status: In Progress
+status: Shipped
 considered: FM-045, FM-057, FM-010
 tags: security
 next: build
@@ -12,6 +12,11 @@ hook: "the board's reads hold their fixed settings for every program a configura
 # FM-066 — the board's reads hold their fixed settings for every program a configuration can name
 
 ## What is true now
+
+**2026-11-03 — Shipped in v0.20.1,** on the Owner's word of 2 November. The inventory of every git process is recorded
+(`b16cc6c`, corrected in `e386d50`), and the board's reads hold their fixed settings under the class table and its
+mutants (`3105f5f`, `5dba690`). READY at `6645bae` and, joined, at `19ab525`; merged as `09fdc12`, and on main with
+v0.20.1 (`daf3cea`, #212). CI: ci.yml's run 39973031540, green on `daf3cea`, which holds the join.
 
 **Filed and judged 2026-10-21: In Progress, P1, for v0.20.1, on the Owner's word, which is recorded privately.**
 
@@ -198,15 +203,18 @@ the SSH signature check its `%G?` asks for: the comment above `BOARD_SETTINGS` i
 
 ## Done when
 
-- Every git process the tool starts is listed, and each is named as one of the board's reads or as an act.
-- Each of the board's reads keeps that promise, under a class test whose fixture configures every such program and
-  whose mutants each fail it.
-- The Reviewer's verdict is READY, and CI is green.
+- [x] Every git process the tool starts is listed, and each is named as one of the board's reads or as an act.
+  · `b16cc6c`, `e386d50`, `3105f5f`
+- [x] Each of the board's reads keeps that promise, under a class test whose fixture configures every such program and
+  whose mutants each fail it. · `3105f5f`, `5dba690`, `19ab525`
+- [x] The Reviewer's verdict is READY, and CI is green.
+  · `6645bae`, `19ab525`; CI: ci.yml's run 39973031540, green on `daf3cea`
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Shipped in v0.20.1,** on the Owner's word of 2 November: built in `3105f5f`, merged as `09fdc12`, on main as `daf3cea` (#212), with CI green there. Records only. |
 | 2026-10-29 | The `interpret-trailers` row goes: since FM-063's `ef7e8a3`, `session_trailer` reads the trailer block itself and starts no `interpret-trailers`. Records only. |
 | 2026-10-21 | Filed and judged In Progress, P1, by the Planner for v0.20.1, before the first build commit. |
 | 2026-10-21 | Built by the Builder seat (`27f31560/builder-18`): `6327661` — every git the tool starts is one of the board's reads, under the board's settings in every run but an act's, or an act, under the person's; each read that compares the working tree runs with every configured filter driver emptied, and what rests on it is right or not read; the class test `test_board_settings.py` and its fifteen mutants. `fc4433d` — the list of every git process the tool starts. The review comes next. |

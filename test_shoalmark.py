@@ -36,17 +36,38 @@ Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=
 Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)
 
 
+def _copy_runner_git_config(into, env):
+    into = Path(into)
+    homes = [Path(env[k]) for k in ("HOME", "USERPROFILE") if env.get(k)]
+    for home in homes:
+        config = home / ".gitconfig"
+        if config.is_file():
+            shutil.copyfile(config, into / ".gitconfig")
+            break
+    if homes and "XDG_CONFIG_HOME" not in env:
+        for name in ("config", "attributes", "ignore"):
+            source = homes[0] / ".config" / "git" / name
+            if source.is_file():
+                target = into / ".config" / "git" / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
+
+
 def _suite_home():
     """A home folder of the suite's own, for the suite and every program it starts — a board reads the harness's logs in the home folder for the
-    day's sessions, and no check reads the runner's. The runner's own home (`_RUNNER_HOME`) is kept for what keeps its state there and builds no
+    day's sessions. Only the runner's git configuration is read once before the move and carried into the suite's home; no check reads the runner's logs.
+    The runner's own home (`_RUNNER_HOME`) is kept for what keeps its state there and builds no
     board: Chrome, and the site's rebuild through uvx. A program that runs a part of the suite again is handed the runner's home, so it keeps it too.
     Returns the folder, held until the run ends."""
     held = tempfile.TemporaryDirectory(prefix="shoalmark-suite-home-")
+    _copy_runner_git_config(held.name, os.environ)
     os.environ["HOME"] = os.environ["USERPROFILE"] = str(Path(held.name).resolve())
     return held
 
 
 _RUNNER_HOME = {k: os.environ[k] for k in ("HOME", "USERPROFILE") if k in os.environ}
+_GIT_GLOBAL_KEYS = ("init.defaultBranch", "user.name", "user.email")
+_RUNNER_GIT_CONFIG = [subprocess.run(["git", "config", "--global", "--get", key], capture_output=True) for key in _GIT_GLOBAL_KEYS]
 _SUITE_HOME = _suite_home()
 
 
@@ -204,6 +225,29 @@ def tracker(root, tid, status="In Progress", extra="", body="## What is true now
     p = d / f"{tid}-x.md"
     p.write_text(f'---\nid: {tid}\nstatus: {status}\nconsidered: none\n{extra}hook: "h of {tid}"\n---\n\n# {tid} — {title}\n\n{body}', encoding="utf-8")
     return p
+
+
+_suite_git_config = [subprocess.run(["git", "config", "--global", "--get", key], capture_output=True) for key in _GIT_GLOBAL_KEYS]
+check("the suite's home keeps the runner's global init.defaultBranch, user.name and user.email, including unset values",
+      all(r.returncode in (0, 1) and (r.returncode, r.stdout) == (s.returncode, s.stdout) for r, s in zip(_RUNNER_GIT_CONFIG, _suite_git_config)))
+
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve()
+    runner_home, suite_home, empty_home = (base / name for name in ("runner", "suite", "empty"))
+    for home in (runner_home, suite_home, empty_home):
+        home.mkdir()
+    (runner_home / ".gitconfig").write_text("[init]\n\tdefaultBranch = trunk\n", encoding="utf-8")
+    _copy_runner_git_config(suite_home, {"HOME": str(runner_home), "USERPROFILE": str(runner_home)})
+    clean_env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and k != "XDG_CONFIG_HOME"}
+    heads = []
+    for home in (suite_home, empty_home):
+        env = dict(clean_env, HOME=str(home), USERPROFILE=str(home), GIT_CONFIG_NOSYSTEM="1")
+        bare = home / "bare.git"
+        subprocess.run(["git", "init", "--bare", str(bare)], env=env, check=True, capture_output=True)
+        heads.append(subprocess.run(["git", "-C", str(bare), "symbolic-ref", "HEAD"], env=env, check=True,
+                                    capture_output=True, text=True, encoding="utf-8").stdout.strip())
+    check(f"the suite's home copies the runner's default branch: a bare HEAD is trunk; the empty-home control is not trunk (saw {heads[1]})",
+          heads[0] == "refs/heads/trunk" and heads[1] != "refs/heads/trunk")
 
 
 # --- `rm_git` skips a file already gone, and nothing else (CI run 38744072206: Ubuntu 3.9 aborted in it) ----
@@ -2941,8 +2985,29 @@ def run(root, *a, **k):
     return got
 """
 _end = "\nprint(skipped_line())\nsys.exit(1 if FAILS else 0)\n"
-_block_run = lambda mutation, end="": subprocess.run([sys.executable, "-c", _parts + mutation + _board_block + end + _end], capture_output=True, text=True,
+_block_src = lambda mutation, end="": _parts + mutation + _board_block + end + _end
+_block_run = lambda mutation, end="": subprocess.run([sys.executable, "-"], input=_block_src(mutation, end), capture_output=True, text=True,
                                                       encoding="utf-8", errors="replace", env=dict(_ENV, **_RUNNER_HOME), timeout=300)
+_stdin_marker = "stdin · ok — ü"
+_stdin_mutation = ("\n#" + "x" * 33000 + "\nmarker = " + repr(_stdin_marker)
+                   + '\nprint(marker.encode("utf-8").hex(), flush=True)\nsys.exit(0)\n')
+_stdin_program = _block_src(_stdin_mutation)
+_stdin_run = _block_run(_stdin_mutation)
+_stdin_found = _stdin_marker.encode("utf-8").hex() in _stdin_run.stdout.splitlines()
+_stdin_control_ok = False
+_stdin_control = "not applicable here — a POSIX command line has no limit near this size"
+if os.name == "nt":
+    try:
+        _stdin_c = subprocess.run([sys.executable, "-c", _stdin_program], capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace", env=dict(_ENV, **_RUNNER_HOME), timeout=300)
+    except OSError as _stdin_error:
+        _stdin_control_ok = _stdin_error.winerror == 206
+        _stdin_control = f"winerror {_stdin_error.winerror}"
+    else:
+        _stdin_control = f"started, exit {_stdin_c.returncode}"
+check(f"the browser block's program starts from stdin beyond a Windows command line and reads UTF-8 (saw length {len(_stdin_program)}, "
+      f"exit {_stdin_run.returncode}, marker found: {_stdin_found}; the control: {_stdin_control})",
+      len(_stdin_program) > 32766 and _stdin_run.returncode == 0 and _stdin_found and (os.name != "nt" or _stdin_control_ok))
 _none = _block_run("\n_CHROME = None\n")
 check(f"FM-035 · no Chrome here: the board block is skipped by name with the reason and its two checks, the run's end says this is not a full pass, and it exits 0 (saw {_none.stdout.strip()[-260:]!r})",
       _none.returncode == 0 and "  skip  the board, rendered in a browser — no Chrome or Chromium is installed here; 2 check(s) did not run" in _none.stdout
@@ -6388,9 +6453,9 @@ check("refresh hooks · the README names the hooks, read-at wording, and fetch-o
 # from facts.html, which the build writes and nothing commits. These read the sources, as the suite reads the other pages, and have controls:
 # a copy of the sources with one thing changed, which must be refused.
 _LANDING_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", "zensical.toml", "docs/index.md", "docs/de/index.md")
-_FOOT_EN = ("{tag}, released {date} — the board's new look, and the probe's final prompt. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
+_FOOT_EN = ("{tag}, released {date} — two drift skills, and an id of its own for every question. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
             "from the repository and were read when the site was built: {read_date}, at {read_sha}.")
-_FOOT_DE = ("{tag}, veröffentlicht am {date} – das neue Aussehen des Boards und der fertige Probe-Prompt. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
+_FOOT_DE = ("{tag}, veröffentlicht am {date} – zwei Drift-Skills und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
             "Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
 _CHART_NOTE = ("shoalmark runs on itself: every wreck is a bug or a security finding, filed in its own repository.",
                "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.")
@@ -6498,7 +6563,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "a release typed in the footer's link": _with(_ls, "overrides/landing.html", 'releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}', 'releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2'),
         "the Owner's line reworded": _with(_ls, "overrides/partials/landing/en.html", "a bug or a security finding", "a bug"),
         "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
-        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "the board's new look, and the probe's final prompt", "a fix for the board's refresh"),
+        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "two drift skills, and an id of its own for every question", "a fix for the board's refresh"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
         "the prompt back in a fold": _with(_ls, "overrides/landing.html", '<div class="probe-prompt" id="probe-prompt" data-open="false">', '<details class="probe-fold probe-prompt" id="probe-prompt" data-open="false">'),
@@ -6566,12 +6631,12 @@ _ssaw = {name: len(_standup_problems(src)) for name, src in _sctl.items()}
 check(f"FM-006 · B1 · the stand-up lines' check is not blind: each of a word of one row changed in the German twin, or in the English words, is a "
       f"problem (problems found: {_ssaw})", all(_ssaw.values()) and len(_ssaw) == 2)
 _sw29 = [lang for lang, foot in (("en", _FOOT_EN), ("de", _FOOT_DE)) if _landing_words(_ls)[0].get(lang, {}).get("foot_fine") != foot]
-check(f"FM-006 · B1 · the footer's sentence, W29: foot_fine holds its row byte for byte in en.html and de.html, the headline after the date the board's new "
-      f"look and the probe's final prompt, its slots and every word after its first full stop as they were (saw {_sw29})",
+check(f"FM-006 · B1 · the footer's sentence, W56: foot_fine holds its row byte for byte in en.html and de.html, the headline after the date two drift skills "
+      f"and an id of its own for every question, its slots and every word after its first full stop as they were (saw {_sw29})",
       not _sw29 and _FOOT_EN.split(". ", 1)[1].startswith("Licence: Apache-2.0 or MIT. ") and _FOOT_DE.split(". ", 1)[1].startswith("Lizenz: Apache-2.0 oder MIT. ")
       and all(s in _FOOT_EN and s in _FOOT_DE for s in ("{tag}", "{date}", "{read_date}", "{read_sha}")))
-_sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "das neue Aussehen des Boards", "das alte Aussehen des Boards")
-check("FM-006 · B1 · the footer's check is not blind: a word of W29 changed in the German words is a problem",
+_sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "zwei Drift-Skills und eine eigene ID", "drei Drift-Skills und eine eigene ID")
+check("FM-006 · B1 · the footer's check is not blind: a word of W56 changed in the German words is a problem",
       _landing_words(_sw29_ctl)[0].get("de", {}).get("foot_fine") != _FOOT_DE and bool(_landing_problems(_sw29_ctl)))
 
 _CLAIM_PARTS = {"en": ('<a href="why-shoalmark.html">Why shoalmark?</a>', 'Built in the open: <a href="https://github.com/shoalmark/shoalmark">github.com/shoalmark/shoalmark</a>',

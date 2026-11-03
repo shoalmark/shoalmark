@@ -17,12 +17,11 @@ is designed or built.
 
 ## What is true now
 
-**2026-11-01 — v0.20.3's allocation, rows from 30 and 31 October:**
-- `--check` prints "(none)", on the Owner's yes of 30 October.
-- The help lines' hide mark, on the Owner's yes of 30 October.
-- RV-4233: recorded privately.
-- RV-4192: recorded privately.
-- RV-4193: recorded privately.
+**2026-11-03 06:29:56 CET — v0.20.2’s release commit is made under FM-142: VERSION 0.20.2 and both setup pages on `--branch v0.20.2`; the footer’s headline follows in its own commit. FM-023 keeps v0.20.x’s allocation.**
+
+**2026-11-03 — v0.20.3's allocation is [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md).**
+Its rows of 1 November, from 30 and 31 October, moved there. The entries below stay as the record of each ruling, and
+FM-139 lists the v0.20.3 rows they name.
 
 **2026-10-29 — the release branch rebuilt, and the CI class fix moved to v0.20.3.** On the Owner's word of 29 October,
 as the Auditor relays it:
@@ -505,6 +504,8 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-11-03 06:29:56 CET | v0.20.2’s release commit is made under FM-142: VERSION 0.20.2 and both setup pages on `--branch v0.20.2`; the footer’s headline follows in its own commit. FM-023 keeps v0.20.x’s allocation. |
+| 2026-11-03 | v0.20.3's allocation is filed as FM-139, and the rows of 1 November moved there. Records only. |
 | 2026-11-01 05:03:32 CET | The stand-up agenda's timing text moves to v0.20.3; its allocation gains the check output and help-line hide-mark rows above. Records only. |
 | 2026-10-30 | FM-076 moves to v0.20.3, on the Owner's word of 29 October. Records only. |
 | 2026-10-29 | FM-095 to FM-098 are named as candidates for v0.20.3's chapter, filed for v0.20.x. Records only. |

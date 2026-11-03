@@ -1,6 +1,6 @@
 ---
 id: FM-057
-status: In Progress
+status: Shipped
 considered: FM-045, FM-030, FM-023
 tags: process
 next: build
@@ -12,6 +12,10 @@ hook: "The board rebuilds itself after every checkout, merge and rebase, and nev
 # FM-057 — the board rebuilds itself after every checkout, and never says what it read, or when
 
 ## What is true now
+
+**2026-11-03 — Shipped in v0.20.1,** on the Owner's word of 2 November. The page and `view/built.json` say what the
+board read and when (`4344147`, #189, in v0.20.0). The refresh hooks are back (`2e5ddb7`, `d855a1f`), critically
+reviewed (`d1fcf15`, `4c2ca0d`), merged into `release/v0.20.1` as `a360b99`, and on main with v0.20.1 (`daf3cea`, #212).
 
 **2026-10-19 — Built on `fm/057-refresh-hooks-back`:** `2e5ddb7` restores the three refresh hooks and their checks; `d855a1f` names the hooks and the fetch-only limit in English and German. The helper's callers, three fixtures and the README assertion follow the restored hooks; main at `be19828` is merged; the full non-browser run is clean; round 1 of the critical-tier review is fixed in `f9425a3`, `a5391f7` and `f05860e`, and the re-check is next. Left over (RV-3478): the board page's reload comment still says no hook rebuilds it; it changes with test_git_entry_differential.py's pin.
 
@@ -42,18 +46,20 @@ table of 2026-10-15).
 
 ## Done when
 
-- the page and `view/built.json` say what the board read and when, on git, on Subversion and with none (`4344147`,
-  #189, in v0.20.0);
-- in v0.20.1, `--install-hook` writes the refresh hooks after a checkout, a merge and a rebase again, in a clone that
+- [x] the page and `view/built.json` say what the board read and when, on git, on Subversion and with none (`4344147`,
+  #189, in v0.20.0); · `4344147`, `aa382dc`
+- [x] in v0.20.1, `--install-hook` writes the refresh hooks after a checkout, a merge and a rebase again, in a clone that
   v0.20.0 cleaned of them and in one that never had them, keeping a person's own hook and naming it;
-- after a pull that merges or rebases a change, the board shows it without `--html-only`, the case of 19 October
-  included;
-- the hooks' return is reviewed, critical tier, and merged into `release/v0.20.1`.
+  · `2e5ddb7`, `a360b99`
+- [x] after a pull that merges or rebases a change, the board shows it without `--html-only`, the case of 19 October
+  included; · `2e5ddb7`, `4c20665`
+- [x] the hooks' return is reviewed, critical tier, and merged into `release/v0.20.1`. · `d1fcf15`, `4c2ca0d`, `a360b99`
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Shipped in v0.20.1,** on the Owner's word of 2 November: the hooks back in `2e5ddb7`, merged as `a360b99`, on main as `daf3cea` (#212). Records only. |
 | 2026-10-19 | Refresh hooks restored on `fm/057-refresh-hooks-back` (`2e5ddb7`), with the setup words in both languages (`d855a1f`). Verification is incomplete; check limits recorded privately. Next: the critical-tier review. |
 | 2026-10-19 | R11's hook half comes back in v0.20.1, on the Owner's word of 19 October (recorded privately). v0.20.0 ships as built, with R11's upgrade note; the read-at half stays. *Done when* restated for the hooks' return. |
 | 2026-10-15 | Filed and judged: In Progress, P2, for v0.20.1, on `fm/045-r11-read-at`. |

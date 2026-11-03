@@ -1,6 +1,6 @@
 ---
 id: FM-049
-status: Proposed
+status: Shipped
 epic: FM-006
 considered: FM-006, FM-004, FM-026
 tags: process
@@ -11,6 +11,11 @@ hook: "B1's probe dialog gives a visitor one opt-in line to say what their agent
 # FM-049 — B1's probe dialog gives a visitor one opt-in line to say what their agent found
 
 ## What is true now
+
+**2026-11-03 — Shipped in v0.20.1; it closes with FM-006 at v0.20.2.** The Owner ruled the line in (`54e6dd4`), and
+FM-004's signed answer of 21 October chose one feedback channel, the landing's form, which settles where `{discuss}`
+leads. B1's dialog carries `dlg_tell` in English and German (`b4dcc10`, with the ruled destination and text in
+`f6f3660`). It is joined into v0.20.1 by `96ddaf4`, and the landing's re-check found it as ruled (`0fc30d2`).
 
 **Filed 2026-10-14 as a chapter of FM-006; nothing is built.** The line is in B1's probe dialog, FM-006's subject.
 FM-006's one ask carries the truth pass on B1's words, so this chapter carries the ask, to be answered before the
@@ -35,9 +40,9 @@ words freeze.
 
 ## Done when
 
-- The Owner has ruled whether the line is added and where `{discuss}` leads.
-- If it is added: B1's integration carries `dlg_tell` in English and German before the words freeze, and the Reviewer
-  finds both texts as ruled.
+- [x] The Owner has ruled whether the line is added and where `{discuss}` leads. · `54e6dd4`
+- [x] If it is added: B1's integration carries `dlg_tell` in English and German before the words freeze, and the Reviewer
+  finds both texts as ruled. · `b4dcc10`, `f6f3660`, `96ddaf4`, `0fc30d2`
 
 ## Asks
 
@@ -51,3 +56,4 @@ words freeze.
 | Date | Event |
 |---|---|
 | 2026-10-14 | Filed. |
+| 2026-11-03 | **Shipped in v0.20.1** (`b4dcc10`, joined by `96ddaf4`); closed with FM-006 at v0.20.2. Records only. |

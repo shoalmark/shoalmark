@@ -1,6 +1,6 @@
 ---
 id: FM-030
-status: In Progress
+status: Shipped
 considered: FM-008, FM-014, FM-016, FM-018, FM-023, FM-029
 tags: bug
 next: wait
@@ -12,6 +12,15 @@ hook: "At the person's morning sitting, `--standup` printed 0 items and `--owner
 # FM-030 — An accepted action ask leaves the person's list before the act is done
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2, for part A, the stand-up prompt's built-in text; its promised acts leave as
+[FM-116](FM-116-an-accepted-action-ask-is-not-kept-on-the-person-s-lists.md).** Part A is built (`e6149c7`, `1316522`)
+and merged into `release/v0.20.2-rebuilt` as `a07d5a1` (#239), with its German in `43053cf` and `b603748`. Part B, the
+Board copying the tracker folder's `standup.md`, moved to
+[FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md) on the Owner's word of 30 October. The
+twelve *Done when* items below, about promised acts, are unmet, and move to FM-116, restated against what the default
+branch holds. Two of the lines below read as not merged and are merged: R9, in v0.20.0 (#193, `7acb42d`), and the acts
+board (#113, `fa9e9ac`).
 
 **2026-11-01:** FM-030's two stand-in branches, `fm/030-join-standin` (2f01cef) and `fm/030-join-standin-2` (ecdb631), were deleted by the Owner on 30 October, after FM-030's real join (b89d018) was merged into the release branch. CI run 41046014425 tested the second stand-in, whose tree equals the real join's.
 
@@ -166,6 +175,10 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
   carries the split.
 - **The done dialog takes several results.** Its hint asks for *the path* where `--done` takes any text: the dialog offers the current branch @ sha (or its pull request) and lists the files and trackers it touched, read from git, as the results — several paths stay possible, free text stays possible. The case: three evidence files for one act (PD-403, BUG-328, BUG-327), 2026-09-28. Raised 12:43:02 by the Auditor through the Owner; built after the acts board (`fm/030-the-board-reads-his-unmerged-acts`) lands.
 
+**At the split, 2026-11-03:** none of these twelve items is met. All twelve move to
+[FM-116](FM-116-an-accepted-action-ask-is-not-kept-on-the-person-s-lists.md), restated against what the default branch
+holds. FM-030 ships for part A, which is outside them.
+
 ## Asks
 
 **2026-09-27** · How does the board show an act or answer you just gave, before your merge lands it on main?
@@ -206,3 +219,4 @@ line as the Owner pasted it on 2026-09-25 at 07:06:48, word for word.*
 | 2026-10-29 | Built on `fm/030-standup-prompt` for v0.20.2, not merged: the stand-up prompt takes the Owner's text, with its variants by version control and the words for a default branch not told (`e6149c7`). Not pushed. |
 | 2026-10-29 | Fixed on `fm/030-standup-prompt` in this commit, for the critical review (RV-4100 to RV-4103) and reviewer-11 (RV-4005 to RV-4012): git with no `origin` takes its own lines; the variant is read from the repository's own configuration; the differential holds the board to one read; Subversion's step 3 and step 6 gain a line each; the forge's runs line and `day.fixed` say what fills and runs; the README and both standup pages say what the prompt now asks. Not pushed. |
 | 2026-11-01 05:03:32 CET | The Owner's deletion of the two stand-in branches on 30 October, after the real join merged, and the second stand-in's CI run are recorded above in the Auditor's words. Records only. |
+| 2026-11-03 | **Shipped with v0.20.2,** for part A, the stand-up prompt (`e6149c7`), merged as `a07d5a1` (#239). Part B is FM-100; the twelve items on promised acts leave as FM-116. Records only. |

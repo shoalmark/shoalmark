@@ -1,6 +1,6 @@
 ---
 id: FM-091
-status: In Progress
+status: Shipped
 considered: FM-006, FM-019, FM-051
 tags: process
 next: build
@@ -12,6 +12,13 @@ hook: "The site has no imprint and no privacy notice, though a German provider m
 # FM-091 — the site has no imprint and no privacy notice, and its check does not hold the site to what such a notice says
 
 ## What is true now
+
+**2026-11-03 — Shipped: merged to main as #242 (`dd27914`), and live.** The four pages are built, and every page's
+footer links its own language's pair (`dd42e88`, `c4cc66c`, the final texts in `db88e34`). No page carries the source
+component (`2ecdc16`). The site check refuses each of the three cases (`dfc8e56`, `89ea748`), and
+`scripts/test_check_site.py` names a mutant of each: an English page's footer without its privacy link; the source
+component, double-quoted, on an English page; a script from another host. The Owner gave the word on the four texts and
+on both addresses delivering (`e70b85e`). The pages are live on shoalmark.tools after the Owner's deploy of main.
 
 **2026-10-29 — the texts take the Owner's rulings, both addresses deliver, and two findings move to v0.20.3.** On the
 Owner's rulings of 29 October, as the Auditor relays them, db88e34 sets the four texts:
@@ -59,12 +66,14 @@ notice would otherwise have to explain.
 
 ## Done when
 
-- [ ] The four pages are built and linked from every page's footer, each language to its own.
-- [ ] No built page carries `data-md-component="source"`, and no browser of a visitor calls GitHub's API.
-- [ ] The site check refuses a page without both footer links, a page with the source component, and a page that loads
-  anything from another host. A mutant of each is refused.
-- [ ] The Owner has given the word on the four final texts, and on both addresses delivering.
-- [ ] The pages are live on shoalmark.tools after a deploy of main.
+- [x] The four pages are built and linked from every page's footer, each language to its own.
+  · `dd42e88`, `c4cc66c`, `db88e34`
+- [x] No built page carries `data-md-component="source"`, and no browser of a visitor calls GitHub's API.
+  · `2ecdc16`, `dfc8e56`
+- [x] The site check refuses a page without both footer links, a page with the source component, and a page that loads
+  anything from another host. A mutant of each is refused. · `dfc8e56`, `89ea748`
+- [x] The Owner has given the word on the four final texts, and on both addresses delivering. · `db88e34`, `e70b85e`
+- [x] The pages are live on shoalmark.tools after a deploy of main. · `dd27914`
 
 ## Ship log
 
@@ -73,3 +82,4 @@ notice would otherwise have to explain.
 | 2026-10-29 | The correction dates the widget's end to v0.20.1, tagged on 23 October, the first release to carry 2ecdc16 (RV-4055). Records only. |
 | 2026-10-29 | Filed, and judged In Progress, P2, before the first build commit, on the Owner's word of 29 October. Records only. |
 | 2026-10-29 | The texts take the Owner's rulings (db88e34), and both addresses deliver. The hook and title are corrected: the widget has called no one since 9 October. FM-093 and FM-094 are filed for v0.20.3. Records only. |
+| 2026-11-03 | **Shipped:** merged to main as `dd27914` (#242), and the pages are live. Each item is ticked with its commit; item 3's mutants are named. Records only. |

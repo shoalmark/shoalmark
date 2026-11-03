@@ -1,6 +1,6 @@
 ---
 id: FM-050
-status: In Progress
+status: Shipped
 considered: FM-027, FM-008, FM-014, FM-016, FM-029, FM-030, FM-023
 tags: process
 next: build
@@ -12,6 +12,13 @@ hook: "An ask has no id of its own, so an answer, the stand-up and the receipts 
 # FM-050 — an ask has no id of its own, so an answer cannot name the ask it answers
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2.** S1 is merged into `release/v0.20.2-rebuilt` as `5be9df2` (#249): its critical
+reviews' findings fixed through round 4, with CI green on `e5248f6`. Every ask carries its id on the board and in
+`--standup` and `--owner`, an answer commit names it, and the gate refuses an unknown, answered or reused id, and a put
+ask changed under its id (`ccb8fe8` to `e5248f6`). The design below stays as its history. *On their way*, the design
+guide's one loose item, left the board when the board stopped reading answer branches (`9f81c3e`), so the guide has
+nothing of it to place.
 
 **2026-10-30 — built for v0.20.2 on `fm/050-ask-ids`, for its critical review and CI.** R4's answer commit and the ask ids, *The design*'s section 8, items 1 to 4 and 6 to 11, with the German lane's head joined in *du*, and the critical review's five findings fixed (RV-4140 to RV-4144). The docs, items 5 and 12, follow once both lanes have merged.
 
@@ -546,10 +553,11 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 
 ## Done when
 
-- The design is written here, reviewed by an independent Reviewer, and ruled by the Owner.
-- Built: every ask carries its id on the board and in `--standup` and `--owner`; an answer commit names it; the gate
+- [x] The design is written here, reviewed by an independent Reviewer, and ruled by the Owner.
+  · `c44a31c`, `ed2c82b`, `b7b9cac`
+- [x] Built: every ask carries its id on the board and in `--standup` and `--owner`; an answer commit names it; the gate
   refuses an unknown, answered or reused id, and a put ask changed under its id. One test covers the class: every way
-  an id could be reused or mismatched, across two branches included.
+  an id could be reused or mismatched, across two branches included. · `ccb8fe8`, `5be9df2`
 
 ## Asks
 
@@ -573,3 +581,4 @@ for every author, the Owner included: a reused number is not a right. `changes_u
 | 2026-10-27 | Its ruling ask filed again by the Planner seat, on today's main, with what changed since 16 October; the design unchanged. Records only. |
 | 2026-10-27 | The Owner's signed answer adopts the design; its ask cleared; judged In Progress, P2, critical, for v0.20.2 as batch 3's S1. Records only. |
 | 2026-10-30 | Built by the Builder seats (`27f31560/builder-41`, `27f31560/builder-47`) on `fm/050-ask-ids`: section 8, items 1 to 4 and 6 to 11; the German lane's head joined in *du*; the critical review's five findings fixed (RV-4140 to RV-4144). The docs follow. |
+| 2026-11-03 | **Shipped with v0.20.2:** S1 merged into `release/v0.20.2-rebuilt` as `5be9df2` (#249), from `ccb8fe8`. Records only. |
