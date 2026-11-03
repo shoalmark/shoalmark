@@ -36,17 +36,38 @@ Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=
 Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)
 
 
+def _copy_runner_git_config(into, env):
+    into = Path(into)
+    homes = [Path(env[k]) for k in ("HOME", "USERPROFILE") if env.get(k)]
+    for home in homes:
+        config = home / ".gitconfig"
+        if config.is_file():
+            shutil.copyfile(config, into / ".gitconfig")
+            break
+    if homes and "XDG_CONFIG_HOME" not in env:
+        for name in ("config", "attributes", "ignore"):
+            source = homes[0] / ".config" / "git" / name
+            if source.is_file():
+                target = into / ".config" / "git" / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, target)
+
+
 def _suite_home():
     """A home folder of the suite's own, for the suite and every program it starts — a board reads the harness's logs in the home folder for the
-    day's sessions, and no check reads the runner's. The runner's own home (`_RUNNER_HOME`) is kept for what keeps its state there and builds no
+    day's sessions. Only the runner's git configuration is read once before the move and carried into the suite's home; no check reads the runner's logs.
+    The runner's own home (`_RUNNER_HOME`) is kept for what keeps its state there and builds no
     board: Chrome, and the site's rebuild through uvx. A program that runs a part of the suite again is handed the runner's home, so it keeps it too.
     Returns the folder, held until the run ends."""
     held = tempfile.TemporaryDirectory(prefix="shoalmark-suite-home-")
+    _copy_runner_git_config(held.name, os.environ)
     os.environ["HOME"] = os.environ["USERPROFILE"] = str(Path(held.name).resolve())
     return held
 
 
 _RUNNER_HOME = {k: os.environ[k] for k in ("HOME", "USERPROFILE") if k in os.environ}
+_GIT_GLOBAL_KEYS = ("init.defaultBranch", "user.name", "user.email")
+_RUNNER_GIT_CONFIG = [subprocess.run(["git", "config", "--global", "--get", key], capture_output=True) for key in _GIT_GLOBAL_KEYS]
 _SUITE_HOME = _suite_home()
 
 
@@ -204,6 +225,29 @@ def tracker(root, tid, status="In Progress", extra="", body="## What is true now
     p = d / f"{tid}-x.md"
     p.write_text(f'---\nid: {tid}\nstatus: {status}\nconsidered: none\n{extra}hook: "h of {tid}"\n---\n\n# {tid} — {title}\n\n{body}', encoding="utf-8")
     return p
+
+
+_suite_git_config = [subprocess.run(["git", "config", "--global", "--get", key], capture_output=True) for key in _GIT_GLOBAL_KEYS]
+check("the suite's home keeps the runner's global init.defaultBranch, user.name and user.email, including unset values",
+      all(r.returncode in (0, 1) and (r.returncode, r.stdout) == (s.returncode, s.stdout) for r, s in zip(_RUNNER_GIT_CONFIG, _suite_git_config)))
+
+with tempfile.TemporaryDirectory() as tmp:
+    base = Path(tmp).resolve()
+    runner_home, suite_home, empty_home = (base / name for name in ("runner", "suite", "empty"))
+    for home in (runner_home, suite_home, empty_home):
+        home.mkdir()
+    (runner_home / ".gitconfig").write_text("[init]\n\tdefaultBranch = trunk\n", encoding="utf-8")
+    _copy_runner_git_config(suite_home, {"HOME": str(runner_home), "USERPROFILE": str(runner_home)})
+    clean_env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and k != "XDG_CONFIG_HOME"}
+    heads = []
+    for home in (suite_home, empty_home):
+        env = dict(clean_env, HOME=str(home), USERPROFILE=str(home), GIT_CONFIG_NOSYSTEM="1")
+        bare = home / "bare.git"
+        subprocess.run(["git", "init", "--bare", str(bare)], env=env, check=True, capture_output=True)
+        heads.append(subprocess.run(["git", "-C", str(bare), "symbolic-ref", "HEAD"], env=env, check=True,
+                                    capture_output=True, text=True, encoding="utf-8").stdout.strip())
+    check("the suite's home copies the runner's default branch: a bare HEAD is trunk; the empty-home control is master",
+          heads == ["refs/heads/trunk", "refs/heads/master"])
 
 
 # --- `rm_git` skips a file already gone, and nothing else (CI run 38744072206: Ubuntu 3.9 aborted in it) ----
