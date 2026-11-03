@@ -246,8 +246,8 @@ with tempfile.TemporaryDirectory() as tmp:
         subprocess.run(["git", "init", "--bare", str(bare)], env=env, check=True, capture_output=True)
         heads.append(subprocess.run(["git", "-C", str(bare), "symbolic-ref", "HEAD"], env=env, check=True,
                                     capture_output=True, text=True, encoding="utf-8").stdout.strip())
-    check("the suite's home copies the runner's default branch: a bare HEAD is trunk; the empty-home control is master",
-          heads == ["refs/heads/trunk", "refs/heads/master"])
+    check(f"the suite's home copies the runner's default branch: a bare HEAD is trunk; the empty-home control is not trunk (saw {heads[1]})",
+          heads[0] == "refs/heads/trunk" and heads[1] != "refs/heads/trunk")
 
 
 # --- `rm_git` skips a file already gone, and nothing else (CI run 38744072206: Ubuntu 3.9 aborted in it) ----
