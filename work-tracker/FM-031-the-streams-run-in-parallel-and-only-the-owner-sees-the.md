@@ -1,6 +1,6 @@
 ---
 id: FM-031
-status: In Progress
+status: Closed
 considered: FM-005, FM-023, FM-024, FM-027
 tags: process
 next: wait
@@ -12,6 +12,12 @@ hook: "In fourteen hours 22 seat sessions, under 21 ids, opened 22 pull requests
 # FM-031 — the streams run in parallel and only the Owner sees the whole queue
 
 ## What is true now
+
+**2026-11-03 — Closed; nothing new is filed from it.** Filed on 24 September, its builds shipped from 0.18.0 on. Q7, one
+agenda across the repositories named, which this text leaves built and not reviewed, is in v0.20.0 (#193, `7acb42d`).
+Its defect, the queue saying merge over a failing check, is
+[FM-084](FM-084-queue-does-not-show-a-pull-request-s-ci-so-a-failing-check.md), which names FM-031 in `considered:`.
+What is left is held elsewhere, or is the Owner's to keep.
 
 **2026-10-15 — Q7 built, not yet reviewed:** `--standup DIR …` gives one agenda across the repositories named; it runs nothing of theirs and writes nothing (`afdd29a` on `fm/031-standup-repos`, from R9's `ac8899d`; class test `test_standup_repos.py`).
 
@@ -245,6 +251,8 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
   minute, without asking a seat.
 - A week of parallel streams shows no conflict on the registry, and no pull request left open as a twin.
 
+**At the close, 2026-11-03:** neither item is met as written. FM-031 closes, and files nothing new.
+
 ## Asks
 
 **2026-09-24** · Rule the three house rules — at most 2 pull requests waiting on you per repository, your rulings only to the coordinating session, `git switch --detach origin/<branch>` to look at a seat's branch — and the build order, S1 the registry off the conflict path then S2 the queue in one view?
@@ -263,6 +271,7 @@ to rule — the ask above. Candidate 3 is deferred. No rule takes effect on a de
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Closed:** Q7 is in v0.20.0 (#193), and its defect is FM-084's. Nothing new is filed. Records only. |
 | 2026-10-16 19:02 CEST | RV-3303: recorded privately. The Builder seat (`27f31560/builder-9`) in `d9838ae` on `fm/031-standup-repos`: `--standup DIR …` starts git and svn by their absolute paths — each from the first of PATH's entries that is absolute, is not the current folder and lies inside none of the repositories named (on Windows `git.exe` and `svn.exe` only) — with `NoDefaultCurrentDirectoryInExePath` set while it runs and put back after; where none holds git or svn, the folders that need it are named as not read and counted in nothing. Every other run starts them as before. Five rows in `test_standup_repos.py`, one of them on Windows only (CI); eight mutants each fail it. Next: the Reviewer's pass. |
 | 2026-10-15 21:03 CEST | Q7 built by the Builder seat (`27f31560/builder-9`) in `afdd29a` on `fm/031-standup-repos`, from R9's deletion `ac8899d`, on the quick-wins design of 15 October, recorded privately: `--standup DIR [DIR …]`, one agenda by kind across the repositories named — each folder's branch and commit, a Subversion working copy's revision, or no version control; a folder it cannot read named with why and counted in nothing; counts per repository, then added, never joined by id. It runs nothing of a repository's own and writes nothing, held by an audit hook on each folder's read; it says it leaves unread whether a git tree has changes, what is on its way, the queue and, under `[seats]`, who asked. `--standup` alone is unchanged. Class test `test_standup_repos.py`; eight mutants each fail it. Next: the critical Reviewer's pass. |
 | 2026-10-15 | Defect filed: the queue and `--standup` say `merge` over failed required checks. Nothing is built. |

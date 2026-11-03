@@ -17,6 +17,12 @@ is designed or built.
 
 ## What is true now
 
+**2026-11-03 06:29:56 CET — v0.20.2’s release commit is made under FM-142: VERSION 0.20.2 and both setup pages on `--branch v0.20.2`; the footer’s headline follows in its own commit. FM-023 keeps v0.20.x’s allocation.**
+
+**2026-11-03 — v0.20.3's allocation is [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md).**
+Its rows of 1 November, from 30 and 31 October, moved there. The entries below stay as the record of each ruling, and
+FM-139 lists the v0.20.3 rows they name.
+
 **2026-10-29 — the release branch rebuilt, and the CI class fix moved to v0.20.3.** On the Owner's word of 29 October,
 as the Auditor relays it:
 - **`release/v0.20.2-signed` is retired.** #230, J's pull request, was merged into it with GitHub's merge button
@@ -72,6 +78,7 @@ relayed commits are optional", and "cut-off Fri 14:00 approved".
   follow S1's answer commit. If S1 is not in by the cut-off, A ships with the steps that describe answer branches.
 - **FM-076, relayed commits, is optional.** It goes in only if READY by the cut-off, and is otherwise moved to v0.20.3.
 - **2026-10-30:** FM-076 moves to v0.20.3, on the Owner's word of 29 October.
+- **2026-11-01:** The stand-up agenda's "· 15 min ·" in code moves to v0.20.3, as the Owner ruled on 30 October.
 - **FM-065, quick win 10, and the CI class fix beyond its three findings** move to v0.20.3 unless READY by Thursday
   29 October, 20:00. The CI class fix makes every root `test_*.py` run in CI, directly or through `test_core.py`, or
   be named as excluded. Its three findings are RV-3920 to RV-3922, from the review of the CI item that #219 merged. It
@@ -86,6 +93,25 @@ relayed commits are optional", and "cut-off Fri 14:00 approved".
 **The cut-off is Friday 30 October, 14:00 CET,** on the Owner's word of 29 October. After it, only the release's own
 commits go into its release branch, and the sitting follows. What is not READY and merged by then moves to v0.20.3, by
 the Owner's signed answer. The ask above puts all of this to the Owner.
+
+**2026-10-28 — the German rewrite ruled and started, and the v0.20.2 lane rebuilt, signed.** The Owner's signed
+answer (`558ec59`, #227) accepts the ask of the entry below. The same day, as the Auditor relays it, the Owner ruled the
+rewrite's glossary, which [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) records, and its plan:
+- the lane, `fm/006-german-du`, is built on the v0.20.2 lane now, and goes into it by pull request;
+- FM-024, FM-068 and FM-076 each move their own German lines to *du* by the glossary before they join, and the check
+  below catches what is left;
+- the probe prompts' part gets a critical review;
+- a check in the suite refuses, in German prose, each formal form and each term the glossary retires, with each allowed
+  exception named and a control;
+- a German native reader reads the lane twice before it merges, and the German of the other v0.20.2 lanes once before
+  the release sitting;
+- the lane's German pages go live only with v0.20.2's tag's own docs build, and no docs build runs on main between the
+  release's merge into main and its tag.
+
+The v0.20.2 lane is rebuilt as `release/v0.20.2-signed`: the same trees, with the merges of #219 and #220 made again by
+the Owner in their own checkout and signed (`c4d211b`, `8b24e91`). The earlier branch, whose two merges GitHub's merge
+button had made, is retired. Every merge into a base other than main is the Owner's, made in their checkout and signed,
+and every v0.20.2 lane takes the signed branch as its base and its target.
 
 **2026-10-28 — the German rewrite, for the Owner's signed answer.** Every German line moves to *du* in v0.20.2, at
 once and in one lane: the Owner's ruling of 22 October, as the Auditor relays it.
@@ -116,6 +142,7 @@ them. The tables below stay as the record of what was allocated before.
 | v0.20.2 | S1: the ask ids with R4's answer commit (FM-050). | FM-076 |
 | v0.20.2 | FM-063: the trailer step leaves a message that ends in bare links as it is (S), built in the `prepare-commit-msg` hook, so critical. | — |
 | v0.20.2 | FM-065: the skill-call contract. Its design is READY WITH FINDINGS (`4dc1910`), and its first use is `/prune-drift` calling `/find-drift`. | `/prune-drift`'s rebuild |
+| v0.20.2 | The German rewrite: every German line moves to *du*, in one lane (`fm/006-german-du`), by the glossary of 28 October (FM-006). | — |
 | v0.20.3 | S3, who asked, the receipts and S4, from batch 3. | S1 |
 | v0.20.3 | From 18 October's allocation: the prose prune of `shoalmark.py` with the comment ratchet, FM-037's guard, the five conversions, and the text fixes. | v0.20.2's tag |
 
@@ -130,6 +157,10 @@ so. This entry and the 15 October table's new row say it, and the ask above puts
   superseded by it.
 - **What they need first** is unchanged: FM-050's ask ids and FM-059's guided answer are designed and reviewed, and
   their ruling asks are filed again on today's main.
+
+**2026-10-23 — v0.20.2 gains the Board's resume command per session (FM-024), on the Owner's word as relayed by the
+Auditor.** It is built from main at `915cc57`, with the Designer's look and the Auditor's check of the new read
+before the merge.
 
 **2026-10-21 — the tags of v0.20,** on the Owner's ruling of 20 October (recorded privately):
 - v0.20.0 and v0.20.1 take lightweight tags, with no release run sheet;
@@ -473,6 +504,9 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-11-03 06:29:56 CET | v0.20.2’s release commit is made under FM-142: VERSION 0.20.2 and both setup pages on `--branch v0.20.2`; the footer’s headline follows in its own commit. FM-023 keeps v0.20.x’s allocation. |
+| 2026-11-03 | v0.20.3's allocation is filed as FM-139, and the rows of 1 November moved there. Records only. |
+| 2026-11-01 05:03:32 CET | The stand-up agenda's timing text moves to v0.20.3; its allocation gains the check output and help-line hide-mark rows above. Records only. |
 | 2026-10-30 | FM-076 moves to v0.20.3, on the Owner's word of 29 October. Records only. |
 | 2026-10-29 | FM-095 to FM-098 are named as candidates for v0.20.3's chapter, filed for v0.20.x. Records only. |
 | 2026-10-29 | The Auditor's re-check of 6fd3099, which fixed RV-3994, is READY, and #240 merged it into main (8fbdf0c). Records only. |
@@ -485,6 +519,7 @@ arc has run on it with its estimate–actual gap in the record.
 | 2026-10-29 | v0.20.2's allocation amended, on the Owner's words of 29 October: S1 must land, FM-076 is optional, FM-065, quick win 10 and the class fix beyond its three findings move unless READY by Thursday 20:00, and the cut-off is Friday 14:00. The ask is amended to put all of it, with A and B, to the Owner. Records only. |
 | 2026-10-29 | The stand-up prompt's growth filed, on the Owner's word of 29 October: A, its new built-in text, in v0.20.2, and B, the Board copying the tracker folder's `standup.md` under the Owner's signed guard, in v0.20.3, with the ask for the Owner's signed answer. v0.20.2's release sitting named: Friday 30 October, at the end of the day. Records only. |
 | 2026-10-29 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The rewrite is in v0.20.2's allocation, in one lane, as the ask set it out. Records only. |
+| 2026-10-28 | The Owner's signed answer to the German rewrite's ask (`558ec59`, #227): "accepted - yes". The glossary and the plan ruled the same day, the lane started, a v0.20.2 row, and the v0.20.2 lane rebuilt as `release/v0.20.2-signed`, signed. Records only. |
 | 2026-10-27 | The Owner's signed answer to the scope ask (`62ac263`, #217): "accepted - yes - but also with FM-076, with ask ids quick-win 3, S2 and the /find-drift and /prune-drift skills". Every item it names is already in v0.20.2's scope, so no new allocation follows; the ask is cleared. Records only. |
 | 2026-10-27 | FM-063 and FM-065 stay in v0.20.2, on the Owner's word of 27 October: two rows and the ask amended. Records only. |
 | 2026-10-27 | v0.20.2's scope narrowed and v0.20.3 named, on the Owner's word of 27 October: a table of both, and the ask for their signed answer that amends v0.20.2's allocation. Records only. |
@@ -502,9 +537,9 @@ arc has run on it with its estimate–actual gap in the record.
 | 2026-10-13 18:18 CEST | RV-3057 P3 fixed forward: archive records READY `b2e5195` replaces the stale running-review paragraph and rank-2 row; inherited common records READY `84c8a6b` needs no re-pass. Serial integration and CI/release holds remain. |
 | 2026-10-13 17:42 CEST | **Dependent dispatch from critical common READY:** `ef77527` closes the four common findings; current-main merge `1fc12b0` retains its exact product and passes gate/ratchet. A first local board slice60–90 min (2.25–3.75 h total), B first missing-proof refusal60–90 min (4.5–7 h total), C first capability/control slice30–45 min (1.5–2.5 h plus private tasking). P owns serial shared/archive integration. RV-3003/RV-3004: recorded privately. |
 | 2026-10-13 | Stage-1 and B1 read-only preparation recorded with immutable-ref evidence; stage-1 build re-estimated from 4–8 h to 6–10.5 Builder hours before archive/review, and its guard capability contract remains a brief dependency. B1 has three conflicted paths/eight groups and a 2–4 h next-day integration estimate. R15 configuration switch verified on current main; no feature build, platform proof or publication claimed. |
-| 2026-09-23 | **Updated as if FM-024 had landed, on the Owner's word:** every seat step carries its session id (`@a9`, `@d8`), `plan-by:` and the updates name seat and session, the gate matches a step's session to the commit's `Session:` trailer, and the multi-session extract uses the registry's ids and rows. |
-| 2026-09-23 | **Four worked examples added on the Owner's ask, then reworked on his second word — *it must be visual on the board, so it must be in the front matter to be parseable*:** the plan is one `plan:` line (pipe-separated steps, fixed field order, re-estimates appended), *needed* is derived from the owner's rows, the body table holds only step texts; the estimate as filed, an update, the finished record with per-seat error, a multi-session extract, and what the parser needs. Illustrative; nothing built. |
-| 2026-09-23 | Filed on the Owner's requirement, tagged `research`, with the instance that raised it as its first evidence. Held against FM-004 (adoption), FM-005 (the person asked mid-flight), FM-006 (a page for the humans). Not built this week — the current path's line 2: tracked, not built. |
 | 2026-10-13 | Owner #168 merged combined Part B/FM-043 records at ab7ed3f. R12 independent critical verdict is locally READY at 8b7f7f1; RV-3040: recorded privately. Archive RV-3070 current-main integration is being reconciled. Guard analysis records conservative proof refusal and revises seat-time estimates; no new authority or stage completion claimed. |
 | 2026-10-13 | Prepared exclusive dependent function/control ownership while common critical review runs at 6d0c239. Corrected ratchet participation so each migrated branch passes required controls; no ceiling expansion, authority rule or code built by this record. Original RV-3003/RV-3004 source requested; other scoped work stays movable. |
 | 2026-10-13 | Common critical round 1 and addendum are NOT READY with RV-3085–RV-3088 open; fixforward and one remaining verification round precede dependent code. RV-3003/RV-3004: recorded privately. Owner supplied the original private inputs; the missing-source stop is removed. |
+| 2026-09-23 | **Updated as if FM-024 had landed, on the Owner's word:** every seat step carries its session id (`@a9`, `@d8`), `plan-by:` and the updates name seat and session, the gate matches a step's session to the commit's `Session:` trailer, and the multi-session extract uses the registry's ids and rows. |
+| 2026-09-23 | **Four worked examples added on the Owner's ask, then reworked on his second word — *it must be visual on the board, so it must be in the front matter to be parseable*:** the plan is one `plan:` line (pipe-separated steps, fixed field order, re-estimates appended), *needed* is derived from the owner's rows, the body table holds only step texts; the estimate as filed, an update, the finished record with per-seat error, a multi-session extract, and what the parser needs. Illustrative; nothing built. |
+| 2026-09-23 | Filed on the Owner's requirement, tagged `research`, with the instance that raised it as its first evidence. Held against FM-004 (adoption), FM-005 (the person asked mid-flight), FM-006 (a page for the humans). Not built this week — the current path's line 2: tracked, not built. |

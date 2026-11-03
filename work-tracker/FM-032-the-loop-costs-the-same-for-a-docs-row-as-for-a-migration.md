@@ -1,18 +1,25 @@
 ---
 id: FM-032
-status: In Progress
+status: Closed
 considered: FM-031, FM-024, FM-027, FM-005
 tags: process
 triaged: 2026-10-13
 tier: P1
 next: build
-rank: 1
 hook: "The loop — a session row, a Reviewer pass, fixes, re-verification, merges of main — costs the same for a docs row as for a change to the gate. This morning a bug filing with no code in it paid three merges of main after verdicts, each conflicting on the registry. The Owner asked whether shoalmark's good intentions are turning into a bureaucratic nightmare."
 ---
 
 # FM-032 — the loop costs the same for a docs row as for a migration — overregulation, named by the Owner
 
 ## What is true now
+
+**2026-11-03 — Closed; its two open pieces are filed anew as FM-134 and FM-135.** Filed on 24 September. By FM-023, R13,
+R15 and R22 (#189), R21 (#179) and R12 are in v0.20.0 or on main, while this text stops at READY and joined. Its three
+*Done when* items are not recorded met.
+- [FM-134](FM-134-every-change-to-fm-007-s-tracker-runs-the-full-suites-though.md): defect 3, every change to
+  FM-007's tracker running the full suites, with its fix proposed.
+- [FM-135](FM-135-d1-no-review-file-outside-a-critical-tier-was-never-asked.md): D1, no review file outside a
+  critical tier, never asked.
 
 **2026-10-16 — the d-batch is joined for one pull request:** R22, R15 and R13, each READY, are merged on `fm/032-dbatch-into-production` from main `69b11b4` (`c68ace4`, `9bde891`, `c8fc05d` — one allowance for the shared `--schema` case), with FM-057's R11 after them (`aa382dc`). CI runs once, on that pull request.
 
@@ -224,6 +231,9 @@ scorer; the Owner took it out of this branch (19:16:21), so it stays on main as 
 - Two branches landing never conflict on the registry.
 - The open count falls for a week.
 
+**At the close, 2026-11-03:** none of the three is recorded met. FM-032 closes, and its two open pieces are FM-134 and
+FM-135.
+
 ## Asks
 
 **2026-09-24** · Rule the deregulation: one Reviewer pass for docs and ledgers, findings below P2 fixed forward, no re-pass; the registry a report generated from commit trailers, not a gate; a miss rowed only if it cost you a command or a decision; a filing freeze except product defects until the open count falls?
@@ -243,6 +253,7 @@ scorer; the Owner took it out of this branch (19:16:21), so it stays on main as 
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Closed:** R13, R15, R22, R21 and R12 are in v0.20.0 or on main. Defect 3 is filed anew as FM-134, and D1 as FM-135. Its rank goes with its close. Records only. |
 | 2026-10-16 | **R13 READY** at `e5e0d93` by `01a1457d`, critical round 2 of 2: RV-3290 (an empty `--since` or `--until` was not named as retired) and RV-3291 (the ratio page still asked for reports) closed by `0399c0c` and `ddb8d8b`, after NOT READY at `b025870`. Joined on `fm/032-dbatch-into-production` by `c8fc05d`. |
 | 2026-10-16 | **R15 READY** at `df01061` by `01a1457d`, critical. Joined on `fm/032-dbatch-into-production` by `9bde891`. |
 | 2026-10-16 | **R22 READY** at `3417142` by `01a1457d`, critical. Joined on `fm/032-dbatch-into-production` by `c68ace4`. |

@@ -13,6 +13,15 @@ hook: "What the team learns lives only in each harness's local memory, on one ma
 
 ## What is true now
 
+**2026-11-03 — an epic, with four trackers, as the Owner's sweep words it.** Its ten items would not ship as one, and
+each part is a decision of its own. It stays a part of [FM-089](FM-089-agentic-seamanship-v0-20-3.md), and ships with
+its last child:
+- [FM-130](FM-130-the-team-s-and-each-seat-s-memory-is-not-in-the-repository.md): items 1 to 3, and item 10 as a
+  task in its lane. It is blocked by FM-104, as this tracker is.
+- [FM-131](FM-131-a-session-starts-without-the-team-s-memory.md): items 4 and 5.
+- [FM-132](FM-132-nothing-moves-a-lesson-out-of-a-harness-s-memory.md): items 6 and 7.
+- [FM-133](FM-133-a-memory-entry-is-never-tested-or-retired.md): items 8 and 9.
+
 **2026-10-30 — where this tracker's files go comes from
 [FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md).** It waits on that decision, on the
 Owner's word of 30 October, and nothing of it is built before it.
@@ -99,21 +108,22 @@ soon as a check holds them.
 ## Done when
 
 - [ ] `--init` writes `<tracker dir>/memory/team.md` and the contract's line on where memory belongs, in `AGENTS.md`
-  and `CLAUDE.md`.
+  and `CLAUDE.md`. — FM-130
 - [ ] `--schema` names an entry's source, `promote:`, state and dependencies. `--check` refuses an entry that quotes
-  the Owner but cites no commit of the Owner's.
+  the Owner but cites no commit of the Owner's. — FM-130
 - [ ] `--check` refuses a change to `memory/team.md` that is not the Owner's signed commit. A seat's memory changes
-  only by that seat's commit.
-- [ ] `--next` loads the session's seat memory and the team's, and names both.
-- [ ] The close-out prompt carries the memory step, and its class test pins it.
-- [ ] The Board raises *consider a memory sync* per seat, with its default key, and never refuses.
+  only by that seat's commit. — FM-130
+- [ ] `--next` loads the session's seat memory and the team's, and names both. — FM-131
+- [ ] The close-out prompt carries the memory step, and its class test pins it. — FM-131
+- [ ] The Board raises *consider a memory sync* per seat, with its default key, and never refuses. — FM-132
 - [ ] `/sync-memory` proposes entries with their scope and target, with private details stripped, and has its own
-  eval.
+  eval. — FM-132
 - [ ] Each prose entry in `team.md` has its scenario. The suite runs with and without each entry on Claude Code and on
-  Codex, and reports the result and the tokens.
+  Codex, and reports the result and the tokens. — FM-133
 - [ ] `/find-drift` reads the memory files and raises *consider retiring* for an entry whose dependency is gone.
+  — FM-133
 - [ ] Every seat of this repository has classified its harness memories as product, project or local, and each product
-  lesson names its target on the ladder.
+  lesson names its target on the ladder. — FM-130, a task in its lane
 
 ## Asks
 
@@ -126,6 +136,7 @@ soon as a check holds them.
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | An epic, with four trackers: FM-130 (items 1 to 3, and item 10 as a task), FM-131 (4 and 5), FM-132 (6 and 7) and FM-133 (8 and 9), as the Owner's sweep words it. Records only. |
 | 2026-10-30 | Blocked by FM-104, which decides where the person's files live, on the Owner's word of 30 October. Records only. |
 | 2026-10-29 | The Owner's signed answer (`febbed9`, #236): "accepted - v0.20.3". The ask is cleared, and FM-088 is a part of FM-089. Records only. |
 | 2026-10-29 | Filed, on the Owner's word of 29 October, with the ask on its release. Records only. |

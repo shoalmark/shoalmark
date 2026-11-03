@@ -1,15 +1,43 @@
 ---
 id: FM-063
-status: Proposed
+status: Shipped
 considered: FM-024, FM-057, FM-040
 tags: bug
-next: wait
+next: build
+triaged: 2026-10-29
+tier: P2
 hook: "a seat's commit message that ends in bare links has them rewritten by the trailer step"
 ---
 
 # FM-063 — a seat's commit message that ends in bare links has them rewritten by the trailer step
 
 ## What is true now
+
+**2026-11-03 — Shipped with v0.20.2, for items 1 to 3; items 4 and 5 wait in
+[FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md).** The trailer step reads the trailer
+block itself and gives the same bytes on every Git (`ef7e8a3`, with the three cases of `bb54354`). It is merged into
+`release/v0.20.2-rebuilt` as `ed367d0` (#238): READY by its reviews and the Auditor's critical read, with CI green on
+`bb54354`. The record holds no CI runs of the original-shaped test on CI's oldest and newest Git (item 4), and nothing
+that shows the rule leaving the common files (item 5). Both are evidence owed at v0.20.2's close.
+
+**2026-10-29 — the step gives the same bytes on every Git (`ef7e8a3`).** CI's Git 2.56 reads a paragraph of links
+as no trailer block, where this Mac's 2.50.1 reads one, so two byte checks of `ec5432a` failed on every CI job
+(RV-4015). The step now reads the trailer block itself, as Git does, and adds only the seat's missing lines.
+- **No `git interpret-trailers` is started.** Its only new starts are two read-only reads of the comment character.
+- **A trailer line** needs a space, a tab or a line end after its colon. A paragraph the step reads as a block is a
+  block on every Git; any other paragraph keeps its bytes, and the seat's lines follow in a paragraph of their own.
+- **Two more cases kept:** a message with no final newline that ends in a comment, a divider, scissors or a
+  `Conflicts:` block keeps its tail (RV-4016), and a lone cherry-pick line joins the block (RV-4017).
+- **Its proof** is the new head's CI run, on Git 2.56. This Mac has only 2.50.1, where every check is green.
+- **The review:** reviewer-12's standard review gave NOT READY at `ef6822d`, with RV-4015 to RV-4018. Its bounded
+  re-check reads this head.
+
+**2026-10-29 — built in `ec5432a`,** with Git reading the message's existing keys and finding where to insert them.
+CI's Git 2.56 read that differently from 2.50.1, and `ef7e8a3` replaces the reading, above.
+
+**2026-10-29 — judged In Progress, P2, critical, for v0.20.2, before the first build commit.** It is built on the
+release branch's head with main joined, on the Owner's word of 29 October that it goes to a Builder on Codex. The step
+runs in the prepare-commit-msg hook, so its review is critical.
 
 **Filed 2026-10-19; nothing is built.** The Auditor reproduced it with git 2.50.1. It goes to v0.20.2, the Planner's
 call, which the Auditor's relay of 19 October left to the Planner. Its row is in FM-023's v0.20.2 table, under *What is
@@ -40,18 +68,23 @@ The tool adds its trailers, and must change nothing a seat wrote.
 
 ## Done when
 
-- The trailer step adds the seat's trailers and changes no other byte of the message, including a message that ends
-  in bare links, with or without a `Sources:` line over them.
-- `%(trailers)` still reads the seat's `Session:`, `Worktree:`, `Model:` and `Effort:` from the commit, so the gate
-  finds them as now.
-- A message that ends in a trailer block still gets the seat's trailers in that block, and a trailer it carries
-  already is left alone, as now.
-- A test with `02fa59a`'s shape fails on today's step and passes on the fix, on the oldest and the newest git that CI
-  runs.
-- The rule that a seat ends its message with a sentence leaves the common files.
+- [x] The trailer step adds the seat's trailers and changes no other byte of the message, including a message that ends
+  in bare links, with or without a `Sources:` line over them. · `ef7e8a3`, `bb54354`
+- [x] `%(trailers)` still reads the seat's `Session:`, `Worktree:`, `Model:` and `Effort:` from the commit, so the gate
+  finds them as now. · `ef7e8a3`
+- [x] A message that ends in a trailer block still gets the seat's trailers in that block, and a trailer it carries
+  already is left alone, as now. · `ef7e8a3`, `bb54354`
+- [ ] A test with `02fa59a`'s shape fails on today's step and passes on the fix, on the oldest and the newest git that CI
+  runs. — evidence owed: [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md)
+- [ ] The rule that a seat ends its message with a sentence leaves the common files.
+  — evidence owed: [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md)
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Shipped with v0.20.2:** merged into `release/v0.20.2-rebuilt` as `ed367d0` (#238), READY with CI green on `bb54354`. Items 1 to 3 are met by `ef7e8a3` and `bb54354`; items 4 and 5 wait in FM-106. Records only. |
+| 2026-10-29 | Rebuilt in `ef7e8a3`: the step reads the trailer block itself and gives the same bytes on every Git (RV-4015 to RV-4017). The ship log is newest first again (RV-4018). |
+| 2026-10-29 | Built in `ec5432a`: removed the in-place message rewrite; retained byte-preserving insertion and regression controls. Review and the Planner's post-merge rule deletion remain. |
+| 2026-10-29 | Judged In Progress, P2, critical, for v0.20.2, before the first build commit. Records only. |
 | 2026-10-19 | Filed from the Auditor's reproduction with git 2.50.1, as a bug; v0.20.2, the Planner's call; nothing is built. |

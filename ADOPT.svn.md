@@ -11,7 +11,7 @@ work: it comes without a guarantee, and the report says so.
 
 - shoalmark needs no git on Subversion. It comes as its release's archive (ADOPT.md, step 3), and it reads the
   working copy through svn. Never ask for git to be installed here.
-- Signed answers, the pull-request queue, answer branches and acts, sessions and the build judgement need git. The
+- Signed answers, the pull-request queue, the Owner's acts, sessions and the build judgement need git. The
   queue also needs GitHub. Such a command is refused in one line here. It names what it needs. `--session new` still
   prints an id here, without the check against git's commit trailers that shows it unused.
 - It reads its history from the server through svn. A check that needs the history, such as a move to `Shipped` or an
@@ -99,8 +99,10 @@ trial into the throwaway repository: run the tool first, then `svn add --force .
   2. Tries a change the gate refuses: a tracker moved to `Shipped` with no revision in its ship log. TortoiseSVN
      refuses the commit and shows the gate's line. Then `svn revert` it.
 
-  Record what the Owner saw. No human has yet seen, on Windows, TortoiseSVN run the two hook properties as described;
-  only the command line is checked in CI. Where it differs, that is a finding, and the report and the feedback say so.
+  Record what the Owner saw. A field report from a Windows working copy showed that TortoiseSVN asked for approval
+  after the hook properties were corrected by hand, and the start-commit hook refused a tracker moved to `Shipped`
+  with no revision. The installer now writes that format; path quoting is based on TortoiseSVN's source and has not
+  been tried on Windows. Where it differs, that is a finding, and the report and the feedback say so.
   On macOS and Linux there is no TortoiseSVN: the step is left out.
 
 ## Step 9: the server

@@ -40,6 +40,23 @@ PR C - RV-3487 (10e4d5e): the differential's last implementation comments
 went under the comment rule; no executable code or page bytes changed,
 and no allowance moved.
 
+**2026-10-28 — the critical review's fix round.** The resume test counts each command once, as the page holds it, on
+every system (RV-3940). The old chain's mutant holds no comments of its own (RV-3941). The differential pins the resume
+labels to their English and German words (RV-3942). A test that cannot make the handle that holds a log unreadable says
+so, with the error (RV-3944). RV-3943: recorded privately.
+
+**2026-10-24 — the Board's placeholder handling made order-proof (RV-3870: recorded privately).** No value the Board
+inserts can be read as a placeholder filled after it, whichever value it is. On Windows, the resume command takes the
+form of the tool's other copied commands, PowerShell's, and starts the session only where the folder change succeeds
+(RV-3871). A log that cannot be opened or read says so, in place of the "no folder" reason (RV-3872).
+
+**2026-10-23 — the Board gets a resume command per session, on the Owner's word as relayed by the Auditor; FM-023
+allocates it to v0.20.2.** For each parent session in the day, the Board's local build finds the one log whose file
+name starts with its id, under `~/.claude/projects` or `~/.codex/sessions`. It copies the harness's own resume
+command, in the folder of the log's first turn, written with `~`. Two logs give no command and say why; no log gives
+nothing; sub-sessions get none. It reads file names and that one field, never what a session said, and the command
+is in the local Board file alone. `--whoami`'s "launched in" line reads the first turn's folder too.
+
 **2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
 `--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
 brings it back.
@@ -519,3 +536,5 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-10-01 | **The `[seats]` switch built — phase 2**, after D2 (`ca8f7f4`, `321fddc`, `87e2e1b`) and its fix round (`4105114`, `9f2aac5`, `e570b5d`, `b58fe45`): `6debda1` the session rule reads a session begun under a seat's former name (`principal`, `implementer`, the name of an old `<name>@seat` address) as the seat's — the rename would have refused the seats' own commits and the history a merge brings; `1923f5c` this repository's `[seats]`: `planner` and `builder`, the seven bot addresses (each checked with `gh api` before it was written, and equal to the ids filed in the switch section) beside the old ones, `gtm` an address of `go-to-market`; `df5a80b` the texts that called the rename to come, and the CHANGELOG. The 1102 commits of the history map to the seats they had (`principal@seat` to `planner`, `implementer@seat` to `builder`, `gtm@seat` to `go-to-market`) with the rights they held, and each of the 813 that carries a session passes the rule; `--check` exits 0. The full local run, the cold session and the Reviewer follow. |
 | 2026-10-16 | **Defect 9 filed, nothing built** (the Auditor's finding, relayed by the Owner): `seat.session` keeps eight hex characters, and Codex's time-ordered session ids share them within about a minute. Two Reviewer sessions both carry `01a14312`; their `Worktree:` trailers tell them apart. |
 | 2026-10-16 | Defect 9's second case (the Auditor's finding, relayed by the Owner): the FM-050 Reviewer and the bounded Reviewer, two sessions, both carry `01a14313`. |
+| 2026-11-03 | The suite's own home now keeps the runner's git configuration, which CI's runners set; a hermetic bare-repository check and its empty-home control hold it. |
+| 2026-11-03 | The browser block's check now gives its program on stdin, so a program longer than a Windows command line still starts there; a check holds it. |

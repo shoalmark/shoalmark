@@ -1,11 +1,11 @@
 # Set up in ten minutes
 
-*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and each run says what it cannot verify there: commit signatures and server-authenticated authors.*
+*For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities.*
 
 ## 1. Put the tool in the repository
 
 ```
-git clone --branch v0.20.1 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
+git clone --branch v0.20.2 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
 ```
 
 Then open your repository's folder in the terminal.
@@ -72,8 +72,14 @@ builder builds. The seats are `planner` and `builder`; `principal` and `implemen
 **Sessions.** Beside its seat, every agent's worktree carries `seat.session`, the run it belongs to, and the hook that
 `--install-hook` wrote adds it to every commit as `Session: <id>`, with the worktree beside it. The gate refuses a
 seat's commit without a session of its own seat; `--sessions` prints who ran what, where and when from those lines
-alone, and the board lists who was at work in the last day. Your agents do this. Your own commits carry no session:
-your signature is your id.
+alone, and the board lists who was at work in the last day. Beside each session there, a button copies the command that
+resumes it in Claude Code or Codex — on Windows, a command for PowerShell, 5.1 or 7 —, for a session that is no longer
+open: the board cannot see whether one is. For it,
+the board reads only the names of the logs in `~/.claude/projects` and `~/.codex/sessions` — one listing of each folder —
+and the folder the session's first turn ran in, from the first MiB of its one log: never what a session said. Two logs
+for one session give no command, and the board says so. The limit: a log that shares only the session id's first 8
+characters with the session is taken as its own; the board cannot tell. Your agents do this. Your own commits carry no
+session: your signature is your id.
 
 ## 5. Write two things only you can
 
@@ -89,8 +95,8 @@ checkout or switch, a merge (including a fast-forward pull), or a rebase, from t
 needs you. On Subversion it rebuilds on a commit through TortoiseSVN or when the tool runs; after `svn update`, run
 `--html-only`.
 
-**Limit:** git has no hook after a bare `git fetch`. An answer branch arriving by fetch alone leaves what the board says
-is *on its way* as it was, until a checkout, a merge or `--html-only`.
+**Limit:** git has no hook after a bare `git fetch`, so a fetch alone does not rebuild the board: what it read of
+`origin` — which commits it links to their forge page — stays as it was until a checkout, a merge or `--html-only`.
 
 If you want a fixed time for your standup, set `standup = "09:00"` in `shoalmark.toml`. Without it, you hold the standup whenever it suits you: see [The standup](standup.md).
 

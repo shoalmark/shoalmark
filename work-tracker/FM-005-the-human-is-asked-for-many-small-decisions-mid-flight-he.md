@@ -1,6 +1,6 @@
 ---
 id: FM-005
-status: In Progress
+status: Shipped
 considered: FM-004, FM-001
 tags: research
 next: wait
@@ -12,6 +12,12 @@ hook: "Measured: 200 pull requests merged in 22 days, 85 % under a minute after 
 # FM-005 — The human is asked for many small decisions mid-flight — he either blocks the agents or stamps without reading
 
 ## What is true now
+
+**2026-11-03 — Shipped in v0.19.0, for the slice it built: a shipped tracker names its commit.** Built in `5562476`,
+fixed in `4324476`, `a36cf2e` and `b3fbbc9`, reviewed in `8eebfc8`, and merged as #143 (`ea70e5e`). Its research stays
+open as [FM-126](FM-126-mandates-cannot-go-live-until-the-eight-claims-of-fm-005-s.md), for the Owner to allocate or
+park. The digest's settled half of 27 October is
+[FM-127](FM-127-the-digest-does-not-show-a-seat-s-correction-of-the-record.md).
 
 **2026-10-27 — design input, not ruled, from the Auditor's relay of 27 October: the digest's settled half.** `--owner`'s digest shows what has been settled beside what needs the Owner. A seat's correction of the record is shown there as an item of its own, *corrected: …*, and is never folded into another line. It is the settled half of the digest in [`evidence/FM-005/design.md`](evidence/FM-005/design.md) §3.4, split off from FM-082's Board section of 27 October. Nothing is built, and it is not allocated.
 
@@ -64,8 +70,10 @@ Until he rules, that rule stands.
 
 ## Done when
 
-The eight claims in the design are each held or killed with their numbers, in the origin, and the Owner has ruled
-from that record whether mandates go live.
+- [ ] The eight claims in the design are each held or killed with their numbers, in the origin, and the Owner has ruled
+  from that record whether mandates go live. — moves to [FM-126](FM-126-mandates-cannot-go-live-until-the-eight-claims-of-fm-005-s.md)
+
+FM-005 ships for the slice it built, outside this item: a shipped tracker names its commit (`5562476`, `ea70e5e`).
 
 ## A shipped tracker names its commit — v0.19.0
 
@@ -112,3 +120,4 @@ it, so a new tracker filed as `Shipped` moves to it.
 | 2026-10-01 | **Built and pushed for the Reviewer** by one Builder on `fm/005-a-shipped-tracker-names-its-commit`, in four commits and this record: `047d3e1` (`changes_under_review` read once per run, outputs unchanged), `5562476` (the rule and its tests, git and Subversion), `3bb9251` (the board counts `Closed` apart), `1467792` (the claim, §5's row, the CHANGELOG). Nothing on the branch moves a tracker to `Shipped`; one Reviewer at code tier, then the Owner opens the pull request. |
 | 2026-10-01 | **Fixed after the Reviewer's pass** (RV-2150…2159 on `6890292`, NOT READY): `4324476` (RV-2150, Subversion at the repository's root, and the corrections to two earlier messages), `a36cf2e` (RV-2151, NUL-separated path lists), `d6ed788` (RV-2156…2159), `b3fbbc9` (RV-2152…2155). Nothing on the branch moves a tracker to `Shipped`; one Reviewer verifies, then the Owner opens the pull request. |
 | 2026-10-27 | Design input, not ruled: the digest's settled half, with a seat's correction shown as an item of its own (*corrected: …*), from FM-082's Board section of 27 October. |
+| 2026-11-03 | **Shipped in v0.19.0,** for its slice, a shipped tracker names its commit (`5562476`, merged as `ea70e5e`, #143). The research leaves as FM-126, the digest's settled half as FM-127. Records only. |

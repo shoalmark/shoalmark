@@ -1,6 +1,6 @@
 ---
 id: FM-007
-status: In Progress
+status: Shipped
 considered: FM-005, FM-006
 tags: security
 tier: P1
@@ -14,6 +14,12 @@ hook: "The gate accepts an answer only from a commit signed by the Owner's key. 
 # FM-007 — A signature proves the key, not the hand — an agent running as the Owner on his machine signs as him
 
 ## What is true now
+
+**2026-11-03 — Shipped, for the Owner's act of 15 October; its two open parts leave as trackers of their own.** The act
+is done (`49e0b6a`, merged as #177, `aa482d4`). The tripwire, closure 3, is
+[FM-125](FM-125-the-hook-and-the-gate-do-not-trip-on-an-agent-s-commit.md). The signing pages' key state is
+[FM-108](FM-108-the-signing-pages-do-not-state-the-owner-s-keys-as-they.md), which FM-006 shares. The proof line it
+shares with FM-054 stays with FM-054.
 
 **2026-10-15 — the proof line, built on `fm/054-proof`, not merged** (`970c9fd`, on FM-054's `e80d080`). On one repository's board
 the heading of *waiting for you* says once, and the answer dialog again before OK, how an answer here is proved — *your answers
@@ -112,8 +118,10 @@ proposal of 2026-09-24 (its draft, sha256 `39690e54…`), applied under the free
 
 ## Done when
 
-The Owner's answers are signed by something an agent on his machine cannot operate (1 or 2, recorded here with what
-was chosen), the tripwire (3) is in the tool with a mutation witness, and the signing page says all three.
+- [x] The Owner's answers are signed by something an agent on his machine cannot operate (1 or 2, recorded here with
+  what was chosen) · `49e0b6a`, `aa482d4`
+- [ ] the tripwire (3) is in the tool with a mutation witness — moves to [FM-125](FM-125-the-hook-and-the-gate-do-not-trip-on-an-agent-s-commit.md)
+- [ ] and the signing page says all three. — moves to [FM-108](FM-108-the-signing-pages-do-not-state-the-owner-s-keys-as-they.md)
 
 ## Asks
 
@@ -133,6 +141,7 @@ was chosen), the tripwire (3) is in the tool with a mutation witness, and the si
 
 | Date | Event |
 |---|---|
+| 2026-11-03 | **Shipped,** for the Owner's act of 15 October (`49e0b6a`, merged as `aa482d4`, #177). The tripwire leaves as FM-125, the signing pages' key state as FM-108. Records only. |
 | 2026-10-15 | The proof line built on `fm/054-proof` (`970c9fd`) with FM-054's defect 8 (`e80d080`): *signed* said only where the default branch's configuration asks for it, and said before *accept*; not merged. |
 | 2026-09-25 | The Reviewer's R4 on PR 69, fixed forward: the filed *site conversion* block begins at *2.* because the Owner's paste did — the numbering is the paste's, and the board renders the five points after it as 3–7; the text stays word for word. |
 | 2026-09-25 | The Auditor seat's five points for the site conversion filed word for word (the Reviewer's R2 on this branch: the record named them as the GtM seat's and listed three); main merged after PR 68 (the Reviewer's R1: INDEX.md conflicted, regenerated). |

@@ -164,10 +164,9 @@ def git_controls(fm, old, check):
             check(f"A callers: real Git {name} result equals accepted source", a == b)
             check(f"A callers: real Git {name} process argv/options/environment equal accepted source", ar == br)
             return b
-        for name in ("git_version", "built_on", "head_commit", "default_branch", "answer_refs", "promisor_remotes", "repos_naming", "config_file_problem"):
+        for name in ("git_version", "built_on", "head_commit", "default_branch", "promisor_remotes", "repos_naming", "config_file_problem"):
             pair(name, lambda tool, name=name: getattr(tool, name)())
         pair("last_worked_on", lambda tool: tool.last_worked_on(tracker))
-        pair("on_their_way", lambda tool: tool.on_their_way([tool.extract(tracker, original)]))
         def relations(tool):
             need = {tracker.relative_to(root).as_posix(): {"asks_recovered_all": {("proceed", "accepted - fixture choice"): None}}}
             tool.recover_from_log(need)
@@ -183,7 +182,7 @@ def git_controls(fm, old, check):
         refusal = pair("config include refusal", lambda tool: tool.config_file_problem())
         check("A callers: actual inside-tree config include refuses hook/copy installation", bool(refusal) and "inside the working tree" in refusal)
         call(root, "git", "config", "--unset", "include.path")
-        for name, expected in (("git_version", None), ("built_on", ""), ("head_commit", ""), ("answer_refs", (None, "")),
+        for name, expected in (("git_version", None), ("built_on", ""), ("head_commit", ""),
                                ("default_branch", None), ("promisor_remotes", []), ("install_copy", (4, [f"--install-hook: {root} has no git directory to keep the hooks' copy in"]))):
             outcomes = []
             for tool in (old, fm):
@@ -237,9 +236,9 @@ def svn_probe(source, root, mode):
     try:
         with redirect_stdout(output), redirect_stderr(error):
             if mode == "metadata":
-                results = {"answer_refs": tool.answer_refs(), "git_version": tool.git_version(), "default_branch": tool.default_branch(),
+                results = {"git_version": tool.git_version(), "default_branch": tool.default_branch(),
                            "built_on": tool.built_on(), "head_commit": tool.head_commit(), "promisor_remotes": tool.promisor_remotes(),
-                           "specs_unread": tool.specs_unread(["HEAD:missing"]), "on_their_way": tool.on_their_way([{"id": "WORK-001"}]),
+                           "specs_unread": tool.specs_unread(["HEAD:missing"]),
                            "repos_naming": tool.repos_naming(), "config_file_problem": tool.config_file_problem(), "install_copy": tool.install_copy()[0]}
                 need = {}; tool.recover_from_log(need); results["recover_from_log"] = need; code = 0
             elif mode == "history":
@@ -283,7 +282,7 @@ def svn_controls(fm, old, check):
             value = json.loads(done.stdout); observations.append({"mode": mode, "source": str(source), "result": value}); return value
         got = probe("metadata")
         check("A callers: real no-Git SVN metadata bypasses every Git-only helper without a process attempt", got["code"] == 0 and got["git_absent"] and not got["events"])
-        check("A callers: SVN presentation/not-applicable results are explicit and carry no authority", got["results"] == {"answer_refs": [None, ""], "git_version": None, "default_branch": None, "built_on": "", "head_commit": "", "promisor_remotes": [], "specs_unread": [], "on_their_way": {}, "repos_naming": {}, "config_file_problem": "", "install_copy": 4, "recover_from_log": {}})
+        check("A callers: SVN presentation/not-applicable results are explicit and carry no authority", got["results"] == {"git_version": None, "default_branch": None, "built_on": "", "head_commit": "", "promisor_remotes": [], "specs_unread": [], "repos_naming": {}, "config_file_problem": "", "install_copy": 4, "recover_from_log": {}})
         prior = probe("metadata", old.__file__)
         check("A callers: immutable accepted caller baseline really attempts unavailable Git on ordinary SVN", prior["code"] == -1 and prior["git_absent"] and prior["results"].get("exception") == "FileNotFoundError" and prior["events"] and prior["events"][0][1][0] == "git")
         got = probe("board")
@@ -360,7 +359,13 @@ def cwd_probe(source, root, launch, operation, deleted):
                       "removed_launch": deleted, "identity_preserved": all(not s["inherited"] or s["cwd"] == "<inherited launch cwd>" for s in starts)}))
 
 
-def inherited_cwd_controls(fm, check):
+# A pinned copy takes its commit from its PIN, so `install_copy`, and `install_hook` through it, no longer start `git rev-parse --short HEAD`: their
+# expected starts are the baseline's without that one, counted here for that change, while the baseline itself stays as it is.
+DROPPED_START = ["git", "rev-parse", "--short", "HEAD"]
+STARTS_AFTER = {"install_copy": 6, "install_hook": 13}
+
+
+def inherited_cwd_controls(fm, check, operations=("repos_naming", "install_copy", "install_hook", "svn_last_worked_on"), record=True):
     """RV-3096: actual immutable-before and fixed-after unrelated/deleted cwd."""
     before = baseline_source("43b560037a6d0297578dc5f7f9a7cf6caa02f0ef")
     if os.name == "nt":
@@ -402,7 +407,7 @@ def inherited_cwd_controls(fm, check):
             return got
         def effective(got):
             return [{k: v for k, v in record.items() if k not in ("cwd_raw", "inherited")} for record in got["starts"]]
-        for operation in ("repos_naming", "install_copy", "install_hook", "svn_last_worked_on"):
+        for operation in operations:
             if operation == "svn_last_worked_on":
                 server = base / "server"; wc = base / "wc"
                 call(base, "svnadmin", "create", str(server)); call(base, "svn", "checkout", "-q", server.as_uri(), str(wc))
@@ -420,13 +425,43 @@ def inherited_cwd_controls(fm, check):
             expected = {"WORK-021": ["dep"]} if operation == "repos_naming" else "—" if operation == "svn_last_worked_on" else 0
             result = lambda got: got["result"][0] if operation == "install_copy" and got["exception"] is None else got["result"]
             check("RV-3096: " + operation + " healthy and deleted cwd keep the real accepted result", all(g["exception"] is None and result(g) == expected for g in (old_healthy, new_healthy, new_deleted)))
-            check("RV-3096: " + operation + " keeps full argv/environment/options and effective cwd", effective(old_healthy) == effective(new_healthy) == effective(new_deleted) and new_deleted["starts"] and new_deleted["starts"][0]["cwd_raw"] == "." and new_deleted["starts"][0]["inherited"])
+            kept = [start for start in effective(old_healthy) if operation not in STARTS_AFTER or start["argv"] != DROPPED_START]
+            check("RV-3096: " + operation + " keeps full argv/environment/options and effective cwd", kept == effective(new_healthy) == effective(new_deleted)
+                  and len(kept) == STARTS_AFTER.get(operation, len(kept)) and new_deleted["starts"] and new_deleted["starts"][0]["cwd_raw"] == "." and new_deleted["starts"][0]["inherited"])
             check("RV-3096: " + operation + " mutations stay in the disposable consumer", all(all(path == str(consumer) or path.startswith(str(consumer) + os.sep) for path in g["writes"]) and g["installed_source_exact"] for g in (old_healthy, new_healthy, new_deleted)))
             permitted = (str(root), str(consumer), str(Path(os.__file__).parent))
             check("RV-3096: " + operation + " reads only fixture data and trusted Python runtime", all(all(any(path == prefix or path.startswith(prefix + os.sep) for prefix in permitted) for path in g["reads"]) for g in (old_healthy, new_healthy, new_deleted)))
             if operation in ("repos_naming", "svn_last_worked_on"):
                 check("RV-3096: " + operation + " remains read-only", all(not g["writes"] for g in (old_healthy, new_healthy, new_deleted)))
-        (HERE / ".cache" / "shared-callers-cwd-observations.json").write_text(json.dumps(rows, indent=2) + "\n")
+        if record:
+            (HERE / ".cache" / "shared-callers-cwd-observations.json").write_text(json.dumps(rows, indent=2) + "\n")
+
+
+INHERITED_MUTANTS = (
+    ("the short HEAD start back", '    if pin.exists():\n        manifest, _ = pin_manifest(',
+     '    sha = (git_out("rev-parse", "--short", "HEAD") or "").strip() or "no commit yet"\n    if pin.exists():\n        manifest, _ = pin_manifest('),
+    ("another git start in install_copy", '    branch = (git_out("branch", "--show-current") or "").strip()\n    default = default_branch()',
+     '    git_out("rev-parse", "HEAD")\n    branch = (git_out("branch", "--show-current") or "").strip()\n    default = default_branch()'),
+)
+
+
+def inherited_cwd_mutants(fm, check):
+    """Each mutant of `install_copy`'s git starts turns the exact comparison of the starts red, for `install_copy` and for `install_hook`."""
+    if os.name == "nt":
+        print("SKIP RV-3096 deleted launch cwd mutants: Windows prevents deleting an in-use cwd; native qualification remains separate")
+        return
+    source = Path(fm.__file__).read_text(encoding="utf-8")
+    for name, old, new in INHERITED_MUTANTS:
+        if source.count(old) != 1:
+            check("RV-3096 mutant · " + name + " · its mutation site exists once", False)
+            continue
+        seen = {}
+        with tempfile.TemporaryDirectory() as temp:
+            mutant = Path(temp) / "shoalmark.py"
+            mutant.write_text(source.replace(old, new, 1), encoding="utf-8")
+            inherited_cwd_controls(load(mutant), lambda label, ok: seen.__setitem__(label, bool(ok)), operations=("install_copy", "install_hook"), record=False)
+        rows = [seen.get("RV-3096: " + operation + " keeps full argv/environment/options and effective cwd") for operation in ("install_copy", "install_hook")]
+        check("RV-3096 mutant · " + name + " · the starts row fails for install_copy and for install_hook", rows == [False, False])
 
 
 def run_shared_caller_controls(fm, check, baseline=None):
@@ -435,6 +470,7 @@ def run_shared_caller_controls(fm, check, baseline=None):
     git_controls(fm, old, check)
     svn_controls(fm, old, check)
     inherited_cwd_controls(fm, check)
+    inherited_cwd_mutants(fm, check)
 
 
 if __name__ == "__main__":

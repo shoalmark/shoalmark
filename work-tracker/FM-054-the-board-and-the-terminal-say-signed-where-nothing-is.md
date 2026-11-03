@@ -1,6 +1,6 @@
 ---
 id: FM-054
-status: In Progress
+status: Shipped
 considered: FM-007, FM-015, FM-030, FM-037
 tags: bug
 next: build
@@ -12,6 +12,11 @@ hook: "The board's answer dialog and the terminal say signed on every repository
 # FM-054 — the board and the terminal say signed where nothing is signed
 
 ## What is true now
+
+**2026-11-03 — Shipped in v0.20.1,** on the Owner's word of 2 November. Built in `e80d080`, with the proof controls in
+`970c9fd` and the mismatch refusal in `19be2b3`, READY at `a5dba83`, joined by `23a964d`, and on main with v0.20.1
+(`daf3cea`, #212). Every surface and `--answer` read the default branch's proof the same way, and the class table with
+its mutants runs in CI's full suite.
 
 **Judged 2026-10-15: In Progress, P1.** It is built on `fm/054-proof` for v0.20.1, first, with the board's proof line
 beside it (FM-007).
@@ -53,8 +58,9 @@ table of 2026-10-15).
 
 ## Done when
 
-Every surface says *signed* only where the default branch's `owner` line requires it, `--answer` decides `-S` from
-the same reading and says so where this checkout's configuration differs, and the class table with its mutant is in CI.
+- [x] Every surface says *signed* only where the default branch's `owner` line requires it, `--answer` decides `-S`
+  from the same reading and says so where this checkout's configuration differs, and the class table with its mutant
+  is in CI. · `e80d080`, `970c9fd`, `19be2b3`, `23a964d`
 
 ## Ship log
 
@@ -63,3 +69,4 @@ the same reading and says so where this checkout's configuration differs, and th
 | 2026-10-15 | Filed. |
 | 2026-10-15 | Judged In Progress, P1, for v0.20.1, on `fm/054-proof`. |
 | 2026-10-15 | Built on `fm/054-proof` by the Builder seat (27f31560/builder-11): `e80d080` defect 8, `970c9fd` the proof line (FM-007), `e110989` the Git entry differential's allowance for both; not merged. |
+| 2026-11-03 | **Shipped in v0.20.1,** on the Owner's word of 2 November: built in `e80d080`, joined by `23a964d`, on main as `daf3cea` (#212). Records only. |

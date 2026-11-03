@@ -127,7 +127,7 @@ SAFE_READS = False
                 child_env["SHOALMARK_BOARD_SECONDS"] = bounded
             started = time.monotonic()
             result = subprocess.run([sys.executable, "-I", str(tools[kind]), *argv], cwd=base,
-                                    env=child_env, capture_output=True, text=True, encoding="utf-8", timeout=12)
+                                    env=child_env, capture_output=True, text=True, encoding="mbcs" if os.name == "nt" and "--tsvn-hook" in argv else "utf-8", timeout=12)
             return result, time.monotonic() - started
 
         classes = (("copy", ["--session-check"], "hook"),
@@ -189,8 +189,11 @@ SAFE_READS = False
                 passed = (result.returncode == 0 and not result.stderr and elapsed >= 2
                           and json.loads(result.stdout) == expected)
             else:
+                expected_line = BOARD_LINE if run == "board" else HOOK_LINE
+                if os.name == "nt" and "--tsvn-hook" in argv:
+                    expected_line = expected_line.encode("mbcs", errors="replace").decode("mbcs")
                 passed = (result.returncode == 4 and not result.stdout
-                          and result.stderr == (BOARD_LINE if run == "board" else HOOK_LINE))
+                          and result.stderr == expected_line)
             check(label + " (exit %d, %.3f s)" % (result.returncode, elapsed), passed)
         # The last bounded run's child is finite but outlives its stopped parent.
         # Wait for it before removing the fixture and handing back.

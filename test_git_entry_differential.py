@@ -60,7 +60,8 @@ DAY_KEYS = ("day.standup.title", "day.standup.row", "day.standup.button", "day.s
             "day.closeout.button", "day.closeout.spoken", "day.standup.dialog", "day.closeout.dialog", "day.paste", "day.asks", "day.standup.asks",
             "day.closeout.asks", "day.runs", "day.standup.runs", "day.closeout.runs", "day.fixed", "day.refused",
             "day.refused.chars", "day.refused.long", "day.refused.none", "day.refused.split", "day.value.name", "day.value.path", "day.value.cmd",
-            "day.value.branch", "day.copied", "day.nocopy", "day.copy")
+            "day.value.branch", "day.copied", "day.nocopy", "day.copy", "day.standup.asks.svn", "day.standup.asks.folder", "day.standup.runs.git",
+            "day.standup.runs.svn", "day.standup.runs.folder", "day.standup.runs.local")
 DAY_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in DAY_KEYS)
 DAY_SIGN = (b'      clip(d,line);d.querySelector(".go").focus()};\n',
             b'      const out=d.querySelector(".said"),copy=()=>(navigator.clipboard?.writeText?navigator.clipboard.writeText(line):Promise.reject())\n'
@@ -775,8 +776,38 @@ def fm053_schema(stdout):
     return stdout
 
 
+# the board, `--owner` and `--standup` read no answer branch: `--schema`'s rows of `answer:`, `due:` and `done:` no longer say one is read on its way
+# from `answer/<id>`, and say where the Owner's command commits — each old text once in the baseline's, new for old
+R4_SCHEMA_EDITS = (
+    ('Until their merge, an answer on an `answer/<id>` not merged into the default branch reads *answered, on its way* on the board, in `--owner` and in `--standup`, and the ask leaves their queue (FM-030); `--revoke <id> "<why>"` takes it back there, on top of it',
+     '`--answer` commits it on the branch the Owner stands on and pushes nothing: it counts once that commit is on the default branch. `--revoke <id> "<why>"` takes it back the same way'),
+    ("Moved by the Owner's `--due` and not merged yet, the new time is their act on its way: the board, `--owner` and `--standup` read it from `origin/answer/<id>` as *rescheduled, on its way — due <time>*, and the act leaves their list of acts until the merge — a `--due` after a done act too, never *done revoked*",
+     "The Owner's `--due` moves it in a commit on the branch they stand on"),
+    ('Until their merge, a `done:` on an `answer/<id>` not merged reads *done, on its way* and the act leaves their list (FM-030); `--revoke <id> "<why>"` takes it back — `done:` leaves, the revocation is recorded under `## Acts`, the act is owed again — on that branch, on top of it',
+     '`--revoke <id> "<why>"` takes it back — `done:` leaves, the revocation is recorded under `## Acts`, the act is owed again — in a commit on the branch the Owner stands on'),
+)
+
+
+# an ask carries its own id: `--schema` names the `ask-id:` key in a row of its own, right after `considered:`'s, whatever kinds that row names
+ASK_ID_SCHEMA_ROW = "| `ask-id:` | free text | the seat that puts the ask to the Owner — minted with `next: owner`; a draft (`next: review`) has none | the put ask's own id, `<ITEM>-Q<n>` — this tracker's id, then `-Q` and a number from 1 with no leading zero — on the line above `ask:`. An answer names it, and binds the whole put ask: `ask:`, `ask-proposal:`, `ask-options:` and `ask-kind:` never change under it. To change a put ask, `--clear-ask` writes the old id's record and the changed ask is put under the next number. Never reused: the next number is one more than the highest the tracker has used — in its front matter, in its records under `## Asks`, and on git in the file's history. What *never reused* can claim: on git, the file, its history reachable from HEAD, and the default branch's copy, its open ask and its records — a number minted on a branch this clone has not fetched is not seen until it is; on Subversion, the file and the log of its path, whose messages are read for the id — name it in the message that puts the ask — and a number written and removed in revisions whose messages do not name it is not seen; with no version control, the file alone — a number removed without its record, and two copies of the folder that each mint a number, are not seen. An ask open without an id is an ask before ask ids, answered by its tracker's id as before |"
+
+
+def r4_schema(stdout):
+    """The baseline's stdout with this lane's schema edits applied: R4_SCHEMA_EDITS in order, each to text that occurs exactly once, then
+    ASK_ID_SCHEMA_ROW after the one row of the `considered:` key — else None."""
+    for old, new in R4_SCHEMA_EDITS:
+        if stdout is None or stdout.count(old) != 1:
+            return None
+        stdout = stdout.replace(old, new)
+    lines = stdout.split("\n")
+    at = [i for i, line in enumerate(lines) if line.startswith("| `considered:` |")]
+    if len(at) != 1:
+        return None
+    return "\n".join(lines[:at[0] + 1] + [ASK_ID_SCHEMA_ROW] + lines[at[0] + 1:])
+
+
 def schema_matches(before, after):
-    staged = fm053_schema(before["stdout"])
+    staged = r4_schema(fm053_schema(before["stdout"]))
     return staged is not None and d_batch_schema_matches(dict(before, stdout=staged), after)
 
 
@@ -799,6 +830,37 @@ FM057_READS = FM057_MOVED + (("diff", "--cached", "--name-only", "--no-renames",
                              ("ls-files", "-z", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory"))
 FM057_KEYS = {"built_at", "vcs", "branch", "changes"}
 PAGE_ROWS = re.compile(rb"\bT=\[\n(.*?)\n\];", re.S)
+
+
+def page_json(value):
+    """JSON as the tool writes it into the page's script (`script_json`): `<`, `>`, `&` and the two line separators as `\\u` escapes."""
+    return (json.dumps(value, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+
+
+def rows_with_ids(block):
+    """The page's rows (`T=[…]`'s lines) with each row's ask cell, its 30th item, carrying the ask's id last — "" for an ask put before ids,
+    as every ask of the baseline's is — written as the tool writes a row. None where a row is not one of twelve-item ask cells."""
+    out = []
+    for line in block.decode("utf-8").split("\n"):
+        body, comma = (line[:-1], ",") if line.endswith(",") else (line, "")
+        try:
+            row = json.loads(body)
+        except ValueError:
+            return None
+        if not (isinstance(row, list) and len(row) > 29 and isinstance(row[29], list) and len(row[29]) == 12):
+            return None
+        out.append(page_json(row[:29] + [row[29] + [""]] + row[30:]) + comma)
+    return "\n".join(out).encode("utf-8")
+
+
+def ask_id_rows(page):
+    """The baseline's page with `rows_with_ids` applied to its rows — the page unchanged where it holds no rows, None where a row does not fit."""
+    m = PAGE_ROWS.search(page)
+    if not m:
+        return page
+    block = rows_with_ids(m.group(1))
+    return None if block is None else page[:m.start(1)] + block + page[m.end(1):]
 
 
 def git_words(row):
@@ -858,6 +920,34 @@ def edit_read(words):
 
 def edit_reads(rows):
     return sum(edit_read(git_words(row)) for row in rows)
+
+
+def answers_undone(rows):
+    """The baseline's starts or calls with each read of origin's answer branches removed — `for-each-ref` of `refs/remotes/origin/answer/`,
+    which the board, `--owner` and `--standup` no longer start. Every other start and call stays, in order."""
+    return [row for row in rows if not (git_words(row)[:1] == ("for-each-ref",) and "refs/remotes/origin/answer/" in git_words(row))]
+
+
+ID_HEAD_READ = ("rev-parse", "--verify", "-q", "HEAD")
+
+
+def id_head_read(row):
+    """Whether a start or call is the id rules' read of HEAD: that argv exactly, from `head_commit` as `id_walk_problems` calls it."""
+    stack = row.get("product_stack") or []
+    return git_words(row) == ID_HEAD_READ and any(a == "id_walk_problems" and b == "head_commit" for a, b in zip(stack, stack[1:]))
+
+
+def id_rules_undone(rows):
+    """The candidate's starts or calls with the id rules' one read taken out: the first `id_head_read`, which `id_walk_problems` starts in the
+    commit being made to tell a repository's first commit, which has no parent to judge against. Every other start and call stays, in
+    order — a second such read, and the same read from any other caller, included."""
+    out, taken = [], False
+    for row in rows:
+        if not taken and id_head_read(row):
+            taken = True
+            continue
+        out.append(row)
+    return out
 
 
 def origin_undone(rows):
@@ -944,7 +1034,7 @@ def fm057_board(baseline, candidate):
         when = datetime.datetime.fromisoformat(new.get("built_at", ""))
     except (ValueError, TypeError, AttributeError):
         return False
-    return (all(rows) and rows[0].group(1) == rows[1].group(1) and isinstance(old, dict) and isinstance(new, dict)
+    return (all(rows) and rows[1].group(1) in (rows[0].group(1), rows_with_ids(rows[0].group(1))) and isinstance(old, dict) and isinstance(new, dict)
             and set(new) == set(old) | FM057_KEYS and not set(old) & FM057_KEYS and all(new[key] == old[key] for key in old)
             and new["vcs"] == "git" and (new["changes"] is None if "--html-only" in (candidate.get("flags") or []) else
                                          isinstance(new["changes"], int) and not isinstance(new["changes"], bool) and new["changes"] >= 0)
@@ -983,14 +1073,26 @@ FM057_KEYS_SHOWN = ("read.git.branch", "read.git.detached", "read.git.unborn", "
                     "read.about", "read.about.git", "read.about.svn", "read.about.none", "link.unpushed", "link.noforge", "link.unknown", "link.noviewer",
                     "link.nocommit", "read.copied")
 FM057_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": ' + _J) for k in FM057_KEYS_SHOWN)
+# the read-at fold's edits to the read-at line's own text on the page — (the text as the read-at line's allowance pins it, the candidate's), literal,
+# each after standing once on the candidate's page: the fold's wrapping rule beside the read-at line's rules, and the plain folder's fold label, which
+# names the folder's path. Each is put back as pinned before the read-at line's parts are taken out
+READ_AT_FOLD_EDITS = (
+    ('details.about[open]>summary:before{content:"v ";content:"v " / ""}\n',
+     'details.about[open]>summary:before{content:"v ";content:"v " / ""}details.about .help{overflow-wrap:anywhere}\n'),
+    ('"read.about.none": "read from the folder at {0}"', '"read.about.none": "read from the folder {1} at {0}"'),
+)
 
 
 def fm057_page_dropped(data):
     """The candidate's board page without the read-at line's parts, each taken out exactly once as specified above — the style line, the read-at
-    line and its fold, the three script lines, the twenty-five words — and the reload's comment put back as the baseline's. None where any part is
-    not there exactly once as written."""
+    line and its fold, the three script lines, the twenty-five words — and the reload's comment put back as the baseline's; before that, each of
+    READ_AT_FOLD_EDITS' afters put back as its before. None where an after or a part is not there exactly once as written."""
     if data is None:
         return None
+    for old, new in READ_AT_FOLD_EDITS:
+        if data.count(new.encode("utf-8")) != 1:
+            return None
+        data = data.replace(new.encode("utf-8"), old.encode("utf-8"), 1)
     for line in FM057_PAGE_LINES:
         if data.count(line + b"\n") != 1:
             return None
@@ -1005,6 +1107,8 @@ def fm057_page_dropped(data):
 
 
 def day_dropped(data, script=DAY_SCRIPT, sign=DAY_SIGN):
+    if data is None:
+        return None
     for line in script:
         if data.count(line + b"\n") != 1:
             return None
@@ -1023,6 +1127,72 @@ def day_dropped(data, script=DAY_SCRIPT, sign=DAY_SIGN):
 DAY_SCRIPT_JOINED = DAY_SCRIPT[:7]
 day_dropped_joined = lambda data: day_dropped(data, DAY_SCRIPT_JOINED, None)
 
+RESUME_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
+    'details.grp .rsc:not([hidden]){display:block;padding-left:2ch;user-select:all;overflow-wrap:anywhere}details.grp .said{margin-left:1ch}details.grp .rw{margin-left:1ch}',
+    'details.grp .rw:not(.hot){color:var(--dim)}details.grp .help{margin-left:4ch}details.grp .rsc:not([hidden])+.said{display:block;margin-left:0;padding-left:2ch}',
+    'rse=id=>{const m=REG&&REG.resume,r=m&&Object.prototype.hasOwnProperty.call(m,id)?m[id]:null;return Array.isArray(r)&&["resume","two","nofolder","unread","refused"].includes(r[0])?r:null},',
+    'rsm=id=>{const r=rse(id);return !r?"":r[0]=="resume"?`<button type="button" class="act" title="${l("resume.help")}" aria-label="${l("resume.spoken",id)}" onclick="RSM(event,this)">${ICO.copy}${l("resume.button")}</button><code class="rsc" hidden onclick="event.preventDefault()">${esc(r[1])}</code><span class="said" aria-live="polite"></span>`',
+    '  :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):r[0]=="unread"?l("resume.unread"):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},',
+    '// a click inside a `<summary>` folds or unfolds its `<details>`, and a page opened from a file often has no clipboard',
+    'function RSM(e,b){e.preventDefault();const c=b.nextElementSibling,s=c.nextElementSibling;(navigator.clipboard?.writeText?navigator.clipboard.writeText(c.textContent):Promise.reject())',
+    '  .then(()=>{c.hidden=true;s.innerHTML=`<span class="go">${ICO.check}${l("resume.copied")}</span>`},()=>{c.hidden=false;s.innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`})}',
+    '      +(rse(g[0])?.[0]=="resume"?`<p class="help">${l("resume.help")}</p>`:"")',
+))
+RESUME_STRIP = (b"(${esc(g[2])})${rsm(g[0])}${g[3].length", b"(${esc(g[2])})${g[3].length")
+# The resume command's words, each key with its English text and its German one (examples/de/labels.yaml), written out here and never read
+# from the tool. A key is taken out with one of its two texts, as the page's script holds it: a JSON string, its letters as they are (no
+# text holds `<`, `>` or `&`).
+RESUME_WORDS = {
+    "resume.button": ("resume command", "Fortsetzungsbefehl"),
+    "resume.spoken": ("copy the command that resumes session {0}", "den Befehl kopieren, der die Session {0} fortsetzt"),
+    "resume.help": ("for a session that is no longer open: the board cannot see whether one is",
+                    "für eine Session, die nicht mehr offen ist: das Board kann nicht sehen, ob sie es ist"),
+    "resume.copied": ("the command is on your clipboard · run it in a terminal, only for a session that is no longer open",
+                      "der Befehl ist in deiner Zwischenablage · führe ihn in einem Terminal aus, nur für eine Session, die nicht mehr offen ist"),
+    "resume.two": ("no resume command: {0} logs on this machine start with {1}, and the board does not pick one",
+                   "kein Fortsetzungsbefehl: {0} Protokolle auf diesem Rechner beginnen mit {1}, und das Board wählt keines aus"),
+    "resume.nofolder": ("no resume command: its log names no folder in its first {0} MiB",
+                        "kein Fortsetzungsbefehl: ihr Protokoll nennt in seinen ersten {0} MiB keinen Ordner"),
+    "resume.unread": ("no resume command: its log could not be read", "kein Fortsetzungsbefehl: ihr Protokoll konnte nicht gelesen werden"),
+    "resume.refused": ("no resume command: its folder {0} {1}", "kein Fortsetzungsbefehl: ihr Ordner {0} {1}"),
+    "resume.refused.chars": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : -",
+                             "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : -"),
+    "resume.refused.chars.nt": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : - and the backslash",
+                                "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : - "
+                                "und der Rückstrich"),
+    "resume.refused.long": ("is longer than {0} characters", "ist länger als {0} Zeichen"),
+    "resume.refused.relative": ("is not an absolute path", "ist kein absoluter Pfad"),
+    "read.about.logs": ("for each session's resume command: the names of the logs in ~/.claude/projects and ~/.codex/sessions, and the folder its "
+                        "first turn ran in: never what a session said",
+                        "für den Fortsetzungsbefehl jeder Session: die Namen der Protokolle in ~/.claude/projects und ~/.codex/sessions und der "
+                        "Ordner, in dem ihr erster Zug lief: nie, was eine Session sagte"),
+}
+RESUME_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": (?:'
+                                 + b"|".join(re.escape(json.dumps(text, ensure_ascii=False).encode("utf-8")) for text in texts) + rb")")
+                      for k, texts in RESUME_WORDS.items())
+RESUME_READ_AT = ((" · " + RESUME_WORDS["read.about.logs"][0] + "</p></details>").encode("utf-8"), b"</p></details>")
+
+
+def resume_dropped(data):
+    """The candidate's board page without the resume command's parts — its style lines, its script lines and its comment, its call in the
+    strip's row, its item in the fold of what the page reads, its words — each taken out exactly once as written above. None where any part
+    is not there exactly once."""
+    if data is None:
+        return None
+    for line in RESUME_PAGE_LINES:
+        if data.count(line + b"\n") != 1:
+            return None
+        data = data.replace(line + b"\n", b"\n", 1)
+    for old, new in (RESUME_STRIP, RESUME_READ_AT):
+        if data.count(old) != 1:
+            return None
+        data = data.replace(old, new, 1)
+    for pattern in RESUME_LABELS:
+        data, n = pattern.subn(b"", data)
+        if n != 1:
+            return None
+    return data
+
 PROOF_MARK = b',PROOF={"state": '
 FM054_READS = (("symbolic-ref",), ("rev-parse",), ("config", "--get"), ("cat-file", "--batch"), ("ls-tree",))
 # FM-054's and FM-007's changes to the page of this fixture, as reviewed — (the baseline's text, the candidate's), each anchored on text
@@ -1035,7 +1205,7 @@ FM054_PAGE_EDITS = (
     ('"answer.sign.step.commit": "commits them, signed with your key — a hardware key waits for your touch"',
      '"answer.sign.step.commit": "commits them, signed with your key"'),
     ('"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.done": ',
-     '"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.give.title": "Give your answer", "act.give.title": "Record your act", "answer.give.intro": "Your decision is made. A browser cannot write it into the repository — your terminal does, as you. Run this command:", "answer.give.step.commit": "commits them as you: this repository asks for no signature, so the commit proves the author only", "answer.give.step.commit.login": "the commit\'s author is your server login, as Subversion records it — with no signature", "answer.give.step.commit.none": "with no version control, nothing records who wrote them", "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.", "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.", "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}", "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author", "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name", "answer.done": '),
+     '"answer.sign.url": "https://shoalmark.github.io/shoalmark/signing.html", "answer.give.title": "Give your answer", "act.give.title": "Record your act", "answer.give.intro": "Your decision is made. A browser cannot write it into the repository — your terminal does, as you. Run this command:", "answer.give.step.commit": "commits them as you: this repository asks for no signature, so the commit proves the author only", "answer.give.step.commit.login": "the commit\'s author is your server login, as Subversion records it — with no signature", "answer.give.step.commit.none": "with no version control, nothing records who wrote them", "answer.give.check.text": "{0} prints your name — the author git reports, a string anyone can type.", "answer.give.fail.text": "It prints what refused it and takes back what it wrote; your words are printed again, with the command that gives them.", "proof.here": "your answers here: {0}", "proof.dialog": "your answer here: {0}", "proof.signed": "signed", "proof.author": "author only", "proof.login": "server login", "proof.none": "no author", "proof.author.why": "an answer here proves the author only: any session that can commit here can write one in your name", "proof.login.why": "this local run cannot verify commit signatures or server-authenticated author identities", "answer.done": '),
     ('"viewer.none_in_progress": "none in progress"},BRANCH=',
      '"viewer.none_in_progress": "none in progress"},PROOF={"state": "author", "keys": {"title": "answer.give.title", "act": "act.give.title", "intro": "answer.give.intro", "commit": "answer.give.step.commit", "check": "answer.give.check.text", "fail": "answer.give.fail.text"}, "said": "author only", "format": "%an", "word": "proof.author", "why": "proof.author.why"},BRANCH='),
     ('    // three lines, commits SIGNED and pushes. A browser cannot sign; the dialog decides, the terminal signs.\n',
@@ -1054,7 +1224,24 @@ FM054_PAGE_EDITS = (
 
 
 def fm054_own(rows):
-    return [row for row in rows if "proof_reading" not in (row.get("product_stack") or [])]
+    """The rows made neither by the reading of the default branch's configuration (`proof_reading`) nor by the stand-up's
+    variant (`day_vcs`): the baseline makes neither."""
+    return [row for row in rows if not {"proof_reading", "day_vcs"} & set(row.get("product_stack") or [])]
+
+
+DAY_READ = ("config", "--local", "--get", "remote.origin.url")
+DAY_READ_CASES = ("clean-default-origin", "dirty-default-fallback")
+
+
+def day_reads(rows):
+    """The starts, or `subprocess.run` calls, the stand-up's variant makes: those with `day_vcs` on the tool's own stack."""
+    return [row for row in rows if "day_vcs" in (row.get("product_stack") or [])]
+
+
+def day_read(argv):
+    """Whether one argv is the stand-up's one read: git, then DAY_READ and nothing else."""
+    argv = [str(a) for a in argv] if isinstance(argv, list) else []
+    return len(argv) == 1 + len(DAY_READ) and Path(argv[0]).name.lower() in ("git", "git.exe") and tuple(argv[1:]) == DAY_READ
 
 
 def fm054_reads(rows):
@@ -1192,18 +1379,193 @@ BOARD_POLISH_EDITS = (
 )
 
 
+# the board, --owner and --standup read no answer branch: the rows on their way, the revoke dialog and their labels go
+R4_BOARD_EDITS = (
+    ("//        and ONLY where their act or answer is on its way (FM-030, `on_their_way`): [kind — done · answer · revoked · undone · due, answer/<id>, its tip, the commit that wrote it, that commit's time, %G?, --queue's reading of it, their promise or their answer, the question, the done:, answer: or due: as written, 1 where the tip carries an answer main lacks, 1 where the act stays on their list, the due: on its way, what follows the label]]\n",
+     ''),
+    ("// THE OWNER'S BOX (the design guide, §1, §6, §8): its sections in the guide's order — waiting for you, your acts, what is on its way, the day, the\n",
+     "// THE OWNER'S BOX (the design guide, §1, §6, §8): its sections in the guide's order — waiting for you, your acts, the day, the\n"),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${kind.startsWith("revoke")?lh("way.sign.step.on",c(br)):lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind.replace("revoke.","")+":"),c("## Acts"))}</li>\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n'),
+    ('// FM-030, their signed answer 920970b7: on what is on its way, *revoke* in the place of the buttons — one field, why; OK gives\n// ONE command, `--revoke <id> "<why>"`, on the same second screen: it commits on top of their act, on its branch\nconst rev=t=>{const d=$("dlg"),id=t[0],w=t[31],cmd="shoalmark";\n  d.innerHTML=`<form method="dialog"><h3>${l("way.revoke.title")} · <a href="#=${id}">${id}</a></h3>\n    <p class="dq">${esc(w[7])}</p>${w[8]?`<p class="ddim">${l("acts.asked",w[8])}</p>`:""}<p class="m ddim">${l("way."+w[0])} · ${esc(w[1])} @ ${esc(w[3].slice(0,7))}</p>\n    <textarea name="text" rows="2" placeholder="${l("way.revoke.hint")}" required></textarea>\n    <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;\n  const f=d.querySelector("form");\n  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const why=String(f.text.value).trim().replace(/\\s+/g," ").replace(/"/g,"\'");\n    sign(d,id,`${cmd} --revoke ${id} ${sq(why)}`,w[0]=="done"?`done revoked: ${why}`:`answered: revoked - ${why}`,w[0]=="done"?"revoke.done":"revoke.answer")};\n  d.showModal()};\nwindow.ACT=act;window.OWE=owe;window.REV=rev;\n',
+     'window.ACT=act;window.OWE=owe;\n'),
+    ('  const all_=T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]&&!(t[31]&&t[31][10])),w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);\n',
+     '  const all_=T.filter(t=>OPEN.has(t[2])&&t[21]=="owner"&&!t[29][4]),w=all_.filter(t=>!t[29][7].length),sent=all_.filter(t=>t[29][7].length);\n'),
+    ('  const acts=T.filter(t=>t[30].length&&!(t[31]&&!t[31][11]));\n',
+     '  const acts=T.filter(t=>t[30].length);\n'),
+    ('  // FM-030, their signed answer 920970b7: the board reads git. What they did and pushed on `answer/<id>` is here, not in the two\n  // lists above, until their merge — their promise or their answer first, what it is, the branch, the commit, its time, whether it\n  // verifies, and that their merge is next\n  const way=T.filter(t=>t[31]);\n  if(way.length)S.push(sec(hd("h2",`${l("way.title")}: ${way.length}`,""),way.map(t=>{const w=t[31];\n    return row(idl(t[0]),esc(w[7]),l(w[0]=="answer"||w[0]=="revoked"?"type.answer":"type.act"),\n      `<b class="go">${l("way."+w[0])}</b>`+(w[13]?" — "+esc(w[13]):w[12]?" — "+l("acts.due",w[12].replace("T"," ")):"")\n        +` · ${esc(w[1])} @ ${esc(w[3].slice(0,7))} · ${esc(w[4].slice(0,16).replace("T"," "))} · ${w[6].startsWith("merge")?`<b class="go">${l("way.signed")}</b>`:`<span class="hot">${l("way.unverified",w[6].replace(/^wait: /,""))}</span>`} · ${w[14]?l("way.held",w[14].replace(/^wait: /,"")):l("way.merge")}`,\n      w[0]=="done"||w[0]=="answer"?btn("way.revoke",t[0],`REV(T.find(x=>x[0]==\'${t[0]}\'))`):"",\n      w[8]?`<span class="aq">${l("acts.asked",w[8])}</span>`:"")}).join("")));\n',
+     ''),
+    ('"way.title": "on their way", ',
+     ''),
+    ('"way.merge": "your merge is next", ',
+     ''),
+    ('"way.held": "your merge waits: {0}", ',
+     ''),
+    ('"way.done": "done, on its way", ',
+     ''),
+    ('"way.answer": "answered, on its way", ',
+     ''),
+    ('"way.revoked": "revoked, on its way", ',
+     ''),
+    ('"way.undone": "done revoked, on its way", ',
+     ''),
+    ('"way.due": "rescheduled, on its way", ',
+     ''),
+    ('"way.signed": "signed", ',
+     ''),
+    ('"way.unverified": "not verified here: {0}", ',
+     ''),
+    ('"way.revoke": "revoke", ',
+     ''),
+    ('"way.revoke.title": "revoke — why?", ',
+     ''),
+    ('"way.revoke.hint": "why you take it back — the record keeps it beside what it revokes", ',
+     ''),
+    ('"way.sign.step.on": "commits on {0}, where it is on its way — one branch per exchange", ',
+     ''),
+    ('"act.sign.step.revoke.done": "removes {0} and records the revocation under {1} — the act is owed again", ',
+     ''),
+    ('"act.sign.step.revoke.answer": "writes {0} as revoked — the answer it takes back goes into the ship log", ',
+     ''),
+)
+
+
+# the second screen commits on the branch the Owner stands on: no branch cut, nothing pushed, and the step that says when it counts
+R4_DIALOG_EDITS = (
+    ('const sign=(d,id,line,said,kind="answer")=>{const br=`answer/${id.toLowerCase()}`,c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n',
+     'const sign=(d,id,line,said,kind="answer")=>{const c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;\n'),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${lh("answer.sign.step.cut",c(br))}</li><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.push")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, on \\`${br}\\`, pushed`)}</pre>`:""}\n    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format} ${br}`),c("G"))}</p>`:""}\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n    ${PROOF.said?`<h4>${l("answer.sign.success")}</h4><pre>${esc(`${id} ${kind=="answer"?"answered: ":""}${said}\\n  ${PROOF.said}, committed on ${BRANCH?`\\`${BRANCH}\\``:"a detached HEAD"} as …`)}</pre>`:""}\n    ${P.check?`<h4>${l("answer.sign.check")}</h4><p>${lh(P.check,c(`git log -1 --format=${PROOF.format}`),c("G"))}</p>`:""}\n'),
+    ('"act.sign.step.due": "writes the new {0}, and the old one into the record under {1} — the board reads it rescheduled, on its way, until your merge"',
+     '"act.sign.step.due": "writes the new {0}, and the old one into the record under {1}"'),
+    ('"answer.sign.step.cut": "cuts {0} from the branch you are on", ',
+     ''),
+    ('"answer.sign.step.push": "pushes the branch", ',
+     ''),
+    ('"answer.sign.slow": "It prints each step as it starts, and it may take a while: the checkout and the commit each run the gate over every tracker."',
+     '"answer.sign.slow": "It prints each step as it starts, and it may take a while: the commit runs the gate over every tracker."'),
+    ('"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", ',
+     '"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", "answer.sign.step.lands": "it counts once that commit is on the default branch: push it, or merge the branch that carries it", '),
+)
+
+
+# an ask carries its own id: the row names it, the headings and the second screen's steps name it, and an ask put before ids says so
+ASK_ID_EDITS = (
+    ('//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words] — FM-029],\n',
+     '//        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask\'s id — "" before ask ids],\n'),
+    ('const act=(t,kind)=>{const d=$("dlg"),id=t[0],[ask,k,since,held,,prop,opts]=t[29],cmd="shoalmark";\n',
+     'const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[29][12]||t[0],cmd="shoalmark";\n'),
+    ('  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${id}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>\n',
+     '  d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${t[0]}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>\n'),
+    ('  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id}">${id}</a></h3>\n',
+     '  d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id.replace(/-Q\\d+$/,"")}">${id}</a></h3>\n'),
+    ('    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id)?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li><li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n',
+     '    <h4>${l("answer.sign.does")}</h4><ol><li>${kind=="answer"?lh("answer.sign.step.write",c("answer:"),c("answered:"),c("answered-by:"),c("next: "+(byId.get(id.replace(/-Q\\d+$/,""))?.[29][1]=="action"?"owner":"build"))):lh("act.sign.step."+kind,c(kind+":"),c("## Acts"))}</li>\n    <li>${l(P.commit)}</li>${kind=="answer"&&/-Q\\d+$/.test(id)?`<li>${lh("answer.sign.step.names",c("Answers: "+id))}</li>`:""}<li>${l("answer.sign.step.lands")}</li></ol><p class="ddim">${l("answer.sign.slow")}</p>\n'),
+    ('    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):""].filter(Boolean).join(" · "),\n',
+     '    (w.length&&PROOF.why?`<p class="cq">${l(PROOF.why)}</p>`:"")+w.slice(0,14).map(t=>row(t[29][12]?`<a href="#=${t[0]}">${t[29][12]}</a>`:idl(t[0]),t[29][0]?esc(t[29][0]):`<i>${l("waiting.unasked")}</i> — ${esc(t[6])}`,t[29][1]?l("ask."+t[29][1]):"",\n      [days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),\n'),
+    ('  const q=$("q").value.trim(),hood=q[0]=="~"&&byId.get(q.slice(1).toUpperCase()),exact=!hood&&byId.get(q.toUpperCase()),words=q.toLowerCase().split(/\\s+/).filter(Boolean);\n',
+     '  const q=$("q").value.trim(),own=s=>s.toUpperCase().replace(/^([A-Z][A-Z0-9]*-\\d+)-Q\\d+$/,"$1"),hood=q[0]=="~"&&byId.get(own(q.slice(1))),exact=!hood&&byId.get(own(q)),words=q.toLowerCase().split(/\\s+/).filter(Boolean);\n'),
+    ('"waiting.unasked": "not yet stated as a question", ',
+     '"waiting.unasked": "not yet stated as a question", "ask.legacy": "asked before ask ids", '),
+    ('"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", ',
+     '"answer.sign.step.commit": "commits them, signed with your key — it may ask you to confirm", "answer.sign.step.names": "its message names the ask it answers: {0}", '),
+)
+
+
+# a shut group of the work table is its heading alone: its paragraph, the newest pass under `triaged` or a story's state, folds with its rows
+GROUP_FOLD_EDITS = (
+    ("what is kept and what is owed stay open; `triaged` keeps its pass paragraph\n",
+     "what is kept and what is owed stay open; a shut group is its heading alone: its paragraph (the newest pass, a story's state) folds with its rows\n"),
+    ("</tr>${state}`;   // a header sums its rows up by the board's columns\n", "</tr>`;   // a header sums its rows up by the board's columns\n"),
+    ('    return head+(folded?"":g.map(t=>', '    return head+(folded?"":state+g.map(t=>'),
+)
+
+
+# a seat's icon in today's session row: the row's rules and the slot, the tool's seven icons in the page's data, and the icon before the
+# seat's word, found by its exact word
+SEAT_ICON_EDITS = (
+    ('details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}\n',
+     'details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}\n/* a seat\'s icon in a session\'s row: 20 px, grey, without its ground; inverted on the light board; paper draws none and keeps its slot. The dark rule is the page\'s\n   own, so the switch reaches it; a word outside the seven keeps the slot, empty */\n.seat{display:inline-block;width:20px;height:20px;vertical-align:top}.seat img{display:block}\n.seat img{filter:grayscale(1) invert(1)}\n@media print{.seat img{visibility:hidden}}\n@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}\n'),
+    ('},ICO={"copy": ',
+     '},SEAT={'
+     '"auditor": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmF1ZGl0b3Ig4oCUIHRoZSBvd2w8L3RpdGxlPgo8cGF0aCBmaWxsPSIjMzQ1NDZjIiBkPSJNNCAxN2gzdjFoLTNaTTEzIDE3aDN2MWgtM1oiLz48IS0tIHRoZSB3YXRlciAtLT4KPHBhdGggZmlsbD0iI2JjY2Q4ZiIgZD0iTTkgMTRoMnY2aC0yWiIvPjwhLS0gdGhlIHN0YWtlIC0tPgo8cGF0aCBmaWxsPSIjODU5NWEyIiBkPSJNNSA0aDF2MmgtMVpNNiA1aDF2MWgtMVpNMTQgNGgxdjJoLTFaTTEzIDVoMXYxaC0xWiIvPjwhLS0gdGhlIGVhciB0dWZ0cyAtLT4KPHBhdGggZmlsbD0iIzg1OTVhMiIgZD0iTTQgNmgxMnYxaC0xMlpNMyA3aDE0djZoLTE0Wk00IDEzaDEydjFoLTEyWk01IDE0aDEwdjFoLTEwWiIvPjwhLS0gdGhlIGhlYWQgLS0+CjxwYXRoIGZpbGw9IiNkOWU0ZWMiIGQ9Ik01IDhoM3YzaC0zWk0xMiA4aDN2M2gtM1oiLz48IS0tIHRoZSBleWVzLCB3aWRlIGF3YWtlIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNNSA3aDN2MWgtM1pNMTIgN2gzdjFoLTNaTTQgOGgxdjNoLTFaTTE1IDhoMXYzaC0xWk04IDhoNHYxaC00Wk04IDloMXYyaC0xWk0xMSA5aDF2MmgtMVpNNSAxMWgzdjFoLTNaTTEyIDExaDN2MWgtM1oiLz48IS0tIHRoZSBzcGVjdGFjbGVzIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNNiA5aDF2MWgtMVpNMTMgOWgxdjFoLTFaIi8+PCEtLSB0aGUgcHVwaWxzIC0tPgo8cGF0aCBmaWxsPSIjZjFkNDdhIiBkPSJNOSAxMWgydjJoLTJaIi8+PCEtLSB0aGUgYmVhayAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"builder": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmJ1aWxkZXIg4oCUIHRoZSBzaGlwd3JpZ2h0PC90aXRsZT4KPHBhdGggZmlsbD0iIzM0NTQ2YyIgZD0iTTQgMTdoM3YxaC0zWk0xMyAxN2gzdjFoLTNaIi8+PCEtLSB0aGUgd2F0ZXIgLS0+CjxwYXRoIGZpbGw9IiNiY2NkOGYiIGQ9Ik05IDE0aDJ2NmgtMloiLz48IS0tIHRoZSBzdGFrZSAtLT4KPHBhdGggZmlsbD0iI2JjY2Q4ZiIgZD0iTTYgOGg4djFoLThaTTUgOWgxMHY1aC0xMFpNNiAxNGg4djFoLThaIi8+PCEtLSB0aGUgaGVhZCwgdGhlIHN0YWtlJ3Mgb3duIGdyZWVuIC0tPgo8cGF0aCBmaWxsPSIjZjFkNDdhIiBkPSJNOCA0aDR2MWgtNFpNNyA1aDZ2MWgtNlpNNiA2aDh2MWgtOFpNNSA3aDEwdjFoLTEwWiIvPjwhLS0gdGhlIGhhcmQgaGF0IC0tPgo8cGF0aCBmaWxsPSIjZThkNGEwIiBkPSJNOSA0aDJ2M2gtMloiLz48IS0tIGl0cyByaWRnZSAtLT4KPHBhdGggZmlsbD0iIzE1MjkzZCIgZD0iTTcgMTBoMXYyaC0xWk0xMiAxMGgxdjJoLTFaIi8+PCEtLSB0aGUgZXllcyAtLT4KPHBhdGggZmlsbD0iI2YzOGE4MCIgZD0iTTYgMTJoMXYxaC0xWk0xMyAxMmgxdjFoLTFaIi8+PCEtLSB0aGUgYmx1c2ggLS0+Cjwvc3ZnPgo=\\"\\u003e", '
+     '"designer": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmRlc2lnbmVyIOKAlCB0aGUgcGFpbnRlcjwvdGl0bGU+CjxwYXRoIGZpbGw9IiMzNDU0NmMiIGQ9Ik00IDE3aDN2MWgtM1pNMTMgMTdoM3YxaC0zWiIvPjwhLS0gdGhlIHdhdGVyIC0tPgo8cGF0aCBmaWxsPSIjYmNjZDhmIiBkPSJNOSAxNGgydjZoLTJaIi8+PCEtLSB0aGUgc3Rha2UgLS0+CjxwYXRoIGZpbGw9IiNmMWQ0N2EiIGQ9Ik04IDdoNHYxaC00Wk03IDhoNnYxaC02Wk02IDloOHYxaC04Wk01IDEwaDEwdjRoLTEwWk02IDE0aDh2MWgtOFoiLz48IS0tIHRoZSBoZWFkLCBhIHBlYXIgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik05IDRoMXYxaC0xWk03IDVoNnYxaC02Wk02IDZoOXYxaC05WiIvPjwhLS0gdGhlIGJlcmV0LCB0aWx0ZWQgLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik0xMCAxMGgxdjJoLTFaTTEzIDEwaDF2MmgtMVoiLz48IS0tIHRoZSBleWVzLCBvbiBpdHMgZHJhd2luZyAtLT4KPHBhdGggZmlsbD0iI2YzOGE4MCIgZD0iTTEzIDEyaDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"go-to-market": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPmdvLXRvLW1hcmtldCDigJQgdGhlIGhlcmFsZDwvdGl0bGU+CjxwYXRoIGZpbGw9IiMzNDU0NmMiIGQ9Ik00IDE3aDN2MWgtM1pNMTMgMTdoM3YxaC0zWiIvPjwhLS0gdGhlIHdhdGVyIC0tPgo8cGF0aCBmaWxsPSIjYmNjZDhmIiBkPSJNOSAxNGgydjZoLTJaIi8+PCEtLSB0aGUgc3Rha2UgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik01IDZoN3YxaC03Wk00IDdoOXY2aC05Wk01IDEzaDd2MWgtN1oiLz48IS0tIHRoZSBoZWFkLCBsZWFuaW5nIGJhY2sgZnJvbSB0aGUgaG9ybiAtLT4KPHBhdGggZmlsbD0iIzE1MjkzZCIgZD0iTTYgOGgxdjJoLTFaTTExIDhoMXYyaC0xWiIvPjwhLS0gdGhlIGV5ZXMsIG9wZW4gb24gdGhlIHN0cmFuZ2VyIC0tPgo8cGF0aCBmaWxsPSIjZDllNGVjIiBkPSJNMTMgMTBoMnYxaC0yWk0xNSA5aDF2M2gtMVpNMTYgOGgxdjVoLTFaIi8+PCEtLSB0aGUgaG9ybiAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"planner": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPnBsYW5uZXIg4oCUIHRoZSBza2lwcGVyPC90aXRsZT4KPHBhdGggZmlsbD0iIzM0NTQ2YyIgZD0iTTQgMTdoM3YxaC0zWk0xMyAxN2gzdjFoLTNaIi8+PCEtLSB0aGUgd2F0ZXIgLS0+CjxwYXRoIGZpbGw9IiNiY2NkOGYiIGQ9Ik05IDE0aDJ2NmgtMloiLz48IS0tIHRoZSBzdGFrZSAtLT4KPHBhdGggZmlsbD0iI2Q5ZTRlYyIgZD0iTTYgOGg4djFoLThaTTUgOWgxMHY1aC0xMFpNNiAxNGg4djFoLThaIi8+PCEtLSB0aGUgaGVhZCAtLT4KPHBhdGggZmlsbD0iI2Q5ZTRlYyIgZD0iTTYgNGg4djFoLThaTTUgNWgxMHYxaC0xMFoiLz48IS0tIHRoZSBjYXAncyBjcm93biAtLT4KPHBhdGggZmlsbD0iIzViODNhMyIgZD0iTTYgNmg4djFoLThaIi8+PCEtLSBpdHMgYmFuZCAtLT4KPHBhdGggZmlsbD0iI2YxZDQ3YSIgZD0iTTkgNmgydjFoLTJaIi8+PCEtLSBpdHMgYmFkZ2UgLS0+CjxwYXRoIGZpbGw9IiMwNzExMWIiIGQ9Ik02IDdoOHYxaC04WiIvPjwhLS0gaXRzIHBlYWsgLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik03IDEwaDF2MmgtMVpNMTIgMTBoMXYyaC0xWiIvPjwhLS0gdGhlIGV5ZXMsIGxldmVsIC0tPgo8cGF0aCBmaWxsPSIjZjM4YTgwIiBkPSJNNiAxMmgxdjFoLTFaTTEzIDEyaDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"research": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPnJlc2VhcmNoIOKAlCB0aGUgdGlkZSBnYXVnZTwvdGl0bGU+CjxwYXRoIGZpbGw9IiMzNDU0NmMiIGQ9Ik00IDE3aDN2MWgtM1pNMTMgMTdoM3YxaC0zWiIvPjwhLS0gdGhlIHdhdGVyIC0tPgo8cGF0aCBmaWxsPSIjYmNjZDhmIiBkPSJNOSAxNGgydjZoLTJaIi8+PCEtLSB0aGUgc3Rha2UgLS0+CjxwYXRoIGZpbGw9IiM3ZmQ5YmYiIGQ9Ik04IDNoNHYxaC00Wk03IDRoNnYxaC02Wk02IDVoOHYxMGgtOFpNNyAxNWg2djFoLTZaIi8+PCEtLSB0aGUgc3RhZmYgLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik03IDZoMnYyaC0yWk0xMSA2aDJ2MmgtMloiLz48IS0tIHRoZSBleWVzLCB3aWRlIG9wZW4gLS0+CjxwYXRoIGZpbGw9IiMxNTI5M2QiIGQ9Ik0xMSA5aDJ2MWgtMlpNMTIgMTFoMXYxaC0xWk0xMSAxM2gydjFoLTJaIi8+PCEtLSB0aGUgbWFya3MgaXQgcmVhZHMgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik03IDhoMXYxaC0xWk0xMiA4aDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e", '
+     '"reviewer": "\\u003cimg alt=\\"\\" aria-hidden=\\"true\\" width=\\"20\\" height=\\"20\\" src=\\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAyMCIgc2hhcGUtcmVuZGVyaW5nPSJjcmlzcEVkZ2VzIj4KPHRpdGxlPnJldmlld2VyIOKAlCB0aGUgaW5zcGVjdG9yPC90aXRsZT4KPHBhdGggZmlsbD0iIzM0NTQ2YyIgZD0iTTQgMTdoM3YxaC0zWk0xMyAxN2gzdjFoLTNaIi8+PCEtLSB0aGUgd2F0ZXIgLS0+CjxwYXRoIGZpbGw9IiNiY2NkOGYiIGQ9Ik05IDE0aDJ2NmgtMloiLz48IS0tIHRoZSBzdGFrZSAtLT4KPHBhdGggZmlsbD0iIzhmYjlmMyIgZD0iTTYgNmg4djFoLThaTTUgN2gxMHY2aC0xMFpNNiAxM2g4djFoLThaIi8+PCEtLSB0aGUgaGVhZCAtLT4KPHBhdGggZmlsbD0iI2Q5ZTRlYyIgZD0iTTExIDdoNHYxaC00Wk0xMCA4aDF2NGgtMVpNMTUgOGgxdjRoLTFaTTExIDEyaDR2MWgtNFpNMTUgMTNoMXYyaC0xWiIvPjwhLS0gdGhlIG1vbm9jbGUsIGl0cyBjb3JkIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNMTIgOWgydjJoLTJaIi8+PCEtLSB0aGUgZXllIGJlaGluZCBpdCwgbWFnbmlmaWVkIC0tPgo8cGF0aCBmaWxsPSIjMTUyOTNkIiBkPSJNNiAxMGgydjFoLTJaIi8+PCEtLSB0aGUgb3RoZXIgZXllLCBzcXVpbnRpbmcgLS0+CjxwYXRoIGZpbGw9IiNmMzhhODAiIGQ9Ik02IDEyaDF2MWgtMVoiLz48IS0tIHRoZSBibHVzaCAtLT4KPC9zdmc+Cg==\\"\\u003e"'
+     '},ICO={"copy": '),
+    ('<details class="grp"><summary>${esc(g[0])} ${esc(g[1])} (${esc(g[2])})',
+     '<details class="grp"><summary>${esc(g[0])} <span class="seat">${Object.hasOwn(SEAT,g[1])?SEAT[g[1]]:""}</span> ${esc(g[1])} (${esc(g[2])})'),
+)
+
+# the reviews row as one: each change it makes to this fixture's page — (the joined page's text, the candidate's), the template's lines and the
+# labels item by item, each where it occurs once — applied in order after the join's edits
+REVIEWS_ROW_EDITS = (
+    ('.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}',
+     '.rv .what{grid-template-columns:8ch 1fr}.rv .how{display:block;padding-left:9ch}.rv .sid{white-space:nowrap}'),
+    ('  brn=(b,u)=>b[0]=="line"?lh("reviews.branch",`<code>${esc(b[1])}</code>`):b[0]=="merge"?lh("reviews.branch.merged",`<code>${esc(b[1])}</code>`,cid(b[2],u))\n    :b[0]=="ambiguous"?lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", "))\n    :`<i>${lh("reviews.branch.unknown",b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none"))}</i>`;\n',
+     '  brn=(b,u)=>b[0]=="line"||b[0]=="merge"?[lh("reviews.branch",`<code>${esc(b[1])}</code>`),""]\n    :b[0]=="ambiguous"?[lh("reviews.branch.ambiguous",l("reviews.ambiguous"),b[1].map(n=>`<code>${esc(n)}</code>`).join(", ")),""]\n    :[`<i>${l("reviews.branch.notknown")}</i>`,` <i>— ${b[0]=="unnamed"?lh("reviews.branch.unnamed",cid(b[1],u)):l("reviews.branch.none")}</i>`],\n  rvon=(b,c)=>esc(L["reviews.on"]??"reviews.on").replace(/ (?=\\{\\d\\})/g,"&nbsp;").replace(/\\{(\\d)\\}/g,(m,i)=>[c,b[0]][i]??"")+b[1],\n  sid=s=>`<span class="sid">${esc(s)}</span>`,nk=k=>`<i>${l("reviews.notknown")} — ${l(k)}</i>`;\n'),
+    ('    vr=v=>row(cid(v[0],(v[8]||[])[0]),lh("reviews.on",cid(v[1],(v[8]||[])[1]))+" · "+brn(v[6]||["none"],(v[8]||[])[2]),v[5]?l("verdict."+v[5]):l("type.verdict"),\n',
+     '    vr=v=>row(cid(v[0],(v[8]||[])[0]),rvon(brn(v[6]||["none"],(v[8]||[])[2]),cid(v[1],(v[8]||[])[1])),v[5]?l("verdict."+v[5]):l("type.verdict"),\n'),
+    ('+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",esc(v[2]||"—"),v[3].length>1?lh("reviews.sessions.more",esc(v[7]),v[3].length-1):esc(v[3][0]||"—"))),',
+     '+(v[4]=="on trunk"?"":" · "+lh("reviews.sessions",v[2]?sid(v[2]):nk("reviews.notknown.own"),v[3].length>1?lh("reviews.sessions.more",sid(v[7]),v[3].length-1):v[3].length?sid(v[3][0]):nk(v[9]?"reviews.notknown.range":"reviews.notknown.unread"))),'),
+    ('      week.filter(v=>!folds(v)).map(vr).join("")+(more.length?',
+     '      `<p class="help">${l("reviews.help")}</p>`+week.filter(v=>!folds(v)).map(vr).join("")+(more.length?'),
+    ('"reviews.on": "on {0}", "reviews.sessions": "its session {0}, the branch\'s {1}", ',
+     '"reviews.on": "on {1} @ {0}", "reviews.sessions": "{0}, the branch\'s {1}", '),
+    ('"reviews.branch": "branch {0}", "reviews.branch.merged": "branch {0}, as its merge {1} names it", "reviews.branch.ambiguous": "branch {0}: {1} each hold the verdict on their own line", "reviews.ambiguous": "ambiguous", "reviews.branch.unknown": "branch not known — {0}", "reviews.branch.none": "no branch here holds the verdict on its own line", "reviews.branch.unnamed": "its merge {0} names no branch", ',
+     '"reviews.branch": "{0}", "reviews.branch.ambiguous": "{0}: {1}", "reviews.ambiguous": "ambiguous", "reviews.branch.notknown": "branch not known", "reviews.branch.none": "committed on no branch here", "reviews.branch.unnamed": "its merge {0} names no branch", "reviews.help": "a verdict\'s branch is the one it was committed on; once merged, the one its merge names", "reviews.notknown": "not known", "reviews.notknown.own": "the verdict names no session", "reviews.notknown.range": "no commit on it names a session, merges and verdicts aside", "reviews.notknown.unread": "the reviewed commit is not here", '),
+)
+
+
+# a line of counts breaks only after a "·": each count goes through one helper that keeps it whole and holds each "·" to the count before it
+COUNT_LINE_EDITS = (
+    ('split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},\n',
+     'split=s=>{const i=s.indexOf(" · ");return i<0?[s,""]:[s.slice(0,i),s.slice(i+1)]},\n'
+     '// a browser breaks a line at any space: inside a count every space is a no-break space, and each "·" holds to the count before it\n'
+     '// by one, so a line of counts breaks only after a "·"\n'
+     'cnt=s=>s.split(" · ").map(g=>g.replace(/ /g,"\\u00a0")).join("\\u00a0· "),\n'),
+    ('days(t)!=null?l("waiting.days",days(t)):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join(" · ");',
+     'days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join("\\u00a0· ");'),
+    ('w.length?[old>=0?l("waiting.oldest",old):"",held.length?l("waiting.holds",held.length):"",',
+     'w.length?[old>=0?cnt(l("waiting.oldest",old)):"",held.length?cnt(l("waiting.holds",held.length)):"",'),
+    ('.filter(Boolean).map(s=>"· "+s).join(" "):""),', '.filter(Boolean).map(s=>"· "+s).join("\\u00a0"):""),'),
+    ('[days(t)!=null?l("waiting.days",days(t)):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join(" · "),',
+     '[days(t)!=null?cnt(l("waiting.days",days(t))):"",t[29][3].length?l("waiting.holds.ids",t[29][3].join(", ")):"",t[29][0]&&!t[29][12]?l("ask.legacy"):""].filter(Boolean).join("\\u00a0· "),'),
+    ('[st,r[4]?`· <b class="hot">${l("reviews.notready",r[4])}</b>`:"",r[5]?`· <b class="warn">${l("reviews.findings",r[5])}</b>`:"",\n'
+     '        "· "+l("reviews.counts",r[0],r[1]),r[2]?"· "+l("reviews.untraced",r[2]):"",r[3]?"· "+l("reviews.trunk",r[3]):"","· "+l("reviews.reports")].filter(Boolean).join(" ")),',
+     '[st,r[4]?`· <b class="hot">${cnt(l("reviews.notready",r[4]))}</b>`:"",r[5]?`· <b class="warn">${cnt(l("reviews.findings",r[5]))}</b>`:"",\n'
+     '        "· "+cnt(l("reviews.counts",r[0],r[1])),r[2]?"· "+cnt(l("reviews.untraced",r[2])):"",r[3]?"· "+cnt(l("reviews.trunk",r[3])):"","· "+l("reviews.reports")].filter(Boolean).join("\\u00a0")),'),
+    ('"· "+l(n==1?"path.line":"path.lines",n)+" · ', '"· "+cnt(l(n==1?"path.line":"path.lines",n)+" · '),
+    ('TRIAGE.md"),`<p class="lim">', 'TRIAGE.md")),`<p class="lim">'),
+    ('const story=kids.length?` · ${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}: ${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")} · '
+     '<span class="${open.some(t=>t[1]<"P2")?"hot":""}">${open.length} ${l("story.open")}</span>${open.some(t=>t[17])?` · ${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`:""}`:"";',
+     'const story=kids.length?` · ${cnt(`${kids.length} ${l(kids.length==1?"story.chapter":"story.chapters")}:`)} ${cnt(`${shipped} ${l("story.shipped")} · ${closed} ${l("story.closed")}`)}\\u00a0· '
+     '<span class="${open.some(t=>t[1]<"P2")?"hot":""}">${cnt(`${open.length} ${l("story.open")}`)}</span>${open.some(t=>t[17])?`\\u00a0· ${cnt(`${l("word.triaged")} ${open.filter(t=>t[17]).length}/${open.length}`)}`:""}`:"";'),
+    ('$("n").textContent=`${rows.length} ', '$("n").textContent=cnt(`${rows.length} '),
+    ('${L["count.untriaged"]}`:""}`;', '${L["count.untriaged"]}`:""}`);'),
+    ('k=="no move named"?`${v.length} ${l("viewer.no_move")}`:', 'k=="no move named"?cnt(`${v.length} ${l("viewer.no_move")}`):'),
+    ('.join(" · ")||l("viewer.none_in_progress")} · ${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · '
+     '${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`:"")',
+     '.join("\\u00a0· ")||l("viewer.none_in_progress")}\\u00a0· ${cnt(`${c.filter(x=>x[2]=="Parked").length} ${l("story.parked")} · ${c.filter(x=>x[2]=="Shipped").length} ${l("story.shipped")} · '
+     '${c.filter(x=>x[2]=="Closed").length} ${l("story.closed")}`)}`:"")'),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
-    occurs exactly once — else None."""
+    occurs exactly once — else None; then its rows, each ask cell carrying its id (`ask_id_rows`)."""
     page = fm053_transform(page)
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS:
+    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS + REVIEWS_ROW_EDITS + COUNT_LINE_EDITS:
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)
-    return text.encode("utf-8")
+    return ask_id_rows(text.encode("utf-8"))
 
 
 def differs_only_by(baseline, candidate, path, key, rule):
@@ -1227,7 +1589,7 @@ def board_matches(baseline, candidate):
     if old_page is None or new_page is None:
         return False
     if old_page != new_page:
-        if PROOF_MARK in old_page or V2_MARK in old_page or fm057_page_dropped(day_dropped_joined(new_page)) != joined_transform(old_page):
+        if PROOF_MARK in old_page or V2_MARK in old_page or fm057_page_dropped(day_dropped_joined(resume_dropped(new_page))) != joined_transform(old_page):
             return False
         candidate = with_board(candidate, PAGE_PATH, old_page)
     return fm057_board(baseline, candidate)
@@ -1533,13 +1895,18 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
             assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads of the default branch's configuration, each a read, are set aside",
-                           rows_match(origin_undone(before["starts"]), fm054_own(after["starts"]), counted) and not fm054_reads(before["starts"])
-                           and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"])))
+                           "reads of the default branch's configuration, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
+                           rows_match(origin_undone(answers_undone(before["starts"])), fm054_own(id_rules_undone(after["starts"])), counted) and not fm054_reads(before["starts"])
+                           and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"]))
+                           and not day_reads(before["starts"]) and all(day_read(row["argv"]) for row in day_reads(after["starts"]))
+                           and len(day_reads(after["starts"])) == (1 if label in DAY_READ_CASES else 0))
             assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads, each a read, are set aside",
-                           rows_match(origin_undone(before["run_calls"]), fm054_own(after["run_calls"]), counted) and not fm054_reads(before["run_calls"])
-                           and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"])))
+                           "reads, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
+                           rows_match(origin_undone(answers_undone(before["run_calls"])), fm054_own(id_rules_undone(after["run_calls"])), counted) and not fm054_reads(before["run_calls"])
+                           and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"]))
+                           and not day_reads(before["run_calls"])
+                           and all(isinstance(row.get("args"), list) and row["args"] and day_read(row["args"][0]) for row in day_reads(after["run_calls"]))
+                           and len(day_reads(after["run_calls"])) == (1 if label in DAY_READ_CASES else 0))
             assert_control(label_prefix + "the candidate reads the working tree's edits once where the baseline reads them, and not where it does not",
                            edit_reads(after["starts_raw"]) == (1 if edit_reads(before["starts_raw"]) else 0))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
@@ -1609,6 +1976,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and r15_schema_dropped(dict(olds, stdout="")) is None
                        and not schema_matches(dict(olds, stdout=olds["stdout"] + "| `freeze_tag` | twice |\n"), news))
 
+        # the id rules' read of HEAD, held to itself on the pair that makes it — the commit being made: without the allowance the starts do not
+        # match, and a second read under the id rules, the same argv again or another, is still caught
+        allowance = "Git entry id rules allowance: "
+        id_old, id_new = (next(row for row in rows if row["case"] == "check-print-written-priority" and row["version"] == version) for version in ("baseline", "candidate"))
+        id_base = origin_undone(answers_undone(id_old["starts"]))
+        id_read = [row for row in id_new["starts"] if id_head_read(row)]
+        assert_control(allowance + "the commit being made starts the read once; without the allowance the starts do not match, and with it they do",
+                       len(id_read) == 1 and not rows_match(id_base, fm054_own(id_new["starts"])) and rows_match(id_base, fm054_own(id_rules_undone(id_new["starts"]))))
+        id_at = id_new["starts"].index(id_read[0]) + 1 if id_read else 0
+        id_twice = id_new["starts"][:id_at] + [dict(id_read[0])] + id_new["starts"][id_at:] if id_read else []
+        id_other = id_new["starts"][:id_at] + [dict(id_read[0], argv=id_read[0]["argv"][:2] + ["HEAD^"])] + id_new["starts"][id_at:] if id_read else []
+        assert_control(allowance + "a second read under the id rules is still caught — the same argv twice, or `git rev-parse HEAD^`",
+                       bool(id_read) and not rows_match(id_base, fm054_own(id_rules_undone(id_twice)))
+                       and not rows_match(id_base, fm054_own(id_rules_undone(id_other))))
+
         # R21's allowance is held to its one difference on the real default pair: equal snapshots match, and no variant below does.
         old, new = (next(row for row in rows if row["case"] == "clean-default-origin" and row["version"] == version) for version in ("baseline", "candidate"))
         old_index, new_index = (base64.b64decode(row["index_after"]["bytes_base64"]) for row in (old, new))
@@ -1631,9 +2013,9 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         allowance = "Git entry FM-057 allowance: "
         new_starts, new_calls = fm054_own(new["starts"]), fm054_own(new["run_calls"])
         page, record = (base64.b64decode(new["board_after"][path]["bytes_base64"]) for path in (PAGE_PATH, BUILT_PATH))
-        old_ou = origin_undone(old["starts"])
+        old_ou = origin_undone(answers_undone(old["starts"]))
         assert_control(allowance + "the default run's starts and calls differ by FM-057's reads and the starts `origin_undone` removes alone, its page and record by what it read, and equal runs match",
-                       old["starts"] != new_starts and fm057_rows(old_ou, new_starts) and fm057_rows(origin_undone(old["run_calls"]), new_calls)
+                       old["starts"] != new_starts and fm057_rows(old_ou, new_starts) and fm057_rows(origin_undone(answers_undone(old["run_calls"])), new_calls)
                        and fm057_board(old, new) and rows_match(new_starts, new_starts) and snapshots_match(new, new))
         extra = dict(new_starts[0], argv=new_starts[0]["argv"][:1] + ["status", "--porcelain"])
         at = next(i for i, row in enumerate(new_starts) if git_words(row) == FM057_READS[2])
@@ -1659,7 +2041,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         day = "Git entry FM-030 day allowance: "
         assert_control(day + "the default run's board page differs from the baseline's by the stand-up's and the close-out's exact script lines, "
                        "templates, prompts and words, and by FM-057's page and the join's edits, alone, and equal snapshots still match",
-                       bool(old_page) and old_page != new_page and fm057_page_dropped(day_dropped_joined(new_page)) == joined_transform(old_page) and snapshots_match(old, new)
+                       bool(old_page) and old_page != new_page and fm057_page_dropped(day_dropped_joined(resume_dropped(new_page))) == joined_transform(old_page) and snapshots_match(old, new)
                        and snapshots_match(new, new))
         opener = b'd.querySelector(".go").focus()}   // FM-030 day'
         variants = {
@@ -1675,21 +2057,57 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        f"unrelated statement to a permitted line, or adds markup or an attribute to a template does not match (each variant made: {changed})",
                        all(changed.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants.values()))
         # FM-057's page, held the same way beside the day: each of its parts taken out exactly once, and nothing else differs
-        page057, read_at = "Git entry FM-057 page allowance: ", FM057_READ_AT.search(new_page)
+        page057, read_at = "Git entry FM-057 page allowance: ", FM057_READ_AT.search(resume_dropped(new_page) or b"")
         assert_control(page057 + "the default run's page, FM-030's day and then FM-057's page taken out, is the baseline's with the join's edits, every "
-                       "byte; the baseline's page holds neither", bool(read_at) and fm057_page_dropped(day_dropped_joined(new_page)) == joined_transform(old_page)
+                       "byte; the baseline's page holds neither", bool(read_at) and fm057_page_dropped(day_dropped_joined(resume_dropped(new_page))) == joined_transform(old_page)
                        and day_dropped(old_page) is None and fm057_page_dropped(old_page) is None)
-        at = read_at.group(0) if read_at else b"\n"
+        at = read_at.group(0).replace(RESUME_READ_AT[1], RESUME_READ_AT[0]) if read_at else b"\n"
+        rule057 = b"details.about .help{overflow-wrap:anywhere}"
+        style057 = FM057_PAGE_LINES[0] + rule057 + b"\n"
         variants057 = {
             "one byte more in the read-at line": new_page.replace(at, at.replace(b"nothing polls", b"nothing polls!"), 1),
             "the read-at line twice": new_page.replace(at, at * 2, 1),
-            "the read-at line's style gone": new_page.replace(FM057_PAGE_LINES[0] + b"\n", b"\n", 1),
+            "the read-at line's style gone": new_page.replace(style057, b"\n", 1),
             "a word FM-057 does not name, beside its own": new_page.replace(b'"read.copy": "rebuild command"', b'"read.copy": "rebuild command", "read.more": "more"', 1),
         }
         made057 = {name: page != new_page for name, page in variants057.items()}
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
                        f"does not name does not match (each variant made: {made057})",
                        all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
+        resume = "Git entry resume allowance: "
+        variants_r = {
+            "one of its style lines twice": new_page.replace(RESUME_PAGE_LINES[0] + b"\n", RESUME_PAGE_LINES[0] + RESUME_PAGE_LINES[0] + b"\n", 1),
+            "a word it does not name, beside its own": new_page.replace(b'"resume.button": "resume command"', b'"resume.button": "resume command", "resume.more": "more"', 1),
+            "its item in the fold twice": new_page.replace(RESUME_READ_AT[0], RESUME_READ_AT[0][:-len(RESUME_READ_AT[1])] + RESUME_READ_AT[0], 1),
+            "one character of one of its words changed": new_page.replace(b'"resume.unread": "no resume command: its log could not be read"',
+                                                                          b'"resume.unread": "no resume command: its log could not be reed"', 1),
+        }
+        made_r = {name: page != new_page for name, page in variants_r.items()}
+        unread_in = lambda lang: b'"resume.unread": ' + json.dumps(RESUME_WORDS["resume.unread"][lang], ensure_ascii=False).encode("utf-8")
+        german = new_page.replace(unread_in(0), unread_in(1), 1)
+        assert_control(resume + "the default run's page holds each of the resume command's parts once, and the baseline's none; a page with one of its "
+                       "style lines twice, a word it does not name, its item in the fold twice, or one character of one of its words changed does not "
+                       f"match, and one with a word in German in place of the English still does (each variant made: {made_r}, "
+                       f"the German one: {german != new_page})",
+                       resume_dropped(new_page) is not None and resume_dropped(old_page) is None and all(made_r.values())
+                       and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants_r.values())
+                       and german != new_page and snapshots_match(old, with_board(new, PAGE_PATH, german)))
+        # the read-at fold's edits, held the same way: literal text, each after found once and no before, and a fold changed beyond them does not match
+        fold057, label057 = "Git entry read-at fold allowance: ", b'"read.about.none": "read from the folder {1} at {0}"'
+        assert_control(fold057 + "READ_AT_FOLD_EDITS is literal text alone, each pair a before and an after that differ, each after standing once on "
+                       "the candidate's page and no before",
+                       bool(READ_AT_FOLD_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in READ_AT_FOLD_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 and new_page.count(a.encode("utf-8")) == 0 for a, b in READ_AT_FOLD_EDITS))
+        fold_variants = {
+            "the fold's rule as `break-word`": new_page.replace(rule057, b"details.about .help{overflow-wrap:break-word}", 1),
+            "one byte more in the fold's rule": new_page.replace(rule057, b"details.about .help{overflow-wrap:anywhere;}", 1),
+            "the fold's rule on every help line": new_page.replace(rule057, b".help{overflow-wrap:anywhere}", 1),
+            "the folder's fold label one byte more": new_page.replace(label057, label057[:-1] + b'!"', 1),
+            "the folder's fold label as it was": new_page.replace(label057, b'"read.about.none": "read from the folder at {0}"', 1)}
+        made_fold = {what: page != new_page for what, page in fold_variants.items()}
+        assert_control(fold057 + "a page whose read-at fold differs from READ_AT_FOLD_EDITS' after — its rule as `break-word`, one byte more, or on every "
+                       f"help line; the folder's fold label one byte more, or as it was — does not match (each variant made: {made_fold})",
+                       all(made_fold.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in fold_variants.values()))
         settings = "Git entry board settings allowance: "
         raw = new["starts_raw"]
         reads = [i for i, row in enumerate(raw) if "GIT_CONFIG_PARAMETERS" in (row.get("environment") or {}) and git_words(row)[:1] == ("log",)
@@ -1702,21 +2120,21 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
             argv_ = raw[at]["argv"] + ["--text"]
         assert_control(settings + "the default run's starts differ from the baseline's by the board's settings, the drivers' lists, the tag, the flag, the "
                        "read of `origin/master`, the edits read once, the starts `origin_undone` removes and FM-054's reads alone; left in, they do not match",
-                       bool(reads) and rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw, True))) and not rows_match(old["starts"], raw))
+                       bool(reads) and rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(raw, True))) and not rows_match(old["starts"], raw))
         assert_control(settings + "a start with a setting the board's are not, or with `--text` beside `--no-textconv` outside the board's own run, does not "
                        "match",
-                       bool(reads) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, environment=env_), True)))
-                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(changed(at, argv=argv_), True))))
+                       bool(reads) and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(changed(at, environment=env_), True)))
+                       and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(changed(at, argv=argv_), True))))
         ask_row = next((row for row in old["starts"] if git_words(row) == ("ls-remote", "--symref", "origin", "HEAD")), None)
         assert_control("Git entry origin-ask allowance: the candidate starts no `ls-remote --symref origin HEAD`, and its starts with one added do not match "
                        "once `origin_undone` has removed the baseline's",
                        ask_row is not None and not any(git_words(row) == ("ls-remote", "--symref", "origin", "HEAD") for row in raw)
-                       and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(raw + [ask_row], True))))
+                       and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(raw + [ask_row], True))))
         pairs = [i for i in range(1, len(raw)) if git_words(raw[i]) == TRUNK_READS[1] and git_words(raw[i - 1]) == TRUNK_READS[0] and fm054_own([raw[i]])]
         moved = raw[:pairs[0]] + raw[pairs[0] + 1:] + [raw[pairs[0]]] if pairs else raw
         assert_control("Git entry trunk-read allowance: the clean default run reads the cached `origin/master` directly after `origin/main`, and is taken "
                        "out only there; the same read anywhere else does not match",
-                       bool(pairs) and not rows_match(origin_undone(old["starts"]), fm054_own(board_settings_undone(moved, True))))
+                       bool(pairs) and not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(board_settings_undone(moved, True))))
         # FM-054's allowance is held to its difference on the same pair: the page carries PROOF, and only `proof_reading`'s reads are new
         fm054 = "Git entry FM-054 allowance: "
         reads = fm054_reads(new["starts"])
@@ -1725,10 +2143,20 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         unstacked = [dict(row, product_stack=[s for s in row["product_stack"] if s != "proof_reading"]) for row in new["starts"]]
         strip = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
         assert_control(fm054 + "the same reads made outside `proof_reading` are not set aside, and do not match the baseline's starts",
-                       not rows_match(origin_undone(old["starts"]), fm054_own(unstacked)) and rows_match(origin_undone(old["starts"]), fm054_own(new["starts"])))
+                       not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(unstacked)) and rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(new["starts"])))
         writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
         assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
                        bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))
+        day = "Git entry stand-up allowance: "
+        said = day_reads(new["starts"])
+        assert_control(day + "the default run's board reads origin's URL once inside `day_vcs`, `git config --local --get remote.origin.url`, and no "
+                       "other start there, which the baseline never makes", len(said) == 1 and day_read(said[0]["argv"]) and not day_reads(old["starts"]))
+        unday = [dict(row, product_stack=[s for s in row["product_stack"] if s != "day_vcs"]) for row in new["starts"]]
+        assert_control(day + "the same read made outside `day_vcs` is not set aside, and does not match the baseline's starts",
+                       not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(unday)) and rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(new["starts"])))
+        other = [dict(row, argv=[row["argv"][0], "config", "--get", "user.email"]) if row is said[0] else row for row in new["starts"]] if said else []
+        assert_control(day + "a start inside `day_vcs` that is not its one read is not one",
+                       bool(other) and not all(day_read(row["argv"]) for row in day_reads(other)))
         page = base64.b64decode(new["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((new.get("board_after") or {}).get(PAGE_PATH), dict) else b""
         unproved = page.replace(PROOF_MARK, b',PRUEF={"state": ')
         as_page = lambda data: with_board(new, PAGE_PATH, data)
@@ -1741,7 +2169,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         before_page = base64.b64decode(old["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((old.get("board_after") or {}).get(PAGE_PATH), dict) else b""
         assert_control(fm054 + "the candidate's page, FM-030's day and FM-057's page taken out, is the baseline's with A2's edits and then FM054_ON_A2_EDITS — "
                        "defect 8's edits as they stand on A2's page — applied, every byte; defect 8's own edits of the baseline fit neither page",
-                       fm057_page_dropped(day_dropped_joined(page)) == joined_transform(before_page) and fm054_transform(page) is None
+                       fm057_page_dropped(day_dropped_joined(resume_dropped(page))) == joined_transform(before_page) and fm054_transform(page) is None
                        and bool(FM054_ON_A2_EDITS) and fm054_transform(before_page) is not None)
         cut = page.replace(section, b"")
         assert_control(fm054 + "a page that keeps PROOF but deletes an unrelated section (A2's `tr.t` rule) does not match",
@@ -1751,7 +2179,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        page.count(row) == 1 and PROOF_MARK in moved and not snapshots_match(old, as_page(moved)))
         v2 = "Git entry FM-053 allowance: "
         old_page, new_page = (base64.b64decode(row["board_after"][PAGE_PATH]["bytes_base64"]) for row in (old, new))
-        joined = fm057_page_dropped(day_dropped_joined(new_page))
+        joined = fm057_page_dropped(day_dropped_joined(resume_dropped(new_page)))
         assert_control(v2 + "the default run's board page, FM-030's day and FM-057's page taken out, is the baseline's with the join's edits — "
                        "FM053_PAGE_EDITS, FM054_ON_A2_EDITS, PR_C_JOIN_EDITS — every byte; A2's edits do not fit the candidate's page; the pair still matches",
                        old_page != new_page and joined is not None and joined_transform(old_page) == joined and fm053_transform(new_page) is None
@@ -1770,6 +2198,38 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                            page != new_page and marker_only(page) and not snapshots_match(old, with_board(new, PAGE_PATH, page)))
         assert_control(v2 + "the controls' anchors are real: WORK-001, the dialog's element and WORK-001's hook are each on the candidate's page",
                        new_page.count(b"WORK-001") >= 1 and new_page.count(section) == 1 and new_page.count(hook) == 1)
+        # the count line's allowance, held the same way: literal text, each after found once, and a count place changed beyond it does not match
+        counts = "Git entry count-line allowance: "
+        assert_control(counts + "COUNT_LINE_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(COUNT_LINE_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in COUNT_LINE_EDITS)
+                       and all((resume_dropped(new_page) or b"").count(b.encode("utf-8")) == 1 for _a, b in COUNT_LINE_EDITS))
+        helper_end = '.join("\\u00a0· "),\nidl='
+        count_variants = {
+            "the helper's join as a plain \" · \"": new_page.replace(helper_end.encode("utf-8"), '.join(" · "),\nidl='.encode("utf-8"), 1),
+            "the count line without the helper": new_page.replace(b'$("n").textContent=cnt(`', b'$("n").textContent=`', 1)
+                                                          .replace(b'${L["count.untriaged"]}`:""}`);', b'${L["count.untriaged"]}`:""}`;', 1),
+            "one byte more at a count place, the trunk's": new_page.replace(b'cnt(l("reviews.trunk",r[3]))', b'cnt(l("reviews.trunk",r[3])) ', 1),
+            "the reviews heading's join as a plain space": new_page.replace(b'.filter(Boolean).join("\\u00a0")),', b'.filter(Boolean).join(" ")),', 1)}
+        made_counts = {what: page != new_page for what, page in count_variants.items()}
+        assert_control(counts + "a page whose count places differ from COUNT_LINE_EDITS' after — the helper's join, the count line without the "
+                       f"helper, one byte more, a heading's join — does not match (each variant made: {made_counts})",
+                       all(made_counts.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in count_variants.values()))
+        # the reviews row's allowance, held the same way: literal text, each after found once, and a row changed beyond it does not match
+        rv = "Git entry reviews-row allowance: "
+        assert_control(rv + "REVIEWS_ROW_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(REVIEWS_ROW_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in REVIEWS_ROW_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in REVIEWS_ROW_EDITS))
+        row_variants = {
+            "the session id's rule widened to the row": new_page.replace(b".rv .sid{white-space:nowrap}", b".rv .sid,.rv{white-space:nowrap}", 1),
+            "the help line dropped": new_page.replace(b'`<p class="help">${l("reviews.help")}</p>`+week', b"week", 1),
+            "one byte more in line 1": new_page.replace(b'cid(v[1],(v[8]||[])[1])),v[5]', b'cid(v[1],(v[8]||[])[1])) ,v[5]', 1),
+            "a label beyond the allowance": new_page.replace(b'"reviews.notknown": ', b'"reviews.notknown.more": "x", "reviews.notknown": ', 1)}
+        made_rows = {what: page != new_page for what, page in row_variants.items()}
+        assert_control(rv + "a page whose reviews row differs from REVIEWS_ROW_EDITS' after — a rule widened, the help line dropped, one byte more, "
+                       f"a label beyond them — does not match (each variant made: {made_rows})",
+                       all(made_rows.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in row_variants.values()))
         before_schema, after_schema = (next(row for row in rows if row["case"] == SCHEMA_CASE and row["version"] == version) for version in ("baseline", "candidate"))
         schema_old, schema_new = before_schema["stdout"], after_schema["stdout"]
         takes = lambda stdout: schema_matches(before_schema, dict(after_schema, stdout=stdout))
@@ -1788,7 +2248,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         moved = "\n".join(rest[:rest.index(brand)] + [palette] + rest[rest.index(brand):]) if brand in rest else schema_new
         r13_rows = {row: next((line for line in lines if line.startswith(row)), "") for row in R13_SCHEMA_ROWS}
         d_batch_old = [next((r13_rows[row] for row in R13_SCHEMA_ROWS if line.startswith(row)), line)
-                       for line in schema_old.split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
+                       for line in (r4_schema(schema_old) or schema_old).split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
         def two_lines(new):
             n = new.split("\n")
             found = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]
@@ -1803,6 +2263,42 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         for what, stdout in schemas.items():
             assert_control(v2 + f"--schema with A2's two lines, one of them not as approved, does not match — {what}",
                            bool(brand) and stdout != schema_new and two_lines(stdout) and not takes(stdout))
+        # the group fold's allowance, held as the page's other edits are: literal text, each after found once on the candidate's page, and a page
+        # whose group fold differs from it beyond the allowance does not match
+        group_fold = "Git entry group-fold allowance: "
+        assert_control(group_fold + "GROUP_FOLD_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(GROUP_FOLD_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in GROUP_FOLD_EDITS)
+                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in GROUP_FOLD_EDITS))
+        drawn = b'return head+(folded?"":state+g.map('
+        fold_variants = {
+            "the paragraph in the group's heading again": new_page.replace(b"</tr>`;   // a header sums", b"</tr>${state}`;   // a header sums", 1)
+                                                                   .replace(drawn, b'return head+(folded?"":g.map(', 1),
+            "the paragraph under a shut group as well": new_page.replace(drawn, b'return head+state+(folded?"":g.map(', 1),
+            "one byte more in the comment": new_page.replace(b"(the newest pass, a story's state) folds with its rows\n",
+                                                             b"(the newest pass, a story's state) folds with its rows \n", 1)}
+        made_folds = {what: page != new_page for what, page in fold_variants.items()}
+        assert_control(group_fold + "a page whose group fold differs from GROUP_FOLD_EDITS' after — the paragraph in the heading again, the paragraph "
+                       f"under a shut group as well, one byte more in the comment — does not match (each variant made: {made_folds})",
+                       all(made_folds.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in fold_variants.values()))
+        # the seat icons' allowance, held as the group fold's is: literal text, each after found once on the candidate's page, and a page whose
+        # icons differ from it beyond the allowance does not match
+        seat_icons = "Git entry seat-icon allowance: "
+        assert_control(seat_icons + "SEAT_ICON_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
+                       "the candidate's page",
+                       bool(SEAT_ICON_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in SEAT_ICON_EDITS)
+                       and all((resume_dropped(new_page) or b"").count(b.encode("utf-8")) == 1 for _a, b in SEAT_ICON_EDITS))
+        builder_icon = re.search(rb'"builder": "(?:[^"\\]|\\.)*?base64,([A-Za-z0-9+/=]+)', new_page)
+        grounded = (base64.b64encode(base64.b64decode(builder_icon[1]).replace(b"<title>builder", b'<rect width="20" height="20" fill="#15293d"/>\n<title>builder'))
+                    if builder_icon else b"")
+        seat_variants = {
+            "the builder's icon with a ground again": new_page.replace(builder_icon[1], grounded, 1) if builder_icon else b"",
+            "a word outside the seven given the builder's icon": new_page.replace(b'SEAT[g[1]]:""}</span>', b'SEAT[g[1]]:SEAT.builder}</span>', 1),
+            "one byte more in the row's rules": new_page.replace(b".seat img{filter:grayscale(1) invert(1)}", b".seat img{filter:grayscale(1) invert(1) }", 1)}
+        made_seats = {what: bool(page) and page != new_page for what, page in seat_variants.items()}
+        assert_control(seat_icons + "a page whose seat icons differ from SEAT_ICON_EDITS' after — the builder's icon with a ground again, a word outside "
+                       f"the seven given an icon, one byte more in the rules — does not match (each variant made: {made_seats})",
+                       all(made_seats.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in seat_variants.values()))
     assert immutable == {"baseline": hashlib.sha256(baseline.read_bytes()).hexdigest(), "candidate": hashlib.sha256(candidate.read_bytes()).hexdigest()}
     report = {"kind": "outside proposed Git entry differential evidence; no review/READY", "sources": immutable,
               "checks": checks, "cases": rows, "seconds": round(time.monotonic() - started, 3),

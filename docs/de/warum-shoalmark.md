@@ -6,13 +6,13 @@ template: why.html
 
 # Warum shoalmark?
 
-**Die Agenten tragen die Arbeit, der Mensch hat das letzte Wort.**
+**Die Agenten tragen die Arbeit, du hast das letzte Wort.**
 
 **TL;DR:**
 
 - **Was:** shoalmark ist eine Vertrauensschicht für KI-Agenten, und sie lebt in deinem Repository. Deine Agenten führen den Arbeitsstand. Du behältst das letzte Wort, als deine eigenen Commits.
 - **Das Problem:** Agenten bauen schneller, als du entscheiden kannst. Der Engpass sind nicht die Agenten. Der Engpass bist du, mitten in ihrer Arbeit in kleine Entscheidungen gezogen.
-- **Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Standup-Prompt: Er bittet eine Sitzung, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.
+- **Wie:** Die Fragen der Agenten warten auf dem Board, statt dich zu unterbrechen. Wann es dir passt, kopierst du den Stand-up-Prompt: Er bittet eine Session, sie mit dir durchzugehen. Jede Antwort ist ein Commit, den du signieren kannst.
 - **Einfach:** Eine Python-Datei. Kein Server, keine Datenbank, kein Konto, und nichts, das dich bindet.
 - **Stand:** Open Source (Apache-2.0 oder MIT), in der Beta, und mit sich selbst gebaut.
 - **Nicht:** Ein Agenten-Runner (deine Agenten bringst du selbst mit), ein Werkzeug für mehrere Personen, die das Sagen haben (noch nicht), ein Import aus deinem Ticketsystem oder ein Beweis, dass die Arbeit stimmt (dafür ist ein Review da).
@@ -28,7 +28,7 @@ Ich bin von dem ausgegangen, was ich gemessen habe. In meinem letzten Repository
 
 > *„Am 13. Juli habe ich mich aus der Schleife genommen: Meine Planer-Agenten bekamen gh und übernahmen die Orchestrierung, und das Tempo war unglaublich. Einen Monat später postete ich [‚Bottleneck removed.‘](https://x.com/Holgo99/status/2088153757792043485)*
 >
-> *Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sitzungen war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*
+> *Aber entfernt hatte ich mich gar nicht. Ich war ihr Bote geworden, ihr Abnicker und ihre Entscheidungsmaschine, und das ständige Umschalten zwischen den Sessions war zermürbend. Am 29. September zeigte mein GitHub 9.946 Beiträge für das Jahr, und ich postete [‚What a hell of a ride.‘](https://x.com/Holgo99/status/2104854591032484007)*
 >
 > *Mit shoalmark bin ich zurück in der Schleife. Seit dem ersten Commit von shoalmark am 21. September stammen die meisten Commits von meinen Agenten. Von mir kommen vor allem Merges und Antworten.“*
 >
@@ -40,9 +40,9 @@ Ich bin von dem ausgegangen, was ich gemessen habe. In meinem letzten Repository
 
 Ich bin überzeugt: Deine Agenten sollen mit voller Geschwindigkeit arbeiten und nachfragen, wenn es darauf ankommt. Entscheiden soll nur dein geprüftes Wort. Und jede Entscheidung soll sich später nachlesen lassen, direkt aus dem Repository. Genau dafür ist shoalmark gebaut.
 
-![Ein Mockup des shoalmark-Boards eines Beispiel-Repositorys, notes-app, mit englischen Beschriftungen. Unter dem Kopf sagt die Seite, wann sie von main gelesen wurde, dass sie ihre Datei wieder liest, wenn man zu ihr zurückkehrt, und dass nichts ständig nachfragt, neben einem Knopf, der den Befehl zum Neubau kopiert. Im Kasten „yours“ warten zwei Entscheidungen, die älteste zuerst: NA-009-Q1, „May the sync drop devices unseen for 90 days?“, die NA-019 aufhält und von der Research-Sitzung gestellt wurde; und NA-012-Q2, „Ship the export as CSV only, or as CSV and JSON?“, die NA-014 aufhält und von der Planner-Sitzung gestellt wurde. Jede hat die Knöpfe „accept“ und „reject“, und die Antworten dort sind signiert. Darunter der Tag: ein Knopf, der den Standup-Prompt kopiert; die drei Sitzungen mit einem Commit in den letzten 24 Stunden, Research und Planner in Claude Code und Builder in Codex, die beiden, die gefragt haben, zuerst, jede mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert; und ein Knopf, der den Abschluss-Prompt kopiert. Reviews, Receipts und der aktuelle Pfad sind eingeklappt.](https://shoalmark.tools/assets/why/board-mockup-dark.png)
+![Ein Mockup des shoalmark-Boards eines Beispiel-Repositorys, notes-app, mit englischen Beschriftungen. Unter dem Kopf sagt die Seite, wann sie von main gelesen wurde, dass sie ihre Datei wieder liest, wenn man zu ihr zurückkehrt, und dass nichts ständig nachfragt, neben einem Knopf, der den Befehl zum Neubau kopiert. Im Kasten „yours“ warten zwei Entscheidungen, die älteste zuerst: NA-009-Q1, „May the sync drop devices unseen for 90 days?“, die NA-019 aufhält und von der Research-Session gestellt wurde; und NA-012-Q2, „Ship the export as CSV only, or as CSV and JSON?“, die NA-014 aufhält und von der Planner-Session gestellt wurde. Jede hat die Knöpfe „accept“ und „reject“, und die Antworten dort sind signiert. Darunter der Tag: ein Knopf, der den Stand-up-Prompt kopiert; die drei Sessions mit einem Commit in den letzten 24 Stunden, Research und Planner in Claude Code und Builder in Codex, die beiden, die gefragt haben, zuerst, jede mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert; und ein Knopf, der den Abschluss-Prompt kopiert. Reviews, Receipts und der aktuelle Pfad sind eingeklappt.](https://shoalmark.tools/assets/why/board-mockup-dark.png)
 
-*Ein Mockup des Boards, aus einem Beispiel-Repository: Die Fragen deiner Agenten warten oben, die älteste zuerst; darunter die Sitzung, die jede gestellt hat, mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert.*
+*Ein Mockup des Boards, aus einem Beispiel-Repository: Die Fragen deiner Agenten warten oben, die älteste zuerst; darunter die Session, die jede gestellt hat, mit einem Knopf, der ihren Befehl zum Fortsetzen kopiert.*
 
 ## Warum es so gebaut ist
 
@@ -51,8 +51,8 @@ Vertrauen beginnt mit Dingen, die man prüfen kann. Darum bleibt shoalmark klein
 - **Eine Datei.** Python 3.9 oder neuer. Kein pip, kein Server, keine Datenbank, kein Konto. Dein Repository behält eine festgeschriebene Kopie mit Prüfsummen, und sie aktualisiert sich nie hinter deinem Rücken.
 - **Dein Beleg.** Schlichtes Markdown, eine Datei pro Arbeitspaket, direkt in deinem Repository. shoalmark überschreibt nie eine Datei, die es nicht selbst geschrieben hat.
 - **Dein Wort.** Ein Befehl pro Antwort, festgehalten als dein eigener Commit. Ein Klick oder eine Zeile im Chat ist keine Antwort.
-- **Dein Standup.** Die Fragen warten auf dem Board, die älteste zuerst. Der Standup-Prompt liegt einen Klick entfernt bereit, wann immer es dir passt.
-- **Aufgeschriebene Rechte.** Jeder Agent arbeitet in einem Sitz mit aufgeschriebenen Rechten, und das Gate sieht jedes Recht in einem Diff.
+- **Dein Stand-up.** Die Fragen warten auf dem Board, die älteste zuerst. Der Stand-up-Prompt liegt einen Klick entfernt bereit, wann immer es dir passt.
+- **Aufgeschriebene Rechte.** Jeder Agent arbeitet in einer Rolle mit aufgeschriebenen Rechten, und das Gate sieht jedes Recht in einem Diff.
 - **Berichte, keine Beweise.** shoalmark ist kein Beweis, dass die Arbeit stimmt. Dafür ist ein Review da.
 
 ## Woran es sich selbst hält
