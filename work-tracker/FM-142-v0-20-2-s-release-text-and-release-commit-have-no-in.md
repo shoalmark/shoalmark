@@ -13,6 +13,8 @@ hook: "FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds onl
 
 ## What is true now
 
+**2026-11-03 06:29:56 CET — v0.20.2’s release commit sets `VERSION` to 0.20.2 and both setup pages to clone `--branch v0.20.2`. ADOPT’s pins stay on v0.20.1 until the pin commit after the tag; the footer’s headline follows in its own commit.**
+
 **2026-11-03 — filed and judged In Progress, P1, on the Owner's word of 3 November; it holds v0.20.2's release.**
 [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) shipped with v0.20.2 at the sweep's
 close. A commit that changes a path outside the tracker folder names the tracker it is built under, and the gate holds
@@ -37,4 +39,5 @@ release that is the person's to tag needs its own work held where its record can
 
 | Date | Event |
 |---|---|
+| 2026-11-03 06:29:56 CET | v0.20.2’s release commit: VERSION 0.20.2; both setup pages clone `--branch v0.20.2`. ADOPT’s pins stay on v0.20.1 until the pin commit after the tag; the footer’s headline follows in its own commit. |
 | 2026-11-03 | Filed and judged In Progress, P1, on the Owner's word of 3 November, for v0.20.2's release: its CHANGELOG section, release commit and run sheet. Records only. |
