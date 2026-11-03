@@ -1,0 +1,8 @@
+# The asset layer's headers file: docs.yml's cloudflare job copies it to site/_headers before the deploy. The asset layer
+# reads that file and does not serve it, and adds each rule's headers to the files whose paths match the rule.
+# The site's text and Markdown files are UTF-8, and each response says so; every other file is served as before.
+/*.txt
+  Content-Type: text/plain; charset=utf-8
+
+/*.md
+  Content-Type: text/markdown; charset=utf-8

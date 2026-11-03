@@ -20,6 +20,7 @@ on:
       - ".github/workflows/docs.yml"
       - ".github/workflows/docs.worker.js"
       - ".github/workflows/docs.wrangler.jsonc"
+      - ".github/workflows/docs.headers"
 # Each job names the permissions it needs, and no more; the workflow grants none of its own.
 permissions: {}
 # The image is pinned until 0.19.3, as ci.yml's are.
@@ -73,9 +74,12 @@ jobs:
           sparse-checkout: |
             .github/workflows/docs.wrangler.jsonc
             .github/workflows/docs.worker.js
+            .github/workflows/docs.headers
       - uses: actions/download-artifact@v8
         with: {name: github-pages}
       - run: mkdir site && tar -xf artifact.tar -C site
+      # the asset layer reads site/_headers for the headers it adds to the files it serves, and serves no file by that name
+      - run: cp .github/workflows/docs.headers site/_headers
       - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
