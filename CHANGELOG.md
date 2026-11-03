@@ -2,6 +2,56 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## 0.20.2 — 2026-11-03
+
+**Vendor the complete release, remove the retired theme files the board names, update any retired review labels, run `--install-hook` again on your default branch in every committing clone, then run `--check` once.**
+
+### Security
+- The undo line `--answer` prints when it refuses over uncommitted changes, and the `git log` command the gate suggests when a tracker moves to Shipped with no commit behind it, now quote every path the way the tool's other copied commands do, on POSIX shells and in PowerShell, so a pasted line runs exactly as printed.
+
+### Changed
+- Each new ask gets its own `ask-id`, numbered from `Q1` within its tracker and kept with its archived exchange. The board, `--owner`, `--standup` and `--answered` name it, and an answer commit names it in an `Answers:` trailer. Earlier asks and answers still read.
+- An answer is committed on the branch the Owner stands on, signed where the repository requires it; the command creates no answer branch and pushes nothing. The answer counts once its commit reaches the default branch. The board, `--owner` and `--standup` no longer read answer branches, and `--queue` reads the Owner’s signed pull request as theirs to merge (R4).
+- The stand-up prompt asks the session to check first that the Owner’s folder is not behind, take the agenda one item at a time, print each answer command for the Owner, gather blockers, and lay out the day’s path before acting on their go. It names the planner’s own worktree and adapts to Git with or without a forge or origin, Subversion, and a plain folder; the prompt stays English on every board.
+- The board’s day gives a parent session a command to copy and resume in its first turn’s folder, where one local harness log identifies it. An ambiguous, unreadable or unusable log gives a reason instead; a session with no local log and a sub-session get no command. The board reads log names and the first turn’s folder, never the conversation, and keeps the command in its local page.
+- Outside version control, the board’s read-at line names the folder, and its fold gives the full path and read time. Code words in the labels render as code, and long paths wrap.
+- A review reads as one row on two lines: the verdict with its branch and reviewed commit, then the sessions. A branch or session not known says why, session ids stay together, and one help line explains how a verdict’s branch is found.
+- A closed group folds its paragraph with its rows, including the newest pass under *triaged*.
+- Today’s session rows show the seat’s icon in grey, without its background square; an unknown seat keeps an empty slot. Printing hides the icon and keeps the slot.
+- The board’s counts wrap between groups, keeping each number with its words and its separator.
+- The German board and pages say *du*, *die Rolle*, *die Runde*, *der Eigner*, *das Board*, *das Stand-up*, *die Frage*, *die Antwort*, *das Arbeitspaket*, *die Sichtung*, *die Session*, *das Review*, *der Reviewer*, *das Urteil*, *der Beleg*, *der Verlauf* and *der Abschluss*. Technical terms are *Branch*, *Trunk* and *Backlog*, with *Git-Plattform* and *Versionsverwaltung*; the legal pages keep their formal address.
+- Tier 3’s signing instructions say *confirmation on the device*: a security key’s PIN and touch, or Touch ID. The signing step printed by `--answer` uses that wording too.
+- The commit-message hook adds the seat’s trailers while preserving the rest of the message’s bytes, including bare links at the end and an ending without a newline.
+- The hooks’ copy records the tool’s full commit; a copy installed from a working tree also records whether its files equal that commit. A vendored copy takes its source commit from its PIN.
+- TortoiseSVN hook properties include their type and quote the script path. Installing again upgrades shoalmark’s earlier three-line and unquoted values; another hook’s property is left alone and named.
+- The Subversion verification-limit notice appears once at the end of `--init` and `--check`, after any violations; it no longer appears in TortoiseSVN’s results or other modes. The board’s proof explanation states the same local limit.
+- On Windows, TortoiseSVN hook output uses the system’s ANSI code page, including timeout output, replacing characters it cannot encode. Other modes keep UTF-8.
+- The Claude plugin supplies `/find-drift`, which reports rules held only as prose, sources that disagree and obsolete text, ranked by what can become a check; it changes only its report and hash.
+- The plugin’s `/prune-drift` uses a fresh drift report, records missing history before removing it, and proves Python changes are prose only. It keeps rules and external quirks, lists candidate checks, and leaves unresolved disagreements and protected edits for the person.
+
+### Upgrade notes
+- **Replace the vendored files whole.** Use `--vendor` from the complete tagged release or its unpacked release archive, taking the release’s files as they ship, including its own brand files beside the tool. Themes are gone: no theme is read or copied. Remove the old `themes/`, `theme.css`, `fonts/` and `wordmark.svg` files that the board names; set colours with `[palette]` in `shoalmark.toml`.
+- **Never edit VERSION by hand.** The release supplies it with the rest of the vendored copy, and its bytes are pinned. Change the tool upstream and vendor again; do not relabel a copy to make it look upgraded.
+- **Your project’s files stay yours.** Keep your own brand files, tests and `AGENTS.md`; this upgrade calls for no rewrite of your tests or agent contract. The repository’s brand belongs in its tracker folder’s `brand/`, apart from the release’s vendored brand. You may add this line to `AGENTS.md`: “Never edit a vendored shoalmark file in place; change it upstream and vendor again.”
+- **Move retired review labels.** If your repository’s `labels.yaml` sets either old key, the next board build warns, one line for each:
+  >   brand: repository's labels.yaml: reviews.branch.merged is no longer read — a verdict's branch is named alone, its word `reviews.branch`; the section's help line, `reviews.help`, says a merge may name it
+  >
+  >   brand: repository's labels.yaml: reviews.branch.unknown is no longer read — a branch not known is said alone, its word `reviews.branch.notknown`, and its reason follows the commit on the row
+
+  Replace `reviews.branch.merged` with `reviews.branch` and, where you customise the explanation, `reviews.help`; replace `reviews.branch.unknown` with `reviews.branch.notknown`. The old keys are named and ignored; they alone do not fail `--check`. A warning names the organisation or person instead where that is the label file’s place.
+- **Refresh every committing copy.** Run `--install-hook` again on your default branch in every committing Git clone so its hooks run the upgraded tool. On Subversion, run it again in the working copy and commit its property changes; the command-line `svn commit` runs no client hook, so run the tool before committing and `--check` afterwards.
+
+### The site
+- The landing’s tape-off ceremony is removed; the prompt door is lit immediately, and the golden coin stays.
+- A second prompt door follows the coins in *insert coin* (`#start`), linked only when the build draws the prompt door. It copies the same prompt and opens the same dialog as the first.
+- The second prompt door keeps its label clear of the slot on phones.
+- The German *Why shoalmark?* page prints on one US Letter page, with smaller type and room for its longer labels.
+- The landing and *Why shoalmark?* speak in the maker’s own voice; the why page carries the story as running text, its timeline, and a short account of what shoalmark is and is not.
+- Fenced examples build as code blocks in English and German, with the copy button visible at rest.
+- Setup’s first copied command has no placeholder to replace, in either language.
+- Every page links to its language’s imprint and privacy notice, with English and German versions of each.
+- The adoption notes pin v0.20.1, and the landing’s prompt is open. Their pin advances only after a release is published.
+
 ## 0.20.1 — 2026-10-23
 
 **Upgrade, run `--install-hook` again in every committing clone (the refresh hooks come back), delete the brand files the board names as no longer read, then run `--check` once.** The board rebuilds itself again after a checkout, a merge or a rebase, and its reads of git run under fixed settings. The board has one look of its own. `--vendor` takes only a tagged, verified, complete release.
