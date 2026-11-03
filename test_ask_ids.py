@@ -33,6 +33,9 @@ SINCE = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
 CONFIG = f'name = "ids"\nowner = "{OWNER[1]} signed"\n[kinds]\nFM = "Work"\n[seats]\nplanner = "{SEAT[1]}"\n'
 ENV = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "SSH_", "SHOALMARK_"))}
 ENV.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0", SHOALMARK_CMD="shoalmark")
+# a copied command spells each argument as `printed_arg` does — a PowerShell literal on Windows, `shlex.quote` elsewhere: the rows write the
+# expected text out for each platform, and one row holds the Windows text to what `printed_arg` makes there
+WIN_ARGS = sys.platform == "win32"
 
 
 def git(cwd, *a, who=SEAT, check=True, sign=None):
@@ -652,12 +655,104 @@ def rows_given_again(area, add):
         write(r.root, tid, answered(r.read(tid)))
     before = r.head()
     said = run(r.root, "--answer", "FM-003-Q1", "accept")
+    line = lambda aid: GIVEN_AGAIN_WIN[aid] if WIN_ARGS else f"--answer {aid} accept"
     add("3c · a tree an earlier `--answer` left half-written, its ask carrying an id: the refusal gives the answer again by the ask's id",
-        said[0] == fm.EXIT_LINT and "failed half-way" in said[2] and "--answer FM-001-Q1 accept" in said[2] and "--answer FM-001 accept" not in said[2]
+        said[0] == fm.EXIT_LINT and "failed half-way" in said[2] and line("FM-001-Q1") in said[2] and line("FM-001") not in said[2]
         and r.head() == before, seen(said))
-    add("2 · …and an ask before ask ids by its tracker's id", said[0] == fm.EXIT_LINT and "--answer FM-002 accept" in said[2], seen(said))
-    add("3c · …and an `ask-id:` not in its own form by its tracker's id", said[0] == fm.EXIT_LINT and "--answer FM-004 accept" in said[2] and odd not in said[2],
+    add("2 · …and an ask before ask ids by its tracker's id", said[0] == fm.EXIT_LINT and line("FM-002") in said[2], seen(said))
+    add("3c · …and an `ask-id:` not in its own form by its tracker's id", said[0] == fm.EXIT_LINT and line("FM-004") in said[2] and odd not in said[2],
         seen(said))
+
+
+GIVEN_AGAIN_WIN = {"FM-001-Q1": "--answer 'FM-001-Q1' accept", "FM-001": "--answer 'FM-001' accept", "FM-002": "--answer 'FM-002' accept",
+                   "FM-004": "--answer 'FM-004' accept"}
+
+
+def sh_args(text_):
+    """The arguments a POSIX shell makes of `text_`: `sh -c 'printf "%s\\0" "$@"' _ <text_>`, run by a shell, prints each one ended by a NUL."""
+    r = subprocess.run(["sh", "-c", "sh -c 'printf \"%s\\0\" \"$@\"' _ " + text_], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return r.stdout.split("\0")[:-1]
+
+
+def windows_spelled(real, token):
+    """`real(token)`, the tool's `printed_arg`, as it spells on Windows: `sys.platform` patched for that one call alone."""
+    from unittest import mock
+    with mock.patch.object(fm.sys, "platform", "win32"):
+        return real(token)
+
+
+def rows_spelled(area, add):
+    from unittest import mock
+    with mock.patch.object(fm.sys, "platform", "win32"):
+        made = {aid: f"--answer {fm.printed_arg(aid)} accept" for aid in GIVEN_AGAIN_WIN}
+    add("3c · the Windows text the rows above write out is the text `printed_arg` makes there", made == GIVEN_AGAIN_WIN, f"{made}")
+    reason = 'not $(echo now), "this" `echo q` week'
+    r = Repo(area / "spelled", {"FM-001": text("FM-001", ask(aid="FM-001-Q1")), "FM-003": text("FM-003", ask(aid="FM-003-Q1", q="Ship the third?"))})
+    write(r.root, "FM-001", answered(r.read("FM-001"), answer=f"rejected - {reason}"))
+    said = run(r.root, "--answer", "FM-003-Q1", "accept")
+    head = "--answer 'FM-001-Q1' reject " if WIN_ARGS else "--answer FM-001-Q1 reject "
+    printed = next((l.split(head, 1)[1] for l in said[2].splitlines() if head in l), None)
+    reason_win = "'not $(echo now), \"this\" `echo q` week'"
+    if WIN_ARGS:
+        ok = printed == reason_win
+    else:
+        ok = printed is not None and subprocess.run(["sh", "-c", "sh -c 'printf %s \"$@\"' _ " + printed], capture_output=True, text=True,
+                                                    encoding="utf-8", errors="replace").stdout == reason
+    add("3c · the retry line spells its arguments as every copied command does: its reason comes back unchanged", said[0] == fm.EXIT_LINT and ok,
+        seen(said) + f" · printed {printed!r}")
+    with mock.patch.object(fm, "printed_arg", lambda token, real=fm.printed_arg: windows_spelled(real, token)):
+        said_w = run(r.root, "--answer", "FM-003-Q1", "accept")
+    head_w = "--answer 'FM-001-Q1' reject "
+    printed_w = next((l.split(head_w, 1)[1] for l in said_w[2].splitlines() if head_w in l), None)
+    add("3c · …and the retry line as the tool prints it on Windows, read by the Windows text: the id and the reason as `printed_arg` makes them there",
+        said_w[0] == fm.EXIT_LINT and printed_w == reason_win, seen(said_w) + f" · printed {printed_w!r}")
+    top = area / "spelled top"
+    sub = top / "sub"
+    sub.mkdir(parents=True)
+    git(top, "init", "-q", "--initial-branch=main")
+    (sub / "shoalmark.toml").write_text(CONFIG, encoding="utf-8")
+    name = "FM-001-x y$(echo z);w.md"
+    for tid, file_, body in (("FM-001", name, text("FM-001", ask(aid="FM-001-Q1"))), ("FM-002", "FM-002-x.md", text("FM-002", ask(q="Ship the old one?")))):
+        (sub / REL).mkdir(parents=True, exist_ok=True)
+        (sub / REL / file_).write_text(body, encoding="utf-8")
+    run(sub, "--print-written")
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-m", "the start", who=OWNER)
+    (sub / REL / name).write_text(answered((sub / REL / name).read_text(encoding="utf-8")), encoding="utf-8")
+    said = run(sub, "--answer", "FM-002", "accept")
+    shown = next((l.strip() for l in said[2].splitlines() if l.strip().startswith("git ") and " restore " in l), "")
+    toplevel = str(Path(git(top, "rev-parse", "--show-toplevel").strip()))
+    paths = [e[3:] for e in git(top, "status", "--porcelain", "-z", "--untracked-files=no").split("\0") if e[3:]]
+    want = ["-C", toplevel, "restore", "--staged", "--worktree", "--", *paths]
+    if WIN_ARGS:
+        ok = shown == "git " + " ".join("'" + a.replace("'", "''") + "'" if a in [toplevel, *paths] else a for a in want)
+    else:
+        ok = f"sub/{REL}/{name}" in paths and sh_args(shown[len("git "):]) == want
+    add("3c · the restore line spells its arguments as every copied command does: each comes back unchanged", said[0] == fm.EXIT_LINT and ok,
+        seen(said) + f" · shown {shown!r} · want {want!r}")
+
+
+SHIP_RECORDS = ["docs/work-tracker/", "it's $(echo x) notes/"]
+SHIP_HINT_WIN = "git log --oneline -- . ':(exclude,top)docs/work-tracker/' ':(exclude,top)it''s $(echo x) notes/'"
+
+
+def rows_ship_hint(area, add):
+    from unittest import mock
+    with mock.patch.object(fm.sys, "platform", "win32"):
+        made = "git log --oneline -- . " + " ".join(fm.printed_arg(":(exclude,top)" + p) for p in SHIP_RECORDS)
+    add("the Windows text of the ship-log hint written out here is the text `printed_arg` makes there", made == SHIP_HINT_WIN, made)
+    r = Repo(area / "ship", {"FM-001": text("FM-001")})
+    r.switch("-c", "ship")
+    (r.root / "shoalmark.toml").write_text(CONFIG + "[ratio]\nrecords = [" + ", ".join('"' + p + '"' for p in SHIP_RECORDS) + "]\n", encoding="utf-8")
+    r.write("FM-001", text("FM-001").replace("status: In Progress", "status: Shipped"))
+    r.commit("FM-001: shipped")
+    said = r.check()
+    shown = next((l.split("(`", 1)[1].split("` finds it)", 1)[0] for l in said[2].splitlines() if "moved to `Shipped`" in l and "` finds it)" in l), "")
+    want = ["log", "--oneline", "--", ".", *(":(exclude,top)" + p for p in SHIP_RECORDS)]
+    add("the ship-log hint names a well-formed records path as before", "':(exclude,top)docs/work-tracker/'" in shown, seen(said) + f" · shown {shown!r}")
+    ok = shown == SHIP_HINT_WIN if WIN_ARGS else shown.startswith("git ") and sh_args(shown[len("git "):]) == want
+    add("the ship-log hint spells its paths as every copied command does: each comes back unchanged", refused(said, "moved to `Shipped`") and ok,
+        seen(said) + f" · shown {shown!r} · want {want!r}")
 
 
 # --- a copied answer line names an ask only by its own id form ---------------------------------------------------------------------
@@ -857,7 +952,7 @@ def rows_one_log(area, add):
 
 
 ROWS = (rows_form, rows_records, rows_minting, rows_branches, rows_binding, rows_commands, rows_before, rows_record_names, rows_given_again,
-        rows_unformed, rows_renumber, rows_revoke, rows_unborn, rows_one_log)
+        rows_spelled, rows_ship_hint, rows_unformed, rows_renumber, rows_revoke, rows_unborn, rows_one_log)
 
 
 # --- the mutants ------------------------------------------------------------------------------------------------------------------
@@ -900,6 +995,13 @@ MUTANTS = (
      (rows_given_again,)),
     ("a copied answer line names an ask by an `ask-id:` in any form", "ask_cmd_id", 'return aid if ask_number(aid, tid) is not None else ""', "return aid",
      (rows_unformed,)),
+    ("the retry line's reason not spelled as a copied command's argument", "dirty_refusal", 'f" {printed_arg(m.group(2))}"', """f' "{m.group(2)}"'""",
+     (rows_spelled,)),
+    ("the restore line's arguments not spelled as a copied command's", "dirty_refusal",
+     "' -C ' + printed_arg(str(top))} restore --staged --worktree -- {' '.join(printed_arg(p_) for p_ in mine)}",
+     "' -C ' + str(top)} restore --staged --worktree -- {' '.join(mine)}", (rows_spelled,)),
+    ("the ship-log hint's paths in hand-written quotes", "ship_problems", """" ".join(printed_arg(f":(exclude,top){p}") for p in records)""",
+     """" ".join(f"':(exclude,top){p}'" for p in records)""", (rows_ship_hint,)),
 )
 
 
