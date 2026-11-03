@@ -2985,8 +2985,29 @@ def run(root, *a, **k):
     return got
 """
 _end = "\nprint(skipped_line())\nsys.exit(1 if FAILS else 0)\n"
-_block_run = lambda mutation, end="": subprocess.run([sys.executable, "-c", _parts + mutation + _board_block + end + _end], capture_output=True, text=True,
+_block_src = lambda mutation, end="": _parts + mutation + _board_block + end + _end
+_block_run = lambda mutation, end="": subprocess.run([sys.executable, "-"], input=_block_src(mutation, end), capture_output=True, text=True,
                                                       encoding="utf-8", errors="replace", env=dict(_ENV, **_RUNNER_HOME), timeout=300)
+_stdin_marker = "stdin · ok — ü"
+_stdin_mutation = ("\n#" + "x" * 33000 + "\nmarker = " + repr(_stdin_marker)
+                   + '\nprint(marker.encode("utf-8").hex(), flush=True)\nsys.exit(0)\n')
+_stdin_program = _block_src(_stdin_mutation)
+_stdin_run = _block_run(_stdin_mutation)
+_stdin_found = _stdin_marker.encode("utf-8").hex() in _stdin_run.stdout.splitlines()
+_stdin_control_ok = False
+_stdin_control = "not applicable here — a POSIX command line has no limit near this size"
+if os.name == "nt":
+    try:
+        _stdin_c = subprocess.run([sys.executable, "-c", _stdin_program], capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace", env=dict(_ENV, **_RUNNER_HOME), timeout=300)
+    except OSError as _stdin_error:
+        _stdin_control_ok = _stdin_error.winerror == 206
+        _stdin_control = f"winerror {_stdin_error.winerror}"
+    else:
+        _stdin_control = f"started, exit {_stdin_c.returncode}"
+check(f"the browser block's program starts from stdin beyond a Windows command line and reads UTF-8 (saw length {len(_stdin_program)}, "
+      f"exit {_stdin_run.returncode}, marker found: {_stdin_found}; the control: {_stdin_control})",
+      len(_stdin_program) > 32766 and _stdin_run.returncode == 0 and _stdin_found and (os.name != "nt" or _stdin_control_ok))
 _none = _block_run("\n_CHROME = None\n")
 check(f"FM-035 · no Chrome here: the board block is skipped by name with the reason and its two checks, the run's end says this is not a full pass, and it exits 0 (saw {_none.stdout.strip()[-260:]!r})",
       _none.returncode == 0 and "  skip  the board, rendered in a browser — no Chrome or Chromium is installed here; 2 check(s) did not run" in _none.stdout

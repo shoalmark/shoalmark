@@ -537,3 +537,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-10-16 | **Defect 9 filed, nothing built** (the Auditor's finding, relayed by the Owner): `seat.session` keeps eight hex characters, and Codex's time-ordered session ids share them within about a minute. Two Reviewer sessions both carry `01a14312`; their `Worktree:` trailers tell them apart. |
 | 2026-10-16 | Defect 9's second case (the Auditor's finding, relayed by the Owner): the FM-050 Reviewer and the bounded Reviewer, two sessions, both carry `01a14313`. |
 | 2026-11-03 | The suite's own home now keeps the runner's git configuration, which CI's runners set; a hermetic bare-repository check and its empty-home control hold it. |
+| 2026-11-03 | The browser block's check now gives its program on stdin, so a program longer than a Windows command line still starts there; a check holds it. |
