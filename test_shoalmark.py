@@ -36,6 +36,20 @@ Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=
 Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)
 
 
+def _suite_home():
+    """A home folder of the suite's own, for the suite and every program it starts — a board reads the harness's logs in the home folder for the
+    day's sessions, and no check reads the runner's. The runner's own home (`_RUNNER_HOME`) is kept for what keeps its state there and builds no
+    board: Chrome, and the site's rebuild through uvx. A program that runs a part of the suite again is handed the runner's home, so it keeps it too.
+    Returns the folder, held until the run ends."""
+    held = tempfile.TemporaryDirectory(prefix="shoalmark-suite-home-")
+    os.environ["HOME"] = os.environ["USERPROFILE"] = str(Path(held.name).resolve())
+    return held
+
+
+_RUNNER_HOME = {k: os.environ[k] for k in ("HOME", "USERPROFILE") if k in os.environ}
+_SUITE_HOME = _suite_home()
+
+
 HERE = Path(__file__).resolve().parent
 _spec = importlib.util.spec_from_file_location("fm", HERE / "shoalmark.py")
 fm = importlib.util.module_from_spec(_spec)
@@ -700,7 +714,7 @@ def _chrome_start(chrome, args, timeout):
     profile = tempfile.mkdtemp(prefix="profile-", dir=_chrome_home())
     try:
         return subprocess.run(_chrome_argv(chrome, ["--headless=new", "--disable-gpu", *_CHROME_FLAGS, *args], profile),
-                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, env=dict(os.environ, **_RUNNER_HOME))
     finally:
         shutil.rmtree(profile, ignore_errors=True)
 
@@ -736,7 +750,7 @@ def _chrome_node(script, *args, timeout=1800):
     if launcher is None:
         raise RuntimeError(_CHROME_NODE_GAP)
     return subprocess.run([shutil.which("node"), str(HERE / script), *args], cwd=str(HERE), capture_output=True, text=True, encoding="utf-8",
-                          errors="replace", timeout=timeout, env=dict(_ENV, CHROME=launcher, CHROME_FLAGS=" ".join(_CHROME_FLAGS), TMPDIR=_chrome_home()))
+                          errors="replace", timeout=timeout, env=dict(_ENV, CHROME=launcher, CHROME_FLAGS=" ".join(_CHROME_FLAGS), TMPDIR=_chrome_home(), **_RUNNER_HOME))
 
 
 def _chrome_probe(chrome):
@@ -2928,7 +2942,7 @@ def run(root, *a, **k):
 """
 _end = "\nprint(skipped_line())\nsys.exit(1 if FAILS else 0)\n"
 _block_run = lambda mutation, end="": subprocess.run([sys.executable, "-c", _parts + mutation + _board_block + end + _end], capture_output=True, text=True,
-                                                      encoding="utf-8", errors="replace", env=_ENV, timeout=300)
+                                                      encoding="utf-8", errors="replace", env=dict(_ENV, **_RUNNER_HOME), timeout=300)
 _none = _block_run("\n_CHROME = None\n")
 check(f"FM-035 · no Chrome here: the board block is skipped by name with the reason and its two checks, the run's end says this is not a full pass, and it exits 0 (saw {_none.stdout.strip()[-260:]!r})",
       _none.returncode == 0 and "  skip  the board, rendered in a browser — no Chrome or Chromium is installed here; 2 check(s) did not run" in _none.stdout
@@ -9150,6 +9164,18 @@ act.sign.title: deine Handlung signieren
 act.sign.step.done: "schreibt {0} — die Zeit, und wo das Ergebnis liegt — und seinen Beleg unter {1}"
 act.sign.step.due: "trägt den neuen Termin in {0} ein und schreibt den alten in den Beleg unter {1}"
 sessions.recent: Sessions · {0} am letzten Tag
+resume.button: Fortsetzungsbefehl
+resume.spoken: "den Befehl kopieren, der die Session {0} fortsetzt"
+resume.help: "für eine Session, die nicht mehr offen ist: das Board kann nicht sehen, ob sie es ist"
+resume.copied: "der Befehl ist in deiner Zwischenablage · führe ihn in einem Terminal aus, nur für eine Session, die nicht mehr offen ist"
+resume.two: "kein Fortsetzungsbefehl: {0} Protokolle auf diesem Rechner beginnen mit {1}, und das Board wählt keines aus"
+resume.nofolder: "kein Fortsetzungsbefehl: ihr Protokoll nennt in seinen ersten {0} MiB keinen Ordner"
+resume.unread: "kein Fortsetzungsbefehl: ihr Protokoll konnte nicht gelesen werden"
+resume.refused: "kein Fortsetzungsbefehl: ihr Ordner {0} {1}"
+resume.refused.chars: "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : -"
+resume.refused.chars.nt: "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : - und der Rückstrich"
+resume.refused.long: "ist länger als {0} Zeichen"
+resume.refused.relative: ist kein absoluter Pfad
 read.git.branch: "gelesen von {0} @ {1} um {2}"
 read.git.detached: "gelesen von einem losgelösten HEAD @ {0} um {1}"
 read.git.unborn: "gelesen von {0}, noch ohne Commit, um {1}"
@@ -9169,6 +9195,7 @@ read.about: "was diese Seite liest, und was sie nicht sehen kann"
 read.about.git: "gelesen aus dem Verlauf von {0} um {1}"
 read.about.svn: "gelesen von der Arbeitskopie um {0}"
 read.about.none: "gelesen aus dem Ordner {1} um {0}"
+read.about.logs: "für den Fortsetzungsbefehl jeder Session: die Namen der Protokolle in ~/.claude/projects und ~/.codex/sessions und der Ordner, in dem ihr erster Zug lief: nie, was eine Session sagte"
 read.copied: "kopiert: {0} · im Ordner des Repositorys ausführen, dann zu dieser Seite zurückkehren"
 day.copied: der Prompt ist in deiner Zwischenablage
 day.nocopy: "Nicht kopiert — diese Seite hat hier keine Zwischenablage (ein aus einer Datei geöffnetes Board hat oft keine). Den Prompt markieren und kopieren."
@@ -16360,21 +16387,21 @@ _RA_SHAPES = (      # (what, the read, the reason a commit is no link, the line'
     ("a plain folder", {"vcs": "none", "folder": _RA_PATH}, "", ("read.none", "stock_ledger", _RA_WHEN),
      (("read.about.none", _RA_FULL, _RA_PATH), ("read.none.why",))),
     ("git, on a branch", {"vcs": "git", "commit": "c" * 40, "branch": "main", "changes": 2}, "link.unknown", ("read.git.branch", "main", "c" * 7, _RA_WHEN),
-     (("read.about.git", "main", _RA_FULL), ("link.unknown",), ("read.git.changed", 2))),
+     (("read.about.git", "main", _RA_FULL), ("link.unknown",), ("read.git.changed", 2), ("read.about.logs",))),
     ("git, a detached HEAD", {"vcs": "git", "commit": "c" * 40, "branch": None, "changes": None}, "link.noforge", ("read.git.detached", "c" * 7, _RA_WHEN),
-     (("read.about.git", "HEAD", _RA_FULL), ("link.noforge",), ("read.git.unread",))),
+     (("read.about.git", "HEAD", _RA_FULL), ("link.noforge",), ("read.git.unread",), ("read.about.logs",))),
     ("git, no commit yet", {"vcs": "git", "commit": "", "branch": "main", "changes": 1}, "", ("read.git.unborn", "main", _RA_WHEN),
-     (("read.about.git", "main", _RA_FULL), ("read.git.changed.one",))),
+     (("read.about.git", "main", _RA_FULL), ("read.git.changed.one",), ("read.about.logs",))),
     ("Subversion, at a revision", {"vcs": "svn", "revision": "12"}, "link.noviewer", ("read.svn", "r12", _RA_WHEN),
      (("read.about.svn", _RA_FULL), ("link.noviewer",))),
     ("Subversion, its revision not read", {"vcs": "svn", "revision": None}, "", ("read.svn.unread", _RA_WHEN), (("read.about.svn", _RA_FULL),)),
     ("Subversion, no revision yet", {"vcs": "svn", "revision": ""}, "", ("read.svn.new", _RA_WHEN), (("read.about.svn", _RA_FULL),)),
 )
 _RA_CODE = {    # (language, the reason): its words in the fold, as the page's markup — the code span as code
-    ("en", "link.unknown"): "the forge's commit address is not configured (<code>commit&#95;url</code>), so not linked",
-    ("en", "link.noviewer"): "no Subversion viewer configured (<code>commit&#95;url</code>), so not linked",
-    ("de", "link.unknown"): "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (<code>commit&#95;url</code>), darum nicht verlinkt",
-    ("de", "link.noviewer"): "kein Subversion-Betrachter konfiguriert (<code>commit&#95;url</code>), darum nicht verlinkt"}
+    ("en", "link.unknown"): "the forge's commit address is not configured (<code>commit_url</code>), so not linked",
+    ("en", "link.noviewer"): "no Subversion viewer configured (<code>commit_url</code>), so not linked",
+    ("de", "link.unknown"): "die Commit-Adresse der Git-Plattform ist nicht konfiguriert (<code>commit_url</code>), darum nicht verlinkt",
+    ("de", "link.noviewer"): "kein Subversion-Betrachter konfiguriert (<code>commit_url</code>), darum nicht verlinkt"}
 _RA_PRECEDENT = 'esc(t[29][7][0]).replace(/`([^`]+)`/g,"<code>$1</code>")'
 _RA_RULE = "details.about .help{overflow-wrap:anywhere}"
 
@@ -16396,7 +16423,7 @@ def _ra_parts(mod, read, lang, why=""):
 def _ra_said(lang, key, *values):
     """A label of the tool's as the page must show it, worked out here: its text escaped as the tool escapes text, each code span in it as code, each
     value escaped in its place."""
-    esc_ = lambda s_: str(s_).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("_", "&#95;")
+    esc_ = lambda s_: str(s_).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     text_ = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc_(_RA_TABLES[lang].get(key, fm.LABELS[key])))
     return re.sub(r"\{(\d)\}", lambda m_: esc_(values[int(m_.group(1))]) if int(m_.group(1)) < len(values) else "", text_)
 
@@ -16422,7 +16449,7 @@ def _ra_faults(mod):
             if why_ in ("link.unknown", "link.noviewer") and _RA_CODE[(lang_, why_)] not in (got_[1] or ""):
                 out_["code"].append(f"{lang_}, {what_}: {why_} not as {_RA_CODE[(lang_, why_)]!r} in {got_[1]!r}")
         line_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, lang_)[0] or ""
-        if "stock&#95;ledger" not in line_ or "someone" in line_ or "home" in line_:
+        if "stock_ledger" not in line_ or "someone" in line_ or "home" in line_:
             out_["words"].append(f"{lang_}: the plain folder's line names more or less than the folder's name: {line_!r}")
         root_ = _ra_parts(mod, {"vcs": "none", "folder": "/"}, lang_)[0]
         if root_ != _ra_said(lang_, "read.none", "/", _RA_WHEN):
@@ -16432,11 +16459,11 @@ def _ra_faults(mod):
                 or "<code>" in "".join(p_ or "" for p_ in odd_) or (lang_ == "en" and "/home/some`one`/led`ger`&lt;b&gt;&amp;" not in (odd_[1] or ""))):
             out_["values"].append(f"{lang_}: {odd_}")
     plain_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, "en")
-    if plain_ != ("read from the folder stock&#95;ledger at 10-30 16:50",
-                  "read from the folder /home/someone/work/stock&#95;ledger at 2026-10-30 16:50 +01:00 · no version control: no commit or revision to name"):
+    if plain_ != ("read from the folder stock_ledger at 10-30 16:50",
+                  "read from the folder /home/someone/work/stock_ledger at 2026-10-30 16:50 +01:00 · no version control: no commit or revision to name"):
         out_["words"].append(f"en: the plain folder reads {plain_}")
     plain_ = _ra_parts(mod, {"vcs": "none", "folder": _RA_PATH}, "de")
-    if plain_ != ("gelesen aus dem Ordner stock&#95;ledger um 10-30 16:50", "gelesen aus dem Ordner /home/someone/work/stock&#95;ledger um 2026-10-30 16:50 +01:00 · "
+    if plain_ != ("gelesen aus dem Ordner stock_ledger um 10-30 16:50", "gelesen aus dem Ordner /home/someone/work/stock_ledger um 2026-10-30 16:50 +01:00 · "
                   "keine Versionsverwaltung: kein Commit und keine Revision zu nennen"):
         out_["words"].append(f"de: the plain folder reads {plain_}")
     coded_ = {lang_: sorted(k_ for k_, v_ in dict(mod.LABELS, **_RA_TABLES[lang_]).items() if re.search(r"`[^`]+`", v_)) for lang_ in ("en", "de")}
@@ -18498,7 +18525,7 @@ else:
         if facts.is_file():
             subprocess.run([sys.executable, str(facts), "--repo", str(HERE), "--commit", commit, "--pulls", str(HERE / "scripts/landing_facts.pulls-1-144.json")],
                            cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
-        subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+        subprocess.run([_uvx, f"zensical@{_ZENSICAL}", "build"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=dict(_ENV, **_RUNNER_HOME))
 
     def _checks_mjs(script, stage_dir, out, *extra):
         r = _chrome_node(script, str(stage_dir), str(out), *extra)
@@ -18601,7 +18628,7 @@ else:
             if template_edit:
                 tpl_file = stage / "overrides/landing.html"
                 tpl_file.write_text(template_edit(tpl_file.read_text(encoding="utf-8")), encoding="utf-8")
-            subprocess.run([_uvx, f"zensical@{_pin}", "build", "--clean"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=_ENV)
+            subprocess.run([_uvx, f"zensical@{_pin}", "build", "--clean"], cwd=str(stage), check=True, capture_output=True, timeout=900, env=dict(_ENV, **_RUNNER_HOME))
             subprocess.run([sys.executable, "scripts/llms_txt.py", "site"], cwd=str(stage), check=True, capture_output=True, timeout=300, env=_ENV)
             return stage / "site"
 
@@ -21117,6 +21144,15 @@ _module_guard(test_r9_removals, check)
 # FM-030, R9's two quick wins: the stand-up and close-out prompts, copied from the board — their class test, a program of its own for its mutants
 import test_day_prompts
 _module_guard(test_day_prompts, check)
+
+import test_resume_command
+_module_guard(test_resume_command, check)
+_module_guard(test_resume_command, check, True)
+
+# the board page's placeholders: no value the page puts in is read as one; the class test, a program of its own so its mutants can run it
+import test_page_placeholders
+_module_guard(test_page_placeholders, check)
+_module_guard(test_page_placeholders, check, True)
 
 # Q7 (FM-031): one stand-up across the repositories you name; its class test, in a program of its own so its mutants can run it
 import test_standup_repos

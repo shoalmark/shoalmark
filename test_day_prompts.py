@@ -485,7 +485,7 @@ def run_checks(*, results=None):
         with board_step(add, "installed tool path with a space"):
             page, code, err = board(tool, area / "spaced", "notes-app", bare, install="tool space")
             refused = [re.findall(r'<p class="dp hot">(.*?)</p>', template(page, "day-" + k), re.S) for k in HOLDS]
-            split = html.escape(fm.LABELS.get("day.refused.split", "\0no such label"), quote=False).replace("_", "&#95;")
+            split = html.escape(fm.LABELS.get("day.refused.split", "\0no such label"), quote=False)
             add(f"day · board: a real installation in a folder named with a space, without SHOALMARK_CMD, fills neither prompt — each dialog names the "
                 f"tool's command and says the copied command would split its path (saw exit {code}, {refused})",
                 code == 0 and all(len(r) == 1 and html.escape(fm.LABELS["day.value.cmd"], quote=False) in r[0].replace("&#x27;", "'")

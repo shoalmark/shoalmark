@@ -325,7 +325,7 @@ What lives where, by convention — no setting names any of it:
 | `<tracker dir>/sessions.md` | gone since 0.18.0 — the registry of seat sessions is a report, `--sessions` (§*Sessions*); delete a file left from before, history keeps its rows |
 | a seat's worktree | its identity in five per-worktree git settings (`git config --worktree`), written when the worktree is added — `git worktree add` copies all five from the worktree it is run in (§*Sessions*, the step) — and read by the tool: `user.name` and the signers file `gpg.ssh.allowedSignersFile` beside these three: `user.email` (the seat — who may) · `seat.session` (the run) · `seat.harness` (the id the harness gave the seat, for its model and effort — §*Sessions*; `--schema` lists these three). **`--whoami`** prints `From: <session> <seat> (<worktree>) · <model> · <effort>` — the line a seat's report opens with; a message between sessions names its target by the same identity after `To:` |
 | `<tracker dir>/INDEX.md` | generated, committed — what an agent reads |
-| `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads. Under its name one line says what it read, and when: the time it was built; on git the commit, the branch or a detached HEAD, and how many paths were changed and not committed — a plain run counts them; the board's own run, `--html-only`, says what is changed is not read —; on Subversion the working copy's revision; with none, the folder. The commit or the revision links to its page only where the configuration names the forge (`commit_url`, else `blob`) and, on git, only once origin holds it; else the line says why — never a link guessed from a remote's address — and that it reads its file again when you come back to it while nothing polls, with the command that rebuilds it, `--html-only`, and a button that copies it. It never calls itself current |
+| `<tracker dir>/index.html`, `view/` | generated, git-ignored — the read-only board the Owner reads. Under its name one line says what it read, and when: the time it was built; on git the commit, the branch or a detached HEAD, and how many paths were changed and not committed — a plain run counts them; the board's own run, `--html-only`, says what is changed is not read —; on Subversion the working copy's revision; with none, the folder. The commit or the revision links to its page only where the configuration names the forge (`commit_url`, else `blob`) and, on git, only once origin holds it; else the line says why — never a link guessed from a remote's address — and that it reads its file again when you come back to it while nothing polls, with the command that rebuilds it, `--html-only`, and a button that copies it. Its fold of what the page reads names, on git, what the day's strip reads for each session's resume command: the names of the logs in `~/.claude/projects` and `~/.codex/sessions`, and the folder each one's first turn ran in — never what a session said (§*Sessions*). It never calls itself current |
 | `<tracker dir>/evidence/` | worksheets and pass records — append-only, never on a reader's path |
 | `<tracker dir>/derive` | optional, executable — the repository's own axis (§7) |
 | `<tracker dir>/brand/` | optional — the repository's `logo.svg`, `labels.yaml` (§9) |
@@ -461,10 +461,12 @@ signature is their id. Read them back with `git log --format='%h %ae %(trailers:
 what the seat says of itself. The log is found by the id in `seat.harness` and by nothing else: the one file whose
 *name* carries it, `~/.claude/projects/<slug>/<id>.jsonl` for a session, `~/.claude/projects/<slug>/<session>/subagents/agent-<id>.jsonl`
 for a sub-agent, `~/.codex/sessions/…/rollout-*-<id>.jsonl` for Codex (`CODEX_THREAD_ID` is read where `seat.harness` is
-unset). Not the log's `cwd` — a transcript names the directory its session was *launched* in on every turn, sub-agents
-included, so a seat working in its own worktree would match none, and one working in the launch directory would match
-them all. From the file the tool reads only top-level fields of the newest turn that has them — Claude Code's
-`message.model` and `perTurnEffort`, Codex's `turn_context` model and effort — never a message, never a tool's result.
+unset). Not the log's `cwd` — a transcript's `cwd` follows its session's shell, and its first turn's is the directory the
+session was *launched* in, sub-agents' included, so a seat working in its own worktree would match none, and one working
+in the launch directory would match them all. From the file the tool reads only top-level fields: the model and the
+effort of the newest turn that has them — Claude Code's `message.model` and `perTurnEffort`, Codex's `turn_context` model
+and effort — and, for `--whoami`'s second line, the folder of its first turn, as the board's resume command reads it
+(below); never a message, never a tool's result.
 Two files for one id: `--whoami` refuses (exit 2, both paths named) and the hook writes no `Model:` and no `Effort:`
 (and does not stop the commit). No file, or no `seat.harness`: no trailers, and the board shows `—`. A trailer the
 message carries already is left alone, each key on its own.
@@ -561,7 +563,8 @@ hours, its sub-sessions folded into it — *sessions · 2 with a commit in the l
 then *a9f3c2d1 planner (planner-a9) ·
 builder 1–6 · reviewer 1–5, 7* (a run of three or more is `a–b`). A line opens on each member's worktree, model and
 effort (`—` where its commits carried none). A parent that made no commit of its own still has its line, its seat and
-worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript. Under it,
+worktree `—`, derived from its sub-sessions' ids. It is read from the trailers alone, never from a transcript; its resume
+command (below) reads file names and one field. Under it,
 *reviews · this week · n by another session · m by the same session · reports, not proofs*, folded, a row per verdict.
 A row names the verdict's commit, the commit it reviewed, and its branch: the branch that holds the verdict commit on
 its own first-parent line. A ref that only points at the reviewed commit, or reaches the verdict through a merge, is
@@ -570,6 +573,35 @@ message. Otherwise the row says *ambiguous*, with each branch that holds it, or 
 `--owner`, the digest, carries the same grouping in the same words — a header with
 the two counts, then one line per parent — and ends with the queue where `gh` reads the forge (*what to merge*, above).
 Labels: `sessions.recent` (now with `{1}`, the count with sub-sessions) and `reviews.*` (§9).
+
+**The resume command:** beside a parent's line in the strip, a copy button, *resume command*, holds the harness's own
+command that resumes that session — `cd <folder> && claude --resume <full id>` for Claude Code, `cd <folder> && codex
+resume <full id>` for Codex — for a session that is no longer open: the board cannot see whether one is. Where the tool
+runs on Windows, the command takes the form of the tool's other copied commands there, for PowerShell — Windows
+PowerShell 5.1 and PowerShell 7 alike: `cd '<folder>'; if ($?) { claude --resume '<full id>' }`, and `codex resume` the
+same way, so the session is started only where the folder change succeeded. The command is
+hidden behind the button, and shows for selection where the page has no clipboard. The board's local build finds it,
+for each parent in the strip whose id is exactly 8 lower-case hex digits, from file names and one field alone:
+
+- **the names:** one listing of each folder per build — `~/.claude/projects` and each project folder's top level, where
+  a log is `<uuid>.jsonl` (a sub-agent's `subagents/agent-*.jsonl` is never one), and `~/.codex/sessions` down to each
+  day, where a log is `rollout-<time>-<uuid>.jsonl`. The log whose UUID starts with the id is the session's, and the
+  UUID is its full id;
+- **the one field:** the folder of the log's first turn — Claude Code's top-level `cwd` of a record, Codex's
+  `payload.cwd` of its `session_meta` — read forward from the log's start for at most 1 MiB, never what a session said.
+  A session's `cwd` follows its shell, so a later turn's names where the shell went, never where the session began.
+
+The folder is written with `~` where it lies under the home folder, cut at a path boundary, so a picture of the board
+carries no home path. It goes into the command only where it passes the day prompts' plain set without the space, and
+their cap of 200 characters — the backslash only where the tool runs on Windows; otherwise the row says which check it
+failed. Two logs or more, of either harness, give no command, and the row says so: Codex's ids start with the time, so
+their first 8 characters collide, and the board never picks one. A log that names no folder in its first MiB gives none
+and says so; so does a log that cannot be opened or read, in words of its own. No log gives nothing, as for a session
+from another machine; a sub-session gets none, as resuming its
+parent resumes it. The command is in the local board file alone, `<tracker dir>/index.html`, which git ignores: never in
+a commit, the hook's trailers, `INDEX.md`, the digest, `--standup` or the site. *The named limit:* a log that shares
+only the id's first 8 characters with the session is taken as its own; the board cannot tell. Labels: `resume.*` and
+`read.about.logs` (§9).
 
 ## 7. The one seam: a deriver
 

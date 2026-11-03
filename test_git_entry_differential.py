@@ -1107,6 +1107,8 @@ def fm057_page_dropped(data):
 
 
 def day_dropped(data, script=DAY_SCRIPT, sign=DAY_SIGN):
+    if data is None:
+        return None
     for line in script:
         if data.count(line + b"\n") != 1:
             return None
@@ -1124,6 +1126,72 @@ def day_dropped(data, script=DAY_SCRIPT, sign=DAY_SIGN):
 
 DAY_SCRIPT_JOINED = DAY_SCRIPT[:7]
 day_dropped_joined = lambda data: day_dropped(data, DAY_SCRIPT_JOINED, None)
+
+RESUME_PAGE_LINES = tuple(("\n" + line).encode("utf-8") for line in (
+    'details.grp .rsc:not([hidden]){display:block;padding-left:2ch;user-select:all;overflow-wrap:anywhere}details.grp .said{margin-left:1ch}details.grp .rw{margin-left:1ch}',
+    'details.grp .rw:not(.hot){color:var(--dim)}details.grp .help{margin-left:4ch}details.grp .rsc:not([hidden])+.said{display:block;margin-left:0;padding-left:2ch}',
+    'rse=id=>{const m=REG&&REG.resume,r=m&&Object.prototype.hasOwnProperty.call(m,id)?m[id]:null;return Array.isArray(r)&&["resume","two","nofolder","unread","refused"].includes(r[0])?r:null},',
+    'rsm=id=>{const r=rse(id);return !r?"":r[0]=="resume"?`<button type="button" class="act" title="${l("resume.help")}" aria-label="${l("resume.spoken",id)}" onclick="RSM(event,this)">${ICO.copy}${l("resume.button")}</button><code class="rsc" hidden onclick="event.preventDefault()">${esc(r[1])}</code><span class="said" aria-live="polite"></span>`',
+    '  :`<i class="rw${r[0]=="refused"?" hot":""}">${r[0]=="two"?l("resume.two",r[1],id):r[0]=="nofolder"?l("resume.nofolder",r[1]):r[0]=="unread"?l("resume.unread"):lh("resume.refused",`<code>${esc(r[2])}</code>`,l("resume.refused."+r[1],r[3]))}</i>`},',
+    '// a click inside a `<summary>` folds or unfolds its `<details>`, and a page opened from a file often has no clipboard',
+    'function RSM(e,b){e.preventDefault();const c=b.nextElementSibling,s=c.nextElementSibling;(navigator.clipboard?.writeText?navigator.clipboard.writeText(c.textContent):Promise.reject())',
+    '  .then(()=>{c.hidden=true;s.innerHTML=`<span class="go">${ICO.check}${l("resume.copied")}</span>`},()=>{c.hidden=false;s.innerHTML=`<span class="hot">${ICO.cross}${l("answer.sign.nocopy")}</span>`})}',
+    '      +(rse(g[0])?.[0]=="resume"?`<p class="help">${l("resume.help")}</p>`:"")',
+))
+RESUME_STRIP = (b"(${esc(g[2])})${rsm(g[0])}${g[3].length", b"(${esc(g[2])})${g[3].length")
+# The resume command's words, each key with its English text and its German one (examples/de/labels.yaml), written out here and never read
+# from the tool. A key is taken out with one of its two texts, as the page's script holds it: a JSON string, its letters as they are (no
+# text holds `<`, `>` or `&`).
+RESUME_WORDS = {
+    "resume.button": ("resume command", "Fortsetzungsbefehl"),
+    "resume.spoken": ("copy the command that resumes session {0}", "den Befehl kopieren, der die Session {0} fortsetzt"),
+    "resume.help": ("for a session that is no longer open: the board cannot see whether one is",
+                    "für eine Session, die nicht mehr offen ist: das Board kann nicht sehen, ob sie es ist"),
+    "resume.copied": ("the command is on your clipboard · run it in a terminal, only for a session that is no longer open",
+                      "der Befehl ist in deiner Zwischenablage · führe ihn in einem Terminal aus, nur für eine Session, die nicht mehr offen ist"),
+    "resume.two": ("no resume command: {0} logs on this machine start with {1}, and the board does not pick one",
+                   "kein Fortsetzungsbefehl: {0} Protokolle auf diesem Rechner beginnen mit {1}, und das Board wählt keines aus"),
+    "resume.nofolder": ("no resume command: its log names no folder in its first {0} MiB",
+                        "kein Fortsetzungsbefehl: ihr Protokoll nennt in seinen ersten {0} MiB keinen Ordner"),
+    "resume.unread": ("no resume command: its log could not be read", "kein Fortsetzungsbefehl: ihr Protokoll konnte nicht gelesen werden"),
+    "resume.refused": ("no resume command: its folder {0} {1}", "kein Fortsetzungsbefehl: ihr Ordner {0} {1}"),
+    "resume.refused.chars": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : -",
+                             "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : -"),
+    "resume.refused.chars.nt": ("holds a space or a character outside the plain set — ASCII letters and digits, . _ / ~ : - and the backslash",
+                                "enthält ein Leerzeichen oder ein Zeichen außerhalb der schlichten Menge — ASCII-Buchstaben und -Ziffern, . _ / ~ : - "
+                                "und der Rückstrich"),
+    "resume.refused.long": ("is longer than {0} characters", "ist länger als {0} Zeichen"),
+    "resume.refused.relative": ("is not an absolute path", "ist kein absoluter Pfad"),
+    "read.about.logs": ("for each session's resume command: the names of the logs in ~/.claude/projects and ~/.codex/sessions, and the folder its "
+                        "first turn ran in: never what a session said",
+                        "für den Fortsetzungsbefehl jeder Session: die Namen der Protokolle in ~/.claude/projects und ~/.codex/sessions und der "
+                        "Ordner, in dem ihr erster Zug lief: nie, was eine Session sagte"),
+}
+RESUME_LABELS = tuple(re.compile(rb', "' + re.escape(k.encode()) + rb'": (?:'
+                                 + b"|".join(re.escape(json.dumps(text, ensure_ascii=False).encode("utf-8")) for text in texts) + rb")")
+                      for k, texts in RESUME_WORDS.items())
+RESUME_READ_AT = ((" · " + RESUME_WORDS["read.about.logs"][0] + "</p></details>").encode("utf-8"), b"</p></details>")
+
+
+def resume_dropped(data):
+    """The candidate's board page without the resume command's parts — its style lines, its script lines and its comment, its call in the
+    strip's row, its item in the fold of what the page reads, its words — each taken out exactly once as written above. None where any part
+    is not there exactly once."""
+    if data is None:
+        return None
+    for line in RESUME_PAGE_LINES:
+        if data.count(line + b"\n") != 1:
+            return None
+        data = data.replace(line + b"\n", b"\n", 1)
+    for old, new in (RESUME_STRIP, RESUME_READ_AT):
+        if data.count(old) != 1:
+            return None
+        data = data.replace(old, new, 1)
+    for pattern in RESUME_LABELS:
+        data, n = pattern.subn(b"", data)
+        if n != 1:
+            return None
+    return data
 
 PROOF_MARK = b',PROOF={"state": '
 FM054_READS = (("symbolic-ref",), ("rev-parse",), ("config", "--get"), ("cat-file", "--batch"), ("ls-tree",))
@@ -1521,7 +1589,7 @@ def board_matches(baseline, candidate):
     if old_page is None or new_page is None:
         return False
     if old_page != new_page:
-        if PROOF_MARK in old_page or V2_MARK in old_page or fm057_page_dropped(day_dropped_joined(new_page)) != joined_transform(old_page):
+        if PROOF_MARK in old_page or V2_MARK in old_page or fm057_page_dropped(day_dropped_joined(resume_dropped(new_page))) != joined_transform(old_page):
             return False
         candidate = with_board(candidate, PAGE_PATH, old_page)
     return fm057_board(baseline, candidate)
@@ -1973,7 +2041,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         day = "Git entry FM-030 day allowance: "
         assert_control(day + "the default run's board page differs from the baseline's by the stand-up's and the close-out's exact script lines, "
                        "templates, prompts and words, and by FM-057's page and the join's edits, alone, and equal snapshots still match",
-                       bool(old_page) and old_page != new_page and fm057_page_dropped(day_dropped_joined(new_page)) == joined_transform(old_page) and snapshots_match(old, new)
+                       bool(old_page) and old_page != new_page and fm057_page_dropped(day_dropped_joined(resume_dropped(new_page))) == joined_transform(old_page) and snapshots_match(old, new)
                        and snapshots_match(new, new))
         opener = b'd.querySelector(".go").focus()}   // FM-030 day'
         variants = {
@@ -1989,11 +2057,11 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        f"unrelated statement to a permitted line, or adds markup or an attribute to a template does not match (each variant made: {changed})",
                        all(changed.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants.values()))
         # FM-057's page, held the same way beside the day: each of its parts taken out exactly once, and nothing else differs
-        page057, read_at = "Git entry FM-057 page allowance: ", FM057_READ_AT.search(new_page)
+        page057, read_at = "Git entry FM-057 page allowance: ", FM057_READ_AT.search(resume_dropped(new_page) or b"")
         assert_control(page057 + "the default run's page, FM-030's day and then FM-057's page taken out, is the baseline's with the join's edits, every "
-                       "byte; the baseline's page holds neither", bool(read_at) and fm057_page_dropped(day_dropped_joined(new_page)) == joined_transform(old_page)
+                       "byte; the baseline's page holds neither", bool(read_at) and fm057_page_dropped(day_dropped_joined(resume_dropped(new_page))) == joined_transform(old_page)
                        and day_dropped(old_page) is None and fm057_page_dropped(old_page) is None)
-        at = read_at.group(0) if read_at else b"\n"
+        at = read_at.group(0).replace(RESUME_READ_AT[1], RESUME_READ_AT[0]) if read_at else b"\n"
         rule057 = b"details.about .help{overflow-wrap:anywhere}"
         style057 = FM057_PAGE_LINES[0] + rule057 + b"\n"
         variants057 = {
@@ -2006,6 +2074,24 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(page057 + "a page whose read-at line has one byte more or stands twice, whose read-at style is gone, or that holds a word FM-057 "
                        f"does not name does not match (each variant made: {made057})",
                        all(made057.values()) and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants057.values()))
+        resume = "Git entry resume allowance: "
+        variants_r = {
+            "one of its style lines twice": new_page.replace(RESUME_PAGE_LINES[0] + b"\n", RESUME_PAGE_LINES[0] + RESUME_PAGE_LINES[0] + b"\n", 1),
+            "a word it does not name, beside its own": new_page.replace(b'"resume.button": "resume command"', b'"resume.button": "resume command", "resume.more": "more"', 1),
+            "its item in the fold twice": new_page.replace(RESUME_READ_AT[0], RESUME_READ_AT[0][:-len(RESUME_READ_AT[1])] + RESUME_READ_AT[0], 1),
+            "one character of one of its words changed": new_page.replace(b'"resume.unread": "no resume command: its log could not be read"',
+                                                                          b'"resume.unread": "no resume command: its log could not be reed"', 1),
+        }
+        made_r = {name: page != new_page for name, page in variants_r.items()}
+        unread_in = lambda lang: b'"resume.unread": ' + json.dumps(RESUME_WORDS["resume.unread"][lang], ensure_ascii=False).encode("utf-8")
+        german = new_page.replace(unread_in(0), unread_in(1), 1)
+        assert_control(resume + "the default run's page holds each of the resume command's parts once, and the baseline's none; a page with one of its "
+                       "style lines twice, a word it does not name, its item in the fold twice, or one character of one of its words changed does not "
+                       f"match, and one with a word in German in place of the English still does (each variant made: {made_r}, "
+                       f"the German one: {german != new_page})",
+                       resume_dropped(new_page) is not None and resume_dropped(old_page) is None and all(made_r.values())
+                       and not any(snapshots_match(old, with_board(new, PAGE_PATH, page)) for page in variants_r.values())
+                       and german != new_page and snapshots_match(old, with_board(new, PAGE_PATH, german)))
         # the read-at fold's edits, held the same way: literal text, each after found once and no before, and a fold changed beyond them does not match
         fold057, label057 = "Git entry read-at fold allowance: ", b'"read.about.none": "read from the folder {1} at {0}"'
         assert_control(fold057 + "READ_AT_FOLD_EDITS is literal text alone, each pair a before and an after that differ, each after standing once on "
@@ -2083,7 +2169,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         before_page = base64.b64decode(old["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((old.get("board_after") or {}).get(PAGE_PATH), dict) else b""
         assert_control(fm054 + "the candidate's page, FM-030's day and FM-057's page taken out, is the baseline's with A2's edits and then FM054_ON_A2_EDITS — "
                        "defect 8's edits as they stand on A2's page — applied, every byte; defect 8's own edits of the baseline fit neither page",
-                       fm057_page_dropped(day_dropped_joined(page)) == joined_transform(before_page) and fm054_transform(page) is None
+                       fm057_page_dropped(day_dropped_joined(resume_dropped(page))) == joined_transform(before_page) and fm054_transform(page) is None
                        and bool(FM054_ON_A2_EDITS) and fm054_transform(before_page) is not None)
         cut = page.replace(section, b"")
         assert_control(fm054 + "a page that keeps PROOF but deletes an unrelated section (A2's `tr.t` rule) does not match",
@@ -2093,7 +2179,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        page.count(row) == 1 and PROOF_MARK in moved and not snapshots_match(old, as_page(moved)))
         v2 = "Git entry FM-053 allowance: "
         old_page, new_page = (base64.b64decode(row["board_after"][PAGE_PATH]["bytes_base64"]) for row in (old, new))
-        joined = fm057_page_dropped(day_dropped_joined(new_page))
+        joined = fm057_page_dropped(day_dropped_joined(resume_dropped(new_page)))
         assert_control(v2 + "the default run's board page, FM-030's day and FM-057's page taken out, is the baseline's with the join's edits — "
                        "FM053_PAGE_EDITS, FM054_ON_A2_EDITS, PR_C_JOIN_EDITS — every byte; A2's edits do not fit the candidate's page; the pair still matches",
                        old_page != new_page and joined is not None and joined_transform(old_page) == joined and fm053_transform(new_page) is None
@@ -2117,7 +2203,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(counts + "COUNT_LINE_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
                        "the candidate's page",
                        bool(COUNT_LINE_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in COUNT_LINE_EDITS)
-                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in COUNT_LINE_EDITS))
+                       and all((resume_dropped(new_page) or b"").count(b.encode("utf-8")) == 1 for _a, b in COUNT_LINE_EDITS))
         helper_end = '.join("\\u00a0· "),\nidl='
         count_variants = {
             "the helper's join as a plain \" · \"": new_page.replace(helper_end.encode("utf-8"), '.join(" · "),\nidl='.encode("utf-8"), 1),
@@ -2201,7 +2287,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         assert_control(seat_icons + "SEAT_ICON_EDITS is literal text alone, each pair a before and an after that differ, and each after stands once on "
                        "the candidate's page",
                        bool(SEAT_ICON_EDITS) and all(type(a) is str and type(b) is str and a != b for a, b in SEAT_ICON_EDITS)
-                       and all(new_page.count(b.encode("utf-8")) == 1 for _a, b in SEAT_ICON_EDITS))
+                       and all((resume_dropped(new_page) or b"").count(b.encode("utf-8")) == 1 for _a, b in SEAT_ICON_EDITS))
         builder_icon = re.search(rb'"builder": "(?:[^"\\]|\\.)*?base64,([A-Za-z0-9+/=]+)', new_page)
         grounded = (base64.b64encode(base64.b64decode(builder_icon[1]).replace(b"<title>builder", b'<rect width="20" height="20" fill="#15293d"/>\n<title>builder'))
                     if builder_icon else b"")

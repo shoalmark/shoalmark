@@ -17,6 +17,13 @@ is designed or built.
 
 ## What is true now
 
+**2026-11-01 — v0.20.3's allocation, rows from 30 and 31 October:**
+- `--check` prints "(none)", on the Owner's yes of 30 October.
+- The help lines' hide mark, on the Owner's yes of 30 October.
+- RV-4233: recorded privately.
+- RV-4192: recorded privately.
+- RV-4193: recorded privately.
+
 **2026-10-29 — the release branch rebuilt, and the CI class fix moved to v0.20.3.** On the Owner's word of 29 October,
 as the Auditor relays it:
 - **`release/v0.20.2-signed` is retired.** #230, J's pull request, was merged into it with GitHub's merge button
@@ -42,13 +49,6 @@ as the Auditor relays it.
   Owner's signed answer (febbed9). The theme's trackers carry the tag `seamanship`, in the configuration's vocabulary
   since the Owner's #229, and each release that carries it gets one chapter.
 - **Candidates for v0.20.3's chapter:** FM-095 to FM-098, filed for v0.20.x. The allocation pulls in what fits.
-
-**2026-11-01 — v0.20.3's allocation, rows from 30 and 31 October:**
-- `--check` prints "(none)", on the Owner's yes of 30 October.
-- The help lines' hide mark, on the Owner's yes of 30 October.
-- RV-4233: recorded privately.
-- RV-4192: recorded privately.
-- RV-4193: recorded privately.
 
 **2026-10-29 — v0.20.2's allocation amended, and the stand-up prompt grows, for the Owner's signed answer.** On the
 Owner's words of 29 October, as the Auditor relays them: "A for v0.20.2, B for v0.20.3", "S1 must land in v0.20.2 —
@@ -158,6 +158,10 @@ so. This entry and the 15 October table's new row say it, and the ask above puts
   superseded by it.
 - **What they need first** is unchanged: FM-050's ask ids and FM-059's guided answer are designed and reviewed, and
   their ruling asks are filed again on today's main.
+
+**2026-10-23 — v0.20.2 gains the Board's resume command per session (FM-024), on the Owner's word as relayed by the
+Auditor.** It is built from main at `915cc57`, with the Designer's look and the Auditor's check of the new read
+before the merge.
 
 **2026-10-21 — the tags of v0.20,** on the Owner's ruling of 20 October (recorded privately):
 - v0.20.0 and v0.20.1 take lightweight tags, with no release run sheet;
@@ -532,9 +536,9 @@ arc has run on it with its estimate–actual gap in the record.
 | 2026-10-13 18:18 CEST | RV-3057 P3 fixed forward: archive records READY `b2e5195` replaces the stale running-review paragraph and rank-2 row; inherited common records READY `84c8a6b` needs no re-pass. Serial integration and CI/release holds remain. |
 | 2026-10-13 17:42 CEST | **Dependent dispatch from critical common READY:** `ef77527` closes the four common findings; current-main merge `1fc12b0` retains its exact product and passes gate/ratchet. A first local board slice60–90 min (2.25–3.75 h total), B first missing-proof refusal60–90 min (4.5–7 h total), C first capability/control slice30–45 min (1.5–2.5 h plus private tasking). P owns serial shared/archive integration. RV-3003/RV-3004: recorded privately. |
 | 2026-10-13 | Stage-1 and B1 read-only preparation recorded with immutable-ref evidence; stage-1 build re-estimated from 4–8 h to 6–10.5 Builder hours before archive/review, and its guard capability contract remains a brief dependency. B1 has three conflicted paths/eight groups and a 2–4 h next-day integration estimate. R15 configuration switch verified on current main; no feature build, platform proof or publication claimed. |
-| 2026-09-23 | **Updated as if FM-024 had landed, on the Owner's word:** every seat step carries its session id (`@a9`, `@d8`), `plan-by:` and the updates name seat and session, the gate matches a step's session to the commit's `Session:` trailer, and the multi-session extract uses the registry's ids and rows. |
-| 2026-09-23 | **Four worked examples added on the Owner's ask, then reworked on his second word — *it must be visual on the board, so it must be in the front matter to be parseable*:** the plan is one `plan:` line (pipe-separated steps, fixed field order, re-estimates appended), *needed* is derived from the owner's rows, the body table holds only step texts; the estimate as filed, an update, the finished record with per-seat error, a multi-session extract, and what the parser needs. Illustrative; nothing built. |
-| 2026-09-23 | Filed on the Owner's requirement, tagged `research`, with the instance that raised it as its first evidence. Held against FM-004 (adoption), FM-005 (the person asked mid-flight), FM-006 (a page for the humans). Not built this week — the current path's line 2: tracked, not built. |
 | 2026-10-13 | Owner #168 merged combined Part B/FM-043 records at ab7ed3f. R12 independent critical verdict is locally READY at 8b7f7f1; RV-3040: recorded privately. Archive RV-3070 current-main integration is being reconciled. Guard analysis records conservative proof refusal and revises seat-time estimates; no new authority or stage completion claimed. |
 | 2026-10-13 | Prepared exclusive dependent function/control ownership while common critical review runs at 6d0c239. Corrected ratchet participation so each migrated branch passes required controls; no ceiling expansion, authority rule or code built by this record. Original RV-3003/RV-3004 source requested; other scoped work stays movable. |
 | 2026-10-13 | Common critical round 1 and addendum are NOT READY with RV-3085–RV-3088 open; fixforward and one remaining verification round precede dependent code. RV-3003/RV-3004: recorded privately. Owner supplied the original private inputs; the missing-source stop is removed. |
+| 2026-09-23 | **Updated as if FM-024 had landed, on the Owner's word:** every seat step carries its session id (`@a9`, `@d8`), `plan-by:` and the updates name seat and session, the gate matches a step's session to the commit's `Session:` trailer, and the multi-session extract uses the registry's ids and rows. |
+| 2026-09-23 | **Four worked examples added on the Owner's ask, then reworked on his second word — *it must be visual on the board, so it must be in the front matter to be parseable*:** the plan is one `plan:` line (pipe-separated steps, fixed field order, re-estimates appended), *needed* is derived from the owner's rows, the body table holds only step texts; the estimate as filed, an update, the finished record with per-seat error, a multi-session extract, and what the parser needs. Illustrative; nothing built. |
+| 2026-09-23 | Filed on the Owner's requirement, tagged `research`, with the instance that raised it as its first evidence. Held against FM-004 (adoption), FM-005 (the person asked mid-flight), FM-006 (a page for the humans). Not built this week — the current path's line 2: tracked, not built. |

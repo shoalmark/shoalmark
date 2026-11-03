@@ -40,6 +40,23 @@ PR C - RV-3487 (10e4d5e): the differential's last implementation comments
 went under the comment rule; no executable code or page bytes changed,
 and no allowance moved.
 
+**2026-10-28 — the critical review's fix round.** The resume test counts each command once, as the page holds it, on
+every system (RV-3940). The old chain's mutant holds no comments of its own (RV-3941). The differential pins the resume
+labels to their English and German words (RV-3942). A test that cannot make the handle that holds a log unreadable says
+so, with the error (RV-3944). RV-3943: recorded privately.
+
+**2026-10-24 — the Board's placeholder handling made order-proof (RV-3870: recorded privately).** No value the Board
+inserts can be read as a placeholder filled after it, whichever value it is. On Windows, the resume command takes the
+form of the tool's other copied commands, PowerShell's, and starts the session only where the folder change succeeds
+(RV-3871). A log that cannot be opened or read says so, in place of the "no folder" reason (RV-3872).
+
+**2026-10-23 — the Board gets a resume command per session, on the Owner's word as relayed by the Auditor; FM-023
+allocates it to v0.20.2.** For each parent session in the day, the Board's local build finds the one log whose file
+name starts with its id, under `~/.claude/projects` or `~/.codex/sessions`. It copies the harness's own resume
+command, in the folder of the log's first turn, written with `~`. Two logs give no command and say why; no log gives
+nothing; sub-sessions get none. It reads file names and that one field, never what a session said, and the command
+is in the local Board file alone. `--whoami`'s "launched in" line reads the first turn's folder too.
+
 **2026-10-15 — judged In Progress, P2, for v0.20.1:** defect 7 is built first, on `fm/024-sessions`; the session list,
 `--sessions` and who asked follow there (FM-023's table of 2026-10-15). It was Parked on 2026-10-13; the allocation
 brings it back.
