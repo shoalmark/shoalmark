@@ -3,7 +3,7 @@ id: FM-149
 status: Proposed
 considered: FM-062, FM-100, FM-104, FM-143
 tags: process
-next: owner
+next: build
 hook: "shoalmark speaks English and German, but no one rule says which texts ship with a German twin, which words never translate, or what language a skill's report is in; the Skills page and the skills' German README need one now."
 ask-id: FM-149-Q1
 ask: "Are FM-149's decisions taken, as its section Decisions, for the Owner sets out?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-04
 ask-options: "yes, as proposed | yes, with the changes I name"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-04
+answered-by: holgo99
 ---
 
 # FM-149 — the docs, the Board's prompts and the skills have no one rule for English and German
