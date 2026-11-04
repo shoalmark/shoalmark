@@ -35,6 +35,12 @@ entries stay as the record of each ruling, and the rows they name are listed her
 - [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md): moved to v0.20.3, on the Owner's word of 29 October.
 - Filed on this records branch for v0.20.3: [FM-105](FM-105-no-test-holds-that-a-refused-signature-then-a-signed-answer.md), [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md), [FM-140](FM-140-a-root-test-file-can-sit-outside-ci-run-by-no-job-and-named.md), [FM-101](FM-101-nothing-holds-that-the-suite-keeps-a-runner-s-own-sigterm.md),
   [FM-102](FM-102-the-stand-up-and-queue-disagree-on-an-origin-that-an.md) and [FM-141](FM-141-the-readme-s-refusal-table-lacks-s1-s-ask-id-refusals-and.md).
+- Since 4 November: [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md)'s work, allocated to v0.20.3 by its decision
+  *Allocation*, which the answer to FM-143-Q1 took ([#260](https://github.com/shoalmark/shoalmark/pull/260)); and
+  [FM-149](FM-149-the-docs-the-board-s-prompts-and-the-skills-have-no-one-rule.md),
+  [FM-150](FM-150-the-gate-passes-an-ask-without-next-owner-and-it-reaches-no.md) and
+  [FM-151](FM-151-a-records-only-pull-request-waits-for-a-macos-runner-that.md), proposed for v0.20.3, FM-150 and FM-151
+  each by its decision *Allocation*; the Owner places them.
 
 **The rows FM-023's entries name for v0.20.3:**
 
@@ -116,3 +122,4 @@ at its allocation sitting and at its tag.
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed as v0.20.3's allocation, with FM-023's and FM-006's rows of 1 November moved in. Records only. |
+| 2026-11-04 | FM-143's allocation joins the list, and FM-149, FM-150 and FM-151 join it as proposed. Records only. |
