@@ -2,6 +2,11 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
+## Unreleased — 0.20.3
+
+### Changed
+- The drift skills, find-drift and prune-drift, moved to their own repository, [shoalmark/skills](https://github.com/shoalmark/skills), and shoalmark/shoalmark no longer carries their plugin. Install them from there, pinned to its release tag: in Claude Code, `/plugin marketplace add shoalmark/skills@SKILLS-TAG-PENDING`, then `/plugin install shoalmark@shoalmark`; in Codex, `codex plugin marketplace add shoalmark/skills@SKILLS-TAG-PENDING`, then install shoalmark from the Plugins Directory. Installed as a plugin, Claude Code runs them as `/shoalmark:find-drift` and `/shoalmark:prune-drift`.
+
 ## 0.20.2 — 2026-11-03
 
 **Vendor the complete release, remove the retired theme files the board names, update any retired review labels, run `--install-hook` again on your default branch in every committing clone, then run `--check` once.**
