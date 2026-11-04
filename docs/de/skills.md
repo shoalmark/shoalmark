@@ -1,4 +1,4 @@
-# Die Drift-Skills — find-drift und prune-drift
+# Die Drift-Skills
 
 *Zwei Agenten-Skills aus shoalmark, in einem eigenen Repository, [shoalmark/skills](https://github.com/shoalmark/skills),
 als ein Plugin für Claude Code und Codex gepackt.*
