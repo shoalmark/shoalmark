@@ -19,6 +19,8 @@ it was? Let us reason about how to solve this right from the start."* Written to
 
 ## What is true now
 
+**2026-11-04 — slice filed: session proof on Grok Bot (story FM-147); nothing is built.** On Grok Bot, `seat.session` is self-report: the prepare-commit-msg hook stamps whatever the worktree's `seat.session` holds. In the Navigator's probe the hook stamped 6 of 6 commits, yet a second worktree set to the parent's session committed as the parent and nothing flagged it. A related weakness is recorded privately. Candidates, none chosen: signed commits per seat; a session id the harness writes and the seat cannot set. **Evidence to land by its owner:** the Navigator's evidence is recorded privately first, and lands in this repository's `work-tracker/evidence/FM-024/` only after the Auditor has read it. Done when for this slice: a design is ruled, and a check refuses or flags a session another live worktree carries under another identity (or the ruled alternative is in place).
+
 PR C - RV-3485 (3b8922f): the answer is recorded by the Owner's own
 terminal commit, signed only where the default branch requires it. The
 second screen gives clipboard status, the command, steps, result, check
@@ -538,3 +540,4 @@ The Principal's counsel, disclosed as such: the first option — all three, as a
 | 2026-10-16 | Defect 9's second case (the Auditor's finding, relayed by the Owner): the FM-050 Reviewer and the bounded Reviewer, two sessions, both carry `01a14313`. |
 | 2026-11-03 | The suite's own home now keeps the runner's git configuration, which CI's runners set; a hermetic bare-repository check and its empty-home control hold it. |
 | 2026-11-03 | The browser block's check now gives its program on stdin, so a program longer than a Windows command line still starts there; a check holds it. |
+| 2026-11-04 | **Slice filed — session proof on Grok Bot** (story FM-147, on the Auditor's direction relayed by the Owner): `seat.session` is self-report; a second worktree can set the same value. A related weakness recorded privately. Navigator's evidence is recorded privately first and lands under `evidence/FM-024/` only after the Auditor has read it. Nothing built; status and triage unchanged. |

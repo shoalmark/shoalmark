@@ -18,6 +18,8 @@ takes, the more valuable work can be achieved."* Written to be attacked.
 
 ## What is true now
 
+**2026-11-04 — slice filed: what a cold seat on Grok Bot meets before it can work (story FM-147); nothing is built; the park is unchanged.** Reported by the Auditor and the Navigator, and seen by this seat: (1) the research seat had no setup on Grok Bot until the Navigator made one; (2) a seat worktree gets no hooks until someone runs `--install-hook`, and a clone cut at v0.20.1 refuses `ask-id:` until `--install-hook` runs once from v0.20.2's tool; (3) `ssh-keygen` was missing from the machine, so `--check` could not verify signed answers and exited 4, and the commit hook refused a filing until it was installed; (4) the seat setup steps were found by trial. Done when for this slice: a cold seat on Grok Bot has one documented setup path — seat, hooks and signature tools — that fails closed without them.
+
 **Filed 2026-09-23; nothing is built.** Measured in one consumer on 2026-09-23 (bytes ÷ 4): the pages a seat is told
 to read before any durable act — the contract, the SOUL, the CREDO, the onboarding router, its own charter, the worktree
 and branch doctrines — come to ≈ 21,000 tokens; the tracker reference alone ≈ 6,000 of them. `--next` prints ≈ 1,300;
@@ -64,3 +66,4 @@ measured consumer, with no rise in the misses the long pages exist to prevent, o
 | Date | Event |
 |---|---|
 | 2026-09-23 | Filed on the Owner's word, tagged `research`, with the day's measurement as its first evidence; held against FM-005 (the person asked mid-flight), FM-006 (a page for the humans), FM-023 (the plan's budget — *what to take in*). Not built this week — the path's line 2. |
+| 2026-11-04 | **Slice filed — onboarding gaps on Grok Bot** (story FM-147, on the Auditor's direction relayed by the Owner): research seat setup, hooks, ssh-keygen, setup by trial. Body and ship log only; status, triage and park unchanged. |
