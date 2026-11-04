@@ -3,6 +3,7 @@ id: FM-149
 status: Proposed
 considered: FM-062, FM-100, FM-104, FM-143
 tags: process
+next: owner
 hook: "shoalmark speaks English and German, but no one rule says which texts ship with a German twin, which words never translate, or what language a skill's report is in; the Skills page and the skills' German README need one now."
 ask-id: FM-149-Q1
 ask: "Are FM-149's decisions taken, as its section Decisions, for the Owner sets out?"
@@ -66,16 +67,21 @@ FM-149-Q1 asks for all of these at once. An answer of "yes, with the changes I n
      in. A `lang` that fails shoalmark's own check counts as not set. A skill reads only the repository, never the
      person's home folder.
    - The section keys prune-drift reads from find-drift's report, and the file names, stay fixed.
-   - **A limit:** the Board also reads a `labels.yaml` beside the vendored `shoalmark.py` and in the person's
-     `~/.config/shoalmark/`, the later place winning. Where only one of those sets `lang`, the skill can differ from the
-     Board, and the person's language decides.
+   - **A limit:** the Board reads `labels.yaml` in three places, the later winning: the vendored copy's `brand/`, the
+     repository's `<tracker dir>/brand/`, and the person's `~/.config/shoalmark/`
+     ([README L658–L661](https://github.com/shoalmark/shoalmark/blob/c02ca26ffdf8fa24781a4943148725880552703f/README.md#L658-L661)). A skill reads only the second.
+     Where the repository's file sets no `lang` and the vendored copy's does, or where the person's sets one, the Board
+     can show another language than the skill's report.
 3. **The close-out prompt takes the stand-up prompt's form:** `CLOSE-OUT.md` beside FM-100's `STAND-UP.md`.
    - It is in the pack's language, with English as the fallback.
    - It is the person's own file, changed only by their signed commit; the gate refuses a seat's change.
-   - Where both files live still waits on FM-104, which ranks first when v0.20.3 starts.
+   - Where both files live still waits on
+     [FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md), which ranks first when v0.20.3
+     starts ([FM-139 L26](https://github.com/shoalmark/shoalmark/blob/c02ca26ffdf8fa24781a4943148725880552703f/work-tracker/FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md#L26)).
 4. **The path to shoalmark is on the page, not in the output.**
-   - The Skills page and the skills' README end with the way to shoalmark (*Why shoalmark?*, the setup) and a link to
-     the feedback form.
+   - The Skills page and the skills' README end with the way to shoalmark ([*Why shoalmark?*](https://github.com/shoalmark/shoalmark/blob/c02ca26ffdf8fa24781a4943148725880552703f/docs/why-shoalmark.md),
+     [the setup](https://github.com/shoalmark/shoalmark/blob/c02ca26ffdf8fa24781a4943148725880552703f/docs/setup.md)) and a link to
+     [the feedback form](https://github.com/shoalmark/shoalmark/blob/c02ca26ffdf8fa24781a4943148725880552703f/docs/feedback/index.html).
    - The skills' own output carries no promotion.
 
 ## Done when

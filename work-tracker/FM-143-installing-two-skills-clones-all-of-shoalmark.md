@@ -6,7 +6,7 @@ tags: process
 next: build
 triaged: 2026-11-04
 tier: P2
-hook: "Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketplace clones 808 files, about 35 MB, for 22 KB of skills."
+hook: "Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketplace clones 808 files, about 35 MB of working tree, for 22 KB of skills."
 ask-id: FM-143-Q1
 ask: "Are FM-143's decisions taken, as its section Decisions, for the Owner sets out?"
 ask-kind: ruling
@@ -23,7 +23,7 @@ answered-by: holgo99
 ## What is true now
 
 **2026-11-04 — shoalmark/skills holds both skills, both manifests, the tests and CI;** its `main` ruleset requires the
-five `tests (…)` checks ([#1](https://github.com/shoalmark/skills/pull/1), [#2](https://github.com/shoalmark/skills/pull/2), under *Done when*). Next in shoalmark: the plugin's removal, then the
+five `tests (…)` checks ([shoalmark/skills#1](https://github.com/shoalmark/skills/pull/1), [#2](https://github.com/shoalmark/skills/pull/2), under *Done when*). Next in shoalmark: the plugin's removal, then the
 Skills page. The install trials and the first tag follow the skills' report-language change.
 
 **2026-11-04 — judged before its first build commit: keep P2, In Progress.** A partial triage pass, on the Owner's
@@ -155,7 +155,7 @@ Each item names its commit or pull request when it lands.
     closed by [#2](https://github.com/shoalmark/skills/pull/2) (`06784be`), main's [run 41848074359](https://github.com/shoalmark/skills/actions/runs/41848074359).
 - [ ] **shoalmark no longer carries the plugin,** and its CHANGELOG gives the new install command.
 - [ ] **The removal from shoalmark updates `test_shoalmark.py`'s CI-workflow pins,** which hold the steps it removes.
-- [x] **skills' CI runs both moved tests.** Today no CI job runs `test_prune_drift.py`. · [#1](https://github.com/shoalmark/skills/pull/1) (`ea778eb`),
+- [x] **skills' CI runs both moved tests.** Today no CI job runs `test_prune_drift.py`. · [shoalmark/skills#1](https://github.com/shoalmark/skills/pull/1) (`ea778eb`),
   [run 41843847292](https://github.com/shoalmark/skills/actions/runs/41843847292)
 - [ ] **The landing footer's skills line,** in English and German, points at the Skills page once it exists.
 - [ ] **A real install from shoalmark/skills has worked** in Claude Code and in Codex.
