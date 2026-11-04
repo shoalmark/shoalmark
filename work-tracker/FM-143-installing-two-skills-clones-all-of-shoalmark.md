@@ -3,7 +3,7 @@ id: FM-143
 status: Proposed
 considered: FM-062, FM-065, FM-083, FM-117
 tags: process
-next: owner
+next: build
 hook: "Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketplace clones 808 files, about 35 MB, for 22 KB of skills."
 ask-id: FM-143-Q1
 ask: "Are FM-143's decisions taken, as its section Decisions, for the Owner sets out?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-04
 ask-options: "yes, as proposed | yes, with the changes I name"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-04
+answered-by: holgo99
 ---
 
 # FM-143 — installing two skills clones all of shoalmark
