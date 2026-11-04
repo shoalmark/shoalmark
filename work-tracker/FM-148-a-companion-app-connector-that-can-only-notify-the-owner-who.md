@@ -5,7 +5,6 @@ considered: FM-147, FM-007, FM-059, FM-115, FM-054, FM-030, FM-008
 tags: process, security
 epic: FM-147
 next: build
-blocked-by: Owner — which keys may sign on mobile
 ask-id: FM-148-Q3
 ask: "Which keys may sign in the companion app on mobile, weighed against the risks under Decisions, for the Owner, and does the bots' connector stay notify-only?"
 ask-kind: ruling
@@ -26,7 +25,7 @@ Seat: Planner · filed 2026-11-04 · chapter of FM-147.
 
 **2026-11-04 — filed; nothing is built.** Need: a remote connector that can only **notify** the Owner — list, read, ask and check status — with **no** tool to answer, sign, merge or change rights. Signing stays the Owner's act on their own device; whether that may include the phone, and with which keys, is the open ruling. Held against FM-007 and FM-059 (both Shipped; neither is reopened), FM-115 (Proposed: the Board's one answer dialog), FM-054, FM-030 and FM-008.
 
-**Open ruling (ask FM-148-Q3 above):** one ruling over the two decisions under *Decisions, for the Owner*: which keys may sign in the companion app on mobile, and whether the bots' connector stays notify-only.
+**Ruled (ask FM-148-Q3 above):** which keys may sign in the companion app on mobile, and whether the bots' connector stays notify-only. The Owner's answer, "accepted - (a) both, Owner chooses; (b) yes, notify-only" ([#265](https://github.com/shoalmark/shoalmark/pull/265)): a biometric-gated phone key and a hardware security key are both supported, the Owner chooses which to enroll, and the bots' connector stays notify-only.
 
 **The Owner's direction in chat, 2026-11-03 — logged, not an answer.** The value of mobile is signing, the board and the guided answer together; which keys are enough is the Owner's choice. The risks below are what that choice is weighed against.
 
@@ -65,7 +64,7 @@ Whatever is chosen, a new key counts only after the Owner's signed change to the
 
 ## Done when
 
-- The Owner has ruled on FM-148-Q3.
+- The Owner has ruled on FM-148-Q3. · `d307a18`, #265 (`c9d5889`)
 - The counsel has passed the privacy check and is filed under this tracker's evidence.
 - A companion connector exists that can list, read, ask and check status, and has no tool to answer, sign, merge or change rights — or a later ruling parks the work.
 - Per the ruling, the Owner signs on their own device with the enrolled key or keys, each in the signers file on the default branch, with a second signer registered.
@@ -76,3 +75,4 @@ Whatever is chosen, a new key counts only after the Owner's signed change to the
 |---|---|
 | 2026-11-04 | Filed under FM-147 on the Auditor's direction (relayed by the Owner), with ask FM-148-Q3 put as a ruling over *Decisions, for the Owner*; the Owner's chat direction of 2026-11-03 logged, not an answer. Critical review tier. |
 | 2026-11-04 | The Owner's chat word after FM-148-Q3's answer logged under *What is true now*. Records only. |
+| 2026-11-04 | The Owner's answer to FM-148-Q3 (#265) marked: `blocked-by:` dropped, the open ruling ruled, and Done when's first item. Records only. |

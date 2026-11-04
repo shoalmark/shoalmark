@@ -101,7 +101,7 @@ suites.
 
 Each item names its commit, pull request or run when it lands.
 
-- [ ] **The Owner has answered FM-151-Q1.**
+- [x] **The Owner has answered FM-151-Q1.** · `84be8aa`, #265 (`c9d5889`)
 - [ ] **A records-only pull request's five required checks pass with no macOS or Windows runner,** measured on the
   first one after the change.
 - [ ] **A code pull request still runs all five on their own images.**
@@ -113,3 +113,4 @@ Each item names its commit, pull request or run when it lands.
 |---|---|
 | 2026-11-04 | Filed, Proposed, with one ruling ask, FM-151-Q1, on the Auditor's brief. Nothing is built. |
 | 2026-11-04 | The standard review's P3 RV-4368 fixed forward: item 2 names the steps the four other jobs still run. Records only. |
+| 2026-11-04 | Done when: the Owner's answer to FM-151-Q1 (#265). Records only. |
