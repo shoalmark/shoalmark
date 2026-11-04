@@ -53,6 +53,6 @@ theirs to edit, and leaves no setting to learn.
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-10-30 | Tagged `seamanship`, on the Owner's word of 30 October. Records only. |
 | 2026-10-30 | Filed for v0.20.3, rank 1 at its start, on the Owner's word of 30 October. Records only. |
-| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

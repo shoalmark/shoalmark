@@ -172,7 +172,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-11-04 | Done when: shoalmark/skills holds both skills and runs both tests (shoalmark/skills#1 `ea778eb`, shoalmark/skills#2 `06784be`); the Owner's answer (#260). Records only. |
 | 2026-11-04 | Judged keep P2 by a partial triage pass on the Owner's signed answer to FM-143-Q1 (#260); In Progress. Records only. |
 | 2026-11-04 | Filed, Proposed, with one ruling ask, FM-143-Q1, on the Auditor's brief. Nothing is built. |
-| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

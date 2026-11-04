@@ -52,6 +52,6 @@ and the record against git. The rulings are the decisions that bind every seat, 
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
 | 2026-10-29 | The order names FM-097 last of the three, after FM-096. Records only. |
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |
-| 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |

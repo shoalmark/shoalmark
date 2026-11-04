@@ -59,7 +59,7 @@ Board copies into a session is words a seat could plant, so only the Owner shoul
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-11-04 | Its open question, the close-out prompt's form, put to the Owner as FM-149's decision 3 (ask FM-149-Q1). Records only. |
 | 2026-10-30 | Blocked by FM-104, which decides where the person's files live, on the Owner's word of 30 October. Records only. |
 | 2026-10-30 | Filed for v0.20.3, on the Owner's word of 30 October. Records only. |
-| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
