@@ -1,9 +1,11 @@
 ---
 id: FM-143
-status: Proposed
+status: In Progress
 considered: FM-062, FM-065, FM-083, FM-117
 tags: process
 next: build
+triaged: 2026-11-04
+tier: P2
 hook: "Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketplace clones 808 files, about 35 MB, for 22 KB of skills."
 ask-id: FM-143-Q1
 ask: "Are FM-143's decisions taken, as its section Decisions, for the Owner sets out?"
@@ -19,6 +21,11 @@ answered-by: holgo99
 # FM-143 — installing two skills clones all of shoalmark
 
 ## What is true now
+
+**2026-11-04 — judged before its first build commit: keep P2, In Progress.** A partial triage pass, on the Owner's
+signed answer to FM-143-Q1 (#260), judged this row alone ([worksheet](evidence/triage/triage-2026-11-04.md)).
+Unranked; when ranked, it goes below FM-104. Within v0.20.3 the plugin's removal from shoalmark comes before the Skills
+page (current path 5, simpler first).
 
 **2026-11-04 — filed, Proposed, on the Auditor's brief; nothing is built.** Its one ask, FM-143-Q1, takes every
 decision under *Decisions, for the Owner* at once.
@@ -157,4 +164,5 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | Judged keep P2 by a partial triage pass on the Owner's signed answer to FM-143-Q1 (#260); In Progress. Records only. |
 | 2026-11-04 | Filed, Proposed, with one ruling ask, FM-143-Q1, on the Auditor's brief. Nothing is built. |

@@ -26,6 +26,12 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
+**2026-11-04 — the build judged before its first commit, a partial pass** (Planner seat, on the Owner's signed
+answer to FM-143-Q1, #260 (`c02ca26`); the worksheet `work-tracker/evidence/triage/triage-2026-11-04.md`, one row of
+eighty filled and applied by the command): **FM-143 keep P2** — its decisions allocate it to v0.20.3; unranked, and
+below FM-104 when ranked; within the release the plugin's removal from shoalmark comes before the Skills page (current
+path 5). The other seventy-nine rows wait for the next full pass.
+
 **2026-10-13 — today's bounded release work:** FM-032 **keep P1 #1 build** (R12 after R14 shipped); FM-004
 **keep P1 #2 build** (archive acquisition named by current path 1). Older ranks are removed by the command; open
 remainders stay open or parked with their restart conditions in the worksheet, without asserting they shipped.
