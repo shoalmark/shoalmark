@@ -11,6 +11,12 @@ hook: "The stand-up prompt is code today, and English on every board, while the 
 
 ## What is true now
 
+**2026-11-04 — its open question has a tracker:
+[FM-149](FM-149-the-docs-the-board-s-prompts-and-the-skills-have-no-one-rule.md).** Whether the close-out prompt takes
+the stand-up prompt's form is FM-149's decision 3, put to the Owner with FM-149-Q1: `CLOSE-OUT.md` beside
+`STAND-UP.md`, in the pack's language with English as the fallback, and the person's own file. Where both files live
+still waits on FM-104. Nothing is built.
+
 **2026-10-30 — where this tracker's files go comes from
 [FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md).** It waits on that decision, on the
 Owner's word of 30 October, and nothing of it is built before it.
@@ -52,5 +58,6 @@ Board copies into a session is words a seat could plant, so only the Owner shoul
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | Its open question, the close-out prompt's form, put to the Owner as FM-149's decision 3 (ask FM-149-Q1). Records only. |
 | 2026-10-30 | Blocked by FM-104, which decides where the person's files live, on the Owner's word of 30 October. Records only. |
 | 2026-10-30 | Filed for v0.20.3, on the Owner's word of 30 October. Records only. |
