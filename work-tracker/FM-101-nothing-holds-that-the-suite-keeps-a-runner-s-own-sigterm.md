@@ -3,6 +3,7 @@ id: FM-101
 status: Proposed
 considered: FM-085
 tags: bug
+epic: FM-139
 hook: "The suite sets its own SIGTERM handler only where the default handler stands, so a runner's own handler is kept. No test holds that: a mutant that replaces a runner's handler passes the suite."
 ---
 
@@ -32,3 +33,4 @@ A guard that no test holds can be removed in the next change, and the runner's o
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed for v0.20.3. Records only. |
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

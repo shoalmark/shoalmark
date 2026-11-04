@@ -3,6 +3,7 @@ id: FM-140
 status: Proposed
 considered: FM-023, FM-032, FM-134
 tags: process
+epic: FM-139
 hook: "A root test file can sit outside CI, run by no job and named nowhere as excluded. The CI class fix makes every root test_*.py run in CI, directly or through test_core.py, or be named as excluded."
 ---
 
@@ -30,3 +31,4 @@ A test file that no job runs holds nothing, and nothing says so.
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed for v0.20.3, from FM-023's entry of 29 October. Records only. |
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

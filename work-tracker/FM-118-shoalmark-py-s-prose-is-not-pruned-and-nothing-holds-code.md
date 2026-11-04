@@ -3,6 +3,7 @@ id: FM-118
 status: Proposed
 considered: FM-062, FM-065
 tags: process
+epic: FM-139
 hook: "shoalmark.py's comments and docstrings have not been pruned by /prune-drift, and nothing holds a code comment to the external quirk it explains. The prose prune, proven prose-only, with its ratchet."
 ---
 
@@ -29,3 +30,4 @@ risk to what runs.
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed from FM-062's split, for v0.20.3. Records only. |
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

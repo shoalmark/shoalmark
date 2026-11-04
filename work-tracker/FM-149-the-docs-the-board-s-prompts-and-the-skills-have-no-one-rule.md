@@ -3,6 +3,7 @@ id: FM-149
 status: Proposed
 considered: FM-062, FM-100, FM-104, FM-143
 tags: process
+epic: FM-139
 next: build
 hook: "shoalmark speaks English and German, but no one rule says which texts ship with a German twin, which words never translate, or what language a skill's report is in; the Skills page and the skills' German README need one now."
 ask-id: FM-149-Q1
@@ -106,3 +107,4 @@ Each item names its commit or pull request when it lands.
 |---|---|
 | 2026-11-04 | Filed, Proposed, with one ruling ask, FM-149-Q1, on the Auditor's brief. Nothing is built. |
 | 2026-11-04 | Done when: the Owner's answer to FM-149-Q1 (#263). Records only. |
+| 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |

@@ -3,6 +3,7 @@ id: FM-150
 status: Proposed
 considered: FM-008, FM-141, FM-149
 tags: process
+epic: FM-139
 hook: "An open tracker can carry a put ask, `ask-id:` and `ask:`, without `next: owner`. The gate passes it, the Owner's queue never shows it, and `--answer` refuses it. FM-149 was filed that way and passed `--check`."
 ---
 
@@ -91,3 +92,4 @@ Each item names its commit or pull request when it lands.
 |---|---|
 | 2026-11-04 | Filed, Proposed, on the Auditor's brief. Nothing is built. |
 | 2026-11-04 | The standard review's P3s fixed forward: RV-4364, the gate loop's link; RV-4365, FM-149 and README section 5's table linked; RV-4366, decision 2's first sentence; RV-4367, decision 3's first test and the first Done-when item. Records only. |
+| 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |

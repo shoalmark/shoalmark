@@ -3,6 +3,7 @@ id: FM-096
 status: Proposed
 considered: FM-083, FM-088, FM-095
 tags: seamanship
+epic: FM-139
 hook: "Nothing measures whether a session follows the rules and lessons it is given. An eval harness would run real sessions on Claude Code and Codex, sealed, in fixture repositories built from real failures, three times each, and gate only on a scenario that always passed and now always fails."
 ---
 
@@ -75,3 +76,4 @@ structure and proof are checked, but not how well they do their work.
 | Date | Event |
 |---|---|
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |
+| 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
