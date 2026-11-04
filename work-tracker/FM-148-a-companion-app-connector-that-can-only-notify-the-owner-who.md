@@ -4,7 +4,7 @@ status: Proposed
 considered: FM-147, FM-007, FM-059, FM-115, FM-054, FM-030, FM-008
 tags: process, security
 epic: FM-147
-next: owner
+next: build
 blocked-by: Owner — which keys may sign on mobile
 ask-id: FM-148-Q3
 ask: "Which keys may sign in the companion app on mobile, weighed against the risks under Decisions, for the Owner, and does the bots' connector stay notify-only?"
@@ -12,6 +12,9 @@ ask-kind: ruling
 ask-since: 2026-11-04
 ask-proposal: "(a) defer to a design round; (b) yes, notify-only"
 ask-options: "(a) both, Owner chooses; (b) yes, notify-only | (a) biometric only; (b) yes, notify-only | (a) hardware key only; (b) yes, notify-only | (a) desktop only; (b) yes, notify-only | (a) defer to a design round; (b) yes, notify-only"
+answer: "accepted - (a) both, Owner chooses; (b) yes, notify-only"
+answered: 2026-11-04
+answered-by: holgo99
 hook: "A companion connector that can only notify the Owner — list, read, ask, check status — with no tool to answer, sign, merge or change rights; whether, and with which keys, the Owner signs on mobile is the Owner's ruling."
 ---
 
