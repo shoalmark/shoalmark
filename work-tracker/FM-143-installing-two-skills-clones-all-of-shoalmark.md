@@ -22,6 +22,10 @@ answered-by: holgo99
 
 ## What is true now
 
+**2026-11-04 — shoalmark/skills holds both skills, both manifests, the tests and CI;** its `main` ruleset requires the
+five `tests (…)` checks ([#1](https://github.com/shoalmark/skills/pull/1), [#2](https://github.com/shoalmark/skills/pull/2), under *Done when*). Next in shoalmark: the plugin's removal, then the
+Skills page. The install trials and the first tag follow the skills' report-language change.
+
 **2026-11-04 — judged before its first build commit: keep P2, In Progress.** A partial triage pass, on the Owner's
 signed answer to FM-143-Q1 (#260), judged this row alone ([worksheet](evidence/triage/triage-2026-11-04.md)).
 Unranked; when ranked, it goes below FM-104. Within v0.20.3 the plugin's removal from shoalmark comes before the Skills
@@ -138,7 +142,7 @@ FM-143-Q1 asks for all of these at once. An answer of "yes, with the changes I n
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **shoalmark/skills holds both skills** in `plugins/shoalmark/skills/`. They are copied byte for byte from
+- [x] **shoalmark/skills holds both skills** in `plugins/shoalmark/skills/`. They are copied byte for byte from
   shoalmark at a named sha, with each file's sha256 in the commit message, and no history is rewritten. Beside them:
   - both manifests;
   - the extended test;
@@ -147,9 +151,12 @@ Each item names its commit or pull request when it lands.
   - SECURITY.md;
   - a CHANGELOG;
   - Dependabot for GitHub Actions.
+  - **Landed:** [shoalmark/skills#1](https://github.com/shoalmark/skills/pull/1) (`ea778eb`), main's [run 41843847292](https://github.com/shoalmark/skills/actions/runs/41843847292); its checks made to fail
+    closed by [#2](https://github.com/shoalmark/skills/pull/2) (`06784be`), main's [run 41848074359](https://github.com/shoalmark/skills/actions/runs/41848074359).
 - [ ] **shoalmark no longer carries the plugin,** and its CHANGELOG gives the new install command.
 - [ ] **The removal from shoalmark updates `test_shoalmark.py`'s CI-workflow pins,** which hold the steps it removes.
-- [ ] **skills' CI runs both moved tests.** Today no CI job runs `test_prune_drift.py`.
+- [x] **skills' CI runs both moved tests.** Today no CI job runs `test_prune_drift.py`. · [#1](https://github.com/shoalmark/skills/pull/1) (`ea778eb`),
+  [run 41843847292](https://github.com/shoalmark/skills/actions/runs/41843847292)
 - [ ] **The landing footer's skills line,** in English and German, points at the Skills page once it exists.
 - [ ] **A real install from shoalmark/skills has worked** in Claude Code and in Codex.
 - [ ] **The first tag is made,** signed by the Owner.
@@ -158,11 +165,12 @@ Each item names its commit or pull request when it lands.
   - a line in `llms.txt`;
   - a test that the page's install names match the manifests.
 - [ ] **FM-083's suite runs as (h) sets out,** and FM-083 carries that work.
-- [ ] **The Owner has answered FM-143-Q1.**
+- [x] **The Owner has answered FM-143-Q1.** · `f4435bb`, #260 (`c02ca26`)
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | Done when: shoalmark/skills holds both skills and runs both tests (shoalmark/skills#1 `ea778eb`, shoalmark/skills#2 `06784be`); the Owner's answer (#260). Records only. |
 | 2026-11-04 | Judged keep P2 by a partial triage pass on the Owner's signed answer to FM-143-Q1 (#260); In Progress. Records only. |
 | 2026-11-04 | Filed, Proposed, with one ruling ask, FM-143-Q1, on the Auditor's brief. Nothing is built. |
