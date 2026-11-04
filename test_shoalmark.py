@@ -10995,6 +10995,9 @@ _SKILLS_PAGES = ("docs/skills.md", "docs/de/skills.md")
 _SKILLS_FILES = _SKILLS_PAGES + ("CHANGELOG.md", "skills-pin.json")
 _SKILLS_PIN_KEYS = ["repository", "tag", "commit", "marketplace", "plugin", "skills"]
 _SKILLS_MARKER = "SKILLS-TAG-PENDING"
+# The sentence after the Codex install on each page, which names the marketplace to choose and the plugin to install from it.
+_SKILLS_CODEX_STEP = {"docs/skills.md": r"choose the (\S+) marketplace and install (\S+) from it",
+                      "docs/de/skills.md": r"wähle den Marketplace (\S+) und installiere daraus (\S+?)[.,;:]?(?=\s|$)"}
 
 
 def _skills_sources(root=None):
@@ -11049,13 +11052,51 @@ def _skills_installs(text):
     return out
 
 
+def _skills_prose(text):
+    """The page's prose, as a reader reads it: the lines outside the fenced blocks, without their code spans and link targets."""
+    lines = [line for line, n in _skills_walk(text) if n is None]
+    return re.sub(r"\]\([^)\s]*\)", "]", re.sub(r"`[^`\n]*`", " ", "\n".join(lines)))
+
+
+def _skills_distance(a, b):
+    """How many letters must be added, removed or changed to turn `a` into `b`."""
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
+def _skills_record(src):
+    """The record's fields as a dict, where skills-pin.json is there and has the record's shape; otherwise None."""
+    try:
+        pin = json.loads(src.get("skills-pin.json") or "")
+    except ValueError:
+        return None
+    name = r"[a-z0-9][a-z0-9-]*"
+    if not (isinstance(pin, dict) and list(pin) == _SKILLS_PIN_KEYS and all(isinstance(pin[k], str) for k in _SKILLS_PIN_KEYS[:5])
+            and re.fullmatch(name + "/" + name, pin["repository"]) and re.fullmatch(name, pin["marketplace"]) and re.fullmatch(name, pin["plugin"])
+            and isinstance(pin["skills"], list) and pin["skills"] and all(isinstance(s, str) and re.fullmatch(name, s) for s in pin["skills"])):
+        return None
+    return pin
+
+
+def _skills_unmarked(text, pin):
+    """`text` with the marker read as the record's tag wherever it stands as the repository's tag: a page that still holds it is the
+    marker check's to name, and no other check's."""
+    return text.replace(f"{pin['repository']}@{_SKILLS_MARKER}", f"{pin['repository']}@{pin['tag']}") if pin else text
+
+
 def _skills_twin_problems(src):
     """What keeps the German page from being the English page's twin: another sequence of heading levels, a fenced block not equal byte
-    for byte or out of order, or other install commands; and an English page with no fenced block or no install command."""
+    for byte or out of order, or other install commands, the marker read as the record's tag; and an English page with no fenced block or
+    no install command."""
     missing = [rel for rel in _SKILLS_PAGES if src.get(rel) is None]
     if missing:
         return [f"missing: {', '.join(missing)} is not there"]
-    en, de = (src[rel] for rel in _SKILLS_PAGES)
+    pin = _skills_record(src)
+    en, de = (_skills_unmarked(src[rel], pin) for rel in _SKILLS_PAGES)
     bad = []
     if _skills_levels(en) != _skills_levels(de):
         bad.append(f"headings: the heading levels differ (English {_skills_levels(en)}, German {_skills_levels(de)})")
@@ -11081,18 +11122,19 @@ def _skills_pin_problems(src):
     """What keeps the pages and the CHANGELOG from naming the release skills-pin.json records, by its names: a record of another shape; a
     page, or the CHANGELOG's newest section on the skills, that names another tag of the repository, or none; a marketplace added from
     anything but the repository at the record's tag; a plugin installed as anything but the record's plugin from its marketplace; a skill
-    called by another plugin or skill name; and a page that does not give both installs or does not call each skill both ways."""
+    called by another plugin or skill name; a page that does not give both installs or does not call each skill both ways; and, on each
+    page, a name a person reads that is not the record's: the marketplace and the plugin in the sentence after the Codex install, the
+    skills' headings, the bold names that open the descriptions, and any word of the prose one or two letters from a skill's name. The
+    marker, where it stands as the repository's tag, reads as the record's tag: the marker check names it."""
     missing = [rel for rel in _SKILLS_FILES if src.get(rel) is None]
     if missing:
         return [f"missing: {', '.join(missing)} is not there"]
     try:
-        pin = json.loads(src["skills-pin.json"])
+        json.loads(src["skills-pin.json"])
     except ValueError as e:
         return [f"record: skills-pin.json is not JSON ({e})"]
-    name = r"[a-z0-9][a-z0-9-]*"
-    if not (isinstance(pin, dict) and list(pin) == _SKILLS_PIN_KEYS and all(isinstance(pin[k], str) for k in _SKILLS_PIN_KEYS[:5])
-            and re.fullmatch(name + "/" + name, pin["repository"]) and re.fullmatch(name, pin["marketplace"]) and re.fullmatch(name, pin["plugin"])
-            and isinstance(pin["skills"], list) and pin["skills"] and all(isinstance(s, str) and re.fullmatch(name, s) for s in pin["skills"])):
+    pin = _skills_record(src)
+    if pin is None:
         return [f"record: skills-pin.json does not hold {', '.join(_SKILLS_PIN_KEYS)}, in that order: a repository owner/name, the tag and its "
                 f"commit, the marketplace's and the plugin's names and a list of skill names"]
     repo, tag, commit, market, plugin, skills = (pin[k] for k in _SKILLS_PIN_KEYS)
@@ -11103,12 +11145,12 @@ def _skills_pin_problems(src):
         bad.append(f"record: skills-pin.json's tag {tag!r} is not a release tag, vX.Y.Z")
     if commit != _SKILLS_MARKER and not re.fullmatch(r"[0-9a-f]{40}", commit):
         bad.append(f"record: skills-pin.json's commit {commit!r} is not a full commit id")
-    texts = {rel: src[rel] for rel in _SKILLS_PAGES}
+    texts = {rel: _skills_unmarked(src[rel], pin) for rel in _SKILLS_PAGES}
     section = _skills_changelog_section(src["CHANGELOG.md"], repo)
     if section is None:
         bad.append(f"tag: no section of CHANGELOG.md names an install from {repo}")
     else:
-        texts["CHANGELOG.md"] = section
+        texts["CHANGELOG.md"] = _skills_unmarked(section, pin)
     for rel, text in texts.items():
         tags = re.findall(re.escape(repo) + r"@([^\s`)\]]+)", text)
         if not tags or set(tags) != {tag}:
@@ -11128,12 +11170,30 @@ def _skills_pin_problems(src):
         mentions = [m.group(1) for s in spans for m in [re.fullmatch(r"\$([\w-]+)", s)] if m]
         bad += [f"names: {rel}: `/{p}:{s}` is not the record's plugin and one of its skills" for p, s in calls if p != plugin or s not in skills]
         bad += [f"names: {rel}: `${s}` is not one of the record's skills" for s in mentions if s not in skills]
+        prose = _skills_prose(text)
+        for word in sorted(set(re.findall(r"(?<![\w/.-])[a-z][a-z0-9]*(?:-[a-z0-9]+)+(?![\w/-])", prose)) - set(skills)):
+            near = [s for s in skills if _skills_distance(word, s) <= 2]
+            if near:
+                bad.append(f"names: {rel}: the prose names {word!r}, one or two letters from the record's skill {near[0]!r}")
         if rel in _SKILLS_PAGES:
             if {s for _p, s in calls} != set(skills) or set(mentions) != set(skills):
                 bad.append(f"names: {rel} does not call each of {skills} as /{plugin}:<skill> and as $<skill>")
             if not (any(c.startswith("/plugin marketplace add ") for c in adds) and any(c.startswith("codex plugin marketplace add ") for c in adds)
                     and any(c.startswith("/plugin install ") for c in installs)):
                 bad.append(f"names: {rel} does not give the install for Claude Code and the one for Codex")
+            step = re.findall(_SKILLS_CODEX_STEP[rel], " ".join(prose.split()))
+            if len(step) != 1:
+                bad.append(f"names: {rel}: the sentence after the Codex install, which names the marketplace and the plugin, stands "
+                           f"{len(step)} times, not once")
+            elif step[0] != (market, plugin):
+                bad.append(f"names: {rel}: the sentence after the Codex install names the marketplace {step[0][0]!r} and the plugin "
+                           f"{step[0][1]!r}, not the record's {market!r} and {plugin!r}")
+            heads = [line[4:].strip() for line, n in _skills_walk(text) if n is None and line.startswith("### ")]
+            if heads != list(skills):
+                bad.append(f"names: {rel}: the skills' headings are {heads}, not the record's skills {skills} in order")
+            bold = [m.group(1) for line, n in _skills_walk(text) if n is None for m in [re.match(r"- \*\*([^*]+)\*\*", line)] if m]
+            if bold != list(skills):
+                bad.append(f"names: {rel}: the bold names that open the descriptions are {bold}, not the record's skills {skills} in order")
     return bad
 
 
@@ -11153,50 +11213,108 @@ def _skills_marker_problems(src):
             f"the commit it names"]
 
 
+def _skills_fixture(tag, commit):
+    """The four files from this suite's own templates, at `tag` and `commit`: pending with the marker in both, released with a tag and a
+    full commit id. They hold every place the checks read, as the pages hold them, and nothing read from this repository."""
+    pin = {"repository": "shoalmark/skills", "tag": tag, "commit": commit, "marketplace": "shoalmark", "plugin": "shoalmark",
+           "skills": ["find-drift", "prune-drift"]}
+    repo, market, plugin, (one, two) = pin["repository"], pin["marketplace"], pin["plugin"], pin["skills"]
+    blocks = (f"```text\n/plugin marketplace add {repo}@{tag}\n/plugin install {plugin}@{market}\n```\n\n"
+              f"```text\ncodex plugin marketplace add {repo}@{tag}\n```\n")
+    en = (f"# The drift skills — {one} and {two}\n\n## What they do\n\n- **{one}** finds the drift.\n- **{two}** prunes it, from {one}'s "
+          f"report.\n\n## Install\n\n{blocks}\nThen open the Plugins Directory, choose the {market} marketplace and install {plugin} from "
+          f"it.\n\n## Use\n\n`/{plugin}:{one}` and `/{plugin}:{two}`; in Codex `${one}` and `${two}`.\n\n### {one}\n\nAsk.\n\n### {two}\n\n"
+          f"Ask after {one}.\n")
+    de = (f"# Die Drift-Skills — {one} und {two}\n\n## Was sie tun\n\n- **{one}** findet die Drift.\n- **{two}** kürzt sie, ausgehend "
+          f"vom Bericht von {one}.\n\n## Installieren\n\n{blocks}\nÖffne dann das Plugins Directory, wähle den Marketplace {market} und "
+          f"installiere daraus {plugin}.\n\n## Benutzen\n\n`/{plugin}:{one}` und `/{plugin}:{two}`; in Codex `${one}` und `${two}`.\n\n"
+          f"### {one}\n\nFrag.\n\n### {two}\n\nFrag nach {one}.\n")
+    log = (f"# Changelog\n\n## Unreleased — 0.0.1\n\n### Changed\n- {one} and {two} install from {repo}: "
+           f"`/plugin marketplace add {repo}@{tag}`, then `/plugin install {plugin}@{market}`; in Codex, `codex plugin marketplace add "
+           f"{repo}@{tag}`. Claude Code runs them as `/{plugin}:{one}` and `/{plugin}:{two}`.\n\n## 0.0.0\n\n- First.\n")
+    return {"docs/skills.md": en, "docs/de/skills.md": de, "CHANGELOG.md": log, "skills-pin.json": json.dumps(pin, indent=2) + "\n"}
+
+
+def _skills_typo(word):
+    """`word` with its last letter changed."""
+    return word[:-1] + ("y" if word.endswith("z") else "z")
+
+
+def _skills_mutants(src):
+    """{name: (the check, the start of the problem it must give, `src` with one thing changed)}, each target picked from `src`'s own
+    record, so that they hold whether the record is pending or released. A target that `src` does not hold gives None."""
+    pin = _skills_record(src)
+    if pin is None:
+        return {}
+    repo, tag, commit, market, plugin, skills = (pin[k] for k in _SKILLS_PIN_KEYS)
+    one, two, other = skills[0], skills[-1], "v0.1.0" if tag != "v0.1.0" else "v0.2.0"
+    en, de, twin, tags = "docs/skills.md", "docs/de/skills.md", _skills_twin_problems, _skills_pin_problems
+    step = (f'"tag": "{tag}"', '"tag": "v0.1.0"') if tag == _SKILLS_MARKER else (f'"commit": "{commit}"', f'"commit": "{_SKILLS_MARKER}"')
+    return {
+        "a heading level changed in the German page": (twin, "headings:", _skills_with(src, de, f"\n### {two}\n", f"\n## {two}\n")),
+        "one character changed in a German code block's command": (twin, "code blocks:",
+                                                                   _skills_with(src, de, f"add {repo}@", f"add {_skills_typo(repo)}@")),
+        "one character changed in a German code block's fence": (twin, "code blocks:",
+                                                                 _skills_with(src, de, "```text\ncodex plugin", "```texT\ncodex plugin")),
+        "an install command changed in the German page": (twin, "install commands:",
+                                                          _skills_with(src, de, f"/plugin install {plugin}@{market}\n",
+                                                                       f"/plugin install {plugin}@{market} --scope user\n")),
+        "another tag in the English page": (tags, f"tag: {en}", _skills_with(src, en, f"/plugin marketplace add {repo}@{tag}",
+                                                                             f"/plugin marketplace add {repo}@{other}")),
+        "another tag in the CHANGELOG's line": (tags, "tag: CHANGELOG.md", _skills_with(src, "CHANGELOG.md", f"`codex plugin marketplace add {repo}@{tag}`",
+                                                                                       f"`codex plugin marketplace add {repo}@{other}`")),
+        "the plugin's name changed in the English page's calls": (tags, f"names: {en}",
+                                                                  _skills_with(src, en, f"`/{plugin}:{one}`", f"`/{_skills_typo(plugin)}:{one}`")),
+        "the plugin's name changed in the German page's install": (tags, f"names: {de}",
+                                                                   _skills_with(src, de, f"/plugin install {plugin}@{market}\n",
+                                                                                f"/plugin install {_skills_typo(plugin)}@{market}\n")),
+        "a skill's name changed in the German page's calls": (tags, f"names: {de}", _skills_with(src, de, f"`${two}`", f"`${_skills_typo(two)}`")),
+        "the record's tag and commit out of step": (tags, "record:", _skills_with(src, "skills-pin.json", *step)),
+        "the plugin's name changed in the English sentence after the Codex install": (tags, f"names: {en}",
+                                                                                      _skills_with(src, en, f"{plugin} from it",
+                                                                                                   f"{_skills_typo(plugin)} from it")),
+        "the marketplace's name changed in the German sentence after the Codex install": (tags, f"names: {de}",
+                                                                                          _skills_with(src, de, f"Marketplace {market}",
+                                                                                                       f"Marketplace {_skills_typo(market)}")),
+        "a skill's name changed in an English heading": (tags, f"names: {en}",
+                                                         _skills_with(src, en, f"\n### {one}\n", f"\n### {_skills_typo(one)}\n")),
+        "a skill's name changed in a German description": (tags, f"names: {de}", _skills_with(src, de, f"**{two}**", f"**{_skills_typo(two)}**")),
+    }
+
+
 _sk = _skills_sources()
 _sk_twin, _sk_pin, _sk_marker = _skills_twin_problems(_sk), _skills_pin_problems(_sk), _skills_marker_problems(_sk)
 check(f"the Skills page and its German twin keep one structure: the same heading levels in order, every fenced block equal byte for byte and "
-      f"in order, and the same install commands in order (problems found: {_sk_twin})", not _sk_twin)
+      f"in order, and the same install commands in order, the marker read as the record's tag (problems found: {_sk_twin})", not _sk_twin)
 check(f"the Skills page, its German twin and the CHANGELOG's line on the skills name the release skills-pin.json records, and only it, with "
-      f"the record's repository, marketplace, plugin and skill names in every install command and call (problems found: {_sk_pin})", not _sk_pin)
+      f"the record's repository, marketplace, plugin and skill names in every install command and call, in the sentence after the Codex "
+      f"install, in the skills' headings and in the bold names that open the descriptions, and no word of the prose one or two letters from a "
+      f"skill's name (problems found: {_sk_pin})", not _sk_pin)
 check(f"the Skills page names a released tag of shoalmark/skills, not the marker (problems found: {_sk_marker})", not _sk_marker)
-# Each of these turns one check red: one thing changed in one page, the CHANGELOG or the record.
-_sk_mutants = {
-    "a heading level changed in the German page": (_skills_twin_problems, "headings:",
-                                                   _skills_with(_sk, "docs/de/skills.md", "\n### prune-drift\n", "\n## prune-drift\n")),
-    "one character changed in a German code block's command": (_skills_twin_problems, "code blocks:",
-                                                               _skills_with(_sk, "docs/de/skills.md", "add shoalmark/skills@", "add shoalmark/skillz@")),
-    "one character changed in a German code block's fence": (_skills_twin_problems, "code blocks:",
-                                                             _skills_with(_sk, "docs/de/skills.md", "```text\ncodex plugin", "```texT\ncodex plugin")),
-    "an install command changed in the German page": (_skills_twin_problems, "install commands:",
-                                                      _skills_with(_sk, "docs/de/skills.md", "/plugin install shoalmark@shoalmark\n", "/plugin install shoalmark@shoalmark --scope user\n")),
-    "another tag in the English page": (_skills_pin_problems, "tag: docs/skills.md",
-                                        _skills_with(_sk, "docs/skills.md", f"/plugin marketplace add shoalmark/skills@{_SKILLS_MARKER}", "/plugin marketplace add shoalmark/skills@v0.1.0")),
-    "another tag in the CHANGELOG's line": (_skills_pin_problems, "tag: CHANGELOG.md",
-                                            _skills_with(_sk, "CHANGELOG.md", f"`codex plugin marketplace add shoalmark/skills@{_SKILLS_MARKER}`", "`codex plugin marketplace add shoalmark/skills@v0.1.0`")),
-    "the plugin's name changed in the English page's calls": (_skills_pin_problems, "names: docs/skills.md",
-                                                              _skills_with(_sk, "docs/skills.md", "`/shoalmark:find-drift`", "`/drift:find-drift`")),
-    "the plugin's name changed in the German page's install": (_skills_pin_problems, "names: docs/de/skills.md",
-                                                               _skills_with(_sk, "docs/de/skills.md", "/plugin install shoalmark@shoalmark\n", "/plugin install drift@shoalmark\n")),
-    "a skill's name changed in the German page": (_skills_pin_problems, "names: docs/de/skills.md",
-                                                  _skills_with(_sk, "docs/de/skills.md", "`$prune-drift`", "`$prune`")),
-    "the record's tag set without its commit": (_skills_pin_problems, "record:",
-                                                _skills_with(_sk, "skills-pin.json", f'"tag": "{_SKILLS_MARKER}"', '"tag": "v0.1.0"')),
-}
-_sk_mut_saw = {name: [p for p in fn(src) if p.startswith(prefix)] if src is not None else None for name, (fn, prefix, src) in _sk_mutants.items()}
-check(f"the Skills page's checks are not blind: each of {', '.join(_sk_mutants)} is a problem of its own check (saw {_sk_mut_saw})",
-      all(_sk_mut_saw.values()) and len(_sk_mut_saw) == 10)
-# The marker replaced everywhere by one tag, with the record's commit set, passes all three checks; the marker left in one page alone fails
-# the marker's check, naming that page, and the pin's.
-_sk_tagged = {rel: text.replace(f'"commit": "{_SKILLS_MARKER}"', '"commit": "' + "0123456789abcdef" * 2 + '01234567"').replace(_SKILLS_MARKER, "v1.0.0")
-              if text is not None else None for rel, text in _sk.items()}
-_sk_tagged_saw = (_skills_twin_problems(_sk_tagged), _skills_pin_problems(_sk_tagged), _skills_marker_problems(_sk_tagged))
-_sk_one_left = {**_sk_tagged, "docs/de/skills.md": _sk["docs/de/skills.md"]}
-_sk_one_left_saw = (_skills_marker_problems(_sk_one_left), _skills_pin_problems(_sk_one_left))
-check(f"the marker's check follows the tag: the marker replaced by one tag everywhere, the record's commit set, passes the three checks, and the "
-      f"marker left in the German page alone fails the marker's check, naming only that page, and the pin's (saw {_sk_tagged_saw}, {_sk_one_left_saw})",
-      _sk_tagged_saw == ([], [], []) and len(_sk_one_left_saw[0]) == 1 and _sk_one_left_saw[0][0].startswith("docs/de/skills.md: ")
-      and any(p.startswith("tag: docs/de/skills.md") for p in _sk_one_left_saw[1]))
+# Each mutant turns its own check red on the suite's two fixtures, pending and released, and on this repository's files.
+_sk_sets = {"the pending fixture": _skills_fixture(_SKILLS_MARKER, _SKILLS_MARKER), "the released fixture": _skills_fixture("v1.0.0", "1" * 40),
+            "this repository's files": _sk}
+_sk_mut_saw = {set_: {name: len([p for p in fn(m) if p.startswith(start)]) if m is not None else None
+                      for name, (fn, start, m) in _skills_mutants(src).items()} for set_, src in _sk_sets.items()}
+check(f"the Skills page's checks are not blind: on the pending fixture, the released fixture and this repository's files, each of "
+      f"{', '.join(_skills_mutants(_sk_sets['the pending fixture']))} is a problem of its own check (problems seen: {_sk_mut_saw})",
+      all(len(saw) == 14 and all(saw.values()) for saw in _sk_mut_saw.values()))
+# The marker check follows the tag: the pending fixture passes the twin and pin checks and fails the marker check on all four files; the
+# released one passes all three; the released one with the marker left once in the German page fails the marker check alone, on that page.
+_sk_fix_saw = {state: (_skills_twin_problems(src), _skills_pin_problems(src), _skills_marker_problems(src))
+               for state, src in _sk_sets.items() if state != "this repository's files"}
+_skp = _skills_record(_sk_sets["the released fixture"])
+_sk_one_left = _skills_with(_sk_sets["the released fixture"], "docs/de/skills.md", f"{_skp['repository']}@{_skp['tag']}",
+                            f"{_skp['repository']}@{_SKILLS_MARKER}")
+_sk_one_left_saw = ((_skills_twin_problems(_sk_one_left), _skills_pin_problems(_sk_one_left), _skills_marker_problems(_sk_one_left))
+                    if _sk_one_left is not None else None)
+check(f"the marker's check follows the tag, on the suite's own fixtures: pending, the twin and pin checks pass and the marker check names all "
+      f"four files; released, with a tag and a full commit id, all three pass; released with the marker left once in the German page, the "
+      f"marker check alone fails, naming only that page (saw {_sk_fix_saw}, {_sk_one_left_saw})",
+      _sk_fix_saw["the pending fixture"][:2] == ([], []) and len(_sk_fix_saw["the pending fixture"][2]) == 1
+      and _sk_fix_saw["the pending fixture"][2][0].startswith(", ".join(_SKILLS_FILES) + ": ")
+      and _sk_fix_saw["the released fixture"] == ([], [], []) and _sk_one_left_saw is not None and _sk_one_left_saw[:2] == ([], [])
+      and len(_sk_one_left_saw[2]) == 1 and _sk_one_left_saw[2][0].startswith("docs/de/skills.md: "))
 
 
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
