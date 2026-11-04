@@ -3,7 +3,7 @@ id: FM-151
 status: Proposed
 considered: FM-003, FM-032, FM-134, FM-143
 tags: process
-next: owner
+next: build
 hook: "A pull request that changes records only still starts all five required jobs on their own images, though four of them only skip their steps. On 4 November the macOS job of two such runs waited about ten minutes for a runner, then ran under 20 seconds."
 ask-id: FM-151-Q1
 ask: "Does macOS stay a required check for pull requests that change code?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-04
 ask-options: "yes, keep it required | required only before a release"
 ask-proposal: "yes, keep it required"
+answer: "accepted - yes, keep it required"
+answered: 2026-11-04
+answered-by: holgo99
 ---
 
 # FM-151 — a records-only pull request waits for a macOS runner that runs no test
