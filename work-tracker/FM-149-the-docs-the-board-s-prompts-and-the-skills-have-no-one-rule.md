@@ -91,7 +91,7 @@ FM-149-Q1 asks for all of these at once. An answer of "yes, with the changes I n
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-149-Q1.**
+- [x] **The Owner has answered FM-149-Q1.** · `32cb089`, #263 (`7f0136e`)
 - [ ] **Every docs page a person reads has its German twin,** the seats page included, and a test checks each pair as
   decision 1 says.
 - [ ] **The skills follow decision 2:** the report's language, the fixed section keys, and a test that pins the keys
@@ -105,3 +105,4 @@ Each item names its commit or pull request when it lands.
 | Date | Event |
 |---|---|
 | 2026-11-04 | Filed, Proposed, with one ruling ask, FM-149-Q1, on the Auditor's brief. Nothing is built. |
+| 2026-11-04 | Done when: the Owner's answer to FM-149-Q1 (#263). Records only. |

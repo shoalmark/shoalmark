@@ -36,7 +36,9 @@ answered-by: holgo99
      ([L100–L111](https://github.com/shoalmark/shoalmark/blob/c43af896efaeefea1dde4fa790d4db269ae86410/.github/workflows/ci.yml#L100-L111)).
      The other four write that they did not validate records
      ([L112–L116](https://github.com/shoalmark/shoalmark/blob/c43af896efaeefea1dde4fa790d4db269ae86410/.github/workflows/ci.yml#L112-L116))
-     and skip every other step.
+     and skip the gate, Subversion and the suites; they still set up Python and set the git identity
+     ([L97–L98](https://github.com/shoalmark/shoalmark/blob/c43af896efaeefea1dde4fa790d4db269ae86410/.github/workflows/ci.yml#L97-L98),
+     [L135–L136](https://github.com/shoalmark/shoalmark/blob/c43af896efaeefea1dde4fa790d4db269ae86410/.github/workflows/ci.yml#L135-L136)).
    - So a records-only pull request still starts all five runners, each on its own image.
 3. **What that cost on 4 November,** read from the API once each job had completed, in UTC:
 
@@ -99,7 +101,7 @@ suites.
 
 Each item names its commit, pull request or run when it lands.
 
-- [ ] **The Owner has answered FM-151-Q1.**
+- [x] **The Owner has answered FM-151-Q1.** · `84be8aa`, #265 (`c9d5889`)
 - [ ] **A records-only pull request's five required checks pass with no macOS or Windows runner,** measured on the
   first one after the change.
 - [ ] **A code pull request still runs all five on their own images.**
@@ -110,3 +112,5 @@ Each item names its commit, pull request or run when it lands.
 | Date | Event |
 |---|---|
 | 2026-11-04 | Filed, Proposed, with one ruling ask, FM-151-Q1, on the Auditor's brief. Nothing is built. |
+| 2026-11-04 | The standard review's P3 RV-4368 fixed forward: item 2 names the steps the four other jobs still run. Records only. |
+| 2026-11-04 | Done when: the Owner's answer to FM-151-Q1 (#265). Records only. |
