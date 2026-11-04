@@ -6453,9 +6453,9 @@ check("refresh hooks · the README names the hooks, read-at wording, and fetch-o
 # from facts.html, which the build writes and nothing commits. These read the sources, as the suite reads the other pages, and have controls:
 # a copy of the sources with one thing changed, which must be refused.
 _LANDING_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", "zensical.toml", "docs/index.md", "docs/de/index.md")
-_FOOT_EN = ("{tag}, released {date} — two drift skills, and an id of its own for every question. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
+_FOOT_EN = ("{tag}, released {date} — <a href=\"skills.html\">two drift skills</a>, and an id of its own for every question. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
             "from the repository and were read when the site was built: {read_date}, at {read_sha}.")
-_FOOT_DE = ("{tag}, veröffentlicht am {date} – zwei Drift-Skills und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
+_FOOT_DE = ("{tag}, veröffentlicht am {date} – <a href=\"skills.html\">zwei Drift-Skills</a> und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
             "Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
 _CHART_NOTE = ("shoalmark runs on itself: every wreck is a bug or a security finding, filed in its own repository.",
                "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.")
@@ -6563,7 +6563,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "a release typed in the footer's link": _with(_ls, "overrides/landing.html", 'releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}', 'releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2'),
         "the Owner's line reworded": _with(_ls, "overrides/partials/landing/en.html", "a bug or a security finding", "a bug"),
         "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
-        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "two drift skills, and an id of its own for every question", "a fix for the board's refresh"),
+        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "two drift skills</a>, and an id of its own for every question", "two drift skills</a>, and a fix for the board's refresh"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
         "the prompt back in a fold": _with(_ls, "overrides/landing.html", '<div class="probe-prompt" id="probe-prompt" data-open="false">', '<details class="probe-fold probe-prompt" id="probe-prompt" data-open="false">'),
@@ -6631,13 +6631,18 @@ _ssaw = {name: len(_standup_problems(src)) for name, src in _sctl.items()}
 check(f"FM-006 · B1 · the stand-up lines' check is not blind: each of a word of one row changed in the German twin, or in the English words, is a "
       f"problem (problems found: {_ssaw})", all(_ssaw.values()) and len(_ssaw) == 2)
 _sw29 = [lang for lang, foot in (("en", _FOOT_EN), ("de", _FOOT_DE)) if _landing_words(_ls)[0].get(lang, {}).get("foot_fine") != foot]
-check(f"FM-006 · B1 · the footer's sentence, W56: foot_fine holds its row byte for byte in en.html and de.html, the headline after the date two drift skills "
+check(f"FM-006 · B1 · the footer's sentence, W56: foot_fine holds its row byte for byte in en.html and de.html, the headline after the date two drift skills, linked to the Skills page, "
       f"and an id of its own for every question, its slots and every word after its first full stop as they were (saw {_sw29})",
       not _sw29 and _FOOT_EN.split(". ", 1)[1].startswith("Licence: Apache-2.0 or MIT. ") and _FOOT_DE.split(". ", 1)[1].startswith("Lizenz: Apache-2.0 oder MIT. ")
       and all(s in _FOOT_EN and s in _FOOT_DE for s in ("{tag}", "{date}", "{read_date}", "{read_sha}")))
-_sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "zwei Drift-Skills und eine eigene ID", "drei Drift-Skills und eine eigene ID")
+_sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "zwei Drift-Skills</a> und eine eigene ID", "drei Drift-Skills</a> und eine eigene ID")
 check("FM-006 · B1 · the footer's check is not blind: a word of W56 changed in the German words is a problem",
       _landing_words(_sw29_ctl)[0].get("de", {}).get("foot_fine") != _FOOT_DE and bool(_landing_problems(_sw29_ctl)))
+_sw29_unlinked = {lang: _with(_ls, f"overrides/partials/landing/{lang}.html", f'<a href=\\"skills.html\\">{words}</a>', words)
+                  for lang, words in (("en", "two drift skills"), ("de", "zwei Drift-Skills"))}
+_sw29_unlinked_saw = {lang: len(_landing_problems(src)) for lang, src in _sw29_unlinked.items()}
+check(f"the landing footer's check is not blind to its link: the drift skills unlinked from the Skills page, in either words file, is a problem "
+      f"(problems found: {_sw29_unlinked_saw})", all(_sw29_unlinked_saw.values()) and len(_sw29_unlinked_saw) == 2)
 
 _CLAIM_PARTS = {"en": ('<a href="why-shoalmark.html">Why shoalmark?</a>', 'Built in the open: <a href="https://github.com/shoalmark/shoalmark">github.com/shoalmark/shoalmark</a>',
                        'Follow me building it on X: <a href="https://x.com/holgo99">@holgo99</a>'),
