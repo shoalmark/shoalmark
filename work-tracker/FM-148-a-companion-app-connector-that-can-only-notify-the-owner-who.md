@@ -30,6 +30,8 @@ Seat: Planner · filed 2026-11-04 · chapter of FM-147.
 
 **The Owner's direction in chat, 2026-11-03 — logged, not an answer.** The value of mobile is signing, the board and the guided answer together; which keys are enough is the Owner's choice. The risks below are what that choice is weighed against.
 
+**The Owner's word in chat, 2026-11-04, after FM-148-Q3's answer — logged.** "We do a design round anyway, but bio + hw is a given." So the design round still runs, with biometric and hardware keys as its given, not as its question.
+
 **First step (not done in this filing): file the counsel.** The companion-app counsel is held privately; it lands in this tracker's evidence only after a privacy check — no names, no home paths, no private finding.
 
 **Review tier.** The ask concerns signing: this tracker's review is **critical** — the Auditor's START file, an independent Reviewer.
@@ -73,3 +75,4 @@ Whatever is chosen, a new key counts only after the Owner's signed change to the
 | Date | Event |
 |---|---|
 | 2026-11-04 | Filed under FM-147 on the Auditor's direction (relayed by the Owner), with ask FM-148-Q3 put as a ruling over *Decisions, for the Owner*; the Owner's chat direction of 2026-11-03 logged, not an answer. Critical review tier. |
+| 2026-11-04 | The Owner's chat word after FM-148-Q3's answer logged under *What is true now*. Records only. |
