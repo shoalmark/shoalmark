@@ -74,9 +74,10 @@ Die Prosa des Berichts und das Gespräch folgen deiner Sprache: der Sprache des 
 `<tracker dir>/brand/labels.yaml` des Repositorys, wo diese Datei sie setzt, sonst der Sprache, in der du schreibst. Ein
 `lang`, das die eigene Prüfung von shoalmark nicht besteht, gilt als nicht gesetzt. Die Abschnittsschlüssel des Berichts
 und seine Dateinamen bleiben, wie sie sind, damit prune-drift liest, was find-drift geschrieben hat. **Grenze:** Das
-Board liest auch die `labels.yaml` neben der festgeschriebenen Kopie von `shoalmark.py` und in deinem
-`~/.config/shoalmark/`, die ein Skill nie liest; setzt nur eine davon `lang`, kann der Skill vom Board abweichen, und
-deine Sprache entscheidet.
+Board liest `labels.yaml` an drei Orten, und der spätere gewinnt: im `brand/` der festgeschriebenen Kopie, in
+`<tracker dir>/brand/` des Repositorys und in deinem `~/.config/shoalmark/`. Ein Skill liest nur die Datei des
+Repositorys; wo das Board `lang` aus der Datei der festgeschriebenen Kopie oder aus deiner nimmt, kann die Sprache des
+Berichts von der des Boards abweichen.
 
 ## Der Weg zu shoalmark
 

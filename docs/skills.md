@@ -69,9 +69,10 @@ repository's tests and CI: it runs none of them itself.
 The report's prose and the conversation follow your language: the Board's language, `lang` in the repository's
 `<tracker dir>/brand/labels.yaml`, where that file sets it, otherwise the language you write in. A `lang` that fails
 shoalmark's own check counts as not set. The report's section keys and its file names stay as they are, so prune-drift
-reads what find-drift wrote. **Limit:** the Board also reads the `labels.yaml` beside the vendored `shoalmark.py` and in
-your `~/.config/shoalmark/`, which a skill never reads, so where only one of those sets `lang`, the skill can differ from
-the Board, and your language decides.
+reads what find-drift wrote. **Limit:** the Board reads `labels.yaml` in three places, the later winning: the vendored
+copy's `brand/`, the repository's `<tracker dir>/brand/`, and your `~/.config/shoalmark/`. A skill reads only the
+repository's, so where the Board takes `lang` from the vendored copy's file or from yours, the report's language can
+differ from the Board's.
 
 ## The way to shoalmark
 
