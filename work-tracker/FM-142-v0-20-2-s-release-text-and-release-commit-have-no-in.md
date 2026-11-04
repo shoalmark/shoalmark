@@ -39,5 +39,6 @@ release that is the person's to tag needs its own work held where its record can
 
 | Date | Event |
 |---|---|
+| 2026-11-03 14:55:28 CET | The site serves its text files as UTF-8: every `.txt` and `.md` response carries `charset=utf-8` in its `Content-Type`. The suite's check `FM-142 · docs.headers` holds it, with its controls. |
 | 2026-11-03 06:29:56 CET | v0.20.2’s release commit: VERSION 0.20.2; both setup pages clone `--branch v0.20.2`. ADOPT’s pins stay on v0.20.1 until the pin commit after the tag; the footer’s headline follows in its own commit. |
 | 2026-11-03 | Filed and judged In Progress, P1, on the Owner's word of 3 November, for v0.20.2's release: its CHANGELOG section, release commit and run sheet. Records only. |

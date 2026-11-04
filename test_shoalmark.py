@@ -19948,7 +19948,8 @@ def _docs_yaml(text):
 _DOCS_SOURCES = ("docs/index.md", "docs/de/setup.md", "docs/stylesheets/shoalmark.css", "overrides/landing.html", "overrides/partials/landing/en.html",
                  "launch/interim/how-it-works.en.md", "launch/probe/how-it-works.de.md",
                  "zensical.toml", "requirements-docs.txt", "README.md", "scripts/landing_facts.py", "scripts/llms_txt.py", "scripts/check_site.py",
-                 "scripts/test_check_site.py", ".github/workflows/docs.yml", ".github/workflows/docs.worker.js", ".github/workflows/docs.wrangler.jsonc")
+                 "scripts/test_check_site.py", ".github/workflows/docs.yml", ".github/workflows/docs.worker.js", ".github/workflows/docs.wrangler.jsonc",
+                 ".github/workflows/docs.headers")
 _DOCS_NOT = ("work-tracker/FM-006-shoalmark-has-one-document.md", "work-tracker/INDEX.md", "work-tracker/TRIAGE.md", "work-tracker/evidence/reviews/review.md")
 
 
@@ -19975,10 +19976,10 @@ def _docs_wf_properties(text):
     facts, zensical, release = at(lambda r: r == 'python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"'), \
         at(lambda r: r.startswith("zensical build")), at(lambda r: r == 'python3 scripts/landing_facts.py --check site --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"')
     checkout = next((s for s in built if str(s.get("uses") or "").startswith("actions/checkout@")), {})
-    unpack = "mkdir site && tar -xf artifact.tar -C site"
+    unpack, copy = "mkdir site && tar -xf artifact.tar -C site", "cp .github/workflows/docs.headers site/_headers"
     shipped = [s for s in worker.get("steps") or [] if isinstance(s, dict)]
     kind = lambda s: next((u for u in ("actions/checkout@", "actions/download-artifact@", "cloudflare/wrangler-action@") if str(s.get("uses") or "").startswith(u)),
-                          "unpack" if s.get("run") == unpack and set(s) == {"run"} else None)
+                          "unpack" if s.get("run") == unpack and set(s) == {"run"} else "copy" if s.get("run") == copy and set(s) == {"run"} else None)
     kinds = [kind(s) for s in shipped]
     wrangler = (shipped[kinds.index("cloudflare/wrangler-action@")].get("with") or {}) if "cloudflare/wrangler-action@" in kinds else {}
     fetched = (shipped[kinds.index("actions/checkout@")].get("with") or {}) if "actions/checkout@" in kinds else {}
@@ -19987,7 +19988,7 @@ def _docs_wf_properties(text):
     return [
         ("no `pull_request_target` in it" + refused, bool(wf) and "pull_request_target" not in text),
         ("it starts on a `v*` tag, by hand, and on a pull request that changes the site's own sources — its pages, the launch states' words, templates, configuration, the README, "
-         "the scripts in scripts/ that the build runs, docs.yml and the Worker's two files beside it — and never on one that changes trackers alone",
+         "the scripts in scripts/ that the build runs, docs.yml and the Worker's three files beside it — and never on one that changes trackers alone",
          isinstance(on, dict) and set(on) == {"push", "workflow_dispatch", "pull_request"} and on.get("push") == {"tags": ["v*"]} and isinstance(pr, dict)
          and set(pr) == {"paths"} and all(starts(p) for p in _DOCS_SOURCES) and not any(starts(p) for p in _DOCS_NOT)),
         ("the deploy job runs after the build, only in the public repository, and never for a pull request",
@@ -20009,14 +20010,14 @@ def _docs_wf_properties(text):
         ("the Worker's deploy runs after the build, only in the public repository, and never for a pull request",
          worker.get("if") == "github.event.repository.private == false && github.event_name != 'pull_request'" and worker.get("needs") == "build"),
         ("the Worker's deploy takes the site from the build's own artifact and builds nothing: the build uploads site/ as the Pages artifact, and the "
-         "Worker's job downloads `github-pages`, unpacks it into site/, and runs no other step than its checkout and wrangler",
-         sorted(kinds, key=str) == sorted(["actions/checkout@", "actions/download-artifact@", "unpack", "cloudflare/wrangler-action@"])
+         "Worker's job downloads `github-pages`, unpacks it into site/, and runs no other step than its checkout, the copy of its headers file and wrangler",
+         sorted(kinds, key=str) == sorted(["actions/checkout@", "actions/download-artifact@", "unpack", "copy", "cloudflare/wrangler-action@"])
          and kinds.index("actions/download-artifact@") < kinds.index("unpack") < kinds.index("cloudflare/wrangler-action@")
          and shipped[kinds.index("actions/download-artifact@")].get("with") == {"name": "github-pages"}
          and any(str(s.get("uses") or "").startswith("actions/upload-pages-artifact@") and s.get("with") == {"path": "site"} for s in built)),
-        ("the Worker's checkout fetches only its two files beside docs.yml and keeps no token",
+        ("the Worker's checkout fetches only its three files beside docs.yml and keeps no token",
          fetched.get("persist-credentials") is False and fetched.get("sparse-checkout-cone-mode") is False
-         and fetched.get("sparse-checkout") == ".github/workflows/docs.wrangler.jsonc\n.github/workflows/docs.worker.js\n"),
+         and fetched.get("sparse-checkout") == ".github/workflows/docs.wrangler.jsonc\n.github/workflows/docs.worker.js\n.github/workflows/docs.headers\n"),
         ("wrangler deploys the Worker with the config beside docs.yml, its version pinned exactly",
          re.fullmatch(r"\d+\.\d+\.\d+", str(wrangler.get("wranglerVersion") or "")) is not None
          and wrangler.get("command") == "deploy --config .github/workflows/docs.wrangler.jsonc"),
@@ -20041,6 +20042,7 @@ def _docs_wf_regressions(text):
         ("the launch states' words are not among the paths", lambda t: t.replace('      - "launch/**"\n', "", 1)),
         ("the Worker's script is not among the paths", lambda t: t.replace('      - ".github/workflows/docs.worker.js"\n', "", 1)),
         ("the Worker's config is not among the paths", lambda t: t.replace('      - ".github/workflows/docs.wrangler.jsonc"\n', "", 1)),
+        ("the Worker's headers file is not among the paths", lambda t: t.replace('      - ".github/workflows/docs.headers"\n', "", 1)),
         ("a pull request deploys: its guard gone", lambda t: t.replace(" && github.event_name != 'pull_request'", "", 1)),
         ("a private fork deploys: its guard gone", lambda t: t.replace("github.event.repository.private == false && ", "", 1)),
         ("the build may write the repository", lambda t: t.replace("{contents: read, pull-requests: read}", "{contents: write, pull-requests: read}", 1)),
@@ -20071,6 +20073,97 @@ def _docs_wf_regressions(text):
 _docs_text = (HERE / ".github/workflows/docs.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/docs.yml").is_file() else ""
 for _what, _ok in _docs_wf_properties(_docs_text) + _docs_wf_regressions(_docs_text):
     check(f"FM-006 · B1 · docs.yml: {_what}", _ok)
+
+
+_DOCS_HEADERS = {"/*.txt": [("content-type", "text/plain; charset=utf-8")], "/*.md": [("content-type", "text/markdown; charset=utf-8")]}
+_DOCS_HEADERS_COPY = "cp .github/workflows/docs.headers site/_headers"
+
+
+def _docs_headers_rules(text):
+    """A `_headers` file read as the asset layer reads it: {rule's path: [(header name, value)]}. A line that starts with `/` or a scheme opens a rule,
+    each `Name: value` line under it sets a header, blank and `#` lines are skipped. Anything else raises ValueError."""
+    rules, path = {}, None
+    for n, line in enumerate(text.replace("\r\n", "\n").split("\n"), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("/") or re.match(r"\S+://", line):
+            if line in rules:
+                raise ValueError(f"line {n}: {line!r} twice")
+            path, rules[line] = line, []
+        elif path is not None and re.fullmatch(r"[^\s:]+:\s*\S.*", line):
+            name, value = line.split(":", 1)
+            rules[path].append((name.lower(), value.strip()))
+        else:
+            raise ValueError(f"line {n}: {line!r}")
+    return rules
+
+
+def _docs_headers_properties(headers, text):
+    """The site serves its text and Markdown files as UTF-8: the headers file and the job that copies it into site/ before the deploy —
+    [(what is asserted, whether it holds)]."""
+    try:
+        rules, refused = _docs_headers_rules(headers), ""
+    except ValueError as e:
+        rules, refused = {}, f" — the file is refused: {e}"
+    try:
+        wf = _docs_yaml(text) or {}
+    except ValueError:
+        wf = {}
+    jobs = wf.get("jobs") if isinstance(wf, dict) and isinstance(wf.get("jobs"), dict) else {}
+    steps = lambda job: [s for s in (job.get("steps") or []) if isinstance(s, dict)] if isinstance(job, dict) else []
+    shipped = steps(jobs.get("cloudflare"))
+    at = lambda pred: [i for i, s in enumerate(shipped) if pred(s)]
+    unpack, copy = at(lambda s: s.get("run") == "mkdir site && tar -xf artifact.tar -C site"), at(lambda s: s.get("run") == _DOCS_HEADERS_COPY)
+    deploy = at(lambda s: str(s.get("uses") or "").startswith("cloudflare/wrangler-action@"))
+    fetched = next(((s.get("with") or {}) for s in shipped if str(s.get("uses") or "").startswith("actions/checkout@")), {})
+    others = [s for name, job in jobs.items() if name != "cloudflare" for s in steps(job)]
+    copiers = [job for job in jobs.values() if any(s.get("run") == _DOCS_HEADERS_COPY for s in steps(job))]
+    guard = lambda job: isinstance(job.get("if"), str) and "||" not in job["if"] \
+        and "github.event_name != 'pull_request'" in [c.strip() for c in job["if"].split("&&")]
+    return [
+        ("the headers file sets `Content-Type: text/plain; charset=utf-8` for `/*.txt` and `Content-Type: text/markdown; charset=utf-8` for `/*.md`, "
+         "and nothing else" + refused, rules == _DOCS_HEADERS),
+        ("the Worker's job fetches the headers file and copies it to site/_headers after it unpacks the build's artifact and before wrangler deploys; "
+         "no other job names it",
+         len(unpack) == len(copy) == len(deploy) == 1 and unpack[0] < copy[0] < deploy[0]
+         and ".github/workflows/docs.headers" in str(fetched.get("sparse-checkout") or "").split("\n")
+         and not any("docs.headers" in str(s) or "_headers" in str(s) for s in others)),
+        ("the job that copies it never runs for a pull request: its `if` excludes `pull_request`", bool(copiers) and all(guard(job) for job in copiers)),
+    ]
+
+
+def _docs_headers_regressions(headers, text):
+    """Each change that undoes one property above, and fails: the controls of the check that reads the headers file."""
+    step = "      - run: " + _DOCS_HEADERS_COPY + "\n"
+    shown = "  cloudflare:\n    if: github.event.repository.private == false && github.event_name != 'pull_request'\n"
+    rows = (
+        ("the `/*.txt` rule sets no charset", lambda h: h.replace("text/plain; charset=utf-8", "text/plain", 1), lambda t: t),
+        ("the `/*.md` rule sets no charset", lambda h: h.replace("text/markdown; charset=utf-8", "text/markdown", 1), lambda t: t),
+        ("a third rule sets a header on every path", lambda h: h + "\n/*\n  X-Frame-Options: DENY\n", lambda t: t),
+        ("the Worker's job has no copy step", lambda h: h, lambda t: t.replace(step, "", 1)),
+        ("the copy runs after wrangler's deploy", lambda h: h, lambda t: t.replace(step, "", 1) + step if step in t else t),
+        ("the Worker's checkout does not fetch the headers file", lambda h: h, lambda t: t.replace("            .github/workflows/docs.headers\n", "", 1)),
+        ("the build copies it too", lambda h: h, lambda t: t.replace("      - run: python3 scripts/check_site.py site\n",
+                                                                      "      - run: python3 scripts/check_site.py site\n" + step, 1)),
+        ("the Worker's job runs for a pull request: its `if` without the exclusion",
+         lambda h: h, lambda t: t.replace(shown, "  cloudflare:\n    if: github.event.repository.private == false\n", 1)),
+        ("the Worker's job runs for a pull request: an `||` beside the exclusion",
+         lambda h: h, lambda t: t.replace(shown, shown[:-1] + " || github.event_name == 'pull_request'\n", 1)),
+    )
+    out = []
+    for what, change_h, change_t in rows:
+        h, t = change_h(headers), change_t(text)
+        out.append((f"where {what}, the check fails" + (" — NOT JUDGED: the change finds no line to apply to" if (h, t) == (headers, text) else ""),
+                    (h, t) != (headers, text) and not all(ok for _, ok in _docs_headers_properties(h, t))))
+    for what, change in (("nothing changes", lambda s: s), ("every line of both files ends in \\r\\n, as a Windows checkout writes it", lambda s: s.replace("\n", "\r\n"))):
+        out.append((f"where {what}, the check passes", all(ok for _, ok in _docs_headers_properties(change(headers), change(text)))))
+    return out
+
+
+_docs_headers_text = (HERE / ".github/workflows/docs.headers").read_text(encoding="utf-8") if (HERE / ".github/workflows/docs.headers").is_file() else ""
+for _what, _ok in _docs_headers_properties(_docs_headers_text, _docs_text) + _docs_headers_regressions(_docs_headers_text, _docs_text):
+    check(f"FM-142 · docs.headers: {_what}", _ok)
 
 
 # --- FM-049: the probe dialog's one opt-in line, after its third step and under the start section's coin lines, leads to an issue form in this repository
