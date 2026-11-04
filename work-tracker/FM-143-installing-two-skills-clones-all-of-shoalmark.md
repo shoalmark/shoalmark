@@ -23,17 +23,23 @@ decision under *Decisions, for the Owner* at once.
 1. **The plugin ships at shoalmark's root.**
    [`.claude-plugin/marketplace.json`](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/.claude-plugin/marketplace.json)
    lists one plugin, with source `"./"`.
-   - So `marketplace add shoalmark/shoalmark` clones the whole repository: 808 tracked files, about 35 MB, at
-     c154151.
+   - So `marketplace add shoalmark/shoalmark` clones the whole repository: 808 tracked files, about 35 MB of working
+     tree, at c154151.
    - The two skills it is for are 22 KB together:
      [`skills/`](https://github.com/shoalmark/shoalmark/tree/c154151334fc76732b7ce283b5e2bd278cfef66d/skills).
    - A plugin in a subfolder would not help, since the marketplace's clone comes first
      ([Claude Code's marketplace reference](https://code.claude.com/docs/en/plugins/marketplace-reference.md)).
-2. **The only public mention is two lines in the 0.20.2 section of the
-   [CHANGELOG](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/CHANGELOG.md#L29-L30).**
-   - No docs page, nav entry, README line, German text or install command names the skills.
-   - Those lines write `/find-drift`. Installed, Claude Code runs a plugin's skills as `/shoalmark:find-drift` and
-     `/shoalmark:prune-drift`.
+2. **The public mentions are three lines:**
+   - two in the 0.20.2 section of the
+     [CHANGELOG](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/CHANGELOG.md#L29-L30);
+   - the landing footer's line, in
+     [English](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/overrides/partials/landing/en.html#L202)
+     and in
+     [German](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/overrides/partials/landing/de.html#L201),
+     which names "two drift skills".
+
+   No docs page, nav entry, README line or install command exists. The CHANGELOG's lines write `/find-drift`.
+   Installed, Claude Code runs a plugin's skills as `/shoalmark:find-drift` and `/shoalmark:prune-drift`.
 3. **Both skills already work without shoalmark.**
    - They read `shoalmark.toml` where it exists, and otherwise ask where to write.
    - Neither runs `shoalmark.py`.
@@ -77,7 +83,13 @@ FM-143-Q1 asks for all of these at once. An answer of "yes, with the changes I n
 - **2. The skills are developed only there.** shoalmark keeps no copy.
 - **3. Users pin by tag:** `marketplace add shoalmark/skills@<tag>`, in Claude Code and in Codex.
 - **4. The plugin leaves shoalmark in the same release:**
-  - `.claude-plugin/`, `skills/`, `test_plugin.py`, `test_prune_drift.py` and their CI steps go;
+  - [`.claude-plugin/`](https://github.com/shoalmark/shoalmark/tree/c154151334fc76732b7ce283b5e2bd278cfef66d/.claude-plugin),
+    [`skills/`](https://github.com/shoalmark/shoalmark/tree/c154151334fc76732b7ce283b5e2bd278cfef66d/skills),
+    [`test_plugin.py`](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/test_plugin.py),
+    [`test_prune_drift.py`](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/test_prune_drift.py)
+    and their CI steps
+    ([`ci.yml` L141–L142 and L153–L156](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/.github/workflows/ci.yml#L141-L156))
+    go;
   - the CHANGELOG gives the new install command.
 - **(a) Both harnesses' manifests ship:** Claude's and Codex's own, over one copy of each skill, with a test that keeps
   the manifests in step.
@@ -96,7 +108,8 @@ FM-143-Q1 asks for all of these at once. An answer of "yes, with the changes I n
 - **(c) A skills tag carries the number of the shoalmark release it was tested with.**
 - **(d) No tag until a real install has worked in Claude Code and in Codex.**
 - **(e) The first commit on main is the Owner's, signed:** e96d375. It is done, and recorded here so the letters stay.
-- **(f) The skills lane runs at the critical tier:** users install it and run its code (`prose_only.py`).
+- **(f) The skills lane runs at the critical tier:** users install it and run its code
+  ([`prose_only.py`](https://github.com/shoalmark/shoalmark/blob/c154151334fc76732b7ce283b5e2bd278cfef66d/skills/prune-drift/prose_only.py)).
 - **(g) What checks signatures in skills, for now:** signed release tags, the rulesets and required CI. Adopting
   shoalmark inside skills is decided when the first skill that needs shoalmark exists.
 - **(h) FM-083's suite runs in skills' CI, and only reports.**
@@ -125,6 +138,9 @@ Each item names its commit or pull request when it lands.
   - a CHANGELOG;
   - Dependabot for GitHub Actions.
 - [ ] **shoalmark no longer carries the plugin,** and its CHANGELOG gives the new install command.
+- [ ] **The removal from shoalmark updates `test_shoalmark.py`'s CI-workflow pins,** which hold the steps it removes.
+- [ ] **skills' CI runs both moved tests.** Today no CI job runs `test_prune_drift.py`.
+- [ ] **The landing footer's skills line,** in English and German, points at the Skills page once it exists.
 - [ ] **A real install from shoalmark/skills has worked** in Claude Code and in Codex.
 - [ ] **The first tag is made,** signed by the Owner.
 - [ ] **A Skills page, in English and German,** is in shoalmark's docs and in the nav. Beside it:
