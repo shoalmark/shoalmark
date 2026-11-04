@@ -1,0 +1,11 @@
+{
+  "repository": "shoalmark/skills",
+  "tag": "SKILLS-TAG-PENDING",
+  "commit": "SKILLS-TAG-PENDING",
+  "marketplace": "shoalmark",
+  "plugin": "shoalmark",
+  "skills": [
+    "find-drift",
+    "prune-drift"
+  ]
+}
