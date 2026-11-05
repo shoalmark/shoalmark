@@ -3,6 +3,7 @@ id: FM-099
 status: Proposed
 considered: FM-034, FM-059
 tags: bug
+epic: FM-139
 triaged: 2026-10-29
 next: wait
 tier: P2
@@ -48,3 +49,4 @@ other way. A check that a team cannot pass on both its systems is a check the te
 | Date | Event |
 |---|---|
 | 2026-10-29 | Filed for v0.20.x, proposed for v0.20.3, as a P2 bug, on the Auditor's word of 29 October. Records only. |
+| 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |

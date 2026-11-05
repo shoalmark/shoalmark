@@ -3,6 +3,7 @@ id: FM-102
 status: Proposed
 considered: FM-030
 tags: bug
+epic: FM-139
 hook: "An origin that only a url.<base>.insteadOf rule turns into GitHub's takes the stand-up of git without a forge, though --queue reads it as GitHub. Read those settings with the config reads the step already makes, and apply them in Python."
 ---
 
@@ -31,3 +32,4 @@ Two readings of one `origin` give the person two answers to one question: is thi
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed for v0.20.3. Records only. |
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

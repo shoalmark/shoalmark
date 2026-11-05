@@ -3,6 +3,7 @@ id: FM-123
 status: Proposed
 considered: FM-053, FM-042
 tags: process
+epic: FM-139
 hook: "The board's polish that v0.20.1 left is not built: a verdict's state labels (BF-62), BF-65, and a seat icon in a row without its ground square. v0.20.3's design rows of 1 November join it."
 ---
 
@@ -41,3 +42,4 @@ The board is what the person reads each day. Polish left half done reads as a de
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed from FM-053's split, with v0.20.3's design rows of 1 November. Records only. |
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

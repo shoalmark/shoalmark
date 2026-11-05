@@ -19,6 +19,18 @@ FM-023, [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans
 here. FM-053's are in [FM-123](FM-123-the-board-s-polish-that-v0-20-1-left-is-not-built-a-verdict.md). FM-023's dated
 entries stay as the record of each ruling, and the rows they name are listed here.
 
+**2026-11-04 — v0.20.3's epic, on the Owner's word in chat.** Said of shoalmark's list of epics with their
+chapters, the Board's story view ([`shoalmark.py` L4487](https://github.com/shoalmark/shoalmark/blob/35158e3be3f9e110d2a5e1536e385fb01ca158cf/shoalmark.py#L4487)): "I want v0.20.3 to show in
+that list, everything we decide goes under this." Then: "Everything allocated to v0.20.3, yes. Move the proposed
+and the candidates in too, so that we can decide what goes in tomorrow."
+- FM-139 is v0.20.3's epic.
+- Its chapters are the trackers allocated to v0.20.3, and the proposed and the candidates, which are not placed.
+- The Owner decides on 5 November which of the proposed and the candidates go in. A tracker not taken leaves the
+  epic in the commit that records that decision.
+- From then on, a tracker carries `epic: FM-139` from the commit that allocates it.
+- FM-089's parts stay under FM-089, which is itself a chapter of FM-139, as FM-088 is a chapter of FM-089 and the
+  epic of FM-130 to FM-133.
+
 **The chapter, and the trackers filed for v0.20.3:**
 - [FM-089](FM-089-agentic-seamanship-v0-20-3.md), Agentic seamanship, with its parts [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md), [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md) and [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md). FM-088's four
   trackers are [FM-130](FM-130-the-team-s-and-each-seat-s-memory-is-not-in-the-repository.md), [FM-131](FM-131-a-session-starts-without-the-team-s-memory.md), [FM-132](FM-132-nothing-moves-a-lesson-out-of-a-harness-s-memory.md) and [FM-133](FM-133-a-memory-entry-is-never-tested-or-retired.md). The candidates for the chapter are
@@ -123,3 +135,4 @@ at its allocation sitting and at its tag.
 |---|---|
 | 2026-11-03 | Filed as v0.20.3's allocation, with FM-023's and FM-006's rows of 1 November moved in. Records only. |
 | 2026-11-04 | FM-143's allocation joins the list, and FM-149, FM-150 and FM-151 join it as proposed. Records only. |
+| 2026-11-04 | v0.20.3's epic, on the Owner's word in chat, logged under *What is true now*. Records only. |

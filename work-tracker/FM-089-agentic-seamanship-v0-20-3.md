@@ -3,6 +3,7 @@ id: FM-089
 status: Proposed
 considered: FM-086, FM-087, FM-088, FM-023
 tags: process, seamanship
+epic: FM-139
 next: wait
 hook: "Agentic seamanship, the chapter for v0.20.3: trackers that close by a definition of done, and evidence that stays small. It is an epic by the rule FM-086 sets: a story with a Done when of its own, which ships at its release. The theme it belongs to never closes; the next chapter opens as a new tracker."
 ---
@@ -51,6 +52,7 @@ alive and each step of it finishable: the chapter ships when its parts do, and t
 
 | Date | Event |
 |---|---|
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-10-29 | FM-095 to FM-098, filed for v0.20.x, are named as candidates for this chapter, not parts. Records only. |
 | 2026-10-29 | FM-088 joins the chapter on the Owner's signed answer (`febbed9`), and its Done when gains FM-088's item. Records only. |
 | 2026-10-29 | The tag `seamanship` is in the vocabulary since #229, and the theme's four trackers carry it. Records only. |

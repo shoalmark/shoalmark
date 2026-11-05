@@ -3,6 +3,7 @@ id: FM-121
 status: Proposed
 considered: FM-037, FM-065
 tags: bug
+epic: FM-139
 hook: "The gate guards the Owner's two sections of TRIAGE.md. It does not guard the seat definitions or the skills folder, so a seat can change them and the gate lets it through. A design round first, then v0.20.3."
 ---
 
@@ -31,3 +32,4 @@ A seat definition and a skill say what a seat does. A seat that can change its o
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed from FM-037's split, for v0.20.3 after a design round. Records only. |
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

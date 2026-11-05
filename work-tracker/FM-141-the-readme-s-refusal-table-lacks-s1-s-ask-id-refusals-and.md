@@ -3,6 +3,7 @@ id: FM-141
 status: Proposed
 considered: FM-050, FM-006
 tags: bug
+epic: FM-139
 hook: "S1's docs round left three gaps, each incomplete rather than untrue: eight ask-id refusals have no row in README section 5, the German example's [headings] has no asks, and the German signing page names ## Passes."
 ---
 
@@ -47,3 +48,4 @@ heading points them to a heading their repository does not show.
 | Date | Event |
 |---|---|
 | 2026-11-03 | Filed for v0.20.3, from S1's docs round. Records only. |
+| 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
