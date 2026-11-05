@@ -2,6 +2,8 @@
 
 *For the person who owns the repository. It needs Python 3.9 or newer; a git repository needs `git` installed. On Subversion it runs without `git` installed, from the release archive, and `--init` and `--check` say what this local run cannot verify: commit signatures and server-authenticated author identities.*
 
+Only want the drift skills, find-drift and prune-drift? You install them without shoalmark: [The drift skills](skills.md).
+
 ## 1. Put the tool in the repository
 
 ```

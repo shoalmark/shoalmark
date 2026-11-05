@@ -6453,9 +6453,9 @@ check("refresh hooks · the README names the hooks, read-at wording, and fetch-o
 # from facts.html, which the build writes and nothing commits. These read the sources, as the suite reads the other pages, and have controls:
 # a copy of the sources with one thing changed, which must be refused.
 _LANDING_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", "zensical.toml", "docs/index.md", "docs/de/index.md")
-_FOOT_EN = ("{tag}, released {date} — two drift skills, and an id of its own for every question. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
+_FOOT_EN = ("{tag}, released {date} — <a href=\"skills.html\">two drift skills</a>, and an id of its own for every question. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
             "from the repository and were read when the site was built: {read_date}, at {read_sha}.")
-_FOOT_DE = ("{tag}, veröffentlicht am {date} – zwei Drift-Skills und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
+_FOOT_DE = ("{tag}, veröffentlicht am {date} – <a href=\"skills.html\">zwei Drift-Skills</a> und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
             "Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
 _CHART_NOTE = ("shoalmark runs on itself: every wreck is a bug or a security finding, filed in its own repository.",
                "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.")
@@ -6563,7 +6563,7 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "a release typed in the footer's link": _with(_ls, "overrides/landing.html", 'releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}', 'releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2'),
         "the Owner's line reworded": _with(_ls, "overrides/partials/landing/en.html", "a bug or a security finding", "a bug"),
         "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
-        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "two drift skills, and an id of its own for every question", "a fix for the board's refresh"),
+        "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "two drift skills</a>, and an id of its own for every question", "two drift skills</a>, and a fix for the board's refresh"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
         "the prompt back in a fold": _with(_ls, "overrides/landing.html", '<div class="probe-prompt" id="probe-prompt" data-open="false">', '<details class="probe-fold probe-prompt" id="probe-prompt" data-open="false">'),
@@ -6631,13 +6631,18 @@ _ssaw = {name: len(_standup_problems(src)) for name, src in _sctl.items()}
 check(f"FM-006 · B1 · the stand-up lines' check is not blind: each of a word of one row changed in the German twin, or in the English words, is a "
       f"problem (problems found: {_ssaw})", all(_ssaw.values()) and len(_ssaw) == 2)
 _sw29 = [lang for lang, foot in (("en", _FOOT_EN), ("de", _FOOT_DE)) if _landing_words(_ls)[0].get(lang, {}).get("foot_fine") != foot]
-check(f"FM-006 · B1 · the footer's sentence, W56: foot_fine holds its row byte for byte in en.html and de.html, the headline after the date two drift skills "
+check(f"FM-006 · B1 · the footer's sentence, W56: foot_fine holds its row byte for byte in en.html and de.html, the headline after the date two drift skills, linked to the Skills page, "
       f"and an id of its own for every question, its slots and every word after its first full stop as they were (saw {_sw29})",
       not _sw29 and _FOOT_EN.split(". ", 1)[1].startswith("Licence: Apache-2.0 or MIT. ") and _FOOT_DE.split(". ", 1)[1].startswith("Lizenz: Apache-2.0 oder MIT. ")
       and all(s in _FOOT_EN and s in _FOOT_DE for s in ("{tag}", "{date}", "{read_date}", "{read_sha}")))
-_sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "zwei Drift-Skills und eine eigene ID", "drei Drift-Skills und eine eigene ID")
+_sw29_ctl = _with(_ls, "overrides/partials/landing/de.html", "zwei Drift-Skills</a> und eine eigene ID", "drei Drift-Skills</a> und eine eigene ID")
 check("FM-006 · B1 · the footer's check is not blind: a word of W56 changed in the German words is a problem",
       _landing_words(_sw29_ctl)[0].get("de", {}).get("foot_fine") != _FOOT_DE and bool(_landing_problems(_sw29_ctl)))
+_sw29_unlinked = {lang: _with(_ls, f"overrides/partials/landing/{lang}.html", f'<a href=\\"skills.html\\">{words}</a>', words)
+                  for lang, words in (("en", "two drift skills"), ("de", "zwei Drift-Skills"))}
+_sw29_unlinked_saw = {lang: len(_landing_problems(src)) for lang, src in _sw29_unlinked.items()}
+check(f"the landing footer's check is not blind to its link: the drift skills unlinked from the Skills page, in either words file, is a problem "
+      f"(problems found: {_sw29_unlinked_saw})", all(_sw29_unlinked_saw.values()) and len(_sw29_unlinked_saw) == 2)
 
 _CLAIM_PARTS = {"en": ('<a href="why-shoalmark.html">Why shoalmark?</a>', 'Built in the open: <a href="https://github.com/shoalmark/shoalmark">github.com/shoalmark/shoalmark</a>',
                        'Follow me building it on X: <a href="https://x.com/holgo99">@holgo99</a>'),
@@ -10982,6 +10987,334 @@ _ol_back = {rel_: len(_owner_lines_problems({**_ol_src, rel_: " ".join(_ol_src[r
             for rel_, text_ in _DE_OWNER_LINES}
 check(f"the three lines' check is not blind: each line's words as they stood before, put back in its page, leave a problem "
       f"(problems found: {_ol_back})", all(_ol_back.values()) and len(_ol_back) == 3)
+
+
+# --- the Skills page: the English page and its German twin keep one structure and the same commands, and with the CHANGELOG they name the
+# release of shoalmark/skills that skills-pin.json records, by the record's names ----------------------------------------------------------
+_SKILLS_PAGES = ("docs/skills.md", "docs/de/skills.md")
+_SKILLS_FILES = _SKILLS_PAGES + ("CHANGELOG.md", "skills-pin.json")
+_SKILLS_PIN_KEYS = ["repository", "tag", "commit", "marketplace", "plugin", "skills"]
+_SKILLS_MARKER = "SKILLS-TAG-PENDING"
+# The sentence after the Codex install on each page, which names the marketplace to choose and the plugin to install from it.
+_SKILLS_CODEX_STEP = {"docs/skills.md": r"choose the (\S+) marketplace and install (\S+) from it",
+                      "docs/de/skills.md": r"wähle den Marketplace (\S+) und installiere daraus (\S+?)[.,;:]?(?=\s|$)"}
+
+
+def _skills_sources(root=None):
+    """{path: text} of the two pages, the CHANGELOG and the record, read from the tree at `root` (this repository where none is given);
+    a file that is not there reads as None."""
+    root = Path(root) if root else HERE
+    return {rel: (root / rel).read_text(encoding="utf-8") if (root / rel).is_file() else None for rel in _SKILLS_FILES}
+
+
+def _skills_walk(text):
+    """Each line of a page, with the number of the fenced block it stands in (its two fence lines included), or None outside one. A fence
+    is three or more backticks or tildes; it closes on a line of the same character, at least as many; an unclosed one runs to the end."""
+    out, fence, n = [], None, -1
+    for line in text.split("\n"):
+        if fence is None:
+            m = re.match(r" {0,3}(`{3,}|~{3,})", line)
+            if m:
+                fence, n = m.group(1), n + 1
+            out.append((line, n if m else None))
+        else:
+            out.append((line, n))
+            if re.fullmatch(r" {0,3}" + re.escape(fence[0]) + "{%d,}[ \t]*" % len(fence), line):
+                fence = None
+    return out
+
+
+def _skills_fences(text):
+    """The page's fenced blocks, each whole from its opening fence line to its closing one, in order."""
+    blocks = {}
+    for line, n in _skills_walk(text):
+        if n is not None:
+            blocks.setdefault(n, []).append(line)
+    return ["\n".join(lines) for _n, lines in sorted(blocks.items())]
+
+
+def _skills_levels(text):
+    """The level of each heading outside the fenced blocks, in order."""
+    return [len(m.group(1)) for line, n in _skills_walk(text) if n is None for m in [re.match(r"(#{1,6})[ \t]", line)] if m]
+
+
+def _skills_spans(text):
+    """The code spans outside the fenced blocks, in order."""
+    return [s for line, n in _skills_walk(text) if n is None for s in re.findall(r"`([^`\n]+)`", line)]
+
+
+def _skills_installs(text):
+    """The install commands, in order: each code span, and each line of a fenced block, that holds `marketplace add` or `plugin install`."""
+    out = []
+    for line, n in _skills_walk(text):
+        parts = [line.strip()] if n is not None else re.findall(r"`([^`\n]+)`", line)
+        out += [p for p in parts if "marketplace add" in p or "plugin install" in p]
+    return out
+
+
+def _skills_prose(text):
+    """The page's prose, as a reader reads it: the lines outside the fenced blocks, without their code spans and link targets."""
+    lines = [line for line, n in _skills_walk(text) if n is None]
+    return re.sub(r"\]\([^)\s]*\)", "]", re.sub(r"`[^`\n]*`", " ", "\n".join(lines)))
+
+
+def _skills_distance(a, b):
+    """How many letters must be added, removed or changed to turn `a` into `b`."""
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
+def _skills_record(src):
+    """The record's fields as a dict, where skills-pin.json is there and has the record's shape; otherwise None."""
+    try:
+        pin = json.loads(src.get("skills-pin.json") or "")
+    except ValueError:
+        return None
+    name = r"[a-z0-9][a-z0-9-]*"
+    if not (isinstance(pin, dict) and list(pin) == _SKILLS_PIN_KEYS and all(isinstance(pin[k], str) for k in _SKILLS_PIN_KEYS[:5])
+            and re.fullmatch(name + "/" + name, pin["repository"]) and re.fullmatch(name, pin["marketplace"]) and re.fullmatch(name, pin["plugin"])
+            and isinstance(pin["skills"], list) and pin["skills"] and all(isinstance(s, str) and re.fullmatch(name, s) for s in pin["skills"])):
+        return None
+    return pin
+
+
+def _skills_unmarked(text, pin):
+    """`text` with the marker read as the record's tag wherever it stands as the repository's tag: a page that still holds it is the
+    marker check's to name, and no other check's."""
+    return text.replace(f"{pin['repository']}@{_SKILLS_MARKER}", f"{pin['repository']}@{pin['tag']}") if pin else text
+
+
+def _skills_twin_problems(src):
+    """What keeps the German page from being the English page's twin: another sequence of heading levels, a fenced block not equal byte
+    for byte or out of order, or other install commands, the marker read as the record's tag; and an English page with no fenced block or
+    no install command."""
+    missing = [rel for rel in _SKILLS_PAGES if src.get(rel) is None]
+    if missing:
+        return [f"missing: {', '.join(missing)} is not there"]
+    pin = _skills_record(src)
+    en, de = (_skills_unmarked(src[rel], pin) for rel in _SKILLS_PAGES)
+    bad = []
+    if _skills_levels(en) != _skills_levels(de):
+        bad.append(f"headings: the heading levels differ (English {_skills_levels(en)}, German {_skills_levels(de)})")
+    fe, fd = _skills_fences(en), _skills_fences(de)
+    if fe != fd:
+        first = next((i for i, (a, b) in enumerate(zip(fe, fd)) if a != b), min(len(fe), len(fd)))
+        bad.append(f"code blocks: the fenced blocks are not the same, byte for byte and in order (block {first + 1} is the first to differ; "
+                   f"English has {len(fe)}, German {len(fd)})")
+    ie, ig = _skills_installs(en), _skills_installs(de)
+    if ie != ig:
+        bad.append(f"install commands: the install commands differ (English {ie}, German {ig})")
+    if not fe or not ie:
+        bad.append("code blocks: the English page holds no fenced block or no install command")
+    return bad
+
+
+def _skills_changelog_section(text, repo):
+    """The newest section of the CHANGELOG that names an install from the skills' repository, or None."""
+    return next((part for part in re.split(r"(?m)^## ", text)[1:] if repo + "@" in part), None)
+
+
+def _skills_pin_problems(src):
+    """What keeps the pages and the CHANGELOG from naming the release skills-pin.json records, by its names: a record of another shape; a
+    page, or the CHANGELOG's newest section on the skills, that names another tag of the repository, or none; a marketplace added from
+    anything but the repository at the record's tag; a plugin installed as anything but the record's plugin from its marketplace; a skill
+    called by another plugin or skill name; a page that does not give both installs or does not call each skill both ways; and, on each
+    page, a name a person reads that is not the record's: the marketplace and the plugin in the sentence after the Codex install, the
+    skills' headings, the bold names that open the descriptions, and any word of the prose one or two letters from a skill's name. The
+    marker, where it stands as the repository's tag, reads as the record's tag: the marker check names it."""
+    missing = [rel for rel in _SKILLS_FILES if src.get(rel) is None]
+    if missing:
+        return [f"missing: {', '.join(missing)} is not there"]
+    try:
+        json.loads(src["skills-pin.json"])
+    except ValueError as e:
+        return [f"record: skills-pin.json is not JSON ({e})"]
+    pin = _skills_record(src)
+    if pin is None:
+        return [f"record: skills-pin.json does not hold {', '.join(_SKILLS_PIN_KEYS)}, in that order: a repository owner/name, the tag and its "
+                f"commit, the marketplace's and the plugin's names and a list of skill names"]
+    repo, tag, commit, market, plugin, skills = (pin[k] for k in _SKILLS_PIN_KEYS)
+    bad = []
+    if (tag == _SKILLS_MARKER) != (commit == _SKILLS_MARKER):
+        bad.append("record: skills-pin.json's tag and commit are not both set, nor both the marker")
+    if tag != _SKILLS_MARKER and not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
+        bad.append(f"record: skills-pin.json's tag {tag!r} is not a release tag, vX.Y.Z")
+    if commit != _SKILLS_MARKER and not re.fullmatch(r"[0-9a-f]{40}", commit):
+        bad.append(f"record: skills-pin.json's commit {commit!r} is not a full commit id")
+    texts = {rel: _skills_unmarked(src[rel], pin) for rel in _SKILLS_PAGES}
+    section = _skills_changelog_section(src["CHANGELOG.md"], repo)
+    if section is None:
+        bad.append(f"tag: no section of CHANGELOG.md names an install from {repo}")
+    else:
+        texts["CHANGELOG.md"] = _skills_unmarked(section, pin)
+    for rel, text in texts.items():
+        tags = re.findall(re.escape(repo) + r"@([^\s`)\]]+)", text)
+        if not tags or set(tags) != {tag}:
+            bad.append(f"tag: {rel} names {sorted(set(tags))} of {repo}, not the record's tag {tag!r} alone")
+        installs = _skills_installs(text)
+        adds = [c for c in installs if "marketplace add" in c]
+        for c in adds:
+            m = re.search(r"marketplace add (\S+)", c)
+            if not m or m.group(1) != f"{repo}@{tag}":
+                bad.append(f"names: {rel}: {c!r} does not add {repo}@{tag}")
+        for c in installs:
+            m = re.search(r"plugin install (\S+)", c)
+            if "plugin install" in c and (not m or m.group(1) != f"{plugin}@{market}"):
+                bad.append(f"names: {rel}: {c!r} does not install {plugin}@{market}")
+        spans = _skills_spans(text)
+        calls = [m.groups() for s in spans for m in [re.fullmatch(r"/([\w-]+):([\w-]+)", s)] if m]
+        mentions = [m.group(1) for s in spans for m in [re.fullmatch(r"\$([\w-]+)", s)] if m]
+        bad += [f"names: {rel}: `/{p}:{s}` is not the record's plugin and one of its skills" for p, s in calls if p != plugin or s not in skills]
+        bad += [f"names: {rel}: `${s}` is not one of the record's skills" for s in mentions if s not in skills]
+        prose = _skills_prose(text)
+        for word in sorted(set(re.findall(r"(?<![\w/.-])[a-z][a-z0-9]*(?:-[a-z0-9]+)+(?![\w/-])", prose)) - set(skills)):
+            near = [s for s in skills if _skills_distance(word, s) <= 2]
+            if near:
+                bad.append(f"names: {rel}: the prose names {word!r}, one or two letters from the record's skill {near[0]!r}")
+        if rel in _SKILLS_PAGES:
+            if {s for _p, s in calls} != set(skills) or set(mentions) != set(skills):
+                bad.append(f"names: {rel} does not call each of {skills} as /{plugin}:<skill> and as $<skill>")
+            if not (any(c.startswith("/plugin marketplace add ") for c in adds) and any(c.startswith("codex plugin marketplace add ") for c in adds)
+                    and any(c.startswith("/plugin install ") for c in installs)):
+                bad.append(f"names: {rel} does not give the install for Claude Code and the one for Codex")
+            step = re.findall(_SKILLS_CODEX_STEP[rel], " ".join(prose.split()))
+            if len(step) != 1:
+                bad.append(f"names: {rel}: the sentence after the Codex install, which names the marketplace and the plugin, stands "
+                           f"{len(step)} times, not once")
+            elif step[0] != (market, plugin):
+                bad.append(f"names: {rel}: the sentence after the Codex install names the marketplace {step[0][0]!r} and the plugin "
+                           f"{step[0][1]!r}, not the record's {market!r} and {plugin!r}")
+            heads = [line[4:].strip() for line, n in _skills_walk(text) if n is None and line.startswith("### ")]
+            if heads != list(skills):
+                bad.append(f"names: {rel}: the skills' headings are {heads}, not the record's skills {skills} in order")
+            bold = [m.group(1) for line, n in _skills_walk(text) if n is None for m in [re.match(r"- \*\*([^*]+)\*\*", line)] if m]
+            if bold != list(skills):
+                bad.append(f"names: {rel}: the bold names that open the descriptions are {bold}, not the record's skills {skills} in order")
+    return bad
+
+
+def _skills_with(src, rel, old, new):
+    """`src` with `old` replaced once by `new` in `rel`, or None where `rel` does not hold `old`."""
+    return {**src, rel: src[rel].replace(old, new, 1)} if src.get(rel) is not None and old in src[rel] else None
+
+
+def _skills_marker_problems(src):
+    """Where the marker still stands in place of the release: in a page, the CHANGELOG or the record."""
+    where = [rel for rel in _SKILLS_FILES if src.get(rel) is not None and _SKILLS_MARKER in src[rel]]
+    if not where:
+        return []
+    return [f"{', '.join(where)}: {_SKILLS_MARKER} still stands in place of the release tag. Once shoalmark/skills has its release tag, write "
+            f"the tag in place of the marker "
+            f"in docs/skills.md, docs/de/skills.md and CHANGELOG.md, and in skills-pin.json set \"tag\" to it and \"commit\" to the full id of "
+            f"the commit it names"]
+
+
+def _skills_fixture(tag, commit):
+    """The four files from this suite's own templates, at `tag` and `commit`: pending with the marker in both, released with a tag and a
+    full commit id. They hold every place the checks read, as the pages hold them, and nothing read from this repository."""
+    pin = {"repository": "shoalmark/skills", "tag": tag, "commit": commit, "marketplace": "shoalmark", "plugin": "shoalmark",
+           "skills": ["find-drift", "prune-drift"]}
+    repo, market, plugin, (one, two) = pin["repository"], pin["marketplace"], pin["plugin"], pin["skills"]
+    blocks = (f"```text\n/plugin marketplace add {repo}@{tag}\n/plugin install {plugin}@{market}\n```\n\n"
+              f"```text\ncodex plugin marketplace add {repo}@{tag}\n```\n")
+    en = (f"# The drift skills — {one} and {two}\n\n## What they do\n\n- **{one}** finds the drift.\n- **{two}** prunes it, from {one}'s "
+          f"report.\n\n## Install\n\n{blocks}\nThen open the Plugins Directory, choose the {market} marketplace and install {plugin} from "
+          f"it.\n\n## Use\n\n`/{plugin}:{one}` and `/{plugin}:{two}`; in Codex `${one}` and `${two}`.\n\n### {one}\n\nAsk.\n\n### {two}\n\n"
+          f"Ask after {one}.\n")
+    de = (f"# Die Drift-Skills — {one} und {two}\n\n## Was sie tun\n\n- **{one}** findet die Drift.\n- **{two}** kürzt sie, ausgehend "
+          f"vom Bericht von {one}.\n\n## Installieren\n\n{blocks}\nÖffne dann das Plugins Directory, wähle den Marketplace {market} und "
+          f"installiere daraus {plugin}.\n\n## Benutzen\n\n`/{plugin}:{one}` und `/{plugin}:{two}`; in Codex `${one}` und `${two}`.\n\n"
+          f"### {one}\n\nFrag.\n\n### {two}\n\nFrag nach {one}.\n")
+    log = (f"# Changelog\n\n## Unreleased — 0.0.1\n\n### Changed\n- {one} and {two} install from {repo}: "
+           f"`/plugin marketplace add {repo}@{tag}`, then `/plugin install {plugin}@{market}`; in Codex, `codex plugin marketplace add "
+           f"{repo}@{tag}`. Claude Code runs them as `/{plugin}:{one}` and `/{plugin}:{two}`.\n\n## 0.0.0\n\n- First.\n")
+    return {"docs/skills.md": en, "docs/de/skills.md": de, "CHANGELOG.md": log, "skills-pin.json": json.dumps(pin, indent=2) + "\n"}
+
+
+def _skills_typo(word):
+    """`word` with its last letter changed."""
+    return word[:-1] + ("y" if word.endswith("z") else "z")
+
+
+def _skills_mutants(src):
+    """{name: (the check, the start of the problem it must give, `src` with one thing changed)}, each target picked from `src`'s own
+    record, so that they hold whether the record is pending or released. A target that `src` does not hold gives None."""
+    pin = _skills_record(src)
+    if pin is None:
+        return {}
+    repo, tag, commit, market, plugin, skills = (pin[k] for k in _SKILLS_PIN_KEYS)
+    one, two, other = skills[0], skills[-1], "v0.1.0" if tag != "v0.1.0" else "v0.2.0"
+    en, de, twin, tags = "docs/skills.md", "docs/de/skills.md", _skills_twin_problems, _skills_pin_problems
+    step = (f'"tag": "{tag}"', '"tag": "v0.1.0"') if tag == _SKILLS_MARKER else (f'"commit": "{commit}"', f'"commit": "{_SKILLS_MARKER}"')
+    return {
+        "a heading level changed in the German page": (twin, "headings:", _skills_with(src, de, f"\n### {two}\n", f"\n## {two}\n")),
+        "one character changed in a German code block's command": (twin, "code blocks:",
+                                                                   _skills_with(src, de, f"add {repo}@", f"add {_skills_typo(repo)}@")),
+        "one character changed in a German code block's fence": (twin, "code blocks:",
+                                                                 _skills_with(src, de, "```text\ncodex plugin", "```texT\ncodex plugin")),
+        "an install command changed in the German page": (twin, "install commands:",
+                                                          _skills_with(src, de, f"/plugin install {plugin}@{market}\n",
+                                                                       f"/plugin install {plugin}@{market} --scope user\n")),
+        "another tag in the English page": (tags, f"tag: {en}", _skills_with(src, en, f"/plugin marketplace add {repo}@{tag}",
+                                                                             f"/plugin marketplace add {repo}@{other}")),
+        "another tag in the CHANGELOG's line": (tags, "tag: CHANGELOG.md", _skills_with(src, "CHANGELOG.md", f"`codex plugin marketplace add {repo}@{tag}`",
+                                                                                       f"`codex plugin marketplace add {repo}@{other}`")),
+        "the plugin's name changed in the English page's calls": (tags, f"names: {en}",
+                                                                  _skills_with(src, en, f"`/{plugin}:{one}`", f"`/{_skills_typo(plugin)}:{one}`")),
+        "the plugin's name changed in the German page's install": (tags, f"names: {de}",
+                                                                   _skills_with(src, de, f"/plugin install {plugin}@{market}\n",
+                                                                                f"/plugin install {_skills_typo(plugin)}@{market}\n")),
+        "a skill's name changed in the German page's calls": (tags, f"names: {de}", _skills_with(src, de, f"`${two}`", f"`${_skills_typo(two)}`")),
+        "the record's tag and commit out of step": (tags, "record:", _skills_with(src, "skills-pin.json", *step)),
+        "the plugin's name changed in the English sentence after the Codex install": (tags, f"names: {en}",
+                                                                                      _skills_with(src, en, f"{plugin} from it",
+                                                                                                   f"{_skills_typo(plugin)} from it")),
+        "the marketplace's name changed in the German sentence after the Codex install": (tags, f"names: {de}",
+                                                                                          _skills_with(src, de, f"Marketplace {market}",
+                                                                                                       f"Marketplace {_skills_typo(market)}")),
+        "a skill's name changed in an English heading": (tags, f"names: {en}",
+                                                         _skills_with(src, en, f"\n### {one}\n", f"\n### {_skills_typo(one)}\n")),
+        "a skill's name changed in a German description": (tags, f"names: {de}", _skills_with(src, de, f"**{two}**", f"**{_skills_typo(two)}**")),
+    }
+
+
+_sk = _skills_sources()
+_sk_twin, _sk_pin, _sk_marker = _skills_twin_problems(_sk), _skills_pin_problems(_sk), _skills_marker_problems(_sk)
+check(f"the Skills page and its German twin keep one structure: the same heading levels in order, every fenced block equal byte for byte and "
+      f"in order, and the same install commands in order, the marker read as the record's tag (problems found: {_sk_twin})", not _sk_twin)
+check(f"the Skills page, its German twin and the CHANGELOG's line on the skills name the release skills-pin.json records, and only it, with "
+      f"the record's repository, marketplace, plugin and skill names in every install command and call, in the sentence after the Codex "
+      f"install, in the skills' headings and in the bold names that open the descriptions, and no word of the prose one or two letters from a "
+      f"skill's name (problems found: {_sk_pin})", not _sk_pin)
+check(f"the Skills page names a released tag of shoalmark/skills, not the marker (problems found: {_sk_marker})", not _sk_marker)
+# Each mutant turns its own check red on the suite's two fixtures, pending and released, and on this repository's files.
+_sk_sets = {"the pending fixture": _skills_fixture(_SKILLS_MARKER, _SKILLS_MARKER), "the released fixture": _skills_fixture("v1.0.0", "1" * 40),
+            "this repository's files": _sk}
+_sk_mut_saw = {set_: {name: len([p for p in fn(m) if p.startswith(start)]) if m is not None else None
+                      for name, (fn, start, m) in _skills_mutants(src).items()} for set_, src in _sk_sets.items()}
+check(f"the Skills page's checks are not blind: on the pending fixture, the released fixture and this repository's files, each of "
+      f"{', '.join(_skills_mutants(_sk_sets['the pending fixture']))} is a problem of its own check (problems seen: {_sk_mut_saw})",
+      all(len(saw) == 14 and all(saw.values()) for saw in _sk_mut_saw.values()))
+# The marker check follows the tag: the pending fixture passes the twin and pin checks and fails the marker check on all four files; the
+# released one passes all three; the released one with the marker left once in the German page fails the marker check alone, on that page.
+_sk_fix_saw = {state: (_skills_twin_problems(src), _skills_pin_problems(src), _skills_marker_problems(src))
+               for state, src in _sk_sets.items() if state != "this repository's files"}
+_skp = _skills_record(_sk_sets["the released fixture"])
+_sk_one_left = _skills_with(_sk_sets["the released fixture"], "docs/de/skills.md", f"{_skp['repository']}@{_skp['tag']}",
+                            f"{_skp['repository']}@{_SKILLS_MARKER}")
+_sk_one_left_saw = ((_skills_twin_problems(_sk_one_left), _skills_pin_problems(_sk_one_left), _skills_marker_problems(_sk_one_left))
+                    if _sk_one_left is not None else None)
+check(f"the marker's check follows the tag, on the suite's own fixtures: pending, the twin and pin checks pass and the marker check names all "
+      f"four files; released, with a tag and a full commit id, all three pass; released with the marker left once in the German page, the "
+      f"marker check alone fails, naming only that page (saw {_sk_fix_saw}, {_sk_one_left_saw})",
+      _sk_fix_saw["the pending fixture"][:2] == ([], []) and len(_sk_fix_saw["the pending fixture"][2]) == 1
+      and _sk_fix_saw["the pending fixture"][2][0].startswith(", ".join(_SKILLS_FILES) + ": ")
+      and _sk_fix_saw["the released fixture"] == ([], [], []) and _sk_one_left_saw is not None and _sk_one_left_saw[:2] == ([], [])
+      and len(_sk_one_left_saw[2]) == 1 and _sk_one_left_saw[2][0].startswith("docs/de/skills.md: "))
 
 
 # --- a repository in another language: the section names the GATE reads live in shoalmark.toml, not in a brand ---
@@ -20660,7 +20993,7 @@ def _ci_reads_hold(tier_run, root, sources, lazy=False):
     return bool(reads) and len(runs) == len(shapes) and not records, (len(reads), len(shapes), records)
 
 
-_CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py", "test_plugin.py") if (HERE / n).is_file()}
+_CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py") if (HERE / n).is_file()}
 
 
 def _ci_step_runs(step, records, entry):
@@ -20693,7 +21026,7 @@ def _ci_job_paths(steps, include):
     passes = [s for s in steps if "Records validation was not run in this job." in str(s.get("run") or "")]
     installs = [s for s in steps if s.get("name") in ("Subversion (Linux)", "Subversion (macOS)", "Subversion (Windows)")]
     svn = [s for s in steps if str(s.get("run") or "").strip() == "svn --version --quiet"]
-    suites = [s for s in steps if str(s.get("run") or "").strip() in ("python -u test_shoalmark.py", "python -u test_core.py", "python -u test_plugin.py")]
+    suites = [s for s in steps if str(s.get("run") or "").strip() in ("python -u test_shoalmark.py", "python -u test_core.py")]
     zones = [s for s in steps if "TZ" in (s.get("env") or {})]
     out = []
     for records in ("true", "false", "", "uncertain"):
@@ -20702,7 +21035,7 @@ def _ci_job_paths(steps, include):
             for system, python in entries:
                 entry = next(e for e in include if (e.get("system"), e.get("python")) == (system, python))
                 counts = tuple(sum(_ci_step_runs(s, records, entry) for s in group) for group in (gate, passes, installs, svn, suites, zones))
-                want = (int((system, python) == ("ubuntu", "3.9")), int((system, python) != ("ubuntu", "3.9")), 0, 0, 0, 0) if records == "true" else (1, 0, 1, 1, 3, int(system == "ubuntu"))
+                want = (int((system, python) == ("ubuntu", "3.9")), int((system, python) != ("ubuntu", "3.9")), 0, 0, 0, 0) if records == "true" else (1, 0, 1, 1, 2, int(system == "ubuntu"))
                 seen.append((system, python, counts, want))
             ok = all(got == want for _, _, got, want in seen)
         except (ValueError, SyntaxError, StopIteration, TypeError):
@@ -20819,13 +21152,12 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
     svn = [s for s in steps if run_of(s).strip() == "svn --version --quiet"]
     suite_at, core_at = at(lambda s: run_of(s) == "python -u test_shoalmark.py\n" or run_of(s) == "python -u test_shoalmark.py"), \
         at(lambda s: run_of(s).strip() == "python -u test_core.py")
-    plugin_at = at(lambda s: run_of(s).strip() == "python -u test_plugin.py")
     zone_at = at(lambda s: s.get("continue-on-error") is not None or "TZ" in (s.get("env") or {}))
     zone = steps[zone_at] if zone_at is not None else {}
     full = "steps.tier.outputs.records != 'true'"
     want = {shape: "true" if shape in _CI_RECORDS else "false" for shape in shapes}
     text_props = [
-        ("the tracker-read scan includes all three suites", set(sources or _CI_SOURCES) == {"test_shoalmark.py", "test_core.py", "test_plugin.py"}),
+        ("the tracker-read scan includes both suites", set(sources or _CI_SOURCES) == {"test_shoalmark.py", "test_core.py"}),
         ("the five check names stand: one job, `suites`, named by `suites (${{ matrix.system }}, ${{ matrix.python }})`, over ubuntu 3.9 and 3.12, "
          "macos 3.12, windows 3.9 and 3.12 on their pinned images" + refused,
          set(jobs) == {"suites"} and job.get("name") == "suites (${{ matrix.system }}, ${{ matrix.python }})"
@@ -20862,22 +21194,21 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
              'choco install sliksvn -y --no-progress\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n'
              'echo "C:\\Program Files\\SlikSvn\\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append']
          and len(svn) == 1 and svn[0].get("continue-on-error") is None),
-        ("all three UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them; the plugin suite follows core",
-         None not in (suite_at, core_at, plugin_at) and plugin_at == core_at + 1
-         and all(steps[i].get("if") == full and steps[i].get("continue-on-error") is None for i in (suite_at, core_at, plugin_at))
+        ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
+         None not in (suite_at, core_at)
+         and all(steps[i].get("if") == full and steps[i].get("continue-on-error") is None for i in (suite_at, core_at))
          and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
         ("the Ubuntu 3.9 entry carries the zone Pacific/Kiritimati, UTC+14, the Ubuntu 3.12 entry Pacific/Pago_Pago, UTC−11, and no other entry a zone",
          [e.get("tz") for e in include] == ["Pacific/Kiritimati", "Pacific/Pago_Pago", None, None, None]),
-        ("after the UTC suites, the entry's zone runs all three suites again under TZ, with continue-on-error, where there is a zone and the tier is not records, "
-         "and writes all three exits on failure to the run's summary",
-         zone_at is not None and None not in (suite_at, core_at, plugin_at) and zone_at > max(suite_at, core_at, plugin_at) and zone.get("continue-on-error") is True
+        ("after the UTC suites, the entry's zone runs both suites again under TZ, with continue-on-error, where there is a zone and the tier is not records, "
+         "and writes both exits on failure to the run's summary",
+         zone_at is not None and None not in (suite_at, core_at) and zone_at > max(suite_at, core_at) and zone.get("continue-on-error") is True
          and zone.get("if") == "matrix.tz && " + full and zone.get("env") == {"TZ": "${{ matrix.tz }}"} and zone.get("shell") == "bash"
          and "python -u test_shoalmark.py && suite=0 || suite=$?" in run_of(zone) and "python -u test_core.py && core=0 || core=$?" in run_of(zone)
-         and "python -u test_plugin.py && plugin=0 || plugin=$?" in run_of(zone)
-         and 'if [ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]; then said="all three suites passed"; '
-             'else said="FAILED — test_shoalmark.py exit $suite, test_core.py exit $core, test_plugin.py exit $plugin"; fi' in run_of(zone)
+         and 'if [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]; then said="both suites passed"; '
+             'else said="FAILED — test_shoalmark.py exit $suite, test_core.py exit $core"; fi' in run_of(zone)
          and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone)
-         and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]')),
+         and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ]')),
     ] + _ci_job_paths(steps, include)
     if lazy and not all(ok for _, ok in text_props):
         return text_props
@@ -20900,7 +21231,7 @@ def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
          runs.get("INDEX.md and TRIAGE.md edited") == runs.get("an evidence file no suite reads") == "true"
          and all(runs.get(n) == "false" for n in ("allowed_signers edited", "a brand font edited", "the landing mock edited",
                                                   "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry"))),
-        (f"…every path under the tracker folder that test_shoalmark.py, test_core.py or test_plugin.py reads in this repository — found in their syntax — gives the "
+        (f"…every path under the tracker folder that test_shoalmark.py or test_core.py reads in this repository — found in their syntax — gives the "
          f"full suites beside a tracker edit, and so does each with the case of its letters swapped (saw {reads_saw[0]} reads, {reads_saw[1]} paths, "
          f"these giving records: {reads_saw[2]})", reads_ok),
         (f"…RV-2966 and RV-2968: a case variant of a path the suites read, a path holding a byte outside printable ASCII — a ligature, a combining "
@@ -20938,21 +21269,14 @@ def _ci_wf_regressions(text, root, shapes):
         ("records only also runs the suites", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", "      - run: python -u test_shoalmark.py\n", 1)),
         ("the suites skip where the tier is unset", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n",
                                                                         "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
-        ("the plugin UTC step is absent", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_plugin.py\n", "", 1)),
-        ("the plugin UTC step skips an unset tier", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_plugin.py\n",
-                                                                                 "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_plugin.py\n", 1)),
-        ("the plugin UTC step runs for records", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_plugin.py\n",
-                                                                                   "      - run: python -u test_plugin.py\n", 1)),
-        ("the plugin UTC step may fail without stopping CI", lambda t: t.replace("        run: python -u test_plugin.py\n",
-                                                                                               "        continue-on-error: true\n        run: python -u test_plugin.py\n", 1)),
-        ("the plugin UTC step comes before core", lambda t: t.replace("        run: python -u test_core.py\n", "        run: python -u plugin-placeholder.py\n", 1)
-            .replace("        run: python -u test_plugin.py\n", "        run: python -u test_core.py\n", 1)
-            .replace("        run: python -u plugin-placeholder.py\n", "        run: python -u test_plugin.py\n", 1)),
-        ("the plugin TZ run is absent", lambda t: t.replace("          python -u test_plugin.py && plugin=0 || plugin=$?\n", "", 1)),
-        ("the plugin TZ exit is absent from the summary", lambda t: t.replace(", test_plugin.py exit $plugin", "", 1)),
-        ("the plugin TZ exit is ignored by the summary", lambda t: t.replace(' && [ "$plugin" -eq 0 ]; then', '; then', 1)),
-        ("the plugin TZ exit is ignored by the final status", lambda t: t.replace('          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ] && [ "$plugin" -eq 0 ]\n',
-                                                                                              '          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]\n', 1)),
+        ("the core UTC step is absent", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n", "", 1)),
+        ("the core UTC step may fail without stopping CI", lambda t: t.replace("        run: python -u test_core.py\n",
+                                                                                             "        continue-on-error: true\n        run: python -u test_core.py\n", 1)),
+        ("the core TZ run is absent", lambda t: t.replace("          python -u test_core.py && core=0 || core=$?\n", "", 1)),
+        ("the core TZ exit is absent from the summary", lambda t: t.replace(", test_core.py exit $core", "", 1)),
+        ("the core TZ exit is ignored by the summary", lambda t: t.replace(' && [ "$core" -eq 0 ]; then', '; then', 1)),
+        ("the core TZ exit is ignored by the final status", lambda t: t.replace('          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]\n',
+                                                                                            '          [ "$suite" -eq 0 ]\n', 1)),
         ("the signers setting is removed", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\n', "", 1)),
         ("the gate command changes to the platform's default", lambda t: t.replace(', SHOALMARK_CMD: python3 shoalmark.py', "", 1)),
         ("records repeat the gate in all five jobs", lambda t: t.replace("        if: steps.tier.outputs.records != 'true' || (matrix.system == 'ubuntu' && matrix.python == '3.9')\n", "", 1)),
@@ -20969,7 +21293,7 @@ def _ci_wf_regressions(text, root, shapes):
         ("the zone's run says nothing in the summary", lambda t: t.replace('(reported, not yet required)." >> "$GITHUB_STEP_SUMMARY"', '(reported, not yet required)."', 1)),
         ("the zone's run comes before the UTC suites", lambda t: (lambda m: t if not m else t.replace(m.group(0), "", 1).replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n",
                                                                   m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
-            re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \] && \[ \"\$plugin\" -eq 0 \]\n", t))),
+            re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
     )
     rows += tuple((f"{system}'s SVN installation has no timeout", lambda t, system=system:
                    re.sub(r"(      - name: Subversion \(" + re.escape(system) + r"\)\n.*?)(        timeout-minutes: 15\n)", r"\1", t, count=1, flags=re.S))
@@ -20997,16 +21321,16 @@ def _ci_wf_regressions(text, root, shapes):
     added = {**_CI_SOURCES, "test_shoalmark.py": _CI_SOURCES.get("test_shoalmark.py", "") + '\n_x = (HERE / "work-tracker/evidence/FM-010/read-by-a-suite.md").read_text()\n'}
     out.append(("a suite that reads a file of the allowlist — evidence/FM-010/read-by-a-suite.md, added to test_shoalmark.py — fails the reads property",
                 not _ci_reads_hold(next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier"), root, added)[0]))
-    without_plugin = {name: source for name, source in _CI_SOURCES.items() if name != "test_plugin.py"}
-    out.append(("omitting test_plugin.py from the tracker-read scan fails a property",
-                not all(ok for _, ok in _ci_wf_properties(text, root, shapes, sources=without_plugin, lazy=True))))
-    plugin_read = "work-tracker/evidence/plugin/read-by-a-suite.md"
-    added = {**_CI_SOURCES, "test_plugin.py": _CI_SOURCES.get("test_plugin.py", "") + '\n_x = (HERE / "' + plugin_read + '").read_text()\n'}
+    without_core = {name: source for name, source in _CI_SOURCES.items() if name != "test_core.py"}
+    out.append(("omitting test_core.py from the tracker-read scan fails a property",
+                not all(ok for _, ok in _ci_wf_properties(text, root, shapes, sources=without_core, lazy=True))))
+    core_read = "work-tracker/evidence/core/read-by-a-suite.md"
+    added = {**_CI_SOURCES, "test_core.py": _CI_SOURCES.get("test_core.py", "") + '\n_x = (HERE / "' + core_read + '").read_text()\n'}
     tier_run = next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier")
-    protected = tier_run.replace('case "$path" in\n', 'case "$path" in\n                "$dir"/evidence/plugin/*) records=false ;;\n', 1)
-    out.append(("a tracker path added to test_plugin.py is detected and requires a full-suite exclusion from records",
-                plugin_read in _suite_reads(added) and protected != tier_run and _ci_reads_hold(protected, root, added)[0]))
-    out.append(("without that exclusion a tracker path added to test_plugin.py fails the reads property",
+    protected = tier_run.replace('case "$path" in\n', 'case "$path" in\n                "$dir"/evidence/core/*) records=false ;;\n', 1)
+    out.append(("a tracker path added to test_core.py is detected and requires a full-suite exclusion from records",
+                core_read in _suite_reads(added) and protected != tier_run and _ci_reads_hold(protected, root, added)[0]))
+    out.append(("without that exclusion a tracker path added to test_core.py fails the reads property",
                 not _ci_reads_hold(tier_run, root, added)[0]))
     for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
         out.append((f"a ci.yml in which {what} passes every property above", all(ok for _, ok in _ci_wf_properties(change(text), root, shapes))))

@@ -130,6 +130,7 @@ body[data-md-color-scheme][data-md-color-primary]{
 .md-typeset pre>code{border-color:var(--contour);background:var(--panel);border-radius:0}
 /* the copy button: seen before a pointer finds it (a phone has none), on the code's own ground, so the line beneath does not show through it */
 .md-typeset .md-code__nav{background:var(--panel)}.md-code__button{color:var(--mute)}
+.md-typeset pre>code{padding-top:2.5em}
 
 /* the foot: the band again, the drying line above it */
 .md-footer{background:var(--band);color:var(--bandink);border-top:2px solid var(--drying)}

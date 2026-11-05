@@ -302,6 +302,8 @@ Upgrade: `--vendor` again from the new release's clone (it names the tag, prints
 replaces, and refuses a copy that was edited in place), then `--init` again to refresh the contract between its markers
 — your text outside them is kept.
 
+The drift skills, find-drift and prune-drift, are not part of the tool: they live in [shoalmark/skills](https://github.com/shoalmark/skills), work in any git repository without shoalmark, and install as one plugin for Claude Code and Codex, pinned to a release tag: [the Skills page](https://shoalmark.tools/skills.html).
+
 What lives where, by convention — no setting names any of it:
 
 | Path | What |
