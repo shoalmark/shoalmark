@@ -1,7 +1,7 @@
 {
   "repository": "shoalmark/skills",
-  "tag": "SKILLS-TAG-PENDING",
-  "commit": "SKILLS-TAG-PENDING",
+  "tag": "v1.0.0",
+  "commit": "fcb29bfda35a4b4881ba4aaeeda99f806a4bfdf1",
   "marketplace": "shoalmark",
   "plugin": "shoalmark",
   "skills": [

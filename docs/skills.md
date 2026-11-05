@@ -25,18 +25,26 @@ Each install is pinned to a release tag of shoalmark/skills.
 **Claude Code:**
 
 ```text
-/plugin marketplace add shoalmark/skills@SKILLS-TAG-PENDING
+/plugin marketplace add shoalmark/skills@v1.0.0
 /plugin install shoalmark@shoalmark
 ```
 
 **Codex:**
 
 ```text
-codex plugin marketplace add shoalmark/skills@SKILLS-TAG-PENDING
+codex plugin marketplace add shoalmark/skills@v1.0.0
 ```
 
 Then restart the ChatGPT desktop app, open the Plugins Directory, choose the shoalmark marketplace and install
 shoalmark from it.
+
+If you installed the plugin from shoalmark 0.20.2, its marketplace is also named shoalmark. In Claude Code, the add
+command above replaces it in place. In Codex, first remove it with the command below, then add the marketplace as
+above.
+
+```text
+codex plugin marketplace remove shoalmark
+```
 
 ## Use
 
