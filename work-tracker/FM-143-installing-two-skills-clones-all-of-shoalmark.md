@@ -4,19 +4,16 @@ status: In Progress
 considered: FM-062, FM-065, FM-083, FM-117
 tags: process
 epic: FM-139
-next: build
+next: owner
 triaged: 2026-11-04
 tier: P2
 hook: "Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketplace clones 808 files, about 35 MB of working tree, for 22 KB of skills."
-ask-id: FM-143-Q1
-ask: "Are FM-143's decisions taken, as its section Decisions, for the Owner sets out?"
+ask-id: FM-143-Q2
+ask: "Does FM-143's decision (c) change, now that the skills run on their own: shoalmark/skills carries its own version, starting at v1.0.0, and each shoalmark release records the skills tag it pins in skills-pin.json?"
 ask-kind: ruling
-ask-since: 2026-11-04
-ask-options: "yes, as proposed | yes, with the changes I name"
+ask-since: 2026-11-05
+ask-options: "yes, as proposed | no, (c) stands"
 ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-04
-answered-by: holgo99
 ---
 
 # FM-143 — installing two skills clones all of shoalmark
@@ -121,6 +118,9 @@ FM-143-Q1 asks for all of these at once. An answer of "yes, with the changes I n
     - that no skill names a tool only one harness has;
     - that each `name` matches its folder.
 - **(c) A skills tag carries the number of the shoalmark release it was tested with.**
+  - **2026-11-05 — put to the Owner again, as FM-143-Q2.** Both skills work in any git repository and never run
+    shoalmark, so a shoalmark release number tells their users nothing, and which skills tag each shoalmark release
+    pins is recorded in that release's `skills-pin.json`.
 - **(d) No tag until a real install has worked in Claude Code and in Codex.**
 - **(e) The first commit on main is the Owner's, signed:** e96d375. It is done, and recorded here so the letters stay.
 - **(f) The skills lane runs at the critical tier:** users install it and run its code
@@ -167,11 +167,20 @@ Each item names its commit or pull request when it lands.
   - a test that the page's install names match the manifests.
 - [ ] **FM-083's suite runs as (h) sets out,** and FM-083 carries that work.
 - [x] **The Owner has answered FM-143-Q1.** · `f4435bb`, #260 (`c02ca26`)
+- [ ] **The Owner has answered FM-143-Q2.**
+
+## Asks
+
+**FM-143-Q1** · 2026-11-04 · Are FM-143's decisions taken, as its section Decisions, for the Owner sets out?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — f4435bb · G
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-05 | FM-143-Q1 cleared, with its record under *Asks*; decision (c) put to the Owner again as FM-143-Q2, `next: owner`. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-11-04 | Done when: shoalmark/skills holds both skills and runs both tests (shoalmark/skills#1 `ea778eb`, shoalmark/skills#2 `06784be`); the Owner's answer (#260). Records only. |
 | 2026-11-04 | Judged keep P2 by a partial triage pass on the Owner's signed answer to FM-143-Q1 (#260); In Progress. Records only. |
