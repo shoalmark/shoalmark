@@ -45,6 +45,9 @@ hook: "An open tracker can carry a put ask, `ask-id:` and `ask:`, without `next:
 5. **Main holds no such ask.** Read with the tool at `c43af89`: no open, unanswered tracker carries `ask:` or `ask-id:`
    without `next: owner`. None is sent back.
 
+**2026-11-05 — placed in v0.20.3** at its allocation sitting, on the Owner's word. It stays a chapter of
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic.
+
 ## Why
 
 An ask is how the Owner rules, and the seat that files one believes it is asked. One without `next: owner` is asked of
@@ -90,6 +93,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
 | 2026-11-04 | The standard review's P3s fixed forward: RV-4364, the gate loop's link; RV-4365, FM-149 and README section 5's table linked; RV-4366, decision 2's first sentence; RV-4367, decision 3's first test and the first Done-when item. Records only. |
 | 2026-11-04 | Filed, Proposed, on the Auditor's brief. Nothing is built. |

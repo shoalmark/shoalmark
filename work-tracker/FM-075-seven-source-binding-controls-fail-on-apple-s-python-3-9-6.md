@@ -17,6 +17,12 @@ at `b65b817` alike, and at v0.20.1. That Python sets `sys.pycache_prefix` to a f
 `Library/Caches`, so a refusal that imports a module reads its bytecode from outside the one library folder the check
 allows. Python 3.15 on the same Mac, and CI's 3.9, set no prefix, and pass.
 
+**2026-11-05 — an observation, records only.** Apple's Python 3.9.6 sets `sys.pycache_prefix` to a cache folder under
+the home folder only when it starts without `-I` or `-E`. The tool's process in the source-binding controls starts with
+`-B` alone, so it has the prefix and reads four stdlib bytecode files there. A runner started with `-I` has no prefix of
+its own. So the check this tracker's *Done when* names must read the prefix from the observed process, or find the cache
+folder another way, or say it cannot judge there, and never read the runner's own prefix.
+
 ## Why
 
 A control that fails on one common Python for a reason outside the tool hides a real failure behind a known one.
@@ -30,4 +36,5 @@ A control that fails on one common Python for a reason outside the tool hides a 
 
 | Date | Event |
 |---|---|
+| 2026-11-05 | An observation: whose bytecode cache prefix the check must read, the observed process's and never the runner's. Records only. |
 | 2026-10-27 | Filed, Proposed, from RV-3903 of FM-068's critical review; after v0.20.2. |

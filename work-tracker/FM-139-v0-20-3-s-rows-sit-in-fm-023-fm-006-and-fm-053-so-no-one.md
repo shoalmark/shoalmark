@@ -31,10 +31,14 @@ and the candidates in too, so that we can decide what goes in tomorrow."
 - FM-089's parts stay under FM-089, which is itself a chapter of FM-139, as FM-088 is a chapter of FM-089 and the
   epic of FM-130 to FM-133.
 
+**2026-11-05 — v0.20.3's allocation sitting, on the Owner's word.** v0.20.3 takes FM-149, FM-150, FM-151 and FM-099,
+which stay chapters of this epic. FM-095 to FM-098 are not taken: they leave the epic in this commit and stay filed for
+v0.20.x.
+
 **The chapter, and the trackers filed for v0.20.3:**
 - [FM-089](FM-089-agentic-seamanship-v0-20-3.md), Agentic seamanship, with its parts [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md), [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md) and [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md). FM-088's four
-  trackers are [FM-130](FM-130-the-team-s-and-each-seat-s-memory-is-not-in-the-repository.md), [FM-131](FM-131-a-session-starts-without-the-team-s-memory.md), [FM-132](FM-132-nothing-moves-a-lesson-out-of-a-harness-s-memory.md) and [FM-133](FM-133-a-memory-entry-is-never-tested-or-retired.md). The candidates for the chapter are
-  [FM-095](FM-095-the-owner-s-rulings-live-in-chat-memories-and-briefs-not-in.md) to [FM-098](FM-098-nothing-leads-from-a-commit-to-the-conversation-behind-it.md), filed for v0.20.x; the allocation pulls in what fits.
+  trackers are [FM-130](FM-130-the-team-s-and-each-seat-s-memory-is-not-in-the-repository.md), [FM-131](FM-131-a-session-starts-without-the-team-s-memory.md), [FM-132](FM-132-nothing-moves-a-lesson-out-of-a-harness-s-memory.md) and [FM-133](FM-133-a-memory-entry-is-never-tested-or-retired.md).
+  [FM-095](FM-095-the-owner-s-rulings-live-in-chat-memories-and-briefs-not-in.md) to [FM-098](FM-098-nothing-leads-from-a-commit-to-the-conversation-behind-it.md), filed for v0.20.x as the chapter's candidates, were not taken on 5 November.
 - [FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md): the person's own files in one home, rank 1 when v0.20.3 starts.
 - [FM-120](FM-120-the-rule-files-hold-the-disagreements-and-obsolete-text-that.md): a fresh `/find-drift` run on shoalmark and the `/prune-drift` run that fixes what it finds, v0.20.3's
   first lane.
@@ -43,7 +47,7 @@ and the candidates in too, so that we can decide what goes in tomorrow."
 - [FM-118](FM-118-shoalmark-py-s-prose-is-not-pruned-and-nothing-holds-code.md), [FM-119](FM-119-five-rules-held-only-as-prose-are-not-checks.md) and [FM-121](FM-121-a-seat-can-change-the-seat-definitions-and-the-skills-folder.md): the prose prune with its ratchet, the five conversions, and FM-037's
   guard.
 - [FM-123](FM-123-the-board-s-polish-that-v0-20-1-left-is-not-built-a-verdict.md): the board's polish, with v0.20.3's design rows of 1 November.
-- [FM-099](FM-099-the-index-names-the-command-of-the-system-that-wrote-it-so-a.md): proposed for v0.20.3; the Owner places it.
+- [FM-099](FM-099-the-index-names-the-command-of-the-system-that-wrote-it-so-a.md): placed in v0.20.3 on 5 November.
 - [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md): moved to v0.20.3, on the Owner's word of 29 October.
 - Filed on this records branch for v0.20.3: [FM-105](FM-105-no-test-holds-that-a-refused-signature-then-a-signed-answer.md), [FM-106](FM-106-eight-done-when-items-of-trackers-closed-at-v0-20-2-have-no.md), [FM-140](FM-140-a-root-test-file-can-sit-outside-ci-run-by-no-job-and-named.md), [FM-101](FM-101-nothing-holds-that-the-suite-keeps-a-runner-s-own-sigterm.md),
   [FM-102](FM-102-the-stand-up-and-queue-disagree-on-an-origin-that-an.md) and [FM-141](FM-141-the-readme-s-refusal-table-lacks-s1-s-ask-id-refusals-and.md).
@@ -51,8 +55,8 @@ and the candidates in too, so that we can decide what goes in tomorrow."
   *Allocation*, which the answer to FM-143-Q1 took ([#260](https://github.com/shoalmark/shoalmark/pull/260)); and
   [FM-149](FM-149-the-docs-the-board-s-prompts-and-the-skills-have-no-one-rule.md),
   [FM-150](FM-150-the-gate-passes-an-ask-without-next-owner-and-it-reaches-no.md) and
-  [FM-151](FM-151-a-records-only-pull-request-waits-for-a-macos-runner-that.md), proposed for v0.20.3, FM-150 and FM-151
-  each by its decision *Allocation*; the Owner places them.
+  [FM-151](FM-151-a-records-only-pull-request-waits-for-a-macos-runner-that.md), placed in v0.20.3 on 5 November, FM-150 and FM-151
+  each by its decision *Allocation*.
 
 **The rows FM-023's entries name for v0.20.3:**
 
@@ -136,3 +140,4 @@ at its allocation sitting and at its tag.
 | 2026-11-03 | Filed as v0.20.3's allocation, with FM-023's and FM-006's rows of 1 November moved in. Records only. |
 | 2026-11-04 | FM-143's allocation joins the list, and FM-149, FM-150 and FM-151 join it as proposed. Records only. |
 | 2026-11-04 | v0.20.3's epic, on the Owner's word in chat, logged under *What is true now*. Records only. |
+| 2026-11-05 | v0.20.3's allocation sitting: FM-149, FM-150, FM-151 and FM-099 are taken, and FM-095 to FM-098 leave the epic. Records only. |

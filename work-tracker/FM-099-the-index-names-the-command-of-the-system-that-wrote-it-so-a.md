@@ -30,6 +30,9 @@ on CI's Windows jobs, and fixed there for the test alone.
   header carried a clone's own finding, and a fresh clone read STALE. FM-034 shipped and is not reopened. This is its
   sibling: the INDEX carries something of the machine that wrote it.
 
+**2026-11-05 — placed in v0.20.3** at its allocation sitting, on the Owner's word. It stays a chapter of
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic.
+
 ## Why
 
 A false STALE teaches a person to regenerate and commit, and the next person on the other system then sees STALE the
@@ -50,3 +53,4 @@ other way. A check that a team cannot pass on both its systems is a check the te
 |---|---|
 | 2026-10-29 | Filed for v0.20.x, proposed for v0.20.3, as a P2 bug, on the Auditor's word of 29 October. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
+| 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |

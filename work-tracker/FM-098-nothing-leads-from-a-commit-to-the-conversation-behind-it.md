@@ -3,7 +3,6 @@ id: FM-098
 status: Proposed
 considered: FM-024, FM-078, FM-088, FM-096, FM-097
 tags: seamanship
-epic: FM-139
 hook: "A commit names the session that made it, but nothing leads from the commit to the conversation behind it. Zed's DeltaDB now keeps edits linked to their conversation; one decision, on the Owner's signed answer, picks whether shoalmark links a commit's session to its transcript, and how."
 ---
 
@@ -26,6 +25,9 @@ names it as a candidate, not a part.
 - **A session's material can be private.** shoalmark never uploads it. Whether a person sends it to a hosted service is
   that person's choice.
 - **It is a decision tracker, sized to one decision.** A build, if one is chosen, is a tracker of its own.
+
+**2026-11-05 — not taken into v0.20.3** at its allocation sitting, on the Owner's word. It leaves
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic, and stays filed for v0.20.x.
 
 ## Why
 
@@ -54,3 +56,4 @@ leaves behind, and [FM-096](FM-096-nothing-measures-whether-a-session-follows-th
 |---|---|
 | 2026-10-29 | Filed for v0.20.x as a decision, on the Owner's word of 29 October. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
+| 2026-11-05 | Not taken into v0.20.3, on the Owner's word: it leaves FM-139's epic. Records only. |

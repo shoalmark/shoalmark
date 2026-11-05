@@ -56,6 +56,9 @@ answered-by: holgo99
    - That repository needs none of this change. It has no records tier, and every job runs both its suites
      ([its ci.yml L10–L36](https://github.com/shoalmark/skills/blob/06784be51991cd4d6accc20bb3cdfd5cdd577476/.github/workflows/ci.yml#L10-L36)).
 
+**2026-11-05 — placed in v0.20.3** at its allocation sitting, on the Owner's word. It stays a chapter of
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic.
+
 ## Why
 
 FM-032 made a records-only change cheap: `--check` in place of the suites. But its required checks end only when the
@@ -112,6 +115,7 @@ Each item names its commit, pull request or run when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
 | 2026-11-04 | Done when: the Owner's answer to FM-151-Q1 (#265). Records only. |
 | 2026-11-04 | The standard review's P3 RV-4368 fixed forward: item 2 names the steps the four other jobs still run. Records only. |

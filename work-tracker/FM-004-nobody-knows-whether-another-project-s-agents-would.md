@@ -166,10 +166,10 @@ the limits are said: three runs, one model family, an invented project.
 | 2026-10-13 20:08 CEST | Archive final NOT READY `eabee22`: RV-3071 CLOSED, RV-3072 HELD after the final round; strict-classification disposition proposed on the board. A1/A2 accepted component merged locally; C bounded READY `f59a1c1`; B final review and A caller migration continue. Local stage work proceeds separately; protected acceptance remains held. |
 | 2026-10-13 18:18 CEST | Serial archive/common wiring retains both independently accepted products: common `git_dirs` unchanged, existing archive HERE read marked source, real SVN positive fixtures and expanded administrative guards retained. Compile, 302 core and 55 scoped archive controls pass; exact-head artifact and separate critical integration review remain due. |
 | 2026-10-13 17:24 CEST | **Owner #170 records integrated locally** from `cab89ed`, retaining archive critical READY `1ba6fc4` and its exact product/workflow/release-script blobs. Current command-applied judgement and signed Part B/exchanges remain; INDEX regenerated. Scoped records verification and Owner-pushed CI remain. |
-| 2026-09-21 | Filed; prediction written before the runs. |
-| 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
-| 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |
 | 2026-10-13 | Recovered Part B from `643ad4b` on current main, applied the exact signed RV-2734 prerequisite replacement and FM-023 release allocation; one records review pending, archive re-review and integration still owed. |
 | 2026-10-13 | Release archive integrated onto current 0.19.4: refactor `3ac2e9d`, behavior `94f6bc2`, source `570a773..23e3f7a`; relevant local controls and a commit-pinned dry run pass. Independent critical review, Owner publication, CI and release integration remain owed. |
 | 2026-10-13 | Final bounded archive qualification at `b62b341`: 158 core checks and 60 scoped controls pass; no-git missing-manifest refusal covered, deterministic checksum verified. Acquisition alone; independent critical review and release integration remain owed. |
 | 2026-10-13 | RV-3070: ordinary local integration of main `ab7ed3f` reconciles its signed Part B/history with the archive records; product/test blobs retain reviewed `3c18008`. Independent review reports 85 passing local controls; its remaining critical round 2, CI and release integration remain owed. |
+| 2026-09-21 | Filed; prediction written before the runs. |
+| 2026-09-21 | Three runs: 0 of 3 adopt. Defects fixed as 0.12.1. |
+| 2026-09-21 | Second round: the brake is the Owner's latency, 3 of 3; a tool change alone flips nothing. |

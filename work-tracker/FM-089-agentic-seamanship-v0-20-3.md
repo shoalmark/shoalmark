@@ -26,6 +26,7 @@ lessons every seat can read.
   every seat and for the team, on the Owner's signed answer of 29 October (`febbed9`).
 - **Candidates, not parts:** four trackers filed for v0.20.x on the Owner's word of 29 October, "we consider all, but
   we only pull in what fits". v0.20.3's allocation pulls in what fits, and this chapter's Done when doesn't change.
+  On 5 November none was taken into v0.20.3; each stays filed for v0.20.x.
   - [FM-095](FM-095-the-owner-s-rulings-live-in-chat-memories-and-briefs-not-in.md):
     the Owner's rulings in one register;
   - [FM-096](FM-096-nothing-measures-whether-a-session-follows-the-rules-and.md):
@@ -52,6 +53,7 @@ alive and each step of it finishable: the chapter ships when its parts do, and t
 
 | Date | Event |
 |---|---|
+| 2026-11-05 | FM-095 to FM-098, this chapter's candidates, were not taken into v0.20.3 on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-10-29 | FM-095 to FM-098, filed for v0.20.x, are named as candidates for this chapter, not parts. Records only. |
 | 2026-10-29 | FM-088 joins the chapter on the Owner's signed answer (`febbed9`), and its Done when gains FM-088's item. Records only. |
