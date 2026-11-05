@@ -3,7 +3,6 @@ id: FM-095
 status: Proposed
 considered: FM-062, FM-088, FM-089
 tags: seamanship
-epic: FM-139
 blocked-by: FM-104
 hook: "A rule the Owner gives in chat lives in dated messages, in each seat's memory and in brief templates, and nowhere in this repository. One register would hold every ruling with the commit that signed it, what enforces it and what proves it, changed only by the Owner's signed answer."
 ---
@@ -63,6 +62,9 @@ part.
   [FM-096](FM-096-nothing-measures-whether-a-session-follows-the-rules-and.md) and
   [FM-097](FM-097-find-drift-does-not-audit-the-owner-s-rulings-whether-each.md) both read the register.
 
+**2026-11-05 — not taken into v0.20.3** at its allocation sitting, on the Owner's word. It leaves
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic, and stays filed for v0.20.x.
+
 ## Why
 
 A rule given in chat binds only the sessions that heard it, and only for as long as their memory holds it.
@@ -81,6 +83,7 @@ which ones only words hold.
 
 | Date | Event |
 |---|---|
+| 2026-11-05 | Not taken into v0.20.3, on the Owner's word: it leaves FM-139's epic. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
 | 2026-10-30 | Blocked by FM-104, which decides where the person's files live, on the Owner's word of 30 October. Records only. |
 | 2026-10-29 | The pattern and the Done when name R1 to R28, as the record of 12 October holds them (RV-4056). Records only. |

@@ -3,7 +3,6 @@ id: FM-096
 status: Proposed
 considered: FM-083, FM-088, FM-095
 tags: seamanship
-epic: FM-139
 hook: "Nothing measures whether a session follows the rules and lessons it is given. An eval harness would run real sessions on Claude Code and Codex, sealed, in fixture repositories built from real failures, three times each, and gate only on a scenario that always passed and now always fails."
 ---
 
@@ -58,6 +57,9 @@ seamanship. It is considered for every v0.20 release and pulled into one when it
   - FM-088's own eval may run on the smallest runner that does the job until this harness takes it over.
 - **The order:** after FM-095.
 
+**2026-11-05 — not taken into v0.20.3** at its allocation sitting, on the Owner's word. It leaves
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic, and stays filed for v0.20.x.
+
 ## Why
 
 A rule or a lesson that no check can hold is only as good as the sessions that follow it, and nothing measures that
@@ -77,3 +79,4 @@ structure and proof are checked, but not how well they do their work.
 |---|---|
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
+| 2026-11-05 | Not taken into v0.20.3, on the Owner's word: it leaves FM-139's epic. Records only. |

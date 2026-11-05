@@ -3,7 +3,6 @@ id: FM-097
 status: Proposed
 considered: FM-062, FM-088, FM-095, FM-096
 tags: seamanship
-epic: FM-139
 hook: "/find-drift reads decisions against git, but not the Owner's rulings. It would report each ruling as holding, drifted or broken, with every breach traced to its commit, pull request and CI run, so that with the register's signed history it becomes the full audit trail."
 ---
 
@@ -36,6 +35,9 @@ a candidate, not a part.
 - **The order:** the last of the three, after FM-095 and FM-096. Its drift half needs only the register; the breach half
   is the larger part.
 
+**2026-11-05 — not taken into v0.20.3** at its allocation sitting, on the Owner's word. It leaves
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic, and stays filed for v0.20.x.
+
 ## Why
 
 A ruling's record says what was decided, not whether it was kept.
@@ -52,6 +54,7 @@ and the record against git. The rulings are the decisions that bind every seat, 
 
 | Date | Event |
 |---|---|
+| 2026-11-05 | Not taken into v0.20.3, on the Owner's word: it leaves FM-139's epic. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
 | 2026-10-29 | The order names FM-097 last of the three, after FM-096. Records only. |
 | 2026-10-29 | Filed for v0.20.x, on the Owner's word of 29 October. Records only. |
