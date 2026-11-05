@@ -39,9 +39,9 @@ close.
 
 | Date | Event |
 |---|---|
-| 2026-10-17 | Judged In Progress, P1, by the Planner on the Owner's signed answer (`96afebd`), before the first build commit, on `fm/058-run-bounds`. |
 | 2026-10-16 | Filed, defect 10, with its ask (the Auditor's finding, relayed by the Owner). Nothing is built. |
 | 2026-10-16 | Moved into v0.20.1 on the Owner's word: the guided answer view (FM-059) needs it first. |
+| 2026-10-17 | Judged In Progress, P1, by the Planner on the Owner's signed answer (`96afebd`), before the first build commit, on `fm/058-run-bounds`. |
 | 2026-10-17 | Built `93f064f`: 60 s hook/board default, explicit person commands unbounded, ambiguous copy invocations bounded; COPY restrictions unchanged. Class controls and three mutants, CLI, core/skeleton/ratchet, Git entry differential and affected blocks pass on Python 3.15 and 3.9.6; the 3.15 CRLF class stand-in passes. Independent critical-tier review is next. |
 | 2026-10-17 | Round 2: fixed RV-3370 in `e3c0995` and RV-3371 in `16875c1`, from NOT READY `fe4f44c` on `a154a42`. Filesystem-free early parsing and parsed timeout modes now cover both tools; COPY permissions and SAFE_READS selection stay unchanged. Both interpreters pass 49 entry/49 filesystem controls, all five mutants, CLI/core/skeleton/ratchet, Git entry differential and the six original plus two TortoiseSVN blocks; the 3.15 CRLF class stand-in passes. Bounded independent re-check is next. |
 | 2026-11-03 | **Shipped in v0.20.1:** built in `93f064f`, READY at `d5b0722`, on main as `daf3cea` (#212). The answered ask moves under *Asks*; item 1's brief citation waits in FM-106. Records only. |
