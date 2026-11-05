@@ -96,6 +96,13 @@ v0.20.x.
   - the probe's "already adopted" path points to the upgrade.
 - The open German term T1: "Forge" or "Ablage" on the Board's labels, for the glossary.
 - Descriptions of their own for the other German pages, under the Translator's v0.20.3 pass (FM-006's close).
+- On the Owner's word of 5 November, three rows from the test suite:
+  - a check that copies the tool or a fixture into a temp folder of its own removes the copy when it is done;
+  - the pinned-zones block pins the tool's day in a way Python 3.15 honours, so it runs there instead of
+    skipping;
+  - a timeout in the CI install check is recorded as one FAIL line, naming the step and its limit, and the run
+    goes on. The landing block's mutant helper records a missing target as a problem, instead of stopping the
+    run.
 
 **Four Designer findings on the Board's session rows, for v0.20.3,** on the Owner's word of 2 November:
 
@@ -141,3 +148,4 @@ at its allocation sitting and at its tag.
 | 2026-11-04 | FM-143's allocation joins the list, and FM-149, FM-150 and FM-151 join it as proposed. Records only. |
 | 2026-11-04 | v0.20.3's epic, on the Owner's word in chat, logged under *What is true now*. Records only. |
 | 2026-11-05 | v0.20.3's allocation sitting: FM-149, FM-150, FM-151 and FM-099 are taken, and FM-095 to FM-098 leave the epic. Records only. |
+| 2026-11-05 | Three test-suite rows placed in v0.20.3, on the Owner's word. Records only. |
