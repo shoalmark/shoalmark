@@ -4,7 +4,7 @@ status: In Progress
 considered: FM-062, FM-065, FM-083, FM-117
 tags: process
 epic: FM-139
-next: owner
+next: build
 triaged: 2026-11-04
 tier: P2
 hook: "Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketplace clones 808 files, about 35 MB of working tree, for 22 KB of skills."
@@ -14,6 +14,9 @@ ask-kind: ruling
 ask-since: 2026-11-05
 ask-options: "yes, as proposed | no, (c) stands"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-05
+answered-by: holgo99
 ---
 
 # FM-143 — installing two skills clones all of shoalmark
