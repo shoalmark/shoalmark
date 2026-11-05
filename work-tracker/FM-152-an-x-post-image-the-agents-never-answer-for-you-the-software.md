@@ -1,7 +1,7 @@
 ---
 id: FM-152
 status: Proposed
-considered: none
+considered: FM-147
 next: wait
 hook: "go-to-market asked, for the Owner, for a light revision of the software-factory X post image: new headline, plain-words stand-up, and BOARD cards that read as agents asking. An earlier version of this image was made outside this repository; this tracker holds the revision."
 ---
@@ -13,7 +13,7 @@ hook: "go-to-market asked, for the Owner, for a light revision of the software-f
 **Filed 2026-10-27. A render exists in `evidence/FM-152/`; the Owner has not judged it; it is not final.**
 
 - **The render:** `work-tracker/evidence/FM-152/shoalmark-software-factory-x.svg`, written by `build-sf.py`, and its export
-  `shoalmark-software-factory-x.png`, 1600 × 900, by headless Chrome (the README's export method). Same four-station loop as the earlier
+  `shoalmark-software-factory-x.png`, 1600 × 900, by headless Chrome (the export method of `brand/social/README.md`, L24). Same four-station loop as the earlier
   version of this image, made outside this repository, with three Owner-approved changes only:
   1. Headline: *the agents never answer for you.* (Owner's choice of the stricter line, via go-to-market; was *the agents never make your calls.*, before that *shoalmark is a software factory.*)
   2. STAND-UP: *you answer,* / *one at a time* in plain words, two centred lines (was `--answer <id>` / *one at a time*). *your commit*,
@@ -57,3 +57,5 @@ The Owner has judged the render.
 | 2026-10-27 | Evidence moved with the tracker; PNG and SVG kept byte-identical. |
 | 2026-11-04 | Re-filed from FM-072 to FM-152 on main `35158e3`: main's FM-072 is the Planner's (`2f9895d`). The Owner's call, relayed via the Auditor; evidence byte-identical to the earlier, unpushed version. |
 | 2026-11-04 | Pre-review fixes: Why names FM-147; private ids, unpushed branches, host paths, an outside project id, the Owner's address, and a past deadline removed; `build-sf.py` reads its sources relative to the repository. Render byte-identical. |
+| 2026-11-05 | Re-filed as one commit on main `c1a10fc`; the commit's subject names `35158e3`, main when the id was chosen. |
+| 2026-11-05 | considered: FM-147, as the planner seat's triage; L16 names the README its export follows (RV-4390). Records only. |
