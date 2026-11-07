@@ -8,20 +8,19 @@ next: build
 triaged: 2026-11-04
 tier: P2
 hook: "Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketplace clones 808 files, about 35 MB of working tree, for 22 KB of skills."
-ask-id: FM-143-Q2
-ask: "Does FM-143's decision (c) change, now that the skills run on their own: shoalmark/skills carries its own version, starting at v1.0.0, and each shoalmark release records the skills tag it pins in skills-pin.json?"
-ask-kind: ruling
-ask-since: 2026-11-05
-ask-options: "yes, as proposed | no, (c) stands"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-05
-answered-by: holgo99
 ---
 
 # FM-143 — installing two skills clones all of shoalmark
 
 ## What is true now
+
+**2026-11-05 — the plugin has left shoalmark, the Skills page is live, and shoalmark/skills v1.0.0 is released.**
+#268 (`1d451e7`) removed the plugin and its tests, updated the CI pins and the CHANGELOG, and added the Skills page in
+English and German, which the landing footer now links. The page went live from main's
+[docs run 42056987223](https://github.com/shoalmark/shoalmark/actions/runs/42056987223). A real install from shoalmark/skills worked in Claude Code
+and in Codex, and the Owner's signed tag [v1.0.0](https://github.com/shoalmark/skills/releases/tag/v1.0.0) is at `fcb29bf`, which
+shoalmark's [`skills-pin.json`](https://github.com/shoalmark/shoalmark/blob/1d451e7e73479bb181184bccfbc9468583104ac2/skills-pin.json)
+pins. FM-143-Q2's answer replaced decision (c). Left: FM-083's suite in skills' CI, as (h) sets out.
 
 **2026-11-04 — shoalmark/skills holds both skills, both manifests, the tests and CI;** its `main` ruleset requires the
 five `tests (…)` checks ([shoalmark/skills#1](https://github.com/shoalmark/skills/pull/1), [#2](https://github.com/shoalmark/skills/pull/2), under *Done when*). Next in shoalmark: the plugin's removal, then the
@@ -91,7 +90,9 @@ tagged and tested on their own terms.
 
 ## Decisions, for the Owner
 
-FM-143-Q1 asks for all of these at once. An answer of "yes, with the changes I name" names each change by its label.
+FM-143-Q1 asked for all of these at once, where an answer of "yes, with the changes I name" would name each change by
+its label. The Owner accepted them as proposed (`f4435bb`, #260); decision (c) was replaced later by FM-143-Q2's
+answer.
 
 - **Allocation:** this work is allocated to v0.20.3.
 - **1. The plugin moves to its own repository,** shoalmark/skills.
@@ -123,7 +124,9 @@ FM-143-Q1 asks for all of these at once. An answer of "yes, with the changes I n
 - **(c) A skills tag carries the number of the shoalmark release it was tested with.**
   - **2026-11-05 — put to the Owner again, as FM-143-Q2.** Both skills work in any git repository and never run
     shoalmark, so a shoalmark release number tells their users nothing, and which skills tag each shoalmark release
-    pins is recorded in that release's `skills-pin.json`.
+    pins is recorded in that release's [`skills-pin.json`](https://github.com/shoalmark/shoalmark/blob/1d451e7e73479bb181184bccfbc9468583104ac2/skills-pin.json).
+  - **2026-11-05 — replaced by FM-143-Q2's answer** (`c1d5680`, #273): shoalmark/skills carries its own version,
+    starting at v1.0.0, and each shoalmark release records the skills tag it pins in `skills-pin.json`.
 - **(d) No tag until a real install has worked in Claude Code and in Codex.**
 - **(e) The first commit on main is the Owner's, signed:** e96d375. It is done, and recorded here so the letters stay.
 - **(f) The skills lane runs at the critical tier:** users install it and run its code
@@ -157,20 +160,25 @@ Each item names its commit or pull request when it lands.
   - Dependabot for GitHub Actions.
   - **Landed:** [shoalmark/skills#1](https://github.com/shoalmark/skills/pull/1) (`ea778eb`), main's [run 41843847292](https://github.com/shoalmark/skills/actions/runs/41843847292); its checks made to fail
     closed by [#2](https://github.com/shoalmark/skills/pull/2) (`06784be`), main's [run 41848074359](https://github.com/shoalmark/skills/actions/runs/41848074359).
-- [ ] **shoalmark no longer carries the plugin,** and its CHANGELOG gives the new install command.
-- [ ] **The removal from shoalmark updates `test_shoalmark.py`'s CI-workflow pins,** which hold the steps it removes.
+- [x] **shoalmark no longer carries the plugin,** and its CHANGELOG gives the new install command. · #268 (`1d451e7`)
+- [x] **The removal from shoalmark updates `test_shoalmark.py`'s CI-workflow pins,** which hold the steps it removes.
+  · #268 (`1d451e7`)
 - [x] **skills' CI runs both moved tests.** Today no CI job runs `test_prune_drift.py`. · [shoalmark/skills#1](https://github.com/shoalmark/skills/pull/1) (`ea778eb`),
   [run 41843847292](https://github.com/shoalmark/skills/actions/runs/41843847292)
-- [ ] **The landing footer's skills line,** in English and German, points at the Skills page once it exists.
-- [ ] **A real install from shoalmark/skills has worked** in Claude Code and in Codex.
-- [ ] **The first tag is made,** signed by the Owner.
-- [ ] **A Skills page, in English and German,** is in shoalmark's docs and in the nav. Beside it:
+- [x] **The landing footer's skills line,** in English and German, points at the Skills page once it exists.
+  · #268 (`1d451e7`)
+- [x] **A real install from shoalmark/skills has worked** in Claude Code and in Codex. · shoalmark/skills main
+  [`e2fd525`](https://github.com/shoalmark/skills/commit/e2fd525d57bca0b56537a215b8f4f8335ee39455), each harness from a scratch home, and again at the
+  release commit [`fcb29bf`](https://github.com/shoalmark/skills/commit/fcb29bfda35a4b4881ba4aaeeda99f806a4bfdf1) before the tag
+- [x] **The first tag is made,** signed by the Owner. · [v1.0.0](https://github.com/shoalmark/skills/releases/tag/v1.0.0) at `fcb29bf`
+- [x] **A Skills page, in English and German,** is in shoalmark's docs and in the nav. Beside it:
   - pointers from the setup page and the README;
   - a line in `llms.txt`;
   - a test that the page's install names match the manifests.
+  - **Landed:** #268 (`1d451e7`), live from main's [docs run 42056987223](https://github.com/shoalmark/shoalmark/actions/runs/42056987223).
 - [ ] **FM-083's suite runs as (h) sets out,** and FM-083 carries that work.
 - [x] **The Owner has answered FM-143-Q1.** · `f4435bb`, #260 (`c02ca26`)
-- [ ] **The Owner has answered FM-143-Q2.**
+- [x] **The Owner has answered FM-143-Q2.** · `c1d5680`, #273 (`8961cd2`)
 
 ## Asks
 
@@ -179,10 +187,16 @@ Each item names its commit or pull request when it lands.
 **relation** — accepted the proposal
 **signed** — f4435bb · G
 
+**FM-143-Q2** · 2026-11-05 · Does FM-143's decision (c) change, now that the skills run on their own: shoalmark/skills carries its own version, starting at v1.0.0, and each shoalmark release records the skills tag it pins in skills-pin.json?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — c1d5680 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-07 | FM-143-Q2 cleared, with its record under *Asks*; decision (c) marked replaced by its answer. Done when: the plugin's removal, the CI pins, the footer and the Skills page (#268 `1d451e7`), the real install, the first tag (v1.0.0 at `fcb29bf`) and FM-143-Q2's answer (#273). RV-4442: `skills-pin.json` linked at `1d451e7`. Records only. |
 | 2026-11-05 | FM-143-Q1 cleared, with its record under *Asks*; decision (c) put to the Owner again as FM-143-Q2, `next: owner`. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-11-04 | Done when: shoalmark/skills holds both skills and runs both tests (shoalmark/skills#1 `ea778eb`, shoalmark/skills#2 `06784be`); the Owner's answer (#260). Records only. |
