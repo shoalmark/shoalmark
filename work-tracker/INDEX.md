@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-153](FM-153-a-blog-for-the-site-and-its-first-post.md) | — | The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small,… | In Progress | triage | — |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
