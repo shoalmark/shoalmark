@@ -34,7 +34,6 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
-| [FM-153](FM-153-a-blog-for-the-site-and-its-first-post.md) | — | The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small,… | In Progress | triage | — |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -53,6 +52,7 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-153](FM-153-a-blog-for-the-site-and-its-first-post.md) | — | The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small,… | Proposed | triage | — |
 | [FM-152](FM-152-an-x-post-image-the-agents-never-answer-for-you-the-software.md) | — | go-to-market asked, for the Owner, for a light revision of the software-factory X post image: new headline, plain-words… | Proposed | triage | — |
 | [FM-151](FM-151-a-records-only-pull-request-waits-for-a-macos-runner-that.md) | — | A pull request that changes records only still starts all five required jobs on their own images, though four of them o… | Proposed | triage | — |
 | [FM-150](FM-150-the-gate-passes-an-ask-without-next-owner-and-it-reaches-no.md) | — | An open tracker can carry a put ask, `ask-id:` and `ask:`, without `next: owner`. The gate passes it, the Owner's queue… | Proposed | triage | — |
