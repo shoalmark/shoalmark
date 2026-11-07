@@ -101,8 +101,8 @@ v0.20.x.
   - the pinned-zones block pins the tool's day in a way Python 3.15 honours, so it runs there instead of
     skipping;
   - a timeout in the CI install check is recorded as one FAIL line, naming the step and its limit, and the run
-    goes on. The landing block's mutant helper records a missing target as a problem, instead of stopping the
-    run.
+    goes on; the `pwsh` limit allows for a cold start. The landing block's mutant helper records a missing target
+    as a problem, instead of stopping the run.
 
 **Four Designer findings on the Board's session rows, for v0.20.3,** on the Owner's word of 2 November:
 
@@ -149,3 +149,4 @@ at its allocation sitting and at its tag.
 | 2026-11-04 | v0.20.3's epic, on the Owner's word in chat, logged under *What is true now*. Records only. |
 | 2026-11-05 | v0.20.3's allocation sitting: FM-149, FM-150, FM-151 and FM-099 are taken, and FM-095 to FM-098 leave the epic. Records only. |
 | 2026-11-05 | Three test-suite rows placed in v0.20.3, on the Owner's word. Records only. |
+| 2026-11-07 | RV-4422: the third test-suite row adds that the `pwsh` limit allows for a cold start. Records only. |
