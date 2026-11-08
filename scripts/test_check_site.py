@@ -21,6 +21,10 @@ TWIN_TEXT = "# How it works\n\nTry it: the button \"Hand your agents the note\" 
 GIF = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
 STILL = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x00\x00\x00\x00:~\x9bU\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01"
          b"H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82")
+# a WebP as the check reads it, by its header alone: the RIFF WEBP file, its VP8X chunk's animation flag set for an animated one
+_WEBP = lambda chunk: b"RIFF" + (4 + len(chunk)).to_bytes(4, "little") + b"WEBP" + chunk
+ANIM_WEBP = _WEBP(b"VP8X" + (10).to_bytes(4, "little") + bytes([0x02, 0, 0, 0]) + bytes(6) + b"ANIM" + (6).to_bytes(4, "little") + bytes(6))
+STILL_WEBP = _WEBP(b"VP8L" + (6).to_bytes(4, "little") + bytes([0x2F, 0, 0, 0, 0, 0]))
 BLOG_SOURCE = '<source media="(prefers-reduced-motion: reduce)" srcset="first-post/loop-still.png">'
 BLOG_IMG = '<img src="first-post/loop.gif" alt="A loop of one pixel">'
 # a narrower screen's GIF in a <source> of its own, after the <source> for reduced motion that names its still
@@ -34,7 +38,7 @@ BLOG_AUTHOR = '<p class="by"><img src="assets/seats/builder.svg" alt=""><b>Build
 BLOG = {"blog/index.html": '<html lang="en"><body><h1>Blog</h1><ul><li><a href="first-post.html">First post</a></li></ul></body></html>',
         "blog/first-post.html": '<html lang="en"><head><link rel="alternate" type="text/markdown" href="first-post.md"></head><body><h1>First post</h1>' + BLOG_AUTHOR + BLOG_FIGURE + '<p><a href="index.html">All posts</a></p></body></html>',
         "blog/first-post.md": "# First post\n", "blog/first-post/loop.gif": GIF, "blog/first-post/loop-still.png": STILL, "blog/first-post/small.gif": GIF, "blog/first-post/small-still.png": STILL,
-        "blog/assets/seats/builder.svg": AUTHOR}
+        "blog/assets/seats/builder.svg": AUTHOR, "blog/first-post/loop.webp": ANIM_WEBP, "blog/first-post/loop-still.webp": STILL_WEBP}
 # a figure the post's script plays once, as a post sets it: its stills shown, each play-once GIF in a data-once beside the still it rests on, its
 # data-still, and the <picture>'s sources for reduced motion naming the stills; beside it a still figure; on a page of its own, with their four files
 ONCE_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="second-post/wave-still.png">'
@@ -859,6 +863,18 @@ class Blog(unittest.TestCase):
              "site check: blog/first-post.html names 'https://shoalmark.tools/blog/first-post/loop.gif' in og:video, and that is no MP4 file of the site"),
             ("an og:video naming no file", self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/gone.mp4">'),
              "site check: blog/first-post.html names 'https://shoalmark.tools/blog/first-post/gone.mp4' in og:video, and that is no MP4 file of the site"),
+            ("an animated WebP source with no reduced-motion source before it",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture><source type="image/webp" srcset="first-post/loop.webp">' + BLOG_SMALL_STILL),
+             "site check: blog/first-post.html offers the animated WebP 'first-post/loop.webp' in a <source> with no <source> for reduced motion before it "
+             "whose srcset names its still, blog/first-post/loop-still.webp"),
+            ("a WebP play-once resting on the PNG still",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture>%s' % '<source media="(prefers-reduced-motion: reduce)" type="image/webp" srcset="first-post/loop-still.webp"><source type="image/webp" srcset="first-post/loop-still.webp" data-once="first-post/loop.webp" data-still="first-post/loop-still.webp">'.replace('data-still="first-post/loop-still.webp"', 'data-still="first-post/loop-still.png"') + BLOG_SMALL_STILL),
+             "site check: blog/first-post.html plays the animated WebP 'first-post/loop.webp' and rests on 'first-post/loop-still.png', which is not its still, "
+             "blog/first-post/loop-still.webp"),
+            ("an animated WebP with no still beside it", self.write("blog/first-post/other.webp", ANIM_WEBP),
+             "site check: blog/first-post/other.webp has no still beside it, blog/first-post/other-still.webp"),
+            ("a .webp of 1,000,001 bytes", self.write("blog/first-post/loop-still.webp", STILL_WEBP + b"\0" * (1_000_001 - len(STILL_WEBP))),
+             "site check: blog/first-post/loop-still.webp is 1,000,001 bytes, more than the 1,000,000 a file under blog/ may hold"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
@@ -892,7 +908,7 @@ class Blog(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: the 2 blog page(s) and their 1 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 8, result.stdout)
+        self.assertIn("site check: the 2 blog page(s) and their 1 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 10, result.stdout)
 
     def test_what_the_blog_allows(self):
         german = ('<h1>Blog</h1><figure><picture><source media="(prefers-reduced-motion:reduce)" srcset="first-post/loop-still.png">'
@@ -902,7 +918,11 @@ class Blog(unittest.TestCase):
                 ("the same figure on the blog's index, from the post's own folder, its query written without a space",
                  self.put("blog/index.html", "<h1>Blog</h1>", german), 2),
                 ("an image that is no GIF, with alt text, outside a <picture>",
-                 self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.png" alt="A still">'), 1)):
+                 self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.png" alt="A still">'), 1),
+                ("a WebP twin pair: the reduced-motion source naming the WebP still, and a play-once WebP resting on it",
+                 self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, "<picture>" + '<source media="(prefers-reduced-motion: reduce)" type="image/webp" srcset="first-post/loop-still.webp"><source type="image/webp" srcset="first-post/loop-still.webp" data-once="first-post/loop.webp" data-still="first-post/loop-still.webp">' + BLOG_SMALL_STILL), 1),
+                ("a still WebP, with alt text, outside a <picture>",
+                 self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.webp" alt="A still">'), 1)):
             with self.subTest(name):
                 result = self.checked(change)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -1046,7 +1066,7 @@ class PlayOnce(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: the 3 blog page(s) and their 3 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 14, result.stdout)
+        self.assertIn("site check: the 3 blog page(s) and their 3 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 16, result.stdout)
 
     def test_each_control_is_refused(self):
         for name, change, message in self.controls():

@@ -868,6 +868,7 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # <name>-still.png. A <source> after its picture's <img> is never selected, so it counts for nothing. Every src, srcset, data-once and data-still is a
 # file of the site. The blog is English only, with no language pair: each of its pages says lang="en" and carries no hreflang, and each post names its
 # Markdown version beside it. Its script, a file of its own, asks for nothing, as an inline script may not. Every file under blog/ is read.
+# An animated WebP, told by its own header, holds to the GIF rules, and its still is a WebP: <name>-still.webp, as a GIF's is a PNG.
 # Every image has alt text but an author's picture, an <img> outside any <picture> whose file is in blog/assets/authors/ or blog/assets/seats/:
 # its alt is empty, as the author's name stands beside it as text. The GIF rules hold for every image. A file under blog/ holds at most
 # 1,000,000 bytes, but the share video, the one MP4 of the site a post's one og:video names, at most 2,000,000.
@@ -879,15 +880,27 @@ REDUCED_MOTION = "(prefers-reduced-motion:reduce)"          # the media query wi
 
 
 def still_of(path):
-    """The still of the GIF at `path`, a path relative to the site: the PNG beside it, named for it, with -still; a play-once copy, named for its
-    figure with -once, rests on its figure's still."""
+    """The still of the GIF or the animated WebP at `path`, a path relative to the site: the still beside it, named for it with -still, a PNG
+    for a GIF and a WebP for a WebP, so neither format's still stands in for the other's; a play-once copy, named for its figure with -once,
+    rests on its figure's still."""
     folder, name = posixpath.split(path)
-    stem = posixpath.splitext(name)[0]
-    return posixpath.join(folder, (stem[:-len("-once")] if stem.endswith("-once") else stem) + "-still.png")
+    stem, suffix = posixpath.splitext(name)
+    still = "-still.webp" if suffix.lower() == ".webp" else "-still.png"
+    return posixpath.join(folder, (stem[:-len("-once")] if stem.endswith("-once") else stem) + still)
 
 
-def is_gif(url):
-    return urlsplit(url).path.lower().endswith(".gif")
+def motion(path):
+    """What moves at `path`, a path relative to the site: "GIF" for a .gif, and "animated WebP" for a .webp whose own header says so (the
+    RIFF WEBP file's VP8X chunk with its animation flag); None for anything else, a still WebP among them, and for no path."""
+    if path is None:
+        return None
+    if path.lower().endswith(".gif"):
+        return "GIF"
+    if path.lower().endswith(".webp") and (site / path).is_file():
+        head = (site / path).read_bytes()[:21]
+        if head[:4] == b"RIFF" and head[8:12] == b"WEBP" and head[12:16] == b"VP8X" and len(head) == 21 and head[20] & 0x02:
+            return "animated WebP"
+    return None
 
 
 class BlogPage(HTMLParser):
@@ -951,37 +964,39 @@ def blog_problem(rel, page):
             return f"{rel} shows the author's picture {src!r} without an empty alt, though the name beside it says who it is"
         if not author and not attrs.get("alt", "").strip():
             return f"{rel} shows the image {src!r} without alt text"
-        if not is_gif(src):
+        kind = motion(in_site(rel, src))
+        if not kind:
             continue
         if sources is None:
-            return f"{rel} shows the GIF {src!r} outside a <picture>, so a reader who turns motion off gets no still"
+            return f"{rel} shows the {kind} {src!r} outside a <picture>, so a reader who turns motion off gets no still"
         still = still_of(in_site(rel, src))
         if not any(re.sub(r"\s+", "", source.get("media", "").lower()) == REDUCED_MOTION and any(in_site(rel, url) == still for url in srcset_urls(source.get("srcset", "")))
                    for source in sources):
-            return f'{rel} shows the GIF {src!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
+            return f'{rel} shows the {kind} {src!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
     for sources in page.source_lists:
         for i, source in enumerate(sources):
             for url in srcset_urls(source.get("srcset", "")):
-                if not is_gif(url):
+                kind = motion(in_site(rel, url))
+                if not kind:
                     continue
                 still = still_of(in_site(rel, url))
                 if not any(REDUCED_MOTION in re.sub(r"\s+", "", earlier.get("media", "").lower())
                            and any(in_site(rel, other) == still for other in srcset_urls(earlier.get("srcset", ""))) for earlier in sources[:i]):
-                    return (f'{rel} offers the GIF {url!r} in a <source> with no <source> for reduced motion before it whose srcset names its still, '
+                    return (f'{rel} offers the {kind} {url!r} in a <source> with no <source> for reduced motion before it whose srcset names its still, '
                             f'{still}')
     for tag, attrs, sources, place in page.plays:
         once, rest = attrs["data-once"], attrs.get("data-still", "")
-        still = still_of(in_site(rel, once))
+        still, kind = still_of(in_site(rel, once)), motion(in_site(rel, once)) or "GIF"
         if in_site(rel, rest) != still:
-            return f"{rel} plays the GIF {once!r} and rests on {rest!r}, which is not its still, {still}"
+            return f"{rel} plays the {kind} {once!r} and rests on {rest!r}, which is not its still, {still}"
         if sources is None:
-            return f"{rel} plays the GIF {once!r} outside a <picture>, so a reader who turns motion off gets no still"
+            return f"{rel} plays the {kind} {once!r} outside a <picture>, so a reader who turns motion off gets no still"
         names_still = [source for source in (sources if place is None else sources[:place])
                        if any(in_site(rel, url) == still for url in srcset_urls(source.get("srcset", "")))]
         if place is None and not any(re.sub(r"\s+", "", source.get("media", "").lower()) == REDUCED_MOTION for source in names_still):
-            return f'{rel} plays the GIF {once!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
+            return f'{rel} plays the {kind} {once!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
         if place is not None and not any(REDUCED_MOTION in re.sub(r"\s+", "", source.get("media", "").lower()) for source in names_still):
-            return f"{rel} plays the GIF {once!r} from a <source> with no <source> for reduced motion before it whose srcset names its still, {still}"
+            return f"{rel} plays the {kind} {once!r} from a <source> with no <source> for reduced motion before it whose srcset names its still, {still}"
     return None
 
 
@@ -1006,7 +1021,7 @@ for path in blog_files:
         fail(f"{rel} is {path.stat().st_size:,} bytes, more than the {SHARE_VIDEO_LIMIT:,} a share video, the file a post's og:video names, may hold")
     elif rel not in share_videos and path.stat().st_size > BLOG_LIMIT:
         fail(f"{rel} is {path.stat().st_size:,} bytes, more than the {BLOG_LIMIT:,} a file under {BLOG}/ may hold")
-    if is_gif(rel) and not (site / still_of(rel)).is_file():
+    if motion(rel) and not (site / still_of(rel)).is_file():
         fail(f"{rel} has no still beside it, {still_of(rel)}, for a reader who turns motion off")
     if path.suffix == ".js" and REQUEST_APIS.search(path.read_text(encoding="utf-8")):
         fail(f"{rel}, the blog's script, can ask for something: {REQUEST_APIS.search(path.read_text(encoding='utf-8')).group(0)}")

@@ -29,6 +29,8 @@ if(navigator.clipboard)for(const cp of document.querySelectorAll('.share .sh-cop
 // 2. Motion. Readers who ask for reduced motion get the stills, the hero's poster, and no control.
 // 2b. The figures play once: each plays when 60 % of it is in view, then rests on its lit end; its control
 //    stops it or plays it again. A screen ahead, a preload hint warms its file; a replay takes a fresh address.
+//    Each figure comes as lossless WebP first, its GIF and PNG after; the script follows whichever the
+//    browser chose, so it warms, plays and times that one only.
 if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window))return;
 // 2a. The hero: the share video's page cut (HEVC first, H.264 after; the browser takes the first it can play) loops,
 //     muted, while it is in view; its control stops it or plays it again. With reduced motion the script has already
@@ -39,9 +41,10 @@ if(hero){const hb=document.querySelector('.hero .again');let held=false;
   const halt=()=>{hero.pause();hb.textContent='play again';hb.setAttribute('aria-pressed','true');};
   hb.hidden=false;hb.addEventListener('click',()=>{held=!hero.paused;held?halt():go();});
   new IntersectionObserver(es=>{for(const e of es){if(e.isIntersecting&&!held)go();else if(!e.isIntersecting&&!hero.paused)hero.pause();}}).observe(hero);}
-const phone=matchMedia('(max-width: 640px)');
 const els=p=>[...p.querySelectorAll('[data-once]')];
 const put=(p,k,q='')=>els(p).forEach(e=>{const v=e.dataset[k]+q;if(e.tagName==='IMG')e.src=v;else e.srcset=v;});
+const pick=p=>{const c=(p.querySelector('img').currentSrc||'').split('?')[0];   // the chosen one, by the file it shows
+  return c?els(p).find(e=>c.endsWith(e.dataset.still)||c.endsWith(e.dataset.once))||null:null;};
 const btn=p=>p.closest('figure').querySelector('.again');
 function word(p,playing){const b=btn(p),f=b.dataset.f;b.hidden=false;b.textContent=playing?'stop':'play again';
   b.setAttribute('aria-label',playing?'stop '+f:'play '+f+' again');}
@@ -49,7 +52,7 @@ function play(p){
   clearTimeout(p._t);p.dataset.st='load';word(p,true);
   const img=p.querySelector('img');
   img.addEventListener('load',()=>{if(p.dataset.st!=='load')return;p.dataset.st='play';
-    const ms=+(phone.matches?p.querySelector('source[data-once]'):img).dataset.ms;p._t=setTimeout(()=>rest(p),ms);},{once:true});
+    const ms=+(pick(p)||img).dataset.ms;p._t=setTimeout(()=>rest(p),ms);},{once:true});
   put(p,'once',p._n?'?r='+(++p._n):(p._n=1,''));
 }
 function rest(p){clearTimeout(p._t);p.dataset.st='rest';put(p,'still');word(p,false);}
@@ -58,8 +61,9 @@ const io=new IntersectionObserver(es=>{for(const e of es){const p=e.target.close
   if(e.intersectionRect.height>=0.6*Math.min(e.boundingClientRect.height,innerHeight)){io.unobserve(e.target);play(p);}}},
   {threshold:[0,.2,.4,.6,.8,1]});
 const warm=new IntersectionObserver(es=>{for(const e of es){if(!e.isIntersecting)continue;warm.unobserve(e.target);
-  const p=e.target.closest('picture'),s=phone.matches&&p.querySelector('source[data-once]')||e.target;
-  const l=document.createElement('link');l.rel='preload';l.as='image';l.href=s.dataset.once;document.head.appendChild(l);}},
+  const p=e.target.closest('picture'),go=()=>{const s=pick(p);if(!s)return;
+    const l=document.createElement('link');l.rel='preload';l.as='image';l.href=s.dataset.once;document.head.appendChild(l);};
+  pick(p)?go():e.target.addEventListener('load',go,{once:true});}},   // a lazy still not chosen yet: once it is
   {rootMargin:'100% 0px'});
 for(const img of document.querySelectorAll('.post figure img[data-once]')){const p=img.closest('picture');
   p.dataset.st='wait';io.observe(img);warm.observe(img);

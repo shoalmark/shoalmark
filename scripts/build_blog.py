@@ -14,9 +14,10 @@ assets/blog.js, assets/authors/ and assets/seats/ (the authors' pictures), fonts
 their licences), feed.xml and llms.txt.
 Every page links with relative addresses; the head's addresses are absolute. A post's body is its Markdown converted line by line into the
 post's markup: the TL;DR as a dl with its band, each slot a figure with its stills and play-once GIFs, each marker section, the hails, the
-status paragraph, the quotation, the reference and the foot; then each heading gets its anchor, each hail its label, "written by" and the
-credits follow the quotation, and the end links follow the foot. The head names the authors, and a share row opens the post and comes
-again after "written by". The builder refuses whatever has a shape it does not expect.
+status paragraph, the quotation, the reference and the foot, each figure's sources and <img> each after its WebP twin; then each
+heading gets its anchor, each hail its label, "written by" and the credits follow the quotation, and the end links follow the foot. The
+head names the authors, and a share row opens the post and comes again after "written by". The builder refuses whatever has a shape it
+does not expect.
 """
 import datetime
 import hashlib
@@ -233,7 +234,29 @@ class Post:
         self.used.add(place)
         return self.hails[place]
 
+    def twins(self, picture):
+        """Before each <source> and the <img> of a figure's <picture>, its WebP twin: the same media, sizes and data, its files .webp and its
+        type image/webp. A browser that reads WebP takes the twin; any other skips it and takes the PNG or GIF, which stay as they were."""
+        slug = re.escape(self.slug)
+
+        def twin(m):
+            tag = m.group(0)
+            webp = re.sub(rf'({slug}/[A-Za-z0-9._-]+)\.(?:png|gif)"', r'\1.webp"', tag)
+            for name in re.findall(rf'{slug}/([A-Za-z0-9._-]+\.webp)"', webp):
+                if not (self.files / name).is_file():
+                    refuse(f"{self.name}: {name}, a WebP twin's file, is not among its files")
+            if tag.startswith("<source "):
+                return webp.replace("<source ", '<source type="image/webp" ', 1) + tag
+            a = dict(re.findall(r'([\w-]+)="([^"]*)"', webp))
+            keep = "".join(f' {k}="{a[k]}"' for k in ("width", "height", "data-still", "data-once", "data-ms") if k in a)
+            return f'<source type="image/webp" srcset="{a["src"]}"{keep}>' + tag
+        return re.sub(r"<(?:source|img) [^>]*>", twin, picture)
+
     def figure(self, n, caption):
+        """A figure slot: its <picture>, every source and its <img> each after its WebP twin, and its caption."""
+        return re.sub(r"<picture>.*?</picture>", lambda m: self.twins(m.group(0)), self.figure_png_gif(n, caption))
+
+    def figure_png_gif(self, n, caption):
         f = self.figures.get(f"F{n}")
         if not f:
             refuse(f"{self.name}: F{n} has no entry in its figures file")

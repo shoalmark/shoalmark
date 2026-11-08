@@ -63,7 +63,7 @@ class Built(unittest.TestCase):
     def test_the_posts_files_are_its_sources(self):
         src = sorted(p.name for p in (ROOT / "blog/posts/hail-1").iterdir())
         self.assertEqual(sorted(p.name for p in (self.blog / "hail-1").iterdir()), src)
-        self.assertEqual(len(src), 62)
+        self.assertEqual(len(src), 120)
         for name in src:
             self.assertEqual((self.blog / "hail-1" / name).read_bytes(), (ROOT / "blog/posts/hail-1" / name).read_bytes(), name)
 
@@ -143,6 +143,32 @@ class Built(unittest.TestCase):
                   '<meta property="og:video:width" content="1200">', '<meta property="og:video:height" content="630">',
                   'poster="hail-1/card.png"'):
             self.assertIn(s, self.page)
+
+    def test_each_figures_webp_twins(self):
+        pictures = re.findall(r"<picture>(.*?)</picture>", self.page)
+        self.assertEqual(len(pictures), 15)
+        twins = 0
+        for pic in pictures:
+            tags = re.findall(r"<(?:source|img) [^>]*>", pic)
+            self.assertEqual(len(tags) % 2, 0, pic[:120])
+            for twin, tag in zip(tags[::2], tags[1::2]):
+                twins += 1
+                self.assertTrue(twin.startswith('<source type="image/webp" '), twin)
+                self.assertNotIn('type="image/webp"', tag)
+                want = re.sub(r'(hail-1/[A-Za-z0-9._-]+)\.(?:png|gif)"', r'\1.webp"', tag)
+                if tag.startswith("<source "):
+                    self.assertEqual(twin, want.replace("<source ", '<source type="image/webp" ', 1))
+                else:
+                    a = dict(re.findall(r'([\w-]+)="([^"]*)"', want))
+                    self.assertEqual(twin, f'<source type="image/webp" srcset="{a["src"]}"'
+                                     + "".join(f' {k}="{a[k]}"' for k in ("width", "height", "data-still", "data-once", "data-ms") if k in a) + ">")
+                for name in re.findall(r'hail-1/([A-Za-z0-9._-]+\.webp)"', twin):
+                    self.assertTrue((self.blog / "hail-1" / name).is_file(), name)
+        self.assertEqual(twins, 58)
+        imgs = re.findall(r"<picture>.*?(<img [^>]*>)</picture>", self.page)
+        self.assertEqual([re.search(r'loading="(\w+)"', i).group(1) for i in imgs], ["eager"] + ["lazy"] * 14)
+        self.assertTrue(all(re.search(r'src="hail-1/[^"]+\.png"', i) for i in imgs))
+        self.assertNotRegex(" ".join(imgs), r"\.webp")
 
     def test_the_heros_two_page_sources(self):
         video = re.search(r'<figure class="hero">\n    (<video [^>]*>.*?</video>)', self.page).group(1)
@@ -263,6 +289,8 @@ class Refuses(unittest.TestCase):
                                                                                             root / "blog/posts/hail-1/card.png"), "its card is not 1200 x 630"),
                 ("an HEVC page file that says hev1", lambda root: (root / "blog/posts/hail-1/hail-1-page.hevc.mp4").write_bytes(
                     (root / "blog/posts/hail-1/hail-1-page.hevc.mp4").read_bytes().replace(b"hvc1", b"hev1", 1)), "its video's sample entry is hev1, not avc1 or hvc1"),
+                ("a figure's WebP twin with no file", lambda root: (root / "blog/posts/hail-1/f14-sign-seal-780-once.webp").rename(root / "f14-sign-seal-780-once.webp.moved"),
+                 "f14-sign-seal-780-once.webp, a WebP twin's file, is not among its files"),
                 ("the hero's page files in the other order", self.edit(post, 'hero: ["hail-1-page.hevc.mp4", "hail-1-page.mp4"]', 'hero: ["hail-1-page.mp4", "hail-1-page.hevc.mp4"]'),
                  "not an HEVC file, then an H.264 one")):
             with self.subTest(name):
