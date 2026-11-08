@@ -869,9 +869,11 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # file of the site. The blog is English only, with no language pair: each of its pages says lang="en" and carries no hreflang, and each post names its
 # Markdown version beside it. Its script, a file of its own, asks for nothing, as an inline script may not. Every file under blog/ is read.
 # An animated WebP, told by its own header, holds to the GIF rules, and its still is a WebP: <name>-still.webp, as a GIF's is a PNG.
-# Every still these rules name, beside a GIF or an animated WebP, in a data-still or in a srcset of a <source> for reduced motion, is a still by its
-# own bytes, as a browser reads them and not by its name: a .png starts with the PNG signature and holds no acTL chunk, and a .webp is a RIFF WEBP
-# file that holds no ANIM chunk and whose VP8X sets no animation flag; the chunks are walked, never searched.
+# Every still these rules name, beside a GIF or an animated WebP, in a data-still, in a srcset of a <source> for reduced motion or as a <video>'s
+# poster, which a reader who turns motion off sees in the video's place, is a still by its own bytes, as a browser reads them and not by its name:
+# a .png starts with the PNG signature and holds no acTL chunk, and a .webp is a RIFF WEBP file that holds no ANIM chunk and whose VP8X sets no
+# animation flag; the chunks are walked, never searched. A still named neither .png nor .webp is refused, but a GIF, which the GIF rules read; and
+# a poster must not move at all, as the GIF rules never read a poster.
 # Every image has alt text but an author's picture, an <img> outside any <picture> whose file is in blog/assets/authors/ or blog/assets/seats/:
 # its alt is empty, as the author's name stands beside it as text. The GIF rules hold for every image. A file under blog/ holds at most
 # 1,000,000 bytes, but the share video, the one MP4 of the site a post's one og:video names, at most 2,000,000.
@@ -921,8 +923,8 @@ def sniffed(data):
 
 
 def still_problem(path):
-    """Why the still at `path`, a path relative to the site, is no still by its own bytes; None when it is one, and for a still named neither
-    .png nor .webp, which no rule here reads. A .png still starts with the PNG signature, so a browser that sniffs it finds no GIF or WebP, and
+    """Why the still at `path`, a path relative to the site, is no still by its own bytes; None when it is one. A still named neither .png nor
+    .webp is refused, but one that motion() names, a GIF, which is left to the GIF rules and their own words. A .png still starts with the PNG signature, so a browser that sniffs it finds no GIF or WebP, and
     none of its chunks, walked from the signature to IEND, is acTL, the chunk that makes a PNG move. A .webp still is a RIFF WEBP file: none of
     its chunks, walked to the end its RIFF header gives, is ANIM, and its VP8X, where it has one, sets no animation flag. The chunks are walked by
     their lengths, never searched for the four letters, which compressed data can hold by chance; a chunk that runs past the file is refused."""
@@ -957,7 +959,7 @@ def still_problem(path):
                 return "its VP8X chunk sets the animation flag, so it is an animated WebP"
             i += 8 + length + (length & 1)
         return None
-    return None
+    return None if motion(path) else "it is named neither .png nor .webp, so it is no still these rules read"
 
 
 class BlogPage(HTMLParser):
@@ -965,7 +967,8 @@ class BlogPage(HTMLParser):
     image with its attributes and the sources of the <picture> it stands in, None outside one, the sources of each <picture>, in their order, and each
     element that names a play-once GIF, with its attributes, the sources of its <picture> (None outside one) and, for a <source>, its place among them.
     A browser never selects a <source> that comes after its <picture>'s <img>, so such a source joins neither the picture's sources nor the plays.
-    And every still it names: each data-still, and each address in the srcset of a <source> for reduced motion, wherever that source stands."""
+    And every still it names: each data-still, each address in the srcset of a <source> for reduced motion, wherever that source stands, and each
+    <video>'s poster."""
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -978,6 +981,8 @@ class BlogPage(HTMLParser):
         a = {key: value or "" for key, value in attrs}
         if "data-still" in a:
             self.stills.append((tag, "data-still", a["data-still"]))
+        if tag == "video" and a.get("poster"):
+            self.stills.append((tag, "poster", a["poster"]))
         if tag == "source" and REDUCED_MOTION in re.sub(r"\s+", "", a.get("media", "").lower()):
             self.stills += [(tag, "srcset", url) for url in srcset_urls(a.get("srcset", ""))]
         if tag == "html":
@@ -1087,6 +1092,8 @@ for rel, page in blog_parsed.items():
     for tag, attr, url in page.stills:
         target = in_site(rel, url)
         if target is not None and (site / target).resolve().is_relative_to(site.resolve()) and (site / target).is_file():
+            if attr == "poster" and motion(target):
+                fail(f"{rel} shows the {motion(target)} {url!r} as a <video>'s poster: a poster must not move, and the GIF rules never read one")
             stills.setdefault(target, f"a still {rel} names ({tag} {attr})")
 for still, named in sorted(stills.items()):
     problem = still_problem(still)

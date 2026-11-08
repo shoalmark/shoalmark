@@ -43,13 +43,19 @@ BLOG_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-wid
 BLOG_SMALL = '<source media="(max-width: 640px)" srcset="first-post/small.gif">'
 BLOG_PICTURE = "<picture>" + BLOG_SMALL_STILL + BLOG_SOURCE + BLOG_SMALL + BLOG_IMG + "</picture>"
 BLOG_FIGURE = "<figure>" + BLOG_PICTURE + "<figcaption>A loop.</figcaption></figure>"
+# a <video> whose poster, a still PNG of its own, a reader who turns motion off sees in its place; and beside them two files no page names as a
+# still, which the controls name so: a .jpg holding a GIF's bytes and an SVG that animates
+BLOG_VIDEO = '<video poster="first-post/poster.png" muted playsinline></video>'
+ANIMATED_SVG = (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1">'
+                b'<animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/></rect></svg>')
 # an author's picture, beside the author's name: its alt is empty
 AUTHOR = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1H0z"/></svg>'
 BLOG_AUTHOR = '<p class="by"><img src="assets/seats/builder.svg" alt=""><b>Builder</b></p>'
 BLOG = {"blog/index.html": '<html lang="en"><body><h1>Blog</h1><ul><li><a href="first-post.html">First post</a></li></ul></body></html>',
-        "blog/first-post.html": '<html lang="en"><head><link rel="alternate" type="text/markdown" href="first-post.md"></head><body><h1>First post</h1>' + BLOG_AUTHOR + BLOG_FIGURE + '<p><a href="index.html">All posts</a></p></body></html>',
+        "blog/first-post.html": '<html lang="en"><head><link rel="alternate" type="text/markdown" href="first-post.md"></head><body><h1>First post</h1>' + BLOG_AUTHOR + BLOG_FIGURE + BLOG_VIDEO + '<p><a href="index.html">All posts</a></p></body></html>',
         "blog/first-post.md": "# First post\n", "blog/first-post/loop.gif": GIF, "blog/first-post/loop-still.png": STILL, "blog/first-post/small.gif": GIF, "blog/first-post/small-still.png": STILL,
-        "blog/assets/seats/builder.svg": AUTHOR, "blog/first-post/loop.webp": ANIM_WEBP, "blog/first-post/loop-still.webp": STILL_WEBP}
+        "blog/assets/seats/builder.svg": AUTHOR, "blog/first-post/loop.webp": ANIM_WEBP, "blog/first-post/loop-still.webp": STILL_WEBP,
+        "blog/first-post/poster.png": STILL, "blog/first-post/shot.jpg": GIF, "blog/first-post/shot.svg": ANIMATED_SVG}
 # a figure the post's script plays once, as a post sets it: its stills shown, each play-once GIF in a data-once beside the still it rests on, its
 # data-still, and the <picture>'s sources for reduced motion naming the stills; beside it a still figure; on a page of its own, with their four files
 ONCE_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="second-post/wave-still.png">'
@@ -818,7 +824,8 @@ class FencedBlocks(unittest.TestCase):
 class Blog(unittest.TestCase):
     """The blog: each file under blog/ is at most 1,000,000 bytes, and each GIF there has its still beside it; on each page in blog/,
     each image has alt text but an author's picture, whose alt is empty, each GIF stands in a <picture> whose reduced-motion source names its still, each GIF a <source> offers comes after a source for
-    reduced motion that names its still, and each src and srcset is a file of the site; each still those rules name is a still by its own bytes.
+    reduced motion that names its still, and each src and srcset is a file of the site; each still those rules name, and each <video>'s poster,
+    is a still by its own bytes, named .png or .webp, and a poster does not move.
     A site that passes, and controls that each change one thing in it; the check names the file."""
 
     PAGE = "blog/first-post.html"
@@ -914,6 +921,24 @@ class Blog(unittest.TestCase):
              self.write("blog/first-post/loop-still.webp", STILL_WEBP.replace(b"VP8L" + (6).to_bytes(4, "little"), b"VP8L" + (60).to_bytes(4, "little"))),
              "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its chunks do not run "
              "whole to the end its RIFF header gives"),
+            ("a .jpg holding a GIF's bytes, named first in a <source> for reduced motion",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture><source media="(prefers-reduced-motion: reduce)" srcset="first-post/shot.jpg">' + BLOG_SMALL_STILL),
+             "site check: blog/first-post/shot.jpg, a still blog/first-post.html names (source srcset), is not a still by its own bytes: it is named "
+             "neither .png nor .webp, so it is no still these rules read"),
+            ("an animated .svg, named first in a <source> for reduced motion",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture><source media="(prefers-reduced-motion: reduce)" srcset="first-post/shot.svg">' + BLOG_SMALL_STILL),
+             "site check: blog/first-post/shot.svg, a still blog/first-post.html names (source srcset), is not a still by its own bytes: it is named "
+             "neither .png nor .webp, so it is no still these rules read"),
+            ("an APNG as a <video>'s poster", self.write("blog/first-post/poster.png", APNG),
+             "site check: blog/first-post/poster.png, a still blog/first-post.html names (video poster), is not a still by its own bytes: it holds an "
+             "acTL chunk, so it is an animated PNG"),
+            ("a GIF as a <video>'s poster, with its -still.png beside it", self.put(self.PAGE, 'poster="first-post/poster.png"', 'poster="first-post/loop.gif"'),
+             "site check: blog/first-post.html shows the GIF 'first-post/loop.gif' as a <video>'s poster: a poster must not move, and the GIF rules "
+             "never read one"),
+            ("an animated WebP as a <video>'s poster, with its -still.webp beside it",
+             self.put(self.PAGE, 'poster="first-post/poster.png"', 'poster="first-post/loop.webp"'),
+             "site check: blog/first-post.html shows the animated WebP 'first-post/loop.webp' as a <video>'s poster: a poster must not move, and the "
+             "GIF rules never read one"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
@@ -947,7 +972,7 @@ class Blog(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: the 2 blog page(s) and their 1 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 10, result.stdout)
+        self.assertIn("site check: the 2 blog page(s) and their 1 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 13, result.stdout)
 
     def test_what_the_blog_allows(self):
         german = ('<h1>Blog</h1><figure><picture><source media="(prefers-reduced-motion:reduce)" srcset="first-post/loop-still.png">'
@@ -1126,7 +1151,7 @@ class PlayOnce(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: the 3 blog page(s) and their 3 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 16, result.stdout)
+        self.assertIn("site check: the 3 blog page(s) and their 3 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 19, result.stdout)
 
     def test_each_control_is_refused(self):
         for name, change, message in self.controls():
