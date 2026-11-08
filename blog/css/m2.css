@@ -1,0 +1,16 @@
+/* M2, "chart room": the brand's band. The header is the navy band ending at the drying line, as the start page's,
+   its links in the pixel face; the blog's own tab sits by the name, olive like the TL;DR's; the kicker stands on a
+   contour line over the title. */
+.bh{background:var(--band);border-bottom:2px solid var(--drying)}
+.bh-sec{font:700 11px/1 var(--pix);text-transform:uppercase;letter-spacing:.04em;background:var(--watt);color:var(--tabink);padding:5px 7px 4px}
+.bh-nav a{font:400 11px/1 var(--pix);text-transform:uppercase;letter-spacing:.04em;color:var(--ink);padding:8px 10px;border:1px solid transparent}
+.bh-nav a:hover{border-color:var(--drying);color:var(--watt)}
+.bh-nav a.bh-docs{font-weight:700;color:var(--tabink);background:var(--land);border-color:var(--land)}
+.bh-nav a.bh-docs:hover{background:var(--watt);border-color:var(--watt);color:var(--tabink)}
+.kicker{max-width:52ch;margin:0 auto}
+.kicker::before,.kicker::after{content:"";flex:1;align-self:center;height:1px;background:var(--contour)}
+.toc-m{border:1px solid var(--contour);padding:0 14px}
+.bf{background:var(--band);border-top:2px solid var(--drying)}
+@media (max-width:640px){.bh-nav{gap:2px}.bh-nav a{padding:7px 7px}}
+@media (max-width:340px){.bh-nav a.bh-gh{display:none}}
+@media (max-width:380px){.bh-word{display:none}}

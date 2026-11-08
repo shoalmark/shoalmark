@@ -1,0 +1,263 @@
+/* shoalmark's blog: its own site at /blog/, dark-first (deep water, like the figures, the card and the Board), built
+   outside the docs engine. The post's page is the post: its mono body, TL;DR, boxed figures, hails as text, quotation
+   and reference. This sheet carries all of it; nothing comes from the docs' theme. */
+
+/* the site's own mono and pixel faces, the self-hosted files copied under neutral names (blog-site-design.md §5) */
+@font-face{font-family:"shoalmark mono";src:url(../fonts/mono-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"shoalmark mono";src:url(../fonts/mono-600.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"shoalmark pixel";src:url(../fonts/pixel-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"shoalmark pixel";src:url(../fonts/pixel-700.woff2) format("woff2");font-weight:700;font-display:swap}
+
+/* deep water: the site's night tokens, the only scheme for now */
+:root{color-scheme:dark;--bg:#0d1720;--panel:#111f2c;--band:#15293d;--ink:#d9e4ec;--dim:#a9bbc8;--mute:#90a3b1;
+  --contour:#34546c;--line:#2a4357;--box:#34546c;--drying:#b8c98c;--watt:#bccd8f;--id:#e8d4a0;--land:#e8d4a0;
+  --tabink:#0d1720;--fig:#0d1720;--toc:13.5rem;--gap:3rem;--col:68ch;
+  --mono:"shoalmark mono",ui-monospace,"SF Mono",Menlo,monospace;--pix:"shoalmark pixel","shoalmark mono",monospace;--l:1.65rem}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);color:var(--ink);font:16px/1.65 var(--mono);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{background:var(--bg);min-height:100vh;display:flex;flex-direction:column}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--watt);outline-offset:2px}
+.pricke{display:block;flex:none;width:32px;height:32px;shape-rendering:crispEdges;color:var(--ink)}
+
+/* ---------------------------------------------------------------- the header: structure (the variants draw it) */
+.bh-in{display:flex;align-items:center;gap:20px;max-width:1440px;margin:0 auto;padding:0 24px;height:64px}
+.bh-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.bh-word{font:600 17px/1 var(--mono);letter-spacing:-.01em}
+.bh-sec{text-decoration:none}
+.bh-nav{margin-left:auto;display:flex;align-items:center;gap:4px}
+.bh-nav a{text-decoration:none;white-space:nowrap}
+
+/* ---------------------------------------------------------------- the page: the post's head over its text column; the
+   contents to the left of the text from 1000 px up (text centred in the window from 1280 px, the two centred together
+   below that); below 1000 px one column, the contents folded under the head */
+.page{flex:1;display:grid;grid-template-columns:minmax(0,1fr) min(var(--col),100%) minmax(0,1fr);
+  grid-template-rows:auto auto 1fr;padding:72px 24px 88px}
+.post-head{grid-column:2;grid-row:1}
+.hero{grid-column:1/-1;grid-row:2}
+.post{grid-column:2;grid-row:3;min-width:0}
+.toc{grid-column:1;grid-row:3;justify-self:end;width:var(--toc);margin-right:var(--gap);position:sticky;top:32px;align-self:start;
+  max-height:calc(100vh - 64px);overflow:auto;scrollbar-width:thin}
+@media (min-width:1000px) and (max-width:1279.98px){
+  .page{grid-template-columns:var(--toc) min(var(--col),100%);column-gap:var(--gap);justify-content:center}
+  .post-head,.post{grid-column:2}
+  .hero{grid-column:1/-1}
+  .toc{grid-column:1;justify-self:stretch;margin-right:0;width:auto}}
+@media (max-width:999.98px){
+  .page{display:block;max-width:calc(var(--col) + 48px);margin:0 auto;width:100%}
+  .toc{display:none}}
+
+/* ---------------------------------------------------------------- the post's head, centred over the text column: the
+   kicker (the date and a label, in the pixel face), the framed title, one line of dek, then the reading time and the
+   Markdown version; no byline, no share row (a share row, when it comes, goes under .meta at no cost) */
+.post-head{text-align:center;margin-bottom:calc(var(--l)*1.5)}
+.kicker{display:flex;justify-content:center;align-items:baseline;gap:1.2ch;font:400 13px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.kicker .label{color:var(--watt)}
+.post-head h1{margin:calc(var(--l)*.6) 0 0;font-size:2.2em;line-height:1.15;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.post-head h1>span{display:block;text-wrap:balance}
+.dek{max-width:54ch;margin:calc(var(--l)*.7) auto 0;font-size:1.1em;line-height:1.5;color:var(--dim);text-wrap:balance}
+.meta{display:flex;justify-content:center;gap:1.2ch;margin-top:calc(var(--l)*.6);font-size:13px;color:var(--mute)}
+.meta a{color:var(--dim);text-decoration:underline;text-decoration-color:var(--contour);text-underline-offset:.2em}
+.meta a:hover{color:var(--ink)}
+/* the share video as the post's hero: muted, looping, its still as the poster; under reduced motion only the still
+   shows, and the script never starts it. Wider than the text, never wider than 1000 px */
+.hero{justify-self:center;width:min(100%,1000px);margin:0 0 calc(var(--l)*2)}
+.hero video{display:block;width:100%;height:auto;aspect-ratio:1200/630;background:var(--bg) center/cover;border-radius:2px}
+.hero figcaption{display:flex;justify-content:flex-end;min-height:24px;margin-top:6px;font-size:13px}
+.hero .again{font:inherit;color:var(--mute);background:none;border:0;cursor:pointer;padding:12px 8px;margin:-12px -8px;
+  text-decoration:underline;text-decoration-color:var(--contour);text-underline-offset:.2em}
+.hero .again:hover{color:var(--ink)}
+.hero .again[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.hero .again[hidden]{display:inline;visibility:hidden}}
+/* hail's wordmark, ⌜hail/1⌟: the corners drawn, never set as characters (the faces hold neither), in tenths of the
+   h's height (.74em): 1 unit thick, 4 long, 2 clear of the h's top and of the baseline, 4 clear of the letters */
+.hf{position:relative;display:inline-block;line-height:1.25;padding:0 .34em 0 .295em}
+.hf::before,.hf::after{content:"";position:absolute;width:.296em;height:.296em;border:0 solid currentColor}
+.hf::before{left:0;top:.038em;border-top-width:.07em;border-left-width:.07em}
+.hf::after{right:0;bottom:.028em;border-bottom-width:.07em;border-right-width:.07em}
+
+/* ---------------------------------------------------------------- the contents: the board's titled box, its sections
+   numbered 01, 02 … and flush, the markers (`### `) indented on a tree line; it stays in place, and the section being
+   read is in --ink with an olive mark, the rest in --mute */
+.toc{padding-top:12px}
+.toc-box{position:relative;border:1px solid var(--contour);padding:20px 14px 12px}
+.toc-t{position:absolute;top:-.95em;left:1ch;margin:0;padding:0 1ch;background:var(--bg);font:600 13px/1.6 var(--mono);color:var(--ink)}
+.toc ol,.toc-m ol{list-style:none;counter-reset:sec}
+.toc .toc-box>ol>li,.toc-m>ol>li{counter-increment:sec}
+.toc .toc-box>ol>li>a::before,.toc-m>ol>li>a::before{content:counter(sec,decimal-leading-zero);display:inline-block;width:3.2ch;color:var(--mute);font-size:12px;letter-spacing:.04em}
+.toc ol ol,.toc-m ol ol{margin:2px 0 6px 1.6ch;border-left:1px solid var(--line)}
+.toc a{position:relative}
+.toc a[aria-current]::after{content:"";position:absolute;left:-10px;top:50%;width:6px;height:6px;margin-top:-3px;background:var(--watt)}
+.toc ol ol a[aria-current]::after{left:-4px}
+.toc a[aria-current]::before{color:var(--dim)}
+.toc a,.toc-m a{display:block;text-decoration:none;color:var(--mute);font-size:13.5px;line-height:1.45;padding:5px 0}
+.toc ol ol a,.toc-m ol ol a{padding-left:1.6ch;font-size:12.5px;letter-spacing:.02em}
+.toc a:hover,.toc-m a:hover{color:var(--dim)}
+.toc a[aria-current]{color:var(--ink)}
+/* below 1000 px: the same list, folded under the head */
+.toc-m{display:none;margin:0 0 calc(var(--l)*1.25);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.toc-m summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:1ch;min-height:44px;
+  font:400 12px/1.9 var(--pix);text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.toc-m summary::-webkit-details-marker{display:none}
+.toc-m summary::before{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);margin:0 4px 0 2px}
+.toc-m[open] summary::before{transform:rotate(45deg)}
+.toc-m ol{padding:0 0 12px}
+@media (max-width:999.98px){.toc-m{display:block}}
+
+/* ---------------------------------------------------------------- the post: its page, as it stands */
+.post h2{font-size:1.35em;line-height:var(--l);font-weight:600;margin:calc(var(--l)*2.5) 0 var(--l);scroll-margin-top:24px}
+.post .hm{color:var(--mute);font-weight:400;text-decoration:none}
+.post .hm:hover,.post .hm:focus-visible{color:var(--watt)}
+.post h2>.hm::before{content:"## "}
+.post h3{font-size:1.05em;line-height:var(--l);font-weight:600;margin:calc(var(--l)*2) 0 calc(var(--l)*.5);scroll-margin-top:24px}
+.post h3>.hm::before{content:"### "}
+.post p{margin:0 0 var(--l)}
+.post strong{font-weight:600}
+.post .em{color:var(--dim)}
+.post a{color:inherit;text-decoration:underline;text-decoration-color:var(--mute);text-underline-offset:.2em}
+.post a:hover{text-decoration-color:currentColor}
+.post code{font:inherit;color:var(--id)}
+.post p code,.post li code,.post td code,.post dd code{white-space:nowrap}
+.post p code::before,.post p code::after,.post li code::before,.post li code::after,.post td code::before,.post td code::after,
+.post dd code::before,.post dd code::after{content:"`";content:"`" / "";color:var(--mute)}
+.post ul{list-style:none;margin:0 0 1.2em}
+.post li{position:relative;padding-left:2ch;margin:0 0 .55em}
+.post li::before{content:"·";position:absolute;left:.4ch;color:var(--mute)}
+.post table{width:100%;border-collapse:collapse;margin:.4em 0 1.6em;font-size:.94em;line-height:1.55}
+.post th{font:400 12px/1.9 var(--pix);text-transform:uppercase;color:var(--mute);text-align:left;padding:0 1.2ch .4em 0;border-bottom:1px solid var(--line)}
+.post td{vertical-align:top;padding:.7em 1.2ch .7em 0;border-bottom:1px solid var(--line)}
+.post td:first-child{color:var(--dim);width:50%}
+/* a hail as page text */
+.post pre.ex{margin:.4em 0 1.6em;border-left:2px solid var(--box);padding:.2em 0 .2em 1.6ch;font-size:.92em;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.post pre.ex code{color:var(--ink)}
+.post pre.ex[data-label]::before{content:attr(data-label);display:block;margin:0 0 .5em;font:400 11px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.post .ln{display:block;padding-left:2ch;text-indent:-2ch}
+.post .fr{font-weight:600}
+.post .k,.post .b{color:var(--ink)}
+.post .v{color:var(--dim)}
+.post .ph{color:var(--mute)}
+.post .ts{white-space:nowrap}
+.post pre.lit-ex .off,.post pre.lit-ex .off .k,.post pre.lit-ex .off .v,.post pre.lit-ex .off .ph{color:var(--mute)}
+.post pre.lit-ex .lit .v{color:var(--ink)}
+.post p.state{border-left:2px solid var(--watt);padding-left:1.6ch}
+/* the figures: each its own titled box, on the page's deep water; the 780 files here, the 540 files on a phone */
+.post figure{margin:2em 0 2.4em}
+.post figure picture{display:block;background:var(--fig);border-radius:2px;overflow:hidden}
+.post figure img{display:block;width:100%;height:auto}
+.post picture[data-st=wait] img,.post picture[data-st=load] img{opacity:.3}
+.post figcaption{margin-top:.8em;font-size:.94em;line-height:1.5;color:var(--dim)}
+.post .fn{font:400 13px/1 var(--pix);color:var(--mute);margin-right:1ch}
+/* the control: one width for its longer word ("play again"), and its place kept while it waits, so a caption never
+   grows */
+.post .again{font:inherit;color:var(--mute);background:none;border:0;cursor:pointer;white-space:nowrap;text-align:left;
+  min-width:calc(10ch + 16px);padding:13px 8px;margin:-13px -8px -13px calc(1ch - 8px);
+  text-decoration:underline;text-decoration-color:var(--mute);text-underline-offset:.2em}
+.post .again[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.post .again[hidden]{display:inline-block;visibility:hidden}}
+.post .again:hover{color:var(--ink)}
+.post .again:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.post .mk>h3{margin-bottom:var(--l)}
+.post .mk>figure{margin:0 0 1.2em}
+/* the ending, at the drying line: the quotation with a drawn "> " before every line */
+.post .ending{margin-top:2.6em;padding-top:1.4em;border-top:2px solid var(--drying)}
+.post .said{position:relative;margin:0;padding-left:2ch;line-height:var(--l)}
+.post .said::before{content:"> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A";
+  content:"> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A" / "";
+  position:absolute;left:0;top:0;bottom:0;overflow:hidden;white-space:pre;color:var(--mute)}
+.post .said p{margin:0}
+.post .said figcaption{margin:0;line-height:var(--l);font-size:min(1em,calc((100vw - 50px) / 24));white-space:nowrap;color:var(--dim)}
+.post .said figcaption::before{content:"\A";white-space:pre}
+/* the authors and acknowledgements: the board's titled box, after the quotation */
+.post .credits{position:relative;margin:calc(var(--l)*2) 0 0;border:1px solid var(--contour);padding:24px 22px 4px}
+.post .credits .ct{position:absolute;top:-.85em;left:1ch;margin:0;padding:0 1ch;background:var(--bg);font:600 15px/1.6 var(--mono);color:var(--ink)}
+.post .credits p{color:var(--dim)}
+/* the quiet end: back to all posts, and the feed; no newsletter, no related posts */
+.post .end{display:flex;justify-content:space-between;gap:1em;margin-top:calc(var(--l)*1.5);font-size:14px}
+.post .end a{color:var(--dim);text-decoration:underline;text-decoration-color:var(--contour)}
+.post .end a:hover{color:var(--ink)}
+/* the reference */
+.post .ref{margin-top:3.6em;padding-top:1.2em;border-top:1px solid var(--line);font-size:.88em}
+.post .ref h2{font-size:1.15em;margin:0 0 .8em}
+.post .ref p{margin-bottom:.8em}
+.post .ref pre.ex{font-size:.94em;margin-bottom:1.2em}
+.post .ref table{font-size:1em;margin-bottom:1em}
+.post .ref td{padding:.45em 1.2ch .45em 0}
+.post .ref td:first-child{width:36%}
+.post .foot{margin-top:calc(var(--l)*1.5);padding-top:calc(var(--l)*.75);border-top:1px solid var(--line);color:var(--dim)}
+/* the TL;DR and its band */
+.post .tldr{position:relative;margin:0 0 calc(var(--l)*1.5);border:2px solid var(--watt);background:var(--panel);padding:30px 28px 22px}
+.post .tldr>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--watt);color:var(--tabink);font:700 13px/1.6 var(--pix);text-transform:uppercase}
+.post .tldr>.t::before{content:none}
+.post .tldr dl{margin:0;display:grid;grid-template-columns:minmax(10ch,max-content) 1fr;gap:12px 22px;font-size:16px;line-height:1.55;align-items:baseline}
+.post .tldr dt{font:400 12px/1.9 var(--pix);text-transform:uppercase;color:var(--watt)}
+.post .tldr dd{margin:0;color:var(--ink)}
+.post .tldr dl>div{display:contents}
+.post .tldr dl>div.try{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:baseline;gap:12px 22px;margin:10px -28px -22px;
+  padding:16px 28px 18px;background:var(--watt);color:var(--tabink);box-shadow:inset 0 3px 0 rgba(13,23,32,.18)}
+.post .tldr dl>div.try dt{color:var(--tabink);font-weight:700}
+.post .tldr dl>div.try dd{color:var(--tabink);font-weight:400}
+.post .tldr dl>div.try .go{white-space:nowrap}
+.post .tldr dl>div.try a{display:inline-block;max-width:calc(100% - 1ch);white-space:normal;margin:2px 4px 4px 0;padding:8px 12px 7px;
+  background:var(--tabink);color:var(--watt);font:700 13px/1.3 var(--pix);text-transform:uppercase;text-decoration:none;
+  box-shadow:3px 3px 0 rgba(13,23,32,.35);vertical-align:baseline}
+.post .tldr dl>div.try a::after{content:"";display:inline-block;width:.6em;height:.5em;margin-left:.55em;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 5' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM4 1h1v1H4zM0 2h6v1H0zM4 3h1v1H4zM3 4h1v1H3z'/%3E%3C/svg%3E") no-repeat 0 0/100% 100%;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 5' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM4 1h1v1H4zM0 2h6v1H0zM4 3h1v1H4zM3 4h1v1H3z'/%3E%3C/svg%3E") no-repeat 0 0/100% 100%}
+.post .tldr dl>div.try a:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(13,23,32,.4)}
+.post .tldr dl>div.try a:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(13,23,32,.35)}
+.post .tldr dl>div.try a:focus-visible{outline:2px solid var(--tabink);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.post .tldr dl>div.try a:hover,.post .tldr dl>div.try a:active{transform:none}}
+
+/* ---------------------------------------------------------------- the index: newest first, each row its title (the
+   wordmark drawn), then its date; no lead */
+.ix-head{grid-column:1/-1;grid-row:1;justify-self:center;width:min(100%,960px);text-align:center;margin-bottom:calc(var(--l)*2)}
+.ix-head h1{font-size:2.2em;line-height:1.15;font-weight:600;letter-spacing:-.01em}
+.ix-head p{margin:calc(var(--l)*.6) auto 0;max-width:52ch;color:var(--dim);text-wrap:balance}
+.ix{grid-column:1/-1;grid-row:2;justify-self:center;width:min(100%,960px);list-style:none;border-top:1px solid var(--line)}
+.ix li{border-bottom:1px solid var(--line)}
+.ix a{display:grid;grid-template-columns:11ch minmax(0,15ch) 1fr;column-gap:2ch;align-items:baseline;padding:calc(var(--l)*.9) 0;text-decoration:none}
+.ix time{font-size:14px;color:var(--dim)}
+.ix .ix-l{font:400 12px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--watt)}
+.ix .ix-t{font-size:1.6em;line-height:1.2;font-weight:600;letter-spacing:-.01em;color:var(--ink);text-wrap:balance}
+.ix .ix-t>span{display:inline}
+.ix a:hover .ix-t>span:last-child{text-decoration:underline;text-decoration-color:var(--drying);text-underline-offset:.18em}
+
+/* ---------------------------------------------------------------- the foot */
+.bf-in{display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;max-width:1440px;margin:0 auto;padding:22px 24px}
+.bf-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font:600 15px/1 var(--mono)}
+.bf-brand .pricke{width:16px;height:16px}
+.bf-links{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--dim)}
+.bf-links a{color:var(--dim);text-decoration:underline;text-decoration-color:var(--contour);text-underline-offset:.2em}
+.bf-links a:hover{color:var(--ink)}
+
+/* ---------------------------------------------------------------- the phone, 640 px and narrower */
+@media (max-width:640px){
+  html{font-size:15px}
+  .page{padding:40px 16px 56px}
+  .bh-in{padding:0 16px;gap:12px;height:56px}
+  .bf-in{padding:20px 16px}
+  .post-head h1,.ix-head h1{font-size:2em}
+  .hero{width:calc(100% + 32px);margin-left:-16px;margin-right:-16px}   /* edge to edge, so the card's wordmark keeps its size */
+  .hero video{border-radius:0}
+  .hero figcaption{padding:0 16px}
+  .ix a{grid-template-columns:auto 1fr;row-gap:6px}
+  .ix .ix-t{grid-column:1/-1;font-size:1.75em}
+  .post h2{margin-top:calc(var(--l)*2)}
+  .post .tldr{margin-top:calc(var(--l)*.2);padding:18px 14px 6px}
+  .post .tldr dl{display:block;font-size:14px;line-height:1.42}
+  .post .tldr dt{display:inline;margin-right:.6ch}
+  .post .tldr dd{display:inline}
+  .post .tldr dd::after{content:"";display:block;margin-bottom:6px}
+  .post .tldr dl>div.try{display:block;margin:6px -14px -6px;padding:12px 14px 8px}
+  .post .tldr dl>div.try .go{display:block;margin:4px 0 8px}
+  .post figure picture img{margin-bottom:-9.52%}
+  .post td{display:block;width:100%!important;padding:.5em 0}
+  .post td:first-child{padding-top:.9em;border-bottom:0}
+  .post thead{display:none}
+  .post table.ba tr:first-child td::before{content:attr(data-h);display:block;font:400 12px/1.9 var(--pix);text-transform:uppercase;color:var(--mute);margin-bottom:.1em}}
+
+/* ---------------------------------------------------------------- print: paper, the figures on their plates */
+@media print{
+  :root{--bg:#fff;--ink:#10202e;--dim:#3e4e5b;--mute:#51606c;--line:#c9d6e0;--box:#8eb1cc;--panel:#fff;--watt:#526214;--tabink:#fbfbf7;--id:#77511a;--drying:#9aae57}
+  .bh,.bf,.toc,.toc-m,.post .again{display:none!important}
+  .page{padding:0}}

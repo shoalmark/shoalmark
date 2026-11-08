@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" data-v="{{ variant }}">
+<head>
+{% include "_head.html" %}
+<meta property="og:type" content="website">
+<meta property="og:image" content="{{ card_abs }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ card_alt }}">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+{% include "_header.html" %}
+<main class="page">
+  <header class="ix-head">
+    <h1>Blog</h1>
+    <p>{{ index_intro }}</p>
+  </header>
+  <ol class="ix" reversed>
+{{ rows }}
+  </ol>
+</main>
+{% include "_footer.html" %}
+</body>
+</html>
