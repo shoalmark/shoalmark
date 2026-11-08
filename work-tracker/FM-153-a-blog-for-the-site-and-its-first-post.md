@@ -1,8 +1,10 @@
 ---
 id: FM-153
-status: Proposed
+status: In Progress
 considered: FM-143, FM-152
 next: build
+triaged: 2026-11-08
+tier: P2
 hook: "The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small, and still for readers who turn motion off."
 ask-id: FM-153-Q2
 ask: "Shall FM-153 build a blog for shoalmark's site, an index in English and German in each language's nav, and its first post, the article whose checked words and figures the Auditor holds (recorded privately), linked from each language's start page?"
@@ -18,6 +20,10 @@ answered-by: holgo99
 # FM-153 — A blog for the site, and its first post
 
 ## What is true now
+
+**2026-11-08 — judged before its first build commit: keep P2, In Progress.** A partial triage pass, on the Owner's
+signed answer to FM-153-Q2 (`aa19b0c`), judged this row alone ([worksheet](evidence/triage/triage-2026-11-08.md)).
+Unranked. The build follows on a branch from main, reviewed with the Designer's check beside the review.
 
 **2026-11-08 — the site has no blog, and FM-153 waits for the Owner's ruling, FM-153-Q2.** No work outside this
 tracker is committed under it before the answer: a pass judges before the first build commit (FM-033), and a signed
@@ -64,6 +70,7 @@ still for readers who turn motion off.
 
 | Date | Event |
 |---|---|
+| 2026-11-08 | Judged keep P2 by a partial triage pass on the Owner's signed answer to FM-153-Q2 (aa19b0c); In Progress. Records only. |
 | 2026-11-08 | RV-4425 and RV-4426 fixed forward, from #275's verdict: FM-153 was filed In Progress with next: build on 2026-11-07, before any pass judged it, and set back to Proposed with next: owner when FM-153-Q1 was asked, the same day, with nothing outside the records committed under it; What is true now lists the first post as built, not an empty one. |
 | 2026-11-08 | Done when: the start-page line also goes where the site renders the start page, its landing template and partials. |
 | 2026-11-08 | Asked the Owner again: FM-153-Q2 adds a line on each start page linking to the post; FM-153-Q1 withdrawn unanswered. |
