@@ -23,7 +23,7 @@ answered-by: holgo99
 tracker is committed under it before the answer: a pass judges before the first build commit (FM-033), and a signed
 answer authorises the work.
 
-- **Built, not committed:** a blog index in English and German, each in its language's nav, an empty first post,
+- **Built, not committed:** a blog index in English and German, each in its language's nav, the first post,
   and a check that holds every figure to its alt text, its still and 1,000,000 bytes.
 - **The first post:** its words and figures come from a checked folder, recorded privately.
 - **Not built yet:** one line on each language's start page, linking straight to the post. FM-153-Q2 adds it to
@@ -64,6 +64,7 @@ still for readers who turn motion off.
 
 | Date | Event |
 |---|---|
+| 2026-11-08 | RV-4425 and RV-4426 fixed forward, from #275's verdict: FM-153 was filed In Progress with next: build on 2026-11-07, before any pass judged it, and set back to Proposed with next: owner when FM-153-Q1 was asked, the same day, with nothing outside the records committed under it; What is true now lists the first post as built, not an empty one. |
 | 2026-11-08 | Done when: the start-page line also goes where the site renders the start page, its landing template and partials. |
 | 2026-11-08 | Asked the Owner again: FM-153-Q2 adds a line on each start page linking to the post; FM-153-Q1 withdrawn unanswered. |
 | 2026-11-07 | Asked the Owner: FM-153-Q1, a ruling on building the blog and its first post. |
