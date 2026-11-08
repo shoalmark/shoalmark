@@ -869,6 +869,9 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # file of the site. The blog is English only, with no language pair: each of its pages says lang="en" and carries no hreflang, and each post names its
 # Markdown version beside it. Its script, a file of its own, asks for nothing, as an inline script may not. Every file under blog/ is read.
 # An animated WebP, told by its own header, holds to the GIF rules, and its still is a WebP: <name>-still.webp, as a GIF's is a PNG.
+# Every still these rules name, beside a GIF or an animated WebP, in a data-still or in a srcset of a <source> for reduced motion, is a still by its
+# own bytes, as a browser reads them and not by its name: a .png starts with the PNG signature and holds no acTL chunk, and a .webp is a RIFF WEBP
+# file that holds no ANIM chunk and whose VP8X sets no animation flag; the chunks are walked, never searched.
 # Every image has alt text but an author's picture, an <img> outside any <picture> whose file is in blog/assets/authors/ or blog/assets/seats/:
 # its alt is empty, as the author's name stands beside it as text. The GIF rules hold for every image. A file under blog/ holds at most
 # 1,000,000 bytes, but the share video, the one MP4 of the site a post's one og:video names, at most 2,000,000.
@@ -903,20 +906,80 @@ def motion(path):
     return None
 
 
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def sniffed(data):
+    """What a browser that sniffs `data` takes it for, by its first bytes: "PNG", "GIF" or "WebP"; None for anything else."""
+    if data[:8] == PNG_SIGNATURE:
+        return "PNG"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "GIF"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "WebP"
+    return None
+
+
+def still_problem(path):
+    """Why the still at `path`, a path relative to the site, is no still by its own bytes; None when it is one, and for a still named neither
+    .png nor .webp, which no rule here reads. A .png still starts with the PNG signature, so a browser that sniffs it finds no GIF or WebP, and
+    none of its chunks, walked from the signature to IEND, is acTL, the chunk that makes a PNG move. A .webp still is a RIFF WEBP file: none of
+    its chunks, walked to the end its RIFF header gives, is ANIM, and its VP8X, where it has one, sets no animation flag. The chunks are walked by
+    their lengths, never searched for the four letters, which compressed data can hold by chance; a chunk that runs past the file is refused."""
+    data, name = (site / path).read_bytes(), path.lower()
+    if name.endswith(".png"):
+        kind = sniffed(data)
+        if kind != "PNG":
+            return f"its bytes are a {kind}'s, not a PNG's" if kind else "its bytes do not start with the PNG signature"
+        i = len(PNG_SIGNATURE)
+        while i + 12 <= len(data):
+            length, chunk = int.from_bytes(data[i:i + 4], "big"), data[i + 4:i + 8]
+            if i + 12 + length > len(data):
+                break
+            if chunk == b"acTL":
+                return "it holds an acTL chunk, so it is an animated PNG"
+            if chunk == b"IEND":
+                return None
+            i += 12 + length
+        return "its chunks do not run whole to IEND"
+    if name.endswith(".webp"):
+        kind = sniffed(data)
+        if kind != "WebP":
+            return f"its bytes are a {kind}'s, not a WebP's" if kind else "its bytes are not a RIFF WEBP file"
+        end, i = 8 + int.from_bytes(data[4:8], "little"), 12
+        while i < end:
+            length, chunk = int.from_bytes(data[i + 4:i + 8], "little"), data[i:i + 4]
+            if end > len(data) or i + 8 + length > end:
+                return "its chunks do not run whole to the end its RIFF header gives"
+            if chunk == b"ANIM":
+                return "it holds an ANIM chunk, so it is an animated WebP"
+            if chunk == b"VP8X" and length and data[i + 8] & 0x02:
+                return "its VP8X chunk sets the animation flag, so it is an animated WebP"
+            i += 8 + length + (length & 1)
+        return None
+    return None
+
+
 class BlogPage(HTMLParser):
     """What the blog's check needs of a page: every address a src, a srcset, a data-once or a data-still names, with its element and attribute, each
     image with its attributes and the sources of the <picture> it stands in, None outside one, the sources of each <picture>, in their order, and each
     element that names a play-once GIF, with its attributes, the sources of its <picture> (None outside one) and, for a <source>, its place among them.
-    A browser never selects a <source> that comes after its <picture>'s <img>, so such a source joins neither the picture's sources nor the plays."""
+    A browser never selects a <source> that comes after its <picture>'s <img>, so such a source joins neither the picture's sources nor the plays.
+    And every still it names: each data-still, and each address in the srcset of a <source> for reduced motion, wherever that source stands."""
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.addresses, self.images, self.pictures, self.source_lists, self.plays = [], [], [], [], []
         self.shown = []                                 # per open <picture>: whether its <img> has come
         self.lang, self.hreflang, self.markdown, self.videos = None, [], [], []
+        self.stills = []
 
     def handle_starttag(self, tag, attrs):
         a = {key: value or "" for key, value in attrs}
+        if "data-still" in a:
+            self.stills.append((tag, "data-still", a["data-still"]))
+        if tag == "source" and REDUCED_MOTION in re.sub(r"\s+", "", a.get("media", "").lower()):
+            self.stills += [(tag, "srcset", url) for url in srcset_urls(a.get("srcset", ""))]
         if tag == "html":
             self.lang = a.get("lang")
         if "hreflang" in a:
@@ -1015,6 +1078,20 @@ for rel, page in blog_parsed.items():
             fail(f"{rel} names {url!r} in og:video, and that is no MP4 file of the site")
 share_videos = {in_site(rel, url) for rel, page in blog_parsed.items() for url in page.videos}
 blog_files = sorted(path for path in (site / BLOG).rglob("*") if path.is_file()) if (site / BLOG).is_dir() else []
+stills = {}                                     # each still the figure rules name, and who names it
+for path in blog_files:
+    rel = path.relative_to(site).as_posix()
+    if motion(rel) and (site / still_of(rel)).is_file():
+        stills.setdefault(still_of(rel), f"the still of {rel}")
+for rel, page in blog_parsed.items():
+    for tag, attr, url in page.stills:
+        target = in_site(rel, url)
+        if target is not None and (site / target).resolve().is_relative_to(site.resolve()) and (site / target).is_file():
+            stills.setdefault(target, f"a still {rel} names ({tag} {attr})")
+for still, named in sorted(stills.items()):
+    problem = still_problem(still)
+    if problem:
+        fail(f"{still}, {named}, is not a still by its own bytes: {problem}")
 for path in blog_files:
     rel = path.relative_to(site).as_posix()
     if rel in share_videos and path.stat().st_size > SHARE_VIDEO_LIMIT:

@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 
 CHECKER = Path(__file__).with_name("check_site.py")
 SITE_URL = "https://shoalmark.tools/"
@@ -25,6 +26,16 @@ STILL = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x
 _WEBP = lambda chunk: b"RIFF" + (4 + len(chunk)).to_bytes(4, "little") + b"WEBP" + chunk
 ANIM_WEBP = _WEBP(b"VP8X" + (10).to_bytes(4, "little") + bytes([0x02, 0, 0, 0]) + bytes(6) + b"ANIM" + (6).to_bytes(4, "little") + bytes(6))
 STILL_WEBP = _WEBP(b"VP8L" + (6).to_bytes(4, "little") + bytes([0x2F, 0, 0, 0, 0, 0]))
+# a still as the check reads it by its own bytes, its chunks walked: a PNG with an acTL chunk after its IHDR moves; one whose text chunk holds the
+# letters acTL and ANIM does not, nor does a WebP still whose odd-length metadata chunk, padded, holds ANIM; a WebP's ANIM chunk or its VP8X's
+# animation flag each makes it move
+_CHUNK = lambda kind, data: len(data).to_bytes(4, "big") + kind + data + zlib.crc32(kind + data).to_bytes(4, "big")
+APNG = STILL[:33] + _CHUNK(b"acTL", bytes(8)) + STILL[33:]
+LETTERS_PNG = STILL[:33] + _CHUNK(b"tEXt", b"Comment\0acTL ANIM") + STILL[33:]
+_VP8X = lambda flags: b"VP8X" + (10).to_bytes(4, "little") + bytes([flags, 0, 0, 0]) + bytes(6)
+ANIM_ONLY_WEBP = _WEBP(_VP8X(0) + b"ANIM" + (6).to_bytes(4, "little") + bytes(6))
+FLAG_ONLY_WEBP = _WEBP(_VP8X(0x02) + b"VP8L" + (6).to_bytes(4, "little") + bytes([0x2F, 0, 0, 0, 0, 0]))
+LETTERS_WEBP = _WEBP(b"VP8L" + (6).to_bytes(4, "little") + bytes([0x2F, 0, 0, 0, 0, 0]) + b"XMP " + (5).to_bytes(4, "little") + b"ANIM!\0")
 BLOG_SOURCE = '<source media="(prefers-reduced-motion: reduce)" srcset="first-post/loop-still.png">'
 BLOG_IMG = '<img src="first-post/loop.gif" alt="A loop of one pixel">'
 # a narrower screen's GIF in a <source> of its own, after the <source> for reduced motion that names its still
@@ -807,7 +818,7 @@ class FencedBlocks(unittest.TestCase):
 class Blog(unittest.TestCase):
     """The blog: each file under blog/ is at most 1,000,000 bytes, and each GIF there has its still beside it; on each page in blog/,
     each image has alt text but an author's picture, whose alt is empty, each GIF stands in a <picture> whose reduced-motion source names its still, each GIF a <source> offers comes after a source for
-    reduced motion that names its still, and each src and srcset is a file of the site.
+    reduced motion that names its still, and each src and srcset is a file of the site; each still those rules name is a still by its own bytes.
     A site that passes, and controls that each change one thing in it; the check names the file."""
 
     PAGE = "blog/first-post.html"
@@ -875,6 +886,34 @@ class Blog(unittest.TestCase):
              "site check: blog/first-post/other.webp has no still beside it, blog/first-post/other-still.webp"),
             ("a .webp of 1,000,001 bytes", self.write("blog/first-post/loop-still.webp", STILL_WEBP + b"\0" * (1_000_001 - len(STILL_WEBP))),
              "site check: blog/first-post/loop-still.webp is 1,000,001 bytes, more than the 1,000,000 a file under blog/ may hold"),
+            ("an APNG, a PNG with an acTL chunk, as a figure's -still.png", self.write("blog/first-post/loop-still.png", APNG),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: it holds an acTL chunk, "
+             "so it is an animated PNG"),
+            ("a GIF's bytes named -still.png", self.write("blog/first-post/loop-still.png", GIF),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: its bytes are a GIF's, "
+             "not a PNG's"),
+            ("a WebP's bytes named -still.png", self.write("blog/first-post/loop-still.png", STILL_WEBP),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: its bytes are a WebP's, "
+             "not a PNG's"),
+            ("an animated WebP named -still.webp", self.write("blog/first-post/loop-still.webp", ANIM_WEBP),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its VP8X chunk sets "
+             "the animation flag, so it is an animated WebP"),
+            ("a -still.webp with an ANIM chunk and no animation flag", self.write("blog/first-post/loop-still.webp", ANIM_ONLY_WEBP),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: it holds an ANIM "
+             "chunk, so it is an animated WebP"),
+            ("a -still.webp whose VP8X sets the animation flag, with no ANIM chunk", self.write("blog/first-post/loop-still.webp", FLAG_ONLY_WEBP),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its VP8X chunk sets "
+             "the animation flag, so it is an animated WebP"),
+            ("a PNG's bytes named -still.webp", self.write("blog/first-post/loop-still.webp", STILL),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its bytes are a PNG's, "
+             "not a WebP's"),
+            ("a -still.png cut short of its IEND", self.write("blog/first-post/loop-still.png", STILL[:-12]),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: its chunks do not run "
+             "whole to IEND"),
+            ("a -still.webp whose chunk runs past the end its RIFF header gives",
+             self.write("blog/first-post/loop-still.webp", STILL_WEBP.replace(b"VP8L" + (6).to_bytes(4, "little"), b"VP8L" + (60).to_bytes(4, "little"))),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its chunks do not run "
+             "whole to the end its RIFF header gives"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
@@ -922,7 +961,9 @@ class Blog(unittest.TestCase):
                 ("a WebP twin pair: the reduced-motion source naming the WebP still, and a play-once WebP resting on it",
                  self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, "<picture>" + '<source media="(prefers-reduced-motion: reduce)" type="image/webp" srcset="first-post/loop-still.webp"><source type="image/webp" srcset="first-post/loop-still.webp" data-once="first-post/loop.webp" data-still="first-post/loop-still.webp">' + BLOG_SMALL_STILL), 1),
                 ("a still WebP, with alt text, outside a <picture>",
-                 self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.webp" alt="A still">'), 1)):
+                 self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.webp" alt="A still">'), 1),
+                ("a -still.png whose text chunk holds the letters acTL and ANIM", self.write("blog/first-post/loop-still.png", LETTERS_PNG), 1),
+                ("a -still.webp whose odd-length metadata chunk, padded, holds the letters ANIM", self.write("blog/first-post/loop-still.webp", LETTERS_WEBP), 1)):
             with self.subTest(name):
                 result = self.checked(change)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -958,6 +999,25 @@ class Blog(unittest.TestCase):
                 result = self.checked(change)
                 self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
                 self.assertIn(message, result.stderr)
+
+    def test_a_still_only_a_page_names_is_read_by_its_bytes_too(self):
+        """A still that no GIF or animated WebP has beside it, named only by a page, in a data-still or in the srcset of a <source> for reduced motion,
+        is read by its own bytes as well: a GIF's bytes there are refused, naming the page and the attribute, and a PNG's pass."""
+        extra = '<source media="(prefers-reduced-motion: reduce)" srcset="first-post/calm-still.png">'
+        for where, old, new in (("img data-still", BLOG_IMG, BLOG_IMG.replace(">", ' data-still="first-post/calm-still.png">')),
+                                ("source srcset", BLOG_SOURCE, BLOG_SOURCE + extra)):
+            for data in (GIF, STILL):
+                def change(site, old=old, new=new, data=data):
+                    self.write("blog/first-post/calm-still.png", data)(site)
+                    self.put(self.PAGE, old, new)(site)
+                with self.subTest(where=where, gif=data == GIF):
+                    result = self.checked(change)
+                    if data == GIF:
+                        self.assertNotEqual(result.returncode, 0, "the check passed a GIF's bytes named as a still by " + where)
+                        self.assertIn(f"site check: blog/first-post/calm-still.png, a still blog/first-post.html names ({where}), is not a still by its own "
+                                      "bytes: its bytes are a GIF's, not a PNG's", result.stderr)
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_a_gif_in_the_authors_folders_keeps_the_gif_rules(self):
         """An author's picture is an <img> outside any <picture>, and the GIF rules hold for it too: a GIF there, outside a picture, is refused."""
