@@ -36,6 +36,8 @@ a{color:var(--ink)}
 .brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font:600 15px/1 var(--mono)}
 .brand svg{width:18px;height:18px;color:var(--watt);shape-rendering:crispEdges}
 .lang{font:400 11px/1 var(--pix);text-transform:uppercase;color:var(--dim);text-decoration:none;border:1px solid var(--contour);padding:6px 8px}
+.hud .blog{display:inline-flex;align-items:center;font:700 11px/1 var(--pix);color:var(--watt);text-decoration:none;padding:8px 10px;border:1px solid var(--watt)}
+.hud .blog:hover{background:var(--watt);border-color:var(--watt);color:var(--landink)}
 main{max-width:1080px;margin:0 auto;padding:0 20px 64px}
 .hero{padding:30px 0 0}
 h1{margin:0;font:700 clamp(28px,4.6vw,52px)/1.1 var(--pix);text-transform:uppercase;letter-spacing:.01em;
@@ -200,7 +202,7 @@ p{margin:0 0 14px}
 }
 </style></head>
 <body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="pricke" viewBox="0 0 16 16"><path shape-rendering="crispEdges" d="M4 0h1v1h-1ZM11 0h1v1h-1ZM0 1h1v1h-1ZM4 1h1v1h-1ZM11 1h1v1h-1ZM15 1h1v1h-1ZM1 2h1v1h-1ZM5 2h1v1h-1ZM10 2h1v1h-1ZM14 2h1v1h-1ZM2 3h1v1h-1ZM5 3h1v1h-1ZM10 3h1v1h-1ZM13 3h1v1h-1ZM3 4h1v1h-1ZM6 4h1v1h-1ZM9 4h1v1h-1ZM12 4h1v1h-1ZM4 5h1v1h-1ZM6 5h1v1h-1ZM9 5h1v1h-1ZM11 5h1v1h-1ZM5 6h1v1h-1ZM7 6h2v1h-2ZM10 6h1v1h-1ZM6 7h4v1h-4ZM7 8h2v1h-2ZM7 9h2v1h-2ZM7 10h2v1h-2ZM7 11h2v1h-2ZM7 12h2v1h-2ZM7 13h2v1h-2ZM7 14h2v1h-2ZM7 15h2v1h-2Z"/></symbol></svg>
-<header class="hud"><div class="in"><a class="brand" href="{{ w.home }}"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="#pricke" fill="currentColor"/></svg><span>shoalmark</span></a></div></header>
+<header class="hud"><div class="in"><a class="brand" href="{{ w.home }}"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="#pricke" fill="currentColor"/></svg><span>shoalmark</span></a><a class="blog" href="{{ w.blog }}"{% if de %} hreflang="en" lang="en"{% endif %}>{{ w.nav_blog }}</a></div></header>
 <main>
 <section class="hero" aria-labelledby="h1">
 <h1 id="h1">{{ w.h1 }}</h1>
