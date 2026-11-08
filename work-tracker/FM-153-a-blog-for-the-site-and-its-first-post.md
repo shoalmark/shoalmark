@@ -2,7 +2,7 @@
 id: FM-153
 status: Proposed
 considered: FM-143, FM-152
-next: owner
+next: build
 hook: "The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small, and still for readers who turn motion off."
 ask-id: FM-153-Q2
 ask: "Shall FM-153 build a blog for shoalmark's site, an index in English and German in each language's nav, and its first post, the article whose checked words and figures the Auditor holds (recorded privately), linked from each language's start page?"
@@ -10,6 +10,9 @@ ask-kind: ruling
 ask-since: 2026-11-08
 ask-options: "yes, as proposed | the blog only: the first post waits | no"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-08
+answered-by: holgo99
 ---
 
 # FM-153 — A blog for the site, and its first post
