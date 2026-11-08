@@ -13,11 +13,11 @@ It writes site/blog/: index.html, <slug>.html, <slug>.md (the post for agent rea
 assets/blog.js, assets/authors/ and assets/seats/ (the authors' pictures), fonts/ (the site's own latin subsets, under neutral names, with
 their licences), feed.xml and llms.txt.
 Every page links with relative addresses; the head's addresses are absolute. A post's body is its Markdown converted line by line into the
-post's markup: the TL;DR as a dl with its band, each slot a figure with its stills and play-once GIFs, each marker section, the hails, the
-status paragraph, the quotation, the reference and the foot, each figure's sources and <img> each after its WebP twin; then each
-heading gets its anchor, each hail its label, "written by" and the credits follow the quotation, and the end links follow the foot. The
-head names the authors, and a share row opens the post and comes again after "written by". The builder refuses whatever has a shape it
-does not expect.
+post's markup: the TL;DR as a dl with its band, each slot a figure with its stills and play-once GIFs, numbered for the reader by its place
+among the post's figures, each marker section, the hails, the status paragraph, the quotation, the reference and the foot, each figure's
+sources and <img> each after its WebP twin; then each heading gets its anchor, each hail its label, "written by" and the credits follow the
+quotation, and the end links follow the foot. The head names the authors, and a share row opens the post and comes again after "written
+by". The builder refuses whatever has a shape it does not expect.
 """
 import datetime
 import hashlib
@@ -252,11 +252,12 @@ class Post:
             return f'<source type="image/webp" srcset="{a["src"]}"{keep}>' + tag
         return re.sub(r"<(?:source|img) [^>]*>", twin, picture)
 
-    def figure(self, n, caption):
-        """A figure slot: its <picture>, every source and its <img> each after its WebP twin, and its caption."""
-        return re.sub(r"<picture>.*?</picture>", lambda m: self.twins(m.group(0)), self.figure_png_gif(n, caption))
+    def figure(self, n, place, caption):
+        """A figure slot: its <picture>, every source and its <img> each after its WebP twin, and its caption. Slot n finds its entry in the figures
+        file; the reader sees its place among the post's figures, 1 for the first, in its anchor, its caption and its control."""
+        return re.sub(r"<picture>.*?</picture>", lambda m: self.twins(m.group(0)), self.figure_png_gif(n, place, caption))
 
-    def figure_png_gif(self, n, caption):
+    def figure_png_gif(self, n, place, caption):
         f = self.figures.get(f"F{n}")
         if not f:
             refuse(f"{self.name}: F{n} has no entry in its figures file")
@@ -264,18 +265,18 @@ class Post:
         wh = lambda name: 'width="%d" height="%d"' % size(self.files / name)
         if "stills" in f:
             small, wide = sorted(f["stills"], key=lambda s: size(self.files / s)[0])
-            return (f'<figure id="f{n}"><picture><source media="(max-width: 640px)" srcset="{src}{small}" {wh(small)}>'
+            return (f'<figure id="f{place}"><picture><source media="(max-width: 640px)" srcset="{src}{small}" {wh(small)}>'
                     f'<img src="{src}{wide}" {wh(wide)}{alt} loading="lazy" decoding="async"></picture>'
-                    f'<figcaption><span class="fn">F{n}</span>{text_node(caption)}</figcaption></figure>')
+                    f'<figcaption><span class="fn">F{place}</span>{text_node(caption)}</figcaption></figure>')
         b = f["name"]
         s540, s780, o540, o780 = f"{b}-still.png", f"{b}-780-still.png", f"{b}-once.gif", f"{b}-780-once.gif"
-        load = 'loading="eager" fetchpriority="high"' if n == 1 else 'loading="lazy"'
-        return (f'<figure id="f{n}"><picture>'
+        load = 'loading="eager" fetchpriority="high"' if place == 1 else 'loading="lazy"'
+        return (f'<figure id="f{place}"><picture>'
                 f'<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="{src}{s540}" {wh(s540)}>'
                 f'<source media="(prefers-reduced-motion: reduce)" srcset="{src}{s780}" {wh(s780)}>'
                 f'<source media="(max-width: 640px)" srcset="{src}{s540}" {wh(s540)} data-still="{src}{s540}" data-once="{src}{o540}" data-ms="{f["ms"][0]}">'
                 f'<img src="{src}{s780}" {wh(s780)}{alt} {load} decoding="async" data-still="{src}{s780}" data-once="{src}{o780}" data-ms="{f["ms"][1]}">'
-                f'</picture><figcaption><span class="fn">F{n}</span>{text_node(caption)} <button type="button" class="again" data-f="F{n}" hidden>'
+                f'</picture><figcaption><span class="fn">F{place}</span>{text_node(caption)} <button type="button" class="again" data-f="F{place}" hidden>'
                 f'{UI["stop"]}</button></figcaption></figure>')
 
     def table(self, rows, cls):
@@ -319,7 +320,7 @@ class Post:
                 cap = re.fullmatch(r"\*([^*]+)\*", block[1]) if len(block) == 2 else None
                 if not cap:
                     refuse(f"{self.name}: slot F{n} is not a slot line and an italic caption")
-                out.append(self.figure(n, cap.group(1)))
+                out.append(self.figure(n, len(seen) + 1, cap.group(1)))
                 seen.append(n)
                 if f"after F{n}" in self.hails:
                     out.append(self.hail(f"after F{n}"))
@@ -330,7 +331,7 @@ class Post:
                     refuse(f"{self.name}: the marker {name} is not a heading, a slot and one paragraph")
                 n, marker = int(fig.group(1)), marker + 1
                 out.append(f'<section class="mk" aria-label="{attr(name)}"><h3 id="{slug_of(name)}">{text_node(name)}</h3>'
-                           + self.figure(n, re.fullmatch(r"\*([^*]+)\*", nxt[0][1]).group(1)) + f"<p>{inline(nxt[1][0])}</p>"
+                           + self.figure(n, len(seen) + 1, re.fullmatch(r"\*([^*]+)\*", nxt[0][1]).group(1)) + f"<p>{inline(nxt[1][0])}</p>"
                            + self.hail(f"in {name}") + "</section>")
                 seen.append(n)
                 i += 3

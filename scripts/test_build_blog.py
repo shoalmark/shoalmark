@@ -173,20 +173,36 @@ class Built(unittest.TestCase):
         self.assertNotRegex(" ".join(imgs), r"\.webp")
 
     def test_the_figures_in_the_posts_order(self):
-        """The figures stand as the post reads them, F16 after F13; each one's sizes are its files', and each play time, in its twin too, is the
-        figures file's, the phone's on the narrow source and the desktop's on the <img>."""
-        order = re.findall(r'<figure id="f(\d+)">', self.page)
-        self.assertEqual(order, [str(n) for n in [*range(1, 14), 16, 14, 15]])
+        """The figures stand as the post reads its slots, F16's after F13's. Each figure is found by its slot, through the file its <img> shows: its
+        alt is its slot's, its sizes are its files', F13's and F16's as drawn, and each play time, in its twin too, is its slot's, the phone's on
+        the narrow source and the desktop's on the <img>."""
         figures = json.loads((ROOT / "blog/posts/hail-1.figures.json").read_text(encoding="utf-8"))
-        for n, (narrow, wide) in (("13", ((1092, 1140), (1572, 1076))), ("16", ((1092, 1712), (1572, 1556)))):
-            fig = re.search(rf'<figure id="f{n}">(.*?)</figure>', self.page).group(1)
-            sizes = [tuple(map(int, s)) for s in re.findall(r'width="(\d+)" height="(\d+)"', fig)]
-            self.assertEqual(sizes, [narrow] * 2 + [wide] * 2 + [narrow] * 2 + [wide] * 2, n)
-        for n in order:
-            fig = re.search(rf'<figure id="f{n}">(.*?)</figure>', self.page).group(1)
-            ms = figures[f"F{n}"].get("ms")
-            got = [int(m) for m in re.findall(r'data-ms="(\d+)"', fig)]
-            self.assertEqual(got, [ms[0], ms[0], ms[1], ms[1]] if ms else [], n)
+        slot_of = {name: key for key, f in figures.items() for name in f.get("stills", [f.get("name", "") + "-780-still.png"])}
+        figs = re.findall(r'<figure id="f\d+">(.*?)</figure>', self.page)
+        slots = []
+        for fig in figs:
+            img = re.search(r'<img src="hail-1/([^"]+)"[^>]*\balt="([^"]*)"', fig)
+            key = slot_of[img.group(1)]
+            slots.append(key)
+            self.assertEqual(html.unescape(img.group(2)), figures[key]["alt"], key)
+            ms = figures[key].get("ms")
+            self.assertEqual([int(m) for m in re.findall(r'data-ms="(\d+)"', fig)], [ms[0], ms[0], ms[1], ms[1]] if ms else [], key)
+        self.assertEqual(slots, [f"F{n}" for n in [*range(1, 14), 16, 14, 15]])
+        for key, (narrow, wide) in (("F13", ((1092, 1140), (1572, 1076))), ("F16", ((1092, 1712), (1572, 1556)))):
+            sizes = [tuple(map(int, s)) for s in re.findall(r'width="(\d+)" height="(\d+)"', figs[slots.index(key)])]
+            self.assertEqual(sizes, [narrow] * 2 + [wide] * 2 + [narrow] * 2 + [wide] * 2, key)
+
+    def test_the_figures_numbered_by_their_place(self):
+        """The reader sees each figure numbered by its place among the post's figures, 1 to 16 in page order: in its anchor, its caption and its
+        control, which the roster, a still figure, does not have. The slot still finds the files, so the relay's stand under the figure shown as
+        F14, sign-and-seal's under F15 and filed's under F16."""
+        figs = re.findall(r'<figure id="f(\d+)">(.*?)</figure>', self.page)
+        self.assertEqual([int(n) for n, _fig in figs], list(range(1, 17)))
+        for n, fig in figs:
+            self.assertEqual(re.findall(r'<span class="fn">F(\d+)</span>', fig), [n])
+            self.assertEqual(re.findall(r'data-f="F(\d+)"', fig), [] if n == "3" else [n])
+        shows = {n: re.search(r'<img src="hail-1/([a-z0-9-]+?)(?:-780)?(?:-still)?\.png"', fig).group(1) for n, fig in figs}
+        self.assertEqual([shows["13"], shows["14"], shows["15"], shows["16"]], ["f13-authority", "f16-relay", "f14-sign-seal", "f15-filed"])
 
     def test_the_heros_two_page_sources(self):
         video = re.search(r'<figure class="hero">\n    (<video [^>]*>.*?</video>)', self.page).group(1)
