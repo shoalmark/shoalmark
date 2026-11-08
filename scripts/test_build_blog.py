@@ -1,7 +1,7 @@
 """The blog's builder, scripts/build_blog.py: what it emits from the repository's blog/, and what it refuses.
 
 Run: python3 scripts/test_build_blog.py. Each test copies what the builder reads (blog/, the four font subsets and their licences, the mark,
-main.html and the builder itself) into a scratch root, changes one thing where it tests a refusal, and runs the builder there."""
+main.html, the seats' icons and the builder itself) into a scratch root, changes one thing where it tests a refusal, and runs the builder there."""
 import hashlib
 import re
 import shutil
@@ -10,9 +10,12 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
-READS = ["blog", "docs/assets/fonts", "overrides/.icons/shoalmark/pricke.svg", "overrides/main.html", "scripts/build_blog.py"]
+READS = ["blog", "docs/assets/fonts", "overrides/.icons/shoalmark/pricke.svg", "overrides/main.html", "brand/seats", "scripts/build_blog.py"]
+SEATS = ["go-to-market", "designer", "planner", "builder", "reviewer", "auditor"]
+CANONICAL = "https://shoalmark.tools/blog/hail-1.html"
 
 
 def scratch(tmp):
@@ -46,7 +49,8 @@ class Built(unittest.TestCase):
 
     def test_the_tree(self):
         want = {"index.html", "hail-1.html", "hail-1.md", "feed.xml", "llms.txt", "assets/blog.css", "assets/blog.js", "fonts/mono-400.woff2",
-                "fonts/mono-600.woff2", "fonts/pixel-400.woff2", "fonts/pixel-700.woff2", "fonts/OFL.txt", "fonts/OFL-pixel.txt"}
+                "fonts/mono-600.woff2", "fonts/pixel-400.woff2", "fonts/pixel-700.woff2", "fonts/OFL.txt", "fonts/OFL-pixel.txt",
+                "assets/authors/owner.jpg"} | {f"assets/seats/{k}.svg" for k in SEATS}
         got = {p.relative_to(self.blog).as_posix() for p in self.blog.rglob("*") if p.is_file() and not p.relative_to(self.blog).as_posix().startswith("hail-1/")}
         self.assertEqual(got, want)
 
@@ -76,25 +80,66 @@ class Built(unittest.TestCase):
         for s in ('<span class="label">PROTOCOL</span>', '<p class="dek">A small protocol for agent seats: one frame, seven messages, four receipts, no authority.</p>',
                   "<span>8 min read</span>", '<a href="hail-1.md" type="text/markdown">read as Markdown</a>', '<nav class="toc" aria-label="on this page">',
                   '<a href="index.html">← all posts</a>', '<a href="feed.xml" type="application/rss+xml">RSS</a>',
-                  '<h2 class="ct" id="credits-t">Authors &amp; acknowledgements</h2>', '<meta property="og:video:type" content="video/mp4">',
+                  '<h2 class="ct" id="credits-t">Acknowledgements</h2>', '<meta property="og:video:type" content="video/mp4">',
                   '<meta property="og:image" content="https://shoalmark.tools/blog/hail-1/card.png">', '<link rel="canonical" href="https://shoalmark.tools/blog/hail-1.html">'):
             self.assertIn(s, self.page)
         self.assertEqual(self.page.count('<aside class="credits"'), 1)
-        self.assertEqual(len(re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0].split("<p>")) - 1, 5)
+        box = re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0]
+        self.assertEqual(len(box.split("<p>")) - 1, 6)
+        self.assertIn("<p>Article fact review: an independent reviewer, in eight rounds, with design and reader critiques.</p>", box)
+        self.assertTrue(box.endswith("<p>With thanks to the Research seat.</p></aside>"))
 
     def test_the_four_touches(self):
         anchors = re.findall(r'<(h[23]) id="([^"]+)"><a class="hm" href="#\2" aria-hidden="true" tabindex="-1"></a>', self.page)
         self.assertEqual(len(anchors), len(re.findall(r'<h[23] id="', self.page)))
         self.assertEqual(len(anchors), 16)
         self.assertEqual(len(re.findall(r'data-label="hail · [A-Z]+"', self.page)), 10)
-        self.assertRegex(self.page, r'</section>\n<aside class="credits"')
+        self.assertRegex(self.page, r'<section class="ending".*?</section>\n<section class="written".*?</section>\n<aside class="credits"')
         self.assertRegex(self.page, r'<p class="foot">.*?</p>\n<nav class="end" aria-label="blog">')
 
     def test_the_contents_leave_out_the_tab_and_the_credits(self):
         toc = re.search(r'<nav class="toc"[^>]*>(.*?)</nav>', self.page, re.S).group(1)
         self.assertNotIn("#tldr", toc)
         self.assertNotIn("#credits-t", toc)
+        self.assertNotIn("#written-t", toc)
         self.assertEqual(toc.count("<a href="), 16)
+
+    def test_the_authors_in_the_head_and_at_the_end(self):
+        head = re.search(r'<p class="meta">.*?</p>\n    <div class="by">(.*?)</div>\n  </header>', self.page, re.S)
+        end = re.search(r'<section class="written" aria-labelledby="written-t"><h2 class="wt" id="written-t">Written by</h2><ul>(.*?)</ul></section>', self.page)
+        self.assertTrue(head and end)
+        roles = [("@holgo99", "Owner"), ("Go-to-market", "Drafted the words"), ("Designer", "Figures and page design"), ("Planner", "Runs the blog lane"),
+                 ("Builder", "Builds the blog"), ("Reviewer", "Independent fact review"), ("Auditor", "Drafted the spec")]
+        for part, size in ((head.group(1), (48, 40)), (end.group(1), (60, 60))):
+            self.assertEqual(re.findall(r"<b>([^<]+)</b><i>([^<]+)</i>", part), roles)
+            self.assertEqual(re.findall(r'<img src="(assets/[^"]+)" width="(\d+)"', part),
+                             [("assets/authors/owner.jpg", str(size[0]))] + [(f"assets/seats/{k}.svg", str(size[1])) for k in SEATS])
+            self.assertEqual(part.count('href="https://x.com/holgo99"'), 1)
+
+    def test_every_author_picture_has_an_empty_alt(self):
+        pictures = re.findall(r'<img src="assets/(?:authors|seats)/[^"]+"[^>]*>', self.page)
+        self.assertEqual(len(pictures), 14)
+        for img in pictures:
+            self.assertEqual(re.findall(r'\balt="([^"]*)"', img), [""], img)
+
+    def test_the_authors_pictures_are_their_sources(self):
+        self.assertEqual((self.blog / "assets/authors/owner.jpg").read_bytes(), (ROOT / "blog/authors/owner.jpg").read_bytes())
+        for k in SEATS:
+            self.assertEqual((self.blog / f"assets/seats/{k}.svg").read_bytes(), (ROOT / f"brand/seats/{k}.svg").read_bytes(), k)
+
+    def test_the_share_row(self):
+        row = re.search(r'<article class="post">\n    (<div class="share">.*?</div>)\n', self.page).group(1)
+        self.assertTrue(row.startswith('<div class="share"><span class="share-t">Share this article</span>'))
+        links = re.findall(r'<a class="sh" href="([^"]+)" target="_blank" rel="noopener noreferrer">([^<]+)</a>', row)
+        self.assertEqual([name for _href, name in links], ["X", "LinkedIn"])
+        for href, name in links:
+            url = urlsplit(href.replace("&amp;", "&"))
+            self.assertEqual(url.scheme + "://" + url.netloc + url.path,
+                             {"X": "https://x.com/intent/post", "LinkedIn": "https://www.linkedin.com/sharing/share-offsite/"}[name])
+            self.assertEqual(parse_qs(url.query)["url"], [CANONICAL], name)
+        self.assertIn(f'<button type="button" class="sh sh-copy" data-url="{CANONICAL}" data-done="Link copied" hidden>Copy link</button>', row)
+        self.assertIn('<span class="vh" role="status" aria-live="polite"></span>', row)
+        self.assertNotRegex(self.page.lower(), r"facebook|<script(?![^>]*\bsrc=)")
 
     def test_no_inline_script(self):
         self.assertEqual(re.findall(r"<script(?![^>]*\bsrc=)", self.page), [])
@@ -146,7 +191,11 @@ class Refuses(unittest.TestCase):
                                                                          root / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2"), "is not the latin subset"),
                 ("a figure with no entry", self.edit("blog/posts/hail-1.figures.json", '"F15"', '"F16"'), "F15 has no entry"),
                 ("site/blog already there", lambda root: (root / "site/blog").mkdir(parents=True), "is already there"),
-                ("a template's slot with no value", self.edit("blog/templates/post.html", "{{ dek }}", "{{ deck }}"), "no value for deck")):
+                ("a template's slot with no value", self.edit("blog/templates/post.html", "{{ dek }}", "{{ deck }}"), "no value for deck"),
+                ("a seat with no icon in brand/seats/", self.edit(post, '{"seat": "auditor"', '{"seat": "research-lab"'), "its icon in brand/seats/"),
+                ("the Owner's picture not in blog/authors/", self.edit(post, '"picture": "owner.jpg"', '"picture": "nobody.jpg"'),
+                 "a picture in blog/authors/"),
+                ("a front matter without its authors", self.edit(post, "authors: [", "people: ["), "its front matter has no authors")):
             with self.subTest(name):
                 self.refused(change, reason)
 

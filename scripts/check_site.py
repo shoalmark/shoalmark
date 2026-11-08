@@ -868,8 +868,11 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # <name>-still.png. A <source> after its picture's <img> is never selected, so it counts for nothing. Every src, srcset, data-once and data-still is a
 # file of the site. The blog is English only, with no language pair: each of its pages says lang="en" and carries no hreflang, and each post names its
 # Markdown version beside it. Its script, a file of its own, asks for nothing, as an inline script may not. Every file under blog/ is read.
+# Every image has alt text but an author's picture, a file of blog/assets/authors/ or blog/assets/seats/: its alt is empty, as the author's name
+# stands beside it as text.
 BLOG = "blog"
 BLOG_LIMIT = 1_000_000
+AUTHOR_PICTURES = (BLOG + "/assets/authors/", BLOG + "/assets/seats/")
 REDUCED_MOTION = "(prefers-reduced-motion:reduce)"          # the media query with its whitespace taken out, as it is compared
 
 
@@ -939,6 +942,10 @@ def blog_problem(rel, page):
             return f"{rel} names {url!r} ({tag} {attr}), and that is no file of the site"
     for attrs, sources in page.images:
         src = attrs.get("src", "")
+        if (in_site(rel, src) or "").startswith(AUTHOR_PICTURES):
+            if attrs.get("alt") != "":
+                return f"{rel} shows the author's picture {src!r} without an empty alt, though the name beside it says who it is"
+            continue
         if not attrs.get("alt", "").strip():
             return f"{rel} shows the image {src!r} without alt text"
         if not is_gif(src):
@@ -1000,6 +1007,7 @@ for rel in blog_pages:
         if len(twin) != 1 or in_site(rel, twin[0]) != rel[:-len(".html")] + ".md" or not (site / rel[:-len(".html")]).with_suffix(".md").is_file():
             fail(f"{rel} does not name its Markdown version beside it, {rel[:-len('.html')]}.md, in one <link rel=\"alternate\" type=\"text/markdown\">")
     figures += len({id(sources) for _attrs, sources in page.images if sources is not None})         # a figure is a <picture> that shows an image
-print(f"site check: the {len(blog_pages)} blog page(s) and their {figures} figure(s) passed: each figure has alt text and a still, each page is English "
+print(f"site check: the {len(blog_pages)} blog page(s) and their {figures} figure(s) passed: each figure has alt text and a still, each author's picture "
+      f"an empty alt, each page is English "
       f"alone and each post names its Markdown version, the blog's script asks for nothing, and each of the {len(blog_files)} file(s) under {BLOG}/ "
       f"is within {BLOG_LIMIT:,} bytes")

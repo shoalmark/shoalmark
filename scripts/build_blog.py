@@ -7,13 +7,16 @@ Standard library only. From blog/, it reads:
 - posts/<slug>.figures.json: each figure slot's files, the play-once GIFs' lengths in ms, and its alt text;
 - posts/<slug>.hails.html: the hails shown as page text, each after a comment naming its place;
 - posts/<slug>/: the files the post shows;
-- templates/, css/base.css and css/m2.css, js/blog.js: the kit. The templates use two forms only: {{ slot }} and {% include "name" %}.
+- templates/, css/base.css and css/m2.css, js/blog.js: the kit. The templates use two forms only: {{ slot }} and {% include "name" %};
+- authors/: the pictures of the authors who are people; a seat's picture is its icon in brand/seats/.
 It writes site/blog/: index.html, <slug>.html, <slug>.md (the post for agent readers), <slug>/ (its files), assets/blog.css and
-assets/blog.js, fonts/ (the site's own latin subsets, under neutral names, with their licences), feed.xml and llms.txt.
+assets/blog.js, assets/authors/ and assets/seats/ (the authors' pictures), fonts/ (the site's own latin subsets, under neutral names, with
+their licences), feed.xml and llms.txt.
 Every page links with relative addresses; the head's addresses are absolute. A post's body is its Markdown converted line by line into the
 post's markup: the TL;DR as a dl with its band, each slot a figure with its stills and play-once GIFs, each marker section, the hails, the
-status paragraph, the quotation, the reference and the foot; then each heading gets its anchor, each hail its label, the credits follow the
-quotation, and the end links follow the foot. The builder refuses whatever has a shape it does not expect.
+status paragraph, the quotation, the reference and the foot; then each heading gets its anchor, each hail its label, "written by" and the
+credits follow the quotation, and the end links follow the foot. The head names the authors, and a share row opens the post. The builder
+refuses whatever has a shape it does not expect.
 """
 import datetime
 import hashlib
@@ -24,6 +27,7 @@ import shutil
 import sys
 import unicodedata
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "blog"
@@ -35,8 +39,9 @@ VARIANT = "m2"
 INDEX_INTRO = "How I build shoalmark with my agents, written from the record."
 BLOG_NAME = "shoalmark blog"
 LLMS_LINE = "Every post has a Markdown version beside it; the figures are linked as stills, each with its alt text."
-UI = {"markdown": "read as Markdown", "contents": "on this page", "credits": "Authors &amp; acknowledgements", "all": "← all posts",
-      "rss": "RSS", "read": "{n} min read", "stop": "stop"}
+UI = {"markdown": "read as Markdown", "contents": "on this page", "credits": "Acknowledgements", "all": "← all posts",
+      "rss": "RSS", "read": "{n} min read", "stop": "stop", "share": "Share this article", "copy": "Copy link", "copied": "Link copied",
+      "written": "Written by"}
 LINKS = {"‹link: why-shoalmark›": "why-shoalmark.html", "‹link: seats›": "seats/index.html"}     # a foot link's page, from the site's root
 FONTS = {"IBM-Plex-Mono-normal-400-latin.woff2": ("mono-400.woff2", "c36f509c"), "IBM-Plex-Mono-normal-600-latin.woff2": ("mono-600.woff2", "ad4580d8"),
          "Silkscreen-normal-400-latin.woff2": ("pixel-400.woff2", "17bb6d80"), "Silkscreen-normal-700-latin.woff2": ("pixel-700.woff2", "30ad65d8"),
@@ -59,7 +64,7 @@ def front_matter(text, name):
         if not sep or not re.fullmatch(r"[a-z_]+", key):
             refuse(f"{name}: a front matter line is not 'key: value': {line[:60]!r}")
         meta[key] = json.loads(value) if value[:1] in '"[' else value
-    for key in ("title", "slug", "date", "kicker", "dek", "card", "card_alt", "credits"):
+    for key in ("title", "slug", "date", "kicker", "dek", "card", "card_alt", "authors", "credits"):
         if key not in meta:
             refuse(f"{name}: its front matter has no {key}")
     return meta, body.lstrip("\n")
@@ -298,7 +303,22 @@ class Post:
             i += 1
         if seen != sorted(seen) or set(seen) != {int(k[1:]) for k in self.figures} or marker != len(MARKERS) or self.used != set(self.hails):
             refuse(f"{self.name}: the slots {seen}, the {marker} markers or the hails used do not match its files")
-        return touches("\n".join(out), self.meta["credits"])
+        return touches("\n".join(out), self.meta["credits"], authors(*self.authors(), end=True))
+
+    def authors(self):
+        """The post's authors from its front matter: first the Owner, a person with a link, a picture in blog/authors/ and a role line; then
+        the seats, each with its name, its role line and its icon in brand/seats/."""
+        people = self.meta["authors"]
+        if not isinstance(people, list) or len(people) < 2:
+            refuse(f"{self.name}: its authors are not the Owner and the seats")
+        owner, seats = people[0], people[1:]
+        if (not isinstance(owner, dict) or set(owner) != {"name", "href", "picture", "role"} or not owner["href"].startswith("https://")
+                or not (SRC / "authors" / owner["picture"]).is_file()):
+            refuse(f"{self.name}: its first author is not a person with a name, a link, a picture in blog/authors/ and a role")
+        for seat in seats:
+            if not isinstance(seat, dict) or set(seat) != {"seat", "name", "role"} or not (ROOT / "brand/seats" / f"{seat['seat']}.svg").is_file():
+                refuse(f"{self.name}: an author is not a seat with a name, a role and its icon in brand/seats/: {str(seat)[:80]}")
+        return owner, seats
 
     def words(self):
         """The reading time's count: the words, without the TL;DR, the figure slots, the title and the comment."""
@@ -330,9 +350,34 @@ class Post:
                 f'description: "{self.description}"\n---\n\n' + md)
 
 
-def touches(b, credits):
-    """Each heading's drawn mark becomes its anchor; each hail with a marker line gets its label; the credits follow the quotation; the end
-    links follow the foot."""
+def authors(owner, seats, end=False):
+    """The authors: in the head, the Owner's line, then the seats in a row; at the end, "written by", one list of them all. Every picture's alt
+    is empty, as its name stands beside it as text."""
+    so, ss = (60, 60) if end else (48, 40)
+    o = (f'<a class="au au-owner" href="{attr(owner["href"])}"><img src="assets/authors/{attr(owner["picture"])}" width="{so}" height="{so}" alt="">'
+         f'<span><b>{text_node(owner["name"])}</b><i>{text_node(owner["role"])}</i></span></a>')
+    row = "".join(f'<li class="au"><img src="assets/seats/{attr(s["seat"])}.svg" width="{ss}" height="{ss}" alt=""><span><b>{text_node(s["name"])}</b>'
+                  f'<i>{text_node(s["role"])}</i></span></li>' for s in seats)
+    if end:
+        return (f'<section class="written" aria-labelledby="written-t"><h2 class="wt" id="written-t">{UI["written"]}</h2><ul>'
+                f'<li class="au-owner">{o.replace(" au-owner", "", 1)}</li>{row}</ul></section>')
+    return f'    <div class="by">\n      {o}\n      <ul class="au-seats">{row}</ul>\n    </div>'
+
+
+def share(url, title):
+    """The share row: X and LinkedIn as plain links to their share pages, opened in a new tab; the copy button, which the script shows only
+    where the browser has a clipboard; and a live region for what it says."""
+    q = lambda s: quote(s, safe="")
+    return (f'    <div class="share"><span class="share-t">{UI["share"]}</span>'
+            f'<a class="sh" href="https://x.com/intent/post?url={q(url)}&amp;text={q(title)}" target="_blank" rel="noopener noreferrer">X</a>'
+            f'<a class="sh" href="https://www.linkedin.com/sharing/share-offsite/?url={q(url)}" target="_blank" rel="noopener noreferrer">LinkedIn</a>'
+            f'<button type="button" class="sh sh-copy" data-url="{attr(url)}" data-done="{UI["copied"]}" hidden>{UI["copy"]}</button>'
+            f'<span class="vh" role="status" aria-live="polite"></span></div>')
+
+
+def touches(b, credits, written):
+    """Each heading's drawn mark becomes its anchor; each hail with a marker line gets its label; "written by" and the credits follow the
+    quotation; the end links follow the foot."""
     b = re.sub(r'<(h[23]) id="([^"]+)">', r'<\1 id="\2"><a class="hm" href="#\2" aria-hidden="true" tabindex="-1"></a>', b)
 
     def label(m):
@@ -343,7 +388,7 @@ def touches(b, credits):
            + "".join(f"<p>{text_node(x)}</p>" for x in credits) + "</aside>")
     i = b.index('<section class="ending"')
     j = b.index("</section>", i) + len("</section>")
-    b = b[:j] + "\n" + box + b[j:]
+    b = b[:j] + "\n" + written + "\n" + box + b[j:]
     end = f'\n<nav class="end" aria-label="blog"><a href="index.html">{UI["all"]}</a><a href="feed.xml" type="application/rss+xml">{UI["rss"]}</a></nav>'
     i = b.index('<p class="foot">')
     j = b.index("</p>", i) + 4
@@ -351,11 +396,11 @@ def touches(b, credits):
 
 
 def contents(body):
-    """The contents: each h2 but the TL;DR's tab and the credits' title, each h3 after it in a list nested inside it."""
+    """The contents: each h2 but the TL;DR's tab, the credits' title and "written by", each h3 after it in a list nested inside it."""
     items = []
     for m in re.finditer(r'<h([23])((?: [a-z-]+="[^"]*")*)>(.*?)</h\1>', body, re.S):
         level, attrs, text = m.groups()
-        if re.search(r'class="(t|ct)"', attrs):
+        if re.search(r'class="(t|ct|wt)"', attrs):
             continue
         hid, label = re.search(r'id="([^"]+)"', attrs).group(1), re.sub(r"<[^>]+>", "", text)
         a = f'<a href="#{hid}">{label}</a>'
@@ -397,6 +442,8 @@ def build(site):
         refuse("blog/posts holds no post")
     (out / "assets").mkdir(parents=True)
     (out / "fonts").mkdir()
+    (out / "assets/seats").mkdir()
+    (out / "assets/authors").mkdir()
     (out / "assets/blog.css").write_text((SRC / "css/base.css").read_text(encoding="utf-8") + "\n" + (SRC / "css/m2.css").read_text(encoding="utf-8"),
                                          encoding="utf-8")
     shutil.copyfile(SRC / "js/blog.js", out / "assets/blog.js")
@@ -418,6 +465,10 @@ def build(site):
         for f in sorted(post.files.iterdir()):
             shutil.copyfile(f, out / slug / f.name)
         body = post.body()
+        owner, seats = post.authors()
+        shutil.copyfile(SRC / "authors" / owner["picture"], out / "assets/authors" / owner["picture"])
+        for seat in seats:
+            shutil.copyfile(ROOT / "brand/seats" / f"{seat['seat']}.svg", out / "assets/seats" / f"{seat['seat']}.svg")
         minutes = -(-post.words() // WPM)
         card = f"{SITE_URL}blog/{slug}/{meta['card']}"
         video = meta.get("video")
@@ -429,7 +480,8 @@ def build(site):
                    date_iso=meta["date"], date_text=meta["date"], title_html=title_html, toc=contents(body), body=body, card_abs=card,
                    card_alt=html.escape(meta["card_alt"]), video_tags=tags, here_blog="", current_blog="", kicker_label=text_node(meta["kicker"]),
                    dek=text_node(meta["dek"]), reading_time=UI["read"].format(n=minutes), md_href=f"{slug}.md", ui_markdown=UI["markdown"],
-                   ui_contents=UI["contents"], hero_poster=f"{slug}/{meta['card']}", hero_video=f"{slug}/{video}", hero_alt=html.escape(meta["card_alt"]))
+                   ui_contents=UI["contents"], hero_poster=f"{slug}/{meta['card']}", hero_video=f"{slug}/{video}", hero_alt=html.escape(meta["card_alt"]),
+                   authors=authors(owner, seats), share=share(f"{SITE_URL}blog/{slug}.html", meta["title"]))
         (out / f"{slug}.html").write_text(render("post.html", ctx), encoding="utf-8")
         (out / f"{slug}.md").write_text(post.markdown_version(), encoding="utf-8")
         rows.append(render("_index-row.html", {"href": f"{slug}.html", "title_html": title_html, "date_iso": meta["date"], "date_text": meta["date"],

@@ -23,6 +23,7 @@
     <h1>{{ title_html }}</h1>
     <p class="dek">{{ dek }}</p>
     <p class="meta"><span>{{ reading_time }}</span><span class="sep" aria-hidden="true">·</span><a href="{{ md_href }}" type="text/markdown">{{ ui_markdown }}</a></p>
+{{ authors }}
   </header>
   <figure class="hero">
     <video muted loop playsinline preload="none" width="1200" height="630" poster="{{ hero_poster }}" aria-label="{{ hero_alt }}"><source src="{{ hero_video }}" type="video/mp4"></video>
@@ -30,6 +31,7 @@
   </figure>
   <nav class="toc" aria-label="{{ ui_contents }}"><div class="toc-box"><p class="toc-t" aria-hidden="true">{{ ui_contents }}</p><ol>{{ toc }}</ol></div></nav>
   <article class="post">
+{{ share }}
     <details class="toc-m"><summary>{{ ui_contents }}</summary><ol>{{ toc }}</ol></details>
 {{ body }}
   </article>

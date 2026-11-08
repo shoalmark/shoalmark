@@ -28,9 +28,13 @@ BLOG_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-wid
 BLOG_SMALL = '<source media="(max-width: 640px)" srcset="first-post/small.gif">'
 BLOG_PICTURE = "<picture>" + BLOG_SMALL_STILL + BLOG_SOURCE + BLOG_SMALL + BLOG_IMG + "</picture>"
 BLOG_FIGURE = "<figure>" + BLOG_PICTURE + "<figcaption>A loop.</figcaption></figure>"
+# an author's picture, beside the author's name: its alt is empty
+AUTHOR = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1H0z"/></svg>'
+BLOG_AUTHOR = '<p class="by"><img src="assets/seats/builder.svg" alt=""><b>Builder</b></p>'
 BLOG = {"blog/index.html": '<html lang="en"><body><h1>Blog</h1><ul><li><a href="first-post.html">First post</a></li></ul></body></html>',
-        "blog/first-post.html": '<html lang="en"><head><link rel="alternate" type="text/markdown" href="first-post.md"></head><body><h1>First post</h1>' + BLOG_FIGURE + '<p><a href="index.html">All posts</a></p></body></html>',
-        "blog/first-post.md": "# First post\n", "blog/first-post/loop.gif": GIF, "blog/first-post/loop-still.png": STILL, "blog/first-post/small.gif": GIF, "blog/first-post/small-still.png": STILL}
+        "blog/first-post.html": '<html lang="en"><head><link rel="alternate" type="text/markdown" href="first-post.md"></head><body><h1>First post</h1>' + BLOG_AUTHOR + BLOG_FIGURE + '<p><a href="index.html">All posts</a></p></body></html>',
+        "blog/first-post.md": "# First post\n", "blog/first-post/loop.gif": GIF, "blog/first-post/loop-still.png": STILL, "blog/first-post/small.gif": GIF, "blog/first-post/small-still.png": STILL,
+        "blog/assets/seats/builder.svg": AUTHOR}
 # a figure the post's script plays once, as a post sets it: its stills shown, each play-once GIF in a data-once beside the still it rests on, its
 # data-still, and the <picture>'s sources for reduced motion naming the stills; beside it a still figure; on a page of its own, with their four files
 ONCE_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="second-post/wave-still.png">'
@@ -798,7 +802,7 @@ class FencedBlocks(unittest.TestCase):
 
 class Blog(unittest.TestCase):
     """The blog: each file under blog/ is at most 1,000,000 bytes, and each GIF there has its still beside it; on each page in blog/,
-    each image has alt text, each GIF stands in a <picture> whose reduced-motion source names its still, each GIF a <source> offers comes after a source for
+    each image has alt text but an author's picture, whose alt is empty, each GIF stands in a <picture> whose reduced-motion source names its still, each GIF a <source> offers comes after a source for
     reduced motion that names its still, and each src and srcset is a file of the site.
     A site that passes, and controls that each change one thing in it; the check names the file."""
 
@@ -840,6 +844,12 @@ class Blog(unittest.TestCase):
             ("an image without alt", self.put(self.PAGE, alt, ""), "site check: blog/first-post.html shows the image 'first-post/loop.gif' without alt text"),
             ("an image with an empty alt", self.put(self.PAGE, alt, ' alt=""'), "site check: blog/first-post.html shows the image 'first-post/loop.gif' without alt text"),
             ("an image with a blank alt", self.put(self.PAGE, alt, ' alt=" &#9; "'), "site check: blog/first-post.html shows the image 'first-post/loop.gif' without alt text"),
+            ("an image outside a <picture>, not an author's, with an empty alt", self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.png" alt="">'),
+             "site check: blog/first-post.html shows the image 'first-post/loop-still.png' without alt text"),
+            ("an author's picture with alt text", self.put(self.PAGE, BLOG_AUTHOR, BLOG_AUTHOR.replace('alt=""', 'alt="Builder"')),
+             "site check: blog/first-post.html shows the author's picture 'assets/seats/builder.svg' without an empty alt"),
+            ("an author's picture without alt", self.put(self.PAGE, BLOG_AUTHOR, BLOG_AUTHOR.replace(' alt=""', "")),
+             "site check: blog/first-post.html shows the author's picture 'assets/seats/builder.svg' without an empty alt"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
@@ -873,7 +883,7 @@ class Blog(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: the 2 blog page(s) and their 1 figure(s) passed: " + "each figure has alt text and a still, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 7, result.stdout)
+        self.assertIn("site check: the 2 blog page(s) and their 1 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 8, result.stdout)
 
     def test_what_the_blog_allows(self):
         german = ('<h1>Blog</h1><figure><picture><source media="(prefers-reduced-motion:reduce)" srcset="first-post/loop-still.png">'
@@ -986,7 +996,7 @@ class PlayOnce(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: the 3 blog page(s) and their 3 figure(s) passed: " + "each figure has alt text and a still, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 13, result.stdout)
+        self.assertIn("site check: the 3 blog page(s) and their 3 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 14, result.stdout)
 
     def test_each_control_is_refused(self):
         for name, change, message in self.controls():

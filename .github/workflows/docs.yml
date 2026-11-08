@@ -18,6 +18,7 @@ on:
       - "scripts/check_site.py"
       - "scripts/test_check_site.py"
       - "blog/**"
+      - "brand/seats/*.svg"
       - "scripts/build_blog.py"
       - "scripts/test_build_blog.py"
       - "scripts/test_docs_worker.mjs"

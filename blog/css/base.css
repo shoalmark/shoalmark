@@ -11,7 +11,7 @@
 /* deep water: the site's night tokens, the only scheme for now */
 :root{color-scheme:dark;--bg:#0d1720;--panel:#111f2c;--band:#15293d;--ink:#d9e4ec;--dim:#a9bbc8;--mute:#90a3b1;
   --contour:#34546c;--line:#2a4357;--box:#34546c;--drying:#b8c98c;--watt:#bccd8f;--id:#e8d4a0;--land:#e8d4a0;
-  --tabink:#0d1720;--fig:#0d1720;--toc:13.5rem;--gap:3rem;--col:68ch;
+  --tabink:#0d1720;--fig:#0d1720;--pink:#ee92d4;--toc:13.5rem;--gap:3rem;--col:68ch;
   --mono:"shoalmark mono",ui-monospace,"SF Mono",Menlo,monospace;--pix:"shoalmark pixel","shoalmark mono",monospace;--l:1.65rem}
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--bg);color:var(--ink);font:16px/1.65 var(--mono);-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -75,6 +75,43 @@ a{color:inherit}
 .hf::before,.hf::after{content:"";position:absolute;width:.296em;height:.296em;border:0 solid currentColor}
 .hf::before{left:0;top:.038em;border-top-width:.07em;border-left-width:.07em}
 .hf::after{right:0;bottom:.028em;border-bottom-width:.07em;border-right-width:.07em}
+
+/* ---------------------------------------------------------------- the authors: under the meta line, the Owner
+   first, round, ringed in the start page's pink (on the board it marks what is the Owner's); then the seats, each its
+   icon cropped round at a whole multiple of its 20-unit grid (40 px here, 60 at the end), its name and its role */
+.by{margin-top:calc(var(--l)*1.1);display:flex;flex-direction:column;align-items:center;gap:16px}
+.au{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;text-align:left}
+.au img{display:block;flex:none;border-radius:50%;background:var(--band)}
+.au img[src$=".svg"]{image-rendering:pixelated}
+.au b{display:block;font-size:14px;line-height:1.35;font-weight:600;color:var(--ink)}
+.au i{display:block;font-style:normal;font-size:12px;line-height:1.4;color:var(--mute)}
+.au-owner img{width:48px;height:48px;box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--pink)}
+a.au-owner:hover b{text-decoration:underline;text-decoration-color:var(--pink);text-underline-offset:.2em}
+.au-seats{display:flex;justify-content:center;gap:10px 12px;list-style:none}
+.au-seats .au{flex-direction:column;gap:6px;width:92px;text-align:center}
+.au-seats .au b{font-size:12.5px;white-space:nowrap}
+.au-seats .au img{width:40px;height:40px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* the share row: first in the text column, under the hero; plain links and the browser's clipboard, nothing
+   loaded from another site */
+.post .share{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 calc(var(--l)*1.25);padding-bottom:calc(var(--l)*.75);border-bottom:1px solid var(--line)}
+.post .share-t{font:400 12px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-right:4px}
+.post .share .sh{font:400 11px/1 var(--pix);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);background:none;border:1px solid var(--contour);
+  padding:9px 10px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.post .share .sh:hover,.post .share .sh:focus-visible{border-color:var(--drying);color:var(--watt)}
+.post .share .sh[hidden]{display:none}
+/* "written by": the authors again at the end, above the acknowledgements */
+.post .written{margin:calc(var(--l)*2) 0 0}
+.post .written .wt{font-size:1.05em;margin:0 0 var(--l)}
+.post .written ul{list-style:none;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px}
+.post .written li{padding:0;margin:0}
+.post .written li::before{content:none}
+.post .written .au img{width:60px;height:60px}
+.post .written .au-owner{grid-column:1/-1}
+.post .written a.au{text-decoration:none}
+.post .written .au-owner img{width:60px;height:60px}
+.post .written .au b{font-size:15px}
+.post .written .au i{font-size:13px}
 
 /* ---------------------------------------------------------------- the contents: the board's titled box, its sections
    numbered 01, 02 … and flush, the markers (`### `) indented on a tree line; it stays in place, and the section being
@@ -168,7 +205,7 @@ a{color:inherit}
 .post .said figcaption{margin:0;line-height:var(--l);font-size:min(1em,calc((100vw - 50px) / 24));white-space:nowrap;color:var(--dim)}
 .post .said figcaption::before{content:"\A";white-space:pre}
 /* the authors and acknowledgements: the board's titled box, after the quotation */
-.post .credits{position:relative;margin:calc(var(--l)*2) 0 0;border:1px solid var(--contour);padding:24px 22px 4px}
+.post .credits{position:relative;margin:calc(var(--l)*2.2) 0 0;border:1px solid var(--contour);padding:24px 22px 4px}
 .post .credits .ct{position:absolute;top:-.85em;left:1ch;margin:0;padding:0 1ch;background:var(--bg);font:600 15px/1.6 var(--mono);color:var(--ink)}
 .post .credits p{color:var(--dim)}
 /* the quiet end: back to all posts, and the feed; no newsletter, no related posts */
@@ -240,6 +277,12 @@ a{color:inherit}
   .hero{width:calc(100% + 32px);margin-left:-16px;margin-right:-16px}   /* edge to edge, so the card's wordmark keeps its size */
   .hero video{border-radius:0}
   .hero figcaption{padding:0 16px}
+  /* the authors on a phone: the Owner's line, then the six seats' faces in one row; their names stay for screen
+     readers, and show in "written by" at the end */
+  .au-seats{gap:8px}
+  .au-seats .au{width:auto}
+  .au-seats .au span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .post .written ul{grid-template-columns:1fr}
   .ix a{grid-template-columns:auto 1fr;row-gap:6px}
   .ix .ix-t{grid-column:1/-1;font-size:1.75em}
   .post h2{margin-top:calc(var(--l)*2)}
