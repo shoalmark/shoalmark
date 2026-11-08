@@ -3,7 +3,7 @@
 // unresolvable, so a page that asks for the outside fails and is logged. For each landing and How it works page at 360, 375 and 390 px (and 1440):
 //   no sideways scroll, no script error, no failed request, no request to any other host.
 // On each landing, with the widest three-digit hi-score (888/888) set in the top bar, at every whole width from 360 to 1920 px: the bar's items stand in one row, overlap none another,
-// wrap and are cut nowhere, and nothing scrolls sideways; the anchors and the separator with them first show at 1208 px (English) and 1273 px (German); both header buttons show the
+// wrap and are cut nowhere, and nothing scrolls sideways; the anchors and the separator with them first show at 1280 px (English) and 1346 px (German); both header buttons show the
 // focus ring when the keyboard reaches them.
 // In the probe state, on each landing: the hero's cue is as wide as the primary button and centred on it (over the stacked buttons on a phone), hidden from screen readers,
 // clear of every chart label; with motion allowed only its icon and words blink, from the start, 5 s at most, then lit; under reduced motion the document has no
@@ -362,7 +362,7 @@ if (state == "probe" && DOOR) for (const page of PAGES.filter(p => p.endsWith("i
 }
 // the top bar, with the widest three-digit hi-score (888/888) set in it, at every whole width from 360 to 1920 px: its items (the mark, each score figure, the switch, each anchor shown, the
 // separator, Docs) stand in one row inside the bar's padding, overlap none another, wrap nowhere and are cut nowhere, and neither the bar nor the page scrolls sideways; the anchors and the
-// separator with them first show at 1208 px in English and 1273 px in German; both buttons show the focus ring when the keyboard reaches them
+// separator with them first show at 1280 px in English and 1346 px in German; both buttons show the focus ring when the keyboard reaches them
 const BARM = `(() => {
   const wrap = document.querySelector(".hud .wrap"), cs = getComputedStyle(wrap), pl = parseFloat(cs.paddingLeft), pr = parseFloat(cs.paddingRight), W = innerWidth, vis = e => e.getClientRects().length > 0 && getComputedStyle(e).display != "none" && getComputedStyle(e).visibility != "hidden";
   const R = e => { const b = e.getBoundingClientRect(); return {l: b.left, r: b.right, t: b.top, b: b.bottom, h: b.height} };
@@ -391,7 +391,7 @@ const BARM = `(() => {
 const RING = `(() => { const e = document.activeElement, cs = getComputedStyle(e), r = e.getBoundingClientRect(), ow = parseFloat(cs.outlineWidth), oo = parseFloat(cs.outlineOffset), g = ow + oo, bar = document.querySelector(".hud").getBoundingClientRect();
   return {el: e.className || e.tagName, style: cs.outlineStyle, width: ow, offset: oo, color: cs.outlineColor, inside: r.left - g >= 0 && r.right + g <= innerWidth && r.top - g >= bar.top && r.bottom + g <= bar.bottom} })()`;
 if (BAR) for (const page of PAGES.filter(p => p.endsWith("index.html") && !p.startsWith("how"))) {
-  const lang = page.startsWith("de/") ? "de" : "en", want = lang == "de" ? 1273 : 1208;
+  const lang = page.startsWith("de/") ? "de" : "en", want = lang == "de" ? 1346 : 1280;
   const t = await open(page, {w: 1000, h: 900});
   await t.js(`document.querySelector(".score .opt b").textContent = "888/888"`);   // the widest three-digit hi-score: the breakpoint must leave room for it
   const failing = [];
