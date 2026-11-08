@@ -2,24 +2,37 @@
 id: FM-153
 status: In Progress
 considered: FM-143, FM-152
-next: build
+next: owner
 triaged: 2026-11-08
 tier: P2
 hook: "The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small, and still for readers who turn motion off."
-ask-id: FM-153-Q2
-ask: "Shall FM-153 build a blog for shoalmark's site, an index in English and German in each language's nav, and its first post, the article whose checked words and figures the Auditor holds (recorded privately), linked from each language's start page?"
+ask-id: FM-153-Q3
+ask: "Shall FM-153 build the blog as its own English site at shoalmark.tools/blog/, built and deployed with the site by the repository's own builder, dark-first and with no docs engine, with its first post, and a Blog button in the start page's and the docs' header instead of FM-153-Q2's start-page line?"
 ask-kind: ruling
 ask-since: 2026-11-08
-ask-options: "yes, as proposed | the blog only: the first post waits | no"
+ask-options: "yes, as proposed | keep the blog inside the docs, as FM-153-Q2 answered | no: no blog for now"
 ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-08
-answered-by: holgo99
 ---
 
 # FM-153 — A blog for the site, and its first post
 
 ## What is true now
+
+**2026-11-08 — the blog is to leave the docs site, and FM-153 waits for the Owner's ruling, FM-153-Q3.** The blog
+and its first post were built inside the docs site, under FM-153-Q2's answer, on `planner/blog-build`. It is not
+merged, and no pull request is open. FM-153-Q3 asks for another plan:
+
+- **Its own site:** `shoalmark.tools/blog/`, built in the same job as the docs and deployed with them, by a small
+  builder of the repository's own, with its own templates and CSS and no docs engine. The docs engine builds the docs
+  only.
+- **English only:** no German index and no German post.
+- **Dark-first,** like the figures and the board.
+- **The start page:** no line under the hero. Blog becomes a button in the start page's header and in the docs'
+  header, in both languages, leading to the English blog.
+- **What carries over:** the first post's English words and its figures, from the checked folder (recorded
+  privately), and the figure checks.
+- **No build commit lands under this plan before its answer:** FM-153-Q2's answer covered the blog inside the docs
+  (FM-033).
 
 **2026-11-08 — judged before its first build commit: keep P2, In Progress.** A partial triage pass, on the Owner's
 signed answer to FM-153-Q2 (`aa19b0c`), judged this row alone ([worksheet](evidence/triage/triage-2026-11-08.md)).
@@ -50,26 +63,34 @@ still for readers who turn motion off.
 
 ## Done when
 
-- [ ] A blog index in English and German, each in its language's nav.
-- [ ] The first post in English and German, every word and figure from the checked folder.
-- [ ] One line on the start page in each language, linking straight to the post, in the same pull request as the
-  post. It goes where the site renders the start page (`overrides/landing.html`,
-  `overrides/partials/landing/en.html`, `overrides/partials/landing/de.html`) and into the start page's source
-  (`docs/index.md`, `docs/de/index.md`).
-- [ ] Every figure with alt text and a still, and each at most 1,000,000 bytes, held by `check_site.py`.
-- [ ] The German page says in one line that the figures carry English labels.
+- [ ] The blog at `shoalmark.tools/blog/`, with its index: built by the repository's own builder, with its own
+  templates and CSS and no docs engine, in the same job as the site and deployed with it.
+- [ ] Dark-first.
+- [ ] The first post, every word and figure from the checked folder.
+- [ ] The first post's head carries its share video (`og:video`) and a matching social card.
+- [ ] The post's spec link points at the published spec.
+- [ ] A Blog button in the start page's header and in the docs' header, in both languages, leading to the English
+  blog. No line under the start page's hero.
+- [ ] Every figure with alt text and a still, and each at most 1,000,000 bytes, held by a check that runs in the
+  site's build.
 - [ ] `docs.yml`'s build passes on the pull request.
-- [ ] A standard review's READY, with the Designer's check of the rendered page beside it.
+- [ ] A standard review's READY, with the Designer's check of the rendered pages beside it.
 
 ## Asks
 
 **FM-153-Q1** · 2026-11-08 · Shall FM-153 build a blog for shoalmark's site, an index in English and German in each language's nav, and its first post, the article whose checked words and figures the Auditor holds (recorded privately), ready to merge on 8 November?
 **withdrawn** — no answer was given
 
+**FM-153-Q2** · 2026-11-08 · Shall FM-153 build a blog for shoalmark's site, an index in English and German in each language's nav, and its first post, the article whose checked words and figures the Auditor holds (recorded privately), linked from each language's start page?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — aa19b0c · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-08 | Asked the Owner again: FM-153-Q3, the blog as its own English site at shoalmark.tools/blog/, dark-first, with a Blog button in the start page's and the docs' header; FM-153-Q2 cleared, its record under Asks. |
 | 2026-11-08 | Judged keep P2 by a partial triage pass on the Owner's signed answer to FM-153-Q2 (aa19b0c); In Progress. Records only. |
 | 2026-11-08 | RV-4425 and RV-4426 fixed forward, from #275's verdict: FM-153 was filed In Progress with next: build on 2026-11-07, before any pass judged it, and set back to Proposed with next: owner when FM-153-Q1 was asked, the same day, with nothing outside the records committed under it; What is true now lists the first post as built, not an empty one. |
 | 2026-11-08 | Done when: the start-page line also goes where the site renders the start page, its landing template and partials. |
