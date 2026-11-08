@@ -120,10 +120,10 @@
  },
  "F16": {
   "name": "f16-relay",
-  "alt": "Animated sequence diagram on deep blue-black, titled “a need out to you, your answer back”, time running down. Four lifelines: BUILDER a.builder-1, PLANNER a.planner, AUDITOR a.auditor, and OWNER you. The builder's QUESTION, for: owner, goes to the planner, which passes it on, unchanged, to the auditor. A bar on the auditor marks its choice: relay, answer or reject. Its ANSWER, disposition: relayed, goes straight back to the builder. Its Owner-ask, kind: allow-once, reaches you, and a clock bar starts on your lane. Bars on your lane follow, step by step: shown on 3 surfaces; not urgent: no ring; five answers offered; you sign: yes. Your DECISION goes to the auditor, and the clock stops: filed; all copies close, in green. The auditor's INFORMATION goes to the builder: handed back. The builder's WILCO goes to the auditor: verified, claimed once. A bar on the builder: acts once. Its DONE goes to the auditor: on the record. At the end, the two QUESTION hops, you sign: yes and its bar, and the DECISION with filed; all copies close stay lit. Each step lights in turn while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "alt": "Animated sequence diagram on deep blue-black, titled “a need out to you, your answer back”, time running down. Four lifelines: BUILDER a.builder-1, PLANNER a.planner, AUDITOR a.auditor, and OWNER you. The builder's QUESTION, for: owner, goes to the planner, which passes it on, unchanged, to the auditor. A bar on the auditor marks its choice: relay, answer or reject. Its ANSWER, disposition: relayed, goes straight back to the builder. Its Owner-ask, kind: allow-once, reaches you, and a clock bar starts on your lane. Bars on your lane follow, step by step: shown on 3 surfaces; not urgent: no ring; five answers offered; you sign: yes. Your DECISION goes to the auditor, and the clock stops: filed; all copies close, in green. The auditor's INFORMATION goes to the builder: handed back. The builder's WILCO goes to the auditor: verified; filed on main. A bar on the builder: first claim: acts once. Its DONE goes to the auditor: on the record. At the end, the two QUESTION hops, you sign: yes and its bar, and the DECISION with filed; all copies close stay lit. Each step lights in turn while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
   "ms": [
-   22488,
-   22648
+   23128,
+   23288
   ]
  }
 }

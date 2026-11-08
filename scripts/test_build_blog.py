@@ -85,7 +85,7 @@ class Built(unittest.TestCase):
 
     def test_the_head_and_the_words(self):
         for s in ('<span class="label">PROTOCOL</span>', '<p class="dek">A small protocol for agent seats: they hail each other, and asks only you can answer come to you.</p>',
-                  "<span>11 min read</span>", '<a href="hail-1.md" type="text/markdown">read as Markdown</a>', '<nav class="toc" aria-label="on this page">',
+                  "<span>12 min read</span>", '<a href="hail-1.md" type="text/markdown">read as Markdown</a>', '<nav class="toc" aria-label="on this page">',
                   '<a href="index.html">← all posts</a>', '<a href="feed.xml" type="application/rss+xml">RSS</a>',
                   '<h2 class="ct" id="credits-t">Acknowledgements</h2>', '<meta property="og:video:type" content="video/mp4">',
                   '<meta property="og:image" content="https://shoalmark.tools/blog/hail-1/card.png">', '<link rel="canonical" href="https://shoalmark.tools/blog/hail-1.html">'):
