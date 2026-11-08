@@ -127,6 +127,16 @@ class Built(unittest.TestCase):
         for k in SEATS:
             self.assertEqual((self.blog / f"assets/seats/{k}.svg").read_bytes(), (ROOT / f"brand/seats/{k}.svg").read_bytes(), k)
 
+    def test_the_card_and_the_video_in_the_head_and_the_hero(self):
+        alt = re.search(r'^card_alt: "(.*)"$', (ROOT / "blog/posts/hail-1.md").read_text(encoding="utf-8"), re.M).group(1).replace("\\\"", '"')
+        shown = alt.replace("&", "&amp;").replace('"', "&quot;").replace("'", "&#x27;")
+        for s in (f'<meta property="og:image:alt" content="{shown}">', f'<meta name="twitter:image:alt" content="{shown}">', f'aria-label="{shown}"><source',
+                  '<meta property="og:image" content="https://shoalmark.tools/blog/hail-1/card.png">', '<meta property="og:image:width" content="1200">',
+                  '<meta property="og:video" content="https://shoalmark.tools/blog/hail-1/hail-1.mp4">', '<meta property="og:video:type" content="video/mp4">',
+                  '<meta property="og:video:width" content="1200">', '<meta property="og:video:height" content="630">',
+                  'poster="hail-1/card.png"', '<source src="hail-1/hail-1.mp4" type="video/mp4">'):
+            self.assertIn(s, self.page)
+
     def test_the_share_row(self):
         row = re.search(r'<article class="post">\n    (<div class="share">.*?</div>)\n', self.page).group(1)
         self.assertTrue(row.startswith('<div class="share"><span class="share-t">Share this article</span>'))
@@ -195,7 +205,9 @@ class Refuses(unittest.TestCase):
                 ("a seat with no icon in brand/seats/", self.edit(post, '{"seat": "auditor"', '{"seat": "research-lab"'), "its icon in brand/seats/"),
                 ("the Owner's picture not in blog/authors/", self.edit(post, '"picture": "owner.jpg"', '"picture": "nobody.jpg"'),
                  "a picture in blog/authors/"),
-                ("a front matter without its authors", self.edit(post, "authors: [", "people: ["), "its front matter has no authors")):
+                ("a front matter without its authors", self.edit(post, "authors: [", "people: ["), "its front matter has no authors"),
+                ("a card of another size than the head names", lambda root: shutil.copyfile(root / "blog/posts/hail-1/f1-courier-still.png",
+                                                                                            root / "blog/posts/hail-1/card.png"), "its card is not 1200 x 630")):
             with self.subTest(name):
                 self.refused(change, reason)
 

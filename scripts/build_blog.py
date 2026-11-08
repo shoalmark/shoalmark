@@ -464,6 +464,8 @@ def build(site):
         (out / slug).mkdir()
         for f in sorted(post.files.iterdir()):
             shutil.copyfile(f, out / slug / f.name)
+        if size(post.files / meta["card"]) != (1200, 630):
+            refuse(f"{post.name}: its card is not 1200 x 630, the size the head's og:image and og:video name")
         body = post.body()
         owner, seats = post.authors()
         shutil.copyfile(SRC / "authors" / owner["picture"], out / "assets/authors" / owner["picture"])
