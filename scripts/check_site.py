@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 
 site = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
 for page in ("index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html", "setup.html", "signing.html", "de/signing.html", "agents/index.html", "llms.txt",
-             "index.md", "how-it-works/index.md", "de/index.md", "de/how-it-works/index.md"):
+             "index.md", "how-it-works/index.md", "de/index.md", "de/how-it-works/index.md", "blog/index.html", "de/blog/index.html"):
     if not (site / page).is_file():
         raise SystemExit(f"site check: missing {page}")
 contract = (site / "agents/index.html").read_text(encoding="utf-8")
@@ -857,3 +857,103 @@ if lost or shown:
         [f"{page}: {len(firsts)} fenced block(s) do not build to a code block, the first opening {firsts[0][:60]!r}" for page, firsts in sorted(lost.items())]
         + [f"{page} shows a fence as text: {fences[0]!r}" for page, fences in sorted(shown.items())]))
 print(f"site check: the {held} fenced block(s) of the docs, in both languages, build to code blocks, and no page shows a fence as text")
+
+
+# --- the blog: each figure is an animated GIF with alt text and a still for readers who turn motion off, and each file under assets/blog/ stays small -------
+# A figure is an <img> of a GIF inside a <picture> whose <source media="(prefers-reduced-motion: reduce)"> names the GIF's still, the PNG beside it named
+# <name>-still.png. A <picture> may offer a GIF in a <source> too, for a narrower screen: a browser takes the first <source> that matches, so a <source>
+# for reduced motion that names that GIF's still must stand before it. Both languages show the same files, so assets/blog/ is read once, and every page
+# under blog/ and de/blog/ is read.
+BLOG_PAGES = ("blog", "de/blog")
+BLOG_ASSETS = "assets/blog"
+BLOG_LIMIT = 1_000_000
+REDUCED_MOTION = "(prefers-reduced-motion:reduce)"          # the media query with its whitespace taken out, as it is compared
+
+
+def still_of(path):
+    """The still of the GIF at `path`, a path relative to the site: the PNG beside it, named for it, with -still."""
+    folder, name = posixpath.split(path)
+    return posixpath.join(folder, posixpath.splitext(name)[0] + "-still.png")
+
+
+def is_gif(url):
+    return urlsplit(url).path.lower().endswith(".gif")
+
+
+class BlogPage(HTMLParser):
+    """What the blog's check needs of a page: every address a src or a srcset names, with its element and attribute, each image with its attributes
+    and the sources of the <picture> it stands in, None outside one, and the sources of each <picture>, in their order."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.addresses, self.images, self.pictures, self.source_lists = [], [], [], []
+
+    def handle_starttag(self, tag, attrs):
+        a = {key: value or "" for key, value in attrs}
+        if "src" in a:
+            self.addresses.append((tag, "src", a["src"]))
+        if "srcset" in a:
+            self.addresses += [(tag, "srcset", url) for url in srcset_urls(a["srcset"])]
+        if tag == "picture":
+            self.pictures.append([])
+            self.source_lists.append(self.pictures[-1])
+        elif tag == "source" and self.pictures:
+            self.pictures[-1].append(a)
+        elif tag == "img":
+            self.images.append((a, self.pictures[-1] if self.pictures else None))
+
+    def handle_endtag(self, tag):
+        if tag == "picture" and self.pictures:
+            self.pictures.pop()
+
+
+def blog_problem(rel, page):
+    """The first thing the blog page `rel` shows that the blog refuses, in the words the check fails with; None where there is none."""
+    for tag, attr, url in page.addresses:
+        target = in_site(rel, url)
+        if target is None or not (site / target).resolve().is_relative_to(site.resolve()) or not (site / target).is_file():
+            return f"{rel} names {url!r} ({tag} {attr}), and that is no file of the site"
+    for attrs, sources in page.images:
+        src = attrs.get("src", "")
+        if not attrs.get("alt", "").strip():
+            return f"{rel} shows the image {src!r} without alt text"
+        if not is_gif(src):
+            continue
+        if sources is None:
+            return f"{rel} shows the GIF {src!r} outside a <picture>, so a reader who turns motion off gets no still"
+        still = still_of(in_site(rel, src))
+        if not any(re.sub(r"\s+", "", source.get("media", "").lower()) == REDUCED_MOTION and any(in_site(rel, url) == still for url in srcset_urls(source.get("srcset", "")))
+                   for source in sources):
+            return f'{rel} shows the GIF {src!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
+    for sources in page.source_lists:
+        for i, source in enumerate(sources):
+            for url in srcset_urls(source.get("srcset", "")):
+                if not is_gif(url):
+                    continue
+                still = still_of(in_site(rel, url))
+                if not any(REDUCED_MOTION in re.sub(r"\s+", "", earlier.get("media", "").lower())
+                           and any(in_site(rel, other) == still for other in srcset_urls(earlier.get("srcset", ""))) for earlier in sources[:i]):
+                    return (f'{rel} offers the GIF {url!r} in a <source> with no <source> for reduced motion before it whose srcset names its still, '
+                            f'{still}')
+    return None
+
+
+blog_files = sorted(path for path in (site / BLOG_ASSETS).rglob("*") if path.is_file()) if (site / BLOG_ASSETS).is_dir() else []
+for path in blog_files:
+    rel = path.relative_to(site).as_posix()
+    if path.stat().st_size > BLOG_LIMIT:
+        fail(f"{rel} is {path.stat().st_size:,} bytes, more than the {BLOG_LIMIT:,} a file under {BLOG_ASSETS}/ may hold")
+    if is_gif(rel) and not (site / still_of(rel)).is_file():
+        fail(f"{rel} has no still beside it, {still_of(rel)}, for a reader who turns motion off")
+blog_pages = sorted(path.relative_to(site).as_posix() for folder in BLOG_PAGES if (site / folder).is_dir() for path in (site / folder).rglob("*.html"))
+figures = 0
+for rel in blog_pages:
+    page = BlogPage()
+    page.feed((site / rel).read_text(encoding="utf-8"))
+    page.close()
+    problem = blog_problem(rel, page)
+    if problem:
+        fail(problem)
+    figures += sum(is_gif(attrs.get("src", "")) for attrs, _sources in page.images)
+print(f"site check: the {len(blog_pages)} blog page(s) and their {figures} figure(s) passed: each figure has alt text and a still, and each of the "
+      f"{len(blog_files)} file(s) under {BLOG_ASSETS}/ is within {BLOG_LIMIT:,} bytes")

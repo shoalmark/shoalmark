@@ -24,8 +24,14 @@
     {%- set preview_locale = "de_DE" -%}
   {%- else -%}
     {%- set preview_locale = "en_GB" -%}
+  {%- endif -%}
+  {#- a page whose front matter names a social card, card_image and card_alt, is an article with its own image; every other page keeps the site's -#}
+  {%- if page and page.meta and page.meta.card_image and page.meta.card_alt -%}
+    {%- set preview_card = page.meta.card_image -%}
+  {%- else -%}
+    {%- set preview_card = "" -%}
   {%- endif %}
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{{ 'article' if preview_card else 'website' }}">
   <meta property="og:site_name" content="{{ config.site_name | e }}">
   <meta property="og:locale" content="{{ preview_locale }}">
   {% if page and page.canonical_url -%}
@@ -36,7 +42,12 @@
   <meta property="og:description" content="{{ preview_description | e }}">
   {% endif -%}
   {#- B1: one link preview per language — the German pages carry preview-de.png and its alt text -#}
-  {%- if preview_locale == "de_DE" %}
+  {%- if preview_card %}
+  <meta property="og:image" content="{{ config.site_url }}{{ preview_card }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{{ page.meta.card_alt | e }}">
+  {%- elif preview_locale == "de_DE" %}
   <meta property="og:image" content="{{ config.site_url }}assets/preview-de.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">

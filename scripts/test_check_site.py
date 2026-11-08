@@ -1,5 +1,5 @@
 """Regression controls for the published site's checks: font sources, link previews, the landing in two languages with its launch state, How it
-works, the Markdown twins and the requests a page makes, and fenced code; run with requirements-docs installed."""
+works, the Markdown twins and the requests a page makes, fenced code, and the blog's figures; run with requirements-docs installed."""
 from pathlib import Path
 import re
 import subprocess
@@ -17,6 +17,21 @@ TWIN = '<p class="door-again"><a class="btn door" href="probe.txt" aria-haspopup
 DOOR_STYLE = ('<style>.btn.door{position:relative;padding-left:50px}\n.door-again{margin:24px 0 0}\n.door-again .btn.door{padding-left:50px}\n'
               '@media (max-width:700px){.btn.door{padding-left:18px}.btn.door::before{top:9px;bottom:9px}}</style>')
 TWIN_TEXT = "# How it works\n\nTry it: the button \"Hand your agents the note\" leads to a note.\n\n```\nnext: owner\n```\n"
+# the blog: a GIF of one pixel and its still, a PNG of one pixel, shown on a blog page as a figure, in a <picture> whose reduced-motion source names the still
+GIF = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+STILL = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x00\x00\x00\x00:~\x9bU\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01"
+         b"H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82")
+BLOG_SOURCE = '<source media="(prefers-reduced-motion: reduce)" srcset="../assets/blog/loop-still.png">'
+BLOG_IMG = '<img src="../assets/blog/loop.gif" alt="A loop of one pixel">'
+# a narrower screen's GIF in a <source> of its own, after the <source> for reduced motion that names its still
+BLOG_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="../assets/blog/small-still.png">'
+BLOG_SMALL = '<source media="(max-width: 640px)" srcset="../assets/blog/small.gif">'
+BLOG_PICTURE = "<picture>" + BLOG_SMALL_STILL + BLOG_SOURCE + BLOG_SMALL + BLOG_IMG + "</picture>"
+BLOG_FIGURE = "<figure>" + BLOG_PICTURE + "<figcaption>A loop.</figcaption></figure>"
+BLOG = {"blog/index.html": '<html lang="en"><body><h1>Blog</h1><ul><li><a href="first-post.html">First post</a></li></ul></body></html>',
+        "de/blog/index.html": '<html lang="de"><body><h1>Blog</h1></body></html>',
+        "blog/first-post.html": '<html lang="en"><body><h1>First post</h1>' + BLOG_FIGURE + '<p><a href="index.html">All posts</a></p></body></html>',
+        "assets/blog/loop.gif": GIF, "assets/blog/loop-still.png": STILL, "assets/blog/small.gif": GIF, "assets/blog/small-still.png": STILL}
 
 
 def landing(lang, probe, tag="v1.2.3", footer_tag=None):
@@ -62,12 +77,12 @@ def good_site(site, probe=False):
                             % ((LABELS["de"], SITE_URL + "de/probe.txt") if probe else ("Gib deinen Agenten die Notiz", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md")),
              "de/setup/index.md": "# Einrichtung\n", "agents/README/index.md": "# README\n",
              "llms.txt": "- [How it works](how-it-works/index.md)\n- [shoalmark](de/index.md)\n- [So funktioniert's](de/how-it-works/index.md)\n",
-             "stylesheets/x.css": "body{color:#fff}", "assets/preview.png": "png", "assets/preview-de.png": "png"}
+             "stylesheets/x.css": "body{color:#fff}", "assets/preview.png": "png", "assets/preview-de.png": "png", **BLOG}
     if probe:
         files["probe.txt"] = files["de/probe.txt"] = PROMPT
     for name, text in files.items():
         (site / name).parent.mkdir(parents=True, exist_ok=True)
-        (site / name).write_bytes(text.encode("utf-8"))
+        (site / name).write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
     (site.parent / "docs").mkdir(parents=True, exist_ok=True)       # the docs folder beside the site, where zensical.toml's docs_dir points by default
     (site.parent / "docs/index.md").write_text("# shoalmark\n", encoding="utf-8")
 
@@ -311,7 +326,7 @@ class EveryPage(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: each of the 14 pages links its language's imprint and privacy notice in its footer", result.stdout)
+        self.assertIn("site check: each of the 17 pages links its language's imprint and privacy notice in its footer", result.stdout)
 
     def test_each_footer_links_its_languages_imprint_and_privacy_notice(self):
         self.rows(
@@ -766,6 +781,118 @@ class FencedBlocks(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
                 for message in messages:
                     self.assertIn(message, result.stderr)
+
+
+class Blog(unittest.TestCase):
+    """The blog: each file under assets/blog/ is at most 1,000,000 bytes, and each GIF there has its still beside it; on each page under blog/ and de/blog/,
+    each image has alt text, each GIF stands in a <picture> whose reduced-motion source names its still, each GIF a <source> offers comes after a source for
+    reduced motion that names its still, and each src and srcset is a file of the site.
+    A site that passes, and controls that each change one thing in it; the check names the file."""
+
+    PAGE = "blog/first-post.html"
+    REFUSED_SOURCE = ("blog/first-post.html shows the GIF '../assets/blog/loop.gif' in a <picture> with no "
+                      '<source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, assets/blog/loop-still.png')
+    REFUSED_SMALL = ("blog/first-post.html offers the GIF '../assets/blog/small.gif' in a <source> with no <source> for reduced motion before it whose srcset "
+                     "names its still, assets/blog/small-still.png")
+
+    def checked(self, change=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            good_site(site)
+            if change:
+                change(site)
+            return run(site)
+
+    def put(self, name, old, new):
+        def change(site):
+            text = (site / name).read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
+        return change
+
+    def write(self, name, data):
+        def change(site):
+            (site / name).write_bytes(data)
+        return change
+
+    def controls(self):
+        """(name, change, the refusal the check names) for each control: one per refusal, and the alt text in each of its three ways."""
+        alt = ' alt="A loop of one pixel"'
+        return (
+            ("a file under assets/blog/ one byte over the limit", self.write("assets/blog/loop.gif", GIF + b"\0" * (1_000_001 - len(GIF))),
+             "site check: assets/blog/loop.gif is 1,000,001 bytes, more than the 1,000,000 a file under assets/blog/ may hold"),
+            ("a GIF under assets/blog/ without its still beside it", self.write("assets/blog/other.gif", GIF),
+             "site check: assets/blog/other.gif has no still beside it, assets/blog/other-still.png"),
+            ("an image without alt", self.put(self.PAGE, alt, ""), "site check: blog/first-post.html shows the image '../assets/blog/loop.gif' without alt text"),
+            ("an image with an empty alt", self.put(self.PAGE, alt, ' alt=""'), "site check: blog/first-post.html shows the image '../assets/blog/loop.gif' without alt text"),
+            ("an image with a blank alt", self.put(self.PAGE, alt, ' alt=" &#9; "'), "site check: blog/first-post.html shows the image '../assets/blog/loop.gif' without alt text"),
+            ("an image on a German blog page without alt", self.put("de/blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="../../assets/blog/loop-still.png">'),
+             "site check: de/blog/index.html shows the image '../../assets/blog/loop-still.png' without alt text"),
+            ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
+             "site check: blog/first-post.html shows the GIF '../assets/blog/loop.gif' outside a <picture>"),
+            ("a <picture> whose source is for motion, not for its reduction", self.put(self.PAGE, BLOG_SOURCE, BLOG_SOURCE.replace("reduce)", "no-preference)")),
+             "site check: " + self.REFUSED_SOURCE),
+            ("a <picture> whose reduced-motion source names the GIF, not its still", self.put(self.PAGE, 'srcset="../assets/blog/loop-still.png"', 'srcset="../assets/blog/loop.gif"'),
+             "site check: " + self.REFUSED_SOURCE),
+            ("an image whose src is no file of the site", self.put(self.PAGE, BLOG_IMG, BLOG_IMG + '<img src="../assets/blog/gone.png" alt="Gone">'),
+             "site check: blog/first-post.html names '../assets/blog/gone.png' (img src), and that is no file of the site"),
+            ("a narrower screen's GIF before the source for reduced motion that names its still",
+             self.put(self.PAGE, BLOG_SMALL_STILL + BLOG_SOURCE + BLOG_SMALL, BLOG_SOURCE + BLOG_SMALL + BLOG_SMALL_STILL), "site check: " + self.REFUSED_SMALL),
+            ("a narrower screen's source for reduced motion that names the wider still",
+             self.put(self.PAGE, 'srcset="../assets/blog/small-still.png"', 'srcset="../assets/blog/loop-still.png"'), "site check: " + self.REFUSED_SMALL),
+            ("a source whose srcset is no file of the site", self.put(self.PAGE, "loop-still.png", "gone-still.png"),
+             "site check: blog/first-post.html names '../assets/blog/gone-still.png' (source srcset), and that is no file of the site"),
+        )
+
+    def test_a_good_site_passes(self):
+        result = self.checked()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("site check: the 3 blog page(s) and their 1 figure(s) passed: each figure has alt text and a still, and each of the 4 file(s) under "
+                      "assets/blog/ is within 1,000,000 bytes", result.stdout)
+
+    def test_what_the_blog_allows(self):
+        german = ('<h1>Blog</h1><figure><picture><source media="(prefers-reduced-motion:reduce)" srcset="../../assets/blog/loop-still.png">'
+                  '<img src="../../assets/blog/loop.gif" alt="Eine Schleife aus einem Pixel"></picture></figure>')
+        for name, change, figures in (
+                ("a file of exactly 1,000,000 bytes", self.write("assets/blog/loop.gif", GIF + b"\0" * (1_000_000 - len(GIF))), 1),
+                ("the same figure on the German blog page, from the one folder both languages share, its query written without a space",
+                 self.put("de/blog/index.html", "<h1>Blog</h1>", german), 2),
+                ("an image that is no GIF, with alt text, outside a <picture>", self.put(self.PAGE, BLOG_IMG, BLOG_IMG + '<img src="../assets/blog/loop-still.png" alt="A still">'), 1)):
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("site check: the 3 blog page(s) and their %d figure(s) passed" % figures, result.stdout)
+
+    def test_the_blog_indexes_are_entry_pages(self):
+        for name in ("blog/index.html", "de/blog/index.html"):
+            with self.subTest(name):
+                result = self.checked(lambda site, name=name: (site / name).unlink())
+                self.assertNotEqual(result.returncode, 0, "the check passed a site without " + name)
+                self.assertIn("site check: missing " + name, result.stderr)
+
+    def test_each_control_is_refused(self):
+        for name, change, message in self.controls():
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+    def test_the_controls_see_what_they_refuse(self):
+        """Each control changes one file of the good site, a file the check reads, a page under blog/ or de/blog/ or a file under assets/blog/; and the
+        refusal it expects names that file."""
+        def files(site):
+            return {path.relative_to(site).as_posix(): path.read_bytes() for path in site.rglob("*") if path.is_file()}
+        for name, change, message in self.controls():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                site = Path(tmp) / "site"
+                good_site(site)
+                before = files(site)
+                change(site)
+                after = files(site)
+                changed = sorted(rel for rel in before.keys() | after.keys() if before.get(rel) != after.get(rel))
+                self.assertEqual(len(changed), 1, changed)
+                self.assertTrue(changed[0].startswith(("blog/", "de/blog/", "assets/blog/")), changed)
+                self.assertIn(changed[0], message)
 
 
 if __name__ == "__main__":

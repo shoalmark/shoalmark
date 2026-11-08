@@ -23,6 +23,7 @@ nav = [
   { "Requirements" = "requirements.md" },
   { "The drift skills" = "skills.md" },
   { "The seats" = "seats/index.md" },
+  { "Blog" = ["blog/index.md", "blog/hail-1.md"] },
   { "For agents — the contract" = "agents/README.md" },
   { "Deutsch" = [
     { "Start" = "de/index.md" },
@@ -34,6 +35,7 @@ nav = [
     { "Das Stand-up" = "de/standup.md" },
     { "Anforderungen" = "de/requirements.md" },
     { "Die Drift-Skills" = "de/skills.md" },
+    { "Blog" = ["de/blog/index.md", "de/blog/hail-1.md"] },
   ] },
 ]
 
