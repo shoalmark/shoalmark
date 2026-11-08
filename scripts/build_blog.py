@@ -34,6 +34,7 @@ SRC = ROOT / "blog"
 SITE_URL = "https://shoalmark.tools/"
 GITHUB = "https://github.com/shoalmark/shoalmark"
 SPEC = "‹link: spec›"                                      # the spec's address, a placeholder until the spec is published
+SPEC_MARK = "‹link: spec›"                                 # where a post's Markdown links the spec; the builder puts SPEC in its place
 WPM = 230                                                  # the reading time: the words over 230 a minute, rounded up
 VARIANT = "m2"
 INDEX_INTRO = "How I build shoalmark with my agents, written from the record."
@@ -278,7 +279,7 @@ class Post:
                 refuse(f"{self.name}: a TL;DR item is not '- **Label:** words'")
             rows.append((m.group(1), m.group(2)))
         label, words = rows[-1]
-        band = re.match(r"\[([^\]]+) →\]\(" + re.escape(SPEC) + r"\) (.+)", words)
+        band = re.match(r"\[([^\]]+) →\]\(" + re.escape(SPEC_MARK) + r"\) (.+)", words)
         if not band:
             refuse(f"{self.name}: the TL;DR's last item does not open with the spec's link and its arrow")
         dl = "".join(f"<div><dt>{text_node(l)}</dt><dd>{inline(w)}</dd></div>" for l, w in rows[:-1])
@@ -395,6 +396,7 @@ class Post:
             refuse(f"{self.name}: {n} slots, not {len(self.figures)}")
         for old, page in LINKS.items():
             md = md.replace(f"({old})", f"({SITE_URL}{page})")
+        md = md.replace(f"({SPEC_MARK})", f"({SPEC})")
         return (f'---\ntitle: "{self.meta["title"]}"\ndate: {self.meta["date"]}\ncanonical: {SITE_URL}blog/{self.slug}.html\n'
                 f'description: "{self.description}"\n---\n\n' + md)
 

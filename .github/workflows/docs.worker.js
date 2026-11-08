@@ -5,9 +5,11 @@
 const VIDEO = /^\/blog\/.+\.mp4$/;
 
 // The MP4, for GET and HEAD. The asset layer is asked for the whole file without Range, so the answer does not depend on
-// whether it honours Range, and the asked bytes are cut from it here: one range (bytes=a-b, bytes=a- or bytes=-n) gets 206
-// with Content-Range, a range that starts past the end gets 416, and no Range, a Range of another form, or an If-Range that
-// is not the file's strong ETag gets 200 and the whole file. Each of these says Accept-Ranges and keeps the asset's headers.
+// whether it honours Range, and the asked bytes are cut from it here: for GET, one range (bytes=a-b, bytes=a- or bytes=-n)
+// gets 206 with Content-Range, a range that starts past the end gets 416, and no Range, a Range of another form, or an
+// If-Range that is not the file's strong ETag gets 200 and the whole file. HEAD answers as GET without Range would, 200 with
+// the whole file's headers and no body, as a server reads Range for GET alone. Each says Accept-Ranges and keeps the asset's
+// headers.
 // A missing file returns null, to be answered as any missing path; any other answer of the asset layer is returned as it came.
 async function video(request, env, url) {
   const ask = new Headers(request.headers);
@@ -22,7 +24,7 @@ async function video(request, env, url) {
   const etag = file.headers.get("ETag"), ifRange = request.headers.get("If-Range");
   const stale = ifRange !== null && (ifRange !== etag || ifRange.startsWith("W/"));
   const other = !range || range[1] + range[2] === "" || (range[1] !== "" && range[2] !== "" && Number(range[2]) < Number(range[1]));
-  if (stale || other) return new Response(head ? null : file.body, { status: 200, headers });
+  if (stale || other || head) return new Response(head ? null : file.body, { status: 200, headers });
   const whole = await file.arrayBuffer(), size = whole.byteLength;
   const first = range[1] === "" ? Math.max(size - Number(range[2]), 0) : Number(range[1]);
   const last = range[1] === "" || range[2] === "" ? size - 1 : Math.min(Number(range[2]), size - 1);
@@ -33,7 +35,7 @@ async function video(request, env, url) {
   }
   headers.set("Content-Range", `bytes ${first}-${last}/${size}`);
   headers.set("Content-Length", String(last - first + 1));
-  return new Response(head ? null : whole.slice(first, last + 1), { status: 206, headers });
+  return new Response(whole.slice(first, last + 1), { status: 206, headers });
 }
 
 export default {

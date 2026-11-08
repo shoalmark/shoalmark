@@ -3,6 +3,8 @@
 Run: python3 scripts/test_build_blog.py. Each test copies what the builder reads (blog/, the four font subsets and their licences, the mark,
 main.html, the seats' icons and the builder itself) into a scratch root, changes one thing where it tests a refusal, and runs the builder there."""
 import hashlib
+import html
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -16,6 +18,10 @@ ROOT = Path(__file__).resolve().parent.parent
 READS = ["blog", "docs/assets/fonts", "overrides/.icons/shoalmark/pricke.svg", "overrides/main.html", "brand/seats", "scripts/build_blog.py"]
 SEATS = ["go-to-market", "designer", "planner", "builder", "reviewer", "auditor"]
 CANONICAL = "https://shoalmark.tools/blog/hail-1.html"
+_spec = importlib.util.spec_from_file_location("build_blog", ROOT / "scripts/build_blog.py")
+BB = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(BB)
+DATE = re.search(r"^date: (\S+)$", (ROOT / "blog/posts/hail-1.md").read_text(encoding="utf-8"), re.M).group(1)
 
 
 def scratch(tmp):
@@ -167,12 +173,17 @@ class Built(unittest.TestCase):
             self.assertNotIn("‹", row)
         self.assertNotRegex(self.page.lower(), r"facebook|new tab|<script(?![^>]*\bsrc=)")
 
+    def test_the_band_links_the_spec(self):
+        self.assertIn(f'<span class="go"><a href="{html.escape(BB.SPEC, quote=True)}">', self.page)
+        self.assertIn(f'<p class="kicker"><time datetime="{DATE}">{DATE}</time>', self.page)
+
     def test_no_inline_script(self):
         self.assertEqual(re.findall(r"<script(?![^>]*\bsrc=)", self.page), [])
 
     def test_the_markdown_version(self):
         md = (self.blog / "hail-1.md").read_text(encoding="utf-8")
-        self.assertTrue(md.startswith('---\ntitle: "⌜hail/1⌟: agents message each other; the final word stays yours"\ndate: 2026-11-08\n'))
+        self.assertTrue(md.startswith(f'---\ntitle: "⌜hail/1⌟: agents message each other; the final word stays yours"\ndate: {DATE}\n'))
+        self.assertIn(f"]({BB.SPEC})", md)
         self.assertNotIn("<!--", md)
         self.assertEqual(len(re.findall(r"^!\[[^\]]+\]\(hail-1/[a-z0-9-]+\.png\)$", md, re.M)), 15)
         self.assertIn("(https://shoalmark.tools/why-shoalmark.html)", md)
@@ -181,8 +192,34 @@ class Built(unittest.TestCase):
         feed = (self.blog / "feed.xml").read_text(encoding="utf-8")
         self.assertIn("<title>shoalmark blog</title>", feed)
         self.assertIn("<guid>https://shoalmark.tools/blog/hail-1.html</guid>", feed)
-        self.assertIn("<pubDate>Sun, 08 Nov 2026 00:00:00 +0100</pubDate>", feed)
+        self.assertIn(f"<pubDate>{BB.pub_date(DATE)}</pubDate>", feed)
         self.assertTrue((self.blog / "llms.txt").read_text(encoding="utf-8").startswith("# shoalmark blog\n\n> How I build shoalmark with my agents"))
+
+
+class OneEdit(unittest.TestCase):
+    """The spec's address and the post's date each live in one place: one edit of either reaches every place that shows it."""
+
+    def test_one_edit_of_the_spec_or_the_date(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = scratch(tmp)
+            builder = root / "scripts/build_blog.py"
+            text = builder.read_text(encoding="utf-8")
+            self.assertEqual(text.count(f'SPEC = "{BB.SPEC}"'), 1)
+            builder.write_text(text.replace(f'SPEC = "{BB.SPEC}"', 'SPEC = "https://example.org/spec.html"'), encoding="utf-8")
+            post = root / "blog/posts/hail-1.md"
+            post.write_text(post.read_text(encoding="utf-8").replace(f"\ndate: {DATE}\n", "\ndate: 2026-11-09\n", 1), encoding="utf-8")
+            r = build(root)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            page = (root / "site/blog/hail-1.html").read_text(encoding="utf-8")
+            md = (root / "site/blog/hail-1.md").read_text(encoding="utf-8")
+            feed = (root / "site/blog/feed.xml").read_text(encoding="utf-8")
+            self.assertIn('<span class="go"><a href="https://example.org/spec.html">', page)
+            self.assertIn("](https://example.org/spec.html)", md)
+            self.assertNotIn(BB.SPEC, page.split('<span class="go">', 1)[1].split("</a>", 1)[0])
+            self.assertIn('<time datetime="2026-11-09">2026-11-09</time>', page)
+            self.assertIn("\ndate: 2026-11-09\n", md)
+            self.assertIn("<pubDate>Mon, 09 Nov 2026 00:00:00 +0100</pubDate>", feed)
+            self.assertNotIn(DATE, page.split("<main", 1)[1].split("</header>", 1)[0])
 
 
 class Refuses(unittest.TestCase):

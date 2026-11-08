@@ -28,6 +28,7 @@ python3 -m venv .venv
 .venv/bin/python scripts/landing_facts.py
 .venv/bin/zensical build --clean
 .venv/bin/python scripts/llms_txt.py site
+.venv/bin/python scripts/build_blog.py site
 .venv/bin/python scripts/check_site.py site
 .venv/bin/python scripts/landing_facts.py --check site
 ```

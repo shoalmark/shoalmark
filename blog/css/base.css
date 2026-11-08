@@ -2,7 +2,7 @@
    outside the docs engine. The post's page is the post: its mono body, TL;DR, boxed figures, hails as text, quotation
    and reference. This sheet carries all of it; nothing comes from the docs' theme. */
 
-/* the site's own mono and pixel faces, the self-hosted files copied under neutral names (blog-site-design.md §5) */
+/* the site's own mono and pixel faces, the self-hosted files copied under neutral names */
 @font-face{font-family:"shoalmark mono";src:url(../fonts/mono-400.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:"shoalmark mono";src:url(../fonts/mono-600.woff2) format("woff2");font-weight:600;font-display:swap}
 @font-face{font-family:"shoalmark pixel";src:url(../fonts/pixel-400.woff2) format("woff2");font-weight:400;font-display:swap}

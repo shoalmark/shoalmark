@@ -850,6 +850,15 @@ class Blog(unittest.TestCase):
              "site check: blog/first-post.html shows the author's picture 'assets/seats/builder.svg' without an empty alt"),
             ("an author's picture without alt", self.put(self.PAGE, BLOG_AUTHOR, BLOG_AUTHOR.replace(' alt=""', "")),
              "site check: blog/first-post.html shows the author's picture 'assets/seats/builder.svg' without an empty alt"),
+            ("a figure's image in the seats' folder with an empty alt", self.put(self.PAGE, BLOG_IMG, '<img src="assets/seats/builder.svg" alt="">'),
+             "site check: blog/first-post.html shows the image 'assets/seats/builder.svg' without alt text"),
+            ("two og:video", self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/loop.gif">'
+                                                           '<meta property="og:video" content="https://shoalmark.tools/blog/first-post/loop.gif">'),
+             "site check: blog/first-post.html names 2 share videos in og:video, not one"),
+            ("an og:video naming a figure's GIF", self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/loop.gif">'),
+             "site check: blog/first-post.html names 'https://shoalmark.tools/blog/first-post/loop.gif' in og:video, and that is no MP4 file of the site"),
+            ("an og:video naming no file", self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/gone.mp4">'),
+             "site check: blog/first-post.html names 'https://shoalmark.tools/blog/first-post/gone.mp4' in og:video, and that is no MP4 file of the site"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
@@ -929,6 +938,16 @@ class Blog(unittest.TestCase):
                 result = self.checked(change)
                 self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
                 self.assertIn(message, result.stderr)
+
+    def test_a_gif_in_the_authors_folders_keeps_the_gif_rules(self):
+        """An author's picture is an <img> outside any <picture>, and the GIF rules hold for it too: a GIF there, outside a picture, is refused."""
+        def change(site):
+            self.write("blog/assets/seats/wave.gif", GIF)(site)
+            self.write("blog/assets/seats/wave-still.png", STILL)(site)
+            self.put(self.PAGE, BLOG_AUTHOR, BLOG_AUTHOR + '<img src="assets/seats/wave.gif" alt="">')(site)
+        result = self.checked(change)
+        self.assertNotEqual(result.returncode, 0, "the check passed a GIF outside a picture in the seats' folder")
+        self.assertIn("site check: blog/first-post.html shows the GIF 'assets/seats/wave.gif' outside a <picture>", result.stderr)
 
     def test_the_blog_indexes_are_entry_pages(self):
         for name in ("blog/index.html",):

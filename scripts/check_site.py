@@ -868,9 +868,9 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # <name>-still.png. A <source> after its picture's <img> is never selected, so it counts for nothing. Every src, srcset, data-once and data-still is a
 # file of the site. The blog is English only, with no language pair: each of its pages says lang="en" and carries no hreflang, and each post names its
 # Markdown version beside it. Its script, a file of its own, asks for nothing, as an inline script may not. Every file under blog/ is read.
-# Every image has alt text but an author's picture, a file of blog/assets/authors/ or blog/assets/seats/: its alt is empty, as the author's name
-# stands beside it as text. A file under blog/ holds at most 1,000,000 bytes, but the share video, the one file a post's og:video names, at most
-# 2,000,000.
+# Every image has alt text but an author's picture, an <img> outside any <picture> whose file is in blog/assets/authors/ or blog/assets/seats/:
+# its alt is empty, as the author's name stands beside it as text. The GIF rules hold for every image. A file under blog/ holds at most
+# 1,000,000 bytes, but the share video, the one MP4 of the site a post's one og:video names, at most 2,000,000.
 BLOG = "blog"
 BLOG_LIMIT = 1_000_000
 SHARE_VIDEO_LIMIT = 2_000_000                               # the share video's own cap: the file a post's og:video names
@@ -946,11 +946,10 @@ def blog_problem(rel, page):
             return f"{rel} names {url!r} ({tag} {attr}), and that is no file of the site"
     for attrs, sources in page.images:
         src = attrs.get("src", "")
-        if (in_site(rel, src) or "").startswith(AUTHOR_PICTURES):
-            if attrs.get("alt") != "":
-                return f"{rel} shows the author's picture {src!r} without an empty alt, though the name beside it says who it is"
-            continue
-        if not attrs.get("alt", "").strip():
+        author = sources is None and (in_site(rel, src) or "").startswith(AUTHOR_PICTURES)
+        if author and attrs.get("alt") != "":
+            return f"{rel} shows the author's picture {src!r} without an empty alt, though the name beside it says who it is"
+        if not author and not attrs.get("alt", "").strip():
             return f"{rel} shows the image {src!r} without alt text"
         if not is_gif(src):
             continue
@@ -992,7 +991,14 @@ for rel in blog_pages:
     blog_parsed[rel] = BlogPage()
     blog_parsed[rel].feed((site / rel).read_text(encoding="utf-8"))
     blog_parsed[rel].close()
-share_videos = {in_site(rel, url) for rel, page in blog_parsed.items() for url in page.videos} - {None}
+for rel, page in blog_parsed.items():
+    if len(page.videos) > 1:
+        fail(f"{rel} names {len(page.videos)} share videos in og:video, not one")
+    for url in page.videos:
+        target = in_site(rel, url)
+        if target is None or not target.endswith(".mp4") or not (site / target).is_file():
+            fail(f"{rel} names {url!r} in og:video, and that is no MP4 file of the site")
+share_videos = {in_site(rel, url) for rel, page in blog_parsed.items() for url in page.videos}
 blog_files = sorted(path for path in (site / BLOG).rglob("*") if path.is_file()) if (site / BLOG).is_dir() else []
 for path in blog_files:
     rel = path.relative_to(site).as_posix()

@@ -10,7 +10,7 @@ const configPath = process.argv[3] || root + ".github/workflows/docs.wrangler.js
 // a data: URL is read as a module whatever the file's name, and the Worker imports nothing
 const worker = (await import("data:text/javascript;base64," + readFileSync(workerPath).toString("base64"))).default;
 
-const VIDEO = "/blog/a-post/a-post.mp4", SIZE = 1000;
+const VIDEO = "/blog/a-post/a-post.mp4", WEAK = "/blog/a-post/weak.mp4", SIZE = 1000;
 const bytes = Uint8Array.from({ length: SIZE }, (_, i) => (i * 7 + 3) % 256);
 // the hero's two page files beside the share file, at the same depth, each of its own size
 const PAGES = [["/blog/a-post/a-post-page.hevc.mp4", 700], ["/blog/a-post/a-post-page.mp4", 800]].map(([path, n]) =>
@@ -21,6 +21,7 @@ const FILES = {
   "/setup.html": { body: "setup", type: "text/html" },
   "/de/index.html": { body: "die Startseite", type: "text/html" },
   "/404.html": { body: "not found", type: "text/html" },
+  [WEAK]: { body: bytes, type: "video/mp4", etag: 'W/"v1"' },
   ...Object.fromEntries(PAGES.map(([path, body]) => [path, { body, type: "video/mp4", etag: '"p' + body.length + '"' }])),
 };
 
@@ -95,8 +96,8 @@ for (const honoursRange of [false, true]) {
   r = await ask(VIDEO, { headers: { Range: "bytes=0-99", "If-Range": '"v0"' }, honoursRange });
   check(`${how}: an If-Range that is not the file's ETag gets 200 with the whole file`, r.status === 200 && same(r.body, bytes) && kept(r), seen(r));
   r = await ask(VIDEO, { method: "HEAD", headers: { Range: "bytes=0-99" }, honoursRange });
-  check(`${how}: HEAD with bytes=0-99 answers as GET would, 206 with its Content-Range and Content-Length, without a body`,
-    r.status === 206 && r.h["content-range"] === "bytes 0-99/1000" && r.h["content-length"] === "100" && kept(r) && r.body.length === 0, seen(r));
+  check(`${how}: HEAD with bytes=0-99 answers as GET without Range would, 200 with the whole file's Content-Length 1000 and no Content-Range, without a body`,
+    r.status === 200 && r.h["content-length"] === "1000" && !("content-range" in r.h) && kept(r) && r.body.length === 0, seen(r));
   r = await ask(VIDEO, { method: "HEAD", honoursRange });
   check(`${how}: HEAD without Range answers as GET would, 200 with Content-Length 1000, without a body`,
     r.status === 200 && r.h["content-length"] === "1000" && kept(r) && r.body.length === 0, seen(r));
@@ -109,7 +110,16 @@ for (const honoursRange of [false, true]) {
   check(`${how}: the asset layer is asked for the MP4 without Range, so the answer is cut by the Worker either way`,
     r.asked.length === 1 && r.asked[0].range === null && r.asked[0].method === "GET", r.asked);
 }
-let r = await ask(VIDEO, { headers: { "If-None-Match": '"v1"' } });
+let r = await ask(VIDEO, { headers: { Range: "bytes=-5000" } });
+check("a suffix longer than the file, bytes=-5000, gets 206 with the whole file: Content-Range bytes 0-999/1000 and Content-Length 1000",
+  r.status === 206 && r.h["content-range"] === "bytes 0-999/1000" && r.h["content-length"] === "1000" && same(r.body, bytes), seen(r));
+r = await ask(WEAK, { headers: { Range: "bytes=0-99", "If-Range": 'W/"v1"' } });
+check("an If-Range that is the file's weak ETag, W/\"v1\", gets 200 and the whole file, as If-Range takes a strong ETag alone",
+  r.status === 200 && same(r.body, bytes) && !("content-range" in r.h), seen(r));
+r = await ask(VIDEO, { method: "POST", headers: { Range: "bytes=0-99" } });
+check("a POST to the MP4's path gets the 404 page, as any path the Worker does not serve, with no Content-Range",
+  r.status === 404 && r.text === "not found" && !("content-range" in r.h), seen(r));
+r = await ask(VIDEO, { headers: { "If-None-Match": '"v1"' } });
 check("the asset layer's 304 for a matching If-None-Match is returned as it came", r.status === 304 && r.body.length === 0 && r.h.etag === '"v1"', seen(r));
 
 // every other path, and the MP4's own path when it is no file, as the Worker answered them before
