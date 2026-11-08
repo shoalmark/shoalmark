@@ -373,7 +373,7 @@ class Post:
                 out.append(f'<p class="state">{inline(first)}</p>' if state else f"<p>{inline(first)}</p>")
             state = False
             i += 1
-        if seen != sorted(seen) or set(seen) != {int(k[1:]) for k in self.figures} or marker != len(MARKERS) or self.used != set(self.hails):
+        if len(seen) != len(set(seen)) or set(seen) != {int(k[1:]) for k in self.figures} or marker != len(MARKERS) or self.used != set(self.hails):
             refuse(f"{self.name}: the slots {seen}, the {marker} markers or the hails used do not match its files")
         end = authors(*self.authors(), end=True) + "\n" + share(f"{SITE_URL}blog/{self.slug}.html", self.meta["title"], end=True)
         return touches("\n".join(out), self.meta["credits"], end)

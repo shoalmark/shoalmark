@@ -9,7 +9,7 @@
  },
  "F2": {
   "name": "f3-writing",
-  "alt": "Animated diagram on deep blue-black, titled “a hail, written line by line”. A REQUEST is written line by line, each line's role set beside it in a column of its own, behind a thin rule (on a phone, said beneath the hail while its line appears): hail/1, the version; from: a.planner, who wrote it; to: a.builder-1, the reader; its own id; re: none, what it answers; marker: REQUEST, what it wants; written-against, relied on, when; pointer: workbench:briefs/lane-4.md with its sha256, by its hash; two body lines, the body, five lines at most; ask: WILCO or DECLINED, then DONE with the commit, one line; end hail/1, always last. Then, below it, two lifelines, PLANNER a.planner and BUILDER a.builder-1: the REQUEST travels to the builder, read at its next turn, and is filed by team A. At the end the hail stays lit above the REQUEST it became; on a wider screen its roles stay beside it in grey, and the phone drawing ends without them. There it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "alt": "Animated diagram on deep blue-black, titled “a hail, written line by line”. A REQUEST is written line by line, each line's role set beside it in a column of its own, behind a thin rule (on a phone, said beneath the hail while its line appears): hail/1, the form; from: a.planner, who wrote it; to: a.builder-1, the reader; its own id; re: none, what it answers; marker: REQUEST, what it wants; written-against, relied on, when; pointer: workbench:briefs/lane-4.md with its sha256, by its hash; two body lines, the body, five lines at most; ask: WILCO or DECLINED, then DONE with the commit, one line; end hail/1, always last. Then, below it, two lifelines, PLANNER a.planner and BUILDER a.builder-1: the REQUEST travels to the builder, read at its next turn, and is filed by team A. At the end the hail stays lit above the REQUEST it became; on a wider screen its roles stay beside it in grey, and the phone drawing ends without them. There it stops. shoalmark hail · hail/1 · shoalmark.tools.",
   "ms": [
    26936,
    26976
@@ -96,7 +96,7 @@
  },
  "F13": {
   "name": "f13-authority",
-  "alt": "Animated sequence diagram on deep blue-black, titled “a bare Owner quote carries no weight”, time running down. Two lifelines: PLANNER a.planner and BUILDER a.builder-1. A REQUEST whose body says \"the Owner approved\" travels to the builder, and a clock bar starts. Bars on the builder's own lifeline show its check, step by step: a bare quote; signed board answer?; none found; no weight, and the quote fades to a ghost. The builder answers WILCO, within its own grants, then DONE: the quote widened nothing. At the end, no weight and its bar stay lit, and the quote stays a ghost. Each step lights in turn while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "alt": "Animated sequence diagram on deep blue-black, titled “a bare Owner quote carries no weight”, time running down. Two lifelines: PLANNER a.planner and BUILDER a.builder-1. A REQUEST whose body says \"the Owner approved\" travels to the builder, and a clock bar starts. Bars on the builder's own lifeline show its check, step by step: a bare quote; signed Owner answer?; a DECISION, or the board; none found; no weight, and the quote fades to a ghost. The builder answers WILCO, within its own grants, then DONE: the quote widened nothing. At the end, no weight and its bar stay lit, and the quote stays a ghost. Each step lights in turn while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
   "ms": [
    15856,
    15976
@@ -116,6 +116,14 @@
   "ms": [
    11768,
    11768
+  ]
+ },
+ "F16": {
+  "name": "f16-relay",
+  "alt": "Animated sequence diagram on deep blue-black, titled “a need out to you, your answer back”, time running down. Four lifelines: BUILDER a.builder-1, PLANNER a.planner, AUDITOR a.auditor, and OWNER you. The builder's QUESTION, for: owner, goes to the planner, which passes it on, unchanged, to the auditor. A bar on the auditor marks its choice: relay, answer or reject. Its ANSWER, disposition: relayed, goes straight back to the builder. Its Owner-ask, kind: allow-once, reaches you, and a clock bar starts on your lane. Bars on your lane follow, step by step: shown on 3 surfaces; not urgent: no ring; five answers offered; you sign: yes. Your DECISION goes to the auditor, and the clock stops: filed; all copies close, in green. The auditor's INFORMATION goes to the builder: handed back. The builder's WILCO goes to the auditor: verified, claimed once. A bar on the builder: acts once. Its DONE goes to the auditor: on the record. At the end, the two QUESTION hops, you sign: yes and its bar, and the DECISION with filed; all copies close stay lit. Each step lights in turn while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   22488,
+   22648
   ]
  }
 }

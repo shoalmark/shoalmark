@@ -4,6 +4,7 @@ Run: python3 scripts/test_build_blog.py. Each test copies what the builder reads
 main.html, the seats' icons and the builder itself) into a scratch root, changes one thing where it tests a refusal, and runs the builder there."""
 import hashlib
 import html
+import json
 import importlib.util
 import re
 import shutil
@@ -63,7 +64,7 @@ class Built(unittest.TestCase):
     def test_the_posts_files_are_its_sources(self):
         src = sorted(p.name for p in (ROOT / "blog/posts/hail-1").iterdir())
         self.assertEqual(sorted(p.name for p in (self.blog / "hail-1").iterdir()), src)
-        self.assertEqual(len(src), 120)
+        self.assertEqual(len(src), 128)
         for name in src:
             self.assertEqual((self.blog / "hail-1" / name).read_bytes(), (ROOT / "blog/posts/hail-1" / name).read_bytes(), name)
 
@@ -83,8 +84,8 @@ class Built(unittest.TestCase):
         self.assertIn("<title>⌜hail/1⌟: agents message each other; the final word stays yours</title>", self.page)
 
     def test_the_head_and_the_words(self):
-        for s in ('<span class="label">PROTOCOL</span>', '<p class="dek">A small protocol for agent seats: one frame, seven messages, four receipts, no authority.</p>',
-                  "<span>8 min read</span>", '<a href="hail-1.md" type="text/markdown">read as Markdown</a>', '<nav class="toc" aria-label="on this page">',
+        for s in ('<span class="label">PROTOCOL</span>', '<p class="dek">A small protocol for agent seats: they hail each other, and asks only you can answer come to you.</p>',
+                  "<span>11 min read</span>", '<a href="hail-1.md" type="text/markdown">read as Markdown</a>', '<nav class="toc" aria-label="on this page">',
                   '<a href="index.html">← all posts</a>', '<a href="feed.xml" type="application/rss+xml">RSS</a>',
                   '<h2 class="ct" id="credits-t">Acknowledgements</h2>', '<meta property="og:video:type" content="video/mp4">',
                   '<meta property="og:image" content="https://shoalmark.tools/blog/hail-1/card.png">', '<link rel="canonical" href="https://shoalmark.tools/blog/hail-1.html">'):
@@ -92,13 +93,13 @@ class Built(unittest.TestCase):
         self.assertEqual(self.page.count('<aside class="credits"'), 1)
         box = re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0]
         self.assertEqual(len(box.split("<p>")) - 1, 6)
-        self.assertIn("<p>Article fact review: an independent reviewer, in eight rounds, with design and reader critiques.</p>", box)
+        self.assertIn("<p>Article fact review: an independent reviewer, in fourteen rounds, with design and reader critiques.</p>", box)
         self.assertTrue(box.endswith("<p>With thanks to the Research seat.</p></aside>"))
 
     def test_the_four_touches(self):
         anchors = re.findall(r'<(h[23]) id="([^"]+)"><a class="hm" href="#\2" aria-hidden="true" tabindex="-1"></a>', self.page)
         self.assertEqual(len(anchors), len(re.findall(r'<h[23] id="', self.page)))
-        self.assertEqual(len(anchors), 16)
+        self.assertEqual(len(anchors), 17)
         self.assertEqual(len(re.findall(r'data-label="hail · [A-Z]+"', self.page)), 10)
         self.assertRegex(self.page, r'<section class="ending".*?</section>\n<section class="written".*?</section>\n    <div class="share share-end">.*?'
                                     r'</span></div>\n<aside class="credits"')
@@ -109,7 +110,8 @@ class Built(unittest.TestCase):
         self.assertNotIn("#tldr", toc)
         self.assertNotIn("#credits-t", toc)
         self.assertNotIn("#written-t", toc)
-        self.assertEqual(toc.count("<a href="), 16)
+        self.assertEqual(toc.count("<a href="), 17)
+        self.assertIn('<li><a href="#who-decides">Who decides</a></li><li><a href="#when-a-seat-needs-you">When a seat needs you</a></li>', toc)
 
     def test_the_authors_in_the_head_and_at_the_end(self):
         head = re.search(r'<p class="meta">.*?</p>\n    <div class="by">(.*?)</div>\n  </header>', self.page, re.S)
@@ -146,7 +148,7 @@ class Built(unittest.TestCase):
 
     def test_each_figures_webp_twins(self):
         pictures = re.findall(r"<picture>(.*?)</picture>", self.page)
-        self.assertEqual(len(pictures), 15)
+        self.assertEqual(len(pictures), 16)
         twins = 0
         for pic in pictures:
             tags = re.findall(r"<(?:source|img) [^>]*>", pic)
@@ -164,11 +166,27 @@ class Built(unittest.TestCase):
                                      + "".join(f' {k}="{a[k]}"' for k in ("width", "height", "data-still", "data-once", "data-ms") if k in a) + ">")
                 for name in re.findall(r'hail-1/([A-Za-z0-9._-]+\.webp)"', twin):
                     self.assertTrue((self.blog / "hail-1" / name).is_file(), name)
-        self.assertEqual(twins, 58)
+        self.assertEqual(twins, 62)
         imgs = re.findall(r"<picture>.*?(<img [^>]*>)</picture>", self.page)
-        self.assertEqual([re.search(r'loading="(\w+)"', i).group(1) for i in imgs], ["eager"] + ["lazy"] * 14)
+        self.assertEqual([re.search(r'loading="(\w+)"', i).group(1) for i in imgs], ["eager"] + ["lazy"] * 15)
         self.assertTrue(all(re.search(r'src="hail-1/[^"]+\.png"', i) for i in imgs))
         self.assertNotRegex(" ".join(imgs), r"\.webp")
+
+    def test_the_figures_in_the_posts_order(self):
+        """The figures stand as the post reads them, F16 after F13; each one's sizes are its files', and each play time, in its twin too, is the
+        figures file's, the phone's on the narrow source and the desktop's on the <img>."""
+        order = re.findall(r'<figure id="f(\d+)">', self.page)
+        self.assertEqual(order, [str(n) for n in [*range(1, 14), 16, 14, 15]])
+        figures = json.loads((ROOT / "blog/posts/hail-1.figures.json").read_text(encoding="utf-8"))
+        for n, (narrow, wide) in (("13", ((1092, 1140), (1572, 1076))), ("16", ((1092, 1712), (1572, 1556)))):
+            fig = re.search(rf'<figure id="f{n}">(.*?)</figure>', self.page).group(1)
+            sizes = [tuple(map(int, s)) for s in re.findall(r'width="(\d+)" height="(\d+)"', fig)]
+            self.assertEqual(sizes, [narrow] * 2 + [wide] * 2 + [narrow] * 2 + [wide] * 2, n)
+        for n in order:
+            fig = re.search(rf'<figure id="f{n}">(.*?)</figure>', self.page).group(1)
+            ms = figures[f"F{n}"].get("ms")
+            got = [int(m) for m in re.findall(r'data-ms="(\d+)"', fig)]
+            self.assertEqual(got, [ms[0], ms[0], ms[1], ms[1]] if ms else [], n)
 
     def test_the_heros_two_page_sources(self):
         video = re.search(r'<figure class="hero">\n    (<video [^>]*>.*?</video>)', self.page).group(1)
@@ -211,7 +229,9 @@ class Built(unittest.TestCase):
         self.assertTrue(md.startswith(f'---\ntitle: "⌜hail/1⌟: agents message each other; the final word stays yours"\ndate: {DATE}\n'))
         self.assertIn(f"]({BB.SPEC})", md)
         self.assertNotIn("<!--", md)
-        self.assertEqual(len(re.findall(r"^!\[[^\]]+\]\(hail-1/[a-z0-9-]+\.png\)$", md, re.M)), 15)
+        self.assertEqual(len(re.findall(r"^!\[[^\]]+\]\(hail-1/[a-z0-9-]+\.png\)$", md, re.M)), 16)
+        self.assertIn("\n## Who decides\n", md.split("\n## When a seat needs you\n", 1)[0])
+        self.assertIn("\n![", md.split("\n## When a seat needs you\n", 1)[1].split("\n## ", 1)[0])
         self.assertIn("(https://shoalmark.tools/why-shoalmark.html)", md)
 
     def test_the_feed_and_llms(self):
@@ -279,6 +299,8 @@ class Refuses(unittest.TestCase):
                 ("a font of another subset", lambda root: shutil.copyfile(root / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin-ext.woff2",
                                                                          root / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2"), "is not the latin subset"),
                 ("a figure with no entry", self.edit("blog/posts/hail-1.figures.json", '"F15"', '"F16"'), "F15 has no entry"),
+                ("a figure's slot twice", self.edit(post, "\n## When a seat needs you\n", "\n[F14 · again]\n*Again.*\n\n## When a seat needs you\n"),
+                 "do not match its files"),
                 ("site/blog already there", lambda root: (root / "site/blog").mkdir(parents=True), "is already there"),
                 ("a template's slot with no value", self.edit("blog/templates/post.html", "{{ dek }}", "{{ deck }}"), "no value for deck"),
                 ("a seat with no icon in brand/seats/", self.edit(post, '{"seat": "auditor"', '{"seat": "research-lab"'), "its icon in brand/seats/"),
