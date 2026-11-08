@@ -2,7 +2,7 @@
 id: FM-153
 status: In Progress
 considered: FM-143, FM-152
-next: owner
+next: build
 triaged: 2026-11-08
 tier: P2
 hook: "The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small, and still for readers who turn motion off."
@@ -12,6 +12,9 @@ ask-kind: ruling
 ask-since: 2026-11-08
 ask-options: "yes, as proposed | yes, without the portrait | no: the seats alone"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-08
+answered-by: holgo99
 ---
 
 # FM-153 — A blog for the site, and its first post
