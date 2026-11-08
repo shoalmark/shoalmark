@@ -57,7 +57,7 @@ class Built(unittest.TestCase):
     def test_the_posts_files_are_its_sources(self):
         src = sorted(p.name for p in (ROOT / "blog/posts/hail-1").iterdir())
         self.assertEqual(sorted(p.name for p in (self.blog / "hail-1").iterdir()), src)
-        self.assertEqual(len(src), 60)
+        self.assertEqual(len(src), 62)
         for name in src:
             self.assertEqual((self.blog / "hail-1" / name).read_bytes(), (ROOT / "blog/posts/hail-1" / name).read_bytes(), name)
 
@@ -135,8 +135,17 @@ class Built(unittest.TestCase):
                   '<meta property="og:image" content="https://shoalmark.tools/blog/hail-1/card.png">', '<meta property="og:image:width" content="1200">',
                   '<meta property="og:video" content="https://shoalmark.tools/blog/hail-1/hail-1.mp4">', '<meta property="og:video:type" content="video/mp4">',
                   '<meta property="og:video:width" content="1200">', '<meta property="og:video:height" content="630">',
-                  'poster="hail-1/card.png"', '<source src="hail-1/hail-1.mp4" type="video/mp4">'):
+                  'poster="hail-1/card.png"'):
             self.assertIn(s, self.page)
+
+    def test_the_heros_two_page_sources(self):
+        video = re.search(r'<figure class="hero">\n    (<video [^>]*>.*?</video>)', self.page).group(1)
+        self.assertEqual(re.findall(r'<source src="([^"]+)" type=\'([^\']+)\'>', video),
+                         [("hail-1/hail-1-page.hevc.mp4", 'video/mp4; codecs="hvc1.1.6.L153.B0"'), ("hail-1/hail-1-page.mp4", 'video/mp4; codecs="avc1.64001F"')])
+        self.assertNotIn("hail-1/hail-1.mp4", video)
+        self.assertEqual(re.findall(r'<meta property="og:video(?::secure_url)?" content="([^"]+)">', self.page),
+                         ["https://shoalmark.tools/blog/hail-1/hail-1.mp4"] * 2)
+        self.assertNotRegex(self.page, r'<meta [^>]*hail-1-page')
 
     def test_the_share_rows(self):
         rows = re.findall(r'<div class="share( share-end)?"><p class="share-t">Share this article</p><div class="sh-row">(.*?)</div>'
@@ -214,7 +223,11 @@ class Refuses(unittest.TestCase):
                  "a picture in blog/authors/"),
                 ("a front matter without its authors", self.edit(post, "authors: [", "people: ["), "its front matter has no authors"),
                 ("a card of another size than the head names", lambda root: shutil.copyfile(root / "blog/posts/hail-1/f1-courier-still.png",
-                                                                                            root / "blog/posts/hail-1/card.png"), "its card is not 1200 x 630")):
+                                                                                            root / "blog/posts/hail-1/card.png"), "its card is not 1200 x 630"),
+                ("an HEVC page file that says hev1", lambda root: (root / "blog/posts/hail-1/hail-1-page.hevc.mp4").write_bytes(
+                    (root / "blog/posts/hail-1/hail-1-page.hevc.mp4").read_bytes().replace(b"hvc1", b"hev1", 1)), "its video's sample entry is hev1, not avc1 or hvc1"),
+                ("the hero's page files in the other order", self.edit(post, 'hero: ["hail-1-page.hevc.mp4", "hail-1-page.mp4"]', 'hero: ["hail-1-page.mp4", "hail-1-page.hevc.mp4"]'),
+                 "not an HEVC file, then an H.264 one")):
             with self.subTest(name):
                 self.refused(change, reason)
 

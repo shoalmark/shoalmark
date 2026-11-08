@@ -12,12 +12,16 @@ const worker = (await import("data:text/javascript;base64," + readFileSync(worke
 
 const VIDEO = "/blog/a-post/a-post.mp4", SIZE = 1000;
 const bytes = Uint8Array.from({ length: SIZE }, (_, i) => (i * 7 + 3) % 256);
+// the hero's two page files beside the share file, at the same depth, each of its own size
+const PAGES = [["/blog/a-post/a-post-page.hevc.mp4", 700], ["/blog/a-post/a-post-page.mp4", 800]].map(([path, n]) =>
+  [path, Uint8Array.from({ length: n }, (_, i) => (i * 11 + 5) % 256)]);
 const FILES = {
   [VIDEO]: { body: bytes, type: "video/mp4", etag: '"v1"' },
   "/index.html": { body: "the start page", type: "text/html" },
   "/setup.html": { body: "setup", type: "text/html" },
   "/de/index.html": { body: "die Startseite", type: "text/html" },
   "/404.html": { body: "not found", type: "text/html" },
+  ...Object.fromEntries(PAGES.map(([path, body]) => [path, { body, type: "video/mp4", etag: '"p' + body.length + '"' }])),
 };
 
 // The asset layer: each file at its own path, 404 for any other, 304 for a matching If-None-Match. One that honours Range
@@ -96,6 +100,11 @@ for (const honoursRange of [false, true]) {
   r = await ask(VIDEO, { method: "HEAD", honoursRange });
   check(`${how}: HEAD without Range answers as GET would, 200 with Content-Length 1000, without a body`,
     r.status === 200 && r.h["content-length"] === "1000" && kept(r) && r.body.length === 0, seen(r));
+  for (const [path, body] of PAGES) {
+    r = await ask(path, { headers: { Range: "bytes=0-99" }, honoursRange });
+    check(`${how}: bytes=0-99 on the hero's page file ${path} gets 206 with its first 100 bytes and Content-Range bytes 0-99/${body.length}`,
+      r.status === 206 && same(r.body, body.slice(0, 100)) && r.h["content-range"] === `bytes 0-99/${body.length}` && r.h["accept-ranges"] === "bytes", seen(r));
+  }
   r = await ask(VIDEO, { headers: { Range: "bytes=0-99" }, honoursRange });
   check(`${how}: the asset layer is asked for the MP4 without Range, so the answer is cut by the Worker either way`,
     r.asked.length === 1 && r.asked[0].range === null && r.asked[0].method === "GET", r.asked);
@@ -121,8 +130,8 @@ const first = config.assets && config.assets.run_worker_first;
 const glob = (pattern, star) => new RegExp("^" + pattern.split("*").map(s => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(star) + "$");
 const hits = path => Array.isArray(first) && first.some(p => typeof p === "string" && [glob(p, "[^/]*"), glob(p, ".*")].every(rx => rx.test(path)));
 const others = ["/index.html", "/de/index.html", "/setup.html", "/blog/index.html", "/blog/a-post.html", "/blog/a-post/card.png", "/blog/a-post/still.gif", "/a.mp4"];
-check("docs.wrangler.jsonc's run_worker_first names the blog's MP4 path alone, /blog/*/*.mp4: the MP4 runs the Worker first, and no other file does",
-  JSON.stringify(first) === '["/blog/*/*.mp4"]' && hits(VIDEO) && !others.some(hits), { run_worker_first: first, others: others.filter(hits) });
+check("docs.wrangler.jsonc's run_worker_first names the blog's MP4 path alone, /blog/*/*.mp4: the MP4s run the Worker first, the share file and the hero's two page files, and no other file does",
+  JSON.stringify(first) === '["/blog/*/*.mp4"]' && hits(VIDEO) && PAGES.every(([path]) => hits(path)) && !others.some(hits), { run_worker_first: first, others: others.filter(hits) });
 
 console.log(failed ? `${failed} check(s) failed` : "every check passed");
 process.exit(failed ? 1 : 0);

@@ -30,8 +30,9 @@ if(navigator.clipboard)for(const cp of document.querySelectorAll('.share .sh-cop
 // 2b. The figures play once: each plays when 60 % of it is in view, then rests on its lit end; its control
 //    stops it or plays it again. A screen ahead, a preload hint warms its file; a replay takes a fresh address.
 if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window))return;
-// 2a. The hero: the share video loops, muted, while it is in view; its control stops it or plays it again. With
-//     reduced motion the script has already returned, so the poster, the still, is all that shows.
+// 2a. The hero: the share video's page cut (HEVC first, H.264 after; the browser takes the first it can play) loops,
+//     muted, while it is in view; its control stops it or plays it again. With reduced motion the script has already
+//     returned, so the poster, the still, is all that shows.
 const hero=document.querySelector('.hero video');
 if(hero){const hb=document.querySelector('.hero .again');let held=false;
   const go=()=>{const p=hero.play();if(p&&p.catch)p.catch(()=>{});hb.textContent='stop';hb.setAttribute('aria-pressed','false');};

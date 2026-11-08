@@ -64,7 +64,7 @@ def front_matter(text, name):
         if not sep or not re.fullmatch(r"[a-z_]+", key):
             refuse(f"{name}: a front matter line is not 'key: value': {line[:60]!r}")
         meta[key] = json.loads(value) if value[:1] in '"[' else value
-    for key in ("title", "slug", "date", "kicker", "dek", "card", "card_alt", "authors", "credits"):
+    for key in ("title", "slug", "date", "kicker", "dek", "card", "card_alt", "video", "hero", "authors", "credits"):
         if key not in meta:
             refuse(f"{name}: its front matter has no {key}")
     return meta, body.lstrip("\n")
@@ -91,6 +91,54 @@ def size(path):
     if data[:6] in (b"GIF87a", b"GIF89a"):
         return int.from_bytes(data[6:8], "little"), int.from_bytes(data[8:10], "little")
     refuse(f"{path.name} is no PNG or GIF")
+
+
+def codecs(path):
+    """The codec string of an MP4's video track, as its own header gives it: the track whose handler is vide, its first sample entry, and
+    that entry's avcC or hvcC box, so that the page never names a profile or a level the file does not carry. An H.264 file must say avc1
+    and an HEVC file hvc1, its parameter sets in the header; any other entry, hev1 among them, is refused."""
+    data = path.read_bytes()
+
+    def boxes(start, end):
+        i = start
+        while i + 8 <= end:
+            size, kind, head = int.from_bytes(data[i:i + 4], "big"), data[i + 4:i + 8], 8
+            if size == 1:
+                size, head = int.from_bytes(data[i + 8:i + 16], "big"), 16
+            elif size == 0:
+                size = end - i
+            if size < head or i + size > end:
+                refuse(f"{path.name}: a box runs past its parent")
+            yield kind, i + head, i + size
+            i += size
+
+    def child(span, kind):
+        found = [(s, e) for k, s, e in boxes(*span) if k == kind]
+        if not found:
+            refuse(f"{path.name}: no {kind.decode('latin-1')} box where an MP4 has one")
+        return found[0]
+
+    for kind, start, end in boxes(*child((0, len(data)), b"moov")):
+        if kind != b"trak":
+            continue
+        mdia = child((start, end), b"mdia")
+        hdlr = child(mdia, b"hdlr")
+        if data[hdlr[0] + 8:hdlr[0] + 12] != b"vide":
+            continue
+        stsd = child(child(child(mdia, b"minf"), b"stbl"), b"stsd")
+        entry, s, e = next(boxes(stsd[0] + 8, stsd[1]))
+        if entry not in (b"avc1", b"hvc1"):
+            refuse(f"{path.name}: its video's sample entry is {entry.decode('latin-1')}, not avc1 or hvc1")
+        c = data[slice(*child((s + 78, e), b"avcC" if entry == b"avc1" else b"hvcC"))]
+        if entry == b"avc1":
+            return f"avc1.{c[1]:02X}{c[2]:02X}{c[3]:02X}"
+        compatible = int(f"{int.from_bytes(c[2:6], 'big'):032b}"[::-1], 2)
+        constraints = list(c[6:12])
+        while constraints and constraints[-1] == 0:
+            constraints.pop()
+        return (f"hvc1.{('', 'A', 'B', 'C')[c[1] >> 6]}{c[1] & 31}.{compatible:X}.{'LH'[(c[1] >> 5) & 1]}{c[12]}"
+                + "".join(f".{x:X}" for x in constraints))
+    refuse(f"{path.name}: no video track")
 
 
 # --- the body ---------------------------------------------------------------------------------------------------------------------------------
@@ -474,6 +522,10 @@ def build(site):
         (out / slug).mkdir()
         for f in sorted(post.files.iterdir()):
             shutil.copyfile(f, out / slug / f.name)
+        hero = meta["hero"]
+        kinds = [codecs(post.files / f).split(".")[0] for f in hero] if isinstance(hero, list) else []
+        if kinds != ["hvc1", "avc1"]:
+            refuse(f"{post.name}: its hero's page files are not an HEVC file, then an H.264 one")
         if size(post.files / meta["card"]) != (1200, 630):
             refuse(f"{post.name}: its card is not 1200 x 630, the size the head's og:image and og:video name")
         body = post.body()
@@ -492,7 +544,9 @@ def build(site):
                    date_iso=meta["date"], date_text=meta["date"], title_html=title_html, toc=contents(body), body=body, card_abs=card,
                    card_alt=html.escape(meta["card_alt"]), video_tags=tags, here_blog="", current_blog="", kicker_label=text_node(meta["kicker"]),
                    dek=text_node(meta["dek"]), reading_time=UI["read"].format(n=minutes), md_href=f"{slug}.md", ui_markdown=UI["markdown"],
-                   ui_contents=UI["contents"], hero_poster=f"{slug}/{meta['card']}", hero_video=f"{slug}/{video}", hero_alt=html.escape(meta["card_alt"]),
+                   ui_contents=UI["contents"], hero_poster=f"{slug}/{meta['card']}", hero_alt=html.escape(meta["card_alt"]),
+                   hero_video_hevc=f"{slug}/{hero[0]}", hero_codec_hevc=codecs(post.files / hero[0]),
+                   hero_video_page=f"{slug}/{hero[1]}", hero_codec_page=codecs(post.files / hero[1]),
                    authors=authors(owner, seats), share=share(f"{SITE_URL}blog/{slug}.html", meta["title"]))
         (out / f"{slug}.html").write_text(render("post.html", ctx), encoding="utf-8")
         (out / f"{slug}.md").write_text(post.markdown_version(), encoding="utf-8")

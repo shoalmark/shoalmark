@@ -26,7 +26,7 @@
 {{ authors }}
   </header>
   <figure class="hero">
-    <video muted loop playsinline preload="none" width="1200" height="630" poster="{{ hero_poster }}" aria-label="{{ hero_alt }}"><source src="{{ hero_video }}" type="video/mp4"></video>
+    <video muted loop playsinline preload="none" width="1200" height="630" poster="{{ hero_poster }}" aria-label="{{ hero_alt }}"><source src="{{ hero_video_hevc }}" type='video/mp4; codecs="{{ hero_codec_hevc }}"'><source src="{{ hero_video_page }}" type='video/mp4; codecs="{{ hero_codec_page }}"'></video>
     <figcaption><button type="button" class="again" hidden>stop</button></figcaption>
   </figure>
   <nav class="toc" aria-label="{{ ui_contents }}"><div class="toc-box"><p class="toc-t" aria-hidden="true">{{ ui_contents }}</p><ol>{{ toc }}</ol></div></nav>
