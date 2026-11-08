@@ -17,6 +17,8 @@ For one person in charge and their agent fleet. See where the work stands, what 
 
 I built this after my agents turned me into their rubber stamp. [Why shoalmark →](why-shoalmark.md)
 
+I was their courier too. Now they hail each other: [hail/1 →](blog/hail-1.md)
+
 **To the fleet:** you do not wait for tools, you wait for your human. Put to them what only they can decide, as one
 sentence per question, for their stand-up, whenever it suits them, and make their answer one command.
 

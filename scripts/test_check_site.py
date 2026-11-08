@@ -32,6 +32,20 @@ BLOG = {"blog/index.html": '<html lang="en"><body><h1>Blog</h1><ul><li><a href="
         "de/blog/index.html": '<html lang="de"><body><h1>Blog</h1></body></html>',
         "blog/first-post.html": '<html lang="en"><body><h1>First post</h1>' + BLOG_FIGURE + '<p><a href="index.html">All posts</a></p></body></html>',
         "assets/blog/loop.gif": GIF, "assets/blog/loop-still.png": STILL, "assets/blog/small.gif": GIF, "assets/blog/small-still.png": STILL}
+# a figure the post's script plays once, as a post sets it: its stills shown, each play-once GIF in a data-once beside the still it rests on, its
+# data-still, and the <picture>'s sources for reduced motion naming the stills; beside it a still figure; on a page of its own, with their four files
+ONCE_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="../assets/blog/wave-still.png">'
+ONCE_STILL = '<source media="(prefers-reduced-motion: reduce)" srcset="../assets/blog/wave-780-still.png">'
+ONCE_SMALL = ('<source media="(max-width: 640px)" srcset="../assets/blog/wave-still.png" data-still="../assets/blog/wave-still.png" '
+              'data-once="../assets/blog/wave-once.gif" data-ms="20">')
+ONCE_IMG = ('<img src="../assets/blog/wave-780-still.png" alt="A wave of one pixel" data-still="../assets/blog/wave-780-still.png" '
+            'data-once="../assets/blog/wave-780-once.gif" data-ms="20">')
+ONCE_PICTURE = "<picture>" + ONCE_SMALL_STILL + ONCE_STILL + ONCE_SMALL + ONCE_IMG + "</picture>"
+ONCE_STILL_FIGURE = ('<figure><picture><source media="(max-width: 640px)" srcset="../assets/blog/wave-still.png">'
+                     '<img src="../assets/blog/wave-780-still.png" alt="A wave at rest"></picture></figure>')
+ONCE = {"blog/second-post.html": ('<html lang="en"><body><h1>Second post</h1><figure>' + ONCE_PICTURE + '<figcaption>A wave.</figcaption></figure>'
+                                  + ONCE_STILL_FIGURE + '</body></html>'),
+        "assets/blog/wave-once.gif": GIF, "assets/blog/wave-still.png": STILL, "assets/blog/wave-780-once.gif": GIF, "assets/blog/wave-780-still.png": STILL}
 
 
 def landing(lang, probe, tag="v1.2.3", footer_tag=None):
@@ -886,6 +900,95 @@ class Blog(unittest.TestCase):
             with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
                 site = Path(tmp) / "site"
                 good_site(site)
+                before = files(site)
+                change(site)
+                after = files(site)
+                changed = sorted(rel for rel in before.keys() | after.keys() if before.get(rel) != after.get(rel))
+                self.assertEqual(len(changed), 1, changed)
+                self.assertTrue(changed[0].startswith(("blog/", "de/blog/", "assets/blog/")), changed)
+                self.assertIn(changed[0], message)
+
+
+class PlayOnce(unittest.TestCase):
+    """The blog's figures as a post plays them once: the good site with a page that holds an animated figure, its stills shown and its play-once
+    GIFs named in data-once, and a still figure. Each data-once and data-still is a file of the site; each play-once GIF, <name>-once.gif, has its
+    figure's still beside it, <name>-still.png, and rests on it; the <picture> names that still for a reader who turns motion off, before the
+    <source> that plays a narrower screen's GIF; and the count counts each figure. Controls that each change one thing in it; the check names the file."""
+
+    PAGE = "blog/second-post.html"
+    REFUSED_SMALL = ("blog/second-post.html plays the GIF '../assets/blog/wave-once.gif' from a <source> with no <source> for reduced motion before it "
+                     "whose srcset names its still, assets/blog/wave-still.png")
+    put = Blog.put
+
+    def checked(self, change=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            self.good(site)
+            if change:
+                change(site)
+            return run(site)
+
+    @staticmethod
+    def good(site):
+        good_site(site)
+        for name, data in ONCE.items():
+            (site / name).parent.mkdir(parents=True, exist_ok=True)
+            (site / name).write_bytes(data if isinstance(data, bytes) else data.encode("utf-8"))
+
+    def remove(self, name):
+        def change(site):
+            (site / name).unlink()
+        return change
+
+    def controls(self):
+        """(name, change, the refusal the check names) for each control, one for each way a play-once figure can fail a reader."""
+        return (
+            ("a play-once GIF that is no file of the site",
+             self.put(self.PAGE, 'data-once="../assets/blog/wave-780-once.gif"', 'data-once="../assets/blog/gone-780-once.gif"'),
+             "site check: blog/second-post.html names '../assets/blog/gone-780-once.gif' (img data-once), and that is no file of the site"),
+            ("a still to rest on that is no file of the site",
+             self.put(self.PAGE, 'data-still="../assets/blog/wave-still.png"', 'data-still="../assets/blog/gone-still.png"'),
+             "site check: blog/second-post.html names '../assets/blog/gone-still.png' (source data-still), and that is no file of the site"),
+            ("a play-once GIF under assets/blog/ without its figure's still beside it", self.remove("assets/blog/wave-still.png"),
+             "site check: assets/blog/wave-once.gif has no still beside it, assets/blog/wave-still.png"),
+            ("a play-once GIF that comes to rest on another still",
+             self.put(self.PAGE, 'data-still="../assets/blog/wave-780-still.png"', 'data-still="../assets/blog/wave-still.png"'),
+             "site check: blog/second-post.html plays the GIF '../assets/blog/wave-780-once.gif' and rests on '../assets/blog/wave-still.png', which is "
+             "not its still, assets/blog/wave-780-still.png"),
+            ("a play-once GIF outside a <picture>", self.put(self.PAGE, ONCE_PICTURE, ONCE_IMG),
+             "site check: blog/second-post.html plays the GIF '../assets/blog/wave-780-once.gif' outside a <picture>"),
+            ("a picture whose source for reduced motion names the narrower still, not the wider",
+             self.put(self.PAGE, ONCE_STILL, ONCE_STILL.replace("wave-780-still", "wave-still")),
+             "site check: blog/second-post.html plays the GIF '../assets/blog/wave-780-once.gif' in a <picture> with no "
+             '<source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, assets/blog/wave-780-still.png'),
+            ("a narrower screen's play-once GIF before the source for reduced motion that names its still",
+             self.put(self.PAGE, ONCE_SMALL_STILL + ONCE_STILL + ONCE_SMALL, ONCE_STILL + ONCE_SMALL + ONCE_SMALL_STILL), "site check: " + self.REFUSED_SMALL),
+            ("a narrower screen's source for motion, not for its reduction",
+             self.put(self.PAGE, ONCE_SMALL_STILL, ONCE_SMALL_STILL.replace("reduce)", "no-preference)")), "site check: " + self.REFUSED_SMALL),
+        )
+
+    def test_a_good_site_passes(self):
+        result = self.checked()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("site check: the 4 blog page(s) and their 3 figure(s) passed: each figure has alt text and a still, and each of the 8 file(s) under "
+                      "assets/blog/ is within 1,000,000 bytes", result.stdout)
+
+    def test_each_control_is_refused(self):
+        for name, change, message in self.controls():
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+    def test_the_controls_see_what_they_refuse(self):
+        """Each control changes one file of the site with the play-once page, a page under blog/ or a file under assets/blog/; and the refusal it
+        expects names that file."""
+        def files(site):
+            return {path.relative_to(site).as_posix(): path.read_bytes() for path in site.rglob("*") if path.is_file()}
+        for name, change, message in self.controls():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                site = Path(tmp) / "site"
+                self.good(site)
                 before = files(site)
                 change(site)
                 after = files(site)

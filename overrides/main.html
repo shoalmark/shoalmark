@@ -61,4 +61,8 @@
   <meta name="twitter:card" content="summary_large_image">
   {# The theme supplies the ICO fallback; keep the adaptive SVG for supporting browsers. #}
   <link rel="icon" href="{{ 'assets/favicon.svg' | url }}" type="image/svg+xml" sizes="any">
+  {#- the blog's own stylesheet, on the blog's pages in both languages and on no other page -#}
+  {%- if page and page.url and (page.url[:5] == "blog/" or page.url[:8] == "de/blog/") %}
+  <link rel="stylesheet" href="{{ 'stylesheets/blog.css' | url }}">
+  {%- endif %}
 {% endblock %}

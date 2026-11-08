@@ -1,0 +1,172 @@
+/* The blog's own stylesheet: what a post adds to the site's (shoalmark.css), linked on the blog's pages only. The site already gives a post its
+   tokens and scheme switch, its band and foot, its headings in the mono with their drawn marks, inline code in the id colour, its links' underline
+   and its fonts. This sheet carries only what the site holds no rule for, or holds one the post sets otherwise; every rule but the four tokens is
+   scoped to the post's container, .md-typeset .post, so no other page changes. */
+
+/* the four tokens a post adds, set where the site sets its own, so they follow its scheme switch */
+body[data-md-color-scheme=default][data-md-color-primary]{--line:#c9d6e0;--box:#8eb1cc;--fig:#0d1720;--tabink:#fbfbf7}
+body[data-md-color-scheme=slate][data-md-color-primary]{--line:#2a4357;--box:#34546c;--fig:#0d1720;--tabink:#0d1720}
+
+/* one column, set wholly in the site's mono at 16 px; --l is the page's line, the unit of every vertical space (the site's rem is not 16 px,
+   so the line is given in px) */
+.md-typeset .post{--mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;--pix:"Silkscreen","IBM Plex Mono",monospace;--l:26.4px;
+  max-width:68ch;margin:0 auto;padding:56px 0 72px;font:16px/1.65 var(--mono);color:var(--ink)}
+
+/* the title in its two halves, each balanced, and the frame round hail/1, drawn in tenths of the h's height (.74em): corners 1 unit thick and
+   4 long, 2 units clear of the h's top and of the baseline, 4 clear of the letters; the mono holds neither corner, and a screen reader reads
+   hail/1. The frame hangs into the margin, so the h lines up with the letters below it */
+.md-typeset .post h1{line-height:1.15;margin:0}
+.md-typeset .post h1>span{display:block;text-wrap:balance}
+.md-typeset .post h1 .hf{position:relative;display:inline-block;line-height:1.25;padding:0 .34em 0 .295em;margin-left:-.295em}
+.md-typeset .post h1 .hf::before,.md-typeset .post h1 .hf::after{content:"";position:absolute;width:.296em;height:.296em;border:0 solid currentColor}
+.md-typeset .post h1 .hf::before{left:0;top:.038em;border-top-width:.07em;border-left-width:.07em}
+.md-typeset .post h1 .hf::after{right:0;bottom:.028em;border-bottom-width:.07em;border-right-width:.07em}
+.md-typeset .post .by{margin:calc(var(--l)*.5) 0 0;font-size:.94em;color:var(--dim)}
+
+/* the headings on the page's line, their drawn marks in mute */
+.md-typeset .post h2{font-size:1.35em;line-height:var(--l);margin:calc(var(--l)*2.5) 0 var(--l)}
+.md-typeset .post h3{font-size:1.05em;line-height:var(--l);margin:calc(var(--l)*2) 0 calc(var(--l)*.5)}
+.md-typeset .post h2::before,.md-typeset .post h3::before{color:var(--mute);font-weight:400}
+
+/* one blank line between paragraphs, as the Markdown source has it; links in the text's colour, underlined in mute, never coloured as a state */
+.md-typeset .post p{margin:0 0 var(--l)}
+.md-typeset .post strong{font-weight:600}
+.md-typeset .post a,.md-typeset .post a:hover{color:inherit;text-decoration:underline;text-decoration-color:var(--mute);text-underline-offset:.2em}
+
+/* inline code as its source: between drawn backticks, out of the reading order, on no ground, never split */
+.md-typeset .post code{font:inherit;color:var(--id);background:none;padding:0;border-radius:0;box-shadow:none}
+.md-typeset .post p code,.md-typeset .post li code,.md-typeset .post td code,.md-typeset .post dd code{white-space:nowrap}
+.md-typeset .post p code::before,.md-typeset .post p code::after,.md-typeset .post li code::before,.md-typeset .post li code::after,
+.md-typeset .post td code::before,.md-typeset .post td code::after,.md-typeset .post dd code::before,.md-typeset .post dd code::after{content:"`";content:"`" / "";color:var(--mute)}
+
+/* lists: a drawn dot in mute */
+.md-typeset .post ul{list-style:none;margin:0 0 1.2em;padding:0}
+.md-typeset .post li{position:relative;padding-left:2ch;margin:0 0 .55em}
+.md-typeset .post li::before{content:"·";position:absolute;left:.4ch;color:var(--mute)}
+
+/* the post's tables, classed so the site's boxed table stays off them: no outer box, heads as types over a rule, a rule between rows, the first
+   column dim */
+.md-typeset .post table{display:table;width:100%;border:0;border-collapse:collapse;background:none;margin:.4em 0 1.6em;font-size:.94em;line-height:1.55}
+.md-typeset .post th{font:400 12px/1.9 var(--pix);text-transform:uppercase;color:var(--mute);background:none;text-align:left;padding:0 1.2ch .4em 0;
+  border-bottom:1px solid var(--line)}
+.md-typeset .post td{vertical-align:top;padding:.7em 1.2ch .7em 0;border-bottom:1px solid var(--line)}
+.md-typeset .post td:first-child{color:var(--dim);width:50%}
+
+/* a hail as page text: a rule at its left, each line a block with a hanging indent, on the page's ground, never tinted, no copy button */
+.md-typeset .post pre.ex{margin:.4em 0 1.6em;border-left:2px solid var(--box);padding:.2em 0 .2em 1.6ch;background:none;font-size:.92em;line-height:1.6;
+  white-space:pre-wrap;overflow-wrap:anywhere}
+.md-typeset .post pre.ex>code{display:block;margin:0;padding:0;border:0;overflow:visible;background:none;box-shadow:none;color:var(--ink);white-space:inherit}
+.md-typeset .post pre.ex .md-clipboard,.md-typeset .post pre.ex .md-code__nav{display:none}
+.md-typeset .post .ln{display:block;padding-left:2ch;text-indent:-2ch}
+.md-typeset .post .fr{font-weight:600}
+.md-typeset .post .k,.md-typeset .post .b{color:var(--ink)}
+.md-typeset .post .v{color:var(--dim)}
+.md-typeset .post .ph{color:var(--mute)}
+.md-typeset .post .ts{white-space:nowrap}
+/* in a marker section the hail lights what its marker carries, and its routine lines go to mute, as the figure above it settles */
+.md-typeset .post pre.lit-ex .off,.md-typeset .post pre.lit-ex .off .k,.md-typeset .post pre.lit-ex .off .v,.md-typeset .post pre.lit-ex .off .ph{color:var(--mute)}
+.md-typeset .post pre.lit-ex .lit .v{color:var(--ink)}
+
+/* the status paragraph: the state of the work, on a rule in the TL;DR's colour */
+.md-typeset .post p.state{border-left:2px solid var(--watt);padding-left:1.6ch}
+
+/* the figures: plates of deep water in both schemes, as wide as the column, each figure's own box its edge; before it plays, and while its GIF
+   loads, a figure shows its still faintly */
+.md-typeset .post figure{display:block;width:auto;max-width:none;margin:2em 0 2.4em;text-align:left}
+.md-typeset .post figure picture{display:block;background:var(--fig);border-radius:2px;overflow:hidden}
+.md-typeset .post figure img{display:block;width:100%;max-width:none;height:auto}
+.md-typeset .post picture[data-st=wait] img,.md-typeset .post picture[data-st=load] img{opacity:.3}
+.md-typeset .post figcaption{margin:.8em 0 0;max-width:none;font-size:.94em;font-style:normal;line-height:1.5;text-align:left;color:var(--dim)}
+.md-typeset .post .fn{font:400 13px/1 var(--pix);color:var(--mute);margin-right:1ch}
+/* the control: hidden until the script runs; its hit area 47 to 48 px tall, its padding cancelled by equal negative margins, so showing it moves
+   nothing */
+.md-typeset .post .again{font:inherit;color:var(--mute);background:none;border:0;cursor:pointer;white-space:nowrap;padding:13px 8px;
+  margin:-13px -8px -13px calc(1ch - 8px);text-decoration:underline;text-decoration-color:var(--mute);text-underline-offset:.2em}
+.md-typeset .post .again[hidden]{display:none}
+.md-typeset .post .again:hover{color:var(--ink)}
+.md-typeset .post .again:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* the seven markers share one structure, so they compare: the heading, one line, the figure, the words, the hail */
+.md-typeset .post .mk>h3{margin-bottom:var(--l)}
+.md-typeset .post .mk>figure{margin:0 0 1.2em}
+
+/* the ending, at the drying line: the quotation marked as the headings are, a drawn "> " before every line, out of the reading order; the blank
+   line before the attribution is a drawn line break one line high, so the attribution always starts on a "> " line */
+.md-typeset .post .ending{margin-top:2.6em;padding-top:1.4em;border-top:2px solid var(--drying)}
+.md-typeset .post .said{position:relative;margin:0;padding-left:2ch;line-height:var(--l)}
+.md-typeset .post .said::before{content:"> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A";
+  content:"> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A> \A" / "";
+  position:absolute;left:0;top:0;bottom:0;overflow:hidden;white-space:pre;color:var(--mute)}
+.md-typeset .post .said blockquote{margin:0;padding:0;border:0;color:inherit}
+.md-typeset .post .said p{margin:0}
+/* the attribution, one line on the quote's grid; it shrinks on a narrow phone so that any wording up to 40 characters stays one line */
+.md-typeset .post .said figcaption{margin:0;line-height:var(--l);font-size:min(1em,calc((100vw - 50px) / 24));white-space:nowrap;color:var(--dim)}
+.md-typeset .post .said figcaption::before{content:"\A";white-space:pre}
+
+/* the reference: compact and apart, after the story, under a rule, smaller */
+.md-typeset .post .ref{margin-top:3.6em;padding-top:1.2em;border-top:1px solid var(--line);font-size:.88em}
+.md-typeset .post .ref h2{font-size:1.15em;margin:0 0 .8em}
+.md-typeset .post .ref p{margin-bottom:.8em}
+.md-typeset .post .ref pre.ex{font-size:.94em;margin-bottom:1.2em}
+.md-typeset .post .ref table{font-size:1em;margin-bottom:1em}
+.md-typeset .post .ref td{padding:.45em 1.2ch .45em 0}
+.md-typeset .post .ref td:first-child{width:36%}
+
+/* the foot: the post's last line, its links, under a rule, dim */
+.md-typeset .post .foot{margin-top:calc(var(--l)*1.5);padding-top:calc(var(--l)*.75);border-top:1px solid var(--line);color:var(--dim)}
+
+/* the TL;DR: the why page's box, with tokens for both schemes, its labels on the words' baseline, its tab in the top edge */
+.md-typeset .post .tldr{position:relative;margin:var(--l) 0 calc(var(--l)*1.5);border:2px solid var(--watt);background:var(--panel);padding:30px 28px 22px}
+.md-typeset .post .tldr>.t{position:absolute;top:-.9em;left:20px;margin:0;padding:0 10px;background:var(--watt);color:var(--tabink);
+  font:700 13px/1.6 var(--pix);text-transform:uppercase}
+.md-typeset .post .tldr>.t::before{content:none}
+.md-typeset .post .tldr dl{margin:0;display:grid;grid-template-columns:minmax(10ch,max-content) 1fr;gap:12px 22px;font-size:16px;line-height:1.55;
+  align-items:baseline}
+.md-typeset .post .tldr dt{margin:0;font:400 12px/1.9 var(--pix);text-transform:uppercase;color:var(--watt)}
+.md-typeset .post .tldr dd{margin:0;color:var(--ink)}
+.md-typeset .post .tldr dl>div{display:contents}
+/* the band the TL;DR ends with: the olive ground, the label and the button in the pixel face, the words after it; by day its words are the paper
+   on the olive and the button inverts, as by night; the sentence at 400; the button's arrow drawn on a 6 by 5 pixel grid */
+.md-typeset .post .tldr dl>div.try{display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:baseline;gap:12px 22px;margin:10px -28px -22px;
+  padding:16px 28px 18px;background:var(--watt);color:var(--tabink);box-shadow:inset 0 3px 0 rgba(13,23,32,.18)}
+.md-typeset .post .tldr dl>div.try dt{color:var(--tabink);font-weight:700}
+.md-typeset .post .tldr dl>div.try dd{color:var(--tabink);font-weight:400}
+.md-typeset .post .tldr dl>div.try .go{white-space:nowrap}
+.md-typeset .post .tldr dl>div.try a{display:inline-block;max-width:calc(100% - 1ch);white-space:normal;margin:2px 4px 4px 0;padding:8px 12px 7px;
+  background:var(--tabink);color:var(--watt);font:700 13px/1.3 var(--pix);text-transform:uppercase;text-decoration:none;
+  box-shadow:3px 3px 0 rgba(13,23,32,.35);vertical-align:baseline}
+.md-typeset .post .tldr dl>div.try a::after{content:"";display:inline-block;width:.6em;height:.5em;margin-left:.55em;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 5' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM4 1h1v1H4zM0 2h6v1H0zM4 3h1v1H4zM3 4h1v1H3z'/%3E%3C/svg%3E") no-repeat 0 0/100% 100%;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 5' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM4 1h1v1H4zM0 2h6v1H0zM4 3h1v1H4zM3 4h1v1H3z'/%3E%3C/svg%3E") no-repeat 0 0/100% 100%}
+.md-typeset .post .tldr dl>div.try a:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 rgba(13,23,32,.4)}
+.md-typeset .post .tldr dl>div.try a:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(13,23,32,.35)}
+.md-typeset .post .tldr dl>div.try a:focus-visible{outline:2px solid var(--tabink);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.md-typeset .post .tldr dl>div.try a:hover,.md-typeset .post .tldr dl>div.try a:active{transform:none}}
+
+/* the phone, 640 px and narrower: the text at 15 px; the TL;DR as the why page's narrow rules, the band's button on its own line; the 540 figures
+   with the empty ground under each foot cropped on the page only (104 of the 1092 file px), the files whole; tables stacked, the before/after
+   table's two heads shown over its first pair only */
+@media (max-width:640px){
+  .md-typeset .post{font-size:15px;--l:24.75px;padding:28px 0 48px}
+  .md-typeset .post h1{font-size:1.75em}
+  .md-typeset .post h2{margin-top:calc(var(--l)*2)}
+  .md-typeset .post .tldr{margin-top:calc(var(--l)*1.2);padding:18px 14px 6px}
+  .md-typeset .post .tldr dl{display:block;font-size:14px;line-height:1.42}
+  .md-typeset .post .tldr dt{display:inline;margin-right:.6ch}
+  .md-typeset .post .tldr dd{display:inline}
+  .md-typeset .post .tldr dd::after{content:"";display:block;margin-bottom:6px}
+  .md-typeset .post .tldr dl>div.try{display:block;margin:6px -14px -6px;padding:12px 14px 8px}
+  .md-typeset .post .tldr dl>div.try .go{display:block;margin:4px 0 8px}
+  .md-typeset .post figure picture img{margin-bottom:-9.52%}
+  .md-typeset .post td{display:block;width:100%!important;padding:.5em 0}
+  .md-typeset .post td:first-child{padding-top:.9em;border-bottom:0}
+  .md-typeset .post thead{display:none}
+  .md-typeset .post table.ba tr:first-child td::before{content:attr(data-h);display:block;font:400 12px/1.9 var(--pix);text-transform:uppercase;
+    color:var(--mute);margin-bottom:.1em}
+}
+
+/* print: the light ink on white, and no shadow under a figure */
+@media print{
+  .md-typeset .post{--bg:#fff;--ink:#10202e;--dim:#3e4e5b;--mute:#51606c}
+  .md-typeset .post figure picture{box-shadow:none}
+}

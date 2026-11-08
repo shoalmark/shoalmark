@@ -16,6 +16,8 @@ Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit
 
 Ich habe das gebaut, nachdem meine Agenten mich zu ihrem Abnicker gemacht hatten. [Warum shoalmark →](warum-shoalmark.md)
 
+Ich war auch ihr Bote. Jetzt rufen sie einander an: [hail/1 →](blog/hail-1.md)
+
 **An die Flotte:** Ihr wartet nicht auf Werkzeuge, ihr wartet auf euren Menschen. Legt dieser Person vor, was nur sie entscheiden
 kann – ein Satz pro Frage, für ihr Stand-up, wann immer es ihr passt –, und macht aus ihrer Antwort einen einzigen Befehl.
 

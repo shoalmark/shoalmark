@@ -6688,13 +6688,13 @@ _FOUNDER_LEDE = {"en": "For one person in charge and their agent fleet. See wher
                  "de": "Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit steht,"}
 _FOUNDER_TWIN = {"docs/index.md": ('--8<-- "start.en.md"\n\nI built this after my agents turned me into their rubber stamp. [Why shoalmark →](why-shoalmark.md)\n', "en"),
                  "docs/de/index.md": ('--8<-- "start.de.md"\n\nIch habe das gebaut, nachdem meine Agenten mich zu ihrem Abnicker gemacht hatten. [Warum shoalmark →](warum-shoalmark.md)\n', "de")}
-_FOUNDER_AT = '{{ w.btn_how }}</a>\n    </div>\n    <p class="founder">{{ w.founder }}</p>\n  </div>\n</section>'
+_FOUNDER_AT = '{{ w.btn_how }}</a>\n    </div>\n    <p class="founder">{{ w.founder }}</p>\n    <p class="founder post-line">{{ w.post_line }}</p>\n  </div>\n</section>'
 
 
 def _founder_problems(src):
     """What is wrong with the start page's first-person line, one line each: each words file holds it as a key of its own, the lede opens with whom the tool is
-    for and holds no part of the line, the template draws it once, under the two buttons, as the hero's last line, with its link kept on one line, and each
-    Markdown twin holds it right after the page's action."""
+    for and holds no part of the line, the template draws it once, under the two buttons, followed only by the line to the post as the hero's last line,
+    with its link kept on one line, and each Markdown twin holds it right after the page's action."""
     words, bad = _landing_words(src)
     code = re.sub(r"\{#.*?#\}", "", src["overrides/landing.html"], flags=re.S)
     for lang in ("en", "de"):
@@ -6704,7 +6704,7 @@ def _founder_problems(src):
         if not lede.startswith(_FOUNDER_LEDE[lang]) or re.search(r"<br|<a\b", lede) or _FOUNDER[lang].split(" <a ")[0] in lede:
             bad.append(f"{lang}.html's lede does not open with whom it is for, or still holds the first-person line")
     if code.count(_FOUNDER_AT) != 1 or code.count("{{ w.founder }}") != 1:
-        bad.append("the template does not draw the first-person line once, under the two buttons, as the hero's last line")
+        bad.append("the template does not draw the first-person line once, under the two buttons, followed only by the line to the post as the hero's last line")
     if ".founder a{white-space:nowrap}" not in code:
         bad.append("the first-person line's link may break across two lines")
     for rel, (line, lang) in _FOUNDER_TWIN.items():

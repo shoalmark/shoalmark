@@ -859,11 +859,14 @@ if lost or shown:
 print(f"site check: the {held} fenced block(s) of the docs, in both languages, build to code blocks, and no page shows a fence as text")
 
 
-# --- the blog: each figure is an animated GIF with alt text and a still for readers who turn motion off, and each file under assets/blog/ stays small -------
-# A figure is an <img> of a GIF inside a <picture> whose <source media="(prefers-reduced-motion: reduce)"> names the GIF's still, the PNG beside it named
-# <name>-still.png. A <picture> may offer a GIF in a <source> too, for a narrower screen: a browser takes the first <source> that matches, so a <source>
-# for reduced motion that names that GIF's still must stand before it. Both languages show the same files, so assets/blog/ is read once, and every page
-# under blog/ and de/blog/ is read.
+# --- the blog: each figure has alt text and a still for readers who turn motion off, and each file under assets/blog/ stays small ---------------------
+# A figure is an <img> inside a <picture>. It may show a GIF as the <img> itself, in a <picture> whose <source media="(prefers-reduced-motion: reduce)">
+# names the GIF's still, the PNG beside it named <name>-still.png. A <picture> may offer a GIF in a <source> too, for a narrower screen: a browser takes
+# the first <source> that matches, so a <source> for reduced motion that names that GIF's still must stand before it. A figure the post's script plays
+# once shows its still, and names its play-once GIF in a data-once and the still it comes to rest on in a data-still: that still is the GIF's own, and the
+# <picture> names it for a reader who turns motion off, by the same two rules. A play-once copy, <name>-once.gif, rests on its figure's still,
+# <name>-still.png. Every src, srcset, data-once and data-still is a file of the site. Both languages show the same files, so assets/blog/ is read once,
+# and every page under blog/ and de/blog/ is read.
 BLOG_PAGES = ("blog", "de/blog")
 BLOG_ASSETS = "assets/blog"
 BLOG_LIMIT = 1_000_000
@@ -871,9 +874,11 @@ REDUCED_MOTION = "(prefers-reduced-motion:reduce)"          # the media query wi
 
 
 def still_of(path):
-    """The still of the GIF at `path`, a path relative to the site: the PNG beside it, named for it, with -still."""
+    """The still of the GIF at `path`, a path relative to the site: the PNG beside it, named for it, with -still; a play-once copy, named for its
+    figure with -once, rests on its figure's still."""
     folder, name = posixpath.split(path)
-    return posixpath.join(folder, posixpath.splitext(name)[0] + "-still.png")
+    stem = posixpath.splitext(name)[0]
+    return posixpath.join(folder, (stem[:-len("-once")] if stem.endswith("-once") else stem) + "-still.png")
 
 
 def is_gif(url):
@@ -881,12 +886,13 @@ def is_gif(url):
 
 
 class BlogPage(HTMLParser):
-    """What the blog's check needs of a page: every address a src or a srcset names, with its element and attribute, each image with its attributes
-    and the sources of the <picture> it stands in, None outside one, and the sources of each <picture>, in their order."""
+    """What the blog's check needs of a page: every address a src, a srcset, a data-once or a data-still names, with its element and attribute, each
+    image with its attributes and the sources of the <picture> it stands in, None outside one, the sources of each <picture>, in their order, and each
+    element that names a play-once GIF, with its attributes, the sources of its <picture> (None outside one) and, for a <source>, its place among them."""
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.addresses, self.images, self.pictures, self.source_lists = [], [], [], []
+        self.addresses, self.images, self.pictures, self.source_lists, self.plays = [], [], [], [], []
 
     def handle_starttag(self, tag, attrs):
         a = {key: value or "" for key, value in attrs}
@@ -894,6 +900,7 @@ class BlogPage(HTMLParser):
             self.addresses.append((tag, "src", a["src"]))
         if "srcset" in a:
             self.addresses += [(tag, "srcset", url) for url in srcset_urls(a["srcset"])]
+        self.addresses += [(tag, key, a[key]) for key in ("data-once", "data-still") if key in a]
         if tag == "picture":
             self.pictures.append([])
             self.source_lists.append(self.pictures[-1])
@@ -901,6 +908,9 @@ class BlogPage(HTMLParser):
             self.pictures[-1].append(a)
         elif tag == "img":
             self.images.append((a, self.pictures[-1] if self.pictures else None))
+        if "data-once" in a:
+            sources = self.pictures[-1] if self.pictures else None
+            self.plays.append((tag, a, sources, len(sources) - 1 if tag == "source" and sources is not None else None))
 
     def handle_endtag(self, tag):
         if tag == "picture" and self.pictures:
@@ -935,6 +945,19 @@ def blog_problem(rel, page):
                            and any(in_site(rel, other) == still for other in srcset_urls(earlier.get("srcset", ""))) for earlier in sources[:i]):
                     return (f'{rel} offers the GIF {url!r} in a <source> with no <source> for reduced motion before it whose srcset names its still, '
                             f'{still}')
+    for tag, attrs, sources, place in page.plays:
+        once, rest = attrs["data-once"], attrs.get("data-still", "")
+        still = still_of(in_site(rel, once))
+        if in_site(rel, rest) != still:
+            return f"{rel} plays the GIF {once!r} and rests on {rest!r}, which is not its still, {still}"
+        if sources is None:
+            return f"{rel} plays the GIF {once!r} outside a <picture>, so a reader who turns motion off gets no still"
+        names_still = [source for source in (sources if place is None else sources[:place])
+                       if any(in_site(rel, url) == still for url in srcset_urls(source.get("srcset", "")))]
+        if place is None and not any(re.sub(r"\s+", "", source.get("media", "").lower()) == REDUCED_MOTION for source in names_still):
+            return f'{rel} plays the GIF {once!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
+        if place is not None and not any(REDUCED_MOTION in re.sub(r"\s+", "", source.get("media", "").lower()) for source in names_still):
+            return f"{rel} plays the GIF {once!r} from a <source> with no <source> for reduced motion before it whose srcset names its still, {still}"
     return None
 
 
@@ -954,6 +977,6 @@ for rel in blog_pages:
     problem = blog_problem(rel, page)
     if problem:
         fail(problem)
-    figures += sum(is_gif(attrs.get("src", "")) for attrs, _sources in page.images)
+    figures += len({id(sources) for _attrs, sources in page.images if sources is not None})         # a figure is a <picture> that shows an image
 print(f"site check: the {len(blog_pages)} blog page(s) and their {figures} figure(s) passed: each figure has alt text and a still, and each of the "
       f"{len(blog_files)} file(s) under {BLOG_ASSETS}/ is within {BLOG_LIMIT:,} bytes")
