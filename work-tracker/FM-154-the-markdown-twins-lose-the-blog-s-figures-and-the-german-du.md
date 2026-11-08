@@ -10,6 +10,10 @@ hook: "The blog's figures are written as HTML, and a page's Markdown twin keeps 
 
 ## What is true now
 
+**2026-11-08 — its gaps wait on FM-153-Q3's answer.** FM-153-Q3 asks to build the blog as its own English site,
+outside the docs. Under that plan no docs page carries the blog, and the blog has no German page, so none of the
+gaps below shows on the site.
+
 **Filed 2026-11-08, before FM-153's pull request; nothing is built.** FM-153 builds the site's blog and its first
 post, whose figures are HTML blocks. Its build, not yet committed, shows two gaps in tools the blog does not change.
 
@@ -52,4 +56,5 @@ like every other page, and the same check should hold it.
 
 | Date | Event |
 |---|---|
+| 2026-11-08 | Its gaps wait on FM-153-Q3's answer: that plan builds the blog outside the docs, in English only. |
 | 2026-11-08 | Filed, on the Auditor's word of 8 November, before FM-153's pull request. |
