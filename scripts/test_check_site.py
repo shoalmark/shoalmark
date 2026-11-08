@@ -899,6 +899,31 @@ class Blog(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("site check: the 2 blog page(s) and their %d figure(s) passed" % figures, result.stdout)
 
+    def test_the_share_video_alone_may_hold_2_000_000_bytes(self):
+        """The file a post's og:video names may hold 2,000,000 bytes and not one more; a figure beside it keeps 1,000,000, and so do the same
+        2,000,000 bytes in a file og:video does not name."""
+        def video(size, figure=1_000_000, named=True):
+            def change(site):
+                if named:
+                    self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/clip.mp4">')(site)
+                self.write("blog/first-post/clip.mp4", b"\0" * size)(site)
+                self.write("blog/first-post/loop.gif", GIF + b"\0" * (figure - len(GIF)))(site)
+            return change
+        result = self.checked(video(2_000_000))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("but its 1 share video(s), the file(s) og:video names, within 2,000,000", result.stdout)
+        for name, change, message in (
+                ("the share video one byte over its cap", video(2_000_001),
+                 "site check: blog/first-post/clip.mp4 is 2,000,001 bytes, more than the 2,000,000 a share video, the file a post's og:video names, may hold"),
+                ("a figure one byte over the limit beside a share video at its cap", video(2_000_000, 1_000_001),
+                 "site check: blog/first-post/loop.gif is 1,000,001 bytes, more than the 1,000,000 a file under blog/ may hold"),
+                ("the same 2,000,000 bytes in a file og:video does not name", video(2_000_000, named=False),
+                 "site check: blog/first-post/clip.mp4 is 2,000,000 bytes, more than the 1,000,000 a file under blog/ may hold")):
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
     def test_the_blog_indexes_are_entry_pages(self):
         for name in ("blog/index.html",):
             with self.subTest(name):

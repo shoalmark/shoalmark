@@ -869,9 +869,11 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # file of the site. The blog is English only, with no language pair: each of its pages says lang="en" and carries no hreflang, and each post names its
 # Markdown version beside it. Its script, a file of its own, asks for nothing, as an inline script may not. Every file under blog/ is read.
 # Every image has alt text but an author's picture, a file of blog/assets/authors/ or blog/assets/seats/: its alt is empty, as the author's name
-# stands beside it as text.
+# stands beside it as text. A file under blog/ holds at most 1,000,000 bytes, but the share video, the one file a post's og:video names, at most
+# 2,000,000.
 BLOG = "blog"
 BLOG_LIMIT = 1_000_000
+SHARE_VIDEO_LIMIT = 2_000_000                               # the share video's own cap: the file a post's og:video names
 AUTHOR_PICTURES = (BLOG + "/assets/authors/", BLOG + "/assets/seats/")
 REDUCED_MOTION = "(prefers-reduced-motion:reduce)"          # the media query with its whitespace taken out, as it is compared
 
@@ -898,7 +900,7 @@ class BlogPage(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.addresses, self.images, self.pictures, self.source_lists, self.plays = [], [], [], [], []
         self.shown = []                                 # per open <picture>: whether its <img> has come
-        self.lang, self.hreflang, self.markdown = None, [], []
+        self.lang, self.hreflang, self.markdown, self.videos = None, [], [], []
 
     def handle_starttag(self, tag, attrs):
         a = {key: value or "" for key, value in attrs}
@@ -908,6 +910,8 @@ class BlogPage(HTMLParser):
             self.hreflang.append(a["hreflang"])
         if tag == "link" and a.get("rel") == "alternate" and a.get("type") == "text/markdown":
             self.markdown.append(a)
+        if tag == "meta" and a.get("property") == "og:video":
+            self.videos.append(a.get("content", ""))
         if "src" in a:
             self.addresses.append((tag, "src", a["src"]))
         if "srcset" in a:
@@ -982,21 +986,27 @@ def blog_problem(rel, page):
     return None
 
 
+blog_pages = sorted(path.relative_to(site).as_posix() for path in (site / BLOG).glob("*.html")) if (site / BLOG).is_dir() else []
+blog_parsed = {}
+for rel in blog_pages:
+    blog_parsed[rel] = BlogPage()
+    blog_parsed[rel].feed((site / rel).read_text(encoding="utf-8"))
+    blog_parsed[rel].close()
+share_videos = {in_site(rel, url) for rel, page in blog_parsed.items() for url in page.videos} - {None}
 blog_files = sorted(path for path in (site / BLOG).rglob("*") if path.is_file()) if (site / BLOG).is_dir() else []
 for path in blog_files:
     rel = path.relative_to(site).as_posix()
-    if path.stat().st_size > BLOG_LIMIT:
+    if rel in share_videos and path.stat().st_size > SHARE_VIDEO_LIMIT:
+        fail(f"{rel} is {path.stat().st_size:,} bytes, more than the {SHARE_VIDEO_LIMIT:,} a share video, the file a post's og:video names, may hold")
+    elif rel not in share_videos and path.stat().st_size > BLOG_LIMIT:
         fail(f"{rel} is {path.stat().st_size:,} bytes, more than the {BLOG_LIMIT:,} a file under {BLOG}/ may hold")
     if is_gif(rel) and not (site / still_of(rel)).is_file():
         fail(f"{rel} has no still beside it, {still_of(rel)}, for a reader who turns motion off")
     if path.suffix == ".js" and REQUEST_APIS.search(path.read_text(encoding="utf-8")):
         fail(f"{rel}, the blog's script, can ask for something: {REQUEST_APIS.search(path.read_text(encoding='utf-8')).group(0)}")
-blog_pages = sorted(path.relative_to(site).as_posix() for path in (site / BLOG).glob("*.html")) if (site / BLOG).is_dir() else []
 figures = 0
 for rel in blog_pages:
-    page = BlogPage()
-    page.feed((site / rel).read_text(encoding="utf-8"))
-    page.close()
+    page = blog_parsed[rel]
     problem = blog_problem(rel, page)
     if problem:
         fail(problem)
@@ -1010,4 +1020,5 @@ for rel in blog_pages:
 print(f"site check: the {len(blog_pages)} blog page(s) and their {figures} figure(s) passed: each figure has alt text and a still, each author's picture "
       f"an empty alt, each page is English "
       f"alone and each post names its Markdown version, the blog's script asks for nothing, and each of the {len(blog_files)} file(s) under {BLOG}/ "
-      f"is within {BLOG_LIMIT:,} bytes")
+      f"is within {BLOG_LIMIT:,} bytes" + (f", but its {len(share_videos)} share video(s), the file(s) og:video names, within {SHARE_VIDEO_LIMIT:,}"
+                                             if share_videos else ""))
