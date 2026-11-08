@@ -15,8 +15,8 @@ their licences), feed.xml and llms.txt.
 Every page links with relative addresses; the head's addresses are absolute. A post's body is its Markdown converted line by line into the
 post's markup: the TL;DR as a dl with its band, each slot a figure with its stills and play-once GIFs, each marker section, the hails, the
 status paragraph, the quotation, the reference and the foot; then each heading gets its anchor, each hail its label, "written by" and the
-credits follow the quotation, and the end links follow the foot. The head names the authors, and a share row opens the post. The builder
-refuses whatever has a shape it does not expect.
+credits follow the quotation, and the end links follow the foot. The head names the authors, and a share row opens the post and comes
+again after "written by". The builder refuses whatever has a shape it does not expect.
 """
 import datetime
 import hashlib
@@ -41,7 +41,7 @@ BLOG_NAME = "shoalmark blog"
 LLMS_LINE = "Every post has a Markdown version beside it; the figures are linked as stills, each with its alt text."
 UI = {"markdown": "read as Markdown", "contents": "on this page", "credits": "Acknowledgements", "all": "← all posts",
       "rss": "RSS", "read": "{n} min read", "stop": "stop", "share": "Share this article", "copy": "Copy link", "copied": "Link copied",
-      "written": "Written by"}
+      "written": "Written by", "post_x": "Post on X"}
 LINKS = {"‹link: why-shoalmark›": "why-shoalmark.html", "‹link: seats›": "seats/index.html"}     # a foot link's page, from the site's root
 FONTS = {"IBM-Plex-Mono-normal-400-latin.woff2": ("mono-400.woff2", "c36f509c"), "IBM-Plex-Mono-normal-600-latin.woff2": ("mono-600.woff2", "ad4580d8"),
          "Silkscreen-normal-400-latin.woff2": ("pixel-400.woff2", "17bb6d80"), "Silkscreen-normal-700-latin.woff2": ("pixel-700.woff2", "30ad65d8"),
@@ -303,7 +303,8 @@ class Post:
             i += 1
         if seen != sorted(seen) or set(seen) != {int(k[1:]) for k in self.figures} or marker != len(MARKERS) or self.used != set(self.hails):
             refuse(f"{self.name}: the slots {seen}, the {marker} markers or the hails used do not match its files")
-        return touches("\n".join(out), self.meta["credits"], authors(*self.authors(), end=True))
+        end = authors(*self.authors(), end=True) + "\n" + share(f"{SITE_URL}blog/{self.slug}.html", self.meta["title"], end=True)
+        return touches("\n".join(out), self.meta["credits"], end)
 
     def authors(self):
         """The post's authors from its front matter: first the Owner, a person with a link, a picture in blog/authors/ and a role line; then
@@ -364,20 +365,29 @@ def authors(owner, seats, end=False):
     return f'    <div class="by">\n      {o}\n      <ul class="au-seats">{row}</ul>\n    </div>'
 
 
-def share(url, title):
-    """The share row: X and LinkedIn as plain links to their share pages, opened in a new tab; the copy button, which the script shows only
-    where the browser has a clipboard; and a live region for what it says."""
+EXT = ('<svg viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M4 0h3v1h-3ZM5 1h2v1h-2ZM0 2h3v1h-3ZM4 2h1v1h-1Z'
+       'M6 2h1v1h-1ZM0 3h1v1h-1ZM3 3h1v1h-1ZM0 4h1v1h-1ZM2 4h1v1h-1ZM5 4h1v1h-1ZM0 5h1v1h-1ZM5 5h1v1h-1ZM0 6h6v1h-6Z"/></svg>')    # the start page's Docs arrow, "opens elsewhere"
+COPY = ('<svg viewBox="0 0 7 8" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M0 0h5v1h-5ZM0 1h1v1h-1ZM0 2h1v1h-1ZM2 2h5v1h-5Z'
+        'M0 3h1v1h-1ZM2 3h1v1h-1ZM6 3h1v1h-1ZM0 4h1v1h-1ZM2 4h5v1h-5ZM0 5h1v1h-1ZM2 5h1v1h-1ZM6 5h1v1h-1ZM2 6h5v1h-5ZM2 7h5v1h-5Z"/></svg>')   # the start page's copy mark
+
+
+def share(url, title, end=False):
+    """The share row, under the hero and again at the end: its label, then X and LinkedIn as plain links to their share pages, opened in a
+    new tab, and the copy button, which the script shows only where the browser has a clipboard. Each word is in its own span, each pixel
+    mark is hidden from screen readers, and each row has its own live region for what the copy button says."""
     q = lambda s: quote(s, safe="")
-    return (f'    <div class="share"><span class="share-t">{UI["share"]}</span>'
-            f'<a class="sh" href="https://x.com/intent/post?url={q(url)}&amp;text={q(title)}" target="_blank" rel="noopener noreferrer">X</a>'
-            f'<a class="sh" href="https://www.linkedin.com/sharing/share-offsite/?url={q(url)}" target="_blank" rel="noopener noreferrer">LinkedIn</a>'
-            f'<button type="button" class="sh sh-copy" data-url="{attr(url)}" data-done="{UI["copied"]}" hidden>{UI["copy"]}</button>'
-            f'<span class="vh" role="status" aria-live="polite"></span></div>')
+    return (f'    <div class="share{" share-end" if end else ""}"><p class="share-t">{UI["share"]}</p><div class="sh-row">'
+            f'<a class="sh" href="https://x.com/intent/post?url={q(url)}&amp;text={q(title)}" target="_blank" rel="noopener noreferrer">'
+            f'<span class="sh-w">{UI["post_x"]}</span>{EXT}</a>'
+            f'<a class="sh" href="https://www.linkedin.com/sharing/share-offsite/?url={q(url)}" target="_blank" rel="noopener noreferrer">'
+            f'<span class="sh-w">LinkedIn</span>{EXT}</a>'
+            f'<button type="button" class="sh sh-copy" data-url="{attr(url)}" data-done="{UI["copied"]}" hidden>{COPY}<span class="sh-w">{UI["copy"]}</span></button>'
+            f'</div><span class="vh" role="status" aria-live="polite"></span></div>')
 
 
 def touches(b, credits, written):
-    """Each heading's drawn mark becomes its anchor; each hail with a marker line gets its label; "written by" and the credits follow the
-    quotation; the end links follow the foot."""
+    """Each heading's drawn mark becomes its anchor; each hail with a marker line gets its label; "written by", the end's share row and the
+    credits follow the quotation; the end links follow the foot."""
     b = re.sub(r'<(h[23]) id="([^"]+)">', r'<\1 id="\2"><a class="hm" href="#\2" aria-hidden="true" tabindex="-1"></a>', b)
 
     def label(m):

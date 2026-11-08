@@ -94,7 +94,8 @@ class Built(unittest.TestCase):
         self.assertEqual(len(anchors), len(re.findall(r'<h[23] id="', self.page)))
         self.assertEqual(len(anchors), 16)
         self.assertEqual(len(re.findall(r'data-label="hail · [A-Z]+"', self.page)), 10)
-        self.assertRegex(self.page, r'<section class="ending".*?</section>\n<section class="written".*?</section>\n<aside class="credits"')
+        self.assertRegex(self.page, r'<section class="ending".*?</section>\n<section class="written".*?</section>\n    <div class="share share-end">.*?'
+                                    r'</span></div>\n<aside class="credits"')
         self.assertRegex(self.page, r'<p class="foot">.*?</p>\n<nav class="end" aria-label="blog">')
 
     def test_the_contents_leave_out_the_tab_and_the_credits(self):
@@ -137,19 +138,25 @@ class Built(unittest.TestCase):
                   'poster="hail-1/card.png"', '<source src="hail-1/hail-1.mp4" type="video/mp4">'):
             self.assertIn(s, self.page)
 
-    def test_the_share_row(self):
-        row = re.search(r'<article class="post">\n    (<div class="share">.*?</div>)\n', self.page).group(1)
-        self.assertTrue(row.startswith('<div class="share"><span class="share-t">Share this article</span>'))
-        links = re.findall(r'<a class="sh" href="([^"]+)" target="_blank" rel="noopener noreferrer">([^<]+)</a>', row)
-        self.assertEqual([name for _href, name in links], ["X", "LinkedIn"])
-        for href, name in links:
-            url = urlsplit(href.replace("&amp;", "&"))
-            self.assertEqual(url.scheme + "://" + url.netloc + url.path,
-                             {"X": "https://x.com/intent/post", "LinkedIn": "https://www.linkedin.com/sharing/share-offsite/"}[name])
-            self.assertEqual(parse_qs(url.query)["url"], [CANONICAL], name)
-        self.assertIn(f'<button type="button" class="sh sh-copy" data-url="{CANONICAL}" data-done="Link copied" hidden>Copy link</button>', row)
-        self.assertIn('<span class="vh" role="status" aria-live="polite"></span>', row)
-        self.assertNotRegex(self.page.lower(), r"facebook|<script(?![^>]*\bsrc=)")
+    def test_the_share_rows(self):
+        rows = re.findall(r'<div class="share( share-end)?"><p class="share-t">Share this article</p><div class="sh-row">(.*?)</div>'
+                          r'<span class="vh" role="status" aria-live="polite"></span></div>', self.page)
+        self.assertEqual([end for end, _row in rows], ["", " share-end"])
+        self.assertIn('<article class="post">\n    <div class="share"><p class="share-t">', self.page)
+        self.assertEqual(self.page.count('role="status" aria-live="polite"'), 2)
+        for _end, row in rows:
+            links = re.findall(r'<a class="sh" href="([^"]+)" target="_blank" rel="noopener noreferrer"><span class="sh-w">([^<]+)</span>'
+                               r'<svg viewBox="0 0 7 7" aria-hidden="true" focusable="false">', row)
+            self.assertEqual([word for _href, word in links], ["Post on X", "LinkedIn"])
+            for href, word in links:
+                url = urlsplit(href.replace("&amp;", "&"))
+                self.assertEqual(url.scheme + "://" + url.netloc + url.path,
+                                 {"Post on X": "https://x.com/intent/post", "LinkedIn": "https://www.linkedin.com/sharing/share-offsite/"}[word])
+                self.assertEqual(parse_qs(url.query)["url"], [CANONICAL], word)
+            self.assertRegex(row, f'<button type="button" class="sh sh-copy" data-url="{re.escape(CANONICAL)}" data-done="Link copied" hidden>'
+                                  r'<svg viewBox="0 0 7 8" aria-hidden="true" focusable="false">.*?</svg><span class="sh-w">Copy link</span></button>$')
+            self.assertNotIn("‹", row)
+        self.assertNotRegex(self.page.lower(), r"facebook|new tab|<script(?![^>]*\bsrc=)")
 
     def test_no_inline_script(self):
         self.assertEqual(re.findall(r"<script(?![^>]*\bsrc=)", self.page), [])

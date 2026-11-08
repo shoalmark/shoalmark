@@ -92,14 +92,22 @@ a.au-owner:hover b{text-decoration:underline;text-decoration-color:var(--pink);t
 .au-seats .au b{font-size:12.5px;white-space:nowrap}
 .au-seats .au img{width:40px;height:40px}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-/* the share row: first in the text column, under the hero; plain links and the browser's clipboard, nothing
-   loaded from another site */
-.post .share{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 calc(var(--l)*1.25);padding-bottom:calc(var(--l)*.75);border-bottom:1px solid var(--line)}
-.post .share-t{font:400 12px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-right:4px}
-.post .share .sh{font:400 11px/1 var(--pix);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);background:none;border:1px solid var(--contour);
-  padding:9px 10px;text-decoration:none;cursor:pointer;white-space:nowrap}
-.post .share .sh:hover,.post .share .sh:focus-visible{border-color:var(--drying);color:var(--watt)}
-.post .share .sh[hidden]{display:none}
+/* the share row: its label, then three equal buttons, each 44 px tall, its word in the mono so
+   X reads as a letter; X and LinkedIn carry the site's own pixel arrow for "opens elsewhere", Copy link its pixel copy
+   mark. On a phone the label takes its own line and the three share one row, words only. "Link copied" takes the
+   copy button's own place, so nothing moves. Plain links and the browser's clipboard; nothing from another site */
+.post .share{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:16px;margin:0 0 calc(var(--l)*1.25);
+  padding-bottom:calc(var(--l)*.75);border-bottom:1px solid var(--line)}
+.post .share-t{margin:0;font:400 11px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap}
+.post .sh-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.post .sh{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 10px;border:1px solid var(--contour);
+  background:none;color:var(--ink);font:400 14px/1.2 var(--mono);text-decoration:none;cursor:pointer;white-space:nowrap;overflow:hidden}
+.post .sh svg{flex:none;width:14px;height:14px;fill:currentColor}
+.post .sh-copy svg{height:16px}
+.post .sh:hover,.post .sh:focus-visible{border-color:var(--drying);color:var(--watt)}
+.post .sh[hidden]{display:none}
+.post .sh.is-done{border-color:var(--watt);color:var(--watt)}
+.post .share-end{margin:calc(var(--l)*1.5) 0 0;padding:calc(var(--l)*.75) 0 0;border-top:1px solid var(--line);border-bottom:0}
 /* "written by": the authors again at the end, above the acknowledgements */
 .post .written{margin:calc(var(--l)*2) 0 0}
 .post .written .wt{font-size:1.05em;margin:0 0 var(--l)}
@@ -283,6 +291,9 @@ a.au-owner:hover b{text-decoration:underline;text-decoration-color:var(--pink);t
   .au-seats .au{width:auto}
   .au-seats .au span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .post .written ul{grid-template-columns:1fr}
+  .post .share{grid-template-columns:1fr;row-gap:10px}
+  .post .sh{font-size:13px;padding:0 6px}
+  .post .sh svg{display:none}
   .ix a{grid-template-columns:auto 1fr;row-gap:6px}
   .ix .ix-t{grid-column:1/-1;font-size:1.75em}
   .post h2{margin-top:calc(var(--l)*2)}

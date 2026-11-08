@@ -19,12 +19,13 @@ if(toc){
   const soon=()=>{if(!queued){queued=true;setTimeout(pick,60);}};
   addEventListener('scroll',soon,{passive:true});addEventListener('resize',soon);pick();
 }
-// 1b. The share row's copy button: the browser's clipboard only, the page's canonical address; shown only
-//     where the clipboard is there, its status said in a live region.
-const cp=document.querySelector('.share .sh-copy');
-if(cp&&navigator.clipboard){const w=cp.textContent,said=document.querySelector('.share [role=status]');cp.hidden=false;
-  cp.addEventListener('click',()=>{navigator.clipboard.writeText(cp.dataset.url).then(()=>{cp.textContent=cp.dataset.done;if(said)said.textContent=cp.dataset.done;
-    setTimeout(()=>{cp.textContent=w;if(said)said.textContent='';},2000);},()=>{});});}
+// 1b. The share rows' copy buttons: the browser's clipboard only, the page's
+//     canonical address; shown only where the clipboard is there. "Link copied" takes the button's word, in its own
+//     span, so the button keeps its size, and the row's live region says it.
+if(navigator.clipboard)for(const cp of document.querySelectorAll('.share .sh-copy')){const lab=cp.querySelector('.sh-w'),w=lab.textContent,
+  said=cp.closest('.share').querySelector('[role=status]');cp.hidden=false;
+  cp.addEventListener('click',()=>{navigator.clipboard.writeText(cp.dataset.url).then(()=>{lab.textContent=cp.dataset.done;cp.classList.add('is-done');
+    if(said)said.textContent=cp.dataset.done;setTimeout(()=>{lab.textContent=w;cp.classList.remove('is-done');if(said)said.textContent='';},2000);},()=>{});});}
 // 2. Motion. Readers who ask for reduced motion get the stills, the hero's poster, and no control.
 // 2b. The figures play once: each plays when 60 % of it is in view, then rests on its lit end; its control
 //    stops it or plays it again. A screen ahead, a preload hint warms its file; a replay takes a fresh address.
