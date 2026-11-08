@@ -20,6 +20,7 @@ on:
       - "blog/**"
       - "scripts/build_blog.py"
       - "scripts/test_build_blog.py"
+      - "scripts/test_docs_worker.mjs"
       - ".github/workflows/docs.yml"
       - ".github/workflows/docs.worker.js"
       - ".github/workflows/docs.wrangler.jsonc"
@@ -40,6 +41,8 @@ jobs:
       - run: pip install -q -r requirements-docs.txt
       - run: python3 scripts/test_check_site.py
       - run: python3 scripts/test_build_blog.py
+      - name: the Worker's answers, the blog's MP4 by Range among them, with a stand-in for the asset layer, on the runner's own Node
+        run: node scripts/test_docs_worker.mjs
       # the release VERSION names: a tag's build and a run by hand only from a tagged release, a pull request's also ahead of it
       - name: the landing's figures and the probe prompt's pins, read from the repository at this commit
         run: python3 scripts/landing_facts.py --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME"
