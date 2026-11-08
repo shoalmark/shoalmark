@@ -220,7 +220,7 @@ a{color:inherit}
 .ix .ix-l{font:400 12px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--watt)}
 .ix .ix-t{font-size:1.6em;line-height:1.2;font-weight:600;letter-spacing:-.01em;color:var(--ink);text-wrap:balance}
 .ix .ix-t>span{display:inline}
-.ix a:hover .ix-t>span:last-child{text-decoration:underline;text-decoration-color:var(--drying);text-underline-offset:.18em}
+.ix a:hover .ix-t>span{text-decoration:underline;text-decoration-color:var(--drying);text-underline-offset:.18em}
 
 /* ---------------------------------------------------------------- the foot */
 .bf-in{display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;max-width:1440px;margin:0 auto;padding:22px 24px}
