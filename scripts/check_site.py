@@ -881,6 +881,10 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # base32. An alt or a hail block holds no three-digit ending standing alone, as in "supersedes -001"; other text may, as code can show "head -100".
 # A hail block is a <pre> whose lines, its .ln spans or else its newlines, run from hail/1 to end hail/1, and its own id is its id: line's. Two hail
 # blocks with the same own id show the same lines: the same hail may be shown twice, two hails never share an id.
+# The blog's index has one <h1>, its opening, and its description and og:description are that heading's words as plain text (its tags dropped,
+# its entities read, a no-break space read as a space). Every <img> on it has a width, a height and an alt; the first card's image, the first
+# inside a <picture>, loads at once (loading="eager", fetchpriority="high"), and every other image lazily. Every image, srcset entry and
+# stylesheet it names is a file of the build, and it holds no "SAMPLE" and no samples/ path: a sample page never ships.
 # Every image has alt text but an author's picture, an <img> outside any <picture> whose file is in blog/assets/authors/ or blog/assets/seats/:
 # its alt is empty, as the author's name stands beside it as text. The GIF rules hold for every image. A file under blog/ holds at most
 # 1,000,000 bytes, but the share video, the one MP4 of the site a post's one og:video names, at most 2,000,000.
@@ -984,12 +988,21 @@ class BlogPage(HTMLParser):
         self.lang, self.hreflang, self.markdown, self.videos = None, [], [], []
         self.stills = []
         self.text, self.alts, self.pres = [], [], []    # its text outside <script> and <style>, its alts, and each <pre>'s lines
+        self.h1, self.in_h1 = [], 0                     # each <h1>'s text, and how deep in one
+        self.descs, self.stylesheets = [], []           # each description and og:description, as (which, content); each stylesheet's href
         self.skip, self.pre = 0, None                   # how deep in <script> or <style>; the <pre> being read: its spans, its lines, its text
 
     def handle_starttag(self, tag, attrs):
         a = {key: value or "" for key, value in attrs}
         if tag in ("script", "style"):
             self.skip += 1
+        if tag == "h1":
+            self.h1.append("")
+            self.in_h1 += 1
+        if tag == "meta" and (a.get("name") == "description" or a.get("property") == "og:description"):
+            self.descs.append(("description" if a.get("name") == "description" else "og:description", a.get("content", "")))
+        if tag == "link" and "stylesheet" in a.get("rel", "").lower().split():
+            self.stylesheets.append(a.get("href", ""))
         if "alt" in a:
             self.alts.append(a["alt"])
         if tag == "pre":
@@ -1039,6 +1052,8 @@ class BlogPage(HTMLParser):
             self.shown.pop()
         if tag in ("script", "style") and self.skip:
             self.skip -= 1
+        if tag == "h1" and self.in_h1:
+            self.in_h1 -= 1
         if tag == "span" and self.pre is not None and self.pre["spans"]:
             self.pre["spans"].pop()
         if tag == "pre" and self.pre is not None:
@@ -1048,6 +1063,8 @@ class BlogPage(HTMLParser):
     def handle_data(self, data):
         if not self.skip:
             self.text.append(data)
+        if self.in_h1:
+            self.h1[-1] += data
         if self.pre is not None:
             self.pre["text"].append(data)
             if any(self.pre["spans"]):
@@ -1083,6 +1100,56 @@ def id_problem(text, where, alone=False):
             return f"{where} holds the counter id {found + rest[form.end():form.end() + 4]!r}, where an id of the spec's first edition is {ID_FORM}"
     lone = LONE_COUNTER.search(text) if alone else None
     return f"{where} holds {lone.group(0)!r}, a three-digit counter's ending standing alone" if lone else None
+
+
+def one_heading(rel, page, raw):
+    """The index's one <h1>, with its description and og:description in its words."""
+    plain = lambda text: text.replace("\xa0", " ").strip()
+    if len(page.h1) != 1:
+        return f"{rel} has {len(page.h1)} <h1>, where the index has one, its opening"
+    heading = plain(page.h1[0])
+    for name in ("description", "og:description"):
+        said = [plain(content) for which, content in page.descs if which == name]
+        if said != [heading]:
+            return f"{rel}'s {name} reads {said[0] if said else None!r}, not the words of its <h1>, {heading!r}"
+    return None
+
+
+def images_loaded(rel, page, raw):
+    """Every image on the index with its width, height and alt; the first card's image at once, every other lazily."""
+    first = next((i for i, (_attrs, sources) in enumerate(page.images) if sources is not None), None)
+    for i, (attrs, _sources) in enumerate(page.images):
+        src = attrs.get("src", "")
+        missing = [key for key in ("width", "height", "alt") if key not in attrs]
+        if missing:
+            return f"{rel} shows the image {src!r} without its {' and '.join(missing)}"
+        if i == first and (attrs.get("loading") != "eager" or attrs.get("fetchpriority") != "high"):
+            return f'{rel} shows its first card\'s image {src!r} without loading="eager" and fetchpriority="high"'
+        if i != first and attrs.get("loading") != "lazy":
+            return f'{rel} shows the image {src!r} without loading="lazy", and only the first card\'s image loads at once'
+    return None
+
+
+def files_there(rel, page, raw):
+    """Every image, srcset entry and stylesheet the index names, a file of the build."""
+    named = ([("image", attrs.get("src", "")) for attrs, _sources in page.images] + [("srcset entry", url) for _tag, key, url in page.addresses if key == "srcset"]
+             + [("stylesheet", href) for href in page.stylesheets])
+    for kind, url in named:
+        target = in_site(rel, url)
+        if target is None or not (site / target).resolve().is_relative_to(site.resolve()) or not (site / target).is_file():
+            return f"{rel} names the {kind} {url!r}, and that is no file of the build"
+    return None
+
+
+def no_sample(rel, page, raw):
+    """No sample page's mark on the index."""
+    for mark in ("SAMPLE", "samples/"):
+        if mark in raw:
+            return f"{rel} holds {mark!r}, the mark of a sample page, which the blog never ships"
+    return None
+
+
+INDEX_GUARDS = (one_heading, images_loaded, files_there, no_sample)
 
 
 def ids_problem(rel, page, markdown):
@@ -1220,6 +1287,12 @@ for rel in blog_pages:
         fail(problem)
     if page.lang != "en" or page.hreflang:
         fail(f"{rel} is not an English page alone: it says lang={page.lang!r}" + (f" and carries hreflang {page.hreflang[0]!r}" if page.hreflang else ""))
+    if rel == f"{BLOG}/index.html":
+        raw = (site / rel).read_text(encoding="utf-8")
+        for guard in INDEX_GUARDS:
+            problem = guard(rel, page, raw)
+            if problem:
+                fail(problem)
     if rel != f"{BLOG}/index.html":
         twin = [a.get("href", "") for a in page.markdown]
         if len(twin) != 1 or in_site(rel, twin[0]) != rel[:-len(".html")] + ".md" or not (site / rel[:-len(".html")]).with_suffix(".md").is_file():

@@ -65,7 +65,8 @@ def plain_hail(own=HAIL_ID, body="body: one line"):
 # an author's picture, beside the author's name: its alt is empty
 AUTHOR = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1H0z"/></svg>'
 BLOG_AUTHOR = '<p class="by"><img src="assets/seats/builder.svg" alt=""><b>Builder</b></p>'
-BLOG = {"blog/index.html": '<html lang="en"><body><h1>Blog</h1><ul><li><a href="first-post.html">First post</a></li></ul></body></html>',
+BLOG = {"blog/index.html": ('<html lang="en"><head><meta name="description" content="Blog"><meta property="og:description" content="Blog"></head>'
+                            '<body><h1>Blog</h1><ul><li><a href="first-post.html">First post</a></li></ul></body></html>'),
         "blog/first-post.html": '<html lang="en"><head><link rel="alternate" type="text/markdown" href="first-post.md"></head><body><h1>First post</h1>' + BLOG_AUTHOR + BLOG_FIGURE + BLOG_VIDEO + '<p><a href="index.html">All posts</a></p></body></html>',
         "blog/first-post.md": "# First post\n", "blog/first-post/loop.gif": GIF, "blog/first-post/loop-still.png": STILL, "blog/first-post/small.gif": GIF, "blog/first-post/small-still.png": STILL,
         "blog/assets/seats/builder.svg": AUTHOR, "blog/first-post/loop.webp": ANIM_WEBP, "blog/first-post/loop-still.webp": STILL_WEBP,
@@ -984,6 +985,28 @@ class Blog(unittest.TestCase):
             ("a _001 after a valid key as a hail block's own id", self.put(self.PAGE, "</body>", hail_block(own=HAIL_ID + "_001") + "</body>"),
              f"site check: a hail block on blog/first-post.html holds the counter id '{HAIL_ID}_001', where an id of the spec's first edition is "
              "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("two <h1> on the blog's index", self.put("blog/index.html", "<h1>Blog</h1>", "<h1>Blog</h1><h1>All posts</h1>"),
+             "site check: blog/index.html has 2 <h1>, where the index has one, its opening"),
+            ("the index's description not its heading's words", self.put("blog/index.html", '<meta name="description" content="Blog">',
+                                                                          '<meta name="description" content="The blog">'),
+             "site check: blog/index.html's description reads 'The blog', not the words of its <h1>, 'Blog'"),
+            ("the index's og:description missing", self.put("blog/index.html", '<meta property="og:description" content="Blog">', ""),
+             "site check: blog/index.html's og:description reads None, not the words of its <h1>, 'Blog'"),
+            ("an image on the index without its width", self.put("blog/index.html", "</ul>", '</ul><picture><img src="first-post/loop-still.png" alt="A still" '
+                                                                                          'height="1" loading="eager" fetchpriority="high"></picture>'),
+             "site check: blog/index.html shows the image 'first-post/loop-still.png' without its width"),
+            ("the index's first card image loading lazily", self.put("blog/index.html", "</ul>", '</ul><picture><img src="first-post/loop-still.png" alt="A still" '
+                                                                                              'width="1" height="1" loading="lazy"></picture>'),
+             'site check: blog/index.html shows its first card\'s image \'first-post/loop-still.png\' without loading="eager" and fetchpriority="high"'),
+            ("an image on the index other than the first card's loading at once",
+             self.put("blog/index.html", "</ul>", '</ul><img src="assets/seats/builder.svg" width="1" height="1" alt="" loading="eager">'),
+             'site check: blog/index.html shows the image \'assets/seats/builder.svg\' without loading="lazy", and only the first card\'s image loads at once'),
+            ("a stylesheet the index names that is no file", self.put("blog/index.html", "</head>", '<link rel="stylesheet" href="assets/gone.css"></head>'),
+             "site check: blog/index.html names the stylesheet 'assets/gone.css', and that is no file of the build"),
+            ("SAMPLE on the index", self.put("blog/index.html", "</ul>", "</ul><p><b>SAMPLE PAGE</b></p>"),
+             "site check: blog/index.html holds 'SAMPLE', the mark of a sample page, which the blog never ships"),
+            ("a samples/ path on the index", self.put("blog/index.html", "</ul>", '</ul><p>See samples/one.html.</p>'),
+             "site check: blog/index.html holds 'samples/', the mark of a sample page, which the blog never ships"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
@@ -1021,7 +1044,7 @@ class Blog(unittest.TestCase):
 
     def test_what_the_blog_allows(self):
         german = ('<h1>Blog</h1><figure><picture><source media="(prefers-reduced-motion:reduce)" srcset="first-post/loop-still.png">'
-                  '<img src="first-post/loop.gif" alt="A loop of one pixel, again"></picture></figure>')
+                  '<img src="first-post/loop.gif" alt="A loop of one pixel, again" width="1" height="1" loading="eager" fetchpriority="high"></picture></figure>')
         for name, change, figures in (
                 ("a file of exactly 1,000,000 bytes", self.write("blog/first-post/loop.gif", GIF + b"\0" * (1_000_000 - len(GIF))), 1),
                 ("the same figure on the blog's index, from the post's own folder, its query written without a space",
@@ -1039,7 +1062,19 @@ class Blog(unittest.TestCase):
                 ("a valid id in the page's text, in an alt and in a hail block",
                  lambda site: (self.put(self.PAGE, "</body>", f"<p>Its id: {HAIL_ID}, and the owner's: owner-20261108T0815Z-v769d3.</p>" + hail_block() + "</body>")(site),
                                self.put(self.PAGE, 'alt="A loop of one pixel"', f'alt="A loop of one pixel, its hail {HAIL_ID}"')(site)), 1),
-                ("head -100 in a code block outside the hail blocks", self.put(self.PAGE, "</body>", "<pre><code>head -100 notes.txt</code></pre></body>"), 1)):
+                ("head -100 in a code block outside the hail blocks", self.put(self.PAGE, "</body>", "<pre><code>head -100 notes.txt</code></pre></body>"), 1),
+                ("the index's heading with markup and a no-break space, its descriptions in plain words",
+                 lambda site: [self.put("blog/index.html", old, new)(site) for old, new in (
+                     ("<h1>Blog</h1>", "<h1>I&nbsp;build <b>it</b>, from the record.</h1>"),
+                     ('<meta name="description" content="Blog">', '<meta name="description" content="I build it, from the record.">'),
+                     ('<meta property="og:description" content="Blog">', '<meta property="og:description" content="I build it, from the record.">'))], 1),
+                ("the index's first card image at once and an author's picture lazily, its alt empty",
+                 self.put("blog/index.html", "</ul>", '</ul><picture><img src="first-post/loop-still.png" alt="A still" width="1" height="1" loading="eager" '
+                                                      'fetchpriority="high"></picture><img src="assets/seats/builder.svg" width="1" height="1" alt="" loading="lazy">'), 2),
+                ("a stylesheet the index names that is a file of the build",
+                 lambda site: (self.write("blog/assets/index.css", b"h1{margin:0}")(site),
+                               self.put("blog/index.html", "</head>", '<link rel="stylesheet" href="assets/index.css"></head>')(site)), 1),
+                ("a sample in plain words on the index", self.put("blog/index.html", "</ul>", "</ul><p>A sample of what the record holds.</p>"), 1)):
             with self.subTest(name):
                 result = self.checked(change)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
