@@ -323,6 +323,8 @@ class Post:
         spec = re.fullmatch(r"(.+?) \[([^\]]+) →\]\(" + re.escape(SPEC) + r"\) (.+)", one.group(2))
         if not spec:
             refuse(f"{self.name}: the TL;DR's last item does not follow the one page's sentence with the spec's link and its arrow")
+        if any(re.search(r"\[[^\]]+\]\([^)\s]+\)", s) for s in (spec.group(1), spec.group(3))):
+            refuse(f"{self.name}: the TL;DR's last item holds a link beside the one page's and the spec's")
         go = lambda href, text: f'<span class="go"><a href="{attr(href)}">{text_node(text)}</a></span>'
         dl = "".join(f"<div><dt>{text_node(l)}</dt><dd>{inline(w)}</dd></div>" for l, w in rows[:-1])
         dl += (f'<div class="try"><dt>{text_node(label)}</dt><dd>{go(ONE_PAGE, one.group(1))} {inline(spec.group(1))} '
