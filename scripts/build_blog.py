@@ -36,7 +36,7 @@ from urllib.parse import quote
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "blog"
 SITE_URL = "https://shoalmark.tools/"
-GITHUB = "https://github.com/shoalmark/shoalmark"
+GITHUB = "https://github.com/shoalmark"                     # the organization's page, which every blog page's header and footer link as "GitHub"
 SPEC = "https://github.com/shoalmark/hail/blob/main/spec/hail-1.md"   # the published spec's address: a post's band must link it, as written here
 ONE_PAGE = "https://github.com/shoalmark/hail/blob/main/QUICKSTART.md"   # the one page's address: the band links it first, then SPEC, as written here
 WPM = 230                                                  # the reading time: the words over 230 a minute, rounded up

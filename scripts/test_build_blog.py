@@ -268,6 +268,20 @@ class Built(unittest.TestCase):
         self.assertNotIn("‹link: spec›", self.page + (self.blog / "hail-1.md").read_text(encoding="utf-8"))
         self.assertIn(f'<p class="kicker"><time datetime="{DATE}">{DATE}</time>', self.page)
 
+    def test_the_github_links_lead_to_the_organization(self):
+        """Every blog page the build writes, the index and each post, links "GitHub" twice, in its header's a.bh-gh and in its footer, and both
+        lead to the organization's page, never to the shoalmark repository."""
+        self.assertEqual(BB.GITHUB, "https://github.com/shoalmark")
+        pages = sorted(p.name for p in self.blog.glob("*.html"))
+        self.assertEqual(pages, ["hail-1.html", "index.html"])
+        for name in pages:
+            text = (self.blog / name).read_text(encoding="utf-8")
+            self.assertEqual(re.findall(r'<a class="bh-gh" href="([^"]*)">GitHub</a>', text), [BB.GITHUB], name)
+            foot = re.search(r'<p class="bf-links">(.*?)</p>', text).group(1)
+            self.assertEqual(re.findall(r'<a href="([^"]*)">GitHub</a>', foot), [BB.GITHUB], name)
+            self.assertEqual(re.findall(r'href="([^"]*)">GitHub</a>', text), [BB.GITHUB, BB.GITHUB], name)
+            self.assertNotIn('href="https://github.com/shoalmark/shoalmark">GitHub</a>', text, name)
+
     def test_no_inline_script(self):
         self.assertEqual(re.findall(r"<script(?![^>]*\bsrc=)", self.page), [])
 
@@ -291,11 +305,11 @@ class Built(unittest.TestCase):
 
 class Index(unittest.TestCase):
     """The blog's index: its opening statement as its one heading, the newest post as its lead, the earlier ones as cards, newest first, and ten
-    posts at most. With the one post, the index is the design's page but for the name set as code in the opening and the two descriptions'
-    words: its SHA-256 is pinned here over the page with the post's date written as YYYY-MM-DD, so the date can move in its one line; the pin
-    changes with the post's title, dek, card, kicker, reading time or authors, or with the templates."""
+    posts at most. With the one post, the index is the design's page but for the name set as code in the opening, the two descriptions'
+    words and the GitHub links' address: its SHA-256 is pinned here over the page with the post's date written as YYYY-MM-DD, so the date can
+    move in its one line; the pin changes with the post's title, dek, card, kicker, reading time or authors, or with the templates or GITHUB."""
 
-    INDEX_SHA256 = "add5570c4fdec7bfe853cfa2f790ed0518b059be33847a6f07ec30f4122f4aea"
+    INDEX_SHA256 = "ee3ae2f9586e9316f619fd00e51682acca2aec53f3344a3a761ddbe0e23c6b79"
 
     @staticmethod
     def posts(root, dates, folders=True):
