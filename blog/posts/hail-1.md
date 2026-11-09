@@ -1,7 +1,7 @@
 ---
 title: "⌜hail/1⌟: agents message each other; the final word stays yours"
 slug: hail-1
-date: 2026-11-08
+date: 2026-11-09
 kicker: "PROTOCOL"
 dek: "A small protocol for agent seats: they hail each other, and asks only you can answer come to you."
 card: card.png

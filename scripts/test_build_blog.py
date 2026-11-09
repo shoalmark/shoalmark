@@ -2,6 +2,7 @@
 
 Run: python3 scripts/test_build_blog.py. Each test copies what the builder reads (blog/, the four font subsets and their licences, the mark,
 main.html, the seats' icons and the builder itself) into a scratch root, changes one thing where it tests a refusal, and runs the builder there."""
+import datetime
 import hashlib
 import html
 import json
@@ -23,6 +24,7 @@ _spec = importlib.util.spec_from_file_location("build_blog", ROOT / "scripts/bui
 BB = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(BB)
 DATE = re.search(r"^date: (\S+)$", (ROOT / "blog/posts/hail-1.md").read_text(encoding="utf-8"), re.M).group(1)
+AFTER = lambda days: (datetime.date.fromisoformat(DATE) + datetime.timedelta(days=days)).isoformat()      # a day after the post's own, never tied with it
 
 
 def scratch(tmp):
@@ -263,9 +265,10 @@ class Built(unittest.TestCase):
 class Index(unittest.TestCase):
     """The blog's index: its opening statement as its one heading, the newest post as its lead, the earlier ones as cards, newest first, and ten
     posts at most. With the one post, the index is the design's page but for the name set as code in the opening and the two descriptions'
-    words: its SHA-256 is pinned here, and changes with the post's title, dek, card, kicker, reading time or authors, or with the templates."""
+    words: its SHA-256 is pinned here over the page with the post's date written as YYYY-MM-DD, so the date can move in its one line; the pin
+    changes with the post's title, dek, card, kicker, reading time or authors, or with the templates."""
 
-    INDEX_SHA256 = "51b3a9b935d20d36db950fde347da0621bd72f80a24cecfbb38412476179f3f5"
+    INDEX_SHA256 = "add5570c4fdec7bfe853cfa2f790ed0518b059be33847a6f07ec30f4122f4aea"
 
     @staticmethod
     def posts(root, dates, folders=True):
@@ -298,10 +301,11 @@ class Index(unittest.TestCase):
         self.assertIn('title="by @holgo99 and six seats"><img class="ix-owner" src="assets/authors/owner-52.jpg"', page)
         self.assertNotIn("ix-earlier", page)
         self.assertNotIn("\n\n", page)
-        self.assertEqual(hashlib.sha256(index).hexdigest(), self.INDEX_SHA256)
+        self.assertEqual(index.count(DATE.encode()), 2, "the post's date stands on the index in its lead's kicker alone, as its datetime and its text")
+        self.assertEqual(hashlib.sha256(index.replace(DATE.encode(), b"YYYY-MM-DD")).hexdigest(), self.INDEX_SHA256)
 
     def test_several_posts_the_newest_leads(self):
-        for dates, count in ((["2026-11-09"], "<b>1</b> earlier post</h2>"), (["2026-11-09", "2026-11-10"], "<b>2</b> earlier posts</h2>")):
+        for dates, count in (([AFTER(1)], "<b>1</b> earlier post</h2>"), ([AFTER(1), AFTER(2)], "<b>2</b> earlier posts</h2>")):
             with self.subTest(posts=len(dates) + 1), tempfile.TemporaryDirectory() as tmp:
                 root = scratch(tmp)
                 self.posts(root, dates)
@@ -320,7 +324,7 @@ class Index(unittest.TestCase):
     def test_eleven_posts_are_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = scratch(tmp)
-            self.posts(root, [f"2026-11-{d}" for d in range(10, 20)], folders=False)
+            self.posts(root, [AFTER(n) for n in range(1, 11)], folders=False)
             r = build(root)
             self.assertNotEqual(r.returncode, 0, "the builder built an index of eleven posts")
             self.assertIn("blog/posts holds 11 posts, and the index shows 10 at most: the page after it is not built yet", r.stderr)
@@ -355,7 +359,7 @@ class OneEdit(unittest.TestCase):
     def test_one_edit_of_the_spec_with_its_band_or_of_the_date(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = scratch(tmp)
-            r = self.edited(root, spec="https://example.org/spec.html", band="https://example.org/spec.html", date="2026-11-09")
+            r = self.edited(root, spec="https://example.org/spec.html", band="https://example.org/spec.html", date="2027-01-15")
             self.assertEqual(r.returncode, 0, r.stderr)
             page = (root / "site/blog/hail-1.html").read_text(encoding="utf-8")
             md = (root / "site/blog/hail-1.md").read_text(encoding="utf-8")
@@ -363,9 +367,9 @@ class OneEdit(unittest.TestCase):
             self.assertIn('<span class="go"><a href="https://example.org/spec.html">', page)
             self.assertIn("](https://example.org/spec.html)", md)
             self.assertNotIn(BB.SPEC, page + md)
-            self.assertIn('<time datetime="2026-11-09">2026-11-09</time>', page)
-            self.assertIn("\ndate: 2026-11-09\n", md)
-            self.assertIn("<pubDate>Mon, 09 Nov 2026 00:00:00 +0100</pubDate>", feed)
+            self.assertIn('<time datetime="2027-01-15">2027-01-15</time>', page)
+            self.assertIn("\ndate: 2027-01-15\n", md)
+            self.assertIn("<pubDate>Fri, 15 Jan 2027 00:00:00 +0100</pubDate>", feed)
             self.assertNotIn(DATE, page.split("<main", 1)[1].split("</header>", 1)[0])
 
 
