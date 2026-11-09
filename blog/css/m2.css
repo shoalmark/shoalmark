@@ -94,3 +94,5 @@
 /* the heading's shoalmark.tools, set as the post sets inline code: its backticks drawn, not read */
 .ix-head h1 code{font:inherit;color:var(--id);white-space:nowrap}
 .ix-head h1 code::before,.ix-head h1 code::after{content:"`";content:"`" / "";color:var(--mute)}
+/* the opening's pink claim stays on one line on screens 360 px wide and wider; below that it may wrap */
+@media (min-width:360px){.ix-head h1 .ix-you{white-space:nowrap}}
