@@ -93,7 +93,7 @@ class Built(unittest.TestCase):
         self.assertEqual(self.page.count('<aside class="credits"'), 1)
         box = re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0]
         self.assertEqual(len(box.split("<p>")) - 1, 6)
-        self.assertIn("<p>Article fact review: an independent reviewer, in twenty rounds, with design and reader critiques.</p>", box)
+        self.assertIn("<p>Article fact review: an independent reviewer, in twenty-two rounds, with design and reader critiques.</p>", box)
         self.assertTrue(box.endswith("<p>With thanks to the Research seat.</p></aside>"))
 
     def test_the_four_touches(self):
