@@ -1,4 +1,5 @@
 """Check migration-critical published pages before uploading the Pages artifact: `check_site.py [site [zensical.toml]]`."""
+import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 import posixpath
@@ -874,6 +875,12 @@ print(f"site check: the {held} fenced block(s) of the docs, in both languages, b
 # a .png starts with the PNG signature and holds no acTL chunk, and a .webp is a RIFF WEBP file that holds no ANIM chunk and whose VP8X sets no
 # animation flag; the chunks are walked, never searched. A still named neither .png nor .webp is refused, but a GIF, which the GIF rules read; and
 # a poster must not move at all, as the GIF rules never read a poster.
+# Each blog post's ids follow the spec's first edition. Its page's text outside <script> and <style>, every alt and its Markdown version hold no
+# ‹yyyymmdd›- and no id that ends in a three-digit counter, and every full id there, a sender's prefix (<team>.<seat>, the seat perhaps with its own
+# -<n>, or owner) and -<8 digits>, is <prefix>-<yyyymmdd>T<hhmm>Z-<key>: a real UTC date and minute and a key of 6 characters of lower-case Crockford
+# base32. An alt or a hail block holds no three-digit ending standing alone, as in "supersedes -001"; other text may, as code can show "head -100".
+# A hail block is a <pre> whose lines, its .ln spans or else its newlines, run from hail/1 to end hail/1, and its own id is its id: line's. Two hail
+# blocks with the same own id show the same lines: the same hail may be shown twice, two hails never share an id.
 # Every image has alt text but an author's picture, an <img> outside any <picture> whose file is in blog/assets/authors/ or blog/assets/seats/:
 # its alt is empty, as the author's name stands beside it as text. The GIF rules hold for every image. A file under blog/ holds at most
 # 1,000,000 bytes, but the share video, the one MP4 of the site a post's one og:video names, at most 2,000,000.
@@ -976,9 +983,22 @@ class BlogPage(HTMLParser):
         self.shown = []                                 # per open <picture>: whether its <img> has come
         self.lang, self.hreflang, self.markdown, self.videos = None, [], [], []
         self.stills = []
+        self.text, self.alts, self.pres = [], [], []    # its text outside <script> and <style>, its alts, and each <pre>'s lines
+        self.skip, self.pre = 0, None                   # how deep in <script> or <style>; the <pre> being read: its spans, its lines, its text
 
     def handle_starttag(self, tag, attrs):
         a = {key: value or "" for key, value in attrs}
+        if tag in ("script", "style"):
+            self.skip += 1
+        if "alt" in a:
+            self.alts.append(a["alt"])
+        if tag == "pre":
+            self.pre = {"spans": [], "lines": [], "text": []}
+        elif tag == "span" and self.pre is not None:
+            line = "ln" in a.get("class", "").split() and not any(self.pre["spans"])
+            self.pre["spans"].append(line)
+            if line:
+                self.pre["lines"].append("")
         if "data-still" in a:
             self.stills.append((tag, "data-still", a["data-still"]))
         if tag == "video" and a.get("poster"):
@@ -1017,6 +1037,87 @@ class BlogPage(HTMLParser):
         if tag == "picture" and self.pictures:
             self.pictures.pop()
             self.shown.pop()
+        if tag in ("script", "style") and self.skip:
+            self.skip -= 1
+        if tag == "span" and self.pre is not None and self.pre["spans"]:
+            self.pre["spans"].pop()
+        if tag == "pre" and self.pre is not None:
+            self.pres.append(self.pre["lines"] or "".join(self.pre["text"]).split("\n"))
+            self.pre = None
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.text.append(data)
+        if self.pre is not None:
+            self.pre["text"].append(data)
+            if any(self.pre["spans"]):
+                self.pre["lines"][-1] += data
+
+
+FULL_ID = re.compile(r"(?<![\w.‹›-])((?:owner|[a-z][a-z0-9]*\.[a-z][a-z0-9-]*?)-(\d{8}|‹yyyymmdd›))([^\s<>\"'`,;()\[\]{}]*)")
+LONE_COUNTER = re.compile(r"(?<![^\s…(“\"'\[])-\d{3}(?![\w-])")       # -001 standing alone, as an id's short ending
+KEY = re.compile(r"[0-9a-hjkmnp-tv-z]{6}")                    # lower-case Crockford base32: no i, l, o or u
+ID_FORM = "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"
+
+
+def id_problem(text, where, alone=False):
+    """The first id in `text` that the spec's first edition does not allow, in the words the check fails with; None where there is none. With
+    `alone`, as in an alt or a hail block, a three-digit ending standing alone is refused too."""
+    if "‹yyyymmdd›-" in text:
+        return f"{where} holds ‹yyyymmdd›-, the counter form of an id"
+    for m in FULL_ID.finditer(text):
+        head, day, rest = m.groups()
+        if re.match(r"-\d{3}(?![0-9A-Za-z])", rest):
+            return f"{where} holds the counter id {head + rest[:4]!r}, where an id of the spec's first edition is {ID_FORM}"
+        form = re.match(r"T(\d{2})(\d{2})Z-([0-9A-Za-z]+)", rest)
+        found = head + (form.group(0) if form else rest)
+        if not form or not day.isdigit():
+            return f"{where} holds the id {found!r}, which is not {ID_FORM}"
+        try:
+            datetime.datetime(int(day[:4]), int(day[4:6]), int(day[6:]), int(form.group(1)), int(form.group(2)))
+        except ValueError:
+            return f"{where} holds the id {found!r}, whose date and minute are no UTC minute"
+        if not KEY.fullmatch(form.group(3)):
+            return f"{where} holds the id {found!r}, whose key is not 6 characters of lower-case Crockford base32"
+    lone = LONE_COUNTER.search(text) if alone else None
+    return f"{where} holds {lone.group(0)!r}, a three-digit counter's ending standing alone" if lone else None
+
+
+def ids_problem(rel, page, markdown):
+    """The first id the blog post page `rel`, with its Markdown version, shows against the spec's first edition, or two hail blocks that share an
+    id; None where there is none."""
+    hails = []
+    for lines in page.pres:
+        lines = [line.rstrip() for line in lines]
+        while lines and not lines[0]:
+            lines.pop(0)
+        while lines and not lines[-1]:
+            lines.pop()
+        if lines and lines[0].strip() == "hail/1" and lines[-1].strip() == "end hail/1":
+            hails.append(lines)
+    for lines in hails:
+        problem = id_problem("\n".join(lines), f"a hail block on {rel}", alone=True)
+        if problem:
+            return problem
+    for alt in page.alts:
+        problem = id_problem(alt, f"an alt on {rel}", alone=True)
+        if problem:
+            return problem
+    md = rel[:-len(".html")] + ".md"
+    for text, where in (("\n".join(page.text), f"{rel}'s text"), (markdown, md)):
+        problem = id_problem(text, where)
+        if problem:
+            return problem
+    for alt in re.findall(r"!\[([^\]]*)\]\(", markdown):
+        problem = id_problem(alt, f"an alt in {md}", alone=True)
+        if problem:
+            return problem
+    shown = {}
+    for lines in hails:
+        own = [l.strip()[len("id:"):].strip() for l in lines if l.strip().startswith("id:")]
+        if own and shown.setdefault(own[0], lines) != lines:
+            return f"{rel} shows two different hail blocks with the same id, {own[0]}"
+    return None
 
 
 def blog_problem(rel, page):
@@ -1121,6 +1222,9 @@ for rel in blog_pages:
         twin = [a.get("href", "") for a in page.markdown]
         if len(twin) != 1 or in_site(rel, twin[0]) != rel[:-len(".html")] + ".md" or not (site / rel[:-len(".html")]).with_suffix(".md").is_file():
             fail(f"{rel} does not name its Markdown version beside it, {rel[:-len('.html')]}.md, in one <link rel=\"alternate\" type=\"text/markdown\">")
+        problem = ids_problem(rel, page, (site / rel[:-len(".html")]).with_suffix(".md").read_text(encoding="utf-8"))
+        if problem:
+            fail(problem)
     figures += len({id(sources) for _attrs, sources in page.images if sources is not None})         # a figure is a <picture> that shows an image
 print(f"site check: the {len(blog_pages)} blog page(s) and their {figures} figure(s) passed: each figure has alt text and a still, each author's picture "
       f"an empty alt, each page is English "

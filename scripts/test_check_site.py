@@ -48,6 +48,20 @@ BLOG_FIGURE = "<figure>" + BLOG_PICTURE + "<figcaption>A loop.</figcaption></fig
 BLOG_VIDEO = '<video poster="first-post/poster.png" muted playsinline></video>'
 ANIMATED_SVG = (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1">'
                 b'<animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/></rect></svg>')
+# a hail block as a post shows one, a line to each .ln span from hail/1 to end hail/1, its own id on its id: line, in the spec's first edition's form;
+# and the same hail as plain lines
+HAIL_ID = "a.planner-20261108T0812Z-k8chqr"
+
+
+def hail_block(own=HAIL_ID, body="body: one line"):
+    return ('<pre class="ex"><code><span class="ln fr">hail/1</span><span class="ln"><span class="k">from:</span> <span class="v">a.planner</span></span>'
+            f'<span class="ln"><span class="k">id:</span> <span class="v">{own}</span></span><span class="ln">{body}</span><span class="ln fr">end hail/1</span></code></pre>')
+
+
+def plain_hail(own=HAIL_ID, body="body: one line"):
+    return f"<pre><code>hail/1\nfrom: a.planner\nid: {own}\n{body}\nend hail/1\n</code></pre>"
+
+
 # an author's picture, beside the author's name: its alt is empty
 AUTHOR = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1H0z"/></svg>'
 BLOG_AUTHOR = '<p class="by"><img src="assets/seats/builder.svg" alt=""><b>Builder</b></p>'
@@ -825,7 +839,8 @@ class Blog(unittest.TestCase):
     """The blog: each file under blog/ is at most 1,000,000 bytes, and each GIF there has its still beside it; on each page in blog/,
     each image has alt text but an author's picture, whose alt is empty, each GIF stands in a <picture> whose reduced-motion source names its still, each GIF a <source> offers comes after a source for
     reduced motion that names its still, and each src and srcset is a file of the site; each still those rules name, and each <video>'s poster,
-    is a still by its own bytes, named .png or .webp, and a poster does not move.
+    is a still by its own bytes, named .png or .webp, and a poster does not move. Each post's ids are the spec's first edition's, with no counter, and
+    two hail blocks never share an id.
     A site that passes, and controls that each change one thing in it; the check names the file."""
 
     PAGE = "blog/first-post.html"
@@ -939,6 +954,30 @@ class Blog(unittest.TestCase):
              self.put(self.PAGE, 'poster="first-post/poster.png"', 'poster="first-post/loop.webp"'),
              "site check: blog/first-post.html shows the animated WebP 'first-post/loop.webp' as a <video>'s poster: a poster must not move, and the "
              "GIF rules never read one"),
+            ("a counter id in a hail block", self.put(self.PAGE, "</body>", hail_block(own="a.planner-20261108-001") + "</body>"),
+             "site check: a hail block on blog/first-post.html holds the counter id 'a.planner-20261108-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("‹yyyymmdd›- in the page's text", self.put(self.PAGE, "</body>", "<p>Its answer: a.planner-‹yyyymmdd›-002.</p></body>"),
+             "site check: blog/first-post.html's text holds ‹yyyymmdd›-, the counter form of an id"),
+            ("a short -001 ending in an alt", self.put(self.PAGE, 'alt="A loop of one pixel"', 'alt="A loop of one pixel, its hail\'s id ending -001"'),
+             "site check: an alt on blog/first-post.html holds '-001', a three-digit counter's ending standing alone"),
+            ("a key with an upper-case letter", self.put(self.PAGE, "</body>", "<p>Its id: a.planner-20261108T0812Z-K8chqr.</p></body>"),
+             "site check: blog/first-post.html's text holds the id 'a.planner-20261108T0812Z-K8chqr', whose key is not 6 characters of lower-case "
+             "Crockford base32"),
+            ("a key with an l", self.put(self.PAGE, "</body>", "<p>Its id: a.planner-20261108T0812Z-k8clqr.</p></body>"),
+             "site check: blog/first-post.html's text holds the id 'a.planner-20261108T0812Z-k8clqr', whose key is not 6 characters of lower-case "
+             "Crockford base32"),
+            ("a minute that isn't one", self.put(self.PAGE, "</body>", "<p>Its id: a.planner-20261108T2460Z-k8chqr.</p></body>"),
+             "site check: blog/first-post.html's text holds the id 'a.planner-20261108T2460Z-k8chqr', whose date and minute are no UTC minute"),
+            ("an owner- id with a counter", self.put(self.PAGE, "</body>", "<p>Your DECISION: owner-20261108-001.</p></body>"),
+             "site check: blog/first-post.html's text holds the counter id 'owner-20261108-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("two different hail blocks sharing an id",
+             self.put(self.PAGE, "</body>", hail_block() + plain_hail(body="body: another line") + "</body>"),
+             "site check: blog/first-post.html shows two different hail blocks with the same id, a.planner-20261108T0812Z-k8chqr"),
+            ("a counter id in the post's Markdown version", self.write("blog/first-post.md", b"# First post\n\nIts answer: a.planner-20261108-001.\n"),
+             "site check: blog/first-post.md holds the counter id 'a.planner-20261108-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
@@ -988,7 +1027,13 @@ class Blog(unittest.TestCase):
                 ("a still WebP, with alt text, outside a <picture>",
                  self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.webp" alt="A still">'), 1),
                 ("a -still.png whose text chunk holds the letters acTL and ANIM", self.write("blog/first-post/loop-still.png", LETTERS_PNG), 1),
-                ("a -still.webp whose odd-length metadata chunk, padded, holds the letters ANIM", self.write("blog/first-post/loop-still.webp", LETTERS_WEBP), 1)):
+                ("a -still.webp whose odd-length metadata chunk, padded, holds the letters ANIM", self.write("blog/first-post/loop-still.webp", LETTERS_WEBP), 1),
+                ("the same hail block shown twice", self.put(self.PAGE, "</body>", hail_block() + hail_block() + "</body>"), 1),
+                ("the same hail shown as .ln spans and as plain lines", self.put(self.PAGE, "</body>", hail_block() + plain_hail() + "</body>"), 1),
+                ("a valid id in the page's text, in an alt and in a hail block",
+                 lambda site: (self.put(self.PAGE, "</body>", f"<p>Its id: {HAIL_ID}, and the owner's: owner-20261108T0815Z-v769d3.</p>" + hail_block() + "</body>")(site),
+                               self.put(self.PAGE, 'alt="A loop of one pixel"', f'alt="A loop of one pixel, its hail {HAIL_ID}"')(site)), 1),
+                ("head -100 in a code block outside the hail blocks", self.put(self.PAGE, "</body>", "<pre><code>head -100 notes.txt</code></pre></body>"), 1)):
             with self.subTest(name):
                 result = self.checked(change)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
