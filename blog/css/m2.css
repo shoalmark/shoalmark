@@ -1,0 +1,100 @@
+/* M2, "chart room": the brand's band. The header is the navy band ending at the drying line, as the start page's,
+   its links in the pixel face; the blog's own tab sits by the name, olive like the TL;DR's; the kicker stands on a
+   contour line over the title. */
+.bh{background:var(--band);border-bottom:2px solid var(--drying)}
+.bh-sec{font:700 11px/1 var(--pix);text-transform:uppercase;letter-spacing:.04em;background:var(--watt);color:var(--tabink);padding:5px 7px 4px}
+.bh-nav a{font:400 11px/1 var(--pix);text-transform:uppercase;letter-spacing:.04em;color:var(--ink);padding:8px 10px;border:1px solid transparent}
+.bh-nav a:hover{border-color:var(--drying);color:var(--watt)}
+.bh-nav a.bh-docs{font-weight:700;color:var(--tabink);background:var(--land);border-color:var(--land)}
+.bh-nav a.bh-docs:hover{background:var(--watt);border-color:var(--watt);color:var(--tabink)}
+.kicker{max-width:52ch;margin:0 auto}
+.kicker::before,.kicker::after{content:"";flex:1;align-self:center;height:1px;background:var(--contour)}
+.toc-m{border:1px solid var(--contour);padding:0 14px}
+.bf{background:var(--band);border-top:2px solid var(--drying)}
+@media (max-width:640px){.bh-nav{gap:2px}.bh-nav a{padding:7px 7px}}
+@media (max-width:340px){.bh-nav a.bh-gh{display:none}}
+@media (max-width:380px){.bh-word{display:none}}
+
+/* ---------------------------------------------------------------- the index
+   Top to bottom: the page's opening statement, its one heading, set large; the newest post as the lead, in the
+   board's titled box with its date and label set into the top rule (as the post's kicker stands on its line), its
+   words beside its card from 1000 px (centred on it) and under it below that, a quiet "Read more" last; then, once there are earlier posts,
+   their count on a contour line and the posts as open cards (date and label, card, title), three a row from 1000 px,
+   two from 641, one on a phone; "See more" (the next page) once a page holds ten. Every card is one link with the
+   site's focus ring. Nothing moves: no transition, no transform. */
+/* the opening: the statement is the page's heading, in the ink, the name bold, the Owner's claim in the Owner's pink
+   (as the post's head rings the Owner), the closing invitation on its own line in the dim; from 1000 px the second
+   clause takes its own line too, so the lines break where the sentence does */
+.ix-head{width:min(100%,1140px);text-align:left;margin-bottom:calc(var(--l)*2.4)}
+.ix-head h1{max-width:44ch;margin:0;font-size:clamp(1.5rem,1rem + 2vw,2.25rem);line-height:1.22;font-weight:400;
+  letter-spacing:-.02em;color:var(--ink);text-wrap:balance}
+.ix-head h1 b{font-weight:600}
+.ix-head h1 .ix-you{font-style:normal;color:var(--pink)}
+.ix-head h1 .ix-how{display:block;margin-top:.18em;color:var(--dim)}
+.ix-head h1 .ix-keep{display:inline}
+@media (min-width:1000px){.ix-head h1 .ix-keep{display:block}}
+.ixw{grid-column:1/-1;grid-row:2;justify-self:center;width:min(100%,1140px)}
+.ix-k{display:flex;align-items:baseline;gap:1.2ch;font:400 13px/1.6 var(--pix);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--mute);white-space:nowrap}
+.ix-k .label{color:var(--watt)}
+.ix-img{display:block;width:100%;height:auto;aspect-ratio:1200/630;border:1px solid var(--line);background:#07111b}
+.ix-lead picture,.ix-card picture{display:block}
+.ix-t{font-size:1.4em;line-height:1.2;font-weight:600;letter-spacing:-.01em;color:var(--ink);text-wrap:balance}
+.ix-lead{position:relative;display:grid;grid-template-columns:minmax(0,1fr);row-gap:18px;padding:28px 14px 18px;
+  border:1px solid var(--contour);background:var(--bg);color:inherit;text-decoration:none}
+.ix-lead>.ix-k{position:absolute;top:-.8em;left:10px;padding:0 8px;background:var(--bg)}
+.ix-words{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0}
+.ix-dek{font-size:15px;line-height:1.5;color:var(--dim);text-wrap:pretty}
+.ix-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:13px;color:var(--mute)}
+.ix-by{display:flex;align-items:center}
+.ix-by img{display:block;width:22px;height:22px;margin-left:-4px;border-radius:50%;background:var(--band);box-shadow:0 0 0 2px var(--bg)}
+.ix-by img[src$=".svg"]{image-rendering:pixelated}
+.ix-by .ix-owner{width:26px;height:26px;margin:0 8px 0 0;box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--pink)}
+.ix-more a{display:inline-flex;align-items:center;gap:.6em;min-height:36px;padding:0 14px;border:1px solid var(--contour);
+  font:700 12px/1 var(--pix);letter-spacing:.06em;text-transform:uppercase;color:var(--watt);text-decoration:none}
+.ix-go{display:inline-flex;align-items:center;gap:.6em;margin-top:4px;font:400 12px/1.6 var(--pix);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--dim)}
+.ix-go::after,.ix-more a::after{content:"";flex:none;width:.6em;height:.5em;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 5' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM4 1h1v1H4zM0 2h6v1H0zM4 3h1v1H4zM3 4h1v1H3z'/%3E%3C/svg%3E") no-repeat 0 0/100% 100%;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 5' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1H3zM4 1h1v1H4zM0 2h6v1H0zM4 3h1v1H4zM3 4h1v1H3z'/%3E%3C/svg%3E") no-repeat 0 0/100% 100%}
+.ix-lead:hover{border-color:var(--drying)}
+.ix-go::after{background:var(--watt)}
+.ix-lead:hover .ix-go{color:var(--ink);text-decoration:underline;text-decoration-color:var(--drying);text-underline-offset:.3em}
+.ix-more a:hover{border-color:var(--drying)}
+.ix-lead:hover .ix-t,.ix-card:hover .ix-t{text-decoration:underline;text-decoration-color:var(--drying);text-underline-offset:.18em}
+.ix-card:hover .ix-img{border-color:var(--drying)}
+.ix-lead:focus-visible,.ix-card:focus-visible,.ix-more a:focus-visible{outline:2px solid var(--watt);outline-offset:4px}
+.ix-bar{display:flex;align-items:center;gap:1.2ch;margin:calc(var(--l)*2.2) 0 calc(var(--l)*1.1);font:400 12px/1.6 var(--pix);
+  letter-spacing:.06em;text-transform:uppercase;color:var(--mute);white-space:nowrap}
+.ix-bar h2{font:inherit;margin:0}
+.ix-bar h2 b{font-weight:700;color:var(--ink)}
+.ix-bar::after{content:"";order:1;flex:1;height:1px;background:var(--contour)}
+.ix-bar p{order:2;margin:0}
+.ix-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:52px 28px}
+.ix-grid>li{display:flex;min-width:0}
+.ix-card{display:flex;flex-direction:column;gap:12px;width:100%;color:inherit;text-decoration:none}
+.ix-card .ix-k{font-size:12px}
+.ix-card .ix-k::after{content:"";flex:1;align-self:center;height:1px;background:var(--line)}
+.ix-card .ix-t{font-size:1.05em;line-height:1.3}
+.ix-more{display:flex;justify-content:center;margin-top:calc(var(--l)*2.2)}
+.ix-more a{min-height:44px;padding:0 20px}
+@media (min-width:1000px){
+  .ix-lead{grid-template-columns:minmax(0,4fr) minmax(0,8fr);column-gap:40px;align-items:start;padding:36px 26px 26px}
+  .ix-lead>picture{grid-column:2;grid-row:1}
+  .ix-lead>.ix-words{grid-column:1;grid-row:1;align-self:center;padding-bottom:6px}
+  .ix-lead .ix-t{font-size:1.6em;line-height:1.18}
+}
+@media (max-width:999.98px){.ix-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:44px 20px}}
+@media (max-width:640px){
+  .ix-head{margin-bottom:calc(var(--l)*1.6)}
+  .ix-lead{padding:26px 12px 16px;row-gap:16px}
+  .ix-lead .ix-t{font-size:1.35em}
+  .ix-grid{grid-template-columns:1fr;gap:40px}
+  .ix-bar{margin-top:calc(var(--l)*1.8)}
+}
+/* the heading's shoalmark.tools, set as the post sets inline code: its backticks drawn, not read */
+.ix-head h1 code{font:inherit;color:var(--id);white-space:nowrap}
+.ix-head h1 code::before,.ix-head h1 code::after{content:"`";content:"`" / "";color:var(--mute)}
+/* the opening's pink claim stays on one line on screens 360 px wide and wider; below that it may wrap */
+@media (min-width:360px){.ix-head h1 .ix-you{white-space:nowrap}}
+/* a 14 px block before the row's second button, so that it starts its own line with room above it at every width */
+.post .tldr dl>div.try .go~.go::before{content:"";display:block;height:14px}

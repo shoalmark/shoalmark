@@ -1,4 +1,5 @@
 """Check migration-critical published pages before uploading the Pages artifact: `check_site.py [site [zensical.toml]]`."""
+import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 import posixpath
@@ -8,7 +9,7 @@ from urllib.parse import unquote, urlsplit
 
 site = Path(sys.argv[1] if len(sys.argv) > 1 else "site")
 for page in ("index.html", "de/index.html", "how-it-works.html", "de/how-it-works.html", "setup.html", "signing.html", "de/signing.html", "agents/index.html", "llms.txt",
-             "index.md", "how-it-works/index.md", "de/index.md", "de/how-it-works/index.md"):
+             "index.md", "how-it-works/index.md", "de/index.md", "de/how-it-works/index.md", "blog/index.html"):
     if not (site / page).is_file():
         raise SystemExit(f"site check: missing {page}")
 contract = (site / "agents/index.html").read_text(encoding="utf-8")
@@ -857,3 +858,451 @@ if lost or shown:
         [f"{page}: {len(firsts)} fenced block(s) do not build to a code block, the first opening {firsts[0][:60]!r}" for page, firsts in sorted(lost.items())]
         + [f"{page} shows a fence as text: {fences[0]!r}" for page, fences in sorted(shown.items())]))
 print(f"site check: the {held} fenced block(s) of the docs, in both languages, build to code blocks, and no page shows a fence as text")
+
+
+# --- the blog: its own English site under blog/, its pages' figures with alt text and a still for readers who turn motion off, its files small ------
+# A figure is an <img> inside a <picture>. It may show a GIF as the <img> itself, in a <picture> whose <source media="(prefers-reduced-motion: reduce)">
+# names the GIF's still, the PNG beside it named <name>-still.png. A <picture> may offer a GIF in a <source> too, for a narrower screen: a browser takes
+# the first <source> that matches, so a <source> for reduced motion that names that GIF's still must stand before it. A figure the blog's script plays
+# once shows its still, and names its play-once GIF in a data-once and the still it comes to rest on in a data-still: that still is the GIF's own, and the
+# <picture> names it for a reader who turns motion off, by the same two rules. A play-once copy, <name>-once.gif, rests on its figure's still,
+# <name>-still.png. A <source> after its picture's <img> is never selected, so it counts for nothing. Every src, srcset, data-once and data-still is a
+# file of the site. The blog is English only, with no language pair: each of its pages says lang="en" and carries no hreflang, and each post names its
+# Markdown version beside it. Its script, a file of its own, asks for nothing, as an inline script may not. Every file under blog/ is read.
+# An animated WebP, told by its own header, holds to the GIF rules, and its still is a WebP: <name>-still.webp, as a GIF's is a PNG.
+# Every still these rules name, beside a GIF or an animated WebP, in a data-still, in a srcset of a <source> for reduced motion or as a <video>'s
+# poster, which a reader who turns motion off sees in the video's place, is a still by its own bytes, as a browser reads them and not by its name:
+# a .png starts with the PNG signature and holds no acTL chunk, and a .webp is a RIFF WEBP file that holds no ANIM chunk and whose VP8X sets no
+# animation flag; the chunks are walked, never searched. A still named neither .png nor .webp is refused, but a GIF, which the GIF rules read; and
+# a poster must not move at all, as the GIF rules never read a poster.
+# Each blog post's ids follow the spec's first edition. Its page's text outside <script> and <style>, every alt and its Markdown version hold no
+# ‹yyyymmdd›- and no id that ends in a three-digit counter, and every full id there, a sender's prefix (<team>.<seat>, the seat perhaps with its own
+# -<n>, or owner) and -<8 digits>, is <prefix>-<yyyymmdd>T<hhmm>Z-<key>: a real UTC date and minute and a key of 6 characters of lower-case Crockford
+# base32. An alt or a hail block holds no three-digit ending standing alone, as in "supersedes -001"; other text may, as code can show "head -100".
+# A hail block is a <pre> whose lines, its .ln spans or else its newlines, run from hail/1 to end hail/1, and its own id is its id: line's. Two hail
+# blocks with the same own id show the same lines: the same hail may be shown twice, two hails never share an id.
+# The blog's index has one <h1>, its opening, and its description and og:description are that heading's words as plain text (its tags dropped,
+# its entities read, a no-break space read as a space). Every <img> on it has a width, a height and an alt; the first card's image, the first
+# inside a <picture>, loads at once (loading="eager", fetchpriority="high"), and every other image lazily. Every image, srcset entry and
+# stylesheet it names is a file of the build, and it holds no "SAMPLE" and no samples/ path: a sample page never ships.
+# Every image has alt text but an author's picture, an <img> outside any <picture> whose file is in blog/assets/authors/ or blog/assets/seats/:
+# its alt is empty, as the author's name stands beside it as text. The GIF rules hold for every image. A file under blog/ holds at most
+# 1,000,000 bytes, but the share video, the one MP4 of the site a post's one og:video names, at most 2,000,000.
+BLOG = "blog"
+BLOG_LIMIT = 1_000_000
+SHARE_VIDEO_LIMIT = 2_000_000                               # the share video's own cap: the file a post's og:video names
+AUTHOR_PICTURES = (BLOG + "/assets/authors/", BLOG + "/assets/seats/")
+REDUCED_MOTION = "(prefers-reduced-motion:reduce)"          # the media query with its whitespace taken out, as it is compared
+
+
+def still_of(path):
+    """The still of the GIF or the animated WebP at `path`, a path relative to the site: the still beside it, named for it with -still, a PNG
+    for a GIF and a WebP for a WebP, so neither format's still stands in for the other's; a play-once copy, named for its figure with -once,
+    rests on its figure's still."""
+    folder, name = posixpath.split(path)
+    stem, suffix = posixpath.splitext(name)
+    still = "-still.webp" if suffix.lower() == ".webp" else "-still.png"
+    return posixpath.join(folder, (stem[:-len("-once")] if stem.endswith("-once") else stem) + still)
+
+
+def motion(path):
+    """What moves at `path`, a path relative to the site: "GIF" for a .gif, and "animated WebP" for a .webp whose own header says so (the
+    RIFF WEBP file's VP8X chunk with its animation flag); None for anything else, a still WebP among them, and for no path."""
+    if path is None:
+        return None
+    if path.lower().endswith(".gif"):
+        return "GIF"
+    if path.lower().endswith(".webp") and (site / path).is_file():
+        head = (site / path).read_bytes()[:21]
+        if head[:4] == b"RIFF" and head[8:12] == b"WEBP" and head[12:16] == b"VP8X" and len(head) == 21 and head[20] & 0x02:
+            return "animated WebP"
+    return None
+
+
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def sniffed(data):
+    """What a browser that sniffs `data` takes it for, by its first bytes: "PNG", "GIF" or "WebP"; None for anything else."""
+    if data[:8] == PNG_SIGNATURE:
+        return "PNG"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "GIF"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "WebP"
+    return None
+
+
+def still_problem(path):
+    """Why the still at `path`, a path relative to the site, is no still by its own bytes; None when it is one. A still named neither .png nor
+    .webp is refused, but one that motion() names, a GIF, which is left to the GIF rules and their own words. A .png still starts with the PNG signature, so a browser that sniffs it finds no GIF or WebP, and
+    none of its chunks, walked from the signature to IEND, is acTL, the chunk that makes a PNG move. A .webp still is a RIFF WEBP file: none of
+    its chunks, walked to the end its RIFF header gives, is ANIM, and its VP8X, where it has one, sets no animation flag. The chunks are walked by
+    their lengths, never searched for the four letters, which compressed data can hold by chance; a chunk that runs past the file is refused."""
+    data, name = (site / path).read_bytes(), path.lower()
+    if name.endswith(".png"):
+        kind = sniffed(data)
+        if kind != "PNG":
+            return f"its bytes are a {kind}'s, not a PNG's" if kind else "its bytes do not start with the PNG signature"
+        i = len(PNG_SIGNATURE)
+        while i + 12 <= len(data):
+            length, chunk = int.from_bytes(data[i:i + 4], "big"), data[i + 4:i + 8]
+            if i + 12 + length > len(data):
+                break
+            if chunk == b"acTL":
+                return "it holds an acTL chunk, so it is an animated PNG"
+            if chunk == b"IEND":
+                return None
+            i += 12 + length
+        return "its chunks do not run whole to IEND"
+    if name.endswith(".webp"):
+        kind = sniffed(data)
+        if kind != "WebP":
+            return f"its bytes are a {kind}'s, not a WebP's" if kind else "its bytes are not a RIFF WEBP file"
+        end, i = 8 + int.from_bytes(data[4:8], "little"), 12
+        while i < end:
+            length, chunk = int.from_bytes(data[i + 4:i + 8], "little"), data[i:i + 4]
+            if end > len(data) or i + 8 + length > end:
+                return "its chunks do not run whole to the end its RIFF header gives"
+            if chunk == b"ANIM":
+                return "it holds an ANIM chunk, so it is an animated WebP"
+            if chunk == b"VP8X" and length and data[i + 8] & 0x02:
+                return "its VP8X chunk sets the animation flag, so it is an animated WebP"
+            i += 8 + length + (length & 1)
+        return None
+    return None if motion(path) else "it is named neither .png nor .webp, so it is no still these rules read"
+
+
+class BlogPage(HTMLParser):
+    """What the blog's check needs of a page: every address a src, a srcset, a data-once or a data-still names, with its element and attribute, each
+    image with its attributes and the sources of the <picture> it stands in, None outside one, the sources of each <picture>, in their order, and each
+    element that names a play-once GIF, with its attributes, the sources of its <picture> (None outside one) and, for a <source>, its place among them.
+    A browser never selects a <source> that comes after its <picture>'s <img>, so such a source joins neither the picture's sources nor the plays.
+    And every still it names: each data-still, each address in the srcset of a <source> for reduced motion, wherever that source stands, and each
+    <video>'s poster."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.addresses, self.images, self.pictures, self.source_lists, self.plays = [], [], [], [], []
+        self.shown = []                                 # per open <picture>: whether its <img> has come
+        self.lang, self.hreflang, self.markdown, self.videos = None, [], [], []
+        self.stills = []
+        self.text, self.alts, self.pres = [], [], []    # its text outside <script> and <style>, its alts, and each <pre>'s lines
+        self.h1, self.in_h1 = [], 0                     # each <h1>'s text, and how deep in one
+        self.descs, self.stylesheets = [], []           # each description and og:description, as (which, content); each stylesheet's href
+        self.skip, self.pre = 0, None                   # how deep in <script> or <style>; the <pre> being read: its spans, its lines, its text
+
+    def handle_starttag(self, tag, attrs):
+        a = {key: value or "" for key, value in attrs}
+        if tag in ("script", "style"):
+            self.skip += 1
+        if tag == "h1":
+            self.h1.append("")
+            self.in_h1 += 1
+        if tag == "meta" and (a.get("name") == "description" or a.get("property") == "og:description"):
+            self.descs.append(("description" if a.get("name") == "description" else "og:description", a.get("content", "")))
+        if tag == "link" and "stylesheet" in a.get("rel", "").lower().split():
+            self.stylesheets.append(a.get("href", ""))
+        if "alt" in a:
+            self.alts.append(a["alt"])
+        if tag == "pre":
+            self.pre = {"spans": [], "lines": [], "text": []}
+        elif tag == "span" and self.pre is not None:
+            line = "ln" in a.get("class", "").split() and not any(self.pre["spans"])
+            self.pre["spans"].append(line)
+            if line:
+                self.pre["lines"].append("")
+        if "data-still" in a:
+            self.stills.append((tag, "data-still", a["data-still"]))
+        if tag == "video" and a.get("poster"):
+            self.stills.append((tag, "poster", a["poster"]))
+        if tag == "source" and REDUCED_MOTION in re.sub(r"\s+", "", a.get("media", "").lower()):
+            self.stills += [(tag, "srcset", url) for url in srcset_urls(a.get("srcset", ""))]
+        if tag == "html":
+            self.lang = a.get("lang")
+        if "hreflang" in a:
+            self.hreflang.append(a["hreflang"])
+        if tag == "link" and a.get("rel") == "alternate" and a.get("type") == "text/markdown":
+            self.markdown.append(a)
+        if tag == "meta" and a.get("property") == "og:video":
+            self.videos.append(a.get("content", ""))
+        if "src" in a:
+            self.addresses.append((tag, "src", a["src"]))
+        if "srcset" in a:
+            self.addresses += [(tag, "srcset", url) for url in srcset_urls(a["srcset"])]
+        self.addresses += [(tag, key, a[key]) for key in ("data-once", "data-still") if key in a]
+        after_img = tag == "source" and bool(self.shown) and self.shown[-1]
+        if tag == "picture":
+            self.pictures.append([])
+            self.source_lists.append(self.pictures[-1])
+            self.shown.append(False)
+        elif tag == "source" and self.pictures and not after_img:
+            self.pictures[-1].append(a)
+        elif tag == "img":
+            self.images.append((a, self.pictures[-1] if self.pictures else None))
+            if self.shown:
+                self.shown[-1] = True
+        if "data-once" in a and not after_img:
+            sources = self.pictures[-1] if self.pictures else None
+            self.plays.append((tag, a, sources, len(sources) - 1 if tag == "source" and sources is not None else None))
+
+    def handle_endtag(self, tag):
+        if tag == "picture" and self.pictures:
+            self.pictures.pop()
+            self.shown.pop()
+        if tag in ("script", "style") and self.skip:
+            self.skip -= 1
+        if tag == "h1" and self.in_h1:
+            self.in_h1 -= 1
+        if tag == "span" and self.pre is not None and self.pre["spans"]:
+            self.pre["spans"].pop()
+        if tag == "pre" and self.pre is not None:
+            self.pres.append(self.pre["lines"] or "".join(self.pre["text"]).split("\n"))
+            self.pre = None
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.text.append(data)
+        if self.in_h1:
+            self.h1[-1] += data
+        if self.pre is not None:
+            self.pre["text"].append(data)
+            if any(self.pre["spans"]):
+                self.pre["lines"][-1] += data
+
+
+FULL_ID = re.compile(r"(?<![\w.‹›-])((?:owner|[a-z][a-z0-9]*\.[a-z][a-z0-9-]*?)-(\d{8}|‹yyyymmdd›))([^\s<>\"'`,;()\[\]{}]*)")
+LONE_COUNTER = re.compile(r"(?<![^\s…(“\"'\[])-\d{3}(?![\w-])")       # -001 standing alone, as an id's short ending
+KEY = re.compile(r"[0-9a-hjkmnp-tv-z]{6}")                    # lower-case Crockford base32: no i, l, o or u
+ID_FORM = "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"
+
+
+def id_problem(text, where, alone=False):
+    """The first id in `text` that the spec's first edition does not allow, in the words the check fails with; None where there is none. With
+    `alone`, as in an alt or a hail block, a three-digit ending standing alone is refused too."""
+    if "‹yyyymmdd›-" in text:
+        return f"{where} holds ‹yyyymmdd›-, the counter form of an id"
+    for m in FULL_ID.finditer(text):
+        head, day, rest = m.groups()
+        if re.match(r"-\d{3}(?![0-9A-Za-z])", rest):
+            return f"{where} holds the counter id {head + rest[:4]!r}, where an id of the spec's first edition is {ID_FORM}"
+        form = re.match(r"T(\d{2})(\d{2})Z-([0-9A-Za-z]+)", rest)
+        found = head + (form.group(0) if form else rest)
+        if not form or not day.isdigit():
+            return f"{where} holds the id {found!r}, which is not {ID_FORM}"
+        try:
+            datetime.datetime(int(day[:4]), int(day[4:6]), int(day[6:]), int(form.group(1)), int(form.group(2)))
+        except ValueError:
+            return f"{where} holds the id {found!r}, whose date and minute are no UTC minute"
+        if not KEY.fullmatch(form.group(3)):
+            return f"{where} holds the id {found!r}, whose key is not 6 characters of lower-case Crockford base32"
+        if re.match(r"[-_]\d{3}(?![0-9A-Za-z])", rest[form.end():]):
+            return f"{where} holds the counter id {found + rest[form.end():form.end() + 4]!r}, where an id of the spec's first edition is {ID_FORM}"
+    lone = LONE_COUNTER.search(text) if alone else None
+    return f"{where} holds {lone.group(0)!r}, a three-digit counter's ending standing alone" if lone else None
+
+
+def one_heading(rel, page, raw):
+    """The index's one <h1>, with its description and og:description in its words."""
+    plain = lambda text: text.replace("\xa0", " ").strip()
+    if len(page.h1) != 1:
+        return f"{rel} has {len(page.h1)} <h1>, where the index has one, its opening"
+    heading = plain(page.h1[0])
+    for name in ("description", "og:description"):
+        said = [plain(content) for which, content in page.descs if which == name]
+        if said != [heading]:
+            return f"{rel}'s {name} reads {said[0] if said else None!r}, not the words of its <h1>, {heading!r}"
+    return None
+
+
+def images_loaded(rel, page, raw):
+    """Every image on the index with its width, height and alt; the first card's image at once, every other lazily."""
+    first = next((i for i, (_attrs, sources) in enumerate(page.images) if sources is not None), None)
+    for i, (attrs, _sources) in enumerate(page.images):
+        src = attrs.get("src", "")
+        missing = [key for key in ("width", "height", "alt") if key not in attrs]
+        if missing:
+            return f"{rel} shows the image {src!r} without its {' and '.join(missing)}"
+        if i == first and (attrs.get("loading") != "eager" or attrs.get("fetchpriority") != "high"):
+            return f'{rel} shows its first card\'s image {src!r} without loading="eager" and fetchpriority="high"'
+        if i != first and attrs.get("loading") != "lazy":
+            return f'{rel} shows the image {src!r} without loading="lazy", and only the first card\'s image loads at once'
+    return None
+
+
+def files_there(rel, page, raw):
+    """Every image, srcset entry and stylesheet the index names, a file of the build."""
+    named = ([("image", attrs.get("src", "")) for attrs, _sources in page.images] + [("srcset entry", url) for _tag, key, url in page.addresses if key == "srcset"]
+             + [("stylesheet", href) for href in page.stylesheets])
+    for kind, url in named:
+        target = in_site(rel, url)
+        if target is None or not (site / target).resolve().is_relative_to(site.resolve()) or not (site / target).is_file():
+            return f"{rel} names the {kind} {url!r}, and that is no file of the build"
+    return None
+
+
+def no_sample(rel, page, raw):
+    """No sample page's mark on the index."""
+    for mark in ("SAMPLE", "samples/"):
+        if (re.search(r"(?<![\w.-])samples/", raw) if mark == "samples/" else mark in raw):
+            return f"{rel} holds {mark!r}, the mark of a sample page, which the blog never ships"
+    return None
+
+
+INDEX_GUARDS = (one_heading, images_loaded, files_there, no_sample)
+
+
+def ids_problem(rel, page, markdown):
+    """The first id the blog post page `rel`, with its Markdown version, shows against the spec's first edition, or two hail blocks that share an
+    id; None where there is none."""
+    hails = []
+    for lines in page.pres:
+        lines = [line.rstrip() for line in lines]
+        while lines and not lines[0]:
+            lines.pop(0)
+        while lines and not lines[-1]:
+            lines.pop()
+        if lines and lines[0].strip() == "hail/1" and lines[-1].strip() == "end hail/1":
+            hails.append(lines)
+    for lines in hails:
+        problem = id_problem("\n".join(lines), f"a hail block on {rel}", alone=True)
+        if problem:
+            return problem
+    for alt in page.alts:
+        problem = id_problem(alt, f"an alt on {rel}", alone=True)
+        if problem:
+            return problem
+    md = rel[:-len(".html")] + ".md"
+    for text, where in (("\n".join(page.text), f"{rel}'s text"), (markdown, md)):
+        problem = id_problem(text, where)
+        if problem:
+            return problem
+    for alt in re.findall(r"!\[([^\]]*)\]\(", markdown):
+        problem = id_problem(alt, f"an alt in {md}", alone=True)
+        if problem:
+            return problem
+    shown = {}
+    for lines in hails:
+        own = [l.strip()[len("id:"):].strip() for l in lines if l.strip().startswith("id:")]
+        if own and shown.setdefault(own[0], lines) != lines:
+            return f"{rel} shows two different hail blocks with the same id, {own[0]}"
+    return None
+
+
+def blog_problem(rel, page):
+    """The first thing the blog page `rel` shows that the blog refuses, in the words the check fails with; None where there is none."""
+    for tag, attr, url in page.addresses:
+        target = in_site(rel, url)
+        if target is None or not (site / target).resolve().is_relative_to(site.resolve()) or not (site / target).is_file():
+            return f"{rel} names {url!r} ({tag} {attr}), and that is no file of the site"
+    for attrs, sources in page.images:
+        src = attrs.get("src", "")
+        author = sources is None and (in_site(rel, src) or "").startswith(AUTHOR_PICTURES)
+        if author and attrs.get("alt") != "":
+            return f"{rel} shows the author's picture {src!r} without an empty alt, though the name beside it says who it is"
+        if not author and not attrs.get("alt", "").strip():
+            return f"{rel} shows the image {src!r} without alt text"
+        kind = motion(in_site(rel, src))
+        if not kind:
+            continue
+        if sources is None:
+            return f"{rel} shows the {kind} {src!r} outside a <picture>, so a reader who turns motion off gets no still"
+        still = still_of(in_site(rel, src))
+        if not any(re.sub(r"\s+", "", source.get("media", "").lower()) == REDUCED_MOTION and any(in_site(rel, url) == still for url in srcset_urls(source.get("srcset", "")))
+                   for source in sources):
+            return f'{rel} shows the {kind} {src!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
+    for sources in page.source_lists:
+        for i, source in enumerate(sources):
+            for url in srcset_urls(source.get("srcset", "")):
+                kind = motion(in_site(rel, url))
+                if not kind:
+                    continue
+                still = still_of(in_site(rel, url))
+                if not any(REDUCED_MOTION in re.sub(r"\s+", "", earlier.get("media", "").lower())
+                           and any(in_site(rel, other) == still for other in srcset_urls(earlier.get("srcset", ""))) for earlier in sources[:i]):
+                    return (f'{rel} offers the {kind} {url!r} in a <source> with no <source> for reduced motion before it whose srcset names its still, '
+                            f'{still}')
+    for tag, attrs, sources, place in page.plays:
+        once, rest = attrs["data-once"], attrs.get("data-still", "")
+        still, kind = still_of(in_site(rel, once)), motion(in_site(rel, once)) or "GIF"
+        if in_site(rel, rest) != still:
+            return f"{rel} plays the {kind} {once!r} and rests on {rest!r}, which is not its still, {still}"
+        if sources is None:
+            return f"{rel} plays the {kind} {once!r} outside a <picture>, so a reader who turns motion off gets no still"
+        names_still = [source for source in (sources if place is None else sources[:place])
+                       if any(in_site(rel, url) == still for url in srcset_urls(source.get("srcset", "")))]
+        if place is None and not any(re.sub(r"\s+", "", source.get("media", "").lower()) == REDUCED_MOTION for source in names_still):
+            return f'{rel} plays the {kind} {once!r} in a <picture> with no <source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, {still}'
+        if place is not None and not any(REDUCED_MOTION in re.sub(r"\s+", "", source.get("media", "").lower()) for source in names_still):
+            return f"{rel} plays the {kind} {once!r} from a <source> with no <source> for reduced motion before it whose srcset names its still, {still}"
+    return None
+
+
+blog_pages = sorted(path.relative_to(site).as_posix() for path in (site / BLOG).glob("*.html")) if (site / BLOG).is_dir() else []
+blog_parsed = {}
+for rel in blog_pages:
+    blog_parsed[rel] = BlogPage()
+    blog_parsed[rel].feed((site / rel).read_text(encoding="utf-8"))
+    blog_parsed[rel].close()
+for rel, page in blog_parsed.items():
+    if len(page.videos) > 1:
+        fail(f"{rel} names {len(page.videos)} share videos in og:video, not one")
+    for url in page.videos:
+        target = in_site(rel, url)
+        if target is None or not target.endswith(".mp4") or not (site / target).is_file():
+            fail(f"{rel} names {url!r} in og:video, and that is no MP4 file of the site")
+share_videos = {in_site(rel, url) for rel, page in blog_parsed.items() for url in page.videos}
+blog_files = sorted(path for path in (site / BLOG).rglob("*") if path.is_file()) if (site / BLOG).is_dir() else []
+stills = {}                                     # each still the figure rules name, and who names it
+for path in blog_files:
+    rel = path.relative_to(site).as_posix()
+    if motion(rel) and (site / still_of(rel)).is_file():
+        stills.setdefault(still_of(rel), f"the still of {rel}")
+for rel, page in blog_parsed.items():
+    for tag, attr, url in page.stills:
+        target = in_site(rel, url)
+        if target is not None and (site / target).resolve().is_relative_to(site.resolve()) and (site / target).is_file():
+            if attr == "poster" and motion(target):
+                fail(f"{rel} shows the {motion(target)} {url!r} as a <video>'s poster: a poster must not move, and the GIF rules never read one")
+            stills.setdefault(target, f"a still {rel} names ({tag} {attr})")
+for still, named in sorted(stills.items()):
+    problem = still_problem(still)
+    if problem:
+        fail(f"{still}, {named}, is not a still by its own bytes: {problem}")
+for path in blog_files:
+    rel = path.relative_to(site).as_posix()
+    if rel in share_videos and path.stat().st_size > SHARE_VIDEO_LIMIT:
+        fail(f"{rel} is {path.stat().st_size:,} bytes, more than the {SHARE_VIDEO_LIMIT:,} a share video, the file a post's og:video names, may hold")
+    elif rel not in share_videos and path.stat().st_size > BLOG_LIMIT:
+        fail(f"{rel} is {path.stat().st_size:,} bytes, more than the {BLOG_LIMIT:,} a file under {BLOG}/ may hold")
+    if motion(rel) and not (site / still_of(rel)).is_file():
+        fail(f"{rel} has no still beside it, {still_of(rel)}, for a reader who turns motion off")
+    if path.suffix == ".js" and REQUEST_APIS.search(path.read_text(encoding="utf-8")):
+        fail(f"{rel}, the blog's script, can ask for something: {REQUEST_APIS.search(path.read_text(encoding='utf-8')).group(0)}")
+figures = 0
+for rel in blog_pages:
+    page = blog_parsed[rel]
+    problem = blog_problem(rel, page)
+    if problem:
+        fail(problem)
+    if page.lang != "en" or page.hreflang:
+        fail(f"{rel} is not an English page alone: it says lang={page.lang!r}" + (f" and carries hreflang {page.hreflang[0]!r}" if page.hreflang else ""))
+    if rel == f"{BLOG}/index.html":
+        raw = (site / rel).read_text(encoding="utf-8")
+        for guard in INDEX_GUARDS:
+            problem = guard(rel, page, raw)
+            if problem:
+                fail(problem)
+    if rel != f"{BLOG}/index.html":
+        twin = [a.get("href", "") for a in page.markdown]
+        if len(twin) != 1 or in_site(rel, twin[0]) != rel[:-len(".html")] + ".md" or not (site / rel[:-len(".html")]).with_suffix(".md").is_file():
+            fail(f"{rel} does not name its Markdown version beside it, {rel[:-len('.html')]}.md, in one <link rel=\"alternate\" type=\"text/markdown\">")
+        problem = ids_problem(rel, page, (site / rel[:-len(".html")]).with_suffix(".md").read_text(encoding="utf-8"))
+        if problem:
+            fail(problem)
+    figures += len({id(sources) for _attrs, sources in page.images if sources is not None})         # a figure is a <picture> that shows an image
+print(f"site check: the {len(blog_pages)} blog page(s) and their {figures} figure(s) passed: each figure has alt text and a still, each author's picture "
+      f"an empty alt, each page is English "
+      f"alone and each post names its Markdown version, the blog's script asks for nothing, and each of the {len(blog_files)} file(s) under {BLOG}/ "
+      f"is within {BLOG_LIMIT:,} bytes" + (f", but its {len(share_videos)} share video(s), the file(s) og:video names, within {SHARE_VIDEO_LIMIT:,}"
+                                             if share_videos else ""))

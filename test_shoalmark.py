@@ -6544,7 +6544,7 @@ def _landing_problems(src):
     for page in ("docs/index.md", "docs/de/index.md"):
         if not src[page].startswith("---\ntemplate: landing.html\n"):
             bad.append(f"{page} does not select the landing's template")
-    if (en.get("switch_lang"), de.get("switch_lang")) != ("de", "en") or [code.count(f'hreflang="{h}"') for h in ("en", "de", "x-default")] != [1, 1, 1]:
+    if (en.get("switch_lang"), de.get("switch_lang")) != ("de", "en") or [code.count(f'<link rel="alternate" hreflang="{h}"') for h in ("en", "de", "x-default")] != [1, 1, 1]:
         bad.append("the landings do not name each other: the switch's hreflang, and the alternate links with English the default")
     return bad
 
@@ -7843,7 +7843,7 @@ check("FM-006 · the ruled words · their check is not blind: each of the German
 # --- FM-006 · B1 · the header: Docs past a separator as the sand button, the language switch as an outline button with a globe ------------------------------------
 # The bar's links within the page (1P agents … start) are parted by a short pixel bar from the one link that leaves it, Docs (Doku), the secondary button's sand with an arrow
 # out of a box; the language switch is the same small button in outline with a globe. Both icons are one colour in the button's ink and hidden from screen readers; the names
-# and the switch's hreflang, lang and aria-label are as they were. The anchors and the separator yield together below 1208 px (English) and 1273 px (German), and below 526 px
+# and the switch's hreflang, lang and aria-label are as they were. The anchors and the separator yield together below 1280 px (English) and 1346 px (German), and below 526 px
 # the word beside the mark yields, never the mark or its aria-label.
 _HEADER_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
 
@@ -7872,10 +7872,10 @@ def _header_problems(src):
     if (words["en"].get("nav_docs"), words["de"].get("nav_docs")) != ("Docs", "Doku"):
         bad.append("Docs and Doku are not the names they were")
     # the anchors yield together with the separator, at the breakpoints
-    en_rule = "@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}"
-    de_rule = "@media (max-width:1272px){html:lang(de) .hud nav a:not(.docs),html:lang(de) .hud nav .sep{display:none}}"
+    en_rule = "@media (max-width:1279px){.hud nav a:not(.docs):not(.blog),.hud nav .sep{display:none}}"
+    de_rule = "@media (max-width:1345px){html:lang(de) .hud nav a:not(.docs):not(.blog),html:lang(de) .hud nav .sep{display:none}}"
     if en_rule not in code or de_rule not in code:
-        bad.append("the anchors and the separator do not yield together below 1208 px in English and 1273 px in German")
+        bad.append("the anchors and the separator do not yield together below 1280 px in English and 1346 px in German")
     # the word beside the mark yields below 526 px, and nothing else of the mark does
     word = re.search(r'<a class="brand" href="#top" aria-label="\{\{ w\.hud_brand_aria \}\}"><svg[^>]*><use href="#pricke" fill="#d9e4ec"/></svg><span class="wd">shoalmark</span></a>', code)
     rule = re.findall(r"@media \(max-width:(\d+)px\)\{\.hud \.brand ([^}]*)\}\}?", code)
@@ -7898,8 +7898,8 @@ _hctl = {"no separator": _with(_hs, "overrides/landing.html", '<span class="sep"
          "the switch without its aria-label": _with(_hs, "overrides/landing.html", ' aria-label="{{ w.switch_aria }}" title=', " title="),
          "an icon in two colours": _with(_hs, "overrides/landing.html", '<svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path shape-rendering="crispEdges" d="M4 0h3v1h-3Z', '<svg class="bi" viewBox="0 0 7 7" aria-hidden="true" focusable="false"><path fill="#fff" shape-rendering="crispEdges" d="M4 0h3v1h-3Z'),
          "Docs renamed": _with(_hs, "overrides/partials/landing/de.html", '"nav_docs": "Doku"', '"nav_docs": "Dokumentation"'),
-         "the anchors yield alone": _with(_hs, "overrides/landing.html", "@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "@media (max-width:1207px){.hud nav a:not(.docs){display:none}}"),
-         "the German breakpoint as it was": _with(_hs, "overrides/landing.html", "@media (max-width:1272px)", "@media (max-width:1195px)"),
+         "the anchors yield alone": _with(_hs, "overrides/landing.html", "@media (max-width:1279px){.hud nav a:not(.docs):not(.blog),.hud nav .sep{display:none}}", "@media (max-width:1279px){.hud nav a:not(.docs):not(.blog){display:none}}"),
+         "the German breakpoint as it was": _with(_hs, "overrides/landing.html", "@media (max-width:1345px)", "@media (max-width:1272px)"),
          "the mark yielding with its word": _with(_hs, "overrides/landing.html", "@media (max-width:525px){.hud .brand .wd{display:none}}", "@media (max-width:525px){.hud .brand{display:none}}"),
          "the word yielding below 700 px": _with(_hs, "overrides/landing.html", "@media (max-width:525px){.hud .brand .wd{display:none}}", "@media (max-width:699px){.hud .brand .wd{display:none}}"),
          "the word outside its span": _with(_hs, "overrides/landing.html", '<span class="wd">shoalmark</span></a>', "shoalmark</a>")}
@@ -19097,8 +19097,8 @@ else:
                             "with its fold closed, the label, Close, the copied line, Copy again and step 3 are in view without scrolling"),
                 "unfolds": ("a fold that keyboard does not open", _mutate("unfolds", "index.html", "</body>", '<script>document.addEventListener("click", e => { if (e.target.closest("summary")) e.preventDefault() })</script></body>'),
                             "fold 1 opens and closes by keyboard"),
-                "wraps": ("a top bar whose anchors show 30 px too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1207px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "@media (max-width:1177px){.hud nav a:not(.docs),.hud nav .sep{display:none}}", "bar"),
-                          "the top bar's anchors, and the separator with them, first show at 1208 px"),
+                "wraps": ("a top bar whose anchors show 30 px too early for the widest hi-score", _mutate("wraps", "index.html", "@media (max-width:1279px){.hud nav a:not(.docs):not(.blog),.hud nav .sep{display:none}}", "@media (max-width:1249px){.hud nav a:not(.docs):not(.blog),.hud nav .sep{display:none}}", "bar"),
+                          "the top bar's anchors, and the separator with them, first show at 1280 px"),
                 "box-aria": ("a prompt box whose button does not say aria-expanded", _mutate("box-aria", "index.html", 'more.setAttribute("aria-expanded", on);', "", "390x844"),
                              "the button opens the box by Enter and folds it back by Space"),
                 "box-shut": ("a prompt box that never opens whole", _mutate("box-shut", "index.html", 'if (on) fit(); else ta.style.height = "";', 'ta.style.height = "";', "390x844"),

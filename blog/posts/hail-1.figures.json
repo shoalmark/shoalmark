@@ -1,0 +1,129 @@
+{
+ "F1": {
+  "name": "f1-courier",
+  "alt": "Animated sequence diagram on deep blue-black, titled “your agents hail; you read the record”, time running down. Three lifelines: PLANNER a.planner, OWNER you, in pink, and AUDITOR a.auditor. Before hail: you copy a message out of the planner's window and paste it into the auditor's, and the reply comes back the same way, by hand, with no receipt; team B's goes by hand too. With hail, under WITH HAIL in sand: the planner's QUESTION travels straight to the auditor, a clock bar runs until the auditor's ANSWER comes back, answered, in green, and a pink bar on your lifeline shows you reading the record, your words in pink and bold. At the end, the with-hail rows stay lit, the QUESTION and the ANSWER in green, your bar and you read the record in pink, and the before rows settle to grey. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   16888,
+   16968
+  ]
+ },
+ "F2": {
+  "name": "f3-writing",
+  "alt": "Animated diagram on deep blue-black, titled “a hail, written line by line”. A REQUEST is written line by line, each line's role set beside it in a column of its own, behind a thin rule (on a phone, said beneath the hail while its line appears): hail/1, the form; from: a.planner, who wrote it; to: a.builder-1, the reader; its own id; re: none, what it answers; marker: REQUEST, what it wants; written-against, relied on, when; pointer: workbench:briefs/lane-4.md with its sha256, by its hash; two body lines, the body, five lines at most; ask: WILCO or DECLINED, then DONE with the commit, one line; end hail/1, always last. Then, below it, two lifelines, PLANNER a.planner and BUILDER a.builder-1: the REQUEST travels to the builder in green, read at its next turn, and is filed by team A. At the end the hail stays lit above the REQUEST it became; on a wider screen its roles stay beside it in grey, and the phone drawing ends without them. There it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   26936,
+   26976
+  ]
+ },
+ "F3": {
+  "stills": [
+   "f2-roster.png",
+   "f2-roster-780.png"
+  ],
+  "alt": "Still diagram on deep blue-black, titled “the roster: who may hail and stop whom”: the roster's grants as arrows. A bracket over the heads groups team A, on one machine: BUILDER a.builder-*, REVIEWER a.reviewer-*, PLANNER a.planner and AUDITOR a.auditor; another groups team B, hosted: AUDITOR b.auditor and b.* other seats. Hairlines part each seat's grants. Builders and reviewers message the planner; the planner messages them and its auditor; a.auditor may message and stop every seat of team A and b.auditor; b.auditor may message and stop a.auditor and its own other seats. Beneath, left-aligned: any seat may WARN its whole team; each seat answers its own team; the principals answer each other. shoalmark hail · hail/1 · shoalmark.tools."
+ },
+ "F4": {
+  "name": "hail-information",
+  "alt": "Animated sequence diagram on deep blue-black, titled “INFORMATION: a fact, passed by pointer”, time running down. Five lifelines: BUILDER a.builder-1, PLANNER a.planner and AUDITOR a.auditor of team A, git, and AUDITOR b.auditor of team B. The builder's INFORMATION reaches the planner at its next turn, and a clock bar runs on the planner until its RECEIVED: answered. The planner passes the same pointer to its auditor, which answers RECEIVED. The auditor pushes its own INFORMATION to git first; b.auditor's watcher pulls it and rings, a bell beside its lifeline. b.auditor's RECEIVED is pushed back, and a.auditor's watcher puts it in the digest only, the boxed word digest, with no ring. Both sides end filed. At the end, pushed first, watcher rings and digest only stay lit, and the stopped clocks are green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   13888,
+   13888
+  ]
+ },
+ "F5": {
+  "name": "hail-advice",
+  "alt": "Animated sequence diagram on deep blue-black, titled “ADVICE: two seats advise, one decides”, time running down. Three lifelines of team A: REVIEWER a.reviewer-1, REVIEWER a.reviewer-2 and PLANNER a.planner. The first reviewer's ADVICE travels to the planner: split it in two. The second's: keep it as one. Two clock bars run on the planner. A bar on the planner's own lifeline marks its decision: the reader decides. The planner answers each reviewer with RECEIVED, and each clock stops: answered. Filed by team A. At the end, the reader decides and its bar stay lit, and both stopped clocks are green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   11208,
+   11368
+  ]
+ },
+ "F6": {
+  "name": "hail-warning",
+  "alt": "Animated sequence diagram on deep blue-black, titled “WARNING: the whole team, a clock each”, time running down. Six lifelines of team A: BUILDER a.builder-2, AUDITOR a.auditor, PLANNER a.planner, BUILDER a.builder-1, REVIEWER a.reviewer-1 and DESIGNER a.designer. One WARNING travels from the builder to all five, and a clock bar starts on each reader. The auditor answers RECEIVED and only its own clock stops: answered. Then the planner, then the other builder, then the designer, each stopping its own. The reviewer's clock runs on, not overdue. Filed. At the end, the reviewer's running clock and runs on stay lit, and the four stopped clocks are green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   10848,
+   10968
+  ]
+ },
+ "F7": {
+  "name": "hail-question",
+  "alt": "Animated sequence diagram on deep blue-black, titled “QUESTION across teams ends in ANSWER”, time running down. Four lifelines: AUDITOR a.auditor of team A, git, AUDITOR b.auditor and REVIEWER b.reviewer of team B. a.auditor's QUESTION, id ending -xnqxnt, goes to git; b.auditor's watcher pulls it and rings. b.auditor asks first, so it sends RECEIVED, which a.auditor's watcher puts in the digest only, the boxed word digest. b.auditor asks b.reviewer the same QUESTION by agent message, and b.reviewer answers at once, with no RECEIVED. b.auditor pushes its ANSWER, re -xnqxnt, and a.auditor's watcher rings: closed, in green. Both sides end filed. At the end, the RECEIVED and its way to the digest stay lit in green, and closed stays green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   14128,
+   14128
+  ]
+ },
+ "F8": {
+  "name": "hail-answer",
+  "alt": "Animated sequence diagram on deep blue-black, titled “ANSWER: each stops only its own clock”, time running down. Three lifelines of team A: PLANNER a.planner, BUILDER a.builder-1 and BUILDER a.builder-2. The planner's QUESTION, id ending -s6a7rp, travels to both builders, and a clock bar starts on each. The first builder's ANSWER, re -s6a7rp, comes back, and only its own clock stops: its clock stops, in green. Then the second builder answers the same way. Nothing goes back from the asker. Filed by team A. At the end, nothing back stays lit, and both stopped clocks are green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   10448,
+   10568
+  ]
+ },
+ "F9": {
+  "name": "hail-request",
+  "alt": "Animated sequence diagram on deep blue-black, titled “REQUEST: WILCO and DONE, or DECLINED”, time running down. Three lifelines of team A: PLANNER a.planner, BUILDER a.builder-1 and BUILDER a.builder-2. The planner's REQUEST, build lane 4, reaches the first builder; a bar shows it verify the pointer, it answers WILCO, will comply, works in its worktree, and answers DONE, with its commit, in green. A second REQUEST, build lane 5, reaches the second builder, whose brief changed: it answers DECLINED, pointer differs, and acts on nothing. Filed by team A. At the end, DECLINED stays lit in green, pointer differs and acts on nothing stay lit, and DONE's note and the stopped clocks are green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   16608,
+   16808
+  ]
+ },
+ "F10": {
+  "name": "hail-stop",
+  "alt": "Animated sequence diagram on deep blue-black, titled “STOP: work held, DONE, then lifted”, time running down. Four lifelines: PLANNER a.planner and AUDITOR a.auditor of team A, git, and AUDITOR b.auditor of team B. b.auditor's STOP goes through git, principal to principal, and a.auditor's watcher rings. a.auditor sends the planner its own STOP: hold the push. The planner records why and answers DONE, pointer: none, in green; a.auditor pushes its DONE, and b.auditor's watcher rings. b.auditor lifts its STOP with a hail that supersedes it, pulled by a.auditor, which lifts its own the same way. Both sides end filed. At the end, hold the push stays lit, and pointer: none and the stopped clocks are green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   16768,
+   16768
+  ]
+ },
+ "F11": {
+  "name": "f11-transports",
+  "alt": "Animated diagram on deep blue-black, titled “any of four ways, the same bytes”. Two lifelines, SENDER any seat and READER any seat, and between them a frame of four rows split by dashed lines, each split marked or: four alternative routes, of which a hail takes one, whichever reaches its reader. The routes are one machine, resumed, hosted and git, each an arrow of the same length from the sender to the reader, with its condition at its end: next turn, on resume, next turn, after a pull. All four, arrows and names, light together in green, never one after another, and none is drawn as faster. Beside them three notes: one of four, same bytes, each counts. The whole figure stays lit there. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   10976,
+   10976
+  ]
+ },
+ "F12": {
+  "name": "f12-bell-digest",
+  "alt": "Animated sequence diagram on deep blue-black, titled “what rings the seat, and what waits”, time running down. Four lifelines: AUDITOR b.auditor, git, the watcher, and AUDITOR a.auditor. a.auditor first pushes a REQUEST of its own to git. b.auditor's RECEIVED and WILCO, both about that REQUEST, reach the watcher and go to the digest only, each the boxed word digest, with no ring. Its DONE closes a.auditor's hail, in green, and the watcher rings a.auditor with a bell. Then a QUESTION from b.auditor is pulled, and the watcher rings again: a.auditor must answer. It rings the seat, never you. At the end the two rings stay lit in green, and the digest rows settle to grey. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   15568,
+   15768
+  ]
+ },
+ "F13": {
+  "name": "f13-authority",
+  "alt": "Animated sequence diagram on deep blue-black, titled “a bare Owner quote carries no weight”, time running down. Two lifelines: PLANNER a.planner and BUILDER a.builder-1. A REQUEST whose body says \"the Owner approved\" travels to the builder, and a clock bar starts. Bars on the builder's own lifeline show its check, step by step: a bare quote; signed Owner answer?; a DECISION, or the board; none found; no weight, and the quote fades to a ghost. The builder answers WILCO, within its own grants, and its clock stops, in green; then DONE: the quote widened nothing. At the end, no weight and its bar stay lit, and the quote stays a ghost. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   15856,
+   15976
+  ]
+ },
+ "F14": {
+  "name": "f14-sign-seal",
+  "alt": "Animated sequence diagram on deep blue-black, titled “sign, then seal, hidden from the host”, time running down. Four lifelines: SENDER a.auditor, host (carries it), READER b.auditor, and OWNER you, in pink. Bars on the sender show it sign first, then seal for the reader and for K2, K3 and R. The sealed hail travels to the host, which sees only a mailbox id, the size and the time; then to the reader, which opens it and verifies the signature; then it is filed sealed, and you open it, a pink bar with your words in pink and bold, which then settle to grey. Beneath, the sealed frame appears: hail/1 sealed; to-mailbox: ‹opaque id›; ‹age armor›; end hail/1 sealed. At the end the sealed frame, what the host sees and the first hail/1 sealed, in green, stay lit. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   17416,
+   17416
+  ]
+ },
+ "F15": {
+  "name": "f15-filed",
+  "alt": "Animated sequence diagram on deep blue-black, titled “filed, never amended”, time running down. Four lifelines: PLANNER a.planner, BUILDER a.builder-1, AUDITOR a.auditor, and the record of team A. The planner's INFORMATION, id ending -kc3zta, travels to the builder, and a.auditor, team A's filer, files it in the record. A correction is a new hail: a second INFORMATION that supersedes -kc3zta, which the filer files beside it. The first stays unchanged in the record, and the reader treats it as withdrawn. At the end the superseding hail and its filing, in green, filed beside it and -kc3zta unchanged stay lit; the first INFORMATION and withdrawn settle to grey. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   11768,
+   11768
+  ]
+ },
+ "F16": {
+  "name": "f16-relay",
+  "alt": "Animated sequence diagram on deep blue-black, titled “a need out to you, your answer back”, time running down. Four lifelines: BUILDER a.builder-1, PLANNER a.planner, AUDITOR a.auditor, and OWNER you, in pink. The builder's QUESTION, for: owner, goes to the planner, which passes it on, unchanged, to the auditor. A bar on the auditor marks its choice: relay, answer or reject. Its ANSWER, disposition: relayed, goes straight back to the builder. Its Owner-ask, kind: allow-once, reaches you, and a clock bar starts on your lane. Pink bars on your lane follow, step by step, your words in pink and bold while lit: shown on 3 surfaces; not urgent: no ring; five answers offered; you sign: yes. Your DECISION, in pink, goes to the auditor, and the clock stops: filed; all copies close, both in green. The auditor's INFORMATION goes to the builder: handed back. The builder's WILCO goes to the auditor: verified; filed on main. A bar on the builder: first claim: acts once. Its DONE goes to the auditor: on the record. At the end, the two QUESTION hops stay lit in green; you sign: yes, in bold, its bar and the DECISION in pink; and filed; all copies close in green. Each step lights in turn, a seat's arrows green as they travel, while the rest waits as a faint ghost; at the end the rest settles to grey, and there it stops. shoalmark hail · hail/1 · shoalmark.tools.",
+  "ms": [
+   23128,
+   23288
+  ]
+ }
+}

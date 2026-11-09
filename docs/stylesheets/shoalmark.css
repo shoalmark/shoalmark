@@ -164,3 +164,13 @@ body[data-md-color-scheme][data-md-color-primary]{
 body[data-md-color-scheme=slate][data-md-color-primary] .md-typeset .week-card.board{border-color:#ee92d4}
 body[data-md-color-scheme=slate][data-md-color-primary] .md-typeset .week-card .wk-board b.hot{color:#ee92d4}
 body[data-md-color-scheme=slate][data-md-color-primary] .md-typeset .week-card .wk-board .chip{border-color:#ee92d4;color:#ee92d4}
+
+/* The Blog button, the blog's own site from every docs page, on the band in both schemes. It sits in the
+   header's source slot, before the repository's link; the slot shows at every width, the link keeps the theme's own
+   breakpoint, and the drawer's copy of the slot leaves the button out (the header already holds it) */
+.md-header__source{display:flex;align-items:center;gap:.8rem;width:auto;max-width:none}
+.md-header__source .md-blog{flex:none;font:700 .55rem/1 "Silkscreen","IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--bandink);border:1px solid var(--drying);padding:.4rem .5rem;text-decoration:none}
+.md-header__source .md-blog:hover,.md-header__source .md-blog:focus-visible{background:var(--drying);color:var(--band)}
+@media screen and (max-width:59.984em){.md-header__source .md-source{display:none}}
+.md-nav__source .md-blog{display:none}

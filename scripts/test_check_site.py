@@ -1,11 +1,12 @@
 """Regression controls for the published site's checks: font sources, link previews, the landing in two languages with its launch state, How it
-works, the Markdown twins and the requests a page makes, and fenced code; run with requirements-docs installed."""
+works, the Markdown twins and the requests a page makes, fenced code, and the blog's figures; run with requirements-docs installed."""
 from pathlib import Path
 import re
 import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 
 CHECKER = Path(__file__).with_name("check_site.py")
 SITE_URL = "https://shoalmark.tools/"
@@ -17,6 +18,73 @@ TWIN = '<p class="door-again"><a class="btn door" href="probe.txt" aria-haspopup
 DOOR_STYLE = ('<style>.btn.door{position:relative;padding-left:50px}\n.door-again{margin:24px 0 0}\n.door-again .btn.door{padding-left:50px}\n'
               '@media (max-width:700px){.btn.door{padding-left:18px}.btn.door::before{top:9px;bottom:9px}}</style>')
 TWIN_TEXT = "# How it works\n\nTry it: the button \"Hand your agents the note\" leads to a note.\n\n```\nnext: owner\n```\n"
+# the blog: a GIF of one pixel and its still, a PNG of one pixel, shown on a blog page as a figure, in a <picture> whose reduced-motion source names the still
+GIF = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+STILL = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x00\x00\x00\x00:~\x9bU\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01"
+         b"H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82")
+# a WebP as the check reads it, by its header alone: the RIFF WEBP file, its VP8X chunk's animation flag set for an animated one
+_WEBP = lambda chunk: b"RIFF" + (4 + len(chunk)).to_bytes(4, "little") + b"WEBP" + chunk
+ANIM_WEBP = _WEBP(b"VP8X" + (10).to_bytes(4, "little") + bytes([0x02, 0, 0, 0]) + bytes(6) + b"ANIM" + (6).to_bytes(4, "little") + bytes(6))
+STILL_WEBP = _WEBP(b"VP8L" + (6).to_bytes(4, "little") + bytes([0x2F, 0, 0, 0, 0, 0]))
+# a still as the check reads it by its own bytes, its chunks walked: a PNG with an acTL chunk after its IHDR moves; one whose text chunk holds the
+# letters acTL and ANIM does not, nor does a WebP still whose odd-length metadata chunk, padded, holds ANIM; a WebP's ANIM chunk or its VP8X's
+# animation flag each makes it move
+_CHUNK = lambda kind, data: len(data).to_bytes(4, "big") + kind + data + zlib.crc32(kind + data).to_bytes(4, "big")
+APNG = STILL[:33] + _CHUNK(b"acTL", bytes(8)) + STILL[33:]
+LETTERS_PNG = STILL[:33] + _CHUNK(b"tEXt", b"Comment\0acTL ANIM") + STILL[33:]
+_VP8X = lambda flags: b"VP8X" + (10).to_bytes(4, "little") + bytes([flags, 0, 0, 0]) + bytes(6)
+ANIM_ONLY_WEBP = _WEBP(_VP8X(0) + b"ANIM" + (6).to_bytes(4, "little") + bytes(6))
+FLAG_ONLY_WEBP = _WEBP(_VP8X(0x02) + b"VP8L" + (6).to_bytes(4, "little") + bytes([0x2F, 0, 0, 0, 0, 0]))
+LETTERS_WEBP = _WEBP(b"VP8L" + (6).to_bytes(4, "little") + bytes([0x2F, 0, 0, 0, 0, 0]) + b"XMP " + (5).to_bytes(4, "little") + b"ANIM!\0")
+BLOG_SOURCE = '<source media="(prefers-reduced-motion: reduce)" srcset="first-post/loop-still.png">'
+BLOG_IMG = '<img src="first-post/loop.gif" alt="A loop of one pixel">'
+# a narrower screen's GIF in a <source> of its own, after the <source> for reduced motion that names its still
+BLOG_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="first-post/small-still.png">'
+BLOG_SMALL = '<source media="(max-width: 640px)" srcset="first-post/small.gif">'
+BLOG_PICTURE = "<picture>" + BLOG_SMALL_STILL + BLOG_SOURCE + BLOG_SMALL + BLOG_IMG + "</picture>"
+BLOG_FIGURE = "<figure>" + BLOG_PICTURE + "<figcaption>A loop.</figcaption></figure>"
+# a <video> whose poster, a still PNG of its own, a reader who turns motion off sees in its place; and beside them two files no page names as a
+# still, which the controls name so: a .jpg holding a GIF's bytes and an SVG that animates
+BLOG_VIDEO = '<video poster="first-post/poster.png" muted playsinline></video>'
+ANIMATED_SVG = (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1">'
+                b'<animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/></rect></svg>')
+# a hail block as a post shows one, a line to each .ln span from hail/1 to end hail/1, its own id on its id: line, in the spec's first edition's form;
+# and the same hail as plain lines
+HAIL_ID = "a.planner-20261108T0812Z-k8chqr"
+
+
+def hail_block(own=HAIL_ID, body="body: one line"):
+    return ('<pre class="ex"><code><span class="ln fr">hail/1</span><span class="ln"><span class="k">from:</span> <span class="v">a.planner</span></span>'
+            f'<span class="ln"><span class="k">id:</span> <span class="v">{own}</span></span><span class="ln">{body}</span><span class="ln fr">end hail/1</span></code></pre>')
+
+
+def plain_hail(own=HAIL_ID, body="body: one line"):
+    return f"<pre><code>hail/1\nfrom: a.planner\nid: {own}\n{body}\nend hail/1\n</code></pre>"
+
+
+# an author's picture, beside the author's name: its alt is empty
+AUTHOR = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1H0z"/></svg>'
+BLOG_AUTHOR = '<p class="by"><img src="assets/seats/builder.svg" alt=""><b>Builder</b></p>'
+BLOG = {"blog/index.html": ('<html lang="en"><head><meta name="description" content="Blog"><meta property="og:description" content="Blog"></head>'
+                            '<body><h1>Blog</h1><ul><li><a href="first-post.html">First post</a></li></ul></body></html>'),
+        "blog/first-post.html": '<html lang="en"><head><link rel="alternate" type="text/markdown" href="first-post.md"></head><body><h1>First post</h1>' + BLOG_AUTHOR + BLOG_FIGURE + BLOG_VIDEO + '<p><a href="index.html">All posts</a></p></body></html>',
+        "blog/first-post.md": "# First post\n", "blog/first-post/loop.gif": GIF, "blog/first-post/loop-still.png": STILL, "blog/first-post/small.gif": GIF, "blog/first-post/small-still.png": STILL,
+        "blog/assets/seats/builder.svg": AUTHOR, "blog/first-post/loop.webp": ANIM_WEBP, "blog/first-post/loop-still.webp": STILL_WEBP,
+        "blog/first-post/poster.png": STILL, "blog/first-post/shot.jpg": GIF, "blog/first-post/shot.svg": ANIMATED_SVG}
+# a figure the post's script plays once, as a post sets it: its stills shown, each play-once GIF in a data-once beside the still it rests on, its
+# data-still, and the <picture>'s sources for reduced motion naming the stills; beside it a still figure; on a page of its own, with their four files
+ONCE_SMALL_STILL = '<source media="(prefers-reduced-motion: reduce) and (max-width: 640px)" srcset="second-post/wave-still.png">'
+ONCE_STILL = '<source media="(prefers-reduced-motion: reduce)" srcset="second-post/wave-780-still.png">'
+ONCE_SMALL = ('<source media="(max-width: 640px)" srcset="second-post/wave-still.png" data-still="second-post/wave-still.png" '
+              'data-once="second-post/wave-once.gif" data-ms="20">')
+ONCE_IMG = ('<img src="second-post/wave-780-still.png" alt="A wave of one pixel" data-still="second-post/wave-780-still.png" '
+            'data-once="second-post/wave-780-once.gif" data-ms="20">')
+ONCE_PICTURE = "<picture>" + ONCE_SMALL_STILL + ONCE_STILL + ONCE_SMALL + ONCE_IMG + "</picture>"
+ONCE_STILL_FIGURE = ('<figure><picture><source media="(max-width: 640px)" srcset="second-post/wave-still.png">'
+                     '<img src="second-post/wave-780-still.png" alt="A wave at rest"></picture></figure>')
+ONCE = {"blog/second-post.html": ('<html lang="en"><head><link rel="alternate" type="text/markdown" href="second-post.md"></head><body><h1>Second post</h1><figure>' + ONCE_PICTURE + '<figcaption>A wave.</figcaption></figure>'
+                                  + ONCE_STILL_FIGURE + '</body></html>'),
+        "blog/second-post.md": "# Second post\n", "blog/second-post/wave-once.gif": GIF, "blog/second-post/wave-still.png": STILL, "blog/second-post/wave-780-once.gif": GIF, "blog/second-post/wave-780-still.png": STILL}
 
 
 def landing(lang, probe, tag="v1.2.3", footer_tag=None):
@@ -62,12 +130,12 @@ def good_site(site, probe=False):
                             % ((LABELS["de"], SITE_URL + "de/probe.txt") if probe else ("Gib deinen Agenten die Notiz", "https://github.com/shoalmark/shoalmark/blob/main/ADOPT.de.md")),
              "de/setup/index.md": "# Einrichtung\n", "agents/README/index.md": "# README\n",
              "llms.txt": "- [How it works](how-it-works/index.md)\n- [shoalmark](de/index.md)\n- [So funktioniert's](de/how-it-works/index.md)\n",
-             "stylesheets/x.css": "body{color:#fff}", "assets/preview.png": "png", "assets/preview-de.png": "png"}
+             "stylesheets/x.css": "body{color:#fff}", "assets/preview.png": "png", "assets/preview-de.png": "png", **BLOG}
     if probe:
         files["probe.txt"] = files["de/probe.txt"] = PROMPT
     for name, text in files.items():
         (site / name).parent.mkdir(parents=True, exist_ok=True)
-        (site / name).write_bytes(text.encode("utf-8"))
+        (site / name).write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
     (site.parent / "docs").mkdir(parents=True, exist_ok=True)       # the docs folder beside the site, where zensical.toml's docs_dir points by default
     (site.parent / "docs/index.md").write_text("# shoalmark\n", encoding="utf-8")
 
@@ -311,7 +379,7 @@ class EveryPage(unittest.TestCase):
     def test_a_good_site_passes(self):
         result = self.checked()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("site check: each of the 14 pages links its language's imprint and privacy notice in its footer", result.stdout)
+        self.assertIn("site check: each of the 16 pages links its language's imprint and privacy notice in its footer", result.stdout)
 
     def test_each_footer_links_its_languages_imprint_and_privacy_notice(self):
         self.rows(
@@ -766,6 +834,435 @@ class FencedBlocks(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
                 for message in messages:
                     self.assertIn(message, result.stderr)
+
+
+class Blog(unittest.TestCase):
+    """The blog: each file under blog/ is at most 1,000,000 bytes, and each GIF there has its still beside it; on each page in blog/,
+    each image has alt text but an author's picture, whose alt is empty, each GIF stands in a <picture> whose reduced-motion source names its still, each GIF a <source> offers comes after a source for
+    reduced motion that names its still, and each src and srcset is a file of the site; each still those rules name, and each <video>'s poster,
+    is a still by its own bytes, named .png or .webp, and a poster does not move. Each post's ids are the spec's first edition's, with no counter, and
+    two hail blocks never share an id.
+    A site that passes, and controls that each change one thing in it; the check names the file."""
+
+    PAGE = "blog/first-post.html"
+    REFUSED_SOURCE = ("blog/first-post.html shows the GIF 'first-post/loop.gif' in a <picture> with no "
+                      '<source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, blog/first-post/loop-still.png')
+    REFUSED_SMALL = ("blog/first-post.html offers the GIF 'first-post/small.gif' in a <source> with no <source> for reduced motion before it whose srcset "
+                     "names its still, blog/first-post/small-still.png")
+
+    def checked(self, change=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            good_site(site)
+            if change:
+                change(site)
+            return run(site)
+
+    def put(self, name, old, new):
+        def change(site):
+            text = (site / name).read_text(encoding="utf-8")
+            self.assertIn(old, text)
+            (site / name).write_text(text.replace(old, new, 1), encoding="utf-8")
+        return change
+
+    def write(self, name, data):
+        def change(site):
+            (site / name).parent.mkdir(parents=True, exist_ok=True)
+            (site / name).write_bytes(data)
+        return change
+
+    def controls(self):
+        """(name, change, the refusal the check names) for each control: one per refusal, and the alt text in each of its three ways."""
+        alt = ' alt="A loop of one pixel"'
+        return (
+            ("a file under blog/ one byte over the limit", self.write("blog/first-post/loop.gif", GIF + b"\0" * (1_000_001 - len(GIF))),
+             "site check: blog/first-post/loop.gif is 1,000,001 bytes, more than the 1,000,000 a file under blog/ may hold"),
+            ("a GIF under blog/ without its still beside it", self.write("blog/first-post/other.gif", GIF),
+             "site check: blog/first-post/other.gif has no still beside it, blog/first-post/other-still.png"),
+            ("an image without alt", self.put(self.PAGE, alt, ""), "site check: blog/first-post.html shows the image 'first-post/loop.gif' without alt text"),
+            ("an image with an empty alt", self.put(self.PAGE, alt, ' alt=""'), "site check: blog/first-post.html shows the image 'first-post/loop.gif' without alt text"),
+            ("an image with a blank alt", self.put(self.PAGE, alt, ' alt=" &#9; "'), "site check: blog/first-post.html shows the image 'first-post/loop.gif' without alt text"),
+            ("an image outside a <picture>, not an author's, with an empty alt", self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.png" alt="">'),
+             "site check: blog/first-post.html shows the image 'first-post/loop-still.png' without alt text"),
+            ("an author's picture with alt text", self.put(self.PAGE, BLOG_AUTHOR, BLOG_AUTHOR.replace('alt=""', 'alt="Builder"')),
+             "site check: blog/first-post.html shows the author's picture 'assets/seats/builder.svg' without an empty alt"),
+            ("an author's picture without alt", self.put(self.PAGE, BLOG_AUTHOR, BLOG_AUTHOR.replace(' alt=""', "")),
+             "site check: blog/first-post.html shows the author's picture 'assets/seats/builder.svg' without an empty alt"),
+            ("a figure's image in the seats' folder with an empty alt", self.put(self.PAGE, BLOG_IMG, '<img src="assets/seats/builder.svg" alt="">'),
+             "site check: blog/first-post.html shows the image 'assets/seats/builder.svg' without alt text"),
+            ("two og:video", self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/loop.gif">'
+                                                           '<meta property="og:video" content="https://shoalmark.tools/blog/first-post/loop.gif">'),
+             "site check: blog/first-post.html names 2 share videos in og:video, not one"),
+            ("an og:video naming a figure's GIF", self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/loop.gif">'),
+             "site check: blog/first-post.html names 'https://shoalmark.tools/blog/first-post/loop.gif' in og:video, and that is no MP4 file of the site"),
+            ("an og:video naming no file", self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/gone.mp4">'),
+             "site check: blog/first-post.html names 'https://shoalmark.tools/blog/first-post/gone.mp4' in og:video, and that is no MP4 file of the site"),
+            ("an animated WebP source with no reduced-motion source before it",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture><source type="image/webp" srcset="first-post/loop.webp">' + BLOG_SMALL_STILL),
+             "site check: blog/first-post.html offers the animated WebP 'first-post/loop.webp' in a <source> with no <source> for reduced motion before it "
+             "whose srcset names its still, blog/first-post/loop-still.webp"),
+            ("a WebP play-once resting on the PNG still",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture>%s' % '<source media="(prefers-reduced-motion: reduce)" type="image/webp" srcset="first-post/loop-still.webp"><source type="image/webp" srcset="first-post/loop-still.webp" data-once="first-post/loop.webp" data-still="first-post/loop-still.webp">'.replace('data-still="first-post/loop-still.webp"', 'data-still="first-post/loop-still.png"') + BLOG_SMALL_STILL),
+             "site check: blog/first-post.html plays the animated WebP 'first-post/loop.webp' and rests on 'first-post/loop-still.png', which is not its still, "
+             "blog/first-post/loop-still.webp"),
+            ("an animated WebP with no still beside it", self.write("blog/first-post/other.webp", ANIM_WEBP),
+             "site check: blog/first-post/other.webp has no still beside it, blog/first-post/other-still.webp"),
+            ("a .webp of 1,000,001 bytes", self.write("blog/first-post/loop-still.webp", STILL_WEBP + b"\0" * (1_000_001 - len(STILL_WEBP))),
+             "site check: blog/first-post/loop-still.webp is 1,000,001 bytes, more than the 1,000,000 a file under blog/ may hold"),
+            ("an APNG, a PNG with an acTL chunk, as a figure's -still.png", self.write("blog/first-post/loop-still.png", APNG),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: it holds an acTL chunk, "
+             "so it is an animated PNG"),
+            ("a GIF's bytes named -still.png", self.write("blog/first-post/loop-still.png", GIF),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: its bytes are a GIF's, "
+             "not a PNG's"),
+            ("a WebP's bytes named -still.png", self.write("blog/first-post/loop-still.png", STILL_WEBP),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: its bytes are a WebP's, "
+             "not a PNG's"),
+            ("an animated WebP named -still.webp", self.write("blog/first-post/loop-still.webp", ANIM_WEBP),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its VP8X chunk sets "
+             "the animation flag, so it is an animated WebP"),
+            ("a -still.webp with an ANIM chunk and no animation flag", self.write("blog/first-post/loop-still.webp", ANIM_ONLY_WEBP),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: it holds an ANIM "
+             "chunk, so it is an animated WebP"),
+            ("a -still.webp whose VP8X sets the animation flag, with no ANIM chunk", self.write("blog/first-post/loop-still.webp", FLAG_ONLY_WEBP),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its VP8X chunk sets "
+             "the animation flag, so it is an animated WebP"),
+            ("a PNG's bytes named -still.webp", self.write("blog/first-post/loop-still.webp", STILL),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its bytes are a PNG's, "
+             "not a WebP's"),
+            ("a -still.png cut short of its IEND", self.write("blog/first-post/loop-still.png", STILL[:-12]),
+             "site check: blog/first-post/loop-still.png, the still of blog/first-post/loop.gif, is not a still by its own bytes: its chunks do not run "
+             "whole to IEND"),
+            ("a -still.webp whose chunk runs past the end its RIFF header gives",
+             self.write("blog/first-post/loop-still.webp", STILL_WEBP.replace(b"VP8L" + (6).to_bytes(4, "little"), b"VP8L" + (60).to_bytes(4, "little"))),
+             "site check: blog/first-post/loop-still.webp, the still of blog/first-post/loop.webp, is not a still by its own bytes: its chunks do not run "
+             "whole to the end its RIFF header gives"),
+            ("a .jpg holding a GIF's bytes, named first in a <source> for reduced motion",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture><source media="(prefers-reduced-motion: reduce)" srcset="first-post/shot.jpg">' + BLOG_SMALL_STILL),
+             "site check: blog/first-post/shot.jpg, a still blog/first-post.html names (source srcset), is not a still by its own bytes: it is named "
+             "neither .png nor .webp, so it is no still these rules read"),
+            ("an animated .svg, named first in a <source> for reduced motion",
+             self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, '<picture><source media="(prefers-reduced-motion: reduce)" srcset="first-post/shot.svg">' + BLOG_SMALL_STILL),
+             "site check: blog/first-post/shot.svg, a still blog/first-post.html names (source srcset), is not a still by its own bytes: it is named "
+             "neither .png nor .webp, so it is no still these rules read"),
+            ("an APNG as a <video>'s poster", self.write("blog/first-post/poster.png", APNG),
+             "site check: blog/first-post/poster.png, a still blog/first-post.html names (video poster), is not a still by its own bytes: it holds an "
+             "acTL chunk, so it is an animated PNG"),
+            ("a GIF as a <video>'s poster, with its -still.png beside it", self.put(self.PAGE, 'poster="first-post/poster.png"', 'poster="first-post/loop.gif"'),
+             "site check: blog/first-post.html shows the GIF 'first-post/loop.gif' as a <video>'s poster: a poster must not move, and the GIF rules "
+             "never read one"),
+            ("an animated WebP as a <video>'s poster, with its -still.webp beside it",
+             self.put(self.PAGE, 'poster="first-post/poster.png"', 'poster="first-post/loop.webp"'),
+             "site check: blog/first-post.html shows the animated WebP 'first-post/loop.webp' as a <video>'s poster: a poster must not move, and the "
+             "GIF rules never read one"),
+            ("a counter id in a hail block", self.put(self.PAGE, "</body>", hail_block(own="a.planner-20261108-001") + "</body>"),
+             "site check: a hail block on blog/first-post.html holds the counter id 'a.planner-20261108-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("‹yyyymmdd›- in the page's text", self.put(self.PAGE, "</body>", "<p>Its answer: a.planner-‹yyyymmdd›-002.</p></body>"),
+             "site check: blog/first-post.html's text holds ‹yyyymmdd›-, the counter form of an id"),
+            ("a short -001 ending in an alt", self.put(self.PAGE, 'alt="A loop of one pixel"', 'alt="A loop of one pixel, its hail\'s id ending -001"'),
+             "site check: an alt on blog/first-post.html holds '-001', a three-digit counter's ending standing alone"),
+            ("a key with an upper-case letter", self.put(self.PAGE, "</body>", "<p>Its id: a.planner-20261108T0812Z-K8chqr.</p></body>"),
+             "site check: blog/first-post.html's text holds the id 'a.planner-20261108T0812Z-K8chqr', whose key is not 6 characters of lower-case "
+             "Crockford base32"),
+            ("a key with an l", self.put(self.PAGE, "</body>", "<p>Its id: a.planner-20261108T0812Z-k8clqr.</p></body>"),
+             "site check: blog/first-post.html's text holds the id 'a.planner-20261108T0812Z-k8clqr', whose key is not 6 characters of lower-case "
+             "Crockford base32"),
+            ("a minute that isn't one", self.put(self.PAGE, "</body>", "<p>Its id: a.planner-20261108T2460Z-k8chqr.</p></body>"),
+             "site check: blog/first-post.html's text holds the id 'a.planner-20261108T2460Z-k8chqr', whose date and minute are no UTC minute"),
+            ("an owner- id with a counter", self.put(self.PAGE, "</body>", "<p>Your DECISION: owner-20261108-001.</p></body>"),
+             "site check: blog/first-post.html's text holds the counter id 'owner-20261108-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("two different hail blocks sharing an id",
+             self.put(self.PAGE, "</body>", hail_block() + plain_hail(body="body: another line") + "</body>"),
+             "site check: blog/first-post.html shows two different hail blocks with the same id, a.planner-20261108T0812Z-k8chqr"),
+            ("a counter id in the post's Markdown version", self.write("blog/first-post.md", b"# First post\n\nIts answer: a.planner-20261108-001.\n"),
+             "site check: blog/first-post.md holds the counter id 'a.planner-20261108-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("a -001 after a valid key in an alt", self.put(self.PAGE, 'alt="A loop of one pixel"', f'alt="A loop of one pixel, its hail {HAIL_ID}-001"'),
+             f"site check: an alt on blog/first-post.html holds the counter id '{HAIL_ID}-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("a _001 after a valid key as a hail block's own id", self.put(self.PAGE, "</body>", hail_block(own=HAIL_ID + "_001") + "</body>"),
+             f"site check: a hail block on blog/first-post.html holds the counter id '{HAIL_ID}_001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("two <h1> on the blog's index", self.put("blog/index.html", "<h1>Blog</h1>", "<h1>Blog</h1><h1>All posts</h1>"),
+             "site check: blog/index.html has 2 <h1>, where the index has one, its opening"),
+            ("the index's description not its heading's words", self.put("blog/index.html", '<meta name="description" content="Blog">',
+                                                                          '<meta name="description" content="The blog">'),
+             "site check: blog/index.html's description reads 'The blog', not the words of its <h1>, 'Blog'"),
+            ("the index's og:description missing", self.put("blog/index.html", '<meta property="og:description" content="Blog">', ""),
+             "site check: blog/index.html's og:description reads None, not the words of its <h1>, 'Blog'"),
+            ("an image on the index without its width", self.put("blog/index.html", "</ul>", '</ul><picture><img src="first-post/loop-still.png" alt="A still" '
+                                                                                          'height="1" loading="eager" fetchpriority="high"></picture>'),
+             "site check: blog/index.html shows the image 'first-post/loop-still.png' without its width"),
+            ("the index's first card image loading lazily", self.put("blog/index.html", "</ul>", '</ul><picture><img src="first-post/loop-still.png" alt="A still" '
+                                                                                              'width="1" height="1" loading="lazy"></picture>'),
+             'site check: blog/index.html shows its first card\'s image \'first-post/loop-still.png\' without loading="eager" and fetchpriority="high"'),
+            ("an image on the index other than the first card's loading at once",
+             self.put("blog/index.html", "</ul>", '</ul><img src="assets/seats/builder.svg" width="1" height="1" alt="" loading="eager">'),
+             'site check: blog/index.html shows the image \'assets/seats/builder.svg\' without loading="lazy", and only the first card\'s image loads at once'),
+            ("a stylesheet the index names that is no file", self.put("blog/index.html", "</head>", '<link rel="stylesheet" href="assets/gone.css"></head>'),
+             "site check: blog/index.html names the stylesheet 'assets/gone.css', and that is no file of the build"),
+            ("SAMPLE on the index", self.put("blog/index.html", "</ul>", "</ul><p><b>SAMPLE PAGE</b></p>"),
+             "site check: blog/index.html holds 'SAMPLE', the mark of a sample page, which the blog never ships"),
+            ("a samples/ path on the index", self.put("blog/index.html", "</ul>", '</ul><p>See samples/one.html.</p>'),
+             "site check: blog/index.html holds 'samples/', the mark of a sample page, which the blog never ships"),
+            ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
+             "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
+            ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),
+             "site check: blog/first-post.html shows the GIF 'first-post/loop.gif' outside a <picture>"),
+            ("a <picture> whose source is for motion, not for its reduction", self.put(self.PAGE, BLOG_SOURCE, BLOG_SOURCE.replace("reduce)", "no-preference)")),
+             "site check: " + self.REFUSED_SOURCE),
+            ("a <picture> whose reduced-motion source names the GIF, not its still", self.put(self.PAGE, 'srcset="first-post/loop-still.png"', 'srcset="first-post/loop.gif"'),
+             "site check: " + self.REFUSED_SOURCE),
+            ("an image whose src is no file of the site", self.put(self.PAGE, BLOG_IMG, BLOG_IMG + '<img src="first-post/gone.png" alt="Gone">'),
+             "site check: blog/first-post.html names 'first-post/gone.png' (img src), and that is no file of the site"),
+            ("a narrower screen's GIF before the source for reduced motion that names its still",
+             self.put(self.PAGE, BLOG_SMALL_STILL + BLOG_SOURCE + BLOG_SMALL, BLOG_SOURCE + BLOG_SMALL + BLOG_SMALL_STILL), "site check: " + self.REFUSED_SMALL),
+            ("a narrower screen's source for reduced motion that names the wider still",
+             self.put(self.PAGE, 'srcset="first-post/small-still.png"', 'srcset="first-post/loop-still.png"'), "site check: " + self.REFUSED_SMALL),
+            ("a source whose srcset is no file of the site", self.put(self.PAGE, "loop-still.png", "gone-still.png"),
+             "site check: blog/first-post.html names 'first-post/gone-still.png' (source srcset), and that is no file of the site"),
+            ("the source for reduced motion after the <img>, where no browser selects it",
+             self.put(self.PAGE, BLOG_SOURCE + BLOG_SMALL + BLOG_IMG, BLOG_SMALL + BLOG_IMG + BLOG_SOURCE), "site check: " + self.REFUSED_SOURCE),
+            ("a blog page in another language", self.put(self.PAGE, '<html lang="en">', '<html lang="de">'),
+             "site check: blog/first-post.html is not an English page alone: it says lang='de'"),
+            ("a blog page that names a language twin", self.put(self.PAGE, "<head>", '<head><link rel="alternate" hreflang="de" href="../de/index.html">'),
+             "site check: blog/first-post.html is not an English page alone: it says lang='en' and carries hreflang 'de'"),
+            ("a post that names no Markdown version", self.put(self.PAGE, '<link rel="alternate" type="text/markdown" href="first-post.md">', ""),
+             "site check: blog/first-post.html does not name its Markdown version beside it, blog/first-post.md"),
+            ("a post whose Markdown link leads elsewhere", self.put(self.PAGE, 'type="text/markdown" href="first-post.md"', 'type="text/markdown" href="../index.md"'),
+             "site check: blog/first-post.html does not name its Markdown version beside it, blog/first-post.md"),
+            ("the blog's script asking for something", self.write("blog/assets/blog.js", b"fetch('feed.xml')"),
+             "site check: blog/assets/blog.js, the blog's script, can ask for something: fetch("),
+        )
+
+    def test_a_good_site_passes(self):
+        result = self.checked()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("site check: the 2 blog page(s) and their 1 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 13, result.stdout)
+
+    def test_what_the_blog_allows(self):
+        german = ('<h1>Blog</h1><figure><picture><source media="(prefers-reduced-motion:reduce)" srcset="first-post/loop-still.png">'
+                  '<img src="first-post/loop.gif" alt="A loop of one pixel, again" width="1" height="1" loading="eager" fetchpriority="high"></picture></figure>')
+        for name, change, figures in (
+                ("a file of exactly 1,000,000 bytes", self.write("blog/first-post/loop.gif", GIF + b"\0" * (1_000_000 - len(GIF))), 1),
+                ("the same figure on the blog's index, from the post's own folder, its query written without a space",
+                 self.put("blog/index.html", "<h1>Blog</h1>", german), 2),
+                ("an image that is no GIF, with alt text, outside a <picture>",
+                 self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.png" alt="A still">'), 1),
+                ("a WebP twin pair: the reduced-motion source naming the WebP still, and a play-once WebP resting on it",
+                 self.put(self.PAGE, "<picture>" + BLOG_SMALL_STILL, "<picture>" + '<source media="(prefers-reduced-motion: reduce)" type="image/webp" srcset="first-post/loop-still.webp"><source type="image/webp" srcset="first-post/loop-still.webp" data-once="first-post/loop.webp" data-still="first-post/loop-still.webp">' + BLOG_SMALL_STILL), 1),
+                ("a still WebP, with alt text, outside a <picture>",
+                 self.put(self.PAGE, "</picture>", '</picture><img src="first-post/loop-still.webp" alt="A still">'), 1),
+                ("a -still.png whose text chunk holds the letters acTL and ANIM", self.write("blog/first-post/loop-still.png", LETTERS_PNG), 1),
+                ("a -still.webp whose odd-length metadata chunk, padded, holds the letters ANIM", self.write("blog/first-post/loop-still.webp", LETTERS_WEBP), 1),
+                ("the same hail block shown twice", self.put(self.PAGE, "</body>", hail_block() + hail_block() + "</body>"), 1),
+                ("the same hail shown as .ln spans and as plain lines", self.put(self.PAGE, "</body>", hail_block() + plain_hail() + "</body>"), 1),
+                ("a valid id in the page's text, in an alt and in a hail block",
+                 lambda site: (self.put(self.PAGE, "</body>", f"<p>Its id: {HAIL_ID}, and the owner's: owner-20261108T0815Z-v769d3.</p>" + hail_block() + "</body>")(site),
+                               self.put(self.PAGE, 'alt="A loop of one pixel"', f'alt="A loop of one pixel, its hail {HAIL_ID}"')(site)), 1),
+                ("head -100 in a code block outside the hail blocks", self.put(self.PAGE, "</body>", "<pre><code>head -100 notes.txt</code></pre></body>"), 1),
+                ("the index's heading with markup and a no-break space, its descriptions in plain words",
+                 lambda site: [self.put("blog/index.html", old, new)(site) for old, new in (
+                     ("<h1>Blog</h1>", "<h1>I&nbsp;build <b>it</b>, from the record.</h1>"),
+                     ('<meta name="description" content="Blog">', '<meta name="description" content="I build it, from the record.">'),
+                     ('<meta property="og:description" content="Blog">', '<meta property="og:description" content="I build it, from the record.">'))], 1),
+                ("the index's first card image at once and an author's picture lazily, its alt empty",
+                 self.put("blog/index.html", "</ul>", '</ul><picture><img src="first-post/loop-still.png" alt="A still" width="1" height="1" loading="eager" '
+                                                      'fetchpriority="high"></picture><img src="assets/seats/builder.svg" width="1" height="1" alt="" loading="lazy">'), 2),
+                ("a stylesheet the index names that is a file of the build",
+                 lambda site: (self.write("blog/assets/index.css", b"h1{margin:0}")(site),
+                               self.put("blog/index.html", "</head>", '<link rel="stylesheet" href="assets/index.css"></head>')(site)), 1),
+                ("a sample in plain words on the index", self.put("blog/index.html", "</ul>", "</ul><p>A sample of what the record holds.</p>"), 1),
+                ("a folder ending in samples on the index", self.put("blog/index.html", "</ul>", "</ul><p>The code-samples/ folder holds them.</p>"), 1)):
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("site check: the 2 blog page(s) and their %d figure(s) passed" % figures, result.stdout)
+
+    def test_the_share_video_alone_may_hold_2_000_000_bytes(self):
+        """The file a post's og:video names may hold 2,000,000 bytes and not one more; a figure beside it keeps 1,000,000, and so do the same
+        2,000,000 bytes in a file og:video does not name, and a page file of the hero that a <source> names."""
+        def video(size, figure=1_000_000, named=True, page=None):
+            def change(site):
+                if named:
+                    self.put(self.PAGE, "<head>", '<head><meta property="og:video" content="https://shoalmark.tools/blog/first-post/clip.mp4">')(site)
+                self.write("blog/first-post/clip.mp4", b"\0" * size)(site)
+                self.write("blog/first-post/loop.gif", GIF + b"\0" * (figure - len(GIF)))(site)
+                if page is not None:
+                    self.put(self.PAGE, "<h1>First post</h1>", '<h1>First post</h1><video><source src="first-post/clip-page.mp4" type="video/mp4"></video>')(site)
+                    self.write("blog/first-post/clip-page.mp4", b"\0" * page)(site)
+            return change
+        for passing in (video(2_000_000), video(2_000_000, page=1_000_000)):
+            result = self.checked(passing)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("but its 1 share video(s), the file(s) og:video names, within 2,000,000", result.stdout)
+        for name, change, message in (
+                ("the share video one byte over its cap", video(2_000_001),
+                 "site check: blog/first-post/clip.mp4 is 2,000,001 bytes, more than the 2,000,000 a share video, the file a post's og:video names, may hold"),
+                ("a figure one byte over the limit beside a share video at its cap", video(2_000_000, 1_000_001),
+                 "site check: blog/first-post/loop.gif is 1,000,001 bytes, more than the 1,000,000 a file under blog/ may hold"),
+                ("the same 2,000,000 bytes in a file og:video does not name", video(2_000_000, named=False),
+                 "site check: blog/first-post/clip.mp4 is 2,000,000 bytes, more than the 1,000,000 a file under blog/ may hold"),
+                ("a page file of the hero one byte over 1,000,000, beside the share file at its cap", video(2_000_000, page=1_000_001),
+                 "site check: blog/first-post/clip-page.mp4 is 1,000,001 bytes, more than the 1,000,000 a file under blog/ may hold")):
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+    def test_a_still_only_a_page_names_is_read_by_its_bytes_too(self):
+        """A still that no GIF or animated WebP has beside it, named only by a page, in a data-still or in the srcset of a <source> for reduced motion,
+        is read by its own bytes as well: a GIF's bytes there are refused, naming the page and the attribute, and a PNG's pass."""
+        extra = '<source media="(prefers-reduced-motion: reduce)" srcset="first-post/calm-still.png">'
+        for where, old, new in (("img data-still", BLOG_IMG, BLOG_IMG.replace(">", ' data-still="first-post/calm-still.png">')),
+                                ("source srcset", BLOG_SOURCE, BLOG_SOURCE + extra)):
+            for data in (GIF, STILL):
+                def change(site, old=old, new=new, data=data):
+                    self.write("blog/first-post/calm-still.png", data)(site)
+                    self.put(self.PAGE, old, new)(site)
+                with self.subTest(where=where, gif=data == GIF):
+                    result = self.checked(change)
+                    if data == GIF:
+                        self.assertNotEqual(result.returncode, 0, "the check passed a GIF's bytes named as a still by " + where)
+                        self.assertIn(f"site check: blog/first-post/calm-still.png, a still blog/first-post.html names ({where}), is not a still by its own "
+                                      "bytes: its bytes are a GIF's, not a PNG's", result.stderr)
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_a_gif_in_the_authors_folders_keeps_the_gif_rules(self):
+        """An author's picture is an <img> outside any <picture>, and the GIF rules hold for it too: a GIF there, outside a picture, is refused."""
+        def change(site):
+            self.write("blog/assets/seats/wave.gif", GIF)(site)
+            self.write("blog/assets/seats/wave-still.png", STILL)(site)
+            self.put(self.PAGE, BLOG_AUTHOR, BLOG_AUTHOR + '<img src="assets/seats/wave.gif" alt="">')(site)
+        result = self.checked(change)
+        self.assertNotEqual(result.returncode, 0, "the check passed a GIF outside a picture in the seats' folder")
+        self.assertIn("site check: blog/first-post.html shows the GIF 'assets/seats/wave.gif' outside a <picture>", result.stderr)
+
+    def test_the_blog_indexes_are_entry_pages(self):
+        for name in ("blog/index.html",):
+            with self.subTest(name):
+                result = self.checked(lambda site, name=name: (site / name).unlink())
+                self.assertNotEqual(result.returncode, 0, "the check passed a site without " + name)
+                self.assertIn("site check: missing " + name, result.stderr)
+
+    def test_each_control_is_refused(self):
+        for name, change, message in self.controls():
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+    def test_the_controls_see_what_they_refuse(self):
+        """Each control changes one file of the good site, a file the check reads, a page or a file under blog/; and the
+        refusal it expects names that file."""
+        def files(site):
+            return {path.relative_to(site).as_posix(): path.read_bytes() for path in site.rglob("*") if path.is_file()}
+        for name, change, message in self.controls():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                site = Path(tmp) / "site"
+                good_site(site)
+                before = files(site)
+                change(site)
+                after = files(site)
+                changed = sorted(rel for rel in before.keys() | after.keys() if before.get(rel) != after.get(rel))
+                self.assertEqual(len(changed), 1, changed)
+                self.assertTrue(changed[0].startswith("blog/"), changed)
+                self.assertIn(changed[0], message)
+
+
+class PlayOnce(unittest.TestCase):
+    """The blog's figures as a post plays them once: the good site with a page that holds an animated figure, its stills shown and its play-once
+    GIFs named in data-once, and a still figure. Each data-once and data-still is a file of the site; each play-once GIF, <name>-once.gif, has its
+    figure's still beside it, <name>-still.png, and rests on it; the <picture> names that still for a reader who turns motion off, before the
+    <source> that plays a narrower screen's GIF; and the count counts each figure. Controls that each change one thing in it; the check names the file."""
+
+    PAGE = "blog/second-post.html"
+    REFUSED_SMALL = ("blog/second-post.html plays the GIF 'second-post/wave-once.gif' from a <source> with no <source> for reduced motion before it "
+                     "whose srcset names its still, blog/second-post/wave-still.png")
+    put = Blog.put
+
+    def checked(self, change=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            self.good(site)
+            if change:
+                change(site)
+            return run(site)
+
+    @staticmethod
+    def good(site):
+        good_site(site)
+        for name, data in ONCE.items():
+            (site / name).parent.mkdir(parents=True, exist_ok=True)
+            (site / name).write_bytes(data if isinstance(data, bytes) else data.encode("utf-8"))
+
+    def remove(self, name):
+        def change(site):
+            (site / name).unlink()
+        return change
+
+    def controls(self):
+        """(name, change, the refusal the check names) for each control, one for each way a play-once figure can fail a reader."""
+        return (
+            ("a play-once GIF that is no file of the site",
+             self.put(self.PAGE, 'data-once="second-post/wave-780-once.gif"', 'data-once="second-post/gone-780-once.gif"'),
+             "site check: blog/second-post.html names 'second-post/gone-780-once.gif' (img data-once), and that is no file of the site"),
+            ("a still to rest on that is no file of the site",
+             self.put(self.PAGE, 'data-still="second-post/wave-still.png"', 'data-still="first-post/gone-still.png"'),
+             "site check: blog/second-post.html names 'first-post/gone-still.png' (source data-still), and that is no file of the site"),
+            ("a play-once GIF under blog/ without its figure's still beside it", self.remove("blog/second-post/wave-still.png"),
+             "site check: blog/second-post/wave-once.gif has no still beside it, blog/second-post/wave-still.png"),
+            ("a play-once GIF that comes to rest on another still",
+             self.put(self.PAGE, 'data-still="second-post/wave-780-still.png"', 'data-still="second-post/wave-still.png"'),
+             "site check: blog/second-post.html plays the GIF 'second-post/wave-780-once.gif' and rests on 'second-post/wave-still.png', which is "
+             "not its still, blog/second-post/wave-780-still.png"),
+            ("a play-once GIF outside a <picture>", self.put(self.PAGE, ONCE_PICTURE, ONCE_IMG),
+             "site check: blog/second-post.html plays the GIF 'second-post/wave-780-once.gif' outside a <picture>"),
+            ("a picture whose source for reduced motion names the narrower still, not the wider",
+             self.put(self.PAGE, ONCE_STILL, ONCE_STILL.replace("wave-780-still", "wave-still")),
+             "site check: blog/second-post.html plays the GIF 'second-post/wave-780-once.gif' in a <picture> with no "
+             '<source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, blog/second-post/wave-780-still.png'),
+            ("a narrower screen's play-once GIF before the source for reduced motion that names its still",
+             self.put(self.PAGE, ONCE_SMALL_STILL + ONCE_STILL + ONCE_SMALL, ONCE_STILL + ONCE_SMALL + ONCE_SMALL_STILL), "site check: " + self.REFUSED_SMALL),
+            ("a narrower screen's source for motion, not for its reduction",
+             self.put(self.PAGE, ONCE_SMALL_STILL, ONCE_SMALL_STILL.replace("reduce)", "no-preference)")), "site check: " + self.REFUSED_SMALL),
+            ("the source for reduced motion after the <img>, where no browser selects it",
+             self.put(self.PAGE, ONCE_STILL + ONCE_SMALL + ONCE_IMG, ONCE_SMALL + ONCE_IMG + ONCE_STILL),
+             "site check: blog/second-post.html plays the GIF 'second-post/wave-780-once.gif' in a <picture> with no "
+             '<source media="(prefers-reduced-motion: reduce)"> whose srcset names its still, blog/second-post/wave-780-still.png'),
+        )
+
+    def test_a_good_site_passes(self):
+        result = self.checked()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("site check: the 3 blog page(s) and their 3 figure(s) passed: " + "each figure has alt text and a still, each author's picture an empty alt, each page is English alone and each post names its Markdown version, the blog's script asks for nothing, and each of the %d file(s) under blog/ is within 1,000,000 bytes" % 19, result.stdout)
+
+    def test_each_control_is_refused(self):
+        for name, change, message in self.controls():
+            with self.subTest(name):
+                result = self.checked(change)
+                self.assertNotEqual(result.returncode, 0, "the check passed what it must refuse: " + name)
+                self.assertIn(message, result.stderr)
+
+    def test_the_controls_see_what_they_refuse(self):
+        """Each control changes one file of the site with the play-once page, a page under blog/ or a file under blog/; and the refusal it
+        expects names that file."""
+        def files(site):
+            return {path.relative_to(site).as_posix(): path.read_bytes() for path in site.rglob("*") if path.is_file()}
+        for name, change, message in self.controls():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                site = Path(tmp) / "site"
+                self.good(site)
+                before = files(site)
+                change(site)
+                after = files(site)
+                changed = sorted(rel for rel in before.keys() | after.keys() if before.get(rel) != after.get(rel))
+                self.assertEqual(len(changed), 1, changed)
+                self.assertTrue(changed[0].startswith("blog/"), changed)
+                self.assertIn(changed[0], message)
 
 
 if __name__ == "__main__":

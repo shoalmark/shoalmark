@@ -3,6 +3,10 @@
     version) and `/repos/<repo>` (stars, forks), and shows them under the name; while no release of the repository is a full release (a pre-release does not
     count) the first answer is a 404, a failed request on every docs page. With no element to find, the script asks GitHub nothing. The link, its icon, its title and the repository's name stay; the
     facts line does not appear. The partial is included twice per page, by the header and by the navigation drawer, so one file serves both. -#}
+{#- The Blog button goes first in this slot, so it shows in the docs' header at every width (shoalmark.css shows the slot and keeps
+    the repository link at the theme's own breakpoint). It leads to the English blog from both languages' pages. In the drawer's copy of the
+    slot the CSS leaves it out, as the header already holds it. -#}
+<a class="md-blog" href="{{ config.site_url }}blog/"{% if page and page.url and page.url[:3] == "de/" %} hreflang="en" lang="en"{% endif %}>Blog</a>
 <a href="{{ config.repo_url }}" title="{{ lang.t('source') }}" class="md-source">
   <div class="md-source__icon md-icon">
     {% set icon = config.theme.icon.repo or "fontawesome/brands/git-alt" %}

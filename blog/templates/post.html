@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-v="{{ variant }}">
+<head>
+{% include "_head.html" %}
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="{{ date_iso }}">
+<meta property="og:image" content="{{ card_abs }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ card_alt }}">
+{{ video_tags }}<link rel="alternate" type="text/markdown" href="{{ md_href }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ title_text }}">
+<meta name="twitter:description" content="{{ description }}">
+<meta name="twitter:image" content="{{ card_abs }}">
+<meta name="twitter:image:alt" content="{{ card_alt }}">
+</head>
+<body>
+{% include "_header.html" %}
+<main class="page">
+  <header class="post-head">
+    <p class="kicker"><time datetime="{{ date_iso }}">{{ date_text }}</time><span class="sep" aria-hidden="true">·</span><span class="label">{{ kicker_label }}</span></p>
+    <h1>{{ title_html }}</h1>
+    <p class="dek">{{ dek }}</p>
+    <p class="meta"><span>{{ reading_time }}</span><span class="sep" aria-hidden="true">·</span><a href="{{ md_href }}" type="text/markdown">{{ ui_markdown }}</a></p>
+{{ authors }}
+  </header>
+  <figure class="hero">
+    <video muted loop playsinline preload="none" width="1200" height="630" poster="{{ hero_poster }}" aria-label="{{ hero_alt }}"><source src="{{ hero_video_hevc }}" type='video/mp4; codecs="{{ hero_codec_hevc }}"'><source src="{{ hero_video_page }}" type='video/mp4; codecs="{{ hero_codec_page }}"'></video>
+    <figcaption><button type="button" class="again" hidden>stop</button></figcaption>
+  </figure>
+  <nav class="toc" aria-label="{{ ui_contents }}"><div class="toc-box"><p class="toc-t" aria-hidden="true">{{ ui_contents }}</p><ol>{{ toc }}</ol></div></nav>
+  <article class="post">
+{{ share }}
+    <details class="toc-m"><summary>{{ ui_contents }}</summary><ol>{{ toc }}</ol></details>
+{{ body }}
+  </article>
+</main>
+{% include "_footer.html" %}
+<script src="{{ root }}assets/blog.js" defer></script>
+</body>
+</html>
