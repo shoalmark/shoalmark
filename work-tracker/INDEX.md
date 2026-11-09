@@ -34,7 +34,6 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
-| [FM-153](FM-153-a-blog-for-the-site-and-its-first-post.md) | P2 | The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small,… | In Progress | progress | 2026-11-08 |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -53,6 +52,7 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-155](FM-155-the-family-s-social-images-sit-in-one-block-s-repository-not.md) | — | shoalmark.tools is a family of building blocks with a public press kit, shoalmark/brand, but the family's social images… | Proposed | triage | — |
 | [FM-154](FM-154-the-markdown-twins-lose-the-blog-s-figures-and-the-german-du.md) | — | The blog's figures are written as HTML, and a page's Markdown twin keeps them with image paths one folder short, so an… | Proposed | triage | — |
 | [FM-152](FM-152-an-x-post-image-the-agents-never-answer-for-you-the-software.md) | — | go-to-market asked, for the Owner, for a light revision of the software-factory X post image: new headline, plain-words… | Proposed | triage | — |
 | [FM-151](FM-151-a-records-only-pull-request-waits-for-a-macos-runner-that.md) | — | A pull request that changes records only still starts all five required jobs on their own images, though four of them o… | Proposed | triage | — |
@@ -133,6 +133,7 @@
 | [FM-056](FM-056-the-gate-can-name-the-commit-that-removed-a-line-as-the-one.md) | — | The gate names who set a tracker's line with a pickaxe that also matches the commit that removed it, so a line a merge… | Proposed | triage | — |
 | [FM-055](FM-055-the-receipts-need-the-owner-s-definitions-of-a-day-a-sitting.md) | — | The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories co… | Proposed | triage | — |
 | [FM-051](FM-051-dependency-updates-have-no-path-the-gate-refuses-every.md) | — | Dependency updates have no path: the gate refuses every Dependabot pull request, and the site's dependencies are first… | Proposed | triage | — |
+| [FM-153](FM-153-a-blog-for-the-site-and-its-first-post.md) | P2 | The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small,… | Shipped | ended | 2026-11-08 |
 | [FM-091](FM-091-the-site-has-no-imprint-and-no-privacy-notice-and-its.md) | P2 | The site has no imprint and no privacy notice, though a German provider must have both, easy to find from every page. A… | Shipped | ended | 2026-10-29 |
 | [FM-085](FM-085-the-suite-starts-chrome-with-a-mock-keychain-and-a-fresh.md) | P2 | The suite's browser blocks rely on whoever runs them to start Chrome with a mock keychain and a profile of its own. A r… | Shipped | ended | 2026-10-29 |
 | [FM-070](FM-070-the-gate-s-text-shows-as-mojibake-in-tortoisesvn.md) | P3 | the gate's text shows as mojibake in TortoiseSVN | Shipped | ended | 2026-10-27 |

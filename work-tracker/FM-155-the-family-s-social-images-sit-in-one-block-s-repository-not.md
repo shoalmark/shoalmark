@@ -1,0 +1,62 @@
+---
+id: FM-155
+status: Proposed
+considered: FM-006, FM-104, FM-152
+tags: process
+next: owner
+hook: "shoalmark.tools is a family of building blocks with a public press kit, shoalmark/brand, but the family's social images, the profile header, the repository card and the link previews, still sit in brand/social/ of one block's repository."
+ask-id: FM-155-Q1
+ask: "Shall FM-155 move brand/social/'s ten files out of the shoalmark repository, leaving one README that points to the press kit's social/ at shoalmark/brand's 070a4dd, take link-preview-de.svg out of the German du test's list, and keep the built site unchanged, as FM-155's *What is true now* sets out?"
+ask-kind: ruling
+ask-since: 2026-11-09
+ask-options: "yes, as proposed | no: they stay in both repositories"
+ask-proposal: "yes, as proposed"
+---
+
+# FM-155 — The family's social images sit in one block's repository, not in the press kit
+
+## What is true now
+
+**Filed 2026-11-09; nothing is built, and FM-155 waits for the Owner's ruling, FM-155-Q1.** No build commit lands
+before its signed answer: the move changes a public repository.
+
+- **Where they are:** [`brand/social/`](../brand/social/) holds ten files: the SVG sources of the profile header,
+  the repository card and the two link previews, their PNG and JPEG exports, and a README.
+- **Where they go:** shoalmark/brand, the organization's public press kit, holds the same ten files byte for byte
+  since its main `070a4dd`, beside the logos, the seat icons and the terms for using the marks.
+- **What stays:** `brand/design-guide.md`, `brand/icons/` and `brand/seats/`, which the tool, the start page and the
+  tests read.
+- **What reads them:** `test_shoalmark.py` lists `brand/social/link-preview-de.svg` among the German prose sources
+  held to du. No build step reads `brand/social/`: the site serves its own copies of the link previews,
+  `docs/assets/preview.png` and `preview-de.png`.
+- **The trackers that cite `brand/social/`** (FM-006, FM-023, FM-152) are history, and their text stays.
+
+## Why
+
+The social images belong to the family, not to one block. In the press kit they sit with the family's other marks,
+where anyone who shares a shoalmark.tools block finds them, and the shoalmark repository keeps only what it reads.
+
+**Held against** (`considered:`):
+- [FM-006](FM-006-shoalmark-has-one-document-written-for-agents-the-humans-who.md) is not this work: it gave the
+  people who own the repositories a page of their own, and filed the social images in `brand/social/` on 21 October.
+  This moves them out.
+- [FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md) is not this work: it gathers the
+  person's own files. The social images are the family's.
+- [FM-152](FM-152-an-x-post-image-the-agents-never-answer-for-you-the-software.md) is not this work: it is an X post
+  image for the Owner to judge, kept in its evidence, and puts nothing on the site.
+
+## Done when
+
+- [ ] `brand/social/` holds one README, which points to the press kit's `social/` and names the commit, `070a4dd`,
+  that holds the ten files.
+- [ ] `test_shoalmark.py`'s German prose list no longer names `link-preview-de.svg`, whose text now lives in
+  shoalmark/brand.
+- [ ] No build step reads `brand/social/`, and the built site is unchanged.
+- [ ] A standard review's READY.
+
+## Ship log
+
+| Date | Event |
+|---|---|
+| 2026-11-09 | Asked the Owner: FM-155-Q1, a ruling on moving brand/social/ to the press kit, shoalmark/brand. |
+| 2026-11-09 | Filed, on the Auditor's word of 9 November, after #280 merged. |
