@@ -1,6 +1,6 @@
 ---
 id: FM-153
-status: In Progress
+status: Shipped
 considered: FM-143, FM-152
 next: build
 triaged: 2026-11-08
@@ -12,7 +12,7 @@ hook: "The site has no place for posts, and its first post needs one in both lan
 
 ## What is true now
 
-**2026-11-09 — merged to main as #280 (`cd76d0a`), and live.** The blog stands at `shoalmark.tools/blog/`: its
+**2026-11-09 — Shipped: merged to main as #280 (`cd76d0a`), and live.** The blog stands at `shoalmark.tools/blog/`: its
 index, opened by one statement, with the newest post leading, and its first post, on hail/1's first edition and dated
 2026-11-09.
 
@@ -20,8 +20,8 @@ index, opened by one statement, with the newest post leading, and its first post
   twelve verdicts join the records with this change. The Designer checked each revision's built pages beside them, as
   recorded privately.
 - **Live:** a request for the post's MP4 with `Range: bytes=0-99` answers 206 with `Content-Range`, from the Worker.
-- **Open:** the Owner's check of the post's share preview in iMessage, the one item left in Done when. FM-153 stays In
-  Progress until then.
+- **The share preview:** the Owner checked it in iMessage on 9 November, and it shows the post's video. Every Done
+  when item is met.
 
 **2026-11-08 — the blog is built under FM-153-Q3's answer, and its first post's authors wait for the Owner's
 ruling, FM-153-Q4.** The blog, its first post and the Blog button are built on a branch from main, not merged.
@@ -104,7 +104,8 @@ still for readers who turn motion off.
   · READY at `f34f311`; the Designer's check as recorded privately
 - [x] After the deploy, a request for the post's MP4 with `Range: bytes=0-99` answers 206 with `Content-Range`.
   · checked on `shoalmark.tools`, 9 November
-- [ ] The Owner's check of the post's share preview in iMessage.
+- [x] The Owner's check of the post's share preview in iMessage.
+  · the Owner, 9 November, on the Auditor's word
 
 ## Asks
 
@@ -130,6 +131,7 @@ still for readers who turn motion off.
 
 | Date | Event |
 |---|---|
+| 2026-11-09 | Shipped: the Owner checked the post's share preview in iMessage, and every Done when item is met. |
 | 2026-11-09 | Merged to main as #280 (cd76d0a), and live: the blog, its index and its first post; FM-153-Q4 cleared, its record under Asks; the review's twelve verdicts join the records; the Owner's share-preview check is open. |
 | 2026-11-08 | Asked the Owner again: FM-153-Q4, the Owner among the first post's authors, under the Owner's X account and with the Owner's portrait; FM-153-Q3 cleared, its record under Asks. |
 | 2026-11-08 | Asked the Owner again: FM-153-Q3, the blog as its own English site at shoalmark.tools/blog/, dark-first, with a Blog button in the start page's and the docs' header; FM-153-Q2 cleared, its record under Asks. |
