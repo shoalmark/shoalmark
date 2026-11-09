@@ -19,7 +19,8 @@ post's markup: the TL;DR as a dl with its band, each slot a figure with its stil
 among the post's figures, each marker section, the hails, the status paragraph, the quotation, the reference and the foot, each figure's
 sources and <img> each after its WebP twin; then each heading gets its anchor, each hail its label, "written by" and the credits follow the
 quotation, and the end links follow the foot. The head names the authors, and a share row opens the post and comes again after "written
-by". The builder refuses whatever has a shape it does not expect.
+by". The band links the one page, then the spec, each a button before its sentence, at the addresses ONE_PAGE and SPEC hold. The builder
+refuses whatever has a shape it does not expect.
 """
 import datetime
 import hashlib
@@ -37,6 +38,7 @@ SRC = ROOT / "blog"
 SITE_URL = "https://shoalmark.tools/"
 GITHUB = "https://github.com/shoalmark/shoalmark"
 SPEC = "https://github.com/shoalmark/hail/blob/main/spec/hail-1.md"   # the published spec's address: a post's band must link it, as written here
+ONE_PAGE = "https://github.com/shoalmark/hail/blob/main/QUICKSTART.md"   # the one page's address: the band links it first, then SPEC, as written here
 WPM = 230                                                  # the reading time: the words over 230 a minute, rounded up
 VARIANT = "m2"
 INDEX_INTRO = "How I build shoalmark with my agents, written from the record."            # the feed's and llms.txt's line
@@ -313,12 +315,16 @@ class Post:
                 refuse(f"{self.name}: a TL;DR item is not '- **Label:** words'")
             rows.append((m.group(1), m.group(2)))
         label, words = rows[-1]
-        band = re.match(r"\[([^\]]+) →\]\(" + re.escape(SPEC) + r"\) (.+)", words)
-        if not band:
-            refuse(f"{self.name}: the TL;DR's last item does not open with the spec's link and its arrow")
+        one = re.match(r"\[([^\]]+) →\]\(" + re.escape(ONE_PAGE) + r"\) (.+)", words)
+        if not one:
+            refuse(f"{self.name}: the TL;DR's last item does not open with the one page's link and its arrow")
+        spec = re.fullmatch(r"(.+?) \[([^\]]+) →\]\(" + re.escape(SPEC) + r"\) (.+)", one.group(2))
+        if not spec:
+            refuse(f"{self.name}: the TL;DR's last item does not follow the one page's sentence with the spec's link and its arrow")
+        go = lambda href, text: f'<span class="go"><a href="{attr(href)}">{text_node(text)}</a></span>'
         dl = "".join(f"<div><dt>{text_node(l)}</dt><dd>{inline(w)}</dd></div>" for l, w in rows[:-1])
-        dl += (f'<div class="try"><dt>{text_node(label)}</dt><dd><span class="go"><a href="{attr(SPEC)}">{text_node(band.group(1))}</a></span> '
-               f"{inline(band.group(2))}</dd></div>")
+        dl += (f'<div class="try"><dt>{text_node(label)}</dt><dd>{go(ONE_PAGE, one.group(1))} {inline(spec.group(1))} '
+               f"{go(SPEC, spec.group(2))} {inline(spec.group(3))}</dd></div>")
         out = [f'<section class="tldr" aria-labelledby="tldr"><h2 class="t" id="tldr">TL;DR:</h2><dl>{dl}</dl></section>']
         seen, marker, in_ref, tables, state, i = [], 0, False, 0, False, 2
         self.description = " ".join(re.split(r"(?<=\.) ", plain(bl[2][0]))[:2])

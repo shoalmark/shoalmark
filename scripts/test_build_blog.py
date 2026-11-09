@@ -25,6 +25,7 @@ BB = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(BB)
 DATE = re.search(r"^date: (\S+)$", (ROOT / "blog/posts/hail-1.md").read_text(encoding="utf-8"), re.M).group(1)
 AFTER = lambda days: (datetime.date.fromisoformat(DATE) + datetime.timedelta(days=days)).isoformat()      # a day after the post's own, never tied with it
+READ_IT = re.search(r"^- \*\*Read it:\*\* .+$", (ROOT / "blog/posts/hail-1.md").read_text(encoding="utf-8"), re.M).group(0)   # the band, as the post writes it
 
 
 def scratch(tmp):
@@ -235,9 +236,17 @@ class Built(unittest.TestCase):
             self.assertNotIn("‹", row)
         self.assertNotRegex(self.page.lower(), r"facebook|new tab|<script(?![^>]*\bsrc=)")
 
-    def test_the_band_links_the_spec(self):
+    def test_the_band_links_the_one_page_then_the_spec(self):
+        """The TL;DR's last row: the one page's button, then the spec's, each at its constant's address and before its own sentence, as the post
+        writes them."""
+        self.assertEqual(BB.ONE_PAGE, "https://github.com/shoalmark/hail/blob/main/QUICKSTART.md")
         self.assertEqual(BB.SPEC, "https://github.com/shoalmark/hail/blob/main/spec/hail-1.md")
-        self.assertIn(f'<span class="go"><a href="{html.escape(BB.SPEC, quote=True)}">', self.page)
+        one_href, one, spec_href, spec = re.fullmatch(r"- \*\*Read it:\*\* \[Read the one page →\]\((\S+)\) (.+?) \[Read the spec →\]\((\S+)\) (.+)",
+                                                      READ_IT).groups()
+        self.assertEqual((one_href, spec_href), (BB.ONE_PAGE, BB.SPEC))
+        row = re.search(r'<div class="try"><dt>Read it:</dt><dd>(.*?)</dd></div>', self.page).group(1)
+        self.assertEqual(row, f'<span class="go"><a href="{html.escape(BB.ONE_PAGE, quote=True)}">Read the one page</a></span> {html.escape(one, quote=False)} '
+                              f'<span class="go"><a href="{html.escape(BB.SPEC, quote=True)}">Read the spec</a></span> {html.escape(spec, quote=False)}')
         self.assertNotIn("‹link: spec›", self.page + (self.blog / "hail-1.md").read_text(encoding="utf-8"))
         self.assertIn(f'<p class="kicker"><time datetime="{DATE}">{DATE}</time>', self.page)
 
@@ -247,7 +256,7 @@ class Built(unittest.TestCase):
     def test_the_markdown_version(self):
         md = (self.blog / "hail-1.md").read_text(encoding="utf-8")
         self.assertTrue(md.startswith(f'---\ntitle: "⌜hail/1⌟: agents message each other; the final word stays yours"\ndate: {DATE}\n'))
-        self.assertIn(f"]({BB.SPEC})", md)
+        self.assertIn(f"\n{READ_IT}\n", md)
         self.assertNotIn("<!--", md)
         self.assertEqual(len(re.findall(r"^!\[[^\]]+\]\(hail-1/[a-z0-9-]+\.png\)$", md, re.M)), 16)
         self.assertIn("\n## Who decides\n", md.split("\n## When a seat needs you\n", 1)[0])
@@ -331,20 +340,25 @@ class Index(unittest.TestCase):
 
 
 class OneEdit(unittest.TestCase):
-    """The spec's address lives in the builder's SPEC alone, and the post's band must link it as written there: SPEC changed alone, the build
-    refuses the post; SPEC and the band changed together, every place that links the spec takes the new address. The post's date lives in one
-    place: one edit of it reaches every place that shows it."""
+    """The spec's address lives in the builder's SPEC alone, and the one page's in ONE_PAGE alone; the post's band must link each as written
+    there: either changed alone, the build refuses the post; each changed with its link in the band, every place that links it takes the new
+    address. The post's date lives in one place: one edit of it reaches every place that shows it."""
 
-    def edited(self, root, spec=None, band=None, date=None):
+    def edited(self, root, spec=None, band=None, date=None, one_page=None, one_band=None):
         builder, post = root / "scripts/build_blog.py", root / "blog/posts/hail-1.md"
         text = builder.read_text(encoding="utf-8")
         self.assertEqual(text.count(f'SPEC = "{BB.SPEC}"'), 1)
+        self.assertEqual(text.count(f'ONE_PAGE = "{BB.ONE_PAGE}"'), 1)
         if spec:
-            builder.write_text(text.replace(f'SPEC = "{BB.SPEC}"', f'SPEC = "{spec}"'), encoding="utf-8")
+            text = text.replace(f'SPEC = "{BB.SPEC}"', f'SPEC = "{spec}"')
+        if one_page:
+            text = text.replace(f'ONE_PAGE = "{BB.ONE_PAGE}"', f'ONE_PAGE = "{one_page}"')
+        builder.write_text(text, encoding="utf-8")
         words = post.read_text(encoding="utf-8")
-        if band:
-            self.assertEqual(words.count(f"]({BB.SPEC})"), 1)
-            words = words.replace(f"]({BB.SPEC})", f"]({band})")
+        for old, new in ((BB.SPEC, band), (BB.ONE_PAGE, one_band)):
+            if new:
+                self.assertEqual(words.count(f"]({old})"), 1)
+                words = words.replace(f"]({old})", f"]({new})")
         if date:
             words = words.replace(f"\ndate: {DATE}\n", f"\ndate: {date}\n", 1)
         post.write_text(words, encoding="utf-8")
@@ -354,19 +368,30 @@ class OneEdit(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             r = self.edited(scratch(tmp), spec="https://example.org/spec.html")
             self.assertNotEqual(r.returncode, 0, "the builder built a post whose band links another address than SPEC")
-            self.assertIn("the TL;DR's last item does not open with the spec's link and its arrow", r.stderr)
+            self.assertIn("the TL;DR's last item does not follow the one page's sentence with the spec's link and its arrow", r.stderr)
+
+    def test_the_one_page_changed_alone_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            r = self.edited(scratch(tmp), one_page="https://example.org/one.html")
+            self.assertNotEqual(r.returncode, 0, "the builder built a post whose band links another address than ONE_PAGE")
+            self.assertIn("the TL;DR's last item does not open with the one page's link and its arrow", r.stderr)
 
     def test_one_edit_of_the_spec_with_its_band_or_of_the_date(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = scratch(tmp)
-            r = self.edited(root, spec="https://example.org/spec.html", band="https://example.org/spec.html", date="2027-01-15")
+            r = self.edited(root, spec="https://example.org/spec.html", band="https://example.org/spec.html", date="2027-01-15",
+                            one_page="https://example.org/one.html", one_band="https://example.org/one.html")
             self.assertEqual(r.returncode, 0, r.stderr)
             page = (root / "site/blog/hail-1.html").read_text(encoding="utf-8")
             md = (root / "site/blog/hail-1.md").read_text(encoding="utf-8")
             feed = (root / "site/blog/feed.xml").read_text(encoding="utf-8")
-            self.assertIn('<span class="go"><a href="https://example.org/spec.html">', page)
+            self.assertIn('<dd><span class="go"><a href="https://example.org/one.html">', page)
+            self.assertLess(page.index('<dd><span class="go"><a href="https://example.org/one.html">'),
+                            page.index('<span class="go"><a href="https://example.org/spec.html">'))
+            self.assertIn("](https://example.org/one.html)", md)
             self.assertIn("](https://example.org/spec.html)", md)
             self.assertNotIn(BB.SPEC, page + md)
+            self.assertNotIn(BB.ONE_PAGE, page + md)
             self.assertIn('<time datetime="2027-01-15">2027-01-15</time>', page)
             self.assertIn("\ndate: 2027-01-15\n", md)
             self.assertIn("<pubDate>Fri, 15 Jan 2027 00:00:00 +0100</pubDate>", feed)
@@ -391,6 +416,17 @@ class Refuses(unittest.TestCase):
             (root / rel).write_text(text.replace(old, new, 1), encoding="utf-8")
         return change
 
+    def row(self, make):
+        """The band rewritten from its two parts, the one page's link with its sentence and the spec's link with its: make(one, spec) gives the
+        row's words."""
+        def change(root):
+            post = root / "blog/posts/hail-1.md"
+            text = post.read_text(encoding="utf-8")
+            m = re.search(r"^- \*\*Read it:\*\* (\[[^\]]+\]\(" + re.escape(BB.ONE_PAGE) + r"\) .+?) (\[[^\]]+\]\(" + re.escape(BB.SPEC) + r"\) .+)$", text, re.M)
+            self.assertIsNotNone(m)
+            post.write_text(text[:m.start(1)] + make(m.group(1), m.group(2)) + text[m.end(2):], encoding="utf-8")
+        return change
+
     def test_each_control(self):
         post, hails = "blog/posts/hail-1.md", "blog/posts/hail-1.hails.html"
         for name, change, reason in (
@@ -400,9 +436,15 @@ class Refuses(unittest.TestCase):
                 ("a hail at a place the post does not have", self.edit(hails, "<!-- after F13 -->", "<!-- after F99 -->"), "do not match its files"),
                 ("the reference's hail not its fence", self.edit(post, "Work in your own worktree.", "Work in a worktree."), "the reference's fence is not its hail"),
                 ("a mark the blog does not carry", self.edit(post, "A missing first response", "A *missing* first response"), "a mark the blog does not carry"),
-                ("the band linking the old placeholder", self.edit(post, f"]({BB.SPEC})", "](‹link: spec›)"), "does not open with the spec's link"),
+                ("the band linking the old placeholder", self.edit(post, f"]({BB.SPEC})", "](‹link: spec›)"),
+                 "does not follow the one page's sentence with the spec's link"),
                 ("the band linking another address", self.edit(post, f"]({BB.SPEC})", "](https://github.com/shoalmark/hail/blob/main/spec/hail-2.md)"),
-                 "does not open with the spec's link"),
+                 "does not follow the one page's sentence with the spec's link"),
+                ("the band without the one page's link", self.row(lambda one, spec: spec), "does not open with the one page's link and its arrow"),
+                ("the one page's link after the spec's", self.row(lambda one, spec: f"{spec} {one}"), "does not open with the one page's link and its arrow"),
+                ("the one page's link to another address", self.edit(post, f"]({BB.ONE_PAGE})", "](https://github.com/shoalmark/hail/blob/main/README.md)"),
+                 "does not open with the one page's link and its arrow"),
+                ("the band without the spec's link", self.row(lambda one, spec: one), "does not follow the one page's sentence with the spec's link"),
                 ("a font of another subset", lambda root: shutil.copyfile(root / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin-ext.woff2",
                                                                          root / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2"), "is not the latin subset"),
                 ("a figure with no entry", self.edit("blog/posts/hail-1.figures.json", '"F15"', '"F16"'), "F15 has no entry"),
