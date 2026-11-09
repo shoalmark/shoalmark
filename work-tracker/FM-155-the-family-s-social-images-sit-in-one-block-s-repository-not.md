@@ -3,7 +3,7 @@ id: FM-155
 status: Proposed
 considered: FM-006, FM-104, FM-152
 tags: process
-next: owner
+next: build
 hook: "shoalmark.tools is a family of building blocks with a public press kit, shoalmark/brand, but the family's social images, the profile header, the repository card and the link previews, still sit in brand/social/ of one block's repository."
 ask-id: FM-155-Q1
 ask: "Shall FM-155 move brand/social/'s ten files out of the shoalmark repository, leaving one README that points to the press kit's social/ at shoalmark/brand's 070a4dd, take link-preview-de.svg out of the German du test's list, and keep the built site unchanged, as FM-155's *What is true now* sets out?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-09
 ask-options: "yes, as proposed | no: they stay in both repositories"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-09
+answered-by: holgo99
 ---
 
 # FM-155 — The family's social images sit in one block's repository, not in the press kit
