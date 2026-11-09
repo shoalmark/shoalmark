@@ -216,6 +216,7 @@ a.au-owner:hover b{text-decoration:underline;text-decoration-color:var(--pink);t
 .post .credits{position:relative;margin:calc(var(--l)*2.2) 0 0;border:1px solid var(--contour);padding:24px 22px 4px}
 .post .credits .ct{position:absolute;top:-.85em;left:1ch;margin:0;padding:0 1ch;background:var(--bg);font:600 15px/1.6 var(--mono);color:var(--ink)}
 .post .credits p{color:var(--dim)}
+.post .credits .nw{white-space:nowrap}
 /* the quiet end: back to all posts, and the feed; no newsletter, no related posts */
 .post .end{display:flex;justify-content:space-between;gap:1em;margin-top:calc(var(--l)*1.5);font-size:14px}
 .post .end a{color:var(--dim);text-decoration:underline;text-decoration-color:var(--contour)}

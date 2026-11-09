@@ -96,8 +96,26 @@ class Built(unittest.TestCase):
         self.assertEqual(self.page.count('<aside class="credits"'), 1)
         box = re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0]
         self.assertEqual(len(box.split("<p>")) - 1, 6)
-        self.assertIn("<p>Article fact review: an independent reviewer, in twenty-two rounds, with design and reader critiques.</p>", box)
+        self.assertIn('<p>Article fact review: an independent reviewer, in <span class="nw">twenty-two</span> rounds, with design and reader critiques.</p>', box)
         self.assertTrue(box.endswith("<p>With thanks to the Research seat.</p></aside>"))
+
+    def test_two_places_kept_whole_on_their_line(self):
+        """The post's "every failure." keeps its two words together through the one no-break space in its source, U+00A0 itself, which the page
+        and the Markdown version carry; the credits' "twenty-two" stays whole in the one wrap the credits have, its hyphen plain."""
+        source = (ROOT / "blog/posts/hail-1.md").read_text(encoding="utf-8")
+        md = (self.blog / "hail-1.md").read_text(encoding="utf-8")
+        self.assertEqual(source.count(" "), 1)
+        self.assertIn("tokens and every failure.\n", source)
+        self.assertRegex(self.page, "tokens and every( |&nbsp;)failure\\.")
+        self.assertNotIn("every failure", self.page + md)
+        self.assertIn("tokens and every failure.\n", md)
+        self.assertNotIn("&nbsp;", md)
+        box = re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0]
+        self.assertEqual(re.findall(r'<span class="nw">(.*?)</span>', box), ["twenty-two"])
+        self.assertEqual(box.count("<span"), 1)
+        self.assertIn('in twenty-two rounds', source)                      # the credits are front matter: the Markdown version doesn't carry them
+        for name, text in (("the source", source), ("the page", self.page), ("the Markdown version", md)):
+            self.assertNotRegex(text, "[‑⁠]", name)
 
     def test_the_four_touches(self):
         anchors = re.findall(r'<(h[23]) id="([^"]+)"><a class="hm" href="#\2" aria-hidden="true" tabindex="-1"></a>', self.page)

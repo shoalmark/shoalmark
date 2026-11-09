@@ -46,6 +46,8 @@ INDEX_STATEMENT = ('I build <code>shoalmark.tools</code> with my agents: <span c
                    'word</em>.</span> <span class="ix-how">Here is how, written from the record.</span>')   # the index's opening, its one <h1>
 INDEX_POSTS = 10                                           # the index's one page: the newest post as its lead, then nine as cards
 NUMBERS = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
+# a compound number word, a tens word, a hyphen and a ones word: the credits keep it whole on its line, its hyphen plain
+COMPOUND = re.compile(r"\b(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)-(?:one|two|three|four|five|six|seven|eight|nine)\b", re.I)
 BLOG_NAME = "shoalmark blog"
 LLMS_LINE = "Every post has a Markdown version beside it; the figures are linked as stills, each with its alt text."
 UI = {"markdown": "read as Markdown", "contents": "on this page", "credits": "Acknowledgements", "all": "← all posts",
@@ -476,7 +478,7 @@ def share(url, title, end=False):
 
 def touches(b, credits, written):
     """Each heading's drawn mark becomes its anchor; each hail with a marker line gets its label; "written by", the end's share row and the
-    credits follow the quotation; the end links follow the foot."""
+    credits follow the quotation, each compound number word in them wrapped to keep it whole; the end links follow the foot."""
     b = re.sub(r'<(h[23]) id="([^"]+)">', r'<\1 id="\2"><a class="hm" href="#\2" aria-hidden="true" tabindex="-1"></a>', b)
 
     def label(m):
@@ -484,7 +486,7 @@ def touches(b, credits, written):
         return f'<pre class="{m.group(1)}" data-label="hail · {mk.group(1)}">' + m.group(2) if mk else m.group(0)
     b = re.sub(r'<pre class="(ex(?: lit-ex)?)">(.*?</pre>)', label, b, flags=re.S)
     box = (f'<aside class="credits" aria-labelledby="credits-t"><h2 class="ct" id="credits-t">{UI["credits"]}</h2>'
-           + "".join(f"<p>{text_node(x)}</p>" for x in credits) + "</aside>")
+           + "".join("<p>" + COMPOUND.sub(lambda m: f'<span class="nw">{m.group(0)}</span>', text_node(x)) + "</p>" for x in credits) + "</aside>")
     i = b.index('<section class="ending"')
     j = b.index("</section>", i) + len("</section>")
     b = b[:j] + "\n" + written + "\n" + box + b[j:]
