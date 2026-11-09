@@ -13,12 +13,12 @@
 {% include "_header.html" %}
 <main class="page">
   <header class="ix-head">
-    <h1>Blog</h1>
-    <p>{{ index_intro }}</p>
+    <h1>{{ index_statement_html }}</h1>
   </header>
-  <ol class="ix" reversed>
-{{ rows }}
-  </ol>
+  <div class="ixw">
+{{ latest }}
+{{ earlier }}
+  </div>
 </main>
 {% include "_footer.html" %}
 </body>

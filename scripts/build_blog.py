@@ -6,12 +6,14 @@ Standard library only. From blog/, it reads:
 - posts/<slug>.md: a post, its front matter (`key: value` lines; a value in double quotes or brackets is JSON) and its Markdown;
 - posts/<slug>.figures.json: each figure slot's files, the play-once GIFs' lengths in ms, and its alt text;
 - posts/<slug>.hails.html: the hails shown as page text, each after a comment naming its place;
-- posts/<slug>/: the files the post shows;
-- templates/, css/base.css and css/m2.css, js/blog.js: the kit. The templates use two forms only: {{ slot }} and {% include "name" %};
-- authors/: the pictures of the authors who are people; a seat's picture is its icon in brand/seats/.
+- posts/<slug>/: the files the post shows, its card's lossless WebP twin among them;
+- templates/, css/base.css and css/m2.css, js/blog.js: the kit. The templates use two forms only: {{ slot }} and {% include "name" %}; a
+  line that holds a slot alone goes when the slot's value is empty;
+- authors/: the pictures of the authors who are people, each with its 52 px one for the index; a seat's picture is its icon in brand/seats/.
 It writes site/blog/: index.html, <slug>.html, <slug>.md (the post for agent readers), <slug>/ (its files), assets/blog.css and
 assets/blog.js, assets/authors/ and assets/seats/ (the authors' pictures), fonts/ (the site's own latin subsets, under neutral names, with
-their licences), feed.xml and llms.txt.
+their licences), feed.xml and llms.txt. The index opens with its statement, its one heading, then leads with the newest post, and shows the
+earlier ones as cards, newest first: ten posts at most, as the page after it is not built yet.
 Every page links with relative addresses; the head's addresses are absolute. A post's body is its Markdown converted line by line into the
 post's markup: the TL;DR as a dl with its band, each slot a figure with its stills and play-once GIFs, numbered for the reader by its place
 among the post's figures, each marker section, the hails, the status paragraph, the quotation, the reference and the foot, each figure's
@@ -37,7 +39,11 @@ GITHUB = "https://github.com/shoalmark/shoalmark"
 SPEC = "https://github.com/shoalmark/hail/blob/main/spec/hail-1.md"   # the published spec's address: a post's band must link it, as written here
 WPM = 230                                                  # the reading time: the words over 230 a minute, rounded up
 VARIANT = "m2"
-INDEX_INTRO = "How I build shoalmark with my agents, written from the record."
+INDEX_INTRO = "How I build shoalmark with my agents, written from the record."            # the feed's and llms.txt's line
+INDEX_STATEMENT = ('I build <b>shoalmark</b> with my agents: <span class="ix-keep">they do the work, <em class="ix-you">I&nbsp;have the final '
+                   'word</em>.</span> <span class="ix-how">Here is how, written from the record.</span>')   # the index's opening, its one <h1>
+INDEX_POSTS = 10                                           # the index's one page: the newest post as its lead, then nine as cards
+NUMBERS = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")
 BLOG_NAME = "shoalmark blog"
 LLMS_LINE = "Every post has a Markdown version beside it; the figures are linked as stills, each with its alt text."
 UI = {"markdown": "read as Markdown", "contents": "on this page", "credits": "Acknowledgements", "all": "← all posts",
@@ -226,6 +232,11 @@ class Post:
         if not m:
             refuse(f"{self.name}: the title is not '⌜name⌟: claim; promise'")
         return f'<span><span class="hf">{text_node(m.group(1))}</span>{text_node(m.group(2))}</span> <span>{text_node(m.group(3))}</span>'
+
+    # the title on the index: the wordmark drawn by CSS, the rest as one run of text
+    def index_title_html(self):
+        m = re.fullmatch(r"⌜([^⌟]+)⌟(.+)", self.meta["title"])
+        return f'<span class="hf">{text_node(m.group(1))}</span>{text_node(m.group(2))}'
 
     def hail(self, place):
         if place not in self.hails:
@@ -497,6 +508,7 @@ def contents(body):
 def render(name, ctx):
     s = (SRC / "templates" / name).read_text(encoding="utf-8")
     s = re.sub(r'\{%\s*include\s+"([^"]+)"\s*%\}', lambda m: render(m.group(1), ctx).rstrip("\n"), s)
+    s = re.sub(r"^[ \t]*\{\{\s*([a-z_]+)\s*\}\}[ \t]*\n", lambda m: "" if ctx.get(m.group(1)) == "" else m.group(0), s, flags=re.M)
 
     def slot(m):
         if m.group(1) not in ctx:
@@ -522,6 +534,8 @@ def build(site):
     posts = sorted((Post(p) for p in sorted((SRC / "posts").glob("*.md"))), key=lambda p: p.meta["date"], reverse=True)
     if not posts:
         refuse("blog/posts holds no post")
+    if len(posts) > INDEX_POSTS:
+        refuse(f"blog/posts holds {len(posts)} posts, and the index shows {INDEX_POSTS} at most: the page after it is not built yet")
     (out / "assets").mkdir(parents=True)
     (out / "fonts").mkdir()
     (out / "assets/seats").mkdir()
@@ -540,7 +554,7 @@ def build(site):
                                           (ROOT / "overrides/main.html").read_text(encoding="utf-8")).group(1))
     common = {"variant": VARIANT, "pricke": pricke, "root": "", "site_root": "../", "url_start": "../index.html", "url_blog": "index.html",
               "url_docs": "../setup.html", "url_github": GITHUB, "url_imprint": "../imprint.html", "url_privacy": "../privacy.html"}
-    rows, items, llms = [], [], []
+    entries, items, llms = [], [], []
     for post in posts:
         slug, meta = post.slug, post.meta
         (out / slug).mkdir()
@@ -554,7 +568,14 @@ def build(site):
             refuse(f"{post.name}: its card is not 1200 x 630, the size the head's og:image and og:video name")
         body = post.body()
         owner, seats = post.authors()
+        card_webp = Path(meta["card"]).with_suffix(".webp").name
+        if not (post.files / card_webp).is_file():
+            refuse(f"{post.name}: its card {meta['card']} has no lossless WebP twin, {card_webp}, beside it")
+        owner_small = Path(owner["picture"]).stem + "-52" + Path(owner["picture"]).suffix
+        if not (SRC / "authors" / owner_small).is_file():
+            refuse(f"{post.name}: the Owner's picture {owner['picture']} has no 52 px one, {owner_small}, in blog/authors/")
         shutil.copyfile(SRC / "authors" / owner["picture"], out / "assets/authors" / owner["picture"])
+        shutil.copyfile(SRC / "authors" / owner_small, out / "assets/authors" / owner_small)
         for seat in seats:
             shutil.copyfile(ROOT / "brand/seats" / f"{seat['seat']}.svg", out / "assets/seats" / f"{seat['seat']}.svg")
         minutes = -(-post.words() // WPM)
@@ -574,15 +595,28 @@ def build(site):
                    authors=authors(owner, seats), share=share(f"{SITE_URL}blog/{slug}.html", meta["title"]))
         (out / f"{slug}.html").write_text(render("post.html", ctx), encoding="utf-8")
         (out / f"{slug}.md").write_text(post.markdown_version(), encoding="utf-8")
-        rows.append(render("_index-row.html", {"href": f"{slug}.html", "title_html": title_html, "date_iso": meta["date"], "date_text": meta["date"],
-                                               "kicker_label": text_node(meta["kicker"])}).rstrip("\n"))
+        kicker = render("_index-kicker.html", {"slug": slug, "date_iso": meta["date"], "date_text": meta["date"],
+                                               "kicker_label": text_node(meta["kicker"])}).rstrip("\n")
+        portraits = render("_index-portraits.html", {"owner_small": f"assets/authors/{attr(owner_small)}", "seat_imgs": "".join(
+            f'<img src="assets/seats/{attr(s["seat"])}.svg" width="22" height="22" alt="" loading="lazy" decoding="async">' for s in seats)}).rstrip("\n")
+        count = NUMBERS[len(seats)] if len(seats) < len(NUMBERS) else str(len(seats))
+        entries.append({"href": f"{slug}.html", "slug": slug, "title_html": post.index_title_html(), "card_png": f"{slug}/{meta['card']}",
+                        "card_webp": f"{slug}/{card_webp}", "card_alt": html.escape(meta["card_alt"]), "kicker": kicker, "dek": text_node(meta["dek"]),
+                        "read_time": UI["read"].format(n=minutes), "portraits": portraits,
+                        "authors_line": attr(f"by {owner['name']} and {count} seat{'' if len(seats) == 1 else 's'}")})
         items.append(f"<item>\n<title>{html.escape(meta['title'])}</title>\n<link>{SITE_URL}blog/{slug}.html</link>\n<guid>{SITE_URL}blog/{slug}.html</guid>\n"
                      f"<pubDate>{pub_date(meta['date'])}</pubDate>\n<description>{html.escape(post.description)}</description>\n</item>\n")
         llms.append(f"- [{meta['title']}]({SITE_URL}blog/{slug}.md): {post.description}\n")
         print(f"blog/{slug}.html: {len(post.figures)} figures, {len(post.hails)} hails, {post.words()} words, {minutes} min at {WPM} a minute")
-    ictx = dict(common, title_text="Blog · shoalmark", description=html.escape(INDEX_INTRO), canonical=f"{SITE_URL}blog/", index_intro=html.escape(INDEX_INTRO),
-                rows="\n".join(rows), card_abs=f"{SITE_URL}assets/preview.png", card_alt=html.escape(preview_alt), here_blog=" is-here",
-                current_blog=' aria-current="page"')
+    earlier = ""
+    if len(entries) > 1:                                       # the next page and its "See more" wait: more than ten posts are refused above
+        earlier = render("_index-earlier.html", {"earlier_count": len(entries) - 1, "earlier_noun": "earlier post" if len(entries) == 2 else "earlier posts",
+                                                 "cards": "\n".join(render("_index-card.html", e).rstrip("\n") for e in entries[1:INDEX_POSTS]),
+                                                 "more": ""}).rstrip("\n")
+    statement = html.unescape(re.sub(r"<[^>]+>", "", INDEX_STATEMENT)).replace("\xa0", " ")
+    ictx = dict(common, title_text="Blog · shoalmark", description=html.escape(statement), canonical=f"{SITE_URL}blog/",
+                index_statement_html=INDEX_STATEMENT, latest=render("_index-lead.html", entries[0]).rstrip("\n"), earlier=earlier,
+                card_abs=f"{SITE_URL}assets/preview.png", card_alt=html.escape(preview_alt), here_blog=" is-here", current_blog=' aria-current="page"')
     (out / "index.html").write_text(render("index.html", ictx), encoding="utf-8")
     (out / "feed.xml").write_text(
         '<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n<channel>\n'

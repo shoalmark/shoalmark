@@ -57,14 +57,14 @@ class Built(unittest.TestCase):
     def test_the_tree(self):
         want = {"index.html", "hail-1.html", "hail-1.md", "feed.xml", "llms.txt", "assets/blog.css", "assets/blog.js", "fonts/mono-400.woff2",
                 "fonts/mono-600.woff2", "fonts/pixel-400.woff2", "fonts/pixel-700.woff2", "fonts/OFL.txt", "fonts/OFL-pixel.txt",
-                "assets/authors/owner.jpg"} | {f"assets/seats/{k}.svg" for k in SEATS}
+                "assets/authors/owner.jpg", "assets/authors/owner-52.jpg"} | {f"assets/seats/{k}.svg" for k in SEATS}
         got = {p.relative_to(self.blog).as_posix() for p in self.blog.rglob("*") if p.is_file() and not p.relative_to(self.blog).as_posix().startswith("hail-1/")}
         self.assertEqual(got, want)
 
     def test_the_posts_files_are_its_sources(self):
         src = sorted(p.name for p in (ROOT / "blog/posts/hail-1").iterdir())
         self.assertEqual(sorted(p.name for p in (self.blog / "hail-1").iterdir()), src)
-        self.assertEqual(len(src), 128)
+        self.assertEqual(len(src), 129)
         for name in src:
             self.assertEqual((self.blog / "hail-1" / name).read_bytes(), (ROOT / "blog/posts/hail-1" / name).read_bytes(), name)
 
@@ -260,6 +260,71 @@ class Built(unittest.TestCase):
         self.assertTrue((self.blog / "llms.txt").read_text(encoding="utf-8").startswith("# shoalmark blog\n\n> How I build shoalmark with my agents"))
 
 
+class Index(unittest.TestCase):
+    """The blog's index: its opening statement as its one heading, the newest post as its lead, the earlier ones as cards, newest first, and ten
+    posts at most. With the one post, the index is the design's page, byte for byte: its SHA-256 is pinned here, and changes with the post's
+    title, dek, card, kicker, reading time or authors, or with the templates."""
+
+    INDEX_SHA256 = "7e2206ba26a1b08f79d2d78a417c8c4960c04a1f807cdc9f2b4f74bf3044774b"
+
+    @staticmethod
+    def posts(root, dates, folders=True):
+        """More posts beside hail-1, each a copy of it under a slug and a date of its own: hail-2 on the first date, hail-3 on the next."""
+        src = root / "blog/posts"
+        for n, day in enumerate(dates, 2):
+            slug = f"hail-{n}"
+            text = (src / "hail-1.md").read_text(encoding="utf-8").replace("\nslug: hail-1\n", f"\nslug: {slug}\n", 1)
+            (src / f"{slug}.md").write_text(text.replace(f"\ndate: {DATE}\n", f"\ndate: {day}\n", 1), encoding="utf-8")
+            for part in ("figures.json", "hails.html"):
+                shutil.copyfile(src / f"hail-1.{part}", src / f"{slug}.{part}")
+            if folders:
+                shutil.copytree(src / "hail-1", src / slug)
+
+    def test_the_index_of_one_post_is_the_designs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = scratch(tmp)
+            r = build(root)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            index = (root / "site/blog/index.html").read_bytes()
+        page = index.decode("utf-8")
+        self.assertEqual(re.findall(r"<h1>(.*?)</h1>", page), [BB.INDEX_STATEMENT])
+        statement = "I build shoalmark with my agents: they do the work, I have the final word. Here is how, written from the record."
+        self.assertIn(f'<meta name="description" content="{statement}">', page)
+        self.assertIn(f'<meta property="og:description" content="{statement}">', page)
+        self.assertIn("<title>Blog · shoalmark</title>", page)
+        self.assertIn('<a class="ix-lead" href="hail-1.html"', page)
+        self.assertIn('<source type="image/webp" srcset="hail-1/card.webp"><img class="ix-img" src="hail-1/card.png"', page)
+        self.assertIn('title="by @holgo99 and six seats"><img class="ix-owner" src="assets/authors/owner-52.jpg"', page)
+        self.assertNotIn("ix-earlier", page)
+        self.assertNotIn("\n\n", page)
+        self.assertEqual(hashlib.sha256(index).hexdigest(), self.INDEX_SHA256)
+
+    def test_several_posts_the_newest_leads(self):
+        for dates, count in ((["2026-11-09"], "<b>1</b> earlier post</h2>"), (["2026-11-09", "2026-11-10"], "<b>2</b> earlier posts</h2>")):
+            with self.subTest(posts=len(dates) + 1), tempfile.TemporaryDirectory() as tmp:
+                root = scratch(tmp)
+                self.posts(root, dates)
+                r = build(root)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                page = (root / "site/blog/index.html").read_text(encoding="utf-8")
+                newest = f"hail-{len(dates) + 1}"
+                self.assertEqual(re.findall(r'<a class="ix-lead" href="([^"]+)"', page), [f"{newest}.html"])
+                self.assertIn(count, page)
+                cards = re.findall(r'<li><a class="ix-card" href="([^"]+)".*?<img [^>]*loading="(\w+)"', page)
+                self.assertEqual(cards, [(f"hail-{n}.html", "lazy") for n in range(len(dates), 0, -1)])
+                self.assertEqual(page.count('loading="eager"'), 1)
+                self.assertNotIn("ix-more", page)
+                self.assertNotIn("\n\n", page)
+
+    def test_eleven_posts_are_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = scratch(tmp)
+            self.posts(root, [f"2026-11-{d}" for d in range(10, 20)], folders=False)
+            r = build(root)
+            self.assertNotEqual(r.returncode, 0, "the builder built an index of eleven posts")
+            self.assertIn("blog/posts holds 11 posts, and the index shows 10 at most: the page after it is not built yet", r.stderr)
+
+
 class OneEdit(unittest.TestCase):
     """The spec's address lives in the builder's SPEC alone, and the post's band must link it as written there: SPEC changed alone, the build
     refuses the post; SPEC and the band changed together, every place that links the spec takes the new address. The post's date lives in one
@@ -350,6 +415,10 @@ class Refuses(unittest.TestCase):
                     (root / "blog/posts/hail-1/hail-1-page.hevc.mp4").read_bytes().replace(b"hvc1", b"hev1", 1)), "its video's sample entry is hev1, not avc1 or hvc1"),
                 ("a figure's WebP twin with no file", lambda root: (root / "blog/posts/hail-1/f14-sign-seal-780-once.webp").rename(root / "f14-sign-seal-780-once.webp.moved"),
                  "f14-sign-seal-780-once.webp, a WebP twin's file, is not among its files"),
+                ("a card with no WebP twin", lambda root: (root / "blog/posts/hail-1/card.webp").rename(root / "card.webp.moved"),
+                 "its card card.png has no lossless WebP twin, card.webp, beside it"),
+                ("the Owner's picture with no 52 px one", lambda root: (root / "blog/authors/owner-52.jpg").rename(root / "owner-52.jpg.moved"),
+                 "the Owner's picture owner.jpg has no 52 px one, owner-52.jpg, in blog/authors/"),
                 ("the hero's page files in the other order", self.edit(post, 'hero: ["hail-1-page.hevc.mp4", "hail-1-page.mp4"]', 'hero: ["hail-1-page.mp4", "hail-1-page.hevc.mp4"]'),
                  "not an HEVC file, then an H.264 one")):
             with self.subTest(name):
