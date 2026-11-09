@@ -93,7 +93,7 @@ class Built(unittest.TestCase):
         self.assertEqual(self.page.count('<aside class="credits"'), 1)
         box = re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0]
         self.assertEqual(len(box.split("<p>")) - 1, 6)
-        self.assertIn("<p>Article fact review: an independent reviewer, in fourteen rounds, with design and reader critiques.</p>", box)
+        self.assertIn("<p>Article fact review: an independent reviewer, in twenty rounds, with design and reader critiques.</p>", box)
         self.assertTrue(box.endswith("<p>With thanks to the Research seat.</p></aside>"))
 
     def test_the_four_touches(self):
@@ -234,7 +234,9 @@ class Built(unittest.TestCase):
         self.assertNotRegex(self.page.lower(), r"facebook|new tab|<script(?![^>]*\bsrc=)")
 
     def test_the_band_links_the_spec(self):
+        self.assertEqual(BB.SPEC, "https://github.com/shoalmark/hail/blob/main/spec/hail-1.md")
         self.assertIn(f'<span class="go"><a href="{html.escape(BB.SPEC, quote=True)}">', self.page)
+        self.assertNotIn("‹link: spec›", self.page + (self.blog / "hail-1.md").read_text(encoding="utf-8"))
         self.assertIn(f'<p class="kicker"><time datetime="{DATE}">{DATE}</time>', self.page)
 
     def test_no_inline_script(self):
@@ -259,25 +261,42 @@ class Built(unittest.TestCase):
 
 
 class OneEdit(unittest.TestCase):
-    """The spec's address and the post's date each live in one place: one edit of either reaches every place that shows it."""
+    """The spec's address lives in the builder's SPEC alone, and the post's band must link it as written there: SPEC changed alone, the build
+    refuses the post; SPEC and the band changed together, every place that links the spec takes the new address. The post's date lives in one
+    place: one edit of it reaches every place that shows it."""
 
-    def test_one_edit_of_the_spec_or_the_date(self):
+    def edited(self, root, spec=None, band=None, date=None):
+        builder, post = root / "scripts/build_blog.py", root / "blog/posts/hail-1.md"
+        text = builder.read_text(encoding="utf-8")
+        self.assertEqual(text.count(f'SPEC = "{BB.SPEC}"'), 1)
+        if spec:
+            builder.write_text(text.replace(f'SPEC = "{BB.SPEC}"', f'SPEC = "{spec}"'), encoding="utf-8")
+        words = post.read_text(encoding="utf-8")
+        if band:
+            self.assertEqual(words.count(f"]({BB.SPEC})"), 1)
+            words = words.replace(f"]({BB.SPEC})", f"]({band})")
+        if date:
+            words = words.replace(f"\ndate: {DATE}\n", f"\ndate: {date}\n", 1)
+        post.write_text(words, encoding="utf-8")
+        return build(root)
+
+    def test_the_spec_changed_alone_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            r = self.edited(scratch(tmp), spec="https://example.org/spec.html")
+            self.assertNotEqual(r.returncode, 0, "the builder built a post whose band links another address than SPEC")
+            self.assertIn("the TL;DR's last item does not open with the spec's link and its arrow", r.stderr)
+
+    def test_one_edit_of_the_spec_with_its_band_or_of_the_date(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = scratch(tmp)
-            builder = root / "scripts/build_blog.py"
-            text = builder.read_text(encoding="utf-8")
-            self.assertEqual(text.count(f'SPEC = "{BB.SPEC}"'), 1)
-            builder.write_text(text.replace(f'SPEC = "{BB.SPEC}"', 'SPEC = "https://example.org/spec.html"'), encoding="utf-8")
-            post = root / "blog/posts/hail-1.md"
-            post.write_text(post.read_text(encoding="utf-8").replace(f"\ndate: {DATE}\n", "\ndate: 2026-11-09\n", 1), encoding="utf-8")
-            r = build(root)
+            r = self.edited(root, spec="https://example.org/spec.html", band="https://example.org/spec.html", date="2026-11-09")
             self.assertEqual(r.returncode, 0, r.stderr)
             page = (root / "site/blog/hail-1.html").read_text(encoding="utf-8")
             md = (root / "site/blog/hail-1.md").read_text(encoding="utf-8")
             feed = (root / "site/blog/feed.xml").read_text(encoding="utf-8")
             self.assertIn('<span class="go"><a href="https://example.org/spec.html">', page)
             self.assertIn("](https://example.org/spec.html)", md)
-            self.assertNotIn(BB.SPEC, page.split('<span class="go">', 1)[1].split("</a>", 1)[0])
+            self.assertNotIn(BB.SPEC, page + md)
             self.assertIn('<time datetime="2026-11-09">2026-11-09</time>', page)
             self.assertIn("\ndate: 2026-11-09\n", md)
             self.assertIn("<pubDate>Mon, 09 Nov 2026 00:00:00 +0100</pubDate>", feed)
@@ -311,7 +330,9 @@ class Refuses(unittest.TestCase):
                 ("a hail at a place the post does not have", self.edit(hails, "<!-- after F13 -->", "<!-- after F99 -->"), "do not match its files"),
                 ("the reference's hail not its fence", self.edit(post, "Work in your own worktree.", "Work in a worktree."), "the reference's fence is not its hail"),
                 ("a mark the blog does not carry", self.edit(post, "A missing first response", "A *missing* first response"), "a mark the blog does not carry"),
-                ("the band's link without its placeholder", self.edit(post, "(‹link: spec›)", "(spec.html)"), "does not open with the spec's link"),
+                ("the band linking the old placeholder", self.edit(post, f"]({BB.SPEC})", "](‹link: spec›)"), "does not open with the spec's link"),
+                ("the band linking another address", self.edit(post, f"]({BB.SPEC})", "](https://github.com/shoalmark/hail/blob/main/spec/hail-2.md)"),
+                 "does not open with the spec's link"),
                 ("a font of another subset", lambda root: shutil.copyfile(root / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin-ext.woff2",
                                                                          root / "docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2"), "is not the latin subset"),
                 ("a figure with no entry", self.edit("blog/posts/hail-1.figures.json", '"F15"', '"F16"'), "F15 has no entry"),

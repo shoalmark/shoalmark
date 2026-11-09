@@ -9,10 +9,10 @@ card_alt: "A deep blue-black card on a faint chart grid, with coordinate ticks r
 video: hail-1.mp4
 hero: ["hail-1-page.hevc.mp4", "hail-1-page.mp4"]
 authors: [{"name": "@holgo99", "href": "https://x.com/holgo99", "picture": "owner.jpg", "role": "Owner"}, {"seat": "go-to-market", "name": "Go-to-market", "role": "Drafted the words"}, {"seat": "designer", "name": "Designer", "role": "Figures and page design"}, {"seat": "planner", "name": "Planner", "role": "Runs the blog lane"}, {"seat": "builder", "name": "Builder", "role": "Builds the blog"}, {"seat": "reviewer", "name": "Reviewer", "role": "Independent fact review"}, {"seat": "auditor", "name": "Auditor", "role": "Drafted the spec"}]
-credits: ["Written by me, the Owner of these seats.", "Words drafted by the go-to-market seat; figures and design by the Designer.", "Article fact review: an independent reviewer, in fourteen rounds, with design and reader critiques.", "The spec: drafted by the Auditor, reviewed independently and by team B's Auditor.", "Team B's review of this post came through hail.", "With thanks to the Research seat."]
+credits: ["Written by me, the Owner of these seats.", "Words drafted by the go-to-market seat; figures and design by the Designer.", "Article fact review: an independent reviewer, in twenty rounds, with design and reader critiques.", "The spec: drafted by the Auditor, reviewed independently and by team B's Auditor.", "Team B's review of this post came through hail.", "With thanks to the Research seat."]
 ---
 
-<!-- blog text v11 · hail/1 article · built around its figures · facts from the hail/1 spec, draft 10, public edition, seventh revision -->
+<!-- blog text v11 · hail/1 article · built around its figures · facts from the hail/1 spec, first edition -->
 
 # ⌜hail/1⌟: agents message each other; the final word stays yours
 
@@ -21,9 +21,9 @@ credits: ["Written by me, the Owner of these seats.", "Words drafted by the go-t
 - **What:** A small protocol for how my agents message each other in shoalmark: short hails, each with one marker, such as QUESTION or REQUEST, pointing at the record instead of copying it.
 - **The problem:** I was the courier, pasting messages window to window; pastes went missing or came late.
 - **How:** My agents hail each other; across teams, git carries the hail and a small helper, the watcher, rings the reader. A seat's hail carries no authority: only my signed answer counts, through hail or the board.
-- **Status:** Draft 10, not yet signed into force. My agents have hailed each other since 6 November, keeping the rules themselves; hails go unsigned and unsealed, and the checking tools aren't built yet. A six-day trial will measure what it costs and where it fails.
+- **Status:** First edition, not yet signed into force. My agents have hailed each other since 6 November, keeping the rules themselves; hails go unsigned and unsealed, and the checking tools aren't built yet. A six-day trial will measure what it costs and where it fails.
 - **Not:** A pipe, a source of authority other than my signature, or meant for swarms. How far it reaches beyond my two teams is unknown.
-- **Read it:** [Read the spec →](‹link: spec›) The public edition of draft 10, written RFC-style: the frame and header, the markers and receipts, the roster, the transports, signing and sealing, and the grammar in an appendix.
+- **Read it:** [Read the spec →](https://github.com/shoalmark/hail/blob/main/spec/hail-1.md) The first edition, written RFC-style: the frame and header, the markers and receipts, the roster, the transports, signing and sealing, and the grammar in an appendix.
 
 hail/1 is how my agents message each other in shoalmark, the workbench where their work and my answers live: I answer their asks on its **board**, each answer signed. Each agent takes a **seat**, a role rather than a session, and seats hail each other the way ships do: call first, say who you are, keep it short, and expect a reply. Before hail, I was the courier, pasting messages window to window.
 
@@ -40,7 +40,7 @@ At the top, you carry every message; below, you read the record. From my seats' 
 | "The Owner said so" travelled as a quote that nobody could check. | Only your signed answer counts. |
 | Who wrote a message was whatever the message said. | Hails will be signed with keys listed in a **roster** you sign, which says who may message, answer and stop whom. |
 
-hail/1 is draft 10, not yet signed into force. My seats have hailed each other since 6 November, keeping the rules themselves; every hail is filed. Signing and sealing are specified but unused: until the roster's keys exist and `hail send` signs, hails go unsigned and unsealed. The checking tools, `hail check` and `hail send`, aren't built yet. The last section shows one real exchange from my record.
+hail/1 is in its first edition, not yet signed into force. My seats have hailed each other since 6 November, keeping the rules themselves; every hail is filed. Signing and sealing are specified but unused: until the roster's keys exist and `hail send` signs, hails go unsigned and unsealed. The checking tools, `hail check` and `hail send`, aren't built yet. The last section shows one real exchange from my record.
 
 ## One hail, line by line
 
@@ -169,7 +169,7 @@ Every hail and receipt is filed by its team's **filer**, the only seat that writ
 
 ## Where it stands
 
-A reviewer that had no part in writing it and team B's Auditor both found draft 10 ready. It takes force only when two things hold: my verified answer approves these exact versions of the spec and the roster, signed twice, on the desktop and in the companion app, through hail or the board; and I then commit the approved roster, signed, on the default branch. Next come the tools, `hail check` first, then `hail send`; the relay, specified but not built, waits for them. A six-day trial on my two teams will measure what it costs and where it fails: round trips, tokens and every failure.
+Three reviewers that had no part in writing it, and team B's Auditor, found it ready. It takes force only when two things hold: my verified answer approves these exact versions of the spec and the roster, signed twice, on the desktop and in the companion app, through hail or the board; and I then commit the approved roster, signed, on the default branch. Next come the tools, `hail check` first, then `hail send`; the relay, specified but not built, waits for them. A six-day trial on my two teams will measure what it costs and where it fails: round trips, tokens and every failure.
 
 > On 7 November, in a pub, I asked team B's Auditor from my phone for an independent review of this article. Its REQUEST reached team A through git, and the watcher rang the same minute. The review found seven problems, two of them serious, among them that the article had dropped half of the rule for how hail/1 takes force; they were fixed, and the re-check found the article ready. DONE went back less than half an hour after the request. No paste, no nudge: I never sat down at my computer.
 >
@@ -183,7 +183,7 @@ Each header line is `key: value`, and a reader ignores a key it doesn't know, ex
 hail/1
 from: a.planner ‹session›
 to: a.builder-1
-id: a.planner-20261108-001
+id: a.planner-20261108T0812Z-k8chqr
 re: none
 marker: REQUEST
 written-against: shoalmark@‹commit› · 2026-11-08T09:12:40+01:00
