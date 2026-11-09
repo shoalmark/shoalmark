@@ -6,20 +6,22 @@ next: build
 triaged: 2026-11-08
 tier: P2
 hook: "The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small, and still for readers who turn motion off."
-ask-id: FM-153-Q4
-ask: "Shall FM-153's first post list the Owner among its authors, under the Owner's X account with a link to it and with the Owner's portrait, before the six seats with their icons, in the post's head and again at its end, as FM-153's *What is true now* entry on the first post's authors sets it out?"
-ask-kind: ruling
-ask-since: 2026-11-08
-ask-options: "yes, as proposed | yes, without the portrait | no: the seats alone"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-08
-answered-by: holgo99
 ---
 
 # FM-153 — A blog for the site, and its first post
 
 ## What is true now
+
+**2026-11-09 — merged to main as #280 (`cd76d0a`), and live.** The blog stands at `shoalmark.tools/blog/`: its
+index, opened by one statement, with the newest post leading, and its first post, on hail/1's first edition and dated
+2026-11-09.
+
+- **The review:** a standard review and eleven bounded re-checks, one verdict each, the last READY at `f34f311`. The
+  twelve verdicts join the records with this change. The Designer checked each revision's built pages beside them, as
+  recorded privately.
+- **Live:** a request for the post's MP4 with `Range: bytes=0-99` answers 206 with `Content-Range`, from the Worker.
+- **Open:** the Owner's check of the post's share preview in iMessage, the one item left in Done when. FM-153 stays In
+  Progress until then.
 
 **2026-11-08 — the blog is built under FM-153-Q3's answer, and its first post's authors wait for the Owner's
 ruling, FM-153-Q4.** The blog, its first post and the Blog button are built on a branch from main, not merged.
@@ -77,19 +79,32 @@ still for readers who turn motion off.
 
 ## Done when
 
-- [ ] The blog at `shoalmark.tools/blog/`, with its index: built by the repository's own builder, with its own
+- [x] The blog at `shoalmark.tools/blog/`, with its index: built by the repository's own builder, with its own
   templates and CSS and no docs engine, in the same job as the site and deployed with it.
-- [ ] Dark-first.
-- [ ] The first post, every word and figure from the checked folder.
-- [ ] The first post's head carries its share video (`og:video`) and a matching social card.
-- [ ] The first post lists its authors as FM-153-Q4's answer rules, the six seats with their icons among them.
-- [ ] The post's spec link points at the published spec.
-- [ ] A Blog button in the start page's header and in the docs' header, in both languages, leading to the English
+  · `246e8f9`, `f61814e`, `411a0cb`, merged in `cd76d0a`
+- [x] Dark-first.
+  · `246e8f9`
+- [x] The first post, every word and figure from the checked folder.
+  · `d1400f9`, `49022d6`, `65108f3`
+- [x] The first post's head carries its share video (`og:video`) and a matching social card.
+  · `4221152`, `52f6cf7`
+- [x] The first post lists its authors as FM-153-Q4's answer rules, the six seats with their icons among them.
+  · `0fd16fc`
+- [x] The post's spec link points at the published spec.
+  · `1eeaff1`, `65108f3`
+- [x] A Blog button in the start page's header and in the docs' header, in both languages, leading to the English
   blog. No line under the start page's hero.
-- [ ] Every figure with alt text and a still, and each at most 1,000,000 bytes, held by a check that runs in the
+  · `631d2fd`, `af74799`
+- [x] Every figure with alt text and a still, and each at most 1,000,000 bytes, held by a check that runs in the
   site's build.
-- [ ] `docs.yml`'s build passes on the pull request.
-- [ ] A standard review's READY, with the Designer's check of the rendered pages beside it.
+  · `9461fd3`, `b5f8eea`, `3760593`
+- [x] `docs.yml`'s build passes on the pull request.
+  · #280's docs run, 9 November
+- [x] A standard review's READY, with the Designer's check of the rendered pages beside it.
+  · READY at `f34f311`; the Designer's check as recorded privately
+- [x] After the deploy, a request for the post's MP4 with `Range: bytes=0-99` answers 206 with `Content-Range`.
+  · checked on `shoalmark.tools`, 9 November
+- [ ] The Owner's check of the post's share preview in iMessage.
 
 ## Asks
 
@@ -106,10 +121,16 @@ still for readers who turn motion off.
 **relation** — accepted the proposal
 **signed** — d3333fa · G
 
+**FM-153-Q4** · 2026-11-08 · Shall FM-153's first post list the Owner among its authors, under the Owner's X account with a link to it and with the Owner's portrait, before the six seats with their icons, in the post's head and again at its end, as FM-153's *What is true now* entry on the first post's authors sets it out?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — d0bb49f · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-09 | Merged to main as #280 (cd76d0a), and live: the blog, its index and its first post; FM-153-Q4 cleared, its record under Asks; the review's twelve verdicts join the records; the Owner's share-preview check is open. |
 | 2026-11-08 | Asked the Owner again: FM-153-Q4, the Owner among the first post's authors, under the Owner's X account and with the Owner's portrait; FM-153-Q3 cleared, its record under Asks. |
 | 2026-11-08 | Asked the Owner again: FM-153-Q3, the blog as its own English site at shoalmark.tools/blog/, dark-first, with a Blog button in the start page's and the docs' header; FM-153-Q2 cleared, its record under Asks. |
 | 2026-11-08 | Judged keep P2 by a partial triage pass on the Owner's signed answer to FM-153-Q2 (aa19b0c); In Progress. Records only. |
