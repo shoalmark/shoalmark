@@ -26,6 +26,12 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
+**2026-11-09 — the build judged before its first commit, a partial pass** (Planner seat, on the Owner's signed
+answer to FM-155-Q1 (`ee8aa9a`); the worksheet `work-tracker/evidence/triage/triage-2026-11-09.md`, one row of
+eighty-seven filled and applied by the command): **FM-155 keep P2** — the answer authorises moving the family's
+social images to the press kit; the current path does not name it, so it is next, and unranked. The other
+eighty-six rows wait for the next full pass.
+
 **2026-11-08 — the build judged before its first commit, a partial pass** (Planner seat, on the Owner's signed
 answer to FM-153-Q2 (`aa19b0c`); the worksheet `work-tracker/evidence/triage/triage-2026-11-08.md`, one row of
 eighty-seven filled and applied by the command): **FM-153 keep P2** — the answer authorises the site's blog and its

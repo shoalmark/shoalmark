@@ -1,24 +1,22 @@
 ---
 id: FM-155
-status: Proposed
+status: In Progress
 considered: FM-006, FM-104, FM-152
 tags: process
 next: build
+triaged: 2026-11-09
+tier: P2
 hook: "shoalmark.tools is a family of building blocks with a public press kit, shoalmark/brand, but the family's social images, the profile header, the repository card and the link previews, still sit in brand/social/ of one block's repository."
-ask-id: FM-155-Q1
-ask: "Shall FM-155 move brand/social/'s ten files out of the shoalmark repository, leaving one README that points to the press kit's social/ at shoalmark/brand's 070a4dd, take link-preview-de.svg out of the German du test's list, and keep the built site unchanged, as FM-155's *What is true now* sets out?"
-ask-kind: ruling
-ask-since: 2026-11-09
-ask-options: "yes, as proposed | no: they stay in both repositories"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-09
-answered-by: holgo99
 ---
 
 # FM-155 — The family's social images sit in one block's repository, not in the press kit
 
 ## What is true now
+
+**2026-11-09 — the Owner accepted FM-155-Q1, and FM-155 is judged before its first build commit: keep P2, In
+Progress.** The Owner's signed answer (`ee8aa9a`) accepts the move as proposed; its exchange stands under Asks. A
+partial triage pass judged this row alone ([worksheet](evidence/triage/triage-2026-11-09.md)). Unranked. The move
+follows on a branch from main, with a standard review.
 
 **Filed 2026-11-09; nothing is built, and FM-155 waits for the Owner's ruling, FM-155-Q1.** No build commit lands
 before its signed answer: the move changes a public repository.
@@ -57,9 +55,17 @@ where anyone who shares a shoalmark.tools block finds them, and the shoalmark re
 - [ ] No build step reads `brand/social/`, and the built site is unchanged.
 - [ ] A standard review's READY.
 
+## Asks
+
+**FM-155-Q1** · 2026-11-09 · Shall FM-155 move brand/social/'s ten files out of the shoalmark repository, leaving one README that points to the press kit's social/ at shoalmark/brand's 070a4dd, take link-preview-de.svg out of the German du test's list, and keep the built site unchanged, as FM-155's *What is true now* sets out?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — ee8aa9a · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-09 | FM-155-Q1 accepted by the Owner (ee8aa9a), cleared by the tool's move; judged keep P2 by a partial triage pass; In Progress. Records only. |
 | 2026-11-09 | Asked the Owner: FM-155-Q1, a ruling on moving brand/social/ to the press kit, shoalmark/brand. |
 | 2026-11-09 | Filed, on the Auditor's word of 9 November, after #280 merged. |
