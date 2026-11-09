@@ -99,23 +99,25 @@ class Built(unittest.TestCase):
         self.assertIn('<p>Article fact review: an independent reviewer, in <span class="nw">twenty-two</span> rounds, with design and reader critiques.</p>', box)
         self.assertTrue(box.endswith("<p>With thanks to the Research seat.</p></aside>"))
 
-    def test_two_places_kept_whole_on_their_line(self):
-        """The post's "every failure." keeps its two words together through the one no-break space in its source, U+00A0 itself, which the page
-        and the Markdown version carry; the credits' "twenty-two" stays whole in the one wrap the credits have, its hyphen plain."""
+    def test_the_places_kept_whole_on_their_line(self):
+        """The post's source holds three no-break spaces, U+00A0 itself, and no other: in the band, "matter most." and "an appendix.", and in
+        its paragraph, "every failure."; the page and the Markdown version carry each. The credits' "twenty-two" stays whole in the one wrap the
+        credits have, its hyphen plain. This file writes each such character as an escape, never as itself."""
         source = (ROOT / "blog/posts/hail-1.md").read_text(encoding="utf-8")
         md = (self.blog / "hail-1.md").read_text(encoding="utf-8")
-        self.assertEqual(source.count(" "), 1)
-        self.assertIn("tokens and every failure.\n", source)
-        self.assertRegex(self.page, "tokens and every( |&nbsp;)failure\\.")
+        self.assertEqual(re.findall(r"\S+\u00a0\S+", source), ["matter\u00a0most.", "an\u00a0appendix.", "every\u00a0failure."])
+        self.assertEqual(source.count("\u00a0"), 3)
+        self.assertIn("tokens and every\u00a0failure.\n", source)
+        self.assertRegex(self.page, "tokens and every(\u00a0|&nbsp;)failure\\.")
         self.assertNotIn("every failure", self.page + md)
-        self.assertIn("tokens and every failure.\n", md)
+        self.assertIn("tokens and every\u00a0failure.\n", md)
         self.assertNotIn("&nbsp;", md)
         box = re.findall(r'<aside class="credits".*?</aside>', self.page, re.S)[0]
         self.assertEqual(re.findall(r'<span class="nw">(.*?)</span>', box), ["twenty-two"])
         self.assertEqual(box.count("<span"), 1)
         self.assertIn('in twenty-two rounds', source)                      # the credits are front matter: the Markdown version doesn't carry them
         for name, text in (("the source", source), ("the page", self.page), ("the Markdown version", md)):
-            self.assertNotRegex(text, "[‑⁠]", name)
+            self.assertNotRegex(text, "[\u2011\u2060]", name)
 
     def test_the_four_touches(self):
         anchors = re.findall(r'<(h[23]) id="([^"]+)"><a class="hm" href="#\2" aria-hidden="true" tabindex="-1"></a>', self.page)
@@ -262,11 +264,20 @@ class Built(unittest.TestCase):
         one_href, one, spec_href, spec = re.fullmatch(r"- \*\*Read it:\*\* \[Read the one page →\]\((\S+)\) (.+?) \[Read the spec →\]\((\S+)\) (.+)",
                                                       READ_IT).groups()
         self.assertEqual((one_href, spec_href), (BB.ONE_PAGE, BB.SPEC))
+        self.assertEqual((one[-12:], spec[-15:]), ("matter\u00a0most.", "in an\u00a0appendix."))
         row = re.search(r'<div class="try"><dt>Read it:</dt><dd>(.*?)</dd></div>', self.page).group(1)
         self.assertEqual(row, f'<span class="go"><a href="{html.escape(BB.ONE_PAGE, quote=True)}">Read the one page</a></span> {html.escape(one, quote=False)} '
                               f'<span class="go"><a href="{html.escape(BB.SPEC, quote=True)}">Read the spec</a></span> {html.escape(spec, quote=False)}')
         self.assertNotIn("‹link: spec›", self.page + (self.blog / "hail-1.md").read_text(encoding="utf-8"))
         self.assertIn(f'<p class="kicker"><time datetime="{DATE}">{DATE}</time>', self.page)
+
+    def test_the_rows_second_button_starts_a_line_of_its_own(self):
+        """The row's second button starts a line of its own, 14 px under the first pair, at every width: a block drawn before it by its ::before,
+        and no margin on its link."""
+        css = (self.blog / "assets/blog.css").read_text(encoding="utf-8")
+        self.assertEqual(css.count('.post .tldr dl>div.try .go~.go::before{content:"";display:block;height:14px}'), 1)
+        self.assertEqual(re.findall(r"[^{}\n]*\.go~\.go[^{]*\{", css), ['.post .tldr dl>div.try .go~.go::before{'])
+        self.assertNotIn("margin-top:14px", css)
 
     def test_the_github_links_lead_to_the_organization(self):
         """Every blog page the build writes, the index and each post, links "GitHub" twice, in its header's a.bh-gh and in its footer, and both

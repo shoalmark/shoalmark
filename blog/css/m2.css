@@ -96,5 +96,5 @@
 .ix-head h1 code::before,.ix-head h1 code::after{content:"`";content:"`" / "";color:var(--mute)}
 /* the opening's pink claim stays on one line on screens 360 px wide and wider; below that it may wrap */
 @media (min-width:360px){.ix-head h1 .ix-you{white-space:nowrap}}
-/* the row's second button: room above it, so the two pairs of button and sentence stand apart */
-.post .tldr dl>div.try .go~.go a{margin-top:14px}
+/* a 14 px block before the row's second button, so that it starts its own line with room above it at every width */
+.post .tldr dl>div.try .go~.go::before{content:"";display:block;height:14px}
