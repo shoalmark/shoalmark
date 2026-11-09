@@ -10593,7 +10593,7 @@ def _de_prose_files():
                  + sorted(p_.relative_to(HERE).as_posix() for p_ in HERE.glob("launch/*/*.de.md"))
                  + ["examples/de/TRIAGE.md", "examples/de/TEMPLATE.md", "examples/de/labels.yaml", "examples/de/shoalmark.toml",
                     "overrides/partials/landing/de.html", "overrides/partials/why/de.html", "overrides/main.html", "zensical.toml",
-                    "shoalmark.py", "brand/social/link-preview-de.svg", "docs/feedback/index.html",
+                    "shoalmark.py", "docs/feedback/index.html",
                     ".github/ISSUE_TEMPLATE/what-your-agent-found.yml"])
 
 
