@@ -40,7 +40,7 @@ SPEC = "https://github.com/shoalmark/hail/blob/main/spec/hail-1.md"   # the publ
 WPM = 230                                                  # the reading time: the words over 230 a minute, rounded up
 VARIANT = "m2"
 INDEX_INTRO = "How I build shoalmark with my agents, written from the record."            # the feed's and llms.txt's line
-INDEX_STATEMENT = ('I build <b>shoalmark</b> with my agents: <span class="ix-keep">they do the work, <em class="ix-you">I&nbsp;have the final '
+INDEX_STATEMENT = ('I build <code>shoalmark.tools</code> with my agents: <span class="ix-keep">they do the work, <em class="ix-you">I&nbsp;have the final '
                    'word</em>.</span> <span class="ix-how">Here is how, written from the record.</span>')   # the index's opening, its one <h1>
 INDEX_POSTS = 10                                           # the index's one page: the newest post as its lead, then nine as cards
 NUMBERS = ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve")

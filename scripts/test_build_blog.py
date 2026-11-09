@@ -262,10 +262,10 @@ class Built(unittest.TestCase):
 
 class Index(unittest.TestCase):
     """The blog's index: its opening statement as its one heading, the newest post as its lead, the earlier ones as cards, newest first, and ten
-    posts at most. With the one post, the index is the design's page, byte for byte: its SHA-256 is pinned here, and changes with the post's
-    title, dek, card, kicker, reading time or authors, or with the templates."""
+    posts at most. With the one post, the index is the design's page but for the name set as code in the opening and the two descriptions'
+    words: its SHA-256 is pinned here, and changes with the post's title, dek, card, kicker, reading time or authors, or with the templates."""
 
-    INDEX_SHA256 = "7e2206ba26a1b08f79d2d78a417c8c4960c04a1f807cdc9f2b4f74bf3044774b"
+    INDEX_SHA256 = "51b3a9b935d20d36db950fde347da0621bd72f80a24cecfbb38412476179f3f5"
 
     @staticmethod
     def posts(root, dates, folders=True):
@@ -288,7 +288,8 @@ class Index(unittest.TestCase):
             index = (root / "site/blog/index.html").read_bytes()
         page = index.decode("utf-8")
         self.assertEqual(re.findall(r"<h1>(.*?)</h1>", page), [BB.INDEX_STATEMENT])
-        statement = "I build shoalmark with my agents: they do the work, I have the final word. Here is how, written from the record."
+        self.assertTrue(BB.INDEX_STATEMENT.startswith("I build <code>shoalmark.tools</code> with my agents: "))
+        statement = "I build shoalmark.tools with my agents: they do the work, I have the final word. Here is how, written from the record."
         self.assertIn(f'<meta name="description" content="{statement}">', page)
         self.assertIn(f'<meta property="og:description" content="{statement}">', page)
         self.assertIn("<title>Blog · shoalmark</title>", page)

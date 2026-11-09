@@ -91,3 +91,6 @@
   .ix-grid{grid-template-columns:1fr;gap:40px}
   .ix-bar{margin-top:calc(var(--l)*1.8)}
 }
+/* the heading's shoalmark.tools, set as the post sets inline code: its backticks drawn, not read */
+.ix-head h1 code{font:inherit;color:var(--id);white-space:nowrap}
+.ix-head h1 code::before,.ix-head h1 code::after{content:"`";content:"`" / "";color:var(--mute)}
