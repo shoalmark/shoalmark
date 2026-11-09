@@ -978,6 +978,12 @@ class Blog(unittest.TestCase):
             ("a counter id in the post's Markdown version", self.write("blog/first-post.md", b"# First post\n\nIts answer: a.planner-20261108-001.\n"),
              "site check: blog/first-post.md holds the counter id 'a.planner-20261108-001', where an id of the spec's first edition is "
              "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("a -001 after a valid key in an alt", self.put(self.PAGE, 'alt="A loop of one pixel"', f'alt="A loop of one pixel, its hail {HAIL_ID}-001"'),
+             f"site check: an alt on blog/first-post.html holds the counter id '{HAIL_ID}-001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
+            ("a _001 after a valid key as a hail block's own id", self.put(self.PAGE, "</body>", hail_block(own=HAIL_ID + "_001") + "</body>"),
+             f"site check: a hail block on blog/first-post.html holds the counter id '{HAIL_ID}_001', where an id of the spec's first edition is "
+             "<team>.<seat>-<yyyymmdd>T<hhmm>Z-<key>"),
             ("an image on the blog's index without alt", self.put("blog/index.html", "<h1>Blog</h1>", '<h1>Blog</h1><img src="first-post/loop-still.png">'),
              "site check: blog/index.html shows the image 'first-post/loop-still.png' without alt text"),
             ("a GIF outside a <picture>", self.put(self.PAGE, BLOG_PICTURE, BLOG_IMG),

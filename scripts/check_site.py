@@ -1079,6 +1079,8 @@ def id_problem(text, where, alone=False):
             return f"{where} holds the id {found!r}, whose date and minute are no UTC minute"
         if not KEY.fullmatch(form.group(3)):
             return f"{where} holds the id {found!r}, whose key is not 6 characters of lower-case Crockford base32"
+        if re.match(r"[-_]\d{3}(?![0-9A-Za-z])", rest[form.end():]):
+            return f"{where} holds the counter id {found + rest[form.end():form.end() + 4]!r}, where an id of the spec's first edition is {ID_FORM}"
     lone = LONE_COUNTER.search(text) if alone else None
     return f"{where} holds {lone.group(0)!r}, a three-digit counter's ending standing alone" if lone else None
 
