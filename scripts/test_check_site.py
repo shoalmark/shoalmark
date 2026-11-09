@@ -1074,7 +1074,8 @@ class Blog(unittest.TestCase):
                 ("a stylesheet the index names that is a file of the build",
                  lambda site: (self.write("blog/assets/index.css", b"h1{margin:0}")(site),
                                self.put("blog/index.html", "</head>", '<link rel="stylesheet" href="assets/index.css"></head>')(site)), 1),
-                ("a sample in plain words on the index", self.put("blog/index.html", "</ul>", "</ul><p>A sample of what the record holds.</p>"), 1)):
+                ("a sample in plain words on the index", self.put("blog/index.html", "</ul>", "</ul><p>A sample of what the record holds.</p>"), 1),
+                ("a folder ending in samples on the index", self.put("blog/index.html", "</ul>", "</ul><p>The code-samples/ folder holds them.</p>"), 1)):
             with self.subTest(name):
                 result = self.checked(change)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

@@ -1144,7 +1144,7 @@ def files_there(rel, page, raw):
 def no_sample(rel, page, raw):
     """No sample page's mark on the index."""
     for mark in ("SAMPLE", "samples/"):
-        if mark in raw:
+        if (re.search(r"(?<![\w.-])samples/", raw) if mark == "samples/" else mark in raw):
             return f"{rel} holds {mark!r}, the mark of a sample page, which the blog never ships"
     return None
 
