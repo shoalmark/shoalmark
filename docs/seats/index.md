@@ -4,7 +4,9 @@ These are the seats shoalmark's own repository uses: eight development seats, an
 a role an agent takes, with its duties and its rights written down. The tool itself knows
 the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none —
 `principal` and `implementer` are their former names and still work ([README §*Seats*](../agents/README.md#seats)); any
-other seat is the adopter's choice, named in `[seats]` as the adopter chooses. Each seat is six lines — its name, its virtue, its shadow, what it takes, what
+other seat is the adopter's choice, named in `[seats]` as the adopter chooses. shoalmark's own repository moves `ask` 
+from the planner to the coordinator in `[rights]`: the planner drafts an ask, and the coordinator puts it.
+Each seat is six lines — its name, its virtue, its shadow, what it takes, what
 it signs, what it may not do — and one practice line; nothing more: a seat without a page of its own is legitimate and works
 from its row. A seat is *it*: seats are not people, so their texts are not corrected to they/them; a person — the Owner, a
 reader — is they/them/their. No new seat exists without the Owner's word. A parent project links here instead of restating
@@ -21,7 +23,7 @@ the rows.
 
 | Seat | Takes | Signs | May not |
 |---|---|---|---|
-| **planner** | the Owner's direction; every finding, for triage; the end of every chain | the triage, the filing, the consolidation, the acceptance gate, the release cut | rule for the Owner; clear its own work |
+| **planner** | the Owner's direction; every finding, for triage; the end of every chain | the triage, the filing, the consolidation, the acceptance gate, the release cut | rule for the Owner; clear its own work; put an ask in front of the Owner: it drafts the ask (`next: review`), and the coordinator puts it |
 | **builder** | a tracker | a pushed branch and a short report | open a pull request; accept its own PASS |
 | **reviewer** | a filing or a pushed branch | graded findings, each with a falsifier and a closure; a verdict on the tip | rewrite what it reviews; disposition its own findings; merge |
 | **coordinator** | the Owner's direction; every seat's report and ask | the seats' starts and briefs; the briefs of independent checks and their filed verdicts; the record of each sitting | rule for the Owner; triage, plan or build; check what it set in motion; change anything in the Owner's checkout; cite the Owner in a brief |
@@ -47,8 +49,7 @@ the rows.
 | **research** | a claim to check against its sources (*Type: sources*), or a question of how much evidence settles it (*Type: measurement*) — the type is the first line of its brief | one evidence file: the census, each assumption graded, the smallest experiment, a recommendation; or the count, the decision rule, a protocol with a positive and a negative control | build; run on production; open a tracker |
 | **go-to-market** | a name, a position, a public line | a screen record against the gate ladder: the survivors, and why the rest died | rescue its own candidate past a gate; pick for the Owner |
 | **designer** | a brief or a tracker about what people see — the board, the brand, the badges | the sources in the repository, a preview, the render that is the record | present a mock-up as a render; draw a claim the record cannot show |
-| **auditor** | an audit, a check of one pull request, or counsel — from the Owner, directly or through the
-coordinator | a sealed record, findings, a verdict | gate, rule or coordinate; message the sessions it audits; change anything in the Owner's checkout; build in the work it audits |
+| **auditor** | an audit, a check of one pull request, or counsel — from the Owner, directly or through the coordinator | a sealed record, findings, a verdict | gate, rule or coordinate; message the sessions it audits; change anything in the Owner's checkout; build in the work it audits |
 
 | Seat | Practice |
 |---|---|
