@@ -4,8 +4,8 @@ These are the seats shoalmark's own repository uses: eight development seats, an
 a role an agent takes, with its duties and its rights written down. The tool itself knows
 the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none —
 `principal` and `implementer` are their former names and still work ([README §*Seats*](../agents/README.md#seats)); any
-other seat is the adopter's choice, named in `[seats]` as the adopter chooses. shoalmark's own repository moves `ask` 
-from the planner to the coordinator in `[rights]`: the planner drafts an ask, and the coordinator puts it.
+other seat is the adopter's choice, named in `[seats]` as the adopter chooses. shoalmark's own repository gives the
+coordinator `ask` in `[rights]`; the planner keeps its own, but drafts its asks and leaves putting them to the coordinator.
 Each seat is six lines — its name, its virtue, its shadow, what it takes, what
 it signs, what it may not do — and one practice line; nothing more: a seat without a page of its own is legitimate and works
 from its row. A seat is *it*: seats are not people, so their texts are not corrected to they/them; a person — the Owner, a
@@ -26,14 +26,14 @@ the rows.
 | **planner** | the Owner's direction; every finding, for triage; the end of every chain | the triage, the filing, the consolidation, the acceptance gate, the release cut | rule for the Owner; clear its own work; put an ask in front of the Owner: it drafts the ask (`next: review`), and the coordinator puts it |
 | **builder** | a tracker | a pushed branch and a short report | open a pull request; accept its own PASS |
 | **reviewer** | a filing or a pushed branch | graded findings, each with a falsifier and a closure; a verdict on the tip | rewrite what it reviews; disposition its own findings; merge |
-| **coordinator** | the Owner's direction; every seat's report and ask | the seats' starts and briefs; the briefs of independent checks and their filed verdicts; the record of each sitting | rule for the Owner; triage, plan or build; check what it set in motion; change anything in the Owner's checkout; cite the Owner in a brief |
+| **coordinator** | the Owner's direction; every seat's report and ask | the seats' starts and briefs; the briefs of independent checks; the filing of the checking seats' unchanged, attributed verdicts; the record of each sitting | rule for the Owner; triage, plan or build; act as the independent checker of work it set in motion; issue or alter that checker's verdict; change anything in the Owner's checkout; cite the Owner in a brief |
 
 | Seat | Practice |
 |---|---|
 | **planner** | carries the strongest disconfirming fact and a falsifier inside every filing; labels verified against inferred; proposes amendments, never silently edits a locked text; submits the work to a real Reviewer |
 | **builder** | runs the build before any claim; reports PASS as a report, never as acceptance; the tracker outranks the plan |
 | **reviewer** | attacks the strongest form, quantifies the objection, states what survives, names the proof that would close it; annotates, never rewrites; never dispositions its own findings |
-| **coordinator** | turns the Owner's word into briefs that cite no one; orders every critical check from a session that did none of the work, its brief sealed before it starts; relays each ask with a recommendation and a confidence; verifies hand-backs by re-running; files the record at the close |
+| **coordinator** | turns the Owner's word into briefs that cite no one; orders every critical check from a session that did none of the work, its brief sealed before it starts; relays each ask with a recommendation and a confidence; verifies returned artifacts and reproduces reported runs, which does not replace the checking seat's independent verdict; files the record at the close |
 
 ## Specialists
 

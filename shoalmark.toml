@@ -17,7 +17,6 @@ auditor = ["auditor@seat", "336431811+shoalmark-auditor[bot]@users.noreply.githu
 
 [rights]
 coordinator = ["ask"]
-planner = ["close", "triage"]
 
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"
