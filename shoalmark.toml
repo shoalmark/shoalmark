@@ -6,6 +6,7 @@ judged_before_build = true   # FM-033, the Owner's rule: a pass judges before th
 
 [seats]            # who sits where — a seat commits unsigned under an identity its list gives: the old address, or its GitHub App's bot address, whose icon the forge shows (README, *Seat icons on the forge*);
                    # the Owner is `owner` above, not a seat. A seat's value is a list: every identity in it is that seat, the old address first
+coordinator = ["coordinator@seat", "355082926+shoalmark-coordinator[bot]@users.noreply.github.com"]
 planner = ["principal@seat", "336427458+shoalmark-planner[bot]@users.noreply.github.com"]   # `principal` is its former name, and its address stays: history resolves to this seat
 builder = ["implementer@seat", "336429412+shoalmark-builder[bot]@users.noreply.github.com"]   # `implementer` is its former name
 reviewer = ["reviewer@seat", "336429944+shoalmark-reviewer[bot]@users.noreply.github.com"]
@@ -13,6 +14,10 @@ research = ["research@seat", "datascientist@seat", "336434529+shoalmark-research
 go-to-market = ["go-to-market@seat", "gtm@seat", "336430483+shoalmark-go-to-market[bot]@users.noreply.github.com"]   # `gtm` was a seat of its own until this change: its address is this seat's
 designer = ["designer@seat", "336431084+shoalmark-designer[bot]@users.noreply.github.com"]
 auditor = ["auditor@seat", "336431811+shoalmark-auditor[bot]@users.noreply.github.com"]
+
+[rights]
+coordinator = ["ask"]
+planner = ["close", "triage"]
 
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"
