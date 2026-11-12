@@ -5,7 +5,7 @@ considered: FM-030, FM-031, FM-088, FM-095, FM-104, FM-143, FM-149
 tags: process
 epic: FM-139
 blocked-by: FM-104
-next: owner
+next: review
 hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. It splits by seat into skills that speak the person's language, on a path only the Owner changes."
 ask-id: FM-100-Q1
 ask: "Are FM-100's decisions taken, as its section Decisions, for the Owner sets out, superseding FM-149's decision 3 and the STAND-UP.md design of 30 October, with the lane in v0.20.3?"
@@ -18,6 +18,8 @@ ask-proposal: "yes, as proposed"
 # FM-100 — the stand-up prompt is code and English on every board, while the Board's words come from the language pack
 
 ## What is true now
+
+**2026-11-12 — the ask is held back until its design audit is READY;** the audit's findings are recorded privately.
 
 **2026-11-12 — rewritten, with FM-100-Q1; nothing is built.** On the Auditor's word. The coordinator seat is coming:
 each team is one planner, which owns its builders' work and checks it with reviewers, and the coordinator talks to every
@@ -170,6 +172,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | The ask is held back until its design audit is READY; the audit's findings are recorded privately. Records only. |
 | 2026-11-12 | Rewritten on the Auditor's word: the stand-up and the close-out split by seat into skills, with FM-100-Q1, which supersedes FM-149's decision 3 and the `STAND-UP.md` design of 30 October. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-11-04 | Its open question, the close-out prompt's form, put to the Owner as FM-149's decision 3 (ask FM-149-Q1). Records only. |
