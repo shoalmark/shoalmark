@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-157](FM-157-fm-061-s-vendor-check-fails-when-the-suite-crosses-midnight.md) | P2 | FM-061's vendor check fails when the suite crosses midnight UTC: it reads today's date once, before the vendor runs | In Progress | progress | 2026-11-12 |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -52,7 +53,6 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
-| [FM-157](FM-157-fm-061-s-vendor-check-fails-when-the-suite-crosses-midnight.md) | — | FM-061's vendor check fails when the suite crosses midnight UTC: it reads today's date once, before the vendor runs | Proposed | triage | — |
 | [FM-156](FM-156-the-seats-principal-and-implementer-the-former-names-of.md) | — | The seats principal and implementer, the former names of planner and builder, still read as seats in configuration | Proposed | triage | — |
 | [FM-154](FM-154-the-markdown-twins-lose-the-blog-s-figures-and-the-german-du.md) | — | The blog's figures are written as HTML, and a page's Markdown twin keeps them with image paths one folder short, so an… | Proposed | triage | — |
 | [FM-152](FM-152-an-x-post-image-the-agents-never-answer-for-you-the-software.md) | — | go-to-market asked, for the Owner, for a light revision of the software-factory X post image: new headline, plain-words… | Proposed | triage | — |

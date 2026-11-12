@@ -26,6 +26,12 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
+**2026-11-12 — the build judged before its first commit, a partial pass** (Planner seat, on the Auditor's word of
+that day; the worksheet `work-tracker/evidence/triage/triage-2026-11-12.md`, one row of ninety filled and applied by
+the command): **FM-157 keep P2** — a test-only fix for FM-061's vendor check, which fails when the suite crosses
+midnight UTC; the current path does not name it, so it is next, and unranked. The other rows wait for the next
+full pass.
+
 **2026-11-09 — the build judged before its first commit, a partial pass** (Planner seat, on the Owner's signed
 answer to FM-155-Q1 (`ee8aa9a`); the worksheet `work-tracker/evidence/triage/triage-2026-11-09.md`, one row of
 eighty-seven filled and applied by the command): **FM-155 keep P2** — the answer authorises moving the family's
