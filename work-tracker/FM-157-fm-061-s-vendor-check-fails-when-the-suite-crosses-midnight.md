@@ -1,6 +1,6 @@
 ---
 id: FM-157
-status: In Progress
+status: Shipped
 considered: FM-061, FM-028, FM-011
 tags: bug
 next: build
@@ -14,6 +14,16 @@ hook: "FM-061's vendor check fails when the suite crosses midnight UTC: it reads
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-12 — Shipped: merged to main as #287 (`9af3680`).** FM-061's class test and the suite's three `PIN`-date
+checks read the date just before and just after each `--vendor` run, through one helper, `dated_run`, and accept a
+`PIN` dated either day and no other. Every Done when item is met.
+
+- **The review:** the standard review is READY WITH FINDINGS at `befdf49` (`1f5fd35`). Its two P3s, RV-4821 and
+  RV-4822, are fixed forward in `b49c7d4` and `c619dc1`.
+- **CI:** ci.yml's run 43216009955 passed on all five suites, the Pacific/Kiritimati rerun on Ubuntu with Python 3.9
+  among them, and on CodeQL.
+- **The change:** test files only, `test_vendor_release.py` and `test_shoalmark.py`; `shoalmark.py` is unchanged.
 
 **2026-11-12 — built: FM-061's class test reads the date on both sides of each `--vendor` run; the review is next.**
 `test_vendor_release.py` no longer reads the date once at the start of `steps()`. One helper, `dated_run`, reads the
@@ -57,16 +67,21 @@ of the same check behind a known flake.
 
 ## Done when
 
-- each check that compares a `PIN`'s date reads the date at its own `--vendor` run, or accepts the dates read just
+- [x] each check that compares a `PIN`'s date reads the date at its own `--vendor` run, or accepts the dates read just
   before and just after that run;
-- a check shows that the comparison holds across a date change, without waiting for midnight;
-- the change touches the test only, and the suite passes;
-- a review is READY.
+  · `5eea477`, `0d7579e`, merged in `9af3680`
+- [x] a check shows that the comparison holds across a date change, without waiting for midnight;
+  · `5eea477`, and `b49c7d4` for a clock that keeps its day
+- [x] the change touches the test only, and the suite passes;
+  · `test_vendor_release.py` and `test_shoalmark.py` only; ci.yml's run 43216009955 green on all five suites
+- [x] a review is READY.
+  · READY WITH FINDINGS at `befdf49`, `1f5fd35`; its two P3s fixed forward
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | Shipped: merged to main as #287 (9af3680). The vendor checks read a PIN's date on both sides of each run (5eea477, 0d7579e), the review READY WITH FINDINGS (1f5fd35) with its two P3s fixed forward (b49c7d4, c619dc1), CI green, and every Done when item is met. |
 | 2026-11-12 | RV-4821 and RV-4822, the review's two P3s, fixed forward: a second check holds `dated_run` where the clock keeps its day, and the record names run 42914315538 as it failed. |
 | 2026-11-12 | The suite's three PIN-date checks, FM-011's and two of FM-004's in test_shoalmark.py, read the date on both sides of their --vendor run through `dated_run`, labels unchanged. |
 | 2026-11-12 | Built: FM-061's class test reads each PIN's date before and after its --vendor run through `dated_run`, and a new check holds the comparison across a date change; 51 checks, 19 mutants killed, the review next. |
