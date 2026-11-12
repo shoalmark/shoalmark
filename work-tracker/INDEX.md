@@ -34,7 +34,6 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
-| [FM-157](FM-157-fm-061-s-vendor-check-fails-when-the-suite-crosses-midnight.md) | P2 | FM-061's vendor check fails when the suite crosses midnight UTC: it reads today's date once, before the vendor runs | In Progress | progress | 2026-11-12 |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -137,6 +136,7 @@
 | [FM-056](FM-056-the-gate-can-name-the-commit-that-removed-a-line-as-the-one.md) | — | The gate names who set a tracker's line with a pickaxe that also matches the commit that removed it, so a line a merge… | Proposed | triage | — |
 | [FM-055](FM-055-the-receipts-need-the-owner-s-definitions-of-a-day-a-sitting.md) | — | The receipts count what the record holds, and they need the Owner's definitions of a day, a sitting and repositories co… | Proposed | triage | — |
 | [FM-051](FM-051-dependency-updates-have-no-path-the-gate-refuses-every.md) | — | Dependency updates have no path: the gate refuses every Dependabot pull request, and the site's dependencies are first… | Proposed | triage | — |
+| [FM-157](FM-157-fm-061-s-vendor-check-fails-when-the-suite-crosses-midnight.md) | P2 | FM-061's vendor check fails when the suite crosses midnight UTC: it reads today's date once, before the vendor runs | Shipped | ended | 2026-11-12 |
 | [FM-155](FM-155-the-family-s-social-images-sit-in-one-block-s-repository-not.md) | P2 | shoalmark.tools is a family of building blocks with a public press kit, shoalmark/brand, but the family's social images… | Shipped | ended | 2026-11-09 |
 | [FM-153](FM-153-a-blog-for-the-site-and-its-first-post.md) | P2 | The site has no place for posts, and its first post needs one in both languages, with animated figures that stay small,… | Shipped | ended | 2026-11-08 |
 | [FM-091](FM-091-the-site-has-no-imprint-and-no-privacy-notice-and-its.md) | P2 | The site has no imprint and no privacy notice, though a German provider must have both, easy to find from every page. A… | Shipped | ended | 2026-10-29 |
