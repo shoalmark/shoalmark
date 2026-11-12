@@ -11,6 +11,10 @@ hook: "The person's own files sit in three places today, and three v0.20.3 candi
 
 ## What is true now
 
+**2026-11-12 — [FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md)'s revised proposal: FM-100
+waits on this tracker again,** for where the Owner's copies of its skills live. It proposes `<tracker dir>/skills/`,
+beside `TRIAGE.md` and `allowed_signers`. The entry below no longer holds for its proposal.
+
 **2026-11-12 — [FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md)'s ask, FM-100-Q1, proposes that FM-100 no longer
 waits on this tracker.** Its skills would sit where the harnesses look, and it would add no file to the person's home,
 in place of `STAND-UP.md`. Until that answer, FM-100 stays blocked by this tracker.
@@ -57,6 +61,7 @@ theirs to edit, and leaves no setting to learn.
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | FM-100's revised proposal: it waits on this tracker again, for where the Owner's copies of its skills live. Records only. |
 | 2026-11-12 | FM-100-Q1 proposes that FM-100 no longer waits on this tracker. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-10-30 | Tagged `seamanship`, on the Owner's word of 30 October. Records only. |
