@@ -26,7 +26,7 @@ shoalmark/sealanes, is in force. `blocked-by:` names trackers and the Owner only
   ([README L315](https://github.com/shoalmark/shoalmark/blob/7c93c835d6ac9842bb28a37118822f4a6b8a661b/README.md#L315)).
 - **What it must cover:**
   1. **The tool's side:** `--standup DIR …`, the gate and the hooks, for a team whose root is a folder inside a
-     repository.
+     repository, and for a team whose place is more than one repository.
   2. **The roster spec's side:** how each team's work is kept apart, by a team key on trackers or a tracker folder per
      team, and whether seat names take `<team>.<seat>`.
   3. **FM-100's side:** its refusal lifts once both are in.

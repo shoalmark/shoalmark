@@ -5,10 +5,12 @@ considered: FM-030, FM-031, FM-088, FM-095, FM-104, FM-121, FM-143, FM-149
 tags: process
 epic: FM-139
 blocked-by: FM-104
-next: review
-hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, in its draft ask: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace."
+next: owner
+hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q2: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace."
+ask-id: FM-100-Q2
 ask: "Are FM-100's decisions taken, as its section Decisions, for the Owner sets them out (default skills under the Owner's signed copies, teams read from the roster spec, two stages in v0.20.3), superseding FM-149's decision 3, FM-023's B of 29 October and the STAND-UP.md design of 30 October?"
 ask-kind: ruling
+ask-since: 2026-11-12
 ask-options: "yes, as proposed | yes, with the changes I name"
 ask-proposal: "yes, as proposed"
 ---
@@ -16,6 +18,8 @@ ask-proposal: "yes, as proposed"
 # FM-100 — the stand-up prompt is code and English on every board, while the Board's words come from the language pack
 
 ## What is true now
+
+**2026-11-12 — its design audit is READY;** the findings are recorded privately.
 
 **2026-11-12 — the roster spec is named, sealanes/1 in shoalmark/sealanes,** and [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) is filed for a team that
 is not one whole repository.
@@ -97,7 +101,7 @@ nothing in the Owner's checkout. The Board says when an Owner's copy lacks one o
 
 ## Decisions, for the Owner
 
-The ask, a draft until it is put as FM-100-Q2, asks for all of these at once. An answer of "yes, with the changes I
+The ask, FM-100-Q2, put to the Owner, asks for all of these at once. An answer of "yes, with the changes I
 name" names each change by its number.
 
 1. **Two skills replace the Board's stand-up prompt.**
@@ -195,16 +199,18 @@ name" names each change by its number.
      copy, else the default. It checks the Owner's copy and the stub it was called from against their blobs on the
      default branch, as decision 3 reads `[seats]`, and a default against its pin, or in shoalmark's own repository
      against its blob on the default branch. It refuses one that does not match, and prints which one it is, with its
-     sha256. The Board shows the same line.
+     sha256. The Board shows the same line. On Subversion it checks them against the working copy's base revision. In
+     a plain folder nothing checks the Owner's copy or the stub, and `--skill` says so.
    - **The stubs are the Owner's path too:** the Owner's sessions reach the skills through them, as the seats' do, and
      only the Owner's signed commit changes them.
    - **The limits, stated plainly.** A seat under the Owner's OS user can edit a file on disk, or put a skill of the
      same name in the user scope (`~/.claude/skills`, `$HOME/.agents/skills`): in Claude Code that skill runs instead
      of the stub, and in Codex both can appear. Both pages also let a skill folder be a symlink to a folder elsewhere
      on disk. The tool detects what it can: the hashes above, and a read-only look for a folder of the same name in
-     those two places, with a warning. It reads nothing inside them. The warning shows on the Board, in the dialog of
-     each row before the line is copied, and in `--whoami`; `--skill` prints it too. This tracker says "detected",
-     never "impossible".
+     those two places, with a warning. It reads nothing inside them. So it does not see a Codex skill whose folder has
+     another name and whose `name:` is this one. It compares folder names as Claude Code's page does: without case or
+     spacing. The warning shows on the Board, in the dialog of each row before the line is copied, and in `--whoami`;
+     `--skill` prints it too. This tracker says "detected", never "impossible".
 7. **The guard is FM-121's, and the place is FM-104's.**
    - [FM-121](FM-121-a-seat-can-change-the-seat-definitions-and-the-skills-folder.md) already holds the gate's
      refusal of a seat's change to the skills folder, after a design round. One design round covers the guard for
@@ -287,7 +293,7 @@ the stubs.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-100-Q2 once it is put.
+- [ ] **The Owner has answered the ask,** FM-100-Q2.
 - [ ] **Stage 1: `standup` and `closeout`** stand in `skills/`, one English source each, with one test and one eval
   each, as FM-149's decision 2 has it: `standup` in direct mode and the five setups, `closeout` on git and refused off
   git. The Board's stand-up prompt is gone, and `test_day_prompts.py` keeps only what the rows still need: the values'
