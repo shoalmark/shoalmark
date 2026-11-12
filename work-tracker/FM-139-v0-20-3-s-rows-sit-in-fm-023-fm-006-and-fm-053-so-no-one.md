@@ -35,6 +35,10 @@ and the candidates in too, so that we can decide what goes in tomorrow."
 which stay chapters of this epic. FM-095 to FM-098 are not taken: they leave the epic in this commit and stay filed for
 v0.20.x.
 
+**2026-11-12 — [FM-159](FM-159-a-session-can-be-resumed-from-the-board-only-for-24-hours.md) proposed for v0.20.3, with FM-159-Q1 open.** A
+"sessions · this week" section beside "reviews · this week", each parent session of the last 7 days with its resume
+command, and "the day" informational. It is a chapter of this epic until the Owner decides whether it goes in.
+
 **The chapter, and the trackers filed for v0.20.3:**
 - [FM-089](FM-089-agentic-seamanship-v0-20-3.md), Agentic seamanship, with its parts [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md), [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md) and [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md). FM-088's four
   trackers are [FM-130](FM-130-the-team-s-and-each-seat-s-memory-is-not-in-the-repository.md), [FM-131](FM-131-a-session-starts-without-the-team-s-memory.md), [FM-132](FM-132-nothing-moves-a-lesson-out-of-a-harness-s-memory.md) and [FM-133](FM-133-a-memory-entry-is-never-tested-or-retired.md).
@@ -149,3 +153,4 @@ at its allocation sitting and at its tag.
 | 2026-11-04 | v0.20.3's epic, on the Owner's word in chat, logged under *What is true now*. Records only. |
 | 2026-11-05 | v0.20.3's allocation sitting: FM-149, FM-150, FM-151 and FM-099 are taken, and FM-095 to FM-098 leave the epic. Records only. |
 | 2026-11-05 | Three test-suite rows placed in v0.20.3, on the Owner's word. Records only. |
+| 2026-11-12 | FM-159 proposed for v0.20.3 with FM-159-Q1, a chapter of this epic until the Owner decides. Records only. |
