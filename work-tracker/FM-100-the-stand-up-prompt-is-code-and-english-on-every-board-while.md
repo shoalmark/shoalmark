@@ -6,11 +6,9 @@ tags: process
 epic: FM-139
 blocked-by: FM-104
 next: review
-hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, FM-100-Q1: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace."
-ask-id: FM-100-Q1
-ask: "Are FM-100's decisions taken, as its section Decisions, for the Owner sets out, superseding FM-149's decision 3 and the STAND-UP.md design of 30 October, with the lane in v0.20.3?"
+hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, in its draft ask: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace."
+ask: "Are FM-100's decisions taken, as its section Decisions, for the Owner sets them out (default skills under the Owner's signed copies, teams read from the roster spec, two stages in v0.20.3), superseding FM-149's decision 3, FM-023's B of 29 October and the STAND-UP.md design of 30 October?"
 ask-kind: ruling
-ask-since: 2026-11-12
 ask-options: "yes, as proposed | yes, with the changes I name"
 ask-proposal: "yes, as proposed"
 ---
@@ -93,7 +91,8 @@ Owner who adapts the process cannot weaken them.
 
 ## Decisions, for the Owner
 
-FM-100-Q1 asks for all of these at once. An answer of "yes, with the changes I name" names each change by its number.
+The ask, a draft until it is put as FM-100-Q2, asks for all of these at once. An answer of "yes, with the changes I
+name" names each change by its number.
 
 1. **Two skills replace the Board's stand-up prompt.**
    - **`standup`** is the planner's team stand-up. It runs `--standup`, `--triage` and, on a forge, `--queue` for its
@@ -260,7 +259,7 @@ the stubs.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-100-Q1.**
+- [ ] **The Owner has answered the ask,** FM-100-Q2 once it is put.
 - [ ] **Stage 1: `standup` and `closeout`** stand in `skills/`, one English source each, with one test and one eval
   each, as FM-149's decision 2 has it: `standup` in both modes and the five setups, `closeout` on git and refused off
   git. The Board's stand-up prompt is gone, and `test_day_prompts.py` keeps only what the rows still need: the values'
@@ -288,10 +287,16 @@ Each item names its commit or pull request when it lands.
 - [ ] **`docs/standup.md` and `docs/de/standup.md`** describe the skills, and their pair check passes.
 - [ ] **The Designer's check and the critical review are READY.**
 
+## Asks
+
+**FM-100-Q1** · 2026-11-12 · Are FM-100's decisions taken, as its section Decisions, for the Owner sets out, superseding FM-149's decision 3 and the STAND-UP.md design of 30 October, with the lane in v0.20.3?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | FM-100-Q1 withdrawn, no answer given; its changed question is drafted, with no id until it is put. Records only. |
 | 2026-11-12 | Revised after its design audit; the findings are recorded privately. Records only. |
 | 2026-11-12 | The ask is held back until its design audit is READY; the audit's findings are recorded privately. Records only. |
 | 2026-11-12 | Rewritten on the Auditor's word: the stand-up and the close-out split by seat into skills, with FM-100-Q1, which supersedes FM-149's decision 3 and the `STAND-UP.md` design of 30 October. Records only. |
