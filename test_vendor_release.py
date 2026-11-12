@@ -24,7 +24,8 @@ The class test of the Owner's ruling R17 (signed 12 October): no seat chooses a 
   core.useReplaceRefs=false as its last configuration parameter (RV-3369: recorded privately).
 
 Every run is the tool as a program, started from a release made of it: the files `--vendor` copies, committed in a
-scratch repository tagged `v<VERSION>`, or laid out as an unpacked release archive with its RELEASE. Run it directly,
+scratch repository tagged `v<VERSION>`, or laid out as an unpacked release archive with its RELEASE. A PIN's date is read
+before and after each `--vendor` run, so a run that crosses midnight passes. Run it directly,
 `python3 test_vendor_release.py [tool]`, or through test_shoalmark.py. With `--mutants` it also runs against each mutant
 of the tool and against the tool before R17, and each of them must fail it; under each of the three mutants of the tag's
 bytes, the case it is paired with fails and the clean control passes.
@@ -179,6 +180,15 @@ def said_for(lines, lead, named):
     return len(found) == len(named) and all(any(l == f"{lead} was vendored through {flag}, from {what} — {SAYS}" for l in found) for flag, what in named)
 
 
+def dated_run(run, head, clock=datetime.date.today):
+    """`run()`, a `--vendor` run returning (exit, stdout, stderr, the PIN it left), between two reads of the local date, the clock the tool dates a PIN by:
+    (what it returned, whether that PIN starts with `head(day)` for the date read just before the run or the date read just after it — and for no other)."""
+    before = clock().isoformat()
+    done = run()
+    after = clock().isoformat()
+    return done, any(done[-1].startswith(head(day)) for day in (before, after))
+
+
 def run_checks(fm, tool=None):
     """The class test against the tool at `tool`, by default `fm`'s own file; `fm` gives the constants: [(label, ok, what it saw)]."""
     tool_bytes = pathlib.Path(tool or fm.__file__).read_bytes()
@@ -200,7 +210,7 @@ def run_checks(fm, tool=None):
 
 def steps(check, fm, tool_bytes, base):
     """The class test's steps, in `base`: each finding through `check`."""
-    ver, lint, today = fm.__version__, fm.EXIT_LINT, datetime.date.today().isoformat()
+    ver, lint = fm.__version__, fm.EXIT_LINT
     src = base / "release"
     tagged = release(src, fm, tool_bytes)
     root = base / "consumer"
@@ -208,17 +218,37 @@ def steps(check, fm, tool_bytes, base):
     git(root, "init", "-q")
     copy = root / "tools" / "shoalmark"
     mine = lambda *a: program(copy / "shoalmark.py", "--root", str(root), *a, cwd=root)
+    released = lambda day: f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored {day} · complete\n"     # a release's PIN head, vendored on `day`
+
+    def vendor():
+        """`--vendor` from the release in `src` into the consumer's copy: (exit, stdout, stderr, the copy's PIN as it then reads)."""
+        c, o, e = program(src / "shoalmark.py", "--vendor", str(copy), cwd=root)
+        return c, o, e, ((copy / "PIN").read_text(encoding="utf-8") if (copy / "PIN").is_file() else "")
 
     # the controls: from a release, `--vendor` vendors, and the consumer's copy runs and is read as a release
-    c, o, e = program(src / "shoalmark.py", "--vendor", str(copy), cwd=root)
-    pin = (copy / "PIN").read_text(encoding="utf-8") if (copy / "PIN").is_file() else ""
+    (c, o, e, pin), dated = dated_run(vendor, released)
     check("the control: from a clean clone at its release tag, --vendor vendors the whole tool, its PIN's manifest tagged and complete",
-          c == 0 and pin.startswith(f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored {today} · complete\n"), f"exit {c}, {pin[:100]!r}, {e.strip()[-160:]!r}")
+          c == 0 and dated, f"exit {c}, {pin[:100]!r}, {e.strip()[-160:]!r}")
     mine("--init", "--key", "msr")
     mine()
     c, o, e = mine("--check")
     check("the control: the consumer's --check reads where its copy came from and warns of nothing, exit 0",
           c == 0 and f"pinned {ver} from tag v{ver} (commit {tagged[:10]})" in o and "warning" not in o and "R17" not in o + e, f"exit {c}, {(o + e).strip()[-200:]!r}")
+
+    # a run that crosses midnight, without waiting for one: the clock reads one day until the run is done and the next after it
+    def across(day):
+        """What `dated_run` makes of a PIN dated `day`, from a clock that changes day during the run."""
+        ran = []
+
+        def run():
+            ran.append(day)
+            return 0, "", "", released(day) + "body\n"
+        return dated_run(run, released, lambda: datetime.date(2026, 11, 11 if ran else 10))[1]
+
+    dates = ("2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12")
+    accepted = [across(day) for day in dates]
+    check("a PIN's date is read before and after each --vendor run: where the clock changes day during the run, a PIN dated either day is accepted, "
+          "and one dated the day before or the day after those two is refused", accepted == [False, True, True, False], f"accepted {dict(zip(dates, accepted))}")
 
     # each removed flag, given: one line saying R17 removed it, exit 2, nothing written — from a release that would otherwise vendor
     for flags in (("--partial",), ("--allow-untagged",), ("--partial", "--allow-untagged")):
@@ -310,11 +340,10 @@ def steps(check, fm, tool_bytes, base):
         check(f"…the next --vendor that meets it names it the same way, refused or not: from a dry run's archive, one line, exit 4, the copy as it was ({name})",
               c == lint and one_line(e) and said_for(o.splitlines(), f"note: the copy in {copy}", named) and (copy / "PIN").read_bytes() == earlier,
               f"exit {c}, {(o + e).strip()[-260:]!r}")
-        c, o, e = program(src / "shoalmark.py", "--vendor", str(copy), cwd=root)
-        now = (copy / "PIN").read_text(encoding="utf-8") if (copy / "PIN").is_file() else ""
+        (c, o, e, now), dated = dated_run(vendor, released)
         c2, o2, e2 = mine("--check")
         check(f"…and --vendor from a release names it once more and replaces it: the PIN tagged and complete, the files it lacked back, --check warning of nothing ({name})",
-              c == 0 and said_for(o.splitlines(), f"note: the copy in {copy}", named) and now.startswith(f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored {today} · complete\n")
+              c == 0 and said_for(o.splitlines(), f"note: the copy in {copy}", named) and dated
               and all((copy / rel).is_file() for rel in gone) and c2 == 0 and "warning" not in o2 and "R17" not in o2 + e2,
               f"exit {c}, {(o + e).strip()[-200:]!r} · --check {c2}, {(o2 + e2).strip()[-120:]!r}")
         body = [l for l in now.splitlines() if not l.startswith("#")] or body
