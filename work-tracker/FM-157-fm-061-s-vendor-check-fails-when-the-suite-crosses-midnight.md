@@ -25,8 +25,10 @@ either day accepted and one dated the day before or the day after those two refu
 base's 50 and the new one, each passing on Python 3.15 and on 3.9. Its `--mutants` run kills all 19 as it did before the
 change. In scratch copies, the new check alone turns red when the helper reads the date once, before the run, as the
 base did. The base with its date read as yesterday's fails the first control and the four checks above, as run
-42914315538 did, and the head passes with the same shift. `shoalmark.py` is unchanged. Nothing in *Done when* is ticked:
-the review and the merge do that.
+42914315538 did, and the head passes with the same shift. In `test_shoalmark.py`, the three checks that compared a
+`PIN`'s date by one read, FM-011's at line 2400 and FM-004's at lines 2794 and 2952, now use `dated_run` too, and the
+FM-004 check that reads `--check`'s line expects the day the `PIN` holds. `shoalmark.py` is unchanged. Nothing in *Done
+when* is ticked: the review and the merge do that.
 
 **2026-11-12 — judged before its first build commit: keep P2, In Progress.** A partial triage pass judged this
 row alone ([worksheet](evidence/triage/triage-2026-11-12.md)). Unranked. The fix is built alone, in the test only,
@@ -62,6 +64,7 @@ of the same check behind a known flake.
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | The suite's three PIN-date checks, FM-011's and two of FM-004's in test_shoalmark.py, read the date on both sides of their --vendor run through `dated_run`, labels unchanged. |
 | 2026-11-12 | Built: FM-061's class test reads each PIN's date before and after its --vendor run through `dated_run`, and a new check holds the comparison across a date change; 51 checks, 19 mutants killed, the review next. |
 | 2026-11-12 | Judged keep P2 by a partial triage pass; In Progress. Records only. |
 | 2026-11-12 | Filed. |
