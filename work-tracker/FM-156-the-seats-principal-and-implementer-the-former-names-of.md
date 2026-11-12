@@ -13,6 +13,10 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-12 — one more finding joins its README rewrite,** on the Auditor's word:
+
+- RV-5481: recorded privately
+
 **Filed 2026-11-12; nothing is built.** The seats have been `planner` and `builder` since 0.19.0 (FM-024). Their former
 names, `principal` and `implementer`, still work as seats in `shoalmark.toml`, and that is drift: one seat with two
 names in configuration. At main `e75e9a0` they live in:
@@ -66,4 +70,5 @@ and the rights it was meant to carry would go missing without a word.
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | One more finding joins its README rewrite. RV-5481: recorded privately. Records only. |
 | 2026-11-12 | Filed. |

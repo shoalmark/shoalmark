@@ -43,6 +43,10 @@ command, and "the day" informational. It is a chapter of this epic until the Own
 coordinator seat's icon, variant B, with its README row and the words an eighth seat touches. It is built after the
 seat's pull request merges, and it is a chapter of this epic until the Owner decides whether it goes in.
 
+**2026-11-12 — [FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md) rewritten, with FM-100-Q1 open.** The stand-up and
+the close-out split by seat into skills, the Owner's sitting to the coordinator and each team's day to its planner, in
+the person's language. Its ask places the lane in v0.20.3, and it stays a chapter of this epic.
+
 **The chapter, and the trackers filed for v0.20.3:**
 - [FM-089](FM-089-agentic-seamanship-v0-20-3.md), Agentic seamanship, with its parts [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md), [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md) and [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md). FM-088's four
   trackers are [FM-130](FM-130-the-team-s-and-each-seat-s-memory-is-not-in-the-repository.md), [FM-131](FM-131-a-session-starts-without-the-team-s-memory.md), [FM-132](FM-132-nothing-moves-a-lesson-out-of-a-harness-s-memory.md) and [FM-133](FM-133-a-memory-entry-is-never-tested-or-retired.md).
@@ -159,3 +163,4 @@ at its allocation sitting and at its tag.
 | 2026-11-05 | Three test-suite rows placed in v0.20.3, on the Owner's word. Records only. |
 | 2026-11-12 | FM-159 proposed for v0.20.3 with FM-159-Q1, a chapter of this epic until the Owner decides. Records only. |
 | 2026-11-12 | FM-160 proposed for v0.20.3 with FM-160-Q1, a chapter of this epic until the Owner decides. Records only. |
+| 2026-11-12 | FM-100 rewritten with FM-100-Q1: the stand-up and the close-out as skills by seat. Records only. |

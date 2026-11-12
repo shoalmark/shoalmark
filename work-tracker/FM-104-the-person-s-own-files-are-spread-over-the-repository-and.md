@@ -11,6 +11,10 @@ hook: "The person's own files sit in three places today, and three v0.20.3 candi
 
 ## What is true now
 
+**2026-11-12 — [FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md)'s ask, FM-100-Q1, proposes that FM-100 no longer
+waits on this tracker.** Its skills would sit where the harnesses look, and it would add no file to the person's home,
+in place of `STAND-UP.md`. Until that answer, FM-100 stays blocked by this tracker.
+
 **Filed 2026-10-30 for v0.20.3; nothing is built.** On the Owner's word of 30 October: the files the person edits
 should live in one place they reach easily, not spread over the code base. Convention over configuration has to be
 weighed, and the question needs time to think it through properly. The Owner's word on its rank: **rank 1 when v0.20.3
@@ -53,6 +57,7 @@ theirs to edit, and leaves no setting to learn.
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | FM-100-Q1 proposes that FM-100 no longer waits on this tracker. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-10-30 | Tagged `seamanship`, on the Owner's word of 30 October. Records only. |
 | 2026-10-30 | Filed for v0.20.3, rank 1 at its start, on the Owner's word of 30 October. Records only. |

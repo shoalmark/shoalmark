@@ -46,6 +46,10 @@ decision under *Decisions, for the Owner* at once.
    [shoalmark/skills](https://github.com/shoalmark/skills/tree/06784be51991cd4d6accc20bb3cdfd5cdd577476) are English
    only, and neither skill says what language its report is in.
 
+**2026-11-12 — [FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md)'s ask, FM-100-Q1, proposes to supersede decision 3.** The
+close-out would become two skills, `closeout` and `closeout-teams`, in place of `CLOSE-OUT.md`. Decision 3 stands until
+that answer.
+
 **2026-11-05 — placed in v0.20.3** at its allocation sitting, on the Owner's word. It stays a chapter of
 [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic.
 
@@ -108,6 +112,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | FM-100-Q1 proposes to supersede decision 3, the close-out as two skills in place of `CLOSE-OUT.md`. Records only. |
 | 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
 | 2026-11-04 | Done when: the Owner's answer to FM-149-Q1 (#263). Records only. |
