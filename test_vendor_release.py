@@ -236,19 +236,24 @@ def steps(check, fm, tool_bytes, base):
           c == 0 and f"pinned {ver} from tag v{ver} (commit {tagged[:10]})" in o and "warning" not in o and "R17" not in o + e, f"exit {c}, {(o + e).strip()[-200:]!r}")
 
     # a run that crosses midnight, without waiting for one: the clock reads one day until the run is done and the next after it
-    def across(day):
-        """What `dated_run` makes of a PIN dated `day`, from a clock that changes day during the run."""
+    def clocked(day, last):
+        """What `dated_run` makes of a PIN dated `day`, from a clock that reads one day until the run is done and the day `last` of that month after it."""
         ran = []
 
         def run():
             ran.append(day)
             return 0, "", "", released(day) + "body\n"
-        return dated_run(run, released, lambda: datetime.date(2026, 11, 11 if ran else 10))[1]
+        return dated_run(run, released, lambda: datetime.date(2026, 11, last if ran else 10))[1]
 
     dates = ("2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12")
-    accepted = [across(day) for day in dates]
+    accepted = [clocked(day, 11) for day in dates]
     check("a PIN's date is read before and after each --vendor run: where the clock changes day during the run, a PIN dated either day is accepted, "
           "and one dated the day before or the day after those two is refused", accepted == [False, True, True, False], f"accepted {dict(zip(dates, accepted))}")
+
+    # a run that crosses none: the clock keeps its day, and only that day is accepted
+    same_day = [clocked(day, 10) for day in dates[:3]]
+    check("a PIN's date is read before and after each --vendor run: where the clock keeps its day during the run, only that day is accepted",
+          same_day == [False, True, False], f"accepted {dict(zip(dates, same_day))}")
 
     # each removed flag, given: one line saying R17 removed it, exit 2, nothing written — from a release that would otherwise vendor
     for flags in (("--partial",), ("--allow-untagged",), ("--partial", "--allow-untagged")):
