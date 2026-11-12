@@ -17,6 +17,9 @@ ask-proposal: "yes, as proposed"
 
 ## What is true now
 
+**2026-11-12 — the roster spec is named, sealanes/1 in shoalmark/sealanes,** and [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) is filed for a team that
+is not one whole repository.
+
 **2026-11-12 — revised after the design audit's second round;** the findings are recorded privately.
 
 **2026-11-12 — revised after its design audit;** the findings are recorded privately.
@@ -217,15 +220,15 @@ name" names each change by its number.
    allows: the Owner's current path and their signed answers. A hold is obeyed as received, because it can only hold
    work back. A change of scope, rank or allocation moves nothing until it is a signed answer in the team's
    repository. A message carries no Owner authority, in either skill.
-9. **Teams, from the roster spec.**
-   - **This tracker does not define the roster.** A standalone, shoalmark-wide roster spec defines it, in a new public
-     spec repository beside [shoalmark/hail](https://github.com/shoalmark/hail). A later edition of hail/1 takes its
-     roster from it, in place of its own definition.
+9. **Teams, from the roster spec, sealanes/1.**
+   - **This tracker does not define the roster.** A standalone, shoalmark-wide roster spec defines it: sealanes/1, the
+     first spec in shoalmark/sealanes, a spec repository beside [shoalmark/hail](https://github.com/shoalmark/hail). A
+     later edition of hail/1 takes its roster from it, in place of its own definition.
    - **`standup-teams` reads its teams from that roster.** This tracker needs three things of the roster: no session,
      no machine path, and that only the Owner's signed commit changes it. The roster may give a team's place as one or
      more places, each a repository or a folder inside one; for now a team is one repository, whole, and
-     `standup-teams` refuses any other place and names it. Teams that share one folder are the roster spec's matter,
-     not this tracker's.
+     `standup-teams` refuses any other place and names it. [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) lifts that refusal once sealanes/1 is in force
+     and the tool serves such a place. Teams that share one folder are the roster spec's matter, not this tracker's.
    - **The checkouts.** The Owner gives each team's checkout once, on the first page of the first sitting; the
      coordinator searches nothing. It checks the origin and, on a forge, that HEAD is the default branch's head, as
      step 0 does.
@@ -325,6 +328,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-12 | The roster spec named as sealanes/1, in shoalmark/sealanes; FM-161 filed to lift the one-repository rule. Records only. |
 | 2026-11-12 | Revised after the design audit's second round; the findings are recorded privately. Records only. |
 | 2026-11-12 | FM-100-Q1 withdrawn, no answer given; its changed question is drafted, with no id until it is put. Records only. |
 | 2026-11-12 | Revised after its design audit; the findings are recorded privately. Records only. |
