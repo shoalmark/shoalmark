@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-157](FM-157-fm-061-s-vendor-check-fails-when-the-suite-crosses-midnight.md) | P2 | FM-061's vendor check fails when the suite crosses midnight UTC: it reads today's date once, before the vendor runs | In Progress | progress | 2026-11-12 |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -55,7 +56,6 @@
 | [FM-160](FM-160-the-coordinator-seat-has-no-icon-so-its-session-row-keeps-an.md) | — | The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the seven, so a coordinator session's row keeps a… | Proposed | triage | — |
 | [FM-159](FM-159-a-session-can-be-resumed-from-the-board-only-for-24-hours.md) | — | The Board gives a resume command only to the sessions of the last 24 hours, so a session closed two days ago has no way… | Proposed | triage | — |
 | [FM-158](FM-158-the-suite-s-checks-that-read-today-s-date-once-can-fail-when.md) | — | The suite's checks that read today's date once can fail when a run crosses midnight: one is known, two are to be judged… | Proposed | triage | — |
-| [FM-157](FM-157-fm-061-s-vendor-check-fails-when-the-suite-crosses-midnight.md) | — | FM-061's vendor check fails when the suite crosses midnight UTC: it reads today's date once, before the vendor runs | Proposed | triage | — |
 | [FM-156](FM-156-the-seats-principal-and-implementer-the-former-names-of.md) | — | The seats principal and implementer, the former names of planner and builder, still read as seats in configuration | Proposed | triage | — |
 | [FM-154](FM-154-the-markdown-twins-lose-the-blog-s-figures-and-the-german-du.md) | — | The blog's figures are written as HTML, and a page's Markdown twin keeps them with image paths one folder short, so an… | Proposed | triage | — |
 | [FM-152](FM-152-an-x-post-image-the-agents-never-answer-for-you-the-software.md) | — | go-to-market asked, for the Owner, for a light revision of the software-factory X post image: new headline, plain-words… | Proposed | triage | — |

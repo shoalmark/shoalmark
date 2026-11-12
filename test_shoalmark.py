@@ -2381,6 +2381,7 @@ with tempfile.TemporaryDirectory() as d:
 
 # --- FM-011, 0.17.8: a vendoring vouches for what it copies — the whole tool, from a release — and the PIN says where from --
 import shutil
+import test_vendor_release
 with tempfile.TemporaryDirectory() as d:
     base = Path(d).resolve(); src = base / "source"; src.mkdir()
     for rel in fm.TOOL_FILES:
@@ -2390,13 +2391,15 @@ with tempfile.TemporaryDirectory() as d:
     g("init", "-q"); g("add", "-A"); g("commit", "-qm", "the release"); g("tag", f"v{ver}"); tagged = g("rev-parse", "HEAD").stdout.strip()
     vend = lambda dest, *flags: subprocess.run([sys.executable, str(src / "shoalmark.py"), "--vendor", str(dest), *flags], cwd=str(base), capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     cons = base / "consumer"; cons.mkdir()
-    ok_ = vend(cons / "tools/shoalmark"); pin_ = (cons / "tools/shoalmark/PIN").read_text() if (cons / "tools/shoalmark/PIN").exists() else ""
+    (ok_, pin_), pin_dated_ = test_vendor_release.dated_run(
+        lambda: (vend(cons / "tools/shoalmark"), (cons / "tools/shoalmark/PIN").read_text() if (cons / "tools/shoalmark/PIN").exists() else ""),
+        lambda day_: f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored {day_} · complete\n")
     tool_ = [sys.executable, str(cons / "tools/shoalmark/shoalmark.py"), "--root", str(cons)]
     subprocess.run(tool_ + ["--init", "--key", "msr"], capture_output=True, env=_ENV); subprocess.run(tool_, capture_output=True, env=_ENV)
     said_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     check(f"FM-011 · from a clean clone at its release tag the copy is pinned with its manifest — version, tag, commit, date, complete — and the consumer's --check says where it came from (saw {pin_.splitlines()[:1]}, {said_.stdout.strip().splitlines()[-1:]})",
           ok_.returncode == 0 and f"from tag v{ver}" in ok_.stdout
-          and pin_.startswith(f"# shoalmark {ver} · tag v{ver} · commit {tagged} · vendored {datetime.date.today().isoformat()} · complete\n")
+          and pin_dated_
           and len([l for l in pin_.splitlines() if not l.startswith("#")]) == len(fm.TOOL_FILES)
           and said_.returncode == 0 and f"pinned {ver} from tag v{ver} (commit {tagged[:10]})" in said_.stdout and "warning" not in said_.stdout)
     (src / "NOTICE").unlink(); gone_ = vend(base / "c2/tools/shoalmark")
@@ -2777,19 +2780,22 @@ with tempfile.TemporaryDirectory() as d:
         p_ = base / name
         subprocess.run(["svn", "checkout", "-q", repository_.as_uri(), str(p_)], check=True, capture_output=True, env=_ENV, timeout=30)
         return p_
-    today_ = datetime.date.today().isoformat()
+    import test_vendor_release
     unpacked_ = _unpack(base / "unpacked") if zipped.is_file() else base / "unpacked"
-    proj_ = _project("project"); v_ = _vend(unpacked_, proj_)   # PIN interpretation fixture only; no Git authority policy is invented
-    pin_ = (proj_ / "tools/shoalmark/PIN").read_text(encoding="utf-8") if (proj_ / "tools/shoalmark/PIN").is_file() else ""
+    proj_ = _project("project")
+    (v_, pin_), pin_dated_ = test_vendor_release.dated_run(    # PIN interpretation fixture only; no Git authority policy is invented
+        lambda: (_vend(unpacked_, proj_), (proj_ / "tools/shoalmark/PIN").read_text(encoding="utf-8") if (proj_ / "tools/shoalmark/PIN").is_file() else ""),
+        lambda day_: f"# shoalmark {ver} · vendored from an archive whose manifest names v{ver}, commit {commit_}, every file matched · {day_}\n")
+    pin_day_ = (pin_.splitlines() or [""])[0].rpartition(" · ")[2]
     pinned_ = sorted(l_.partition("  ")[2] for l_ in pin_.splitlines() if not l_.startswith("#"))
     tool_ = [sys.executable, str(proj_ / "tools/shoalmark/shoalmark.py"), "--root", str(proj_)]
     subprocess.run(tool_ + ["--init", "--key", "msr"], capture_output=True, env=_ENV); subprocess.run(tool_, capture_output=True, env=_ENV)
     said_ = subprocess.run(tool_ + ["--check"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_ENV)
     check(f"FM-004 · `--vendor` from the unpacked zip copies only the complete tool set, and its PIN claims only what it checked — the tag and commit the manifest names, every file matched; the consumer's --check reads it (saw {v_[0]}, {pin_.splitlines()[:1]}, {said_.stdout.strip().splitlines()[-1:]})",
-          v_[0] == 0 and pin_.startswith(f"# shoalmark {ver} · vendored from an archive whose manifest names v{ver}, commit {commit_}, every file matched · {today_}\n")
+          v_[0] == 0 and pin_dated_
           and pinned_ == sorted(set(shipped_)) and not (proj_ / "tools/shoalmark/RELEASE").exists()
           and all((proj_ / "tools/shoalmark" / n_).read_bytes() == z_.read(n_) for n_ in pinned_)
-          and said_.returncode == 0 and f"pinned {ver} from an archive whose manifest names v{ver} (commit {commit_[:10]}), every file matched, vendored {today_}, complete" in said_.stdout
+          and said_.returncode == 0 and f"pinned {ver} from an archive whose manifest names v{ver} (commit {commit_[:10]}), every file matched, vendored {pin_day_}, complete" in said_.stdout
           and "warning" not in said_.stdout)
     mutations_ = {"a changed byte": (lambda u: (u / "README.md").write_bytes((u / "README.md").read_bytes() + b"\n"), "changed: README.md"),
                   "a missing file": (lambda u: (u / "NOTICE").unlink(), "missing NOTICE"),
@@ -2939,10 +2945,13 @@ with tempfile.TemporaryDirectory() as d:
     subprocess.run(["git", "-C", str(inside_), "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-qm", "an archive kept in the repository"], capture_output=True, env=_ENV)
     n_ = _vend(nested_, inside_); npin_ = (inside_ / "tools/shoalmark/PIN").read_text(encoding="utf-8") if (inside_ / "tools/shoalmark/PIN").is_file() else ""
     (base / "gitsrc").mkdir(); git_src_, git_commit_ = _rel_repo(base / "gitsrc", shipped_, ver, {"RELEASE": release_.encode("utf-8")})
-    g_ = _vend(git_src_, _project("from-git")); gpin_ = (base / "from-git/tools/shoalmark/PIN").read_text(encoding="utf-8") if (base / "from-git/tools/shoalmark/PIN").is_file() else ""
+    from_git_ = _project("from-git")
+    (g_, gpin_), gpin_dated_ = test_vendor_release.dated_run(
+        lambda: (_vend(git_src_, from_git_), (base / "from-git/tools/shoalmark/PIN").read_text(encoding="utf-8") if (base / "from-git/tools/shoalmark/PIN").is_file() else ""),
+        lambda day_: f"# shoalmark {ver} · tag v{ver} · commit {git_commit_} · vendored {day_} · complete\n")
     check(f"FM-004 · an archive unpacked inside a git repository's subfolder is still judged as an archive; a git checkout whose top level holds a RELEASE file is judged by git, as before — its tag and commit (saw {n_[0]}, {npin_.splitlines()[:1]} · {g_[0]}, {gpin_.splitlines()[:1]})",
           n_[0] == 0 and npin_.startswith(f"# shoalmark {ver} · vendored from an archive whose manifest names v{ver}, commit {commit_}, every file matched · ")
-          and g_[0] == 0 and gpin_.startswith(f"# shoalmark {ver} · tag v{ver} · commit {git_commit_} · vendored {today_} · complete\n"))
+          and g_[0] == 0 and gpin_dated_)
     if z_:
         z_.close()
 fm.configure(HERE)
