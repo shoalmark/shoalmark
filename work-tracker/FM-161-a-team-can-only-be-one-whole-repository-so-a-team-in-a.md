@@ -12,6 +12,11 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-12 — its scope reads "tracker folders":** a team's place is a tracker folder, in its own repository or as a
+folder inside a shared one. A team that shares a repository's tracker folder today is kept apart, near term, by a team
+key on its trackers and reserved id ranges. Each team's seats need their own identities, since two teams' seats under
+one bot address are told apart only by their `Session:` trailer.
+
 **Filed 2026-11-12, Proposed, with no release yet; nothing is built.** It waits until sealanes/1, the roster spec in
 shoalmark/sealanes, is in force. `blocked-by:` names trackers and the Owner only, so the wait is written here.
 
@@ -51,3 +56,4 @@ Each item names its commit or pull request when it lands.
 | Date | Event |
 |---|---|
 | 2026-11-12 | Filed, Proposed, with no release yet: FM-100's one-repository rule lifts here once sealanes/1 is in force. Records only. |
+| 2026-11-12 | Its scope reads tracker folders: near term, a team key and reserved id ranges keep teams in one tracker folder apart, and each team's seats need their own identities. Records only. |
