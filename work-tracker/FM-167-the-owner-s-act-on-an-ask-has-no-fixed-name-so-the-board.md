@@ -4,13 +4,13 @@ status: Proposed
 considered: FM-013, FM-029, FM-050, FM-115, FM-149, FM-160
 tags: process
 next: owner
-hook: "The Owner's act on an ask has no fixed name, and the Board's answer dialog opens with Your decision is made. before the commit that records it exists. The imagery round of 13 November screened the words: answer and decision pass, while ruling, approval and sign-off fail. The act is called answer, the dialog says Your answer is ready., and the kind label is put to the Owner as FM-167-Q1, proposing to keep DECISION. No release is named."
-ask-id: FM-167-Q1
-ask: "Does the Board keep DECISION as the label of the ask kind ruling, or relabel it DIRECTION, with the kind key ruling kept as it is?"
+hook: "The Owner's act on an ask has no fixed name, and the Board's answer dialog opens with Your decision is made. before the commit that records it exists. The imagery round of 13 November screened the words: answer and decision pass, while ruling, approval and sign-off fail. The act is called answer, the dialog says Your answer is ready., and the label is kept as DECISION or relabelled DIRECTION. All six decisions are put to the Owner as FM-167-Q2, proposing to keep DECISION. No release is named."
+ask-id: FM-167-Q2
+ask: "Do you take FM-167's decisions as proposed: the Owner's act is called answer, the dialog opens Your answer is ready., ruling, approval and sign-off are never used for it, the kind key and the kinds stay, and the label kept as DECISION or relabelled DIRECTION?"
 ask-kind: ruling
 ask-since: 2026-11-13
-ask-options: "keep DECISION | DIRECTION"
-ask-proposal: "keep DECISION"
+ask-options: "yes, keep DECISION | yes, relabel it DIRECTION | no, not now"
+ask-proposal: "yes, keep DECISION"
 ---
 
 # FM-167 — the Owner's act on an ask has no fixed name, so the Board says a decision is made before anything is recorded
@@ -19,8 +19,9 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 
 ## What is true now
 
-**Filed 2026-11-13, Proposed, with FM-167-Q1 put; no release is named, and nothing is built.** It acts on the imagery
-round of 13 November, whose record is
+**Filed 2026-11-13, Proposed; no release is named, and nothing is built.** Its first ask, FM-167-Q1, asked only
+for the label, and was withdrawn with no answer given. FM-167-Q2 puts all six decisions, so that a build of the
+dialog line has a signed answer behind it. It acts on the imagery round of 13 November, whose record is
 [FM-160's evidence](evidence/FM-160/go-to-market-round-imagery-and-the-owners-act-2026-11-13.md) (its Q3).
 
 - **The base today:**
@@ -59,12 +60,14 @@ made before the commit exists says what the page cannot show.
 
 ## Decisions, for the Owner
 
+All six are put as FM-167-Q2.
+
 1. **The Owner's act on an ask is called "answer"** on the public pages and on the Board.
 2. **The dialog's first line:** "Your decision is made." becomes "Your answer is ready." in `answer.sign.intro` and
    `answer.give.intro`, and the sentences after it stay. The German line follows a native read.
 3. **Words the public pages never use for the Owner's act:** ruling, approval and sign-off. *Accept* names only the
    button's verb. *Decision* stays for what an answer settles.
-4. **The kind label,** put as FM-167-Q1:
+4. **The kind label:**
    - **keep DECISION,** at no cost. This is the proposal;
    - **or DIRECTION,** at the record's count: the English label (`ask.ruling`, L4755), the `--standup` heading
      ([L2637](https://github.com/shoalmark/shoalmark/blob/22ccfc83baea11cc78ae044f0f072abdb40ca136/shoalmark.py#L2637)),
@@ -79,7 +82,7 @@ No release is named.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-167-Q1.**
+- [ ] **The Owner has answered FM-167-Q2.**
 - [ ] **`answer.sign.intro` and `answer.give.intro` open "Your answer is ready.",** with the tests that hold the
   labels; the German lines after a native read.
 - [ ] **The kind label reads as answered,** in English and German, on the Board and in `--standup`; with DIRECTION, the
@@ -88,8 +91,14 @@ Each item names its commit or pull request when it lands.
   `README.md` and `overrides/`, the German pages included.
 - [ ] **The review is READY.**
 
+## Asks
+
+**FM-167-Q1** · 2026-11-13 · Does the Board keep DECISION as the label of the ask kind ruling, or relabel it DIRECTION, with the kind key ruling kept as it is?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | FM-167-Q1, which asked only for the label, withdrawn with no answer given; FM-167-Q2 put on all six decisions, proposing to keep DECISION. Records only. |
 | 2026-11-13 | Filed, Proposed, with FM-167-Q1 put: the Owner's act is called answer, and the dialog's first line becomes Your answer is ready.; the kind label is asked, proposing to keep DECISION. No release. Records only. |
