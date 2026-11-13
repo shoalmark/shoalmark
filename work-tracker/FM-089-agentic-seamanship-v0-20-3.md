@@ -12,6 +12,12 @@ hook: "Agentic seamanship, the chapter for v0.20.3: trackers that close by a def
 
 ## What is true now
 
+**2026-11-13 — its part FM-088 is proposed to move to shoalmark/chart, not yet public,** on the Auditor's word of
+that day. FM-088's place here is the Owner's signed answer (`febbed9`), so only an answer moves it:
+FM-139-Q1, when it is put on [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), asks the Owner to take it out of v0.20.3. In the commit that records that answer,
+FM-088 leaves this chapter, and its item under *Done when*, "FM-088 is shipped in v0.20.3", leaves with it. No
+status changes by hand.
+
 **Filed 2026-10-29; nothing is built.** On the Owner's word of 29 October, as the Auditor relays it: the theme is
 *agentic seamanship*, the craft of a team of agents whose records finish, whose evidence stays small, and whose
 lessons every seat can read.
@@ -53,6 +59,7 @@ alive and each step of it finishable: the chapter ships when its parts do, and t
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | FM-088 proposed to move to shoalmark/chart, not yet public; FM-139-Q1 is to ask the Owner to take it out of v0.20.3, and it leaves this chapter, with its Done when item, in the commit that records the answer. Records only. |
 | 2026-11-05 | FM-095 to FM-098, this chapter's candidates, were not taken into v0.20.3 on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
 | 2026-10-29 | FM-095 to FM-098, filed for v0.20.x, are named as candidates for this chapter, not parts. Records only. |
