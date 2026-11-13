@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shoalmark — the eight seats in a session's row</title>
+<!-- A session's row as the board draws it, for the eight seat icons: the board's palette tokens (monochrome, the default), its type,
+     its fold rules and its seat rule, copied from shoalmark.py word for word. Each icon is its file but for the ground square's line:
+     for the seven, the bytes SEAT_ICONS holds. The last section's rows are the coordinator's variants that were tried and not chosen.
+     The 1x renders set zoom 0.5 on the root from the renderer's job, on a 2x screen, so one CSS pixel is one device pixel. -->
+<style>
+:root{--bg:#f7f7f5;--raise:#ececea;--ink:#161616;--dim:#565656;--mute:#6a6a6a;--line:rgba(0,0,0,.14);--box:rgba(0,0,0,.28);--coral:#b3402f;--teal:#187953;--amber:#8a5600;--owed:#8a5600;--help:#7b3fbf;--head:#161616;--idink:#161616;--secbg:#efefeb;--okbg:#e1f0e7;--warnbg:#fbf0d6;--failbg:#faeae6;--blue:#2f62d6;--yellow:#946c0f}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e0e;--raise:#1d1f24;--ink:#efefef;--dim:#ababab;--mute:#8f8f8f;--line:rgba(255,255,255,.15);--box:rgba(240,241,244,.26);--coral:#ff7b66;--teal:#4fd1a1;--amber:#f0b44c;--owed:#f0b44c;--help:#c09cff;--head:#efefef;--idink:#efefef;--secbg:#18191c;--okbg:#10271d;--warnbg:#2a200d;--failbg:#2c1612;--blue:#6f9bff;--yellow:#e8cf5a}}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg);color-scheme:light dark}
+body{margin:0 auto;max-width:calc(104ch + 32px);padding:16px 16px 40px;background:var(--bg);color:var(--ink);font:14px/21px "Berkeley Mono",ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace}
+p{margin:0}
+#p>.sec+.sec{margin-top:16px}.day>.sec+.sec{margin-top:12px}
+#p>.sec>.sh,#p>.sec>summary>.sh{background:var(--secbg);margin:0 -2ch 6px;padding:4px 2ch}#p>details.sec:not([open])>summary>.sh{margin-bottom:0}
+#p>.sec+.sec>.sh,#p>.sec+.sec>summary>.sh{border-top:1px solid var(--box)}
+.sh{font:inherit;font-weight:600;margin:0;display:flex;align-items:baseline;gap:0 1ch;color:var(--head)}.sh>span:first-child{flex:none}#p .sh b{font-weight:600}
+.sh .c{flex:1 1 auto;min-width:0;font-weight:400;color:var(--dim)}
+h2.sh:before{content:"##";content:"##" / "";display:inline-block;min-width:2ch;color:var(--mute);font-weight:400}
+details>summary{list-style:none;cursor:pointer}details>summary::-webkit-details-marker{display:none}
+.sub{color:var(--dim);margin:8px 0 0}
+details.grp>summary{padding:3px 0}details.grp .subs{display:block;padding-left:2ch;color:var(--dim)}details.grp>summary:before{content:">";content:">" / "";display:inline-block;min-width:2ch;color:var(--mute)}
+details.grp[open]>summary:before{content:"v";content:"v" / ""}details.grp .aq{padding-left:4ch}
+.seat{display:inline-block;width:20px;height:20px;vertical-align:top}.seat img{display:block}
+.seat img{filter:grayscale(1) invert(1)}
+@media print{.seat img{visibility:hidden}}
+@media(prefers-color-scheme:dark){.seat img{filter:grayscale(1)}}
+code{font:inherit}
+</style>
+</head>
+<body>
+<div id="p">
+<div class="sec"><h2 class="sh"><span>the eight seats in a session's row</span><span class="c">· 20 px, grey, without the ground</span></h2>
+<details class="grp"><summary>example1 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/planner.svg"></span> planner (lane)</summary></details>
+<details class="grp"><summary>example2 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/builder.svg"></span> builder (lane)</summary></details>
+<details class="grp"><summary>example3 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/reviewer.svg"></span> reviewer (lane)</summary></details>
+<details class="grp"><summary>example4 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/research.svg"></span> research (lane)</summary></details>
+<details class="grp"><summary>example5 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/go-to-market.svg"></span> go-to-market (lane)</summary></details>
+<details class="grp"><summary>example6 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/designer.svg"></span> designer (lane)</summary></details>
+<details class="grp"><summary>example7 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/auditor.svg"></span> auditor (lane)</summary></details>
+<details class="grp"><summary>example8 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/coordinator.svg"></span> coordinator (lane)</summary></details>
+<details class="grp"><summary>example9 <span class="seat"></span> — (lane)</summary></details>
+<p class="sub">The last row is a word outside the eight: its slot stays, empty.</p>
+</div>
+<div class="sec"><h2 class="sh"><span>tried, not chosen</span><span class="c">· the coordinator's variants 1 and 3; variant 2 is the eighth row above</span></h2>
+<details class="grp"><summary>variant1 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/coordinator-variant-1.svg"></span> coordinator (variant 1)</summary></details>
+<details class="grp"><summary>variant3 <span class="seat"><img alt="" aria-hidden="true" width="20" height="20" src="noground/coordinator-variant-3.svg"></span> coordinator (variant 3)</summary></details>
+</div>
+</div>
+</body>
+</html>

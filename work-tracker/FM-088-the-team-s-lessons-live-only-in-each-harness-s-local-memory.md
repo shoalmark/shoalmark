@@ -13,6 +13,12 @@ hook: "What the team learns lives only in each harness's local memory, on one ma
 
 ## What is true now
 
+**2026-11-13 — proposed to move to shoalmark/chart, not yet public, with its four trackers,** on the Auditor's word
+of that day. Its place in v0.20.3 is the Owner's signed answer (`febbed9`), so only an answer moves it:
+FM-139-Q1, when it is put on [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), asks the Owner to take FM-088 and FM-130 to FM-133 out of v0.20.3. FM-088 leaves
+FM-089, v0.20.3's chapter, in the commit that records that answer. They close with `--close --moved-to` once
+[FM-165](FM-165-a-tracker-can-only-be-closed-by-hand-so-its-open-asks-where.md) lands. No status changes by hand.
+
 **2026-11-03 — an epic, with four trackers, as the Owner's sweep words it.** Its ten items would not ship as one, and
 each part is a decision of its own. It stays a part of [FM-089](FM-089-agentic-seamanship-v0-20-3.md), and ships with
 its last child:
@@ -136,6 +142,7 @@ soon as a check holds them.
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | Proposed to move to shoalmark/chart, not yet public, with FM-130 to FM-133; FM-139-Q1 is to ask the Owner to take them out of v0.20.3, and FM-088 leaves FM-089 in the commit that records the answer. Records only. |
 | 2026-11-03 | An epic, with four trackers: FM-130 (items 1 to 3, and item 10 as a task), FM-131 (4 and 5), FM-132 (6 and 7) and FM-133 (8 and 9), as the Owner's sweep words it. Records only. |
 | 2026-10-30 | Blocked by FM-104, which decides where the person's files live, on the Owner's word of 30 October. Records only. |
 | 2026-10-29 | The Owner's signed answer (`febbed9`, #236): "accepted - v0.20.3". The ask is cleared, and FM-088 is a part of FM-089. Records only. |

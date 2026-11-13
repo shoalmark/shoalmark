@@ -4,8 +4,14 @@ status: Proposed
 considered: FM-024, FM-123, FM-139, FM-156
 tags: process
 epic: FM-139
-next: build
-hook: "The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the seven, so a coordinator session's row keeps an empty slot and its avatar has no picture. The imagery round of 13 November names it the radio operator, with an icon brief for a two-way headset, and variant B, the sea bag, stays unassigned. The Designer draws it, and FM-160-Q2 is put on the rendered preview."
+next: owner
+hook: "The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the seven, so a coordinator session's row keeps an empty slot and its avatar has no picture. The imagery round of 13 November names it the radio operator, with an icon brief for a two-way headset, and variant B, the sea bag, stays unassigned. The Designer has drawn it, variant 2, and FM-160-Q2 is put on the render."
+ask-id: FM-160-Q2
+ask: "Do you take FM-160's decisions as proposed: the radio operator's icon as rendered (variant 2), option 2's lines with the landing line in English and German, and the lane in v0.20.3?"
+ask-kind: ruling
+ask-since: 2026-11-13
+ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
+ask-proposal: "yes, as proposed"
 ---
 
 # FM-160 — the coordinator seat has no icon, so its session row keeps an empty slot
@@ -13,6 +19,22 @@ hook: "The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-13 — the Designer's render exists, and FM-160-Q2 is put on it,** on the Auditor's word. The Designer's
+hand-back is filed as [its record](evidence/FM-160/2026-11-13-radio-operator-icon.md), with the seat's session and harness keys taken out of its key list,
+beside [its folder](evidence/FM-160/2026-11-13-radio-operator-icon/). It drew three variants on the icon brief and chose
+[variant 2](evidence/FM-160/2026-11-13-radio-operator-icon/coordinator.svg): a one-unit band clear of the crown, an ear cup on each side at eye level, and a
+three-unit boom from the left cup to the mouth, on a head of the land's buff with a headset in the planner's band
+colour.
+
+- **At 400 px:** [`export.py`'s own PNG](evidence/FM-160/2026-11-13-radio-operator-icon/export/coordinator-400.png).
+- **In a session's row,** 20 px, grey, without the ground, with all eight: [light](evidence/FM-160/2026-11-13-radio-operator-icon/renders/board-row-20px-light-2x.png)
+  and [dark](evidence/FM-160/2026-11-13-radio-operator-icon/renders/board-row-20px-dark-2x.png), at 2x; the 1x renders are beside them.
+- **As an avatar,** in the eight-row preview at 200 and 20 px: [the preview](evidence/FM-160/2026-11-13-radio-operator-icon/renders/preview-avatar-light-2x.png).
+  The page has no colour-scheme rule, so its dark render is the same image.
+- **What it measured:** `export.py` exits 0 for all eight, with 24 PNGs; the farthest drawn cell is 6.71 of the safe
+  circle's 8, in 12 lines of 40. It is told apart from the skipper's cap, the owl's tufts and spectacles, the herald's
+  horn and the reviewer's monocle and cord. Its weakest contrast in grey is the headset on the light board, 3.53:1.
 
 **2026-11-13 — decided from the imagery round, on the Auditor's word.** FM-160-Q1 is withdrawn with no answer given.
 The go-to-market round of 13 November ([its record](evidence/FM-160/go-to-market-round-imagery-and-the-owners-act-2026-11-13.md)) failed *the tender* at the legibility gate, read cold as an
@@ -91,24 +113,33 @@ icon has to carry its job, *sends and receives between the vessels*, and claim n
      set; a tower, mast or screen that reads as traffic control;
    - **told apart at 20 px, in grey, without the ground:** from the skipper's cap, the owl's ear tufts and spectacles,
      the herald's horn, and the reviewer's monocle and cord;
-   - `brand/seats/coordinator.svg` is the drawing FM-160-Q2 takes, byte for byte.
+   - `brand/seats/coordinator.svg` is the drawing FM-160-Q2 takes, byte for byte: the Designer's
+     [`coordinator.svg`](evidence/FM-160/2026-11-13-radio-operator-icon/coordinator.svg), variant 2, 905 bytes, sha256
+     `9fe4f6b8ead9411111b33bc036713492159ef8fe861fce4e45effa22d15859b6`.
 3. **The README row,** the record's proposed words. The third column is the Designer's judgment, from the render:
 
 | Seat | Its character, and why it fits the job | At 20 px, grey included — the Designer's judgment |
 |---|---|---|
-| coordinator | the radio operator: a two-way headset, the microphone at its mouth. Ashore, it sends and receives the word between the fleet's vessels; it informs and advises, and instructs none of them | the Designer's, from the render |
+| coordinator | the radio operator: a two-way headset, the microphone at its mouth. Ashore, it sends and receives the word between the fleet's vessels; it informs and advises, and instructs none of them | the band clear of the crown, a cup at each side: clear; the boom is three pixels, read only up close |
 
-   It goes after the auditor's row, and the preview's row says the same.
+   It goes after the auditor's row, and the preview's row says the same, with the job line "informs and advises",
+   the Designer's proposal.
 4. **The imagery round's option 2 joins this lane:**
-   - the README's family line ([`brand/seats/README.md` L3](https://github.com/shoalmark/shoalmark/blob/22ccfc83baea11cc78ae044f0f072abdb40ca136/brand/seats/README.md#L3)) names the two settings:
-     at sea, and in the yard, where its own crew repairs and refits the ship;
+   - the README's family line ([`brand/seats/README.md` L3](https://github.com/shoalmark/shoalmark/blob/22ccfc83baea11cc78ae044f0f072abdb40ca136/brand/seats/README.md#L3)) names the two settings.
+     The Designer proposes: "One family for the eight seats, in the site's master design. One fleet, in two
+     settings: at sea, and in the yard, where a ship's own crew repairs and refits it." The rest of the paragraph
+     stays;
    - the builder's row, in the README ([L12](https://github.com/shoalmark/shoalmark/blob/22ccfc83baea11cc78ae044f0f072abdb40ca136/brand/seats/README.md#L12)) and in the preview
      ([`preview.html` L71](https://github.com/shoalmark/shoalmark/blob/22ccfc83baea11cc78ae044f0f072abdb40ca136/brand/seats/preview.html#L71)), reads as the crew's refit rather than new-building, where
-     it says "as a yard builds the fleet" today;
+     it says "as a yard builds the fleet" today. The Designer proposes "as a crew refits its own ship in the yard";
    - the landing's fleet section gains one line naming both settings
-     ([`overrides/partials/landing/en.html` L72–L73](https://github.com/shoalmark/shoalmark/blob/22ccfc83baea11cc78ae044f0f072abdb40ca136/overrides/partials/landing/en.html#L72-L73)), in English now;
-     the German line follows a native read;
-   - the Designer proposes the words, and the Owner rules them with FM-160-Q2;
+     ([`overrides/partials/landing/en.html` L72–L73](https://github.com/shoalmark/shoalmark/blob/22ccfc83baea11cc78ae044f0f072abdb40ca136/overrides/partials/landing/en.html#L72-L73)).
+     The Designer proposes it after the definition, in the existing key `fleet_def`: "One fleet, in two settings: at
+     sea, and in the yard, where a ship's own crew repairs and refits it." The landing's test refuses a key that only
+     one language holds;
+   - **the landing line lands in English and German in the same build,** the German after the Translator's native
+     read, so the two pages never say different things;
+   - the Owner rules the words with FM-160-Q2;
    - the skipper stays: the planner's row and icon do not change.
 5. **The other words an eighth seat touches,** as the Designer proposes:
 
@@ -137,6 +168,8 @@ icon has to carry its job, *sends and receives between the vessels*, and claim n
      icons" becomes eight, and the row rule's "a word outside the seven"
      ([L4195](https://github.com/shoalmark/shoalmark/blob/ec8479c68ffceb8afb545a3a745c58b310781b63/shoalmark.py#L4195)) matches;
    - `preview.html` and `export.py` say eight, and the preview's designer line "these seven" becomes eight;
+     - **2026-11-13:** at the base `export.py` holds no count, as the Designer found, so it has nothing to change;
+       only `preview.html` says eight;
    - the README row, and the pins that count or pin seven: `_SEAT_PINS`, which gains its sha256, `_SEAT_WORDS`, which
      gains an eighth session, and the checks and messages beside them in `test_shoalmark.py`
      ([L8114](https://github.com/shoalmark/shoalmark/blob/ec8479c68ffceb8afb545a3a745c58b310781b63/test_shoalmark.py#L8114)),
@@ -158,10 +191,10 @@ Each item names its commit or pull request when it lands.
   eight.
 - [ ] **A coordinator session's row shows its icon,** 20 px, grey, without the ground, and the seven's rows are
   unchanged.
-- [ ] **The README row stands in the Owner's words,** and every "seven" the eighth seat touches reads as decision 3
+- [ ] **The README row stands in the Owner's words,** and every "seven" the eighth seat touches reads as decision 5
   sets out.
-- [ ] **Option 2's lines stand** in the README, the preview and the landing, in English; the German landing line after a
-  native read.
+- [ ] **Option 2's lines stand** in the README, the preview and the landing; the landing line in English and German in
+  the same build, the German after the Translator's native read.
 - [ ] **The pins hold the eight,** and a page whose coordinator icon differs fails them.
 - [ ] **The Designer's check and the review are READY.**
 
@@ -174,5 +207,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | The Designer's render filed under evidence, its key list without the seat's session and harness keys; variant 2 drawn to the icon brief; FM-160-Q2 put on the render; decision 6's export.py line dated; the landing line lands in English and German together. Records only. |
 | 2026-11-13 | Decided from the imagery round, on the Auditor's word: FM-160-Q1 withdrawn with no answer given; the epithet is the radio operator, the icon follows the round's icon brief, variant B stays unassigned, and the round's option 2 joins this lane. FM-160-Q2 waits for the Designer's render. Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-160-Q1, on the Auditor's word: `epic: FM-139`, under v0.20.3's epic until the Owner decides whether it goes in. Nothing is built. |

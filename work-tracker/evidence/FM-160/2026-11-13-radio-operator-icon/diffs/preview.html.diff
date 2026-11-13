@@ -1,0 +1,56 @@
+--- a/brand/seats/preview.html
++++ b/brand/seats/preview.html
+@@ -4,7 +4,7 @@
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>shoalmark — the seat icons</title>
+-<!-- FM-024: the seven seat icons at 200 px and at 20 px, circle-cropped by CSS, on the site's night and on its paper.
++<!-- FM-024: the eight seat icons at 200 px and at 20 px, circle-cropped by CSS, on the site's night and on its paper.
+      Open it from a checkout: the icons are the SVGs beside it, the face is the site's Plex Mono, self-hosted in docs/assets/fonts/. -->
+ <style>
+ @font-face{font-family:"IBM Plex Mono";font-weight:400;src:url("../../docs/assets/fonts/IBM-Plex-Mono-normal-400-latin.woff2") format("woff2")}
+@@ -53,11 +53,11 @@
+ the colour, from the site's palette, is never the only carrier. A 20-unit grid — at 20 px a unit is a pixel — and nothing
+ but the stake's foot and the water leaves the safe circle, 10 % inside the circle a crop cuts.</p>
+ 
+-<div class="strip" aria-label="The seven at 20 px, in a row">
+-  <div><img src="planner.svg" alt="planner"><img src="builder.svg" alt="builder"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"></div>
+-  <div class="paper"><img src="planner.svg" alt="planner"><img src="builder.svg" alt="builder"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"></div>
+-  <div class="gray"><img src="planner.svg" alt="planner"><img src="builder.svg" alt="builder"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"></div>
+-  <p>the seven at 20 px, in a row: on the night, on the paper, and without colour</p>
++<div class="strip" aria-label="The eight at 20 px, in a row">
++  <div><img src="planner.svg" alt="planner"><img src="builder.svg" alt="builder"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"><img src="coordinator.svg" alt="coordinator"></div>
++  <div class="paper"><img src="planner.svg" alt="planner"><img src="builder.svg" alt="builder"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"><img src="coordinator.svg" alt="coordinator"></div>
++  <div class="gray"><img src="planner.svg" alt="planner"><img src="builder.svg" alt="builder"><img src="reviewer.svg" alt="reviewer"><img src="research.svg" alt="research"><img src="go-to-market.svg" alt="go-to-market"><img src="designer.svg" alt="designer"><img src="auditor.svg" alt="auditor"><img src="coordinator.svg" alt="coordinator"></div>
++  <p>the eight at 20 px, in a row: on the night, on the paper, and without colour</p>
+ </div>
+ 
+ <table>
+@@ -68,7 +68,7 @@
+   <td class="who"><h2>planner <i>the skipper</i></h2><p class="job">plans and adjudicates</p><p>A captain's cap with a gold badge, a level gaze: it plans the passage; the course is the Owner's.</p></td></tr>
+ <tr><td class="g night"><span><img class="c200" src="builder.svg" alt=""><img class="c20" src="builder.svg" alt=""></span></td>
+   <td class="g paper"><span><img class="c200" src="builder.svg" alt=""><img class="c20" src="builder.svg" alt=""></span></td>
+-  <td class="who"><h2>builder <i>the shipwright</i></h2><p class="job">builds</p><p>A yellow hard hat on a head of the stake's own green: it builds what the plan says, plank by plank, as a yard builds the fleet.</p></td></tr>
++  <td class="who"><h2>builder <i>the shipwright</i></h2><p class="job">builds</p><p>A yellow hard hat on a head of the stake's own green: it builds what the plan says, plank by plank, as a crew refits its own ship in the yard.</p></td></tr>
+ <tr><td class="g night"><span><img class="c200" src="reviewer.svg" alt=""><img class="c20" src="reviewer.svg" alt=""></span></td>
+   <td class="g paper"><span><img class="c200" src="reviewer.svg" alt=""><img class="c20" src="reviewer.svg" alt=""></span></td>
+   <td class="who"><h2>reviewer <i>the inspector</i></h2><p class="job">attacks and verifies</p><p>A monocle over one wide eye, the other squinting: it attacks the tip it is handed and believes only what survives.</p></td></tr>
+@@ -80,13 +80,16 @@
+   <td class="who"><h2>go-to-market <i>the herald</i></h2><p class="job">pitches and screens claims</p><p>A horn, and eyes open on the stranger it speaks to: it announces only what passed its screen.</p></td></tr>
+ <tr><td class="g night"><span><img class="c200" src="designer.svg" alt=""><img class="c20" src="designer.svg" alt=""></span></td>
+   <td class="g paper"><span><img class="c200" src="designer.svg" alt=""><img class="c20" src="designer.svg" alt=""></span></td>
+-  <td class="who"><h2>designer <i>the painter</i></h2><p class="job">draws</p><p>A coral beret tilted on a pear of a head, eyes on its drawing: it draws the chart, the marks, and these seven.</p></td></tr>
++  <td class="who"><h2>designer <i>the painter</i></h2><p class="job">draws</p><p>A coral beret tilted on a pear of a head, eyes on its drawing: it draws the chart, the marks, and these eight.</p></td></tr>
+ <tr><td class="g night"><span><img class="c200" src="auditor.svg" alt=""><img class="c20" src="auditor.svg" alt=""></span></td>
+   <td class="g paper"><span><img class="c200" src="auditor.svg" alt=""><img class="c20" src="auditor.svg" alt=""></span></td>
+   <td class="who"><h2>auditor <i>the owl</i></h2><p class="job">seals its plan and checks</p><p>Spectacles, ear tufts, wide awake: it seals its plan before it looks, then checks in the dark what the others missed.</p></td></tr>
++<tr><td class="g night"><span><img class="c200" src="coordinator.svg" alt=""><img class="c20" src="coordinator.svg" alt=""></span></td>
++  <td class="g paper"><span><img class="c200" src="coordinator.svg" alt=""><img class="c20" src="coordinator.svg" alt=""></span></td>
++  <td class="who"><h2>coordinator <i>the radio operator</i></h2><p class="job">informs and advises</p><p>A two-way headset, the microphone at its mouth. Ashore, it sends and receives the word between the fleet's vessels; it informs and advises, and instructs none of them.</p></td></tr>
+ </tbody>
+ </table>
+-<footer>The sources are the seven SVGs beside this page; <code>python3 brand/seats/export.py</code> writes the PNGs GitHub takes. The family the Owner approved on 2026-09-30, with the changes they asked for.</footer>
++<footer>The sources are the eight SVGs beside this page; <code>python3 brand/seats/export.py</code> writes the PNGs GitHub takes. The seven are the family the Owner approved on 2026-09-30, with the changes they asked for; the coordinator's stands on the Owner's answer.</footer>
+ </main>
+ </body>
+ </html>

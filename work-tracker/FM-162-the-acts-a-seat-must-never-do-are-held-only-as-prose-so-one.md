@@ -5,11 +5,11 @@ considered: FM-019, FM-024, FM-028, FM-031, FM-037, FM-062, FM-078, FM-104, FM-1
 tags: process
 epic: FM-139
 next: owner
-hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q1: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks, and names the rule and a safe alternative."
-ask-id: FM-162-Q1
-ask: "Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default in seat worktrees, a critical review, and the lane in v0.20.3?"
+hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q2: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks installed in its administrator layer, where a seat cannot change them, and names the rule and a safe alternative."
+ask-id: FM-162-Q2
+ask: "Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default for seats and installed in each harness's administrator layer, a critical review, and the lane in v0.20.3?"
 ask-kind: ruling
-ask-since: 2026-11-12
+ask-since: 2026-11-13
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
 ---
@@ -19,6 +19,10 @@ ask-proposal: "yes, as proposed"
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-13 — FM-162-Q1 withdrawn with no answer given, and FM-162-Q2 put,** on the Auditor's word of that day.
+Decision 6 is added: the guard is installed in each harness's administrator layer, not in project settings a seat
+can change. Decision 3 and the limits follow it. The other decisions are unchanged.
 
 **Filed 2026-11-12, Proposed for v0.20.3, with FM-162-Q1 put; nothing is built.** It is a chapter of
 [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), v0.20.3's epic, until the Owner
@@ -64,7 +68,7 @@ alternative, the slip becomes a corrected command.
 
 ## Decisions, for the Owner
 
-The ask, FM-162-Q1, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
+The ask, FM-162-Q2, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
 its number.
 
 1. **The guard refuses the five acts in their plain forms,** and each refusal names the rule and a safe alternative.
@@ -88,37 +92,44 @@ its number.
    says "a checkout the person has listed" and names the file. If
    [FM-104](FM-104-the-person-s-own-files-are-spread-over-the-repository-and.md)'s layout moves the person's own
    files, this file moves with them.
-3. **On by default in seat worktrees.**
-   - The hook entries are committed in each harness's project settings: `.claude/settings.json`, and
-     `.codex/hooks.json` with `.codex/rules/` where the design round finds a rule fits better. The worktree step
-     names them, and `--whoami` says whether they are in place.
+3. **On by default for seats.**
+   - The hook entries are installed where decision 6 says. The worktree step names them, and `--whoami` says
+     whether they are in place.
    - The guard acts only for a seat. A session with no `seat.session` passes, so the person's own sessions run as
      before. The design round settles how each harness tells the guard where the session started, so that a seat
      that changes folder is still a seat.
-   - The gate guards the entries as it will guard the seat definitions and the skills folder, in
-     [FM-121](FM-121-a-seat-can-change-the-seat-definitions-and-the-skills-folder.md)'s design round, which this
-     guard's design round joins.
-   - A seat started outside its worktree's folder loads no project settings. For it, the person may add the same
-     entries to their own user settings; the tool writes nothing there.
+   - This guard's design round joins
+     [FM-121](FM-121-a-seat-can-change-the-seat-definitions-and-the-skills-folder.md)'s, which guards the seat
+     definitions and the skills folder the same way.
 4. **The review is critical:** the guard decides what a seat may run.
 5. **The lane is in v0.20.3,** after FM-121's design round.
+6. **Where the guard lives: each harness's administrator layer.**
+   - The entries are installed in the settings a harness takes from the machine's administrator, which a seat
+     cannot edit and no other layer can widen. They are never in project settings, which a seat can change.
+   - The person installs them, as the machine's administrator. The tool prints the entries and where each
+     harness reads them, and writes nothing there itself.
+   - The layer applies to every session on the machine. The guard still acts only for a seat, so the person's own
+     sessions run as before (decision 3).
+   - Where a harness has no such layer, or its layer cannot hold the entries, the guard is not installed for it.
+     That harness is named under the limits below.
 
 **The limits, stated plainly.**
+- **A harness with no administrator layer.** The design round checks each harness's administrator layer and names
+  here each one that has none, or whose layer cannot hold the entries. A seat on such a harness runs unguarded.
 - **Plain forms only.** A command built at run time, an alias, a script that removes files, another language's file
   calls, or a shell started inside the shell is not seen.
 - **What each hook sees.** Codex's page names Bash, `apply_patch`, MCP and other local function tools, not its own
   file reads, so a read refusal may not reach them. The design round checks which file tools each harness's hook sees.
-- **Trust and loading.** Codex loads project hooks only once the person trusts the project's `.codex/` layer; until
-  then a seat runs unguarded, and `--whoami` cannot see whether a harness loaded them.
-- **A guardrail, not a complete boundary,** in Codex's own words. The guard runs under the seat's own OS user, which
-  can change a local file; the gate catches a committed change to the entries, not a local one. `--check` still
-  catches a bypassed hook after the fact.
+- **Loading.** `--whoami` reports whether the entries are in place, not whether a harness loaded them.
+- **A guardrail, not a complete boundary,** in Codex's own words. Installed by the administrator, the entries are out
+  of a seat's reach only while the seat's OS user cannot act as the administrator. `--check` still catches a
+  bypassed hook after the fact.
 
 ## Done when
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-162-Q1.
+- [ ] **The Owner has answered the ask,** FM-162-Q2.
 - [ ] **The design round** settles the exact commands, which file tools each harness's hook sees, and how a session
   is known as a seat, with FM-121's design round.
 - [ ] **The guard** reads a tool call from either harness's hook input and refuses each act's plain forms, naming
@@ -126,14 +137,21 @@ Each item names its commit or pull request when it lands.
   session with no `seat.session` passes; and a test that a seat which changes into a listed checkout is refused.
 - [ ] **The person's checkouts** are read only from `~/.config/shoalmark/`: a test shows a committed list is ignored
   and that no refusal prints a path, run with a scratch home.
-- [ ] **The entries** for Claude Code and Codex are committed, the worktree step names them, `--whoami` reports them,
-  and a test pins them. The gate refuses a seat's change to them, as FM-121's design says.
+- [ ] **The entries** are installed in each harness's administrator layer, as the setup page says. The worktree step
+  names them, `--whoami` reports them, and a test pins the entries the tool prints. Each harness without such a layer is named under the
+  limits.
 - [ ] **README, `docs/setup.md` and `docs/de/setup.md`** describe the guard and its limits, and their pair check
   passes. `CHANGELOG.md` has its entry.
 - [ ] **The critical review is READY.**
+
+## Asks
+
+**FM-162-Q1** · 2026-11-13 · Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default in seat worktrees, a critical review, and the lane in v0.20.3?
+**withdrawn** — no answer was given
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | FM-162-Q1 withdrawn with no answer given; FM-162-Q2 put, with decision 6 added: the guard is installed in each harness's administrator layer, and a harness without one is named as a limit. Records only. |
 | 2026-11-12 | Filed, Proposed for v0.20.3, with FM-162-Q1 put: a seat guard refuses five acts before they run. Records only. |
