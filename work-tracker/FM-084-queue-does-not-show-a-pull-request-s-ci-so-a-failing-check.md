@@ -3,6 +3,7 @@ id: FM-084
 status: Proposed
 considered: FM-031, FM-082
 tags: process
+epic: FM-139
 next: build
 hook: "--queue does not show a pull request's CI, so a failing check is found on the forge by hand"
 ask: "Is FM-084's check word in --queue allocated to v0.20.3, as FM-084's section The allocation, for the Owner sets out?"
@@ -59,4 +60,5 @@ to read each pull request by hand, which is what `--queue` was built to end.
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | `epic: FM-139`: a chapter of v0.20.3's epic, as the Owner's answer of 28 October allocated it. Records only. |
 | 2026-10-27 | Filed, Proposed, a quick win for v0.20.3 on the Owner's word of 27 October, with one ruling ask: its allocation to v0.20.3. |

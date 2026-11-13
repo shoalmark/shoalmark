@@ -6,9 +6,9 @@ tags: process
 epic: FM-139
 blocked-by: FM-104
 next: owner
-hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q2: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace."
-ask-id: FM-100-Q2
-ask: "Are FM-100's decisions taken, as its section Decisions, for the Owner sets them out (default skills under the Owner's signed copies, teams read from the roster spec, two stages in v0.20.3), superseding FM-149's decision 3, FM-023's B of 29 October and the STAND-UP.md design of 30 October?"
+hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q3: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace, with stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands."
+ask-id: FM-100-Q3
+ask: "Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams from the roster spec, stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design of 30 October?"
 ask-kind: ruling
 ask-since: 2026-11-12
 ask-options: "yes, as proposed | yes, with the changes I name"
@@ -18,6 +18,21 @@ ask-proposal: "yes, as proposed"
 # FM-100 — the stand-up prompt is code and English on every board, while the Board's words come from the language pack
 
 ## What is true now
+
+**2026-11-13 — FM-100-Q3 put, the changed question,** on the coordinator's word of that day. The open asks are
+answered together, at one sign-off, so it is put now rather than after FM-139-Q1's answer. It names the
+releases FM-139-Q1 proposes, stage 1 in v0.20.3 and stage 2 in the next release, and it stands with that answer.
+
+**2026-11-13 — FM-100-Q2 withdrawn with no answer given,** on the coordinator's word of that day. FM-139-Q1, the
+ask on [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), proposes v0.20.3's scope with
+stage 2 in the next release. The roster spec comes into force in shoalmark only with the Owner's commits in person
+after v0.20.3's tag, so stage 2 moves by decision 13's fallback, and stage 1 ships alone in v0.20.3. The other
+decisions stand.
+- **The changed question,** drafted here with no id until it is put: "Do you take FM-100's decisions as proposed:
+  default skills under the Owner's signed copies, teams read from the roster spec, stage 1 in v0.20.3 and stage 2 in
+  the next release, superseding FM-149's decision 3, FM-023's B of 29 October and the STAND-UP.md design of 30
+  October?"
+- It is put once FM-139-Q1 is answered.
 
 **2026-11-12 — its design audit is READY;** the findings are recorded privately.
 
@@ -101,7 +116,7 @@ nothing in the Owner's checkout. The Board says when an Owner's copy lacks one o
 
 ## Decisions, for the Owner
 
-The ask, FM-100-Q2, put to the Owner, asks for all of these at once. An answer of "yes, with the changes I
+The ask, FM-100-Q3, put to the Owner, asks for all of these at once. An answer of "yes, with the changes I
 name" names each change by its number.
 
 1. **Two skills replace the Board's stand-up prompt.**
@@ -284,6 +299,7 @@ name" names each change by its number.
     - **Until stage 2 ships,** every Board offers the direct row alone, whatever `[seats]` names.
     - Where the roster spec is not in force when v0.20.3 is otherwise ready, stage 2 moves to the next release by a
       dated line here, and stage 1 ships alone.
+    - FM-139-Q1 proposes that move, as the dated line of 2026-11-13 says.
 
 **What the answer's commit also does:** it marks FM-149's decision 3 superseded and strikes its last *Done when* item,
 and corrects FM-139, FM-104 and FM-023's row B. It adds to FM-121 that its design round covers the Owner's copies and
@@ -293,7 +309,7 @@ the stubs.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-100-Q2.
+- [ ] **The Owner has answered the ask,** FM-100-Q3.
 - [ ] **Stage 1: `standup` and `closeout`** stand in `skills/`, one English source each, with one test and one eval
   each, as FM-149's decision 2 has it: `standup` in direct mode and the five setups, `closeout` on git and refused off
   git. The Board's stand-up prompt is gone, and `test_day_prompts.py` keeps only what the rows still need: the values'
@@ -330,10 +346,15 @@ Each item names its commit or pull request when it lands.
 **FM-100-Q1** · 2026-11-12 · Are FM-100's decisions taken, as its section Decisions, for the Owner sets out, superseding FM-149's decision 3 and the STAND-UP.md design of 30 October, with the lane in v0.20.3?
 **withdrawn** — no answer was given
 
+**FM-100-Q2** · 2026-11-13 · Are FM-100's decisions taken, as its section Decisions, for the Owner sets them out (default skills under the Owner's signed copies, teams read from the roster spec, two stages in v0.20.3), superseding FM-149's decision 3, FM-023's B of 29 October and the STAND-UP.md design of 30 October?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | FM-100-Q3 put: the changed question, with stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, since the open asks are answered together at one sign-off. Records only. |
+| 2026-11-13 | FM-100-Q2 withdrawn with no answer given: FM-139-Q1 proposes stage 2 in the next release, by decision 13's fallback. The changed question is drafted with no id, to be put once FM-139-Q1 is answered. Records only. |
 | 2026-11-12 | The roster spec named as sealanes/1, in shoalmark/sealanes; FM-161 filed to lift the one-repository rule. Records only. |
 | 2026-11-12 | Revised after the design audit's second round; the findings are recorded privately. Records only. |
 | 2026-11-12 | FM-100-Q1 withdrawn, no answer given; its changed question is drafted, with no id until it is put. Records only. |
