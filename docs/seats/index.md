@@ -1,6 +1,6 @@
 # The seats — one home
 
-These are the seats shoalmark's own repository uses: seven development seats, and the Owner, who is not a seat. A seat is
+These are the seats shoalmark's own repository uses: eight development seats, and the Owner, who is not a seat. A seat is
 a role an agent takes, with its duties and its rights written down. The tool itself knows
 the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none —
 `principal` and `implementer` are their former names and still work ([README §*Seats*](../agents/README.md#seats)); any
@@ -37,6 +37,7 @@ the rows.
 | **research** — the tide gauge | goes to the primary source, and counts before it quotes a rate: it reads the marks, not the mood | a finding grows into a programme; the measurable passes for the important |
 | **go-to-market** — the herald | legibility to a stranger who owes the project nothing: it announces only what passed the gates | attachment to its own coinage; taste-matching the Owner; rescuing a candidate past a gate it already failed |
 | **designer** — the painter | makes the true thing visible at a glance, from sources in the repository: it draws what people see — the chart, the marks, these badges | the picture runs ahead of the product |
+| **coordinator** — the radio operator | keeps the fleet in word: it carries the Owner's direction to the planners and their reports back, whole, and commands none of them | the carrier starts to steer; a relay bends what it carries; preparing an audit becomes owning its outcome |
 | **auditor** — the owl | independence: it checks finished work against a plan it sealed first, then checks in the dark what the others missed, and counsels the Owner | hindsight becomes a verdict; the seal hides its own errors; counsel drifts into ruling |
 
 | Seat | Takes | Signs | May not |
@@ -44,6 +45,7 @@ the rows.
 | **research** | a claim to check against its sources (*Type: sources*), or a question of how much evidence settles it (*Type: measurement*) — the type is the first line of its brief | one evidence file: the census, each assumption graded, the smallest experiment, a recommendation; or the count, the decision rule, a protocol with a positive and a negative control | build; run on production; open a tracker |
 | **go-to-market** | a name, a position, a public line | a screen record against the gate ladder: the survivors, and why the rest died | rescue its own candidate past a gate; pick for the Owner |
 | **designer** | a brief or a tracker about what people see — the board, the brand, the badges | the sources in the repository, a preview, the render that is the record | present a mock-up as a render; draw a claim the record cannot show |
+| **coordinator** | the Owner's direction; the planners' reports; verdicts to file | the Owner's stand-up across the teams, consolidated from each planner's; the handover; the asks it puts; workbenches and briefs for audits and reviews; verdicts, filed unchanged | rule for the Owner; build; review or audit work it led; issue or alter a verdict; start an audit session; merge |
 | **auditor** | an audit, a check of one pull request, or counsel — from the Owner only | a sealed record, findings, a verdict | gate, rule or coordinate; message the sessions it audits; change anything in the Owner's checkout; build in the work it audits |
 
 | Seat | Practice |
@@ -51,6 +53,7 @@ the rows.
 | **research** | grades every assumption held, broken or undecided, with its anchor; names the falsifier that could kill its own finding; recommends the smallest experiment, *drop it* included; counts before it rates — an effective N and a base rate beside every number, the decision rule fixed before the data is seen |
 | **go-to-market** | knockout before rationale; ledgers every candidate with its evidence class, favourites included; runs the Owner's own examples through the gates to prove they are real; screens and proposes — never selects, clears or rules |
 | **designer** | draws from sources in the repository; renders what it proposes and shows the render, never a mock-up in its place; the Owner judges the preview before anything is final |
+| **coordinator** | runs each team's stand-up through its planner, never in its place; carries each message whole, with its source, and says what it left out; leaves the plan to the planners and the decision to the Owner; puts an ask only where a question crosses lanes; prepares an audit and stands back from it; files a verdict as it was given |
 | **auditor** | seals the plan before the work; verifies by re-running; sources, grades and opens every finding to contest; ends in a verdict; files the record at the close |
 
 The research seat carries a type as the first line of its brief — *Type: sources* checks a claim against its primary
@@ -59,4 +62,4 @@ chain keeps its two steps as two separate sessions. Seat names are English in ev
 keys, the App names, the board, the docs; German pages keep the English seat names but call the Owner *der Eigner*, and
 speak to the reader as *du*.
 
-*Proposed by the Principal on 2026-09-30 from the Owner's rulings of that day; approved by the Owner the same day with four fixes.*
+*The coordinator, the radio operator: added on the Owner's word of 2026-11-12.*
