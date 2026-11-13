@@ -16,6 +16,10 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-13 — its close right is read from `[roster]`,** as
+[FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) proposes, and the question on who may
+close waits on FM-166's list of acts (its decision 8). The question stays drafted.
+
 **Filed 2026-11-13, Proposed, with no release; nothing is built.** Its question on who may close is drafted, with no id
 until it is put, for a design round (`next: review`).
 
@@ -88,4 +92,5 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | Its close right is read from `[roster]`, and the question on who may close waits on FM-166's list of acts. Records only. |
 | 2026-11-13 | Filed, Proposed, with no release; its question on who may close drafted for a design round. Records only. |
