@@ -3,14 +3,8 @@ id: FM-166
 status: Proposed
 considered: FM-010, FM-015, FM-024, FM-026, FM-100, FM-156, FM-161, FM-165
 tags: process
-next: owner
+next: review
 hook: "Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/1's first edition defines a signed roster of its own. A repository that adopts both holds it twice, and the two can drift. The proposal, put to the Owner as FM-166-Q1: one [roster] table, defined by sealanes/1, in the adopter's own configuration, one per repository and found in a fixed order. In shoalmark.toml it replaces [seats] and [rights], with a migration, in v0.20.3."
-ask-id: FM-166-Q1
-ask: "Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1, one per repository and found in a fixed order, replaces [seats] and [rights] in shoalmark.toml with a migration, and the lane in v0.20.3?"
-ask-kind: ruling
-ask-since: 2026-11-13
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
 ---
 
 # FM-166 — seats and rights are kept in shoalmark.toml's own tables while hail/1 has a roster of its own, so a repository adopting both holds who sits where twice
@@ -109,8 +103,14 @@ Each item names its commit or pull request when it lands.
 - [ ] **README and the docs** describe the roster and its limit, with their German twins.
 - [ ] **The critical review is READY.**
 
+## Asks
+
+**FM-166-Q1** · 2026-11-13 · Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1, one per repository and found in a fixed order, replaces [seats] and [rights] in shoalmark.toml with a migration, and the lane in v0.20.3?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | FM-166-Q1 withdrawn with no answer given, so that two decisions can join before the ask is put again. Records only. |
 | 2026-11-13 | Filed, Proposed, with FM-166-Q1 put: v0.20.3 proposed, waiting on the roster table's shape. Records only. |
