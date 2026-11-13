@@ -3,8 +3,14 @@ id: FM-166
 status: Proposed
 considered: FM-010, FM-015, FM-024, FM-026, FM-100, FM-156, FM-161, FM-162, FM-165
 tags: process
-next: wait
-hook: "Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/1's first edition defines a signed roster of its own. A repository that adopts both holds it twice, and the two can drift. The proposal: one [roster] table, defined by sealanes/1, in the adopter's own configuration, one per repository and found in a fixed order. In shoalmark.toml it replaces [seats] and [rights], with a migration. FM-166-Q2 is withdrawn, since sealanes/1's design supersedes decisions 5, 8 and 9. The changed question is put once FM-139-Q1 is answered, and names the release that answer gives."
+next: owner
+hook: "Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/1's first edition defines a signed roster of its own. A repository that adopts both holds it twice, and the two can drift. The proposal: one [roster] table, defined by sealanes/1, in the adopter's own configuration, one per repository and found in a fixed order. In shoalmark.toml it replaces [seats] and [rights], with a migration. FM-166-Q2 was withdrawn, since sealanes/1's design supersedes decisions 5, 8 and 9. The changed question is put to the Owner as FM-166-Q3, with the lane in v0.20.3 as FM-139-Q1's answer stands."
+ask-id: FM-166-Q3
+ask: "Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1's first edition, which carries the migration, the list of acts and the version rule, replacing [seats] and [rights] in shoalmark.toml, with the lane in v0.20.3 as FM-139-Q1's answer stands?"
+ask-kind: ruling
+ask-since: 2026-11-13
+ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
+ask-proposal: "yes, as proposed"
 ---
 
 # FM-166 — seats and rights are kept in shoalmark.toml's own tables while hail/1 has a roster of its own, so a repository adopting both holds who sits where twice
@@ -12,6 +18,11 @@ hook: "Who sits where and what each seat may change: shoalmark reads it from [se
 Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-13 — FM-166-Q3 put, the changed question,** on the coordinator's word of that day. The open asks are
+answered together, at one sign-off, so it is put now rather than after FM-139-Q1's answer. It names
+v0.20.3, the release FM-139-Q1 on [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md) proposes for the lane, and
+it stands with that answer: if FM-139-Q1's answer places the roster in another release, the lane goes with it.
 
 **2026-11-13 — FM-166-Q2 withdrawn with no answer given,** on the coordinator's word of that day. sealanes/1's
 design round closed on 13 November. The design supersedes decisions 5, 8 and 9, and sealanes/1's first edition
@@ -131,7 +142,7 @@ dated line of 2026-11-13 says.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-166-Q2.**
+- [ ] **The Owner has answered FM-166-Q3.**
 - [ ] **The roster table's shape is settled** in sealanes/1.
 - [ ] **The tool reads `[roster]`** from `shoalmark.toml` or `hail.toml` in the fixed order, in place or by a pinned
   reference, each with its tests.
@@ -163,6 +174,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | FM-166-Q3 put: the changed question, with the lane in v0.20.3 as FM-139-Q1's answer stands, since the open asks are answered together at one sign-off. Records only. |
 | 2026-11-13 | FM-166-Q2 withdrawn with no answer given: sealanes/1's design, closed that day, supersedes decisions 5, 8 and 9, and its first edition carries them. The changed question is drafted with no id, to be put once FM-139-Q1 is answered. Records only. |
 | 2026-11-13 | FM-166-Q2 put: one closed list of acts and the version rule join the decisions, and the aliases `principal` and `implementer` retire with the migration; v0.20.3 unchanged. Records only. |
 | 2026-11-13 | FM-166-Q1 withdrawn with no answer given, so that two decisions can join before the ask is put again. Records only. |
