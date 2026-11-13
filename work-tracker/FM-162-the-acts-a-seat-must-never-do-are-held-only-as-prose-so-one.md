@@ -20,6 +20,27 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-13 — the two harnesses' pages read again for a research round of that day, recorded privately,** on the
+Auditor's word of that day. Three facts for the Owner to read before answering FM-162-Q2, and for the build. The
+decisions and the ask are unchanged.
+- **Codex has an administrator layer that holds hook entries.** Managed hooks sit under `[hooks]` in
+  `requirements.toml`, and `allow_managed_hooks_only = true` skips hooks from user, project, session and plugin
+  sources ([its hooks page, "Managed hooks in local Codex"](https://learn.chatgpt.com/docs/hooks#managed-hooks-in-local-codex)).
+  The scripts those entries run are not shipped with them: "your enterprise tooling must install and update them
+  separately", so they need the same protection as the entries. As documented today, decision 6's limit for a harness
+  with no such layer does not apply to Codex. Its hooks and rules pages have moved: the old links redirect, and the
+  links below are updated.
+- **Claude Code lets a call run when its hook fails.** "On most events, when a hook fails or times out, Claude Code
+  still carries out the action", unless the hook sets `"onFailure": "block"`, from v2.1.295
+  ([its hooks page, "Block the action when a hook fails"](https://code.claude.com/docs/en/hooks#block-the-action-when-a-hook-fails)).
+  A hook that prints invalid JSON lets the action go ahead the same way
+  (["Exit code output"](https://code.claude.com/docs/en/hooks#exit-code-output)). Its hook commands run outside its
+  sandbox and "run with your full access"
+  ([its sandboxing page, "What runs outside the sandbox"](https://code.claude.com/docs/en/sandboxing#what-runs-outside-the-sandbox)).
+- **Some tool paths are not intercepted.** Codex's hosted tools, such as WebSearch, do not take the hook path, and
+  "Some specialized tool paths can opt out of the default hook path"
+  ([its hooks page, "Tool coverage"](https://learn.chatgpt.com/docs/hooks#tool-coverage)).
+
 **2026-11-13 — FM-162-Q1 withdrawn with no answer given, and FM-162-Q2 put,** on the Auditor's word of that day.
 Decision 6 is added: the guard is installed in each harness's administrator layer, not in project settings a seat
 can change. Decision 3 and the limits follow it. The other decisions are unchanged.
@@ -47,11 +68,11 @@ decides whether it goes in.
     tool call executes. Can block it". It blocks by exiting 2, its stderr the message, or by JSON with
     `"permissionDecision": "deny"` and a reason, which it shows to Claude. Its input carries the session id, the
     working folder, the tool's name and its input. Project settings, `.claude/settings.json`, can be committed.
-  - **Codex** ([its hooks page](https://developers.openai.com/codex/hooks)): "PreToolUse can intercept Bash, file
+  - **Codex** ([its hooks page](https://learn.chatgpt.com/docs/hooks)): "PreToolUse can intercept Bash, file
     edits performed through `apply_patch`, MCP tool calls, and other local function tools", and blocks the same two
     ways. The project's hooks sit in `<repo>/.codex/hooks.json` or `.codex/config.toml`, and "Project-local hooks
     load only when the project `.codex/` layer is trusted." The page adds: "Treat tool hooks as a useful guardrail,
-    not a complete enforcement boundary." Its [rules page](https://developers.openai.com/codex/rules) adds
+    not a complete enforcement boundary." Its [rules page](https://learn.chatgpt.com/docs/agent-configuration/rules) adds
     `prefix_rule` with the decision `forbidden`, in `<repo>/.codex/rules/`: it matches a command's argument list,
     applies to commands run outside the sandbox, and is marked experimental.
 - **Where a seat is set up:** the seat's worktree, in the one step that writes its keys
@@ -153,5 +174,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-13 | A dated line of three facts from the two harnesses' pages, read again, for the Owner before FM-162-Q2 is answered; the Codex links updated to the pages they redirect to. The decisions and the ask are unchanged. Records only. |
 | 2026-11-13 | FM-162-Q1 withdrawn with no answer given; FM-162-Q2 put, with decision 6 added: the guard is installed in each harness's administrator layer, and a harness without one is named as a limit. Records only. |
 | 2026-11-12 | Filed, Proposed for v0.20.3, with FM-162-Q1 put: a seat guard refuses five acts before they run. Records only. |
