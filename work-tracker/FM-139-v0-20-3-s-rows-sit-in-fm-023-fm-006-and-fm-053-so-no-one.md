@@ -3,8 +3,14 @@ id: FM-139
 status: Proposed
 considered: FM-023, FM-089, FM-006, FM-053
 tags: process
-next: wait
+next: owner
 hook: "v0.20.3's allocation in one place: the rows and trackers the release holds, which sat in FM-023, FM-006 and FM-053. It ships at v0.20.3's tag."
+ask-id: FM-139-Q1
+ask: "Do you take v0.20.3's scope as FM-139 proposes: every roster lane in; sealanes/1's first edition, its cases and validator, and hail's edition 3 public before the tag; FM-115, FM-086 and FM-169 in, FM-169's round first and its commits before the migrating commit; FM-118 and FM-076 to v0.20.4?"
+ask-kind: ruling
+ask-since: 2026-11-13
+ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
+ask-proposal: "yes, as proposed"
 ---
 
 # FM-139 — v0.20.3's rows sit in FM-023, FM-006 and FM-053, so no one tracker says what the release holds
@@ -50,6 +56,81 @@ the person's language. Its ask places the lane in v0.20.3, and it stays a chapte
 **2026-11-12 — [FM-162](FM-162-the-acts-a-seat-must-never-do-are-held-only-as-prose-so-one.md) proposed for v0.20.3, with FM-162-Q1 open.** A
 seat guard refuses five acts before they run, through each harness's own hooks, and names the rule and a safe
 alternative. It is a chapter of this epic until the Owner decides whether it goes in.
+
+**2026-11-13 — FM-139-Q1 put: v0.20.3's scope, on the coordinator's word of that day.** sealanes/1's design closed on
+13 November. Below are the proposal and the plan's dates. The lists below this entry change only with the answer: a
+tracker not taken leaves the epic in the commit that records that decision.
+
+**The proposal:**
+1. **Every roster lane in v0.20.3:**
+   - [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) is built as ten lanes from one
+     contract cut from sealanes/1's final design, instead of as one lane. [FM-165](FM-165-a-tracker-can-only-be-closed-by-hand-so-its-open-asks-where.md)
+     follows its list of acts.
+   - sealanes/1's first edition, its conformance cases and its file-only validator are public before the tag, and
+     hail's edition 3 is public with them, as [FM-168](FM-168-a-spec-s-conformance-tests-are-prose-so-no-implementation.md) proposes.
+   - The validator is a program of the spec's own in shoalmark/sealanes (not yet public). It uses Python's standard
+     library only, and a seat that builds no tool lane writes it.
+   - FM-166's changed question is put once this ask is answered, naming v0.20.3.
+2. **[FM-115](FM-115-the-owner-answers-each-ask-in-the-board-s-one-dialog-and-no.md) and [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md) stay in v0.20.3.**
+3. **[FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md) joins v0.20.3, in this order:**
+   1. its design round, from day 1;
+   2. the ask that round drafts, answered by the Owner;
+   3. its lane;
+   4. the Owner's own signed commits, in the order the round sets. FM-169's decision 3 proposes two: first the keys
+      listed under the forge noreply address, then the personal address removed from `owner` and the signers file.
+
+   The plan places those commits before the release pull request. So they land before shoalmark's migrating commit,
+   the commit that replaces its `[seats]` and `[rights]` with the roster, and the address never enters a roster.
+4. **[FM-118](FM-118-shoalmark-py-s-prose-is-not-pruned-and-nothing-holds-code.md) and [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) move to v0.20.4.**
+5. **FM-088 and FM-130 to FM-133 leave v0.20.3** for shoalmark/chart (not yet public), as their lines of 13 November
+   say. They close with `--close --moved-to` once FM-165 lands.
+6. **The rest stays as listed below:**
+   - FM-089 with FM-087;
+   - FM-104, FM-120, FM-140, FM-119 and FM-121;
+   - FM-123, and BF-110 to BF-113 with [FM-159](FM-159-a-session-can-be-resumed-from-the-board-only-for-24-hours.md) on the same session rows;
+   - FM-099, FM-105, FM-106, FM-101, FM-102 and FM-141;
+   - FM-143, FM-149, FM-150 and FM-151;
+   - FM-160, FM-162, [FM-164](FM-164-subversion-support-is-deprecated-then-removed-while-the-vcs.md) and [FM-167](FM-167-the-owner-s-act-on-an-ask-has-no-fixed-name-so-the-board.md);
+   - [FM-163](FM-163-the-drift-skills-name-no-id-forms-read-no-harness-settings.md)'s shoalmark/skills 1.1.0, whose tag v0.20.3 pins;
+   - FM-100's stage 1;
+   - the rows.
+
+   [FM-083](FM-083-nothing-measures-how-well-a-skill-does-its-work-only-its.md) and [FM-084](FM-084-queue-does-not-show-a-pull-request-s-ci-so-a-failing-check.md) are
+   in too. The Owner's answers of 28 October allocated both to v0.20.3, but neither was on these lists until now.
+7. **FM-100's stage 2** needs the roster in force in shoalmark. That comes with the Owner's commits in person after the
+   tag, so stage 2 ships in the next release, by FM-100's own fallback.
+8. **Main is frozen** from the release pull request to the tag.
+
+**The plan's dates:**
+- Counted in working days from 13 November, with twelve lanes in flight.
+- S is the day FM-166's changed question gets its signed answer.
+- Slower assumptions are in brackets.
+
+| Point | S on day 2 | S on day 4 |
+|---|---|---|
+| sealanes/1's text ready | 3.1 (3.8) | 3.1 (3.8) |
+| hail's edition 3 ready | 4.8 (6.2) | 4.8 (6.2) |
+| The cases ready | about 5 | about 5 |
+| The publication, the Owner's act, with the validator | about 7.8 | about 7.8 |
+| FM-100's stage 1 ready | 10.5 | 9.8 |
+| FM-166's lanes joined | 9.9 (12.8) | 11.9 (14.9) |
+| **v0.20.3's tag** | **11.5 (14.3)** | **12.9 (16.1)** |
+| After the tag: the Owner's commits in person that put the roster in force | 14.1 | 15.5 |
+| FM-100's stage 2 ready, for the next release | 16.8 (21.1) | 18.2 (23.0) |
+
+- **The validator** adds 0.1 to 0.3 days to the tag.
+- **FM-169** adds up to 0.1 days:
+  - its round is ready about day 2.1 (2.7);
+  - its ask is answered about day 3;
+  - its lane is ready about day 5.6 to 7.0 (7.9 to 8.5);
+  - the Owner's commits come about day 6.1 to 7.5 (8.5 to 9.1).
+- **What sets the tag:**
+  - with S before about day 2.5, FM-104's chain: its round, the Owner's sitting, the layout, then FM-100's stage 1;
+  - from S on about day 2.5, FM-166's lanes. Each later day of S then moves the tag by about 0.9 days.
+- **Built as one lane** instead of ten, FM-166 would put the tag at 14.8 to 16.9.
+- **With the roster in v0.20.4 instead,** v0.20.3's tag would come at about 10.6. Keeping the roster in v0.20.3 costs about 1
+  day with S on day 2, and 2.3 days with S on day 4.
+- **Confidence,** with S within four days: 50 % that the tag comes within 13 working days, and 80 % within 16.
 
 **The chapter, and the trackers filed for v0.20.3:**
 - [FM-089](FM-089-agentic-seamanship-v0-20-3.md), Agentic seamanship, with its parts [FM-086](FM-086-a-tracker-states-one-deliverable-and-closes-when-it-ships.md), [FM-087](FM-087-evidence-comes-in-three-classes-what-decides-stays-with-the.md) and [FM-088](FM-088-the-team-s-lessons-live-only-in-each-harness-s-local-memory.md). FM-088's four
@@ -169,3 +250,4 @@ at its allocation sitting and at its tag.
 | 2026-11-12 | FM-160 proposed for v0.20.3 with FM-160-Q1, a chapter of this epic until the Owner decides. Records only. |
 | 2026-11-12 | FM-100 rewritten with FM-100-Q1: the stand-up and the close-out as skills by seat. Records only. |
 | 2026-11-12 | FM-162 proposed for v0.20.3 with FM-162-Q1, a chapter of this epic until the Owner decides. Records only. |
+| 2026-11-13 | FM-139-Q1 put: v0.20.3's scope with the plan's dates, FM-169 joining it, and FM-083 and FM-084 named as in by the Owner's answers of 28 October. Records only. |
