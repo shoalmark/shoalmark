@@ -13,6 +13,10 @@ research = ["research@seat", "datascientist@seat", "336434529+shoalmark-research
 go-to-market = ["go-to-market@seat", "gtm@seat", "336430483+shoalmark-go-to-market[bot]@users.noreply.github.com"]   # `gtm` was a seat of its own until this change: its address is this seat's
 designer = ["designer@seat", "336431084+shoalmark-designer[bot]@users.noreply.github.com"]
 auditor = ["auditor@seat", "336431811+shoalmark-auditor[bot]@users.noreply.github.com"]
+coordinator = ["coordinator@seat", "355082926+shoalmark-coordinator[bot]@users.noreply.github.com"]   # the radio operator: coordinates the planners, files verdicts unchanged
+
+[rights]           # a name the tool does not build in holds only what this table gives it; the built-in seats keep theirs
+coordinator = ["ask"]   # it puts the asks that cross lanes; it closes, triages and answers nothing
 
 [kinds]             # one id space, keyed by the project — an id encodes nothing that can change
 FM = "Work"
