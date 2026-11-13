@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" shape-rendering="crispEdges">
+<title>coordinator — the radio operator</title>
+<rect width="20" height="20" fill="#15293d"/>
+<path fill="#34546c" d="M4 17h3v1h-3ZM13 17h3v1h-3Z"/><!-- the water -->
+<path fill="#bccd8f" d="M9 14h2v6h-2Z"/><!-- the stake -->
+<path fill="#e8d4a0" d="M7 7h6v1h-6ZM6 8h8v1h-8ZM5 9h10v5h-10ZM6 14h8v1h-8Z"/><!-- the head, the land's buff -->
+<path fill="#5b83a3" d="M7 6h6v1h-6ZM6 7h1v1h-1ZM13 7h1v1h-1ZM5 8h1v1h-1ZM14 8h1v1h-1Z"/><!-- the headset's band, on the crown -->
+<path fill="#5b83a3" d="M3 9h2v4h-2ZM15 9h2v4h-2Z"/><!-- its ear cups -->
+<path fill="#5b83a3" d="M5 13h3v1h-3Z"/><!-- its microphone, at the mouth -->
+<path fill="#15293d" d="M7 10h1v2h-1ZM12 10h1v2h-1Z"/><!-- the eyes, on the channel -->
+<path fill="#f38a80" d="M13 12h1v1h-1Z"/><!-- the blush -->
+</svg>
