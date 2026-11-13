@@ -57,8 +57,8 @@ the person's language. Its ask places the lane in v0.20.3, and it stays a chapte
 seat guard refuses five acts before they run, through each harness's own hooks, and names the rule and a safe
 alternative. It is a chapter of this epic until the Owner decides whether it goes in.
 
-**2026-11-13 — FM-139-Q1 put: v0.20.3's scope, on the coordinator's word of that day.** sealanes/1's design closed on
-13 November. Below are the proposal and the plan's dates. The lists below this entry change only with the answer: a
+**2026-11-13 — FM-139-Q1 put: v0.20.3's scope, on the coordinator's word of that day.** sealanes/1's design went through its
+audit on 13 November. Below are the proposal and the plan's dates. The lists below this entry change only with the answer: a
 tracker not taken leaves the epic in the commit that records that decision.
 
 **The proposal:**
@@ -93,16 +93,17 @@ tracker not taken leaves the epic in the commit that records that decision.
    - FM-160, FM-162, [FM-164](FM-164-subversion-support-is-deprecated-then-removed-while-the-vcs.md) and [FM-167](FM-167-the-owner-s-act-on-an-ask-has-no-fixed-name-so-the-board.md);
    - [FM-163](FM-163-the-drift-skills-name-no-id-forms-read-no-harness-settings.md)'s shoalmark/skills 1.1.0, whose tag v0.20.3 pins;
    - FM-100's stage 1;
+   - [FM-083](FM-083-nothing-measures-how-well-a-skill-does-its-work-only-its.md) and [FM-084](FM-084-queue-does-not-show-a-pull-request-s-ci-so-a-failing-check.md), which the Owner's answers of 28 October
+     allocated to v0.20.3, on the list below from 13 November;
    - the rows.
-
-   [FM-083](FM-083-nothing-measures-how-well-a-skill-does-its-work-only-its.md) and [FM-084](FM-084-queue-does-not-show-a-pull-request-s-ci-so-a-failing-check.md) are
-   in too. The Owner's answers of 28 October allocated both to v0.20.3, but neither was on these lists until now.
 7. **FM-100's stage 2** needs the roster in force in shoalmark. That comes with the Owner's commits in person after the
-   tag, so stage 2 ships in the next release, by FM-100's own fallback.
-8. **Main is frozen** from the release pull request to the tag.
+   tag, so stage 2 ships in the next release, by FM-100's own fallback. FM-100-Q2 is withdrawn, and its changed
+   question is put after this answer.
+8. No tracker enters v0.20.3 after this answer but by another signed answer of the Owner's. Main is frozen from the
+   release pull request to the tag.
 
 **The plan's dates:**
-- Counted in working days from 13 November, with twelve lanes in flight.
+- Counted in working days from 13 November, with twelve lanes in flight, for the scope above with the validator.
 - S is the day FM-166's changed question gets its signed answer.
 - Slower assumptions are in brackets.
 
@@ -110,26 +111,23 @@ tracker not taken leaves the epic in the commit that records that decision.
 |---|---|---|
 | sealanes/1's text ready | 3.1 (3.8) | 3.1 (3.8) |
 | hail's edition 3 ready | 4.8 (6.2) | 4.8 (6.2) |
-| The cases ready | about 5 | about 5 |
-| The publication, the Owner's act, with the validator | about 7.8 | about 7.8 |
-| FM-100's stage 1 ready | 10.5 | 9.8 |
-| FM-166's lanes joined | 9.9 (12.8) | 11.9 (14.9) |
-| **v0.20.3's tag** | **11.5 (14.3)** | **12.9 (16.1)** |
-| After the tag: the Owner's commits in person that put the roster in force | 14.1 | 15.5 |
-| FM-100's stage 2 ready, for the next release | 16.8 (21.1) | 18.2 (23.0) |
+| The cases ready | 5.5 (7.2) | 5.5 (7.2) |
+| The publication, the Owner's act | 7.8 (11.0) | 7.9 (10.8) |
+| FM-169's commits, the Owner's | 7.5 (9.1) | 6.1 (8.5) |
+| FM-166's lanes joined | 10.0 (13.0) | 12.1 (14.9) |
+| FM-100's stage 1 ready | 10.6 (13.0) | 10.6 (13.7) |
+| **v0.20.3's tag** | **11.6 (14.3)** | **13.1 (16.1)** |
+| After the tag: the Owner's commits in person that put the roster in force | 14.2 (17.6) | 15.6 (19.5) |
+| FM-100's stage 2 ready, for the next release | 16.9 (21.1) | 18.4 (23.0) |
 
-- **The validator** adds 0.1 to 0.3 days to the tag.
-- **FM-169** adds up to 0.1 days:
-  - its round is ready about day 2.1 (2.7);
-  - its ask is answered about day 3;
-  - its lane is ready about day 5.6 to 7.0 (7.9 to 8.5);
-  - the Owner's commits come about day 6.1 to 7.5 (8.5 to 9.1).
+- **FM-169's round** is ready about day 2.1 (2.7), and its ask is answered about day 3. Its lane is ready about day 5.6
+  to 7.0 (7.9 to 8.5).
 - **What sets the tag:**
-  - with S before about day 2.5, FM-104's chain: its round, the Owner's sitting, the layout, then FM-100's stage 1;
-  - from S on about day 2.5, FM-166's lanes. Each later day of S then moves the tag by about 0.9 days.
-- **Built as one lane** instead of ten, FM-166 would put the tag at 14.8 to 16.9.
-- **With the roster in v0.20.4 instead,** v0.20.3's tag would come at about 10.6. Keeping the roster in v0.20.3 costs about 1
-  day with S on day 2, and 2.3 days with S on day 4.
+  - with S on day 2 or before, FM-104's chain: its round, the Owner's sitting, the layout, then FM-100's stage 1;
+  - with S after about day 2, FM-166's lanes. From day 4 on, each later day of S moves the tag by about 0.9 days.
+- **Built as one lane** instead of ten, FM-166 would put the tag at 14.3 with S on day 2, and 16.4 with S on day 4.
+- **With the roster in v0.20.4 instead,** and the rest as proposed, v0.20.3's tag would come at about 11.5. Keeping the
+  roster in v0.20.3 costs about 0.1 days with S on day 2, and 1.5 days with S on day 4.
 - **Confidence,** with S within four days: 50 % that the tag comes within 13 working days, and 80 % within 16.
 
 **The chapter, and the trackers filed for v0.20.3:**
@@ -154,6 +152,9 @@ tracker not taken leaves the epic in the commit that records that decision.
   [FM-150](FM-150-the-gate-passes-an-ask-without-next-owner-and-it-reaches-no.md) and
   [FM-151](FM-151-a-records-only-pull-request-waits-for-a-macos-runner-that.md), placed in v0.20.3 on 5 November, FM-150 and FM-151
   each by its decision *Allocation*.
+- On this list from 13 November: [FM-083](FM-083-nothing-measures-how-well-a-skill-does-its-work-only-its.md), the suite for skills, and
+  [FM-084](FM-084-queue-does-not-show-a-pull-request-s-ci-so-a-failing-check.md), the check word in `--queue`, which the Owner's answers of 28 October
+  allocated to v0.20.3.
 
 **The rows FM-023's entries name for v0.20.3:**
 
@@ -250,4 +251,4 @@ at its allocation sitting and at its tag.
 | 2026-11-12 | FM-160 proposed for v0.20.3 with FM-160-Q1, a chapter of this epic until the Owner decides. Records only. |
 | 2026-11-12 | FM-100 rewritten with FM-100-Q1: the stand-up and the close-out as skills by seat. Records only. |
 | 2026-11-12 | FM-162 proposed for v0.20.3 with FM-162-Q1, a chapter of this epic until the Owner decides. Records only. |
-| 2026-11-13 | FM-139-Q1 put: v0.20.3's scope with the plan's dates, FM-169 joining it, and FM-083 and FM-084 named as in by the Owner's answers of 28 October. Records only. |
+| 2026-11-13 | FM-139-Q1 put: v0.20.3's scope with the plan's dates and the cut-off, FM-169 joining it. FM-083 and FM-084 join the list, as the Owner's answers of 28 October allocated them. Records only. |
