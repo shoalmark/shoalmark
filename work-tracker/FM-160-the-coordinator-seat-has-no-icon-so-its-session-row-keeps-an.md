@@ -4,7 +4,7 @@ status: Proposed
 considered: FM-024, FM-123, FM-139, FM-156
 tags: process
 epic: FM-139
-next: owner
+next: build
 hook: "The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the seven, so a coordinator session's row keeps an empty slot and its avatar has no picture. The imagery round of 13 November names it the radio operator, with an icon brief for a two-way headset, and variant B, the sea bag, stays unassigned. The Designer has drawn it, variant 2, and FM-160-Q2 is put on the render."
 ask-id: FM-160-Q2
 ask: "Do you take FM-160's decisions as proposed: the radio operator's icon as rendered (variant 2), option 2's lines with the landing line in English and German, and the lane in v0.20.3?"
@@ -12,6 +12,9 @@ ask-kind: ruling
 ask-since: 2026-11-13
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-14
+answered-by: holgo99
 ---
 
 # FM-160 — the coordinator seat has no icon, so its session row keeps an empty slot
