@@ -3,7 +3,7 @@ id: FM-173
 status: Proposed
 considered: FM-024, FM-034, FM-037, FM-169
 tags: bug
-next: owner
+next: build
 hook: "In a clone with no signers file set up, --check reads a signed answer it cannot verify as no answer at all: a ledger-integrity violation, exit 4, and --answer undoes the Owner's new answer. The ledger is sound; the clone is not set up. FM-034 made such a signature the checkout's own finding for the other signed checks, and the answer's reader was left out. The proposal, put to the Owner as FM-173-Q1: the checkout's finding for every reader of a signed answer, with a class test."
 ask-id: FM-173-Q1
 ask: "Do you take FM-173's fix into v0.20.3: a signed answer whose signature this clone cannot check reads as the checkout's own finding, never as a missing answer, and a class test holds it for every reader of a signed answer?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-16
 ask-options: "yes, as proposed | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-16
+answered-by: holgo99
 ---
 
 # FM-173 — a signed answer this clone cannot verify reads as a missing answer, a ledger violation, not as the checkout's own finding
