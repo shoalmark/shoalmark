@@ -1,9 +1,11 @@
 ---
 id: FM-166
-status: Proposed
+status: In Progress
 considered: FM-010, FM-015, FM-024, FM-026, FM-100, FM-156, FM-161, FM-162, FM-165
 tags: process
 next: build
+triaged: 2026-11-16
+tier: P1
 hook: "Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/1's first edition defines a signed roster of its own. A repository that adopts both holds it twice, and the two can drift. The proposal: one [roster] table, defined by sealanes/1, in the adopter's own configuration, one per repository and found in a fixed order. In shoalmark.toml it replaces [seats] and [rights], with a migration. FM-166-Q2 was withdrawn, since sealanes/1's design supersedes decisions 5, 8 and 9. The changed question is put to the Owner as FM-166-Q3, with the lane in v0.20.3 as FM-139-Q1's answer stands."
 ask-id: FM-166-Q3
 ask: "Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1's first edition, which carries the migration, the list of acts and the version rule, replacing [seats] and [rights] in shoalmark.toml, with the lane in v0.20.3 as FM-139-Q1's answer stands?"
@@ -21,6 +23,8 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-16 — judged before its first build commit, In Progress; the lanes the answer's changes do not touch start,** on the coordinator's word of that day. FM-166-Q3 is answered "yes, with the changes I name", with the Owner's signature. The changes are not yet written here; they are recorded on the Owner's word once the Owner confirms them. Until then nothing is built that they touch: where the roster is read from. The lanes are cut from sealanes/1's text as it stands, with the edition's case set as the oracle. The first is the contract: one entry point for each operation the cases ask of a reader, and the history they are asked over.
 
 **2026-11-13 — FM-166-Q3 put, the changed question,** on the coordinator's word of that day. The open asks are
 answered together, at one sign-off, so it is put now rather than after FM-139-Q1's answer. It names
@@ -177,6 +181,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | Judged before its first build commit, keep P1, In Progress: FM-166-Q3 answered with the changes the Owner names, which are recorded once confirmed; the lanes they do not touch start, the contract first. Records only. |
 | 2026-11-13 | FM-166-Q3 put: the changed question, with the lane in v0.20.3 as FM-139-Q1's answer stands, since the open asks are answered together at one sign-off. Records only. |
 | 2026-11-13 | FM-166-Q2 withdrawn with no answer given: sealanes/1's design, closed that day, supersedes decisions 5, 8 and 9, and its first edition carries them. The changed question is drafted with no id, to be put once FM-139-Q1 is answered. Records only. |
 | 2026-11-13 | FM-166-Q2 put: one closed list of acts and the version rule join the decisions, and the aliases `principal` and `implementer` retire with the migration; v0.20.3 unchanged. Records only. |

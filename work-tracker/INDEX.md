@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) | P1 | Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/… | In Progress | progress | 2026-11-16 |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -55,7 +56,6 @@
 | [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md) | — | shoalmark.toml's top-level owner names the Owner's personal address beside the forge noreply address, and the signers f… | Proposed | triage | — |
 | [FM-168](FM-168-a-spec-s-conformance-tests-are-prose-so-no-implementation.md) | — | hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementat… | Proposed | triage | — |
 | [FM-167](FM-167-the-owner-s-act-on-an-ask-has-no-fixed-name-so-the-board.md) | — | The Owner's act on an ask has no fixed name, and the Board's answer dialog opens with Your decision is made. before the… | Proposed | triage | — |
-| [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) | — | Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/… | Proposed | triage | — |
 | [FM-165](FM-165-a-tracker-can-only-be-closed-by-hand-so-its-open-asks-where.md) | — | A tracker is closed by hand: a status, a line in its own words, and its open asks left waiting in the Owner's queue. No… | Proposed | triage | — |
 | [FM-164](FM-164-subversion-support-is-deprecated-then-removed-while-the-vcs.md) | — | shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is bui… | Proposed | triage | — |
 | [FM-163](FM-163-the-drift-skills-name-no-id-forms-read-no-harness-settings.md) | — | find-drift and prune-drift name no form for the ids a report gives its rules, disagreements and obsolete text, though p… | Proposed | triage | — |
