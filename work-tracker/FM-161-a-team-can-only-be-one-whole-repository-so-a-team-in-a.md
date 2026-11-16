@@ -3,7 +3,7 @@ id: FM-161
 status: Proposed
 considered: FM-100, FM-166
 tags: process
-next: owner
+next: build
 hook: "A team can only be one whole repository: FM-100's standup-teams refuses a team in a folder of a monorepo, or several teams in one repository, though sealanes/1, the roster spec, may name such places. Lifting that needs the tool's side and the roster spec's side, and waits until sealanes/1 is in force. Its design is put to the Owner as FM-161-Q1, with the lane in v0.20.3 beside FM-166's."
 ask-id: FM-161-Q1
 ask: "Do you take FM-161's decisions as proposed: the tool serves every tracker folder the roster gives a repository, each team's with its prefixes and a shared one by team key and id ranges, in --check, the gate, the hooks, --new and --standup, with the lane in v0.20.3 beside FM-166's?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-16
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-16
+answered-by: holgo99
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
