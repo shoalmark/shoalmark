@@ -26,6 +26,8 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
+**2026-11-16 — the build judged before its first commit, a partial pass** (Planner seat, on the coordinator's word of that day; the worksheet `work-tracker/evidence/triage/triage-2026-11-16.md`, one row of one hundred and one filled and applied by the command): **FM-166 keep P1** — FM-139-Q1 and FM-166-Q3, answered with the Owner's signature, place the roster's lanes in v0.20.3, and the lanes the answer's changes do not touch start, the contract first. The other rows wait for the next full pass.
+
 **2026-11-12 — the build judged before its first commit, a partial pass** (Planner seat, on the Auditor's word of
 that day; the worksheet `work-tracker/evidence/triage/triage-2026-11-12.md`, one row of ninety filled and applied by
 the command): **FM-157 keep P2** — a test-only fix for FM-061's vendor check, which fails when the suite crosses

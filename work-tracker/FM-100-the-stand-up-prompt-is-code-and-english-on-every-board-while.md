@@ -1,16 +1,16 @@
 ---
 id: FM-100
 status: Proposed
-considered: FM-030, FM-031, FM-088, FM-095, FM-104, FM-121, FM-143, FM-149
+considered: FM-030, FM-031, FM-088, FM-095, FM-104, FM-121, FM-143, FM-149, FM-161, FM-166
 tags: process
 epic: FM-139
 blocked-by: FM-104
 next: owner
-hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q3: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace, with stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands."
-ask-id: FM-100-Q3
-ask: "Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams from the roster spec, stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design of 30 October?"
+hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q4: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace, with teams, routes and record folders read from sealanes/1's roster and hail/1's third edition, stage 1 in v0.20.3 and stage 2 in the next release."
+ask-id: FM-100-Q4
+ask: "Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams, routes and record folders from sealanes/1 and hail/1's third edition, stage 1 in v0.20.3 and stage 2 next, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design?"
 ask-kind: ruling
-ask-since: 2026-11-12
+ask-since: 2026-11-16
 ask-options: "yes, as proposed | yes, with the changes I name"
 ask-proposal: "yes, as proposed"
 ---
@@ -18,6 +18,14 @@ ask-proposal: "yes, as proposed"
 # FM-100 — the stand-up prompt is code and English on every board, while the Board's words come from the language pack
 
 ## What is true now
+
+**2026-11-16 — FM-100-Q3 withdrawn with no answer given, and FM-100-Q4 put,** on the coordinator's word of that day.
+Decisions 3, 9 and 10 rested on `[seats]` and on hail/1's first edition. sealanes/1's text now defines the roster that
+replaces `[seats]` ([FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md)): its teams, their
+places and record folders, each team's lead, the organisation team and its principal, and bots named `<team>.<name>`.
+hail/1's third edition adopts that roster and says who may hail whom and where each hail is filed. The three decisions
+are rewritten against both texts; the others stand. FM-139-Q1's answer placed stage 1 in v0.20.3 and stage 2 in the next
+release, so the ask names both plainly.
 
 **2026-11-13 — FM-100-Q3 put, the changed question,** on the coordinator's word of that day. The open asks are
 answered together, at one sign-off, so it is put now rather than after FM-139-Q1's answer. It names the
@@ -116,7 +124,7 @@ nothing in the Owner's checkout. The Board says when an Owner's copy lacks one o
 
 ## Decisions, for the Owner
 
-The ask, FM-100-Q3, put to the Owner, asks for all of these at once. An answer of "yes, with the changes I
+The ask, FM-100-Q4, put to the Owner, asks for all of these at once. An answer of "yes, with the changes I
 name" names each change by its number.
 
 1. **Two skills replace the Board's stand-up prompt.**
@@ -162,15 +170,17 @@ name" names each change by its number.
 3. **The Board's buttons copy one line:** the skill's name, its mode, and the values the tool already fills and checks:
    the name, path, command and branch, every value through today's checks, and the setup it already tells apart. The
    labels stay in `labels.yaml`. **Which line where, as I propose it:**
-   - **The row follows `[seats]` on the default branch,** as the gate reads the Owner, never the working tree.
-     `coordinator` becomes a name the tool knows, with no built-in right.
-   - **Where `[seats]` names no coordinator,** the stand-up row copies `standup` in direct mode, with that
-     repository's values.
-   - **Where it names a coordinator,** the Owner's sitting is the coordinator's, so the row copies `standup-teams` with
-     this repository's name and path, through today's checks; the coordinator reads its teams from the roster
-     (decision 9). The coordinator's session runs in its own worktree of that repository; that repository's copy of the
-     skill and its tool version govern the sitting, and the first page names both with the sha256. The planner's
-     report-mode line is the coordinator's to send, never the Owner's to paste, so no Board offers it.
+   - **The row follows the roster in force on the default branch,** as
+     [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) reads it, never the working tree;
+     before a repository moves to the roster, its `[seats]` there.
+   - **Where it names no coordinator,** that is, no organisation team with a principal in the roster, or no
+     `coordinator` in `[seats]`, the stand-up row copies `standup` in direct mode, with that repository's values.
+   - **Where it names one,** the Owner's sitting is the coordinator's, the organisation team's principal, so the row
+     copies `standup-teams` with this repository's name and path, through today's checks; the coordinator reads its
+     teams from the roster (decision 9). The coordinator's session runs in its own worktree of that repository; that
+     repository's copy of the skill and its tool version govern the sitting, and the first page names both with the
+     sha256. The planner's report-mode line is the coordinator's to send, never the Owner's to paste, so no Board
+     offers it.
    - **A second, smaller row there** copies `standup` in direct mode for this repository. It is the Owner's to paste
      when the coordinator is away, or when they want this team alone. The planner's report then says the sitting was
      held direct, so the coordinator's next page names it.
@@ -212,7 +222,7 @@ name" names each change by its number.
    - **Each stub says only:** run the repository's own command with `--skill <name>`, and follow what it prints.
      `--init` writes the stubs with the repository's own command, for the Owner to commit. The tool picks the Owner's
      copy, else the default. It checks the Owner's copy and the stub it was called from against their blobs on the
-     default branch, as decision 3 reads `[seats]`, and a default against its pin, or in shoalmark's own repository
+     default branch, as decision 3 reads the roster, and a default against its pin, or in shoalmark's own repository
      against its blob on the default branch. It refuses one that does not match, and prints which one it is, with its
      sha256. The Board shows the same line. On Subversion it checks them against the working copy's base revision. In
      a plain folder nothing checks the Owner's copy or the stub, and `--skill` says so.
@@ -241,47 +251,50 @@ name" names each change by its number.
    allows: the Owner's current path and their signed answers. A hold is obeyed as received, because it can only hold
    work back. A change of scope, rank or allocation moves nothing until it is a signed answer in the team's
    repository. A message carries no Owner authority, in either skill.
-9. **Teams, from the roster spec, sealanes/1.**
-   - **This tracker does not define the roster.** A standalone, shoalmark-wide roster spec defines it: sealanes/1, the
-     first spec in shoalmark/sealanes, a spec repository beside [shoalmark/hail](https://github.com/shoalmark/hail). A
-     later edition of hail/1 takes its roster from it, in place of its own definition.
-   - **`standup-teams` reads its teams from that roster.** This tracker needs three things of the roster: no session,
-     no machine path, and that only the Owner's signed commit changes it. The roster may give a team's place as one or
-     more places, each a repository or a folder inside one; for now a team is one repository, whole, and
-     `standup-teams` refuses any other place and names it. [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) lifts that refusal once sealanes/1 is in force
-     and the tool serves such a place. Teams that share one folder are the roster spec's matter, not this tracker's.
+9. **Teams, from the roster spec, sealanes/1, and hail/1's third edition.**
+   - **This tracker does not define the roster.** sealanes/1, the first spec in shoalmark/sealanes, a spec repository
+     beside [shoalmark/hail](https://github.com/shoalmark/hail), defines it: its teams, each team's places (a
+     repository, or a tracker folder inside one, with its prefixes) and its record folder, each team's lead, the
+     organisation team and its principal, and bots named `<team>.<name>`. hail/1's third edition adopts that roster,
+     and keeps who may hail whom.
+   - **`standup-teams` reads its teams from the roster in force,** as FM-166 reads it. This tracker needs three things
+     of the roster: no session, no machine path, and that only the Owner's signed commit changes it; sealanes/1 holds
+     all three. A team whose place is a tracker folder inside a repository, or several teams in one repository, is
+     [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md)'s to serve; until it is served,
+     `standup-teams` refuses such a place and names it.
    - **The checkouts.** The Owner gives each team's checkout once, on the first page of the first sitting; the
      coordinator searches nothing. It checks the origin and, on a forge, that HEAD is the default branch's head, as
      step 0 does.
-   - **Each team is one planner,** for now.
-   - **`[seats]` and the roster must agree:** `standup-teams` refuses a rostered repository whose default branch names
-     no coordinator, and says which; `standup` in report mode refuses a request where its own repository names none.
-   - **hail/1:** report mode needs hail/1 in force in every rostered repository, in the edition that takes its roster
-     from the roster spec, pinned by commit when it is out. Today's text is hail/1's first edition,
+   - **Each team's lead is its planner,** and the organisation team's principal is the coordinator.
+   - **The roster names the coordinator:** `standup-teams` refuses a rostered repository whose roster in force names
+     no organisation team with a principal, and says which; `standup` in report mode refuses a request where its own
+     repository's roster names none.
+   - **hail/1:** report mode needs hail/1's third edition in force in every rostered repository, pinned by commit once
+     it is public. Today's public text is hail/1's first edition,
      [at `f5b1606`](https://github.com/shoalmark/hail/blob/f5b160698a180481240dbff5c8cc605aaab06121/spec/hail-1.md),
      not yet in force. Elsewhere only direct mode is offered: where hail/1 is not in force, and on Subversion and in a
      plain folder, where its transport across teams is not there.
-   - **As I propose it, for the roster to say:** the coordinator is the principal of a team of its own, and each
-     planner is its team's principal, so every report and every outcome crosses from a principal to a principal
-     ([§8](https://github.com/shoalmark/hail/blob/f5b160698a180481240dbff5c8cc605aaab06121/spec/hail-1.md#8-who-may-hail-whom)).
-     Where a team's principal is another seat today, that changes by the roster's own rule, not by this answer.
+   - **Routes, as the roster grants them:** a team's work crosses through its planner, and the coordinator may route
+     for any team. A planner sends its report to the coordinator under its grant to message the organisation team,
+     and the coordinator sends each outcome as a brief under its grant to brief the planners. Where a grant is
+     missing, report mode refuses and names it. Where a team's principal is another bot today, that changes by the
+     roster's own rule, not by this answer.
    - **The dependency:** `standup-teams`, `closeout-teams` and `standup`'s report mode wait until the roster spec is in
      force; the rest does not (decision 13).
 10. **Filing, against the relay's shadow.**
-    - **Each team's report and its sitting outcome** travel as hails that point at them by sha256, and each hail is
-      filed as hail/1 files every hail: in that team's own folder of the shared private repository
-      ([§10](https://github.com/shoalmark/hail/blob/f5b160698a180481240dbff5c8cc605aaab06121/spec/hail-1.md#10-the-record)),
-      where its planner and the Owner read them. The skill commits the pointed-at file beside its hail in that team's
-      folder, which hail/1's first edition does not itself require.
-    - **The page across the teams** is filed in the coordinator's own folder there, sealed so that only the Owner and
-      the coordinator read it, and never in a team's repository.
+    - **Each team's report and its sitting outcome** travel as hails that point at them by sha256, and each is filed
+      as hail/1's third edition files every hail: in the record folder the roster gives that team, by the team's filer,
+      under its grant to file there, where its planner and the Owner read them. The skill files the pointed-at file
+      beside its hail, in the same filing.
+    - **The page across the teams** is filed in the organisation team's record folder, sealed so that only the Owner
+      and the coordinator read it, and never in a team's repository.
     - **Every consolidated item links its source.** A planner keeps driving ranked work while it waits, as today's
       step 6.4.
     - **In direct mode** the handover is the session's last message and is filed nowhere, as today.
     - **Rule 4 of the nine holds**
       ([AGENTS.md L109](https://github.com/shoalmark/shoalmark/blob/ec8479c68ffceb8afb545a3a745c58b310781b63/AGENTS.md#L109)).
-      Each rostered repository names the coordinator in its own `[seats]` (decision 9), so a report to it stays within
-      the repositories it serves. No team's internal state reaches another team's session: the outcome a planner
+      A report reaches the coordinator only under a grant the roster in force gives, so it stays within the
+      repositories it serves. No team's internal state reaches another team's session: the outcome a planner
       receives names its own team's items only, and the section across the teams names a shared matter by its tracker
       id and what it holds up.
 11. **The text:** [`docs/standup.md`](https://github.com/shoalmark/shoalmark/blob/ec8479c68ffceb8afb545a3a745c58b310781b63/docs/standup.md) and [`docs/de/standup.md`](https://github.com/shoalmark/shoalmark/blob/ec8479c68ffceb8afb545a3a745c58b310781b63/docs/de/standup.md) are
@@ -296,7 +309,7 @@ name" names each change by its number.
       stand-up prompt retired.
     - **Stage 2** waits until the roster spec is in force: `standup`'s report mode, `standup-teams`, `closeout-teams`,
       and the coordinator's row with the direct row beside it.
-    - **Until stage 2 ships,** every Board offers the direct row alone, whatever `[seats]` names.
+    - **Until stage 2 ships,** every Board offers the direct row alone, whatever the roster or `[seats]` names.
     - Where the roster spec is not in force when v0.20.3 is otherwise ready, stage 2 moves to the next release by a
       dated line here, and stage 1 ships alone.
     - FM-139-Q1 proposes that move, as the dated line of 2026-11-13 says.
@@ -309,7 +322,7 @@ the stubs.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-100-Q3.
+- [ ] **The Owner has answered the ask,** FM-100-Q4.
 - [ ] **Stage 1: `standup` and `closeout`** stand in `skills/`, one English source each, with one test and one eval
   each, as FM-149's decision 2 has it: `standup` in direct mode and the five setups, `closeout` on git and refused off
   git. The Board's stand-up prompt is gone, and `test_day_prompts.py` keeps only what the rows still need: the values'
@@ -324,7 +337,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **The stubs** for Claude Code and Codex, written by `--init` with the repository's own command, say only the one
   line, and a test pins it.
 - [ ] **The Board's rows copy one line each,** as decision 3 sets out. A class test holds that they copy only checked
-  values and no prompt text, and that a change to `[seats]` off the default branch does not switch them. Their labels
+  values and no prompt text, and that a change to the roster or `[seats]` off the default branch does not switch them. Their labels
   are in English and German.
 - [ ] **Authority:** each skill's text holds decision 8, pinned by a test of its lines, and an eval shows a planner that
   does not start work a go names but the record does not allow. A test shows the Board naming an Owner's copy that
@@ -332,7 +345,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **Stage 2: `standup`'s report mode, `standup-teams` and `closeout-teams`** stand beside them, after the roster
   spec is in force. Tests hold that `standup-teams` never runs a command it prints; that it reads its teams from the
   roster, checks each checkout's origin and, on a forge, its HEAD, refuses a place that is not one whole repository,
-  and refuses a rostered repository whose default branch names no coordinator; and that a team without a report is
+  and refuses a rostered repository whose roster in force names no coordinator; and that a team without a report is
   listed as *no report* and gets no go.
 - [ ] **Filing:** each report, each sitting outcome and each page across the teams is filed as decision 10 says, with
   its sha256, and a test checks the sha256 against the filed bytes: the report's own bytes, not the hail's.
@@ -349,10 +362,14 @@ Each item names its commit or pull request when it lands.
 **FM-100-Q2** · 2026-11-13 · Are FM-100's decisions taken, as its section Decisions, for the Owner sets them out (default skills under the Owner's signed copies, teams read from the roster spec, two stages in v0.20.3), superseding FM-149's decision 3, FM-023's B of 29 October and the STAND-UP.md design of 30 October?
 **withdrawn** — no answer was given
 
+**FM-100-Q3** · 2026-11-16 · Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams from the roster spec, stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design of 30 October?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | FM-100-Q3 withdrawn with no answer given; FM-100-Q4 put: decisions 3, 9 and 10 rewritten against sealanes/1's roster and hail/1's third edition, stage 1 in v0.20.3 and stage 2 in the next release. Records only. |
 | 2026-11-13 | FM-100-Q3 put: the changed question, with stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, since the open asks are answered together at one sign-off. Records only. |
 | 2026-11-13 | FM-100-Q2 withdrawn with no answer given: FM-139-Q1 proposes stage 2 in the next release, by decision 13's fallback. The changed question is drafted with no id, to be put once FM-139-Q1 is answered. Records only. |
 | 2026-11-12 | The roster spec named as sealanes/1, in shoalmark/sealanes; FM-161 filed to lift the one-repository rule. Records only. |

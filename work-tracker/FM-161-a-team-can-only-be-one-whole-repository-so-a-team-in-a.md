@@ -1,9 +1,16 @@
 ---
 id: FM-161
 status: Proposed
-considered: FM-100
+considered: FM-100, FM-166
 tags: process
-hook: "A team can only be one whole repository: FM-100's standup-teams refuses a team in a folder of a monorepo, or several teams in one repository, though sealanes/1, the roster spec, may name such places. Lifting that needs the tool's side and the roster spec's side, and waits until sealanes/1 is in force."
+next: owner
+hook: "A team can only be one whole repository: FM-100's standup-teams refuses a team in a folder of a monorepo, or several teams in one repository, though sealanes/1, the roster spec, may name such places. Lifting that needs the tool's side and the roster spec's side, and waits until sealanes/1 is in force. Its design is put to the Owner as FM-161-Q1, with the lane in v0.20.3 beside FM-166's."
+ask-id: FM-161-Q1
+ask: "Do you take FM-161's decisions as proposed: the tool serves every tracker folder the roster gives a repository, each team's with its prefixes and a shared one by team key and id ranges, in --check, the gate, the hooks, --new and --standup, with the lane in v0.20.3 beside FM-166's?"
+ask-kind: ruling
+ask-since: 2026-11-16
+ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
+ask-proposal: "yes, as proposed"
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -11,6 +18,13 @@ hook: "A team can only be one whole repository: FM-100's standup-teams refuses a
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-16 — the design, and FM-161-Q1 put,** on the coordinator's word of 15 November. The organisation's trackers
+are to live in one repository, each team's in a tracker folder of its own beside the organisation's. sealanes/1's text
+says how teams in one repository keep their work apart: a tracker folder per team, or a shared folder with a `team-key`
+and id ranges that do not overlap; and it names each bot `<team>.<name>`. So the spec's side of this tracker is settled
+by the text, and the tool's side is designed below. The lane enters v0.20.3 only by this ask's signed answer, as
+FM-139's item 8 says.
 
 **2026-11-12 — its scope reads "tracker folders":** a team's place is a tracker folder, in its own repository or as a
 folder inside a shared one. A team that shares a repository's tracker folder today is kept apart, near term, by a team
@@ -41,10 +55,33 @@ shoalmark/sealanes, is in force. `blocked-by:` names trackers and the Owner only
 A monorepo can hold several teams' work, and a roster that names a folder as a team's place promises what the tool
 cannot serve yet. Until both sides agree, FM-100 refuses such a place rather than serve it in part.
 
+## Decisions, for the Owner
+
+All six are put as FM-161-Q1.
+
+1. **Places from the roster.** Where a roster is in force, in place or by its lock, the tool serves every place the
+   roster gives this repository: each tracker folder with its prefixes and its `new` prefix, its own INDEX, and each
+   team's record folder. With no roster, `tracker_dir` and `[kinds]` serve as today.
+2. **A shared tracker folder.** Each tracker carries its team's `team-key`. `--new` takes the next free id in its
+   team's range, or in its bot's range where the bot has one. `--check` names a tracker in a shared folder that has
+   no team key, or whose id lies outside its team's ranges.
+3. **Whose work.** The session's bot, `<team>.<name>` as `--whoami` prints it, names the team, and `--new` writes
+   into that team's folder.
+4. **One install per repository.** The hooks and the gate read every folder. A commit's trackers are found by id in
+   any folder, and the rule that a pass judges before the first build commit reads each tracker in its own folder.
+5. **The stand-up and the Board.** `--standup DIR …` reads each team's agenda from its own folder, and the Owner's
+   view holds every team of the repository.
+   [FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md)'s `standup-teams` takes a folder
+   place, which it refuses today.
+6. **The lane.** In v0.20.3, beside [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md)'s
+   lanes: built against their contract, and joined with them. Its review is critical, since it changes
+   `shoalmark.py`.
+
 ## Done when
 
 Each item names its commit or pull request when it lands.
 
+- [ ] **The Owner has answered FM-161-Q1.**
 - [ ] **sealanes/1 is in force,** and it says how teams that share one repository keep their work apart, and how their
   seats are named.
 - [ ] **The tool serves a team whose root is a folder:** `--standup DIR …`, the gate and the hooks, each with its tests.
@@ -55,5 +92,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | The design, and FM-161-Q1 put: each team's tracker folder, and a shared one by team key and id ranges, served by --check, the gate, the hooks, --new and --standup; the lane in v0.20.3 beside FM-166's. Records only. |
 | 2026-11-12 | Filed, Proposed, with no release yet: FM-100's one-repository rule lifts here once sealanes/1 is in force. Records only. |
 | 2026-11-12 | Its scope reads tracker folders: near term, a team key and reserved id ranges keep teams in one tracker folder apart, and each team's seats need their own identities. Records only. |

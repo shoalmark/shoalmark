@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) | P1 | Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/… | In Progress | progress | 2026-11-16 |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -52,10 +53,12 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
+| [FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) | — | An ask's option can read yes, with the changes I name, but the Board's answer dialog opens its text box only for an ans… | Proposed | triage | — |
+| [FM-171](FM-171-reviewers-who-know-a-spec-s-design-read-past-what-its-text.md) | — | Reviewers who know a spec's design read past what its text leaves out. A fresh session given only sealanes/1's text bui… | Proposed | triage | — |
+| [FM-170](FM-170-trackers-hold-the-state-agents-act-on-as-prose-so-every.md) | — | Trackers hold much of the state agents act on as prose: a row's release, what blocks what, the Done when items and thei… | Proposed | triage | — |
 | [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md) | — | shoalmark.toml's top-level owner names the Owner's personal address beside the forge noreply address, and the signers f… | Proposed | triage | — |
 | [FM-168](FM-168-a-spec-s-conformance-tests-are-prose-so-no-implementation.md) | — | hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementat… | Proposed | triage | — |
 | [FM-167](FM-167-the-owner-s-act-on-an-ask-has-no-fixed-name-so-the-board.md) | — | The Owner's act on an ask has no fixed name, and the Board's answer dialog opens with Your decision is made. before the… | Proposed | triage | — |
-| [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) | — | Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/… | Proposed | triage | — |
 | [FM-165](FM-165-a-tracker-can-only-be-closed-by-hand-so-its-open-asks-where.md) | — | A tracker is closed by hand: a status, a line in its own words, and its open asks left waiting in the Owner's queue. No… | Proposed | triage | — |
 | [FM-164](FM-164-subversion-support-is-deprecated-then-removed-while-the-vcs.md) | — | shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is bui… | Proposed | triage | — |
 | [FM-163](FM-163-the-drift-skills-name-no-id-forms-read-no-harness-settings.md) | — | find-drift and prune-drift name no form for the ids a report gives its rules, disagreements and obsolete text, though p… | Proposed | triage | — |
