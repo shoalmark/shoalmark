@@ -3,7 +3,7 @@ id: FM-172
 status: Proposed
 considered: FM-013, FM-029, FM-115, FM-167
 tags: bug
-next: owner
+next: build
 hook: "An ask's option can read yes, with the changes I name, but the Board's answer dialog opens its text box only for an answer outside the options, so the signed line records the option and no change. On 16 November an answer of that kind was given, and its change had to be recorded by a separate commit. The proposal, put to the Owner as FM-172-Q1: such an option opens the box and requires the changes, and the signed line carries both."
 ask-id: FM-172-Q1
 ask: "Do you take FM-172's fix into v0.20.3: an option that names changes opens the Board's text box and requires them, the answer's signed line records the option with the changes, and --answer takes them the same way?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-16
 ask-options: "yes, as proposed | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-16
+answered-by: holgo99
 ---
 
 # FM-172 — an answer with the changes the Owner names has nowhere to name them, so the Board records the option alone
