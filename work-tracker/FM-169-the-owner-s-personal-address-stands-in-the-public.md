@@ -14,7 +14,11 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 
 ## What is true now
 
-**2026-11-16 — in v0.20.3, a chapter of [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), by FM-139-Q1's answer; its design round has started,** on the coordinator's word of that day. The round answers the four questions below, with a probe on test keys, and drafts the lane and the ask. Nothing is committed outside this folder before the Owner answers that ask. The requirement it is held to: the personal address leaves `owner` and the signers file, and every answer the Owner gave under it before still counts, here and in the organisation's own repository.
+**2026-11-16 — in v0.20.3, a chapter of [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), by
+FM-139-Q1's answer; its design round has started,** on the coordinator's word of that day. The round answers the four
+questions below, with a probe on test keys, and drafts the lane and the ask. Nothing is committed outside this folder
+before the Owner answers that ask. The requirement it is held to: the personal address leaves `owner` and the signers
+file, and every answer the Owner gave under it before still counts, here and in the organisation's own repository.
 
 **Filed 2026-11-13, Proposed; no release is named, no ask is put, and nothing is built.** A design round comes first
 (`next: review`).

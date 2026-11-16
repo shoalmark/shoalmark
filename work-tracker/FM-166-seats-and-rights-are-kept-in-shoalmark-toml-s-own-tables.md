@@ -25,7 +25,12 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 
 ## What is true now
 
-**2026-11-16 — judged before its first build commit, In Progress; the lanes the answer's changes do not touch start,** on the coordinator's word of that day. FM-166-Q3 is answered "yes, with the changes I name", with the Owner's signature. Its changes are recorded in the line below, on the Owner's word. The lanes they touch, where the roster is read from, start from that record. The lanes are cut from sealanes/1's text as it stands, with the edition's case set as the oracle. The first is the contract: one entry point for each operation the cases ask of a reader, and the history they are asked over.
+**2026-11-16 — judged before its first build commit, In Progress; the lanes the answer's changes do not touch start,**
+on the coordinator's word of that day. FM-166-Q3 is answered "yes, with the changes I name", with the Owner's signature.
+Its changes are recorded in the line below, on the Owner's word. The lanes they touch, where the roster is read from,
+start from that record. The lanes are cut from sealanes/1's text as it stands, with the edition's case set as the
+oracle. The first is the contract: one entry point for each operation the cases ask of a reader, and the history they
+are asked over.
 
 **2026-11-16 — FM-166-Q3's change, as the Owner named it** (the Board had no field for the change; the Owner's word
 of that day, confirmed in writing): decisions 2 and 3 as sealanes/1 revision 60 says: the roster has its own file,

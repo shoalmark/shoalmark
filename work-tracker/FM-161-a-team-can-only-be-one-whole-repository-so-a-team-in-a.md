@@ -19,7 +19,12 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
-**2026-11-16 — the design, and FM-161-Q1 put,** on the coordinator's word of 15 November. The organisation's trackers are to live in one repository, each team's in a tracker folder of its own beside the organisation's. sealanes/1's text says how teams in one repository keep their work apart: a tracker folder per team, or a shared folder with a `team-key` and id ranges that do not overlap; and it names each bot `<team>.<name>`. So the spec's side of this tracker is settled by the text, and the tool's side is designed below. The lane enters v0.20.3 only by this ask's signed answer, as FM-139's item 8 says.
+**2026-11-16 — the design, and FM-161-Q1 put,** on the coordinator's word of 15 November. The organisation's trackers
+are to live in one repository, each team's in a tracker folder of its own beside the organisation's. sealanes/1's text
+says how teams in one repository keep their work apart: a tracker folder per team, or a shared folder with a `team-key`
+and id ranges that do not overlap; and it names each bot `<team>.<name>`. So the spec's side of this tracker is settled
+by the text, and the tool's side is designed below. The lane enters v0.20.3 only by this ask's signed answer, as
+FM-139's item 8 says.
 
 **2026-11-12 — its scope reads "tracker folders":** a team's place is a tracker folder, in its own repository or as a
 folder inside a shared one. A team that shares a repository's tracker folder today is kept apart, near term, by a team

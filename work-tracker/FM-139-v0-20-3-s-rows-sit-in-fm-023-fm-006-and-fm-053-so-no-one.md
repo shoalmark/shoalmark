@@ -11,11 +11,16 @@ hook: "v0.20.3's allocation in one place: the rows and trackers the release hold
 
 ## What is true now
 
-**2026-11-16 — FM-139-Q1 answered "yes, as proposed", with the Owner's signature, and acted on** (`--clear-ask`, its record under *Asks*). What the answer moves:
-- [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) and [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md) become chapters of this epic. FM-166's lanes start with the contract; FM-169's design round runs first, as item 3 orders.
-- [FM-118](FM-118-shoalmark-py-s-prose-is-not-pruned-and-nothing-holds-code.md) leaves the epic, and it and [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) move to v0.20.4, each with its line.
+**2026-11-16 — FM-139-Q1 answered "yes, as proposed", with the Owner's signature, and acted on** (`--clear-ask`, its
+record under *Asks*). What the answer moves:
+- [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) and
+  [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md) become chapters of this epic. FM-166's lanes
+  start with the contract; FM-169's design round runs first, as item 3 orders.
+- [FM-118](FM-118-shoalmark-py-s-prose-is-not-pruned-and-nothing-holds-code.md) leaves the epic, and it and
+  [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) move to v0.20.4, each with its line.
 - FM-088 and FM-130 to FM-133 leave with `--close --moved-to` once FM-165 lands, as item 5 says.
-- [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) enters only by its own signed answer, as item 8 says: FM-161-Q1 is put the same day.
+- [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) enters only by its own signed answer, as
+  item 8 says: FM-161-Q1 is put the same day.
 
 **2026-11-03 — filed; it holds v0.20.3's allocation, and nothing is built.** On the Owner's word of 29 October, each
 release's allocation from v0.20.3 on is a tracker of its own, which ships at that release's tag
