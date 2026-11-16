@@ -13,6 +13,8 @@ hook: "a seat's work that only another seat can push is refused, or recorded as 
 
 ## What is true now
 
+**2026-11-16 — moved to v0.20.4,** by the Owner's signed answer to FM-139-Q1 ([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), its item 4). It ships at v0.20.4's tag.
+
 **2026-10-30 — moved to v0.20.3,** on the Owner's word of 29 October, as the Auditor relays it. It ships at
 v0.20.3's tag.
 
@@ -58,5 +60,6 @@ A record that names the wrong seat, or refuses true work, cannot be trusted on w
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | Moved to v0.20.4, by FM-139-Q1's answer. Records only. |
 | 2026-10-30 | Moved to v0.20.3, on the Owner's word of 29 October. Records only. |
 | 2026-10-27 | Filed and judged In Progress, P1, critical, for v0.20.2's tag, on the Owner's word as relayed by the Auditor: relayed commits keep their author and name their relay. RV-3910: recorded privately joins the round. Records only. |

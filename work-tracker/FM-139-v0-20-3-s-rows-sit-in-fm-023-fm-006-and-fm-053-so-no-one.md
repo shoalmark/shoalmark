@@ -5,20 +5,17 @@ considered: FM-023, FM-089, FM-006, FM-053
 tags: process
 next: build
 hook: "v0.20.3's allocation in one place: the rows and trackers the release holds, which sat in FM-023, FM-006 and FM-053. It ships at v0.20.3's tag."
-ask-id: FM-139-Q1
-ask: "Do you take v0.20.3's scope as FM-139 proposes: every roster lane in; sealanes/1's first edition, its cases and validator, and hail's edition 3 public before the tag; FM-115, FM-086 and FM-169 in, FM-169's round first and its commits before the migrating commit; FM-118 and FM-076 to v0.20.4?"
-ask-kind: ruling
-ask-since: 2026-11-13
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-16
-answered-by: holgo99
 ---
 
 # FM-139 — v0.20.3's rows sit in FM-023, FM-006 and FM-053, so no one tracker says what the release holds
 
 ## What is true now
+
+**2026-11-16 — FM-139-Q1 answered "yes, as proposed", with the Owner's signature, and acted on** (`--clear-ask`, its record under *Asks*). What the answer moves:
+- [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) and [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md) become chapters of this epic. FM-166's lanes start with the contract; FM-169's design round runs first, as item 3 orders.
+- [FM-118](FM-118-shoalmark-py-s-prose-is-not-pruned-and-nothing-holds-code.md) leaves the epic, and it and [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) move to v0.20.4, each with its line.
+- FM-088 and FM-130 to FM-133 leave with `--close --moved-to` once FM-165 lands, as item 5 says.
+- [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) enters only by its own signed answer, as item 8 says: FM-161-Q1 is put the same day.
 
 **2026-11-03 — filed; it holds v0.20.3's allocation, and nothing is built.** On the Owner's word of 29 October, each
 release's allocation from v0.20.3 on is a tracker of its own, which ships at that release's tag
@@ -246,6 +243,13 @@ at its allocation sitting and at its tag.
 - [ ] v0.20.3's allocation sitting places each row and tracker here, and this tracker records it.
 - [ ] At v0.20.3's tag, each row and tracker here has shipped, or has moved by the Owner's word, with its line here.
 
+## Asks
+
+**FM-139-Q1** · 2026-11-16 · Do you take v0.20.3's scope as FM-139 proposes: every roster lane in; sealanes/1's first edition, its cases and validator, and hail's edition 3 public before the tag; FM-115, FM-086 and FM-169 in, FM-169's round first and its commits before the migrating commit; FM-118 and FM-076 to v0.20.4?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — b32a4f1 · G
+
 ## Ship log
 
 | Date | Event |
@@ -261,3 +265,4 @@ at its allocation sitting and at its tag.
 | 2026-11-12 | FM-162 proposed for v0.20.3 with FM-162-Q1, a chapter of this epic until the Owner decides. Records only. |
 | 2026-11-13 | FM-139-Q1 put: v0.20.3's scope with the plan's dates and the cut-off, FM-169 joining it. FM-083 and FM-084 join the list, as the Owner's answers of 28 October allocated them. Records only. |
 | 2026-11-13 | FM-166-Q3 and FM-100-Q3 put beside FM-139-Q1, each standing with its answer, since the open asks are answered together at one sign-off. Records only. |
+| 2026-11-16 | FM-139-Q1 answered, yes, as proposed, and acted on: FM-166 and FM-169 join the epic, FM-118 leaves it, FM-118 and FM-076 move to v0.20.4. Records only. |
