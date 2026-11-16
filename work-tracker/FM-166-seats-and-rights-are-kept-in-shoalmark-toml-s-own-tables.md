@@ -3,7 +3,7 @@ id: FM-166
 status: Proposed
 considered: FM-010, FM-015, FM-024, FM-026, FM-100, FM-156, FM-161, FM-162, FM-165
 tags: process
-next: owner
+next: build
 hook: "Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/1's first edition defines a signed roster of its own. A repository that adopts both holds it twice, and the two can drift. The proposal: one [roster] table, defined by sealanes/1, in the adopter's own configuration, one per repository and found in a fixed order. In shoalmark.toml it replaces [seats] and [rights], with a migration. FM-166-Q2 was withdrawn, since sealanes/1's design supersedes decisions 5, 8 and 9. The changed question is put to the Owner as FM-166-Q3, with the lane in v0.20.3 as FM-139-Q1's answer stands."
 ask-id: FM-166-Q3
 ask: "Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1's first edition, which carries the migration, the list of acts and the version rule, replacing [seats] and [rights] in shoalmark.toml, with the lane in v0.20.3 as FM-139-Q1's answer stands?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-13
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, with the changes I name"
+answered: 2026-11-16
+answered-by: holgo99
 ---
 
 # FM-166 — seats and rights are kept in shoalmark.toml's own tables while hail/1 has a roster of its own, so a repository adopting both holds who sits where twice
