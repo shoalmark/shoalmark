@@ -5,7 +5,7 @@ considered: FM-030, FM-031, FM-088, FM-095, FM-104, FM-121, FM-143, FM-149, FM-1
 tags: process
 epic: FM-139
 blocked-by: FM-104
-next: owner
+next: build
 hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q4: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace, with teams, routes and record folders read from sealanes/1's roster and hail/1's third edition, stage 1 in v0.20.3 and stage 2 in the next release."
 ask-id: FM-100-Q4
 ask: "Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams, routes and record folders from sealanes/1 and hail/1's third edition, stage 1 in v0.20.3 and stage 2 next, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design?"
@@ -13,6 +13,9 @@ ask-kind: ruling
 ask-since: 2026-11-16
 ask-options: "yes, as proposed | yes, with the changes I name"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-16
+answered-by: holgo99
 ---
 
 # FM-100 — the stand-up prompt is code and English on every board, while the Board's words come from the language pack
