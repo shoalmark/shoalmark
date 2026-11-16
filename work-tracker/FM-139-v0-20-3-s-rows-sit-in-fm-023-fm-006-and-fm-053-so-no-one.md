@@ -3,7 +3,7 @@ id: FM-139
 status: Proposed
 considered: FM-023, FM-089, FM-006, FM-053
 tags: process
-next: owner
+next: build
 hook: "v0.20.3's allocation in one place: the rows and trackers the release holds, which sat in FM-023, FM-006 and FM-053. It ships at v0.20.3's tag."
 ask-id: FM-139-Q1
 ask: "Do you take v0.20.3's scope as FM-139 proposes: every roster lane in; sealanes/1's first edition, its cases and validator, and hail's edition 3 public before the tag; FM-115, FM-086 and FM-169 in, FM-169's round first and its commits before the migrating commit; FM-118 and FM-076 to v0.20.4?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-13
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-16
+answered-by: holgo99
 ---
 
 # FM-139 — v0.20.3's rows sit in FM-023, FM-006 and FM-053, so no one tracker says what the release holds
