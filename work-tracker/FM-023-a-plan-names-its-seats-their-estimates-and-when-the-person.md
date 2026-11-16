@@ -17,6 +17,10 @@ is designed or built.
 
 ## What is true now
 
+**2026-11-16 — row B of v0.20.3 superseded** by the Owner's signed answer to FM-100-Q4
+([FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md), its decision 4): the Board no longer
+copies a tracker folder's `standup.md`; FM-100's skills speak the person's language.
+
 **2026-11-03 06:29:56 CET — v0.20.2’s release commit is made under FM-142: VERSION 0.20.2 and both setup pages on `--branch v0.20.2`; the footer’s headline follows in its own commit. FM-023 keeps v0.20.x’s allocation.**
 
 **2026-11-03 — v0.20.3's allocation is [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md).**
@@ -504,6 +508,7 @@ arc has run on it with its estimate–actual gap in the record.
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | Row B of v0.20.3 superseded by FM-100-Q4's answer. Records only. |
 | 2026-11-03 06:29:56 CET | v0.20.2’s release commit is made under FM-142: VERSION 0.20.2 and both setup pages on `--branch v0.20.2`; the footer’s headline follows in its own commit. FM-023 keeps v0.20.x’s allocation. |
 | 2026-11-03 | v0.20.3's allocation is filed as FM-139, and the rows of 1 November moved there. Records only. |
 | 2026-11-01 05:03:32 CET | The stand-up agenda's timing text moves to v0.20.3; its allocation gains the check output and help-line hide-mark rows above. Records only. |

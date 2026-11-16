@@ -11,6 +11,19 @@ hook: "v0.20.3's allocation in one place: the rows and trackers the release hold
 
 ## What is true now
 
+**2026-11-16 — four more answers, and the order of the work,** on the coordinator's word of that day. FM-161-Q1,
+FM-172-Q1 and FM-173-Q1 put [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md),
+[FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) and
+[FM-173](FM-173-a-signed-answer-this-clone-cannot-verify-reads-as-a-missing.md) into v0.20.3 as chapters of this epic,
+by item 8. FM-100-Q4 keeps FM-100's stage 1 here and moves stage 2 to the next release, as item 7 proposed.
+- **First, FM-169's path to its merge:** its round's fix, the review, FM-169-Q1, its lane, then the Owner's two signed
+  commits before the release pull request.
+- **Beside it, FM-166's lanes to their join,** two at a time: the fix rounds in hand, then the tiers, the migration, the
+  names and views, and the case run, then the join.
+- **Then:** FM-161, once FM-166's contract lane is READY; FM-173, once FM-169's lane has landed, since both read the same
+  answer path; FM-172, with the Designer's check.
+- **FM-100's stage 1** waits on FM-104's ruling.
+
 **2026-11-16 — FM-139-Q1 answered "yes, as proposed", with the Owner's signature, and acted on** (`--clear-ask`, its
 record under *Asks*). What the answer moves:
 - [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) and
@@ -271,3 +284,4 @@ at its allocation sitting and at its tag.
 | 2026-11-13 | FM-139-Q1 put: v0.20.3's scope with the plan's dates and the cut-off, FM-169 joining it. FM-083 and FM-084 join the list, as the Owner's answers of 28 October allocated them. Records only. |
 | 2026-11-13 | FM-166-Q3 and FM-100-Q3 put beside FM-139-Q1, each standing with its answer, since the open asks are answered together at one sign-off. Records only. |
 | 2026-11-16 | FM-139-Q1 answered, yes, as proposed, and acted on: FM-166 and FM-169 join the epic, FM-118 leaves it, FM-118 and FM-076 move to v0.20.4. Records only. |
+| 2026-11-16 | FM-161, FM-172 and FM-173 join v0.20.3 by their answers; FM-100's stage 1 stays, stage 2 moves to the next release; the order of the work. Records only. |

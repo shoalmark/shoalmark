@@ -1,19 +1,13 @@
 ---
 id: FM-161
-status: Proposed
+status: In Progress
 considered: FM-100, FM-166
 tags: process
+epic: FM-139
 next: build
+triaged: 2026-11-16
+tier: P1
 hook: "A team can only be one whole repository: FM-100's standup-teams refuses a team in a folder of a monorepo, or several teams in one repository, though sealanes/1, the roster spec, may name such places. Lifting that needs the tool's side and the roster spec's side, and waits until sealanes/1 is in force. Its design is put to the Owner as FM-161-Q1, with the lane in v0.20.3 beside FM-166's."
-ask-id: FM-161-Q1
-ask: "Do you take FM-161's decisions as proposed: the tool serves every tracker folder the roster gives a repository, each team's with its prefixes and a shared one by team key and id ranges, in --check, the gate, the hooks, --new and --standup, with the lane in v0.20.3 beside FM-166's?"
-ask-kind: ruling
-ask-since: 2026-11-16
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-16
-answered-by: holgo99
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -21,6 +15,11 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-16 — FM-161-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
+keep P1, In Progress.** The lane is in v0.20.3, a chapter of
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), beside FM-166's lanes and built against
+their contract: it starts once FM-166's contract lane is READY.
 
 **2026-11-16 — the design, and FM-161-Q1 put,** on the coordinator's word of 15 November. The organisation's trackers
 are to live in one repository, each team's in a tracker folder of its own beside the organisation's. sealanes/1's text
@@ -91,10 +90,18 @@ Each item names its commit or pull request when it lands.
 - [ ] **FM-100's `standup-teams` takes such a place** where it refused it, with a test.
 - [ ] **The review at the tier its design sets is READY.**
 
+## Asks
+
+**FM-161-Q1** · 2026-11-16 · Do you take FM-161's decisions as proposed: the tool serves every tracker folder the roster gives a repository, each team's with its prefixes and a shared one by team key and id ranges, in --check, the gate, the hooks, --new and --standup, with the lane in v0.20.3 beside FM-166's?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 832a472 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | FM-161-Q1 answered, yes, as proposed; judged before its first build commit, keep P1, In Progress; a chapter of FM-139. Records only. |
 | 2026-11-16 | The design, and FM-161-Q1 put: each team's tracker folder, and a shared one by team key and id ranges, served by --check, the gate, the hooks, --new and --standup; the lane in v0.20.3 beside FM-166's. Records only. |
 | 2026-11-12 | Filed, Proposed, with no release yet: FM-100's one-repository rule lifts here once sealanes/1 is in force. Records only. |
 | 2026-11-12 | Its scope reads tracker folders: near term, a team key and reserved id ranges keep teams in one tracker folder apart, and each team's seats need their own identities. Records only. |
