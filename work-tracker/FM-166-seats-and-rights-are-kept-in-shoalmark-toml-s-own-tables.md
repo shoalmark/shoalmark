@@ -22,6 +22,11 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-16 — FM-166-Q3's change, as the Owner named it** (the Board had no field for the change; the Owner's word
+of that day, confirmed in writing): decisions 2 and 3 as sealanes/1 revision 60 says: the roster has its own file,
+`roster.toml` at the repository's root; `shoalmark.toml` and `hail.toml` no longer hold it. Decisions 2 and 3 below are
+read with this change.
+
 **2026-11-13 — FM-166-Q3 put, the changed question,** on the coordinator's word of that day. The open asks are
 answered together, at one sign-off, so it is put now rather than after FM-139-Q1's answer. It names
 v0.20.3, the release FM-139-Q1 on [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md) proposes for the lane, and
