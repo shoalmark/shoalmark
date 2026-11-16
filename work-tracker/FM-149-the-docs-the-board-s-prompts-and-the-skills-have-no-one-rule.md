@@ -21,6 +21,10 @@ answered-by: holgo99
 
 ## What is true now
 
+**2026-11-16 — decision 3 superseded** by the Owner's signed answer to FM-100-Q4
+([FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md), its decision 2): the close-out is
+FM-100's `closeout` skill, not `CLOSE-OUT.md`. Its last *Done when* item is struck.
+
 **2026-11-04 — filed, Proposed, on the Auditor's brief; nothing is built.** Its one ask, FM-149-Q1, takes every
 decision under *Decisions, for the Owner* at once.
 
@@ -106,12 +110,14 @@ Each item names its commit or pull request when it lands.
   in both skills.
 - [ ] **The skills' README has its German twin,** with the same pair check, and it ends as decision 4 says.
 - [ ] **The Skills page, in English and German** (FM-143), ends as decision 4 says.
-- [ ] **FM-100 carries decision 3** into its design, once FM-104 has placed the person's files.
+- [ ] ~~**FM-100 carries decision 3** into its design, once FM-104 has placed the person's files.~~ Superseded by FM-100-Q4's
+  answer, 2026-11-16: FM-100's `closeout` skill replaces `CLOSE-OUT.md`.
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | Decision 3 superseded by FM-100-Q4's answer; its last Done when item struck. Records only. |
 | 2026-11-12 | FM-100-Q1 proposes to supersede decision 3, the close-out as two skills in place of `CLOSE-OUT.md`. Records only. |
 | 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |

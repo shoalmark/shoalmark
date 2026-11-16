@@ -34,7 +34,10 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-173](FM-173-a-signed-answer-this-clone-cannot-verify-reads-as-a-missing.md) | P1 | In a clone with no signers file set up, --check reads a signed answer it cannot verify as no answer at all: a ledger-in… | In Progress | progress | 2026-11-16 |
+| [FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) | P1 | An ask's option can read yes, with the changes I name, but the Board's answer dialog opens its text box only for an ans… | In Progress | progress | 2026-11-16 |
 | [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) | P1 | Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/… | In Progress | progress | 2026-11-16 |
+| [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) | P1 | A team can only be one whole repository: FM-100's standup-teams refuses a team in a folder of a monorepo, or several te… | In Progress | progress | 2026-11-16 |
 | [FM-143](FM-143-installing-two-skills-clones-all-of-shoalmark.md) | P2 | Installing shoalmark's two skills clones the whole repository: the plugin ships at its root, so adding it as a marketpl… | In Progress | progress | 2026-11-04 |
 | [FM-142](FM-142-v0-20-2-s-release-text-and-release-commit-have-no-in.md) | P1 | FM-006 shipped with v0.20.2 at the sweep's close, and the gate builds only under a judged In Progress tracker. So v0.20… | In Progress | progress | 2026-11-03 |
 | [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) | P1 | a seat's work that only another seat can push is refused, or recorded as that seat's own | In Progress | progress | 2026-10-27 |
@@ -53,8 +56,6 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
-| [FM-173](FM-173-a-signed-answer-this-clone-cannot-verify-reads-as-a-missing.md) | — | In a clone with no signers file set up, --check reads a signed answer it cannot verify as no answer at all: a ledger-in… | Proposed | triage | — |
-| [FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) | — | An ask's option can read yes, with the changes I name, but the Board's answer dialog opens its text box only for an ans… | Proposed | triage | — |
 | [FM-171](FM-171-reviewers-who-know-a-spec-s-design-read-past-what-its-text.md) | — | Reviewers who know a spec's design read past what its text leaves out. A fresh session given only sealanes/1's text bui… | Proposed | triage | — |
 | [FM-170](FM-170-trackers-hold-the-state-agents-act-on-as-prose-so-every.md) | — | Trackers hold much of the state agents act on as prose: a row's release, what blocks what, the Done when items and thei… | Proposed | triage | — |
 | [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md) | — | shoalmark.toml's top-level owner names the Owner's personal address beside the forge noreply address, and the signers f… | Proposed | triage | — |
@@ -64,7 +65,6 @@
 | [FM-164](FM-164-subversion-support-is-deprecated-then-removed-while-the-vcs.md) | — | shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is bui… | Proposed | triage | — |
 | [FM-163](FM-163-the-drift-skills-name-no-id-forms-read-no-harness-settings.md) | — | find-drift and prune-drift name no form for the ids a report gives its rules, disagreements and obsolete text, though p… | Proposed | triage | — |
 | [FM-162](FM-162-the-acts-a-seat-must-never-do-are-held-only-as-prose-so-one.md) | — | Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing proc… | Proposed | triage | — |
-| [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) | — | A team can only be one whole repository: FM-100's standup-teams refuses a team in a folder of a monorepo, or several te… | Proposed | triage | — |
 | [FM-160](FM-160-the-coordinator-seat-has-no-icon-so-its-session-row-keeps-an.md) | — | The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the seven, so a coordinator session's row keeps a… | Proposed | triage | — |
 | [FM-159](FM-159-a-session-can-be-resumed-from-the-board-only-for-24-hours.md) | — | The Board gives a resume command only to the sessions of the last 24 hours, so a session closed two days ago has no way… | Proposed | triage | — |
 | [FM-158](FM-158-the-suite-s-checks-that-read-today-s-date-once-can-fail-when.md) | — | The suite's checks that read today's date once can fail when a run crosses midnight: one is known, two are to be judged… | Proposed | triage | — |

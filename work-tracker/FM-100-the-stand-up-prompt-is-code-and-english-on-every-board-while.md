@@ -5,22 +5,18 @@ considered: FM-030, FM-031, FM-088, FM-095, FM-104, FM-121, FM-143, FM-149, FM-1
 tags: process
 epic: FM-139
 blocked-by: FM-104
-next: build
+next: wait
 hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q4: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace, with teams, routes and record folders read from sealanes/1's roster and hail/1's third edition, stage 1 in v0.20.3 and stage 2 in the next release."
-ask-id: FM-100-Q4
-ask: "Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams, routes and record folders from sealanes/1 and hail/1's third edition, stage 1 in v0.20.3 and stage 2 next, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design?"
-ask-kind: ruling
-ask-since: 2026-11-16
-ask-options: "yes, as proposed | yes, with the changes I name"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-16
-answered-by: holgo99
 ---
 
 # FM-100 — the stand-up prompt is code and English on every board, while the Board's words come from the language pack
 
 ## What is true now
+
+**2026-11-16 — FM-100-Q4 answered "yes, as proposed", with the Owner's signature, and acted on** (`--clear-ask`, its
+record under *Asks*). Stage 1 is in v0.20.3 and waits on FM-104's ruling alone; stage 2 comes in the next release. As
+decision 13 says, this commit marks FM-149's decision 3 superseded and strikes its last *Done when* item, and corrects
+FM-104, FM-023's row B and FM-121.
 
 **2026-11-16 — FM-100-Q3 withdrawn with no answer given, and FM-100-Q4 put,** on the coordinator's word of that day.
 Decisions 3, 9 and 10 rested on `[seats]` and on hail/1's first edition. sealanes/1's text now defines the roster that
@@ -368,10 +364,16 @@ Each item names its commit or pull request when it lands.
 **FM-100-Q3** · 2026-11-16 · Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams from the roster spec, stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design of 30 October?
 **withdrawn** — no answer was given
 
+**FM-100-Q4** · 2026-11-16 · Do you take FM-100's decisions as proposed: default skills under the Owner's signed copies, teams, routes and record folders from sealanes/1 and hail/1's third edition, stage 1 in v0.20.3 and stage 2 next, superseding FM-149's decision 3, FM-023's B of 29 October and STAND-UP.md's design?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 684012a · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | FM-100-Q4 answered, yes, as proposed, and acted on: stage 1 in v0.20.3, waiting on FM-104; stage 2 in the next release; FM-149, FM-104, FM-023 and FM-121 corrected. Records only. |
 | 2026-11-16 | FM-100-Q3 withdrawn with no answer given; FM-100-Q4 put: decisions 3, 9 and 10 rewritten against sealanes/1's roster and hail/1's third edition, stage 1 in v0.20.3 and stage 2 in the next release. Records only. |
 | 2026-11-13 | FM-100-Q3 put: the changed question, with stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, since the open asks are answered together at one sign-off. Records only. |
 | 2026-11-13 | FM-100-Q2 withdrawn with no answer given: FM-139-Q1 proposes stage 2 in the next release, by decision 13's fallback. The changed question is drafted with no id, to be put once FM-139-Q1 is answered. Records only. |

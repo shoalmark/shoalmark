@@ -1,19 +1,13 @@
 ---
 id: FM-172
-status: Proposed
+status: In Progress
 considered: FM-013, FM-029, FM-115, FM-167
 tags: bug
+epic: FM-139
 next: build
+triaged: 2026-11-16
+tier: P1
 hook: "An ask's option can read yes, with the changes I name, but the Board's answer dialog opens its text box only for an answer outside the options, so the signed line records the option and no change. On 16 November an answer of that kind was given, and its change had to be recorded by a separate commit. The proposal, put to the Owner as FM-172-Q1: such an option opens the box and requires the changes, and the signed line carries both."
-ask-id: FM-172-Q1
-ask: "Do you take FM-172's fix into v0.20.3: an option that names changes opens the Board's text box and requires them, the answer's signed line records the option with the changes, and --answer takes them the same way?"
-ask-kind: ruling
-ask-since: 2026-11-16
-ask-options: "yes, as proposed | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-16
-answered-by: holgo99
 ---
 
 # FM-172 — an answer with the changes the Owner names has nowhere to name them, so the Board records the option alone
@@ -21,6 +15,11 @@ answered-by: holgo99
 Seat: the Planner (a1730572) · filed 2026-11-16, on the coordinator's word of that day.
 
 ## What is true now
+
+**2026-11-16 — FM-172-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
+keep P1, In Progress.** The fix is in v0.20.3, a chapter of
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), with the Designer's check beside its
+critical review.
 
 **Filed 2026-11-16, Proposed, with FM-172-Q1 put; nothing is built.** The Owner's word of 16 November, relayed by the
 coordinator, asks for the fix: an answer "yes, with the changes I name" opens a box for the changes.
@@ -78,8 +77,16 @@ Each item names its commit or pull request when it lands.
 - [ ] **The relation** reads such an answer as the option chosen, with its changes quoted, with its test.
 - [ ] **The critical review is READY.**
 
+## Asks
+
+**FM-172-Q1** · 2026-11-16 · Do you take FM-172's fix into v0.20.3: an option that names changes opens the Board's text box and requires them, the answer's signed line records the option with the changes, and --answer takes them the same way?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — f14c6b0 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | FM-172-Q1 answered, yes, as proposed; judged before its first build commit, keep P1, In Progress; a chapter of FM-139. Records only. |
 | 2026-11-16 | Filed, Proposed, with FM-172-Q1 put: an option that names changes opens the dialog's text box and requires them, and the signed line carries both. Records only. |

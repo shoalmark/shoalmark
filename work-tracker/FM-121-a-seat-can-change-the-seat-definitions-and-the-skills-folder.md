@@ -11,6 +11,10 @@ hook: "The gate guards the Owner's two sections of TRIAGE.md. It does not guard 
 
 ## What is true now
 
+**2026-11-16 — the design round covers FM-100's skills too,** by the Owner's signed answer to FM-100-Q4
+([FM-100](FM-100-the-stand-up-prompt-is-code-and-english-on-every-board-while.md), its decision 7): the gate's guard
+over the Owner's copies of the stand-up and close-out skills, and over their stubs, is designed in the same round.
+
 **2026-11-03 — filed; nothing is built.** It leaves FM-037 at its split, as the Owner's sweep words it, for v0.20.3,
 after a design round.
 - **What it takes:** the guard over the seat definitions and the skills folder. It moved to v0.20.3 on the Owner's
@@ -33,3 +37,4 @@ A seat definition and a skill say what a seat does. A seat that can change its o
 |---|---|
 | 2026-11-03 | Filed from FM-037's split, for v0.20.3 after a design round. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
+| 2026-11-16 | Its design round covers the Owner's copies of FM-100's skills and their stubs, by FM-100-Q4's answer. Records only. |

@@ -1,19 +1,13 @@
 ---
 id: FM-173
-status: Proposed
+status: In Progress
 considered: FM-024, FM-034, FM-037, FM-169
 tags: bug
+epic: FM-139
 next: build
+triaged: 2026-11-16
+tier: P1
 hook: "In a clone with no signers file set up, --check reads a signed answer it cannot verify as no answer at all: a ledger-integrity violation, exit 4, and --answer undoes the Owner's new answer. The ledger is sound; the clone is not set up. FM-034 made such a signature the checkout's own finding for the other signed checks, and the answer's reader was left out. The proposal, put to the Owner as FM-173-Q1: the checkout's finding for every reader of a signed answer, with a class test."
-ask-id: FM-173-Q1
-ask: "Do you take FM-173's fix into v0.20.3: a signed answer whose signature this clone cannot check reads as the checkout's own finding, never as a missing answer, and a class test holds it for every reader of a signed answer?"
-ask-kind: ruling
-ask-since: 2026-11-16
-ask-options: "yes, as proposed | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-16
-answered-by: holgo99
 ---
 
 # FM-173 — a signed answer this clone cannot verify reads as a missing answer, a ledger violation, not as the checkout's own finding
@@ -21,6 +15,12 @@ answered-by: holgo99
 Seat: the Planner (a1730572) · filed 2026-11-16, on the coordinator's word of that day.
 
 ## What is true now
+
+**2026-11-16 — FM-173-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
+keep P1, In Progress.** The fix is in v0.20.3, a chapter of
+[FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md). It reads the same answer path that
+[FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md)'s lane changes, so it is built after that lane
+lands.
 
 **Filed 2026-11-16, Proposed, with FM-173-Q1 put; nothing is built.** The Owner met it on the Board, in another
 repository of the organisation that vendors this tool at v0.20.2, and the coordinator reproduced it there: with the
@@ -69,8 +69,16 @@ Each item names its commit or pull request when it lands.
 - [ ] **`--answer`** keeps its answer when the only finding is the checkout's own, with its test.
 - [ ] **The critical review is READY.**
 
+## Asks
+
+**FM-173-Q1** · 2026-11-16 · Do you take FM-173's fix into v0.20.3: a signed answer whose signature this clone cannot check reads as the checkout's own finding, never as a missing answer, and a class test holds it for every reader of a signed answer?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 1a730bf · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-16 | FM-173-Q1 answered, yes, as proposed; judged before its first build commit, keep P1, In Progress; a chapter of FM-139. Records only. |
 | 2026-11-16 | Filed, Proposed, with FM-173-Q1 put: a signed answer this clone cannot verify reads as the checkout's own finding, never as a missing answer, with a class test. Records only. |
