@@ -241,6 +241,15 @@ wenn dieser Commit auf dem Standard-Branch liegt: Pushe ihn oder merge den Branc
 gestellt wurde, als Fragen noch keine ID hatten, hat keine eigene ID; du beantwortest sie mit der ID ihres
 Arbeitspakets: `--answer AP-007 accept`.
 
+Eine Option, die *with the changes I name* lautet, beantwortest du mit den Änderungen, die du nennst. Wählst du sie,
+öffnet sich das Feld des Dialogs, und OK gibt erst einen Befehl, wenn das Feld die Änderungen enthält; der Befehl trägt
+beides, `--answer AP-007-Q1 accept "<die Option>" "<die Änderungen>"`, und die signierte Zeile hält beides fest,
+`accepted - <die Option>: <die Änderungen>`. Die Option allein wird abgewiesen, und nichts wird geschrieben. Die Regel:
+eine Option von `ask-options:` – oder der Vorschlag, wo es keine gibt –, die die englischen Wörter *with the changes I
+name* enthält, gleich in welcher Groß- und Kleinschreibung, als eigene Wörter (kein ASCII-Buchstabe, keine Ziffer und
+kein Unterstrich direkt davor oder danach), an beliebiger Stelle. Nicht: *with the change I name*, *with changes I name*,
+*with the changes I named*. Der Dialog, `--answer` und die Relation lesen diese eine Regel.
+
 ## Deine Absicht und dein aktueller Weg — nur dein signierter Commit ändert sie
 
 Die beiden Abschnitte der `TRIAGE.md`, die dir gehören — *Die Absicht* und *Der aktuelle Weg* —, ändern sich nur in
