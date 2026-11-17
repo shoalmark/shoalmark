@@ -160,6 +160,8 @@ answer.proposal: "die Rolle schlägt vor:"
 answer.other: "Andere:"
 answer.recommended: empfohlen
 answer.change.hint: "deine Änderung, in einer Zeile — mehr gehört in den Text des Arbeitspakets"
+answer.changes.hint: "die Änderungen, die du nennst, in einer Zeile (Pflicht) — mehr gehört in den Text des Arbeitspakets"
+answer.changes.missing: "Diese Option wird mit den Änderungen beantwortet, die du nennst: Schreib sie in das Feld"
 answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
 answer.ok: "OK — den Befehl geben"
 answer.abort: abbrechen

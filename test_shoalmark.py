@@ -9298,6 +9298,8 @@ answer.proposal: "die Rolle schlägt vor:"
 answer.other: "Andere:"
 answer.recommended: empfohlen
 answer.change.hint: "deine Änderung, in einer Zeile — mehr gehört in den Text des Arbeitspakets"
+answer.changes.hint: "die Änderungen, die du nennst, in einer Zeile (Pflicht) — mehr gehört in den Text des Arbeitspakets"
+answer.changes.missing: "Diese Option wird mit den Änderungen beantwortet, die du nennst: Schreib sie in das Feld"
 answer.reject.hint: "warum, und wie die Frage neu gestellt werden soll (Pflicht)"
 answer.ok: "OK — den Befehl geben"
 answer.abort: abbrechen
@@ -21641,6 +21643,8 @@ _module_guard(test_owner_exemption, check, single_label="FM-033 R14 · Owner aut
 # an ask's own id and the answer that names it: its class test, a program of its own so its mutants patch the module it imports
 import test_ask_ids
 _module_guard(test_ask_ids, check)
+import test_answer_changes
+_module_guard(test_answer_changes, check)
 
 # R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
 import test_r9_removals

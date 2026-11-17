@@ -1876,12 +1876,45 @@ def first_words(text, limit=RELATION_QUOTE):
     return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0].rstrip(" ,;:—-") + "…"
 
 
+# AN OPTION THAT NAMES CHANGES — one rule, read by the board's dialog (through the page's NAMED list, which this rule fills),
+# by `--answer` and by the relation. Such an option is answered with the changes the Owner names, and the signed line holds
+# both: `accepted - <the option>: <the changes>`.
+NAMES_CHANGES_RE = re.compile(r"(?<![A-Za-z0-9_])with the changes I name(?![A-Za-z0-9_])", re.I)
+CHANGES_SEP = ": "                                   # between the option and its changes, in the signed line
+
+
+def names_changes(option):
+    """Whether `option` names changes: as the answer normalises it (`answer_norm`), it holds the words `with the changes I name`
+    — in any case, between two characters that are no ASCII letter, digit or underscore, anywhere in it. Not `with the change I
+    name`, not `with changes I name`, not `with the changes I named`."""
+    return bool(NAMES_CHANGES_RE.search(answer_norm(option)))
+
+
+def changes_options(t):
+    """The choices of `t`'s ask that name changes, normalised, as [(n, option)]: n is the option's place in `ask-options:`, from 1;
+    with no `ask-options:`, the proposal alone is the one choice the dialog offers, n 0."""
+    options = [answer_norm(o) for o in t.get("ask_options") or []] or [answer_norm(t.get("ask_proposal"))]
+    return [(n if t.get("ask_options") else 0, o) for n, o in enumerate(options, 1) if o and names_changes(o)]
+
+
+def split_changes(t, text):
+    """An accepted answer's text read as an option that names changes and the changes after it — (option, changes), both
+    normalised — or None where the text is no such option followed by `: ` and changes. The longest option that fits wins."""
+    text = answer_norm(text)
+    for _n, option in sorted(changes_options(t), key=lambda p: -len(p[1])):
+        if text.startswith(option + CHANGES_SEP) and text[len(option) + len(CHANGES_SEP):].strip():
+            return option, text[len(option) + len(CHANGES_SEP):].strip()
+    return None
+
+
 def answer_relation(t):
     """What the answer did with the proposal, read from `answer:` against `ask-proposal:` and `ask-options:` — the
     answer's own normalisation on both sides — as (kind, n, words), or None where there is no answer:
     - `proposal` — `accepted`, bare, or with the proposal's text;
     - `option`, n — the text is option n of `ask-options:` (its place there, from 1) and not the proposal; words: its opening;
-    - `changed` — accepted, and the text is neither the proposal nor any option;
+    - an option that names changes (`names_changes`), then `: ` and the changes — read as that option would be alone, the
+      proposal or option n, and words: the option's opening, then the changes' opening in double quotes;
+    - `changed` — accepted, and the text is neither the proposal nor any option, nor such an option with its changes;
     - `rejected` · `revoked` — words: the reason's opening;
     - `unknown` — nothing to compare it with (an accepted answer on an ask with no proposal, or none and no options), or a
       word that is none of the three. Never a guess.
@@ -1900,6 +1933,10 @@ def answer_relation(t):
         return ("proposal", 0, "")
     if text and text in options:
         return ("option", options.index(text) + 1, first_words(text))
+    named = split_changes(t, text)
+    if named:
+        said = f'{first_words(named[0])} — "{first_words(named[1])}"'
+        return ("proposal", 0, said) if named[0] == proposal else ("option", options.index(named[0]) + 1, said)
     return ("changed", 0, "") if text and (proposal or options) else ("unknown", 0, "")
 
 
@@ -3388,6 +3425,14 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
     if not t or not t.get("ask"):
         print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
         return EXIT_LINT
+    # `accept "<option>" "<the changes>"`: an option that names changes, and the changes after it, written as one line —
+    # `<the option>: <the changes>`. Any other words after `accept` are one text, as they always were
+    naming = [o for _n, o in changes_options(t)] if verdict == "accept" else []
+    option = " ".join(words[2].split()) if len(words) > 3 and answer_norm(words[2]) in naming else ""
+    changes = " ".join(" ".join(words[3:]).split()) if option else ""
+    if option and changes:
+        text = option + CHANGES_SEP + changes
+    shown = " ".join(printed_arg(p) for p in ([option, changes] if option and changes else [text] if text else []))
     held, ids = t.get("ask_id") or "", [i for i, _d in t.get("asks_ids") or []]
     if by_id and named != held:
         if held and named in ids:
@@ -3404,7 +3449,7 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
             print(f"--answer: {tid} has no ask {named}: its ask was asked before ask ids — answer it by its tracker: `{CMD} --answer {printed_arg(tid)} {verdict}`", file=sys.stderr)
         return EXIT_LINT
     if held and not by_id:
-        print(f"--answer: {tid}'s ask carries its id, {held} — " + (f"name the ask you read: `{CMD} --answer {held} {verdict}" + (f" {printed_arg(text)}" if text else "") + "`"
+        print(f"--answer: {tid}'s ask carries its id, {held} — " + (f"name the ask you read: `{CMD} --answer {held} {verdict}" + (f" {shown}" if shown else "") + "`"
                                                                    if ask_cmd_id(held, tid) else UNFORMED_ASK.format(tid)), file=sys.stderr)
         return EXIT_LINT
     if not t.get("answer") and t.get("next") != "owner":
@@ -3423,6 +3468,13 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
         return EXIT_LINT
     if verdict == "revoke" and not text:
         print("--answer: a revocation carries its reason — the ship log keeps it beside the answer it takes back", file=sys.stderr)
+        return EXIT_LINT
+    # the option alone — named, or taken bare as the proposal — would sign the option and leave out the changes it names
+    alone = option if option and not changes else next((o for o in naming if answer_norm(text) == o or (not text and o == answer_norm(t.get("ask_proposal")))), "")
+    if alone:
+        print(f"--answer: {alone!r} names changes, and none are given — such an option is answered with the changes you name, and the "
+              f"signed line records both, `accepted - <the option>: <the changes>`. Nothing was written. Give them after it: "
+              f"`{CMD} --answer {printed_arg(held or tid)} accept {printed_arg(alone)} \"<the changes>\"`", file=sys.stderr)
         return EXIT_LINT
     path = TRACKER_DIR / t["file"]
     answer = {"accept": "accepted", "reject": "rejected", "revoke": "revoked"}[verdict] + (f" - {text}" if text else "")
@@ -3474,7 +3526,7 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
         flag=flag, verb=verb, noun="answer", right="an answer is an `answer` change", check=check_ask, write=write,
         subject=f"{held}: {first_words(answer, 60)}" if held else f"{tid}: {answer[:60]}", trailers=[f"Answers: {held}"] if held else [],
         bound=(lambda: answer_bound(tid, held)) if held else None, name=held or tid, kept=("your answer", answer),
-        again=f'{CMD} --answer {printed_arg(held or tid)} {verdict}' + (f' {printed_arg(text)}' if text else "") + (" --supersede" if supersede else ""),
+        again=f'{CMD} --answer {printed_arg(held or tid)} {verdict}' + (f' {shown}' if shown else "") + (" --supersede" if supersede else ""),
         said=lambda where, proof: (f"{held or tid} answered: {answer}\n  {proof}, {where}" + f"\n  it has left your queue; the seat sees it under --answered"
                                    + ({"build": "\n  next: build — the seat's move follows", "owner": "\n  next: owner — an action: the act is still yours"}.get(move, ""))
                                    + seed_said(tid, seed))))
@@ -4283,7 +4335,7 @@ __DAY__
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask's id — "" before ask ids],
 //        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
-const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,SEAT=__SEATS__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,SEAT=__SEATS__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,NAMED=__NAMED__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -4357,6 +4409,16 @@ days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
 // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
 const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
+// the box a radio opens — the label of its hint: the answer itself for Other, the changes for an option that names them
+// (NAMED, the options the generator's rule found), and none for any other option: its box stays shut
+const boxOf=o=>o==null?"answer.change.hint":NAMED.includes(o)?"answer.changes.hint":"";
+// OK's command and the line it writes, as [command, line] — or null where it builds none: an option that names changes is
+// given with them, a second text, and without them there is no command. `o` is the option picked, null for Other and for a
+// rejection, whose text is the box's. The option goes in VERBATIM — what the Owner picked is what the tracker records
+const answerOf=(cmd,id,kind,o,text)=>{const q=s=>String(s).trim().replace(/"/g,"'"),txt=q(text||""),named=kind=="accept"&&o!=null&&NAMED.includes(o);
+  const chosen=o==null?txt:q(o),changes=named?txt.replace(/\s+/g," "):"";
+  return named&&!changes?null:[`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}${changes?" "+sq(changes):""}`,
+    (kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):"")+(changes?": "+changes:"")]};
 const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[29][12]||t[0],cmd="__CMD__";
   const meta=[k?l("ask."+k):"",days(t)!=null?cnt(l("waiting.days",days(t))):"",held.length?l("waiting.holds.ids",held.join(", ")):""].filter(Boolean).join("\u00a0· ");
   // an ask offers choices: one radio per option in the order given, except the RECOMMENDED one (`ask-proposal:`)
@@ -4373,12 +4435,13 @@ const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[2
     :`<textarea name="text" rows="3" placeholder="${l("answer.reject.hint")}" required></textarea>`}
     <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
   const f=d.querySelector("form"),ta=f.text;
-  f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{ta.disabled=r.value!="other";ta.required=r.value=="other";if(!ta.disabled)ta.focus()});
-  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"'");
-    // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records
-    const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);
-    const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;
-    sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\s+/g," "):""))};
+  const pick=()=>{const v=f.how?.value;return kind=="reject"||v=="other"||v==null?null:ordered[+v]};
+  f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{const b=boxOf(pick());ta.disabled=!b;ta.required=!!b;ta.setCustomValidity("");
+    if(b){ta.placeholder=L[b]??b;ta.focus()}});
+  ta.oninput=()=>ta.setCustomValidity("");
+  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const made=answerOf(cmd,id,kind,pick(),ta.value);
+    if(!made){ta.setCustomValidity(L["answer.changes.missing"]??"answer.changes.missing");ta.reportValidity();return}
+    sign(d,id,made[0],made[1])};
   d.showModal()};
 const sign=(d,id,line,said,kind="answer")=>{const c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;
   d.innerHTML=`<form method="dialog" class="sign"><h3>${l(kind=="answer"?P.title:P.act)} · <a href="#=${id.replace(/-Q\d+$/,"")}">${id}</a></h3>
@@ -4718,7 +4781,9 @@ LABELS = {
     "day.refused.split": "names the tool by a path that holds a space, which the copied command would split in two; a command set in SHOALMARK_CMD is taken as written",
     "day.value.name": "the repository's folder name", "day.value.path": "its path", "day.value.cmd": "the tool's command", "day.value.branch": "the default branch's name",
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "other:", "answer.recommended": "recommended",
-    "answer.change.hint": "your change, in one line — more goes in the tracker's body", "answer.reject.hint": "why, and how the ask should be reworded (required)",
+    "answer.change.hint": "your change, in one line — more goes in the tracker's body",
+    "answer.changes.hint": "the changes you name, in one line (required) — more goes in the tracker's body",
+    "answer.changes.missing": "this option is answered with the changes you name: write them in the box", "answer.reject.hint": "why, and how the ask should be reworded (required)",
     "answer.ok": "ok — give me the command", "answer.abort": "abort",
     # the second screen (FM-013) — `{0}` in these is markup the page builds: a branch or a key as code, the signing link
     "answer.sign.title": "sign your answer", "act.sign.title": "sign your act",
@@ -5722,6 +5787,8 @@ def render_html(trackers, read=None):
     values.update({"__DAY__": day, "__DAYTEXT__": script_json(day_text)})
     values.update({"__MARKED__": MARKED.read_text(encoding="utf-8"), "__DAYS__": str(TRIAGE_DAYS), "__BOTTLE__": str(BOTTLENECK), "__HOME__": script_json(home),
                    "__REG__": script_json(board_sessions()), "__BLOB__": script_json(board_blob()), "__BRANCH__": script_json(read.get("branch") or ""),
+                   # the choices that name changes, as the rows carry them — the dialog asks this list, never a rule of its own
+                   "__NAMED__": script_json(sorted({o for t in trackers for o in (t.get("ask_options") or [t.get("ask_proposal") or ""]) if o and names_changes(o)})),
                    "__ROWS__": ",\n".join(rows)})
     return fill_page(HTML_PAGE, values)
 
