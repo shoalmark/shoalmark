@@ -121,7 +121,8 @@ def rows_relation(area, add):
 # --- the command ---------------------------------------------------------------------------------------------------------------
 
 ASKS = {
-    "FM-001": {}, "FM-002": {}, "FM-003": {"proposal": NAMING}, "FM-004": {}, "FM-005": {}, "FM-006": {}, "FM-007": {},
+    "FM-001": {}, "FM-002": {}, "FM-003": {"proposal": NAMING}, "FM-004": {}, "FM-005": {}, "FM-006": {}, "FM-007": {}, "FM-008": {}, "FM-009": {},
+    "FM-010": {}, "FM-011": {}, "FM-012": {}, "FM-013": {}, "FM-014": {}, "FM-015": {},
 }
 
 
@@ -147,12 +148,22 @@ def line(r, tid):
 
 def rows_command(area, add):
     r = asked_repo(area, "cmd")
-    before = state(r)
     for args, what in (((NAMING,), "the option alone"), ((NAMING, ""), "the option and an empty text"), ((NAMING, "  \n "), "the option and blank text"),
                        (("yes,  with the changes\nI name",), "the option alone, its spaces otherwise")):
+        before = state(r)
         said = r_ = ids.run(r.root, "--answer", "FM-002-Q1", "accept", *args)
         add(f"the command · {what}: refused, naming why, and nothing written",
             ids.refused(said, "names changes, and none are given", "Nothing was written", "accept", "<the changes>") and state(r) == before, ids.seen(r_))
+    # the option in another case, or with a colon after it and nothing more, is the option alone: each on an ask of its own
+    for tid, args, what in (("FM-012", ("Yes, with the changes I name",), "another case"), ("FM-013", ("yes, with the changes i name",), "another case, the I lower"),
+                            ("FM-014", ("yes, with the changes I name:",), "a trailing colon"),
+                            ("FM-015", ("YES, WITH THE CHANGES I NAME :  ", ""), "another case, a colon, spaces and an empty text")):
+        before = state(r)
+        said = ids.run(r.root, "--answer", f"{tid}-Q1", "accept", *args)
+        add(f"the command · the option alone, {what} {args!r}: refused, naming the option as the ask holds it, and nothing written",
+            ids.refused(said, f"{NAMING!r} names changes, and none are given", "Nothing was written", f"accept {fm.printed_arg(NAMING)}") and state(r) == before,
+            ids.seen(said) + " · " + line(r, tid))
+    before = state(r)
     said = ids.run(r.root, "--answer", "FM-003-Q1", "accept")
     add("the command · a bare accept whose proposal names changes: refused, naming why, and nothing written",
         ids.refused(said, f"{NAMING!r} names changes, and none are given") and state(r) == before, ids.seen(said))
@@ -170,7 +181,19 @@ def rows_command(area, add):
         fm.relation_text(fm.answer_relation(t)) == f'chose option 2: {NAMING} — "{fm.first_words(WRITTEN)}"', fm.relation_text(fm.answer_relation(t)))
     said = r.check()
     add("the command · …and the gate passes it", ids.accepted(said), ids.seen(said))
+    # the words after `accept`, joined, read for the option in any case, longest first: the option as the ask holds it, `: `, the rest
+    for tid, args, rest, what in (("FM-008", tuple("yes, with the changes I name drop X".split(" ")), "drop X", "unquoted words"),
+                                  ("FM-009", ("Yes, With The Changes I Name", "drop Y"), "drop Y", "another case, two texts"),
+                                  ("FM-010", ("YES, with the changes I name:", "drop: Z"), "drop: Z", "another case and a colon, two texts")):
+        said = ids.run(r.root, "--answer", f"{tid}-Q1", "accept", *args)
+        fm.configure(r.root)
+        t = next(x for x in fm.load_trackers() if x["id"] == tid)
+        fm.configure(HERE)
+        add(f"the command · the option and its changes as {what}: written `accepted - <the option as the ask holds it>: <the rest>`, read as the option chosen",
+            said[0] == 0 and line(r, tid) == f'answer: "accepted - {NAMING}: {rest}"'
+            and fm.relation_text(fm.answer_relation(t)) == f'chose option 2: {NAMING} — "{rest}"', ids.seen(said) + " · " + line(r, tid))
     for tid, args, want in (("FM-004", ("no",), "accepted - no"), ("FM-005", ("no", "for now"), "accepted - no for now"),
+                            ("FM-011", ("yes, with the changes I named before",), "accepted - yes, with the changes I named before"),
                             ("FM-006", ("something else, with the changes I name",), "accepted - something else, with the changes I name"),
                             ("FM-007", ("reject", NAMING, "x"), f"rejected - {NAMING} x")):
         verdict, rest = (args[0], args[1:]) if args[0] == "reject" else ("accept", args)
@@ -188,7 +211,14 @@ const NAMED = JSON.parse(grab(/,NAMED=(\[[^\n]*?\]),T=\[/, "NAMED"));
 const sq = eval(grab(/\nconst sq=([^\n]*);\n/, "sq"));
 const boxOf = eval(grab(/\nconst boxOf=([^\n]*);\n/, "boxOf"));
 const answerOf = eval(grab(/\nconst answerOf=([\s\S]*?\]\});\n/, "answerOf"));
-process.stdout.write(JSON.stringify({named: NAMED, box: inp.box.map(o => boxOf(o)), made: inp.made.map(a => answerOf(...a))}));
+const hintOf = eval(grab(/\nconst hintOf=([^\n]*);\n/, "hintOf"));
+const missingOf = eval(grab(/\nconst missingOf=([^\n]*);\n/, "missingOf"));
+const esc = eval(grab(/\nesc=(s=>[^\n]*),\n/, "esc"));
+const rowsIn = L => { const l = eval(grab(/\nl=(\(k,\.\.\.a\)=>[^\n]*?),sl=/, "l"));
+  return eval(grab(/\nconst optRow=([\s\S]*?<\/span><\/label>`);\n/, "optRow")); };
+process.stdout.write(JSON.stringify({named: NAMED, box: inp.box.map(o => boxOf(o)), made: inp.made.map(a => answerOf(...a)),
+  hint: inp.box.map(o => hintOf(o)), missing: inp.missing.map(a => missingOf(...a)),
+  rows: Object.fromEntries(Object.entries(inp.labels).map(([k, L]) => [k, inp.box.slice(1).map((o, i) => rowsIn(L)(o, i, NAMING_PROP))]))}));
 """
 CASES = (   # (what, [cmd, id, kind, the option picked — null for Other —, the box's text], the arguments after the command, or None, the line it writes)
     ("the option that names changes, with text holding quotes, a dollar sign, a backtick and a newline", ["argv", "FM-001-Q1", "accept", NAMING, CHANGES],
@@ -214,8 +244,21 @@ def board_page(area):
     return (root / ids.REL / "index.html").read_text(encoding="utf-8")
 
 
+MISSING = (   # (the option picked — None for Other —, the box's text, what the box lacks: the label of the board's own message, or "")
+    (NAMING, "", "answer.changes.missing"), (NAMING, " \n\t ", "answer.changes.missing"), (NAMING, "drop it", ""), (None, "", ""), ("no", "", ""),
+)
+
+
+def labels_of(lang):
+    """The board's labels in English, the tool's own, or in German, as examples/de/labels.yaml gives them over the English."""
+    return dict(fm.LABELS) if lang == "en" else {**fm.LABELS, **fm.read_flat((HERE / "examples/de/labels.yaml").read_text(encoding="utf-8"))}
+
+
 def dialog_run(script):
-    r = subprocess.run([shutil.which("node"), "-e", NODE], input=json.dumps({"script": script, "box": [None, NAMING, "no"], "made": [c[1] for c in CASES]}),
+    node = NODE.replace("NAMING_PROP", json.dumps(NAMING))
+    r = subprocess.run([shutil.which("node"), "-e", node], input=json.dumps({"script": script, "box": [None, NAMING, "no"], "made": [c[1] for c in CASES],
+                                                                             "missing": [list(m[:2]) for m in MISSING],
+                                                                             "labels": {"en": labels_of("en"), "de": labels_of("de")}}),
                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
     try:
         return json.loads(r.stdout)
@@ -230,23 +273,41 @@ def shell_args(command):
 
 
 def rows_dialog(area, add, script=None):
-    page = board_page(area) if script is None else None
-    script = script if script is not None else page
+    page = script if script is not None else board_page(area)
     if not (shutil.which("node") and shutil.which("sh")):
         add("the dialog · Node and sh run the board's script and its commands", None, "Node or sh is not installed here")
         return
-    o = dialog_run(script)
+    o = dialog_run(page)
     if "error" in o:
         add("the dialog · the board's script ran in Node", False, o["error"])
         return
-    if page is not None:
-        add("the dialog · the page's NAMED list is the rule's choices, as the rows carry them: an option, and a proposal alone",
-            o["named"] == sorted([NAMING, "ship it, with the changes I name"]), f"saw {o['named']}")
-        add("the dialog · Other opens the box for the answer, an option that names changes for its changes, and a plain option opens none",
-            o["box"] == ["answer.change.hint", "answer.changes.hint", ""], f"saw {o['box']}")
-        add("the dialog · the radios open the box by that one answer, and OK with no command marks the box and stops",
-            "r.onchange=()=>{const b=boxOf(pick());ta.disabled=!b;ta.required=!!b;" in page and "const made=answerOf(cmd,id,kind,pick(),ta.value);" in page
-            and 'if(!made){ta.setCustomValidity(L["answer.changes.missing"]??"answer.changes.missing");ta.reportValidity();return}' in page)
+    add("the dialog · the page's NAMED list is the rule's choices, as the rows carry them: an option, and a proposal alone",
+        o["named"] == sorted([NAMING, "ship it, with the changes I name"]), f"saw {o['named']}")
+    add("the dialog · Other opens the box for the answer, an option that names changes for its changes, and a plain option opens none",
+        o["box"] == ["answer.change.hint", "answer.changes.hint", ""], f"saw {o['box']}")
+    add("the dialog · the radios open the box by that one answer, Other's box alone `required`, and OK with no command marks the box and stops",
+        "r.onchange=()=>{const b=boxOf(pick());ta.disabled=!b;ta.required=b==\"answer.change.hint\";ta.placeholder=L[hintOf(pick())]??hintOf(pick());need();if(b)ta.focus()}" in page
+        and "const made=answerOf(cmd,id,kind,pick(),ta.value);" in page and "if(!made){need();ta.reportValidity();return}" in page, "the wiring is not the page's")
+    add("the dialog · the board's own message is set on the box whenever it lacks the changes — on picking, on each keystroke and on OK — so the browser shows it",
+        "const need=()=>{const k=missingOf(pick(),ta.value);ta.setCustomValidity(k?L[k]??k:\"\")};" in page and "ta.oninput=need;" in page, "need() is not wired")
+    add("the dialog · what the box lacks: the changes, while an option that names them is picked and the box is empty or blank; nothing for Other or a plain option",
+        o["missing"] == [m[2] for m in MISSING], f"saw {o['missing']}")
+    add("the dialog · the hint: Other's for Other, the changes' for an option that names them, and Other's again once the box shuts on a plain option",
+        o["hint"] == ["answer.change.hint", "answer.changes.hint", "answer.change.hint"], f"saw {o['hint']}")
+    for lang in ("en", "de"):
+        L_ = labels_of(lang)
+        esc_ = lambda v: v.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+        want_ = [f'<label class="dl"><input type="radio" name="how" value="0" required> <span>{esc_(NAMING)} <span class="ddim">— {esc_(L_["answer.recommended"])}</span>'
+                 f' <span class="ddim">— {esc_(L_["answer.changes.cue"])}</span></span></label>',
+                 '<label class="dl"><input type="radio" name="how" value="1" required> <span>no</span></label>']
+        add(f"the dialog · {lang}: an option that names changes carries its cue after it, drawn as *recommended* is, "
+            f"{L_.get('answer.changes.cue')!r}; a plain option carries none", o["rows"][lang] == want_, f"saw {o['rows'][lang]}")
+    de_ = labels_of("de")
+    add("the labels · the cue in English and German: “name them in the box”, „nenn sie im Feld“",
+        fm.LABELS.get("answer.changes.cue") == "name them in the box" and de_.get("answer.changes.cue") == "nenn sie im Feld")
+    add("the labels · the German hint for the changes is no longer than the German hint for Other, which fits the box at 320 px",
+        de_["answer.changes.hint"] == "die Änderungen, die du nennst, in einer Zeile (Pflicht)"
+        and len(de_["answer.changes.hint"]) <= len(de_["answer.change.hint"]), de_.get("answer.changes.hint", ""))
     for (what, _a, want, said), made in zip(CASES, o["made"]):
         if want is None:
             add(f"the dialog · {what}: no command", made is None, f"saw {made}")
@@ -265,10 +326,18 @@ MUTANTS = (
     ("the changes left out of the relation", "answer_relation", """said = f'{first_words(named[0])} — "{first_words(named[1])}"'""",
      "said = first_words(named[0])", rows_relation),
     ("the option let through alone", "answer_cmd", "    if alone:\n", "    if False:\n", rows_command),
+    ("the option read in its own case alone", "changes_given", "if norm[:len(core)].casefold() == core.casefold() and", "if norm[:len(core)] == core and", rows_command),
+    ("a trailing colon read as changes", "changes_given", 'plain[len(core):].lstrip(" :").strip()', 'plain[len(core):].lstrip(" ").strip()', rows_command),
+    ("the option written as typed", "changes_given", 'return option, plain[len(core):]', 'return plain[:len(core)], plain[len(core):]', rows_command),
+    ("words after the option, past a space, not read", "changes_given", 'in ("", " ", ":")', 'in ("", ":")', rows_command),
 )
 PAGE_MUTANTS = (
     ("the dialog builds a command with the box empty", "return named&&!changes?null:[", "return ["),
     ("the dialog leaves the changes out", '${changes?" "+sq(changes):""}', ""),
+    ("the board's message never set: the browser's speaks", 'NAMED.includes(o)&&!String(text||"").trim()?"answer.changes.missing":""', '""'),
+    ("the box keeps the changes' hint once it shuts", 'const hintOf=o=>boxOf(o)||"answer.change.hint";', 'const hintOf=o=>boxOf(o)||"answer.changes.hint";'),
+    ("the box for the changes left `required`", 'ta.required=b=="answer.change.hint";', "ta.required=!!b;"),
+    ("no cue on the option's row", '+(NAMED.includes(o)?` <span class="ddim">— ${l("answer.changes.cue")}</span>`:"")', ""),
 )
 
 

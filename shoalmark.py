@@ -1897,6 +1897,20 @@ def changes_options(t):
     return [(n if t.get("ask_options") else 0, o) for n, o in enumerate(options, 1) if o and names_changes(o)]
 
 
+def changes_given(t, text):
+    """The words after `accept`, joined, read as `--answer` reads them for an option that names changes: the longest such
+    option of the ask the text begins with — compared in any case, the option's trailing colons and spaces aside — followed by
+    the text's end, a space or a colon. As (the option as the ask holds it, normalised; the rest, its leading colons and
+    spaces off, `"` as typed — "" where the text is the option alone), or None where the text begins with no such option."""
+    plain = " ".join(str(text or "").split())
+    norm = plain.replace('"', "'")                       # `answer_norm` of it, place for place
+    for _n, option in sorted(changes_options(t), key=lambda p: -len(p[1])):
+        core = option.rstrip(": ")
+        if norm[:len(core)].casefold() == core.casefold() and norm[len(core):len(core) + 1] in ("", " ", ":"):
+            return option, plain[len(core):].lstrip(" :").strip()
+    return None
+
+
 def split_changes(t, text):
     """An accepted answer's text read as an option that names changes and the changes after it — (option, changes), both
     normalised — or None where the text is no such option followed by `: ` and changes. The longest option that fits wins."""
@@ -3410,7 +3424,8 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
     if refused is not None:
         return refused
     if len(words) < 2 or words[1] not in ("accept", "reject", "revoke"):
-        print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change. "
+        print("--answer <id> accept|reject [\"text\"] — reject needs a reason; accept takes an optional change, and an option that names changes takes them: "
+              "`--answer <id> accept \"<the option>\" \"<the changes>\"`. "
               "An answer given already: `--answer <id> revoke \"<reason>\"`, or `--answer <id> accept|reject \"<option>\" --supersede`", file=sys.stderr)
         return EXIT_LINT
     # the answer is ONE front-matter line: every run of whitespace — a newline above all — collapses to one space.
@@ -3426,10 +3441,8 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
         print(f"--answer: {tid} asks the Owner nothing — an answer answers an `ask:` with `next: owner`", file=sys.stderr)
         return EXIT_LINT
     # `accept "<option>" "<the changes>"`: an option that names changes, and the changes after it, written as one line —
-    # `<the option>: <the changes>`. Any other words after `accept` are one text, as they always were
-    naming = [o for _n, o in changes_options(t)] if verdict == "accept" else []
-    option = " ".join(words[2].split()) if len(words) > 3 and answer_norm(words[2]) in naming else ""
-    changes = " ".join(" ".join(words[3:]).split()) if option else ""
+    # `<the option>: <the changes>`, the option as the ask holds it. Any other words after `accept` are one text, as they always were
+    option, changes = (changes_given(t, text) if verdict == "accept" and text else None) or ("", "")
     if option and changes:
         text = option + CHANGES_SEP + changes
     shown = " ".join(printed_arg(p) for p in ([option, changes] if option and changes else [text] if text else []))
@@ -3470,7 +3483,8 @@ def answer_cmd(words, trackers, supersede=False, flag="--answer", verb="answerin
         print("--answer: a revocation carries its reason — the ship log keeps it beside the answer it takes back", file=sys.stderr)
         return EXIT_LINT
     # the option alone — named, or taken bare as the proposal — would sign the option and leave out the changes it names
-    alone = option if option and not changes else next((o for o in naming if answer_norm(text) == o or (not text and o == answer_norm(t.get("ask_proposal")))), "")
+    alone = option if option and not changes else next((o for _n, o in changes_options(t) if verdict == "accept" and not text
+                                                        and o == answer_norm(t.get("ask_proposal"))), "")
     if alone:
         print(f"--answer: {alone!r} names changes, and none are given — such an option is answered with the changes you name, and the "
               f"signed line records both, `accepted - <the option>: <the changes>`. Nothing was written. Give them after it: "
@@ -4412,6 +4426,14 @@ const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
 // the box a radio opens — the label of its hint: the answer itself for Other, the changes for an option that names them
 // (NAMED, the options the generator's rule found), and none for any other option: its box stays shut
 const boxOf=o=>o==null?"answer.change.hint":NAMED.includes(o)?"answer.changes.hint":"";
+// the hint the box shows: its own while it is open, Other's once it shuts
+const hintOf=o=>boxOf(o)||"answer.change.hint";
+// what the box lacks — the label of the board's own message — while an option that names changes is picked and the box is
+// empty or blank; set on the box whenever it is so, the browser shows it, and not its own
+const missingOf=(o,text)=>NAMED.includes(o)&&!String(text||"").trim()?"answer.changes.missing":"";
+// an option's row: its words, then what it is, each in the dim of a note — recommended, and answered with the changes named in the box
+const optRow=(o,i,prop)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`
+  +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+(NAMED.includes(o)?` <span class="ddim">— ${l("answer.changes.cue")}</span>`:"")+`</span></label>`;
 // OK's command and the line it writes, as [command, line] — or null where it builds none: an option that names changes is
 // given with them, a second text, and without them there is no command. `o` is the option picked, null for Other and for a
 // rejection, whose text is the box's. The option goes in VERBATIM — what the Owner picked is what the tracker records
@@ -4425,8 +4447,7 @@ const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[2
   // which is offered first. A proposal alone is a list of one. Last always comes Other, with the box — and when
   // there is nothing to choose from, Other is the only row and the box is the answer.
   const all=opts&&opts.length?opts:(prop?[prop]:[]),ordered=prop&&all.includes(prop)?[prop,...all.filter(o=>o!=prop)]:all;
-  const rows=ordered.map((o,i)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`
-      +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+`</span></label>`).join("")
+  const rows=ordered.map((o,i)=>optRow(o,i,prop)).join("")
     +`<label class="dl"><input type="radio" name="how" value="other" required${ordered.length?"":" checked"}> <span>${l("answer.other")}</span></label>`;
   d.innerHTML=`<form method="dialog"><h3>${kind=="accept"?l("answer.accept"):l("answer.reject")} · <a href="#=${t[0]}">${id}</a>${meta?` · <span class="m">${meta}</span>`:""}</h3>
     <p class="dq">${esc(ask)}</p>${prop?`<p class="dp"><b>${l("answer.proposal")}</b> ${esc(prop)}</p>`:""}<p class="m ddim">${esc(t[6])}</p>
@@ -4436,11 +4457,11 @@ const act=(t,kind)=>{const d=$("dlg"),[ask,k,since,held,,prop,opts]=t[29],id=t[2
     <menu><button value="ok" class="go">${l("answer.ok")}</button><button value="abort" formnovalidate>${l("answer.abort")}</button></menu></form>`;
   const f=d.querySelector("form"),ta=f.text;
   const pick=()=>{const v=f.how?.value;return kind=="reject"||v=="other"||v==null?null:ordered[+v]};
-  f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{const b=boxOf(pick());ta.disabled=!b;ta.required=!!b;ta.setCustomValidity("");
-    if(b){ta.placeholder=L[b]??b;ta.focus()}});
-  ta.oninput=()=>ta.setCustomValidity("");
+  const need=()=>{const k=missingOf(pick(),ta.value);ta.setCustomValidity(k?L[k]??k:"")};
+  f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{const b=boxOf(pick());ta.disabled=!b;ta.required=b=="answer.change.hint";ta.placeholder=L[hintOf(pick())]??hintOf(pick());need();if(b)ta.focus()});
+  ta.oninput=need;
   f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const made=answerOf(cmd,id,kind,pick(),ta.value);
-    if(!made){ta.setCustomValidity(L["answer.changes.missing"]??"answer.changes.missing");ta.reportValidity();return}
+    if(!made){need();ta.reportValidity();return}
     sign(d,id,made[0],made[1])};
   d.showModal()};
 const sign=(d,id,line,said,kind="answer")=>{const c=s=>`<code>${esc(s)}</code>`,P=PROOF.keys;
@@ -4783,7 +4804,8 @@ LABELS = {
     "answer.accept": "accept", "answer.reject": "reject", "answer.proposal": "the seat proposes:", "answer.other": "other:", "answer.recommended": "recommended",
     "answer.change.hint": "your change, in one line — more goes in the tracker's body",
     "answer.changes.hint": "the changes you name, in one line (required) — more goes in the tracker's body",
-    "answer.changes.missing": "this option is answered with the changes you name: write them in the box", "answer.reject.hint": "why, and how the ask should be reworded (required)",
+    "answer.changes.missing": "this option is answered with the changes you name: write them in the box",
+    "answer.changes.cue": "name them in the box", "answer.reject.hint": "why, and how the ask should be reworded (required)",
     "answer.ok": "ok — give me the command", "answer.abort": "abort",
     # the second screen (FM-013) — `{0}` in these is markup the page builds: a branch or a key as code, the signing link
     "answer.sign.title": "sign your answer", "act.sign.title": "sign your act",
@@ -10890,6 +10912,8 @@ def cli_parser():
                                                      "nothing; a folder it cannot read is named with why and counted in nothing (Q7). A name ending in .ics: removed by R9 — one line, exit 2")
     add("--answer", nargs="+", metavar="WORD", help="the Owner's one command: `--answer <id> accept|reject [\"text\"]` — on the branch you stand on, writes the three lines and "
              "commits them signed, naming each step as it starts; it pushes nothing and switches no branch: the answer counts once its commit is on origin's default branch. "
+             "An option that names changes is given with them, `--answer <id> accept \"<the option>\" \"<the changes>\"`, and written `accepted - <the option>: <the changes>`; "
+             "alone it is refused. "
              "An answer given already: `--answer <id> revoke \"<reason>\"`, or "
              "`--answer <id> accept|reject \"<option>\" --supersede` — the old one moves into the ship log. A failure after it wrote anything undoes it all and "
              "prints the answer and the command to give it again. The word it writes stays the button's; every reading names the answer's relation to the proposal")
