@@ -60,30 +60,47 @@ All are put as FM-175-Q1. The design settles each; the lane builds them. Its rev
 5. **Views:** `INDEX.md` and one `.md` view per tracker are built, committed and checked by bytes; the rest are
    computed when asked for. No view is ever read as input.
 6. **Two retrieval checks:** no reference that does not resolve, and no evidence file nothing names.
-7. **One schema:** `tracker-schema.toml`, shipped and pinned with the tool, printed by `--schema`; nothing else states
-   a field's shape or meaning.
-8. **The converter:**
-   - `--convert`, once per tracker;
-   - an old body that fits no field becomes an evidence file named by its hash;
+7. **One schema, in its own repository:** the schema and its cases are filed now in `shoalmark/tracker` as "tracker/1,
+   draft, not in force", and the tool reads the schema from there at a pin, so the shape has one source; `--schema`
+   prints it, and nothing else states a field's shape or meaning. The signed edition comes when the format has held.
+8. **The converter and the migration:**
+   - `--convert`, once per tracker; ids stay;
+   - nothing is lost: an old body that fits no field becomes an evidence file named by its hash, and the last `.md`
+     commit is tagged;
+   - conversion never waits on rewording: a closed tracker converts frozen, its old done items kept as history and not
+     checked again; an open tracker's items that fit no kind convert to a judgment with a named judge, to be made
+     exact later;
+   - earlier answers keep counting, by one migration commit the tool prepares and verifies, signed by the repository's
+     Owner, or the same step unsigned where an adopter does not sign;
+   - a dry run prints what it would change; the change is then one commit that can be reverted;
    - in a public tracker, a privately held finding is named only as "recorded privately", and the converter checks that
-     before the first push.
-9. **The order:**
-   - built and proven in one repository first, in today's in-repo mode, which stays supported;
-   - trackers move to a records repository with v0.21.0, not before, and only after the gate reads that repository at a
-     pin;
-   - the reading at a pin is its own lane, beside [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md)'s
-     folders.
+     before the first push;
+   - it is rehearsed before the release on this team's trackers and the organisation's, on an adopter-style
+     repository with in-repo trackers and no signing, and on a Subversion repository. How answers keep counting under
+     Subversion, which has no signed commits, is not designed yet.
+9. **The release and the order:**
+   - v0.21.0 carries the format with its converter, beside the roster
+     ([FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md)), so adopters migrate once;
+   - both formats are read throughout v0.21.x, so a repository converted halfway passes the gate; reading `.md` goes no
+     earlier than the release after;
+   - built and proven in one repository first, in today's in-repo mode, which stays a supported mode for adopters;
+   - the tool team's trackers move to a public records repository with v0.21.0, not before, and only after the gate
+     reads that repository at a pin; the reading at a pin is its own lane, beside
+     [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md)'s folders.
 
 ## Done when
 
 Each item names its commit or pull request when it lands.
 
 - [ ] **The Owner has answered FM-175-Q1.**
-- [ ] **The format, the schema and the canonical form**, each with its tests.
+- [ ] **The format, the schema and the canonical form**, each with its tests, the schema read from `shoalmark/tracker` at a
+  pin.
 - [ ] **The five kinds of done check**, each decided by the gate from data, each with a test that fails when it should.
 - [ ] **The writer and its replay**, with the Owner's signed edit never refused, each case with its test.
 - [ ] **The views and the two retrieval checks**, each with its test.
-- [ ] **The converter**, run on this repository's trackers, with a check that nothing private reaches a public tracker.
+- [ ] **The converter**, rehearsed on the three sets of decision 8 with no conversion stopped on an item that fits no
+  kind, and the check that nothing private reaches a public tracker.
+- [ ] **Both formats read** through v0.21.x, a repository converted halfway passing the gate, with its test.
 - [ ] **The review, at the tier the triage pass sets, is READY.**
 
 ## Ship log
