@@ -4357,7 +4357,7 @@ __DAY__
 // row = [id, tier, status, —, —, file, title, hook, num, —, —, —, [linked ids], epic, state, [#tags], [blocked_by], triaged, rank, board, [ready marks that fail — open work only], next move, intent (own or its story's), the story it is inherited from, [date, verdict, reason] of the newest pass, tokens to read it, [kind of problem, judged — else it is from the move], {derived values}, {their board display forms},
 //        [ask, ask-kind, ask-since, [held up], answer, proposal, [options], [why it was sent back], answered, answered-by, supersedes, [relation, n, its words], the ask's id — "" before ask ids],
 //        [the act owed to the Owner: what — for a promise, what they promised —, their answer, its date, due, window in minutes, the question it answered — FM-030; empty where none is owed],
-const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,SEAT=__SEATS__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,NAMED=__NAMED__,T=[
+const BLOB=__BLOB__,HOME=__HOME__,REG=__REG__,COLS=__COLS__,BCOLS=__BCOLS__,L=__LABELS__,PROOF=__PROOF__,SEAT=__SEATS__,ICO=__ICONS__,DAY=__DAYTEXT__,BRANCH=__BRANCH__,T=[
 __ROWS__
 ];
 const OPEN=new Set(["In Progress","Parked","Proposed","Reserved","?"]),$=i=>document.getElementById(i),
@@ -4431,8 +4431,10 @@ days=t=>(d=>d==d?d:null)(ago(t[29][2])),
 PHONE=matchMedia("(max-width:640px)").matches;           // a phone: the day's sessions start folded, their heading still carrying the counts
 // what the Owner typed goes into the copied command SINGLE-quoted: in "…" a shell runs a backtick and expands a `$` (R4)
 const sq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
+// the choices that name changes, as the rows carry them: the generator's rule found them, and the dialog asks this list alone
+const NAMED=__NAMED__;
 // the box a radio opens — the label of its hint: the answer itself for Other, the changes for an option that names them
-// (NAMED, the options the generator's rule found), and none for any other option: its box stays shut
+// (NAMED), and none for any other option: its box stays shut
 const boxOf=o=>o==null?"answer.change.hint":NAMED.includes(o)?"answer.changes.hint":"";
 // the hint the box shows: its own while it is open, Other's once it shuts
 const hintOf=o=>boxOf(o)||"answer.change.hint";

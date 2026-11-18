@@ -1557,11 +1557,12 @@ COUNT_LINE_EDITS = (
 # an option that names changes: the page's list of them (none in these fixtures), the box it opens, its hint, the message it
 # lacks, its row's cue and the command OK gives, built by functions the dialog calls; and its three labels
 ANSWER_CHANGES_EDITS = (
-    ('",T=[\n', '",NAMED=[],T=[\n'),
     ('const sq=s=>"\'"+String(s).replace(/\'/g,"\'\\\\\'\'")+"\'";\n',
      'const sq=s=>"\'"+String(s).replace(/\'/g,"\'\\\\\'\'")+"\'";\n'
+     "// the choices that name changes, as the rows carry them: the generator's rule found them, and the dialog asks this list alone\n"
+     'const NAMED=[];\n'
      '// the box a radio opens — the label of its hint: the answer itself for Other, the changes for an option that names them\n'
-     "// (NAMED, the options the generator's rule found), and none for any other option: its box stays shut\n"
+     '// (NAMED), and none for any other option: its box stays shut\n'
      'const boxOf=o=>o==null?"answer.change.hint":NAMED.includes(o)?"answer.changes.hint":"";\n'
      "// the hint the box shows: its own while it is open, Other's once it shuts\n"
      'const hintOf=o=>boxOf(o)||"answer.change.hint";\n'

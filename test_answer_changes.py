@@ -234,7 +234,7 @@ def rows_punctuation(area, add):
 NODE = r"""
 const fs = require("fs"), inp = JSON.parse(fs.readFileSync(0, "utf8")), s = inp.script;
 const grab = (re, what) => { const m = s.match(re); if (!m) throw new Error("not in the board's script: " + what); return m[1]; };
-const NAMED = JSON.parse(grab(/,NAMED=(\[[^\n]*?\]),T=\[/, "NAMED"));
+const NAMED = JSON.parse(grab(/\nconst NAMED=(\[[^\n]*?\]);\n/, "NAMED"));
 const sq = eval(grab(/\nconst sq=([^\n]*);\n/, "sq"));
 const boxOf = eval(grab(/\nconst boxOf=([^\n]*);\n/, "boxOf"));
 const answerOf = eval(grab(/\nconst answerOf=([\s\S]*?\]\});\n/, "answerOf"));
