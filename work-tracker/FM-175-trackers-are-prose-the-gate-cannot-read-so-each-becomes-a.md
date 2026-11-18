@@ -20,14 +20,14 @@ Seat: the Planner (a1730572) · filed 2026-11-18, on the coordinator's word of t
 ## What is true now
 
 **Filed 2026-11-18, Proposed, with FM-175-Q1 put; nothing is built.** The design is settled: a design round on 17
-November, a count of every `Done when` item in the tool team's, the organisation's and rust's trackers, and the Owner's rulings of 17 and 18 November on each of its open
+November, a count of every `Done when` item in this repository's trackers and those of the organisation's other teams, and the Owner's rulings of 17 and 18 November on each of its open
 questions. This tracker is the lane that builds it in `shoalmark.py`.
 
 - **Today:** a tracker is Markdown with front matter. The tool reads the front matter as data. It notes whether a body
   has a `Done when` heading, and verifies no item in it. The ship log is a table written by hand. What is true now, what
   blocks what and which commit met which item sit in prose, where agents read whole files to find them
   ([FM-170](FM-170-trackers-hold-the-state-agents-act-on-as-prose-so-every.md)).
-- **The count:** every `Done when` item in those three repositories' trackers was sorted into five kinds of check. Five checks in all fit
+- **The count:** every one of those `Done when` items was sorted into five kinds of check. Five checks in all fit
   none of them.
 
 ## Why
@@ -84,7 +84,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **The writer and its replay**, with the Owner's signed edit never refused, each case with its test.
 - [ ] **The views and the two retrieval checks**, each with its test.
 - [ ] **The converter**, run on this repository's trackers, with a check that nothing private reaches a public tracker.
-- [ ] **The critical review is READY.**
+- [ ] **The review, at the tier the triage pass sets, is READY.**
 
 ## Ship log
 
