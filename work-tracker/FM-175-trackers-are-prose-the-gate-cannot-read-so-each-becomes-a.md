@@ -20,14 +20,14 @@ Seat: the Planner (a1730572) · filed 2026-11-18, on the coordinator's word of t
 ## What is true now
 
 **Filed 2026-11-18, Proposed, with FM-175-Q1 put; nothing is built.** The design is settled: a design round on 17
-November, a count of every tracker's `Done when`, and the Owner's rulings of 17 and 18 November on each of its open
+November, a count of every `Done when` item in the tool team's, the organisation's and rust's trackers, and the Owner's rulings of 17 and 18 November on each of its open
 questions. This tracker is the lane that builds it in `shoalmark.py`.
 
 - **Today:** a tracker is Markdown with front matter. The tool reads the front matter as data. It notes whether a body
   has a `Done when` heading, and verifies no item in it. The ship log is a table written by hand. What is true now, what
   blocks what and which commit met which item sit in prose, where agents read whole files to find them
   ([FM-170](FM-170-trackers-hold-the-state-agents-act-on-as-prose-so-every.md)).
-- **The count:** every `Done when` item of every tracker was sorted into five kinds of check. Five checks in all fit
+- **The count:** every `Done when` item in those three repositories' trackers was sorted into five kinds of check. Five checks in all fit
   none of them.
 
 ## Why
@@ -37,7 +37,7 @@ each item of a `Done when` can say when a tracker is done; one that reads a tick
 
 ## Decisions, for the Owner
 
-All are put as FM-175-Q1. The design settles each; the lane builds them.
+All are put as FM-175-Q1. The design settles each; the lane builds them. Its review's tier is the triage pass's to set.
 
 1. **One file per tracker:** `<id>.toml`, of named tables, written by the tool in one canonical form. A bot's file
    that differs from that form fails. The Owner's signed edit gets the tool's own form-only commit after it, proven by
@@ -73,7 +73,6 @@ All are put as FM-175-Q1. The design settles each; the lane builds them.
      pin;
    - the reading at a pin is its own lane, beside [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md)'s
      folders.
-10. **The review:** critical, since it changes what the gate reads and refuses.
 
 ## Done when
 
