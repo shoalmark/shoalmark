@@ -1554,6 +1554,54 @@ COUNT_LINE_EDITS = (
 )
 
 
+# an option that names changes: the page's list of them (none in these fixtures), the box it opens, its hint, the message it
+# lacks, its row's cue and the command OK gives, built by functions the dialog calls; and its three labels
+ANSWER_CHANGES_EDITS = (
+    ('const sq=s=>"\'"+String(s).replace(/\'/g,"\'\\\\\'\'")+"\'";\n',
+     'const sq=s=>"\'"+String(s).replace(/\'/g,"\'\\\\\'\'")+"\'";\n'
+     "// the choices that name changes, as the rows carry them: the generator's rule found them, and the dialog asks this list alone\n"
+     'const NAMED=[];\n'
+     '// the box a radio opens — the label of its hint: the answer itself for Other, the changes for an option that names them\n'
+     '// (NAMED), and none for any other option: its box stays shut\n'
+     'const boxOf=o=>o==null?"answer.change.hint":NAMED.includes(o)?"answer.changes.hint":"";\n'
+     "// the hint the box shows: its own while it is open, Other's once it shuts\n"
+     'const hintOf=o=>boxOf(o)||"answer.change.hint";\n'
+     "// what the box lacks — the label of the board's own message — while an option that names changes is picked and the box is\n"
+     '// empty or blank; set on the box whenever it is so, the browser shows it, and not its own\n'
+     'const missingOf=(o,text)=>NAMED.includes(o)&&!String(text||"").trim()?"answer.changes.missing":"";\n'
+     "// an option's row: its words, then what it is, each in the dim of a note — recommended, and answered with the changes named in the box\n"
+     'const optRow=(o,i,prop)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`\n'
+     '  +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+(NAMED.includes(o)?` <span class="ddim">— ${l("answer.changes.cue")}</span>`:"")+`</span></label>`;\n'
+     "// OK's command and the line it writes, as [command, line] — or null where it builds none: an option that names changes is\n"
+     '// given with them, a second text, and without them there is no command. `o` is the option picked, null for Other and for a\n'
+     "// rejection, whose text is the box's. The option goes in VERBATIM — what the Owner picked is what the tracker records\n"
+     'const answerOf=(cmd,id,kind,o,text)=>{const q=s=>String(s).trim().replace(/"/g,"\'"),txt=q(text||""),named=kind=="accept"&&o!=null&&NAMED.includes(o);\n'
+     '  const chosen=o==null?txt:q(o),changes=named?txt.replace(/\\s+/g," "):"";\n'
+     '  return named&&!changes?null:[`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}${changes?" "+sq(changes):""}`,\n'
+     '    (kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\\s+/g," "):"")+(changes?": "+changes:"")]};\n'),
+    (
+     '  const rows=ordered.map((o,i)=>`<label class="dl"><input type="radio" name="how" value="${i}" required> <span>${esc(o)}`\n'
+     '      +(o==prop?` <span class="ddim">— ${l("answer.recommended")}</span>`:"")+`</span></label>`).join("")\n',
+     '  const rows=ordered.map((o,i)=>optRow(o,i,prop)).join("")\n'),
+    (
+     '  f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{ta.disabled=r.value!="other";ta.required=r.value=="other";if(!ta.disabled)ta.focus()});\n'
+     '  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const q=s=>String(s).trim().replace(/"/g,"\'");\n'
+     '    // the chosen option goes into the command VERBATIM — what the Owner picked is what the tracker records\n'
+     '    const pick=f.how?.value,txt=q(ta.value||""),chosen=kind=="reject"||pick=="other"||pick==null?txt:q(ordered[+pick]);\n'
+     '    const line=`${cmd} --answer ${id} ${kind}${chosen?" "+sq(chosen):""}`;\n'
+     '    sign(d,id,line,(kind=="accept"?"accepted":"rejected")+(chosen?" - "+chosen.replace(/\\s+/g," "):""))};\n',
+     '  const pick=()=>{const v=f.how?.value;return kind=="reject"||v=="other"||v==null?null:ordered[+v]};\n'
+     '  const need=()=>{const k=missingOf(pick(),ta.value);ta.setCustomValidity(k?L[k]??k:"")};\n'
+     '  f.querySelectorAll("[name=how]").forEach(r=>r.onchange=()=>{const b=boxOf(pick());ta.disabled=!b;ta.required=b=="answer.change.hint";ta.placeholder=L[hintOf(pick())]??hintOf(pick());need();if(b)ta.focus()});\n'
+     '  ta.oninput=need;\n'
+     '  f.onsubmit=e=>{if(e.submitter?.value!="ok")return;e.preventDefault();const made=answerOf(cmd,id,kind,pick(),ta.value);\n'
+     '    if(!made){need();ta.reportValidity();return}\n'
+     '    sign(d,id,made[0],made[1])};\n'),
+    ('"answer.change.hint": "your change, in one line — more goes in the tracker\'s body", ',
+     '"answer.change.hint": "your change, in one line — more goes in the tracker\'s body", "answer.changes.hint": "the changes you name, in one line (required) — more goes in the tracker\'s body", "answer.changes.missing": "this option is answered with the changes you name: write them in the box", "answer.changes.cue": "name them in the box", '),
+)
+
+
 def joined_transform(page):
     """The baseline's page as the join changes it: FM053_PAGE_EDITS, FM054_ON_A2_EDITS and PR_C_JOIN_EDITS applied in order, each to text that
     occurs exactly once — else None; then its rows, each ask cell carrying its id (`ask_id_rows`)."""
@@ -1561,7 +1609,8 @@ def joined_transform(page):
     if page is None:
         return None
     text = page.decode("utf-8")
-    for old, new in FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS + REVIEWS_ROW_EDITS + COUNT_LINE_EDITS:
+    for old, new in (FM054_ON_A2_EDITS + PR_C_JOIN_EDITS + BOARD_POLISH_EDITS + R4_BOARD_EDITS + R4_DIALOG_EDITS + ASK_ID_EDITS + GROUP_FOLD_EDITS + SEAT_ICON_EDITS + REVIEWS_ROW_EDITS + COUNT_LINE_EDITS
+                     + ANSWER_CHANGES_EDITS):
         if text.count(old) != 1:
             return None
         text = text.replace(old, new)

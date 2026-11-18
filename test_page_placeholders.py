@@ -5,7 +5,7 @@ data reads back as it went in.
   `PLACEHOLDER_RE` must find each of them.
 - A fixture repository puts the names of all the placeholders into each value an input can reach, in runs of names short enough for every
   input's limits, one fixture per run: `shoalmark.toml` (`name`, `tracker_dir`, `blob`, `[headings] acts`), the repository's `labels.yaml`, a
-  brand file the board no longer reads, the branch, `SHOALMARK_CMD`, `TRIAGE.md`, a tracker, a deriver's column, a commit's `Worktree:`
+  brand file the board no longer reads, the branch, `SHOALMARK_CMD`, `TRIAGE.md`, a tracker and its ask's option, a deriver's column, a commit's `Worktree:`
   trailer, and the folder of a harness log's first turn in the fixture's home folder.
 - Its page is built by the tool's explicit run, with HOME that folder, and read with no browser: the page is cut back into the template's
   own text and the value in each place, so each value is read from its own place. Each script value parses back to what went in, each HTML
@@ -158,7 +158,7 @@ def fixture(area, c, env):
     root, home, tdir = area / "repo", area / "home", area / "repo" / "docs" / f"T-{c}"
     given = {"run": c, "name": f"N-{c}", "blob": f"https://example.invalid/{c}/blob/main/", "acts": f"A-{c}", "branch": f"p/{c}", "cmd": f"python3 C-{c}",
              "column": f"X-{c}", "cell": f"V-{c}", "title": f"the work W-{c}", "hook": f"h-{c}", "path": f"H-{c}", "worktree": f"WT-{c}",
-             "folder": f"F-{c}", "triage": f"docs/T-{c}/TRIAGE.md", "gone": f"docs/T-{c}/brand/theme.css → GT-{c}",
+             "folder": f"F-{c}", "triage": f"docs/T-{c}/TRIAGE.md", "gone": f"docs/T-{c}/brand/theme.css → GT-{c}", "option": f"O-{c}, with the changes I name",
              "labels": {"tagline": f"L-{c}", "brand.gone": f"G-{c} {{0}}", "brand.gone.theme": f"GT-{c}", "read.self": f"R-{c}", "read.about": f"RA-{c}",
                         "read.git.branch": f"RB-{c} {{0}} @ {{1}} at {{2}}", "day.standup.title": f"D-{c}"}}
     (tdir / "brand").mkdir(parents=True)
@@ -168,7 +168,8 @@ def fixture(area, c, env):
         git(root, "config", k, v, env=env)
     (root / "shoalmark.toml").write_text(f'name = "{given["name"]}"\ntracker_dir = "docs/T-{c}"\nblob = "{given["blob"]}"\n[kinds]\nAP = "Work"\n'
                                          f'[headings]\nacts = "{given["acts"]}"\n', encoding="utf-8")
-    (tdir / "AP-001-x.md").write_text(f'---\nid: AP-001\nstatus: In Progress\nconsidered: none\nhook: "{given["hook"]}"\n---\n\n# AP-001 — {given["title"]}\n\n'
+    (tdir / "AP-001-x.md").write_text(f'---\nid: AP-001\nstatus: In Progress\nconsidered: none\nhook: "{given["hook"]}"\nnext: owner\nask: "Q?"\nask-kind: ruling\n'
+                                      f'ask-since: 2026-11-01\nask-proposal: "no"\nask-options: "{given["option"]} | no"\n---\n\n# AP-001 — {given["title"]}\n\n'
                                       "## What is true now\n\n**One thing is left.**\n\n## Done when\n\nit is.\n", encoding="utf-8")
     (tdir / "TRIAGE.md").write_text(f"# Triage\n\n## The current path\n\n{given['path']}\n", encoding="utf-8")
     (tdir / "brand" / "labels.yaml").write_text("".join(f'{k}: "{v}"\n' for k, v in given["labels"].items()), encoding="utf-8")
@@ -259,6 +260,7 @@ def reads_back(got, given, resume):
     safely("__REG__", reg)
     safely("__BLOB__", lambda v: (json.loads(v) == given["blob"], v))
     safely("__BRANCH__", lambda v: (json.loads(v) == given["branch"], v))
+    safely("__NAMED__", lambda v: (json.loads(v) == [given["option"]], v))
 
     def rows(v):
         row = next(r for r in json.loads("[" + v + "]") if r[0] == "AP-001")
