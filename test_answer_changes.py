@@ -126,11 +126,12 @@ ASKS = {
 }
 
 
-def asked_repo(area, name):
+def asked_repo(area, name, asks=None):
     """A repository whose `main` holds one put ask per tracker of ASKS — options OPTIONS, the proposal *yes, as proposed* unless named —
     and a branch `ans` cut from it."""
-    r = ids.Repo(area / name, {tid: ids.text(tid) for tid in ASKS})
-    for tid, kw in ASKS.items():
+    asks = ASKS if asks is None else asks
+    r = ids.Repo(area / name, {tid: ids.text(tid) for tid in asks})
+    for tid, kw in asks.items():
         r.write(tid, ids.text(tid, ids.ask(aid=f"{tid}-Q1", q=f"Ship {tid}?", options=" | ".join(OPTIONS), **dict({"proposal": "yes, as proposed"}, **kw))))
     r.commit("the asks, put")
     ids.git(r.root, "push", "-q", "origin", "main")
@@ -138,8 +139,8 @@ def asked_repo(area, name):
     return r
 
 
-def state(r):
-    return (r.head(), ids.git(r.root, "status", "--porcelain"), {tid: r.read(tid) for tid in ASKS})
+def state(r, asks=None):
+    return (r.head(), ids.git(r.root, "status", "--porcelain"), {tid: r.read(tid) for tid in (ASKS if asks is None else asks)})
 
 
 def line(r, tid):
@@ -199,6 +200,32 @@ def rows_command(area, add):
         verdict, rest = (args[0], args[1:]) if args[0] == "reject" else ("accept", args)
         said = ids.run(r.root, "--answer", f"{tid}-Q1", verdict, *rest)
         add(f"the command · {verdict} {' '.join(repr(a) for a in rest)}: written as before, `{want}`", said[0] == 0 and line(r, tid) == f'answer: "{want}"',
+            ids.seen(said) + " · " + line(r, tid))
+
+
+# the option's words with nothing but spaces and punctuation around them: the option alone, refused; and spellings that are
+# not the option's words alone, written as before
+ALONE = ([NAMING + "."], [NAMING + ","], [NAMING + ";"], [NAMING.replace(", ", " ")], [NAMING + " :"], [NAMING + "::"], ["  " + NAMING.upper() + "  "],
+         [NAMING + " -"], [NAMING + ": ", "  "], [NAMING, ":"], ["- " + NAMING + "!"])
+WRITTEN_AS_BEFORE = (([NAMING[:-1]], f"accepted - {NAMING[:-1]}"), ([NAMING + "x"], f"accepted - {NAMING}x"),
+                     ([NAMING.upper() + "drop"], f"accepted - {NAMING.upper()}drop"), ([NAMING.upper() + ": drop X"], f"accepted - {NAMING}: drop X"),
+                     ([NAMING.upper() + ":drop X"], f"accepted - {NAMING}: drop X"), ([NAMING + " - drop X"], f"accepted - {NAMING}: - drop X"))
+PUNCT_ASKS = {f"FM-1{n:02d}": {} for n in range(len(ALONE) + len(WRITTEN_AS_BEFORE))}
+
+
+def rows_punctuation(area, add):
+    r = asked_repo(area, "punct", PUNCT_ASKS)
+    tids = iter(PUNCT_ASKS)
+    for args in ALONE:
+        tid, before = next(tids), state(r, PUNCT_ASKS)
+        said = ids.run(r.root, "--answer", f"{tid}-Q1", "accept", *args)
+        add(f"the command · the option's words, only spaces and punctuation around them, {args!r}: the option alone, refused, nothing written",
+            ids.refused(said, f"{NAMING!r} names changes, and none are given", "Nothing was written") and state(r, PUNCT_ASKS) == before,
+            ids.seen(said) + " · " + line(r, tid))
+    for args, want in WRITTEN_AS_BEFORE:
+        tid = next(tids)
+        said = ids.run(r.root, "--answer", f"{tid}-Q1", "accept", *args)
+        add(f"the command · {args!r}, not the option's words alone: written as before, `{want}`", said[0] == 0 and line(r, tid) == f'answer: "{want}"',
             ids.seen(said) + " · " + line(r, tid))
 
 
@@ -330,6 +357,8 @@ MUTANTS = (
     ("a trailing colon read as changes", "changes_given", 'plain[len(core):].lstrip(" :").strip()', 'plain[len(core):].lstrip(" ").strip()', rows_command),
     ("the option written as typed", "changes_given", 'return option, plain[len(core):]', 'return plain[:len(core)], plain[len(core):]', rows_command),
     ("words after the option, past a space, not read", "changes_given", 'in ("", " ", ":")', 'in ("", ":")', rows_command),
+    ("the option's words, punctuation aside, not read as the option", "changes_given", "if words and words == re.findall(", "if False and words == re.findall(",
+     rows_punctuation),
 )
 PAGE_MUTANTS = (
     ("the dialog builds a command with the box empty", "return named&&!changes?null:[", "return ["),
@@ -371,7 +400,7 @@ def run_mutants(*, results=None):
     return results
 
 
-ROWS = (rows_rule, rows_relation, rows_command, rows_dialog)
+ROWS = (rows_rule, rows_relation, rows_command, rows_punctuation, rows_dialog)
 
 
 def run_checks(*, results=None, mutants=True):

@@ -1901,11 +1901,19 @@ def changes_given(t, text):
     """The words after `accept`, joined, read as `--answer` reads them for an option that names changes: the longest such
     option of the ask the text begins with — compared in any case, the option's trailing colons and spaces aside — followed by
     the text's end, a space or a colon. As (the option as the ask holds it, normalised; the rest, its leading colons and
-    spaces off, `"` as typed — "" where the text is the option alone), or None where the text begins with no such option."""
+    spaces off, `"` as typed — "" where the text is the option alone), or None where the text begins with no such option.
+    The option alone is also the option's words with nothing but spaces and punctuation around them, in any case — the option
+    followed by nothing but those among them."""
     plain = " ".join(str(text or "").split())
     norm = plain.replace('"', "'")                       # `answer_norm` of it, place for place
+    options = [answer_norm(o) for o in t.get("ask_options") or []]
+    if norm in options and not names_changes(norm):      # another option, exactly as the ask holds it, is that option
+        return None
+    words = re.findall(r"\w+", norm.casefold())
     for _n, option in sorted(changes_options(t), key=lambda p: -len(p[1])):
         core = option.rstrip(": ")
+        if words and words == re.findall(r"\w+", option.casefold()):
+            return option, ""
         if norm[:len(core)].casefold() == core.casefold() and norm[len(core):len(core) + 1] in ("", " ", ":"):
             return option, plain[len(core):].lstrip(" :").strip()
     return None

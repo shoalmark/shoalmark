@@ -246,8 +246,8 @@ Eine Option, die *with the changes I name* lautet, beantwortest du mit den Ände
 beides, `--answer AP-007-Q1 accept "<die Option>" "<die Änderungen>"`, und die signierte Zeile hält beides fest,
 `accepted - <die Option>: <die Änderungen>`, die Option so, wie die Frage sie enthält. Der Befehl findet die Option am
 Anfang dessen, was du ihm gibst, gleich in welcher Groß- und Kleinschreibung, mit einem Doppelpunkt danach oder ohne. Die
-Option ohne etwas danach wird abgewiesen, in jeder Schreibung und auch mit einem Doppelpunkt am Ende, und nichts wird
-geschrieben. Die Regel:
+Option ohne etwas danach wird abgewiesen – in jeder Schreibung, mit einem Doppelpunkt oder nur Satzzeichen danach,
+ebenso ihre Wörter ohne ihre Satzzeichen –, und nichts wird geschrieben. Die Regel:
 eine Option von `ask-options:` – oder der Vorschlag, wo es keine gibt –, die die englischen Wörter *with the changes I
 name* enthält, gleich in welcher Groß- und Kleinschreibung, als eigene Wörter (kein ASCII-Buchstabe, keine Ziffer und
 kein Unterstrich direkt davor oder danach), an beliebiger Stelle. Nicht: *with the change I name*, *with changes I name*,
