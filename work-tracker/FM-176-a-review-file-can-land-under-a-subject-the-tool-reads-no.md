@@ -18,7 +18,7 @@ not into the memory of one harness. This is that check for the verdict word.
 - **How the tool reads a verdict today:** the queue and the gate take a commit as a verdict when its subject carries
   one of the words the tool reads (`READY`, `READY WITH FINDINGS`, `READY TO TAG`, `NOT READY`) and its body a
   `Reviewed:` trailer naming the commit it read. A review's own file lives in the review folder (`[paths] reviews`,
-  `evidence/reviews/` by default).
+  `evidence/reviews/` by default), or is a `review*.md` anywhere under the tracker folder's `evidence/`.
 - **What nothing checks:** that a commit which adds a review file carries that word in its subject. Without it the
   review is filed, and the queue still says "no verdict" on the head it read.
 

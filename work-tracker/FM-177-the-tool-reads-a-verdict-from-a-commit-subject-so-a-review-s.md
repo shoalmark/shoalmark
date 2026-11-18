@@ -3,7 +3,7 @@ id: FM-177
 status: Proposed
 considered: FM-087, FM-175, FM-176
 tags: process
-hook: "The tool takes a verdict from a commit's subject: its verdict word, beside a Reviewed: trailer. A review's file says the same in prose the tool does not read. On the Owner's word of 18 November, with v0.21.0 the tool reads the verdict from the review file's own data header: the verdict word, the commit it read, the tier and the finding ids, in a small header with a schema; the narrative below stays prose."
+hook: "The tool takes a verdict from a commit's subject: its verdict word, beside a Reviewed: trailer. A review's file says the same in prose the tool does not read. On the Owner's word of 18 November, with v0.21.0 the tool reads the verdict from the review file's own data header: the verdict word, the commit it read and the finding ids, in a small header with a schema, the narrative below staying prose. This tracker adds the tier."
 ---
 
 # FM-177 — the tool reads a verdict from a commit subject, so a review's own data header decides nothing
