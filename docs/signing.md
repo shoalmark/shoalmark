@@ -221,9 +221,10 @@ its work item's id: `--answer AP-007 accept`.
 
 An option that reads *with the changes I name* is answered with the changes you name. Picking it opens the dialog's
 box, and OK gives no command until the box holds them; the command carries both, `--answer AP-007-Q1 accept "<the
-option>" "<the changes>"`, and the signed line records both, `accepted - <the option>: <the changes>`. The option alone
-is refused, and nothing is written. The rule is in the README's answer row: those words, in any case, as words of their
-own, anywhere in the option.
+option>" "<the changes>"`, and the signed line records both, `accepted - <the option>: <the changes>`, the option as the
+ask holds it. The command finds the option at the start of what you give it in any case, with a colon after it or not.
+The option with nothing after it, in any case and with a trailing colon too, is refused, and nothing is written. The rule
+is in the README's answer row: those words, in any case, as words of their own, anywhere in the option.
 
 ## Your intent and your current path — only your signed commit changes them
 
