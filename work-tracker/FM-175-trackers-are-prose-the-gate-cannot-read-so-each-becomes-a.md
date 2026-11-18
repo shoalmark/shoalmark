@@ -19,7 +19,9 @@ Seat: the Planner (a1730572) · filed 2026-11-18, on the coordinator's word of t
 
 ## What is true now
 
-**Filed 2026-11-18, Proposed, with FM-175-Q1 put; nothing is built.** The design is settled: a design round on 17
+**Filed 2026-11-18, Proposed, with FM-175-Q1 put; nothing is built.** The schema and its cases are being filed in
+`shoalmark/tracker` as a draft not in force, and the tool team's trackers move to a public records repository with
+v0.21.0. The design is settled: a design round on 17
 November, a count of every `Done when` item in this repository's trackers and those of the organisation's other teams, and the Owner's rulings of 17 and 18 November on each of its open
 questions. This tracker is the lane that builds it in `shoalmark.py`.
 
@@ -72,10 +74,11 @@ All are put as FM-175-Q1. The design settles each; the lane builds them. Its rev
      exact later;
    - earlier answers keep counting, by one migration commit the tool prepares and verifies, signed by the repository's
      Owner, or the same step unsigned where an adopter does not sign;
-   - a dry run prints what it would change; the change is then one commit that can be reverted;
+   - a dry run prints what it would change; the change is then one commit that can be reverted (the v0.21.0 brief's
+     point, beyond the four the Owner agreed);
    - in a public tracker, a privately held finding is named only as "recorded privately", and the converter checks that
      before the first push;
-   - it is rehearsed before the release on this team's trackers and the organisation's, on an adopter-style
+   - it is rehearsed before the release (likewise the brief's) on this team's trackers and the organisation's, on an adopter-style
      repository with in-repo trackers and no signing, and on a Subversion repository. How answers keep counting under
      Subversion, which has no signed commits, is not designed yet.
 9. **The release and the order:**
@@ -83,7 +86,8 @@ All are put as FM-175-Q1. The design settles each; the lane builds them. Its rev
      ([FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md)), so adopters migrate once;
    - both formats are read throughout v0.21.x, so a repository converted halfway passes the gate; reading `.md` goes no
      earlier than the release after;
-   - built and proven in one repository first, in today's in-repo mode, which stays a supported mode for adopters;
+   - built and proven in one repository first, in today's in-repo mode, which stays supported (the Owner's word of 18
+     November: "in-repo trackers for adopters are fine");
    - the tool team's trackers move to a public records repository with v0.21.0, not before, and only after the gate
      reads that repository at a pin; the reading at a pin is its own lane, beside
      [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md)'s folders.
@@ -101,6 +105,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **The converter**, rehearsed on the three sets of decision 8 with no conversion stopped on an item that fits no
   kind, and the check that nothing private reaches a public tracker.
 - [ ] **Both formats read** through v0.21.x, a repository converted halfway passing the gate, with its test.
+- [ ] **The tool team's trackers** in their public records repository with v0.21.0, after the gate reads it at a pin.
 - [ ] **The review, at the tier the triage pass sets, is READY.**
 
 ## Ship log

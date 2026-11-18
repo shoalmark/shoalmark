@@ -29,8 +29,9 @@ commit that lands it, where the fix is one word.
 
 ## Decisions
 
-1. **The commit hook** refuses a commit that adds a file under the review folder when its subject carries none of the
-   verdict words the tool reads.
+1. **The commit hook** refuses a commit that adds a review file when its subject carries none of the verdict words the
+   tool reads. A review file is one the queue counts as a verdict's own: under the review folder, or a `review*.md`
+   anywhere under the tracker folder's `evidence/`.
 2. **Its refusal prints the wording** the tool reads, and the subject forms it accepts, so the fix is plain.
 3. **A test** for each word and for a subject with none, with its mutant; the gate's own reading is unchanged.
 
