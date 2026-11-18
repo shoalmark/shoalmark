@@ -18,8 +18,8 @@ dialog on main at `df511a7`, beside a lane that changes the same dialog
 
 - **What the check measured:** at 320 px the dialog's OK button runs past the dialog's own left edge, by about 21 px
   in German (rendered with Other picked) and 12.5 px in English (the check's fit probes).
-- **Where it is not:** FM-172's lane changes the dialog's box, its hint and a cue on the option's row, and leaves its
-  buttons as they are. This item is kept apart so that it does not ride in that lane.
+- **Where it is not:** FM-172 changes the dialog's text box for an option that names changes (its decision 1). This
+  item is kept apart so that it does not ride in that lane.
 - **Seen beside it, not filed here:** a picked radio shows a bare dot rather than a radio mark. That is another item if
   it is filed.
 
