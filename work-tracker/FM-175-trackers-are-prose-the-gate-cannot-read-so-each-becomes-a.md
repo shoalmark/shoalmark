@@ -3,7 +3,7 @@ id: FM-175
 status: Proposed
 considered: FM-033, FM-139, FM-161, FM-162, FM-165, FM-166, FM-170
 tags: process
-next: owner
+next: build
 hook: "A tracker's Done when, its ship log and much of its state are prose: the gate cannot verify one box, and agents read whole files to find what they act on. The design, settled by the Owner on 17 and 18 November: each tracker becomes one .toml file in one canonical form, its Done when five kinds of check the gate decides from data, every write a command the gate replays, the Owner's signed edit never refused, views built from the files. The proposal, put to the Owner as FM-175-Q1: the lane in v0.21.0, built in one repository first."
 ask-id: FM-175-Q1
 ask: "Do you take FM-175's lane into v0.21.0 as the settled design gives it: each tracker one .toml file the tool writes and checks, five kinds of done check, writes by command only with your signed edit never refused, built in one repository first?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-18
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-19
+answered-by: holgo99
 ---
 
 # FM-175 — trackers are prose the gate cannot read, so each becomes a toml file the tool writes and checks
