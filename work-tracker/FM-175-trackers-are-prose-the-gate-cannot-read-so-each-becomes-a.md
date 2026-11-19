@@ -1,19 +1,12 @@
 ---
 id: FM-175
-status: Proposed
+status: In Progress
 considered: FM-033, FM-139, FM-161, FM-162, FM-165, FM-166, FM-170
 tags: process
 next: build
+triaged: 2026-11-19
+tier: P2
 hook: "A tracker's Done when, its ship log and much of its state are prose: the gate cannot verify one box, and agents read whole files to find what they act on. The design, settled by the Owner on 17 and 18 November: each tracker becomes one .toml file in one canonical form, its Done when five kinds of check the gate decides from data, every write a command the gate replays, the Owner's signed edit never refused, views built from the files. The proposal, put to the Owner as FM-175-Q1: the lane in v0.21.0, built in one repository first."
-ask-id: FM-175-Q1
-ask: "Do you take FM-175's lane into v0.21.0 as the settled design gives it: each tracker one .toml file the tool writes and checks, five kinds of done check, writes by command only with your signed edit never refused, built in one repository first?"
-ask-kind: ruling
-ask-since: 2026-11-18
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-19
-answered-by: holgo99
 ---
 
 # FM-175 — trackers are prose the gate cannot read, so each becomes a toml file the tool writes and checks
@@ -21,6 +14,9 @@ answered-by: holgo99
 Seat: the Planner (a1730572) · filed 2026-11-18, on the coordinator's word of that day.
 
 ## What is true now
+
+**2026-11-19 — FM-175-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
+keep P2, In Progress; nothing is built.** The lane is in v0.21.0, as the answer gives it.
 
 **Filed 2026-11-18, Proposed, with FM-175-Q1 put; nothing is built.** The schema and its cases are being filed in
 `shoalmark/tracker` as a draft not in force, and the tool team's trackers move to a public records repository with
@@ -111,8 +107,16 @@ Each item names its commit or pull request when it lands.
 - [ ] **The tool team's trackers** in their public records repository with v0.21.0, after the gate reads it at a pin.
 - [ ] **The review, at the tier the triage pass sets, is READY.**
 
+## Asks
+
+**FM-175-Q1** · 2026-11-19 · Do you take FM-175's lane into v0.21.0 as the settled design gives it: each tracker one .toml file the tool writes and checks, five kinds of done check, writes by command only with your signed edit never refused, built in one repository first?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 3d50467 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-19 | FM-175-Q1 answered, yes, as proposed; judged before its first build commit, keep P2, In Progress; the lane in v0.21.0. Records only. |
 | 2026-11-18 | Filed, Proposed, with FM-175-Q1 put: the lane that makes each tracker one toml file the tool writes and checks, as the design settled by the Owner gives it, in v0.21.0. Records only. |
