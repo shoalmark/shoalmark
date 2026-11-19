@@ -28,8 +28,8 @@ Newest first — one paragraph per pass: its date, what it changed, its workshee
 
 **2026-11-19 — a build judged before its first commit, a partial pass** (Planner seat, on the coordinator's word of
 that day; the worksheet `work-tracker/evidence/triage/triage-2026-11-19.md`, one row of one hundred and five filled
-and applied by the command): **FM-175 keep P2** — put in v0.21.0, the release after v0.20.3, by its signed answer of
-that day. The other rows wait for the next full pass.
+and applied by the command): **FM-175 keep P2** — put in v0.21.0 by its signed answer of that day. The other rows
+wait for the next full pass.
 
 **2026-11-16 — three more builds judged before their first commits, a partial pass** (Planner seat, on the coordinator's
 word of that day; the same worksheet `work-tracker/evidence/triage/triage-2026-11-16.md`, three more rows filled and
