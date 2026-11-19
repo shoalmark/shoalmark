@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-175](FM-175-trackers-are-prose-the-gate-cannot-read-so-each-becomes-a.md) | P2 | A tracker's Done when, its ship log and much of its state are prose: the gate cannot verify one box, and agents read wh… | In Progress | progress | 2026-11-19 |
 | [FM-173](FM-173-a-signed-answer-this-clone-cannot-verify-reads-as-a-missing.md) | P1 | In a clone with no signers file set up, --check reads a signed answer it cannot verify as no answer at all: a ledger-in… | In Progress | progress | 2026-11-16 |
 | [FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) | P1 | An ask's option can read yes, with the changes I name, but the Board's answer dialog opens its text box only for an ans… | In Progress | progress | 2026-11-16 |
 | [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) | P1 | Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/… | In Progress | progress | 2026-11-16 |
@@ -58,7 +59,6 @@
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
 | [FM-177](FM-177-the-tool-reads-a-verdict-from-a-commit-subject-so-a-review-s.md) | — | The tool takes a verdict from a commit's subject: its verdict word, beside a Reviewed: trailer. A review's file says th… | Proposed | triage | — |
 | [FM-176](FM-176-a-review-file-can-land-under-a-subject-the-tool-reads-no.md) | — | The tool reads a verdict from a commit's subject, by its verdict word, beside its Reviewed: trailer. Nothing checks tha… | Proposed | triage | — |
-| [FM-175](FM-175-trackers-are-prose-the-gate-cannot-read-so-each-becomes-a.md) | — | A tracker's Done when, its ship log and much of its state are prose: the gate cannot verify one box, and agents read wh… | Proposed | triage | — |
 | [FM-174](FM-174-the-answer-dialog-s-ok-button-runs-past-the-dialog-s-left.md) | — | On a phone, 320 px wide, the Board's answer dialog draws its OK button past the dialog's left edge: by about 21 px in G… | Proposed | triage | — |
 | [FM-171](FM-171-reviewers-who-know-a-spec-s-design-read-past-what-its-text.md) | — | Reviewers who know a spec's design read past what its text leaves out. A fresh session given only sealanes/1's text bui… | Proposed | triage | — |
 | [FM-170](FM-170-trackers-hold-the-state-agents-act-on-as-prose-so-every.md) | — | Trackers hold much of the state agents act on as prose: a row's release, what blocks what, the Done when items and thei… | Proposed | triage | — |
