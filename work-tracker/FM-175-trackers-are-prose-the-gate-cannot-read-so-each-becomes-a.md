@@ -16,9 +16,7 @@ Seat: the Planner (a1730572) · filed 2026-11-18, on the coordinator's word of t
 ## What is true now
 
 **2026-11-19 — FM-175-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
-keep P2, In Progress; nothing is built.** The lane is in v0.21.0, beside the roster. It reads trackers with the TOML
-reader of [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md)'s lanes, so it builds after
-them.
+keep P2, In Progress; nothing is built.** The lane is in v0.21.0, as the answer gives it.
 
 **Filed 2026-11-18, Proposed, with FM-175-Q1 put; nothing is built.** The schema and its cases are being filed in
 `shoalmark/tracker` as a draft not in force, and the tool team's trackers move to a public records repository with
@@ -120,5 +118,5 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
-| 2026-11-19 | FM-175-Q1 answered, yes, as proposed; judged before its first build commit, keep P2, In Progress; the lane in v0.21.0, built after FM-166's lanes. Records only. |
+| 2026-11-19 | FM-175-Q1 answered, yes, as proposed; judged before its first build commit, keep P2, In Progress; the lane in v0.21.0. Records only. |
 | 2026-11-18 | Filed, Proposed, with FM-175-Q1 put: the lane that makes each tracker one toml file the tool writes and checks, as the design settled by the Owner gives it, in v0.21.0. Records only. |
