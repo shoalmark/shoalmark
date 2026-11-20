@@ -3,7 +3,7 @@ id: FM-162
 status: Proposed
 considered: FM-019, FM-024, FM-028, FM-031, FM-037, FM-062, FM-078, FM-104, FM-119, FM-121, FM-125
 tags: process
-next: owner
+next: build
 hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q3: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks installed in its administrator layer, where a seat cannot change them, and names the rule and a safe alternative."
 ask-id: FM-162-Q3
 ask: "Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default for seats and installed in each harness's administrator layer, a critical review, and the lane in a release after v0.20.3?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-20
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-20
+answered-by: holgo99
 ---
 
 # FM-162 — the acts a seat must never do are held only as prose, so one slips through now and then and is caught after the fact
