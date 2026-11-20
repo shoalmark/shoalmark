@@ -3,7 +3,6 @@ id: FM-105
 status: Proposed
 considered: FM-060, FM-050, FM-015, FM-017
 tags: bug
-epic: FM-139
 hook: "R4 removed the answer's refusal record, but no test runs the case FM-060 names: an answer refused at signing, then the Owner's signed answer on the same branch, with no unsigned Owner commit left and --check passing R14."
 ---
 
@@ -36,3 +35,4 @@ coming back unseen.
 |---|---|
 | 2026-11-03 | Filed for v0.20.3 from FM-060's first item, on the Owner's word of 2 November. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |

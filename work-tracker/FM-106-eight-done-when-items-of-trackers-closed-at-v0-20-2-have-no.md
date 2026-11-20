@@ -3,7 +3,6 @@ id: FM-106
 status: Proposed
 considered: FM-063, FM-060, FM-058, FM-053, FM-062, FM-037, FM-033, FM-086, FM-087
 tags: process
-epic: FM-139
 hook: "Eight Done when items of trackers that close at v0.20.2 have no evidence in the record: each is built or decided, but what would show it is not where the tracker can name it. They are listed here, so the trackers can close for what is proven."
 ---
 
@@ -42,3 +41,4 @@ the item waits here, in one place, instead of holding eight trackers open.
 |---|---|
 | 2026-11-03 | Filed for v0.20.3, as evidence owed at v0.20.2's close, on the Owner's word of 2 November. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |

@@ -3,7 +3,6 @@ id: FM-119
 status: Proposed
 considered: FM-062, FM-118
 tags: process
-epic: FM-139
 hook: "Five rules are held only as prose: the ship log only grows, triage rows only grow, no commit-message line begins with ---, the allowed test runner, and no home folder's path in public text. Each should be a check."
 ---
 
@@ -35,3 +34,4 @@ A rule held only as prose holds while every agent remembers it. A check holds it
 |---|---|
 | 2026-11-03 | Filed from FM-062's split, for v0.20.3. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |

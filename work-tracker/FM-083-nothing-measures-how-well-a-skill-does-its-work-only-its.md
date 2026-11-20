@@ -3,7 +3,6 @@ id: FM-083
 status: Proposed
 considered: FM-062, FM-065
 tags: research
-epic: FM-139
 next: build
 hook: "nothing measures how well a skill does its work, only its structure and its proof"
 ask: "Is FM-083's suite for skills allocated to v0.20.3, as FM-083's section The allocation, for the Owner sets out?"
@@ -69,5 +68,6 @@ when it is wrong.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-13 | `epic: FM-139`: a chapter of v0.20.3's epic, as the Owner's answer of 28 October allocated it. Records only. |
 | 2026-10-27 | Filed, Proposed, on the Owner's word of 27 October, with one ruling ask: its allocation to v0.20.3. |

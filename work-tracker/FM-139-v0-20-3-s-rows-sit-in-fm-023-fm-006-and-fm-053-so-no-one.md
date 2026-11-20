@@ -11,6 +11,30 @@ hook: "v0.20.3's allocation in one place: the rows and trackers the release hold
 
 ## What is true now
 
+**2026-11-20 — v0.20.3's scope is four items, on the Owner's word of 18, 19 and 20 November,** through the coordinator.
+It replaces the order of 16 November below. The lists below no longer say what v0.20.3 holds; they stay as the record of
+what was planned.
+- **[FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) and
+  [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md):** "A small v0.20.3: FM-172 and FM-169, nothing
+  else" (18 November). FM-169's lane comes with the Owner's two signed commits before the release pull request.
+- **The security branch,** fixed at the critical tier and pushed at the release sitting (18 November):
+  - RV-9001: recorded privately.
+  - RV-9002: recorded privately.
+  - RV-9007: recorded privately.
+  - RV-9008: recorded privately.
+- **The top-bar fix, as its own lane,** with the Designer's check, landed before the release head's final run (19
+  November).
+- **The roster and the tracker format stay together in v0.21.0** (18 November):
+  [FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md) and
+  [FM-175](FM-175-trackers-are-prose-the-gate-cannot-read-so-each-becomes-a.md). FM-166 leaves this epic for it.
+- **Every other chapter leaves this epic in this commit,** and stays filed for a later release's allocation: FM-083,
+  FM-084, FM-089, FM-099, FM-100, FM-101, FM-102, FM-104, FM-105, FM-106, FM-115, FM-119, FM-120, FM-121, FM-123,
+  FM-140, FM-141, FM-143, FM-149, FM-150, FM-151, FM-159, FM-160, FM-161, FM-162 and FM-173. FM-161 and FM-173 had
+  entered v0.20.3 by their own signed answers; the Owner's word of 18 November came after them. FM-089's parts stay
+  under FM-089, and FM-130 to FM-133 under FM-088.
+- **The rest leaves v0.20.3 the same way:** FM-163, FM-164 and FM-167, which carry no `epic:`, and every row below. The
+  rows stay listed here as the record until a later allocation places them.
+
 **2026-11-16 — four more answers, and the order of the work,** on the coordinator's word of that day. FM-161-Q1,
 FM-172-Q1 and FM-173-Q1 put [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md),
 [FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) and
@@ -222,8 +246,8 @@ in v0.20.3 and its stage 2 in the next release, and each stands with this ask's 
   - the pinned-zones block pins the tool's day in a way Python 3.15 honours, so it runs there instead of
     skipping;
   - a timeout in the CI install check is recorded as one FAIL line, naming the step and its limit, and the run
-    goes on. The landing block's mutant helper records a missing target as a problem, instead of stopping the
-    run.
+    goes on; the `pwsh` limit allows for a cold start. The landing block's mutant helper records a missing target
+    as a problem, instead of stopping the run.
 
 **Four Designer findings on the Board's session rows, for v0.20.3,** on the Owner's word of 2 November:
 
@@ -285,3 +309,5 @@ at its allocation sitting and at its tag.
 | 2026-11-13 | FM-166-Q3 and FM-100-Q3 put beside FM-139-Q1, each standing with its answer, since the open asks are answered together at one sign-off. Records only. |
 | 2026-11-16 | FM-139-Q1 answered, yes, as proposed, and acted on: FM-166 and FM-169 join the epic, FM-118 leaves it, FM-118 and FM-076 move to v0.20.4. Records only. |
 | 2026-11-16 | FM-161, FM-172 and FM-173 join v0.20.3 by their answers; FM-100's stage 1 stays, stage 2 moves to the next release; the order of the work. Records only. |
+| 2026-11-20 | RV-4422: the third test-suite row adds that the `pwsh` limit allows for a cold start, folded from #274. Records only. |
+| 2026-11-20 | v0.20.3's scope is four items, on the Owner's word of 18 to 20 November: FM-172, FM-169, the security branch and the top-bar fix; the roster and the tracker format stay together in v0.21.0; 27 chapters leave the epic, and FM-163, FM-164, FM-167 and the rows leave v0.20.3. Records only. |
