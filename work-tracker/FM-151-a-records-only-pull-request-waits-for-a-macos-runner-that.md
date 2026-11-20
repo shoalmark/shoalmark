@@ -6,15 +6,6 @@ tags: process
 epic: FM-139
 next: build
 hook: "A pull request that changes records only still starts all five required jobs on their own images, though four of them only skip their steps. On 4 November the macOS job of two such runs waited about ten minutes for a runner, then ran under 20 seconds."
-ask-id: FM-151-Q1
-ask: "Does macOS stay a required check for pull requests that change code?"
-ask-kind: ruling
-ask-since: 2026-11-04
-ask-options: "yes, keep it required | required only before a release"
-ask-proposal: "yes, keep it required"
-answer: "accepted - yes, keep it required"
-answered: 2026-11-04
-answered-by: holgo99
 ---
 
 # FM-151 — a records-only pull request waits for a macOS runner that runs no test
@@ -111,10 +102,18 @@ Each item names its commit, pull request or run when it lands.
 - [ ] **A code pull request still runs all five on their own images.**
 - [ ] **The pins hold,** and the mutant that classes a non-records path as records fails.
 
+## Asks
+
+**FM-151-Q1** · 2026-11-04 · Does macOS stay a required check for pull requests that change code?
+**answered** — accepted - yes, keep it required · holgo99
+**relation** — accepted the proposal
+**signed** — 84be8aa · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-151-Q1 cleared, with its record under *Asks*; `next: build` stands. Records only. |
 | 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |
 | 2026-11-04 | Done when: the Owner's answer to FM-151-Q1 (#265). Records only. |

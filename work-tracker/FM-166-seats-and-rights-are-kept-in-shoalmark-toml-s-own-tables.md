@@ -8,15 +8,6 @@ next: build
 triaged: 2026-11-16
 tier: P1
 hook: "Who sits where and what each seat may change: shoalmark reads it from [seats] and [rights] in shoalmark.toml, and hail/1's first edition defines a signed roster of its own. A repository that adopts both holds it twice, and the two can drift. The proposal: one [roster] table, defined by sealanes/1, in the adopter's own configuration, one per repository and found in a fixed order. In shoalmark.toml it replaces [seats] and [rights], with a migration. FM-166-Q2 was withdrawn, since sealanes/1's design supersedes decisions 5, 8 and 9. The changed question is put to the Owner as FM-166-Q3, with the lane in v0.20.3 as FM-139-Q1's answer stands."
-ask-id: FM-166-Q3
-ask: "Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1's first edition, which carries the migration, the list of acts and the version rule, replacing [seats] and [rights] in shoalmark.toml, with the lane in v0.20.3 as FM-139-Q1's answer stands?"
-ask-kind: ruling
-ask-since: 2026-11-13
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, with the changes I name"
-answered: 2026-11-16
-answered-by: holgo99
 ---
 
 # FM-166 — seats and rights are kept in shoalmark.toml's own tables while hail/1 has a roster of its own, so a repository adopting both holds who sits where twice
@@ -160,7 +151,7 @@ dated line of 2026-11-13 says.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-166-Q3.**
+- [x] **The Owner has answered FM-166-Q3.** · `33eed94`, #301 (`1e4b229`)
 - [ ] **The roster table's shape is settled** in sealanes/1.
 - [ ] **The tool reads `[roster]`** from `shoalmark.toml` or `hail.toml` in the fixed order, in place or by a pinned
   reference, each with its tests.
@@ -188,10 +179,16 @@ Each item names its commit or pull request when it lands.
 **FM-166-Q2** · 2026-11-13 · Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1, one per repository and found in a fixed order, replacing [seats] and [rights] in shoalmark.toml with a migration, one closed list of acts, the version rule, and the lane in v0.20.3?
 **withdrawn** — no answer was given
 
+**FM-166-Q3** · 2026-11-16 · Do you take FM-166's decisions as proposed: a [roster] table defined by sealanes/1's first edition, which carries the migration, the list of acts and the version rule, replacing [seats] and [rights] in shoalmark.toml, with the lane in v0.20.3 as FM-139-Q1's answer stands?
+**answered** — accepted - yes, with the changes I name · holgo99
+**relation** — chose option 2: yes, with the changes I name
+**signed** — 33eed94 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-166-Q3 cleared, with its record under *Asks*; `next: build` stands. Done when: the Owner's answer to FM-166-Q3 (#301). Records only. |
 | 2026-11-16 | `epic: FM-139`: a chapter of v0.20.3's epic, by FM-139-Q1's answer. Records only. |
 | 2026-11-16 | Judged before its first build commit, keep P1, In Progress: FM-166-Q3 answered with the changes the Owner names, which are recorded once confirmed; the lanes they do not touch start, the contract first. Records only. |
 | 2026-11-13 | FM-166-Q3 put: the changed question, with the lane in v0.20.3 as FM-139-Q1's answer stands, since the open asks are answered together at one sign-off. Records only. |

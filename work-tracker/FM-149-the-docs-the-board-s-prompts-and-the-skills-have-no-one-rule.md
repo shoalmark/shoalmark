@@ -6,15 +6,6 @@ tags: process
 epic: FM-139
 next: build
 hook: "shoalmark speaks English and German, but no one rule says which texts ship with a German twin, which words never translate, or what language a skill's report is in; the Skills page and the skills' German README need one now."
-ask-id: FM-149-Q1
-ask: "Are FM-149's decisions taken, as its section Decisions, for the Owner sets out?"
-ask-kind: ruling
-ask-since: 2026-11-04
-ask-options: "yes, as proposed | yes, with the changes I name"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-04
-answered-by: holgo99
 ---
 
 # FM-149 — the docs, the Board's prompts and the skills have no one rule for English and German
@@ -113,10 +104,18 @@ Each item names its commit or pull request when it lands.
 - [ ] ~~**FM-100 carries decision 3** into its design, once FM-104 has placed the person's files.~~ Superseded by FM-100-Q4's
   answer, 2026-11-16: FM-100's `closeout` skill replaces `CLOSE-OUT.md`.
 
+## Asks
+
+**FM-149-Q1** · 2026-11-04 · Are FM-149's decisions taken, as its section Decisions, for the Owner sets out?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 32cb089 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-149-Q1 cleared, with its record under *Asks*; `next: build` stands. Records only. |
 | 2026-11-16 | Decision 3 superseded by FM-100-Q4's answer; its last Done when item struck. Records only. |
 | 2026-11-12 | FM-100-Q1 proposes to supersede decision 3, the close-out as two skills in place of `CLOSE-OUT.md`. Records only. |
 | 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |
