@@ -222,8 +222,8 @@ in v0.20.3 and its stage 2 in the next release, and each stands with this ask's 
   - the pinned-zones block pins the tool's day in a way Python 3.15 honours, so it runs there instead of
     skipping;
   - a timeout in the CI install check is recorded as one FAIL line, naming the step and its limit, and the run
-    goes on. The landing block's mutant helper records a missing target as a problem, instead of stopping the
-    run.
+    goes on; the `pwsh` limit allows for a cold start. The landing block's mutant helper records a missing target
+    as a problem, instead of stopping the run.
 
 **Four Designer findings on the Board's session rows, for v0.20.3,** on the Owner's word of 2 November:
 
@@ -285,3 +285,4 @@ at its allocation sitting and at its tag.
 | 2026-11-13 | FM-166-Q3 and FM-100-Q3 put beside FM-139-Q1, each standing with its answer, since the open asks are answered together at one sign-off. Records only. |
 | 2026-11-16 | FM-139-Q1 answered, yes, as proposed, and acted on: FM-166 and FM-169 join the epic, FM-118 leaves it, FM-118 and FM-076 move to v0.20.4. Records only. |
 | 2026-11-16 | FM-161, FM-172 and FM-173 join v0.20.3 by their answers; FM-100's stage 1 stays, stage 2 moves to the next release; the order of the work. Records only. |
+| 2026-11-20 | RV-4422: the third test-suite row adds that the `pwsh` limit allows for a cold start, folded from #274. Records only. |
