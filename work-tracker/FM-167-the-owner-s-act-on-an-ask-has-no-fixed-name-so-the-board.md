@@ -3,7 +3,7 @@ id: FM-167
 status: Proposed
 considered: FM-013, FM-029, FM-050, FM-115, FM-149, FM-160
 tags: process
-next: owner
+next: build
 hook: "The Owner's act on an ask has no fixed name, and the Board's answer dialog opens with Your decision is made. before the commit that records it exists. The imagery round of 13 November screened the words: answer and decision pass, while ruling, approval and sign-off fail. The act is called answer, the dialog says Your answer is ready., and the label is kept as DECISION or relabelled DIRECTION. All six decisions are put to the Owner as FM-167-Q2, proposing to keep DECISION. No release is named."
 ask-id: FM-167-Q2
 ask: "Do you take FM-167's decisions as proposed: the Owner's act is called answer, the dialog opens Your answer is ready., ruling, approval and sign-off are never used for it, the kind key and the kinds stay, and the label kept as DECISION or relabelled DIRECTION?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-13
 ask-options: "yes, keep DECISION | yes, relabel it DIRECTION | no, not now"
 ask-proposal: "yes, keep DECISION"
+answer: "accepted - yes, keep DECISION"
+answered: 2026-11-20
+answered-by: holgo99
 ---
 
 # FM-167 — the Owner's act on an ask has no fixed name, so the Board says a decision is made before anything is recorded
