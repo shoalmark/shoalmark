@@ -3,7 +3,6 @@ id: FM-104
 status: Proposed
 considered: FM-088, FM-095, FM-100, FM-026, FM-042
 tags: seamanship
-epic: FM-139
 hook: "The person's own files sit in three places today, and three v0.20.3 candidates would each add more. They should live in one home the person reaches easily, under fixed names, so that the person sees what is theirs to edit. Rank 1 when v0.20.3 starts, on the Owner's word."
 ---
 
@@ -66,6 +65,7 @@ theirs to edit, and leaves no setting to learn.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-16 | FM-100-Q4 answered: the Owner's copies of FM-100's skills, not STAND-UP.md, wait on this tracker's placement. Records only. |
 | 2026-11-12 | FM-100's revised proposal: it waits on this tracker again, for where the Owner's copies of its skills live. Records only. |
 | 2026-11-12 | FM-100-Q1 proposes that FM-100 no longer waits on this tracker. Records only. |

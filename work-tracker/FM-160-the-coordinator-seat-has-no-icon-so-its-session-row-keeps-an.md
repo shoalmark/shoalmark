@@ -3,7 +3,6 @@ id: FM-160
 status: Proposed
 considered: FM-024, FM-123, FM-139, FM-156
 tags: process
-epic: FM-139
 next: build
 hook: "The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the seven, so a coordinator session's row keeps an empty slot and its avatar has no picture. The imagery round of 13 November names it the radio operator, with an icon brief for a two-way headset, and variant B, the sea bag, stays unassigned. The Designer has drawn it, variant 2, and FM-160-Q2 is put on the render."
 ask-id: FM-160-Q2
@@ -210,6 +209,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-13 | The Designer's render filed under evidence, its key list without the seat's session and harness keys; variant 2 drawn to the icon brief; FM-160-Q2 put on the render; decision 6's export.py line dated; the landing line lands in English and German together. Records only. |
 | 2026-11-13 | Decided from the imagery round, on the Auditor's word: FM-160-Q1 withdrawn with no answer given; the epithet is the radio operator, the icon follows the round's icon brief, variant B stays unassigned, and the round's option 2 joins this lane. FM-160-Q2 waits for the Designer's render. Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-160-Q1, on the Auditor's word: `epic: FM-139`, under v0.20.3's epic until the Owner decides whether it goes in. Nothing is built. |

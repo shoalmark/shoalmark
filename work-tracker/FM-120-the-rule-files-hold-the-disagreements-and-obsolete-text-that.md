@@ -3,7 +3,6 @@ id: FM-120
 status: Proposed
 considered: FM-062, FM-117, FM-095
 tags: process
-epic: FM-139
 hook: "The rule files hold disagreements and obsolete text. A fresh /find-drift run on shoalmark finds them, and /prune-drift fixes them: v0.20.3's first lane."
 ---
 
@@ -33,3 +32,4 @@ and fix them; this is their first full use on shoalmark.
 |---|---|
 | 2026-11-03 | Filed from FM-062's split, for v0.20.3, its first lane, on the Owner's word of 2 November. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |

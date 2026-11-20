@@ -3,7 +3,6 @@ id: FM-151
 status: Proposed
 considered: FM-003, FM-032, FM-134, FM-143
 tags: process
-epic: FM-139
 next: build
 hook: "A pull request that changes records only still starts all five required jobs on their own images, though four of them only skip their steps. On 4 November the macOS job of two such runs waited about ten minutes for a runner, then ran under 20 seconds."
 ---
@@ -113,6 +112,7 @@ Each item names its commit, pull request or run when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-20 | FM-151-Q1 cleared, with its record under *Asks*; `next: build` stands. Records only. |
 | 2026-11-05 | Placed in v0.20.3 at its allocation sitting, on the Owner's word. Records only. |
 | 2026-11-04 | `epic: FM-139`: under v0.20.3's epic until the Owner decides whether it goes in. Records only. |

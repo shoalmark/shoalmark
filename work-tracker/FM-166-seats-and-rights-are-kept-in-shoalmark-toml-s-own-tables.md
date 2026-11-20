@@ -3,7 +3,6 @@ id: FM-166
 status: In Progress
 considered: FM-010, FM-015, FM-024, FM-026, FM-100, FM-156, FM-161, FM-162, FM-165
 tags: process
-epic: FM-139
 next: build
 triaged: 2026-11-16
 tier: P1
@@ -15,6 +14,10 @@ hook: "Who sits where and what each seat may change: shoalmark reads it from [se
 Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-20 — v0.21.0, with the tracker format, on the Owner's word of 18 November:** "The roster and the tracker
+format stay together in v0.21.0." FM-139-Q1 had put this work in v0.20.3; it leaves that epic
+([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md)), and its lanes go on toward v0.21.0.
 
 **2026-11-16 — judged before its first build commit, In Progress; the lanes the answer's changes do not touch start,**
 on the coordinator's word of that day. FM-166-Q3 is answered "yes, with the changes I name", with the Owner's signature.
@@ -188,6 +191,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-20 | FM-166-Q3 cleared, with its record under *Asks*; `next: build` stands. Done when: the Owner's answer to FM-166-Q3 (#301). Records only. |
 | 2026-11-16 | `epic: FM-139`: a chapter of v0.20.3's epic, by FM-139-Q1's answer. Records only. |
 | 2026-11-16 | Judged before its first build commit, keep P1, In Progress: FM-166-Q3 answered with the changes the Owner names, which are recorded once confirmed; the lanes they do not touch start, the contract first. Records only. |

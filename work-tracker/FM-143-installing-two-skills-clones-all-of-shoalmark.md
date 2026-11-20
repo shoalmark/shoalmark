@@ -3,7 +3,6 @@ id: FM-143
 status: In Progress
 considered: FM-062, FM-065, FM-083, FM-117
 tags: process
-epic: FM-139
 next: build
 triaged: 2026-11-04
 tier: P2
@@ -197,6 +196,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-20 | FM-143-Q2 cleared, with its record under *Asks*; decision (c) marked replaced by its answer. Done when: the plugin's removal, the CI pins, the footer and the Skills page (#268 `1d451e7`), the real install, the first tag (v1.0.0 at `fcb29bf`) and FM-143-Q2's answer (#273). RV-4442: `skills-pin.json` linked at `1d451e7`. RV-4482: the Skills page's Landed line says what its test holds. Folded from #274. Records only. |
 | 2026-11-05 | FM-143-Q1 cleared, with its record under *Asks*; decision (c) put to the Owner again as FM-143-Q2, `next: owner`. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |

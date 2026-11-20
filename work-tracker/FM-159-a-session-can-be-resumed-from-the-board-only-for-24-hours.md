@@ -3,7 +3,6 @@ id: FM-159
 status: Proposed
 considered: FM-023, FM-024, FM-031, FM-078, FM-123, FM-139
 tags: process
-epic: FM-139
 next: owner
 hook: "The Board gives a resume command only to the sessions of the last 24 hours, so a session closed two days ago has no way back on it. Its paste check never asks whether the folder or the log is still there, so over a week a command could fail on paste."
 ask-id: FM-159-Q1
@@ -131,4 +130,5 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-159-Q1, on the Auditor's word: `epic: FM-139`, under v0.20.3's epic until the Owner decides whether it goes in. Nothing is built. |

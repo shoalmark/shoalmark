@@ -3,7 +3,6 @@ id: FM-115
 status: Proposed
 considered: FM-059, FM-064, FM-050, FM-054
 tags: process
-epic: FM-139
 hook: "The Owner answers each ask in the Board's one dialog. FM-059's adopted design gives each ask a view of its own, and a prepared run that stops there and signs and pushes only the line the Owner chose. S3 and S4 build it, for v0.20.3."
 ---
 
@@ -32,3 +31,4 @@ there, keep that word from carrying more than the Owner read.
 |---|---|
 | 2026-11-03 | Filed from FM-059's split, for v0.20.3. Records only. |
 | 2026-11-04 | `epic: FM-139`: a chapter of v0.20.3's epic. Records only. |
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |

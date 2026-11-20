@@ -3,7 +3,6 @@ id: FM-162
 status: Proposed
 considered: FM-019, FM-024, FM-028, FM-031, FM-037, FM-062, FM-078, FM-104, FM-119, FM-121, FM-125
 tags: process
-epic: FM-139
 next: owner
 hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q2: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks installed in its administrator layer, where a seat cannot change them, and names the rule and a safe alternative."
 ask-id: FM-162-Q2
@@ -174,6 +173,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-13 | A dated line of three facts from the two harnesses' pages, read again, for the Owner before FM-162-Q2 is answered; the Codex links updated to the pages they redirect to. The decisions and the ask are unchanged. Records only. |
 | 2026-11-13 | FM-162-Q1 withdrawn with no answer given; FM-162-Q2 put, with decision 6 added: the guard is installed in each harness's administrator layer, and a harness without one is named as a limit. Records only. |
 | 2026-11-12 | Filed, Proposed for v0.20.3, with FM-162-Q1 put: a seat guard refuses five acts before they run. Records only. |

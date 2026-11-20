@@ -3,7 +3,6 @@ id: FM-100
 status: Proposed
 considered: FM-030, FM-031, FM-088, FM-095, FM-104, FM-121, FM-143, FM-149, FM-161, FM-166
 tags: process
-epic: FM-139
 blocked-by: FM-104
 next: wait
 hook: "The stand-up prompt is code, English on every board, and two prompts in one: the Owner's sitting and a planner's day. With a coordinator over several teams the two halves belong to different seats. The proposal, put to the Owner as FM-100-Q4: it splits by seat into skills that speak the person's language, shipped as defaults that the Owner's own signed copy can replace, with teams, routes and record folders read from sealanes/1's roster and hail/1's third edition, stage 1 in v0.20.3 and stage 2 in the next release."
@@ -373,6 +372,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-16 | FM-100-Q4 answered, yes, as proposed, and acted on: stage 1 in v0.20.3, waiting on FM-104; stage 2 in the next release; FM-149, FM-104, FM-023 and FM-121 corrected. Records only. |
 | 2026-11-16 | FM-100-Q3 withdrawn with no answer given; FM-100-Q4 put: decisions 3, 9 and 10 rewritten against sealanes/1's roster and hail/1's third edition, stage 1 in v0.20.3 and stage 2 in the next release. Records only. |
 | 2026-11-13 | FM-100-Q3 put: the changed question, with stage 1 in v0.20.3 and stage 2 in the next release as FM-139-Q1's answer stands, since the open asks are answered together at one sign-off. Records only. |

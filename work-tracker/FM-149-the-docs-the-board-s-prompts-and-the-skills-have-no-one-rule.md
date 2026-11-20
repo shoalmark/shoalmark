@@ -3,7 +3,6 @@ id: FM-149
 status: Proposed
 considered: FM-062, FM-100, FM-104, FM-143
 tags: process
-epic: FM-139
 next: build
 hook: "shoalmark speaks English and German, but no one rule says which texts ship with a German twin, which words never translate, or what language a skill's report is in; the Skills page and the skills' German README need one now."
 ---
@@ -115,6 +114,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-20 | FM-149-Q1 cleared, with its record under *Asks*; `next: build` stands. Records only. |
 | 2026-11-16 | Decision 3 superseded by FM-100-Q4's answer; its last Done when item struck. Records only. |
 | 2026-11-12 | FM-100-Q1 proposes to supersede decision 3, the close-out as two skills in place of `CLOSE-OUT.md`. Records only. |

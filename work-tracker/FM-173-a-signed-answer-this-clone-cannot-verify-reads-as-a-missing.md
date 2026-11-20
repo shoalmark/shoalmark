@@ -3,7 +3,6 @@ id: FM-173
 status: In Progress
 considered: FM-024, FM-034, FM-037, FM-169
 tags: bug
-epic: FM-139
 next: build
 triaged: 2026-11-16
 tier: P1
@@ -15,6 +14,11 @@ hook: "In a clone with no signers file set up, --check reads a signed answer it 
 Seat: the Planner (a1730572) · filed 2026-11-16, on the coordinator's word of that day.
 
 ## What is true now
+
+**2026-11-20 — out of v0.20.3, on the Owner's word of 18 November:** "A small v0.20.3: FM-172 and FM-169, nothing else."
+FM-173-Q1 had put the fix in v0.20.3, and this word came after it. It leaves the epic
+([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md)) and keeps P1 and In Progress; which
+release takes it is not decided.
 
 **2026-11-16 — FM-173-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
 keep P1, In Progress.** The fix is in v0.20.3, a chapter of
@@ -80,5 +84,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-16 | FM-173-Q1 answered, yes, as proposed; judged before its first build commit, keep P1, In Progress; a chapter of FM-139. Records only. |
 | 2026-11-16 | Filed, Proposed, with FM-173-Q1 put: a signed answer this clone cannot verify reads as the checkout's own finding, never as a missing answer, with a class test. Records only. |
