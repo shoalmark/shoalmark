@@ -16,7 +16,8 @@ Seat: the Planner (a1730572) · filed 2026-11-16, on the coordinator's word of t
 ## What is true now
 
 **2026-11-20 — out of v0.20.3, on the Owner's word of 18 November:** "A small v0.20.3: FM-172 and FM-169, nothing else."
-FM-173-Q1 had put the fix in v0.20.3, and this word came after it. It leaves the epic
+FM-173-Q1 had put the fix in v0.20.3, and this word came after it; the Owner's words of 19 and 20 November widened
+v0.20.3 to four items, and this fix is not among them. It leaves the epic
 ([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md)) and keeps P1 and In Progress; which
 release takes it is not decided.
 

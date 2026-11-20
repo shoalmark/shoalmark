@@ -11,12 +11,12 @@ hook: "v0.20.3's allocation in one place: the rows and trackers the release hold
 
 ## What is true now
 
-**2026-11-20 — v0.20.3's scope is four items, on the Owner's word of 18, 19 and 20 November,** through the coordinator.
-It replaces the order of 16 November below. The lists below no longer say what v0.20.3 holds; they stay as the record of
-what was planned.
+**2026-11-20 — v0.20.3's scope is four items, on the Owner's word of 18, 19 and 20 November.** It replaces the order of
+16 November below. The lists below no longer say what v0.20.3 holds; they stay as the record of what was planned.
 - **[FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) and
   [FM-169](FM-169-the-owner-s-personal-address-stands-in-the-public.md):** "A small v0.20.3: FM-172 and FM-169, nothing
-  else" (18 November). FM-169's lane comes with the Owner's two signed commits before the release pull request.
+  else" (18 November). FM-169's lane comes with the Owner's two signed commits before the release pull request, as the
+  order of 16 November planned.
 - **The security branch,** fixed at the critical tier and pushed at the release sitting (18 November):
   - RV-9001: recorded privately.
   - RV-9002: recorded privately.

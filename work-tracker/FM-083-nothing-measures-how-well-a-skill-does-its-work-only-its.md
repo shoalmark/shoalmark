@@ -13,7 +13,8 @@ hook: "nothing measures how well a skill does its work, only its structure and i
 
 **2026-11-20 — FM-083's answer is cleared, and its release is not ruled yet.** The answer of 28 October placed the suite
 in v0.20.3 (its record is under *Asks*). The Owner's word of 18 November left it out: "A small v0.20.3: FM-172 and
-FM-169, nothing else." Which release takes it is not ruled yet.
+FM-169, nothing else." The Owner's words of 19 and 20 November widened v0.20.3 to four items, and this is not among
+them. Which release takes it is not ruled yet.
 
 **Filed 2026-10-27, Proposed, on the Owner's word of 27 October as relayed by the Auditor; nothing is built.** The
 tests of `/find-drift` and `/prune-drift` on the v0.20.2 lane check a skill's files and its proof. Nothing measures

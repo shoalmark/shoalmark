@@ -16,8 +16,9 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 ## What is true now
 
 **2026-11-20 — out of v0.20.3, on the Owner's word of 18 November:** "A small v0.20.3: FM-172 and FM-169, nothing else."
-v0.20.3's scope is four items ([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md)), and this
-lane is not among them. It leaves the epic and keeps P1 and In Progress; which release takes it is not decided.
+The Owner's words of 19 and 20 November widened v0.20.3 to four items
+([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md)), and this lane is not among them. It
+leaves the epic and keeps P1 and In Progress; which release takes it is not decided.
 
 **2026-11-16 — FM-161-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
 keep P1, In Progress.** The lane is in v0.20.3, a chapter of

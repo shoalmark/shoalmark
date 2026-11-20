@@ -4,7 +4,7 @@ status: Proposed
 considered: FM-019, FM-024, FM-028, FM-031, FM-037, FM-062, FM-078, FM-104, FM-119, FM-121, FM-125
 tags: process
 next: owner
-hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q2: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks installed in its administrator layer, where a seat cannot change them, and names the rule and a safe alternative."
+hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q3: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks installed in its administrator layer, where a seat cannot change them, and names the rule and a safe alternative."
 ask-id: FM-162-Q3
 ask: "Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default for seats and installed in each harness's administrator layer, a critical review, and the lane in a release after v0.20.3?"
 ask-kind: ruling
@@ -20,8 +20,8 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 ## What is true now
 
 **2026-11-20 — FM-162-Q2 withdrawn and put again as FM-162-Q3, with the lane in a release after v0.20.3.** The Owner's
-word of 18 November left v0.20.3 at four items, and this lane is not among them. Decision 5 now places the lane in a
-release after v0.20.3; the other decisions, and the ask's options and proposal, are Q2's word for word.
+words of 18 to 20 November set v0.20.3 at four items, and this lane is not among them. Decision 5 now places the lane in
+a release after v0.20.3; the other decisions, and the ask's options and proposal, are Q2's word for word.
 
 **2026-11-13 — the two harnesses' pages read again for a research round of that day, recorded privately,** on the
 Auditor's word of that day. Three facts for the Owner to read before answering FM-162-Q2, and for the build. The
@@ -92,7 +92,7 @@ alternative, the slip becomes a corrected command.
 
 ## Decisions, for the Owner
 
-The ask, FM-162-Q2, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
+The ask, FM-162-Q3, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
 its number.
 
 1. **The guard refuses the five acts in their plain forms,** and each refusal names the rule and a safe alternative.
@@ -153,7 +153,7 @@ its number.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-162-Q2.
+- [ ] **The Owner has answered the ask,** FM-162-Q3.
 - [ ] **The design round** settles the exact commands, which file tools each harness's hook sees, and how a session
   is known as a seat, with FM-121's design round.
 - [ ] **The guard** reads a tool call from either harness's hook input and refuses each act's plain forms, naming

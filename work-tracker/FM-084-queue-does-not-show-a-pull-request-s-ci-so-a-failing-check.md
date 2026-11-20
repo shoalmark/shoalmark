@@ -13,7 +13,8 @@ hook: "--queue does not show a pull request's CI, so a failing check is found on
 
 **2026-11-20 — FM-084's answer is cleared, and its release is not ruled yet.** The answer of 28 October placed the check
 word in v0.20.3 (its record is under *Asks*). The Owner's word of 18 November left it out: "A small v0.20.3: FM-172 and
-FM-169, nothing else." Which release takes it is not ruled yet.
+FM-169, nothing else." The Owner's words of 19 and 20 November widened v0.20.3 to four items, and this is not among
+them. Which release takes it is not ruled yet.
 
 **Filed 2026-10-27, Proposed, as a quick win for v0.20.3, on the Owner's word of 27 October as relayed by the Auditor;
 nothing is built.** `--queue` (FM-031's S2) lists every open pull request with one action, the pull requests merged or

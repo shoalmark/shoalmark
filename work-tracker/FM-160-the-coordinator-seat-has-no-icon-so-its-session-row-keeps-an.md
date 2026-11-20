@@ -15,8 +15,8 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 **2026-11-20 — FM-160-Q2 is cleared, and its release is not ruled yet.** The answer of 14 November took the decisions as
 proposed, the lane in v0.20.3 among them (its record is under *Asks*). The Owner's word of 18 November left it out: "A
-small v0.20.3: FM-172 and FM-169, nothing else." The other decisions stand; which release takes the lane is not ruled
-yet.
+small v0.20.3: FM-172 and FM-169, nothing else." The Owner's words of 19 and 20 November widened v0.20.3 to four items,
+and this lane is not among them. The other decisions stand; which release takes the lane is not ruled yet.
 
 **2026-11-13 — the Designer's render exists, and FM-160-Q2 is put on it,** on the Auditor's word. The Designer's
 hand-back is filed as [its record](evidence/FM-160/2026-11-13-radio-operator-icon.md), with the seat's session and harness keys taken out of its key list,

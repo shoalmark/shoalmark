@@ -19,9 +19,10 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
-**2026-11-20 — FM-159-Q1 withdrawn and put again as FM-159-Q2, with a new proposal.** The Owner's word of 18 November
-left v0.20.3 at four items, and this lane is not among them. FM-159-Q2's question and options are Q1's word for word;
-its proposal is the option "yes, in a release after v0.20.3". Decision 8 below is the first option, "yes, as proposed".
+**2026-11-20 — FM-159-Q1 withdrawn and put again as FM-159-Q2, with a new proposal.** The Owner's words of 18 to 20
+November set v0.20.3 at four items, and this lane is not among them. FM-159-Q2's question and options are Q1's word for
+word; its proposal is the option "yes, in a release after v0.20.3". Decision 8 below is the first option, "yes, as
+proposed".
 
 **2026-11-12 — filed, Proposed, with FM-159-Q1; nothing is built.** Read at main `ec8479c`:
 
@@ -115,7 +116,7 @@ Board offers it as the way back.
    - the differential's pinned lines change with the page;
    - the design guide's §1, §7 and §8 say where the sessions now stand.
 7. **The build:** a rendered-surface lane, with the Designer's check of the page beside its review.
-8. **Allocation:** v0.20.3, a chapter of FM-139.
+8. **Allocation:** v0.20.3, a chapter of FM-139. FM-159-Q2 proposes instead a release after v0.20.3, its second option.
 
 ## Done when
 

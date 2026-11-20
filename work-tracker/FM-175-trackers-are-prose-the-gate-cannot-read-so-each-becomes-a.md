@@ -119,6 +119,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
-| 2026-11-20 | Decision 9's first line reads "together with the roster", in the Owner's words of 18 November, where it read "beside". Records only. |
+| 2026-11-20 | Decision 9's first line quotes the Owner's word of 18 November, "stay together in v0.21.0", where it said "beside the roster"; the row's first wording, corrected the same day, called the line's own phrase the Owner's. Records only. |
 | 2026-11-19 | FM-175-Q1 answered, yes, as proposed; judged before its first build commit, keep P2, In Progress; the lane in v0.21.0. Records only. |
 | 2026-11-18 | Filed, Proposed, with FM-175-Q1 put: the lane that makes each tracker one toml file the tool writes and checks, as the design settled by the Owner gives it, in v0.21.0. Records only. |
