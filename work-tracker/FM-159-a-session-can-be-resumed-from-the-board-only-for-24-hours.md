@@ -3,7 +3,7 @@ id: FM-159
 status: Proposed
 considered: FM-023, FM-024, FM-031, FM-078, FM-123, FM-139
 tags: process
-next: owner
+next: build
 hook: "The Board gives a resume command only to the sessions of the last 24 hours, so a session closed two days ago has no way back on it. Its paste check never asks whether the folder or the log is still there, so over a week a command could fail on paste."
 ask-id: FM-159-Q2
 ask: "Are FM-159's decisions taken, as its section Decisions, for the Owner sets out, with the lane in v0.20.3?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-20
 ask-options: "yes, as proposed | yes, in a release after v0.20.3 | no"
 ask-proposal: "yes, in a release after v0.20.3"
+answer: "accepted - yes, in a release after v0.20.3"
+answered: 2026-11-20
+answered-by: holgo99
 ---
 
 # FM-159 — a session can be resumed from the Board only for 24 hours, and its command can name a folder that is gone
