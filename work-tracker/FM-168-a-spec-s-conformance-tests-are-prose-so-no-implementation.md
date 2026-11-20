@@ -3,14 +3,8 @@ id: FM-168
 status: Proposed
 considered: FM-042, FM-100, FM-153, FM-161, FM-165, FM-166
 tags: process
-next: owner
-hook: "hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementation can run them, and a second one would learn the rules from the first. The proposal, put to the Owner as FM-168-Q1: each spec ships plain-file conformance cases, versioned with its edition and run in CI by every implementation; the spec and its cases are the reference; and sealanes/1 and chart go public at their first editions. No release is named."
-ask-id: FM-168-Q1
-ask: "Do you take FM-168's decisions as proposed: plain-file conformance cases for each spec, run in CI by every implementation, the spec and its cases as the reference, a second implementation aimed at a later edition of hail/1, and sealanes/1 and chart public at their first editions?"
-ask-kind: ruling
-ask-since: 2026-11-13
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
+next: build
+hook: "hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementation can run them, and a second one would learn the rules from the first. The proposal: each spec ships plain-file conformance cases, versioned with its edition and run in CI by every implementation; the spec and its cases are the reference; and sealanes/1 and chart go public at their first editions. Its first ask, FM-168-Q1, is withdrawn: later words of the Owner's settled part of it. No release is named."
 ---
 
 # FM-168 — a spec's conformance tests are prose, so no implementation can run them and a second one would learn the rules from the first
@@ -19,8 +13,19 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 
 ## What is true now
 
-**Filed 2026-11-13, Proposed; no release is named, and nothing is built.** Its ask, FM-168-Q1, puts its decisions to
-the Owner.
+**2026-11-20 — FM-168-Q1 withdrawn, with no answer given.** Later words of the Owner's settled part of what it asked:
+- **16 November:** sealanes/1's cases sit in a repository of their own, which the spec's repository holds pinned to
+  the edition's commit (decisions 1 and 2).
+- **20 November:** the implementation in a second language keeps no copies of the specs, and reads the filed editions
+  at a named commit (decision 5).
+- **20 November, by a signed answer:** the edition of hail/1 that rests on sealanes/1 is published no earlier than
+  sealanes/1's first edition is public (decision 6).
+
+On the Owner's word of 20 November, an ask a later word has overtaken is withdrawn, and is not put again as it stands. A
+new ask will cover what no later word settled: decisions 3, 4 and 7, and when chart is public.
+
+**Filed 2026-11-13, Proposed; no release is named, and nothing is built.** Its ask, FM-168-Q1, put its decisions to the
+Owner.
 
 - **hail/1 today:**
   - Its first edition is public and not yet in force
@@ -88,7 +93,7 @@ No release is named.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-168-Q1.**
+- [ ] **The Owner has answered FM-168's next ask,** on decisions 3, 4 and 7 and on when chart is public.
 - [ ] **hail/1's cases are plain files** in shoalmark/hail, for the edition they test, each with its input, its expected
   accept or refuse, and the reason code of a refusal.
 - [ ] **sealanes/1's first edition ships with its cases.**
@@ -98,8 +103,14 @@ Each item names its commit or pull request when it lands.
 - [ ] **chart is public** at chart/1's first edition.
 - [ ] **Decision 7 is in the agents' contract,** `AGENTS.md`.
 
+## Asks
+
+**FM-168-Q1** · 2026-11-20 · Do you take FM-168's decisions as proposed: plain-file conformance cases for each spec, run in CI by every implementation, the spec and its cases as the reference, a second implementation aimed at a later edition of hail/1, and sealanes/1 and chart public at their first editions?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-168-Q1 withdrawn, with its record under *Asks*: the Owner's words of 16 and 20 November settled decisions 1, 2, 5 and 6. The hook and *Done when* say so, and a new ask will cover decisions 3, 4 and 7 and chart; `next: build`. Records only. |
 | 2026-11-13 | Filed, Proposed, with FM-168-Q1 put: plain-file conformance cases for each spec, the spec and its cases as the reference, a second implementation's target, and when each spec goes public. No release. Records only. |

@@ -3,14 +3,8 @@ id: FM-163
 status: Proposed
 considered: FM-062, FM-083, FM-097, FM-117, FM-118, FM-119, FM-120, FM-143, FM-149, FM-162
 tags: process
-next: owner
-hook: "find-drift and prune-drift name no form for the ids a report gives its rules, disagreements and obsolete text, though prune-drift works from those ids. find-drift reads hooks, but not the harness settings where a guard would sit, and the report counts breaks but not how far merged work holds. The proposal, put to the Owner as FM-163-Q1: shoalmark/skills 1.1.0."
-ask-id: FM-163-Q1
-ask: "Do you take FM-163's decisions as proposed: the id forms R-n, DR-n and O-n in both drift skills, harness settings read with a guard as a suggested promotion, three trust measures as lower bounds, a critical review, and shoalmark/skills 1.1.0?"
-ask-kind: ruling
-ask-since: 2026-11-12
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
+next: wait
+hook: "find-drift and prune-drift name no form for the ids a report gives its rules, disagreements and obsolete text, though prune-drift works from those ids. find-drift reads hooks, but not the harness settings where a guard would sit, and the report counts breaks but not how far merged work holds. The proposal was shoalmark/skills 1.1.0, put to the Owner as FM-163-Q1; that ask is withdrawn, since a skill now enters that repository only by the Owner's own signed commit."
 ---
 
 # FM-163 — the drift skills name no id forms, read no harness settings and measure no trust in merged work
@@ -18,6 +12,14 @@ ask-proposal: "yes, as proposed"
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-20 — FM-163-Q1 withdrawn, with no answer given.** On the Owner's ruling of 20 November, a skill, or a change
+to one, enters shoalmark/skills only by the Owner's own signed commit, which is its READY, after proof in our own use
+and an eval with its numbers filed ([FM-184](FM-184-a-change-to-a-public-skill-can-reach-the-skills-repository-s.md)).
+FM-163-Q1 asked for 1.1.0 by a lane built there, a critical review and the Owner's tag, a way that ruling has overtaken.
+On the Owner's word of 20 November, an ask a later word has overtaken is withdrawn, and is not put again as it stands.
+What no later word settles, the id forms, the harness settings and the measures, may come back as a new ask on the
+ruling's way. Until then the tracker waits.
 
 **Filed 2026-11-12, Proposed, with FM-163-Q1 put; nothing is built.** It is the next release of
 [shoalmark/skills](https://github.com/shoalmark/skills/tree/344ba36c0afec954260ce76d726512f255afe3c5), after its first
@@ -58,8 +60,7 @@ that passed has held. Three measures, each a lower bound with its query, show th
 
 ## Decisions, for the Owner
 
-The ask, FM-163-Q1, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
-its number.
+FM-163-Q1 asked for all of these at once, and is withdrawn (above).
 
 1. **The id forms, the same in both skills:** `R-n` for a rule row, `DR-n` for a disagreement and `O-n` for obsolete
    text, numbered from 1 in each report. prune-drift cites them as find-drift's report gives them. They never
@@ -111,7 +112,8 @@ its number.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-163-Q1.
+- [ ] **The Owner has answered FM-163's next ask,** put on the way the ruling of 20 November sets
+  ([FM-184](FM-184-a-change-to-a-public-skill-can-reach-the-skills-repository-s.md)).
 - [ ] **The id forms:** both SKILL.md files name `R-n`, `DR-n` and `O-n` the same way, and a test pins them in both.
 - [ ] **The harness settings:** find-drift's step 2 lists them, step 4 counts them, layer 2 names a harness guard in
   both skills, and step 9 suggests a guard where a break is a single act; a test pins each.
@@ -125,8 +127,14 @@ Each item names its commit or pull request when it lands.
 - [ ] **shoalmark's `skills-pin.json`** names the tag in the shoalmark release that takes it.
 - [ ] **The critical review is READY.**
 
+## Asks
+
+**FM-163-Q1** · 2026-11-20 · Do you take FM-163's decisions as proposed: the id forms R-n, DR-n and O-n in both drift skills, harness settings read with a guard as a suggested promotion, three trust measures as lower bounds, a critical review, and shoalmark/skills 1.1.0?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-163-Q1 withdrawn, with its record under *Asks*: the Owner's ruling of 20 November on how a skill enters shoalmark/skills overtook it (FM-184). The hook, the decisions' lead and *Done when* say so; `next: wait`. Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-163-Q1 put: shoalmark/skills 1.1.0, with id forms, harness settings read and three measures of trust. Records only. |
