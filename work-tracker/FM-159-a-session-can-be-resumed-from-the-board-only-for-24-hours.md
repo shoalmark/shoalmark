@@ -5,12 +5,12 @@ considered: FM-023, FM-024, FM-031, FM-078, FM-123, FM-139
 tags: process
 next: owner
 hook: "The Board gives a resume command only to the sessions of the last 24 hours, so a session closed two days ago has no way back on it. Its paste check never asks whether the folder or the log is still there, so over a week a command could fail on paste."
-ask-id: FM-159-Q1
+ask-id: FM-159-Q2
 ask: "Are FM-159's decisions taken, as its section Decisions, for the Owner sets out, with the lane in v0.20.3?"
 ask-kind: ruling
-ask-since: 2026-11-12
+ask-since: 2026-11-20
 ask-options: "yes, as proposed | yes, in a release after v0.20.3 | no"
-ask-proposal: "yes, as proposed"
+ask-proposal: "yes, in a release after v0.20.3"
 ---
 
 # FM-159 — a session can be resumed from the Board only for 24 hours, and its command can name a folder that is gone
@@ -18,6 +18,10 @@ ask-proposal: "yes, as proposed"
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-20 — FM-159-Q1 withdrawn and put again as FM-159-Q2, with a new proposal.** The Owner's word of 18 November
+left v0.20.3 at four items, and this lane is not among them. FM-159-Q2's question and options are Q1's word for word;
+its proposal is the option "yes, in a release after v0.20.3". Decision 8 below is the first option, "yes, as proposed".
 
 **2026-11-12 — filed, Proposed, with FM-159-Q1; nothing is built.** Read at main `ec8479c`:
 
@@ -126,9 +130,15 @@ Each item names its commit or pull request when it lands.
 - [ ] **`test_resume_command.py` and a class test for each state** pass, and each state's mutant fails.
 - [ ] **The design guide** says where the sessions stand, and the Designer's check and the review are READY.
 
+## Asks
+
+**FM-159-Q1** · 2026-11-20 · Are FM-159's decisions taken, as its section Decisions, for the Owner sets out, with the lane in v0.20.3?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-159-Q1 withdrawn, with its record under *Asks*, and put again as FM-159-Q2, its proposal "yes, in a release after v0.20.3". Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-159-Q1, on the Auditor's word: `epic: FM-139`, under v0.20.3's epic until the Owner decides whether it goes in. Nothing is built. |
