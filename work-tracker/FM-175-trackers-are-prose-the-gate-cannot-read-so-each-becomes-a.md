@@ -81,8 +81,9 @@ All are put as FM-175-Q1. The design settles each; the lane builds them. Its rev
      repository with in-repo trackers and no signing, and on a Subversion repository. How answers keep counting under
      Subversion, which has no signed commits, is not designed yet.
 9. **The release and the order:**
-   - v0.21.0 carries the format with its converter, beside the roster
-     ([FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md)), so adopters migrate once;
+   - v0.21.0 carries the format with its converter together with the roster
+     ([FM-166](FM-166-seats-and-rights-are-kept-in-shoalmark-toml-s-own-tables.md)), so adopters migrate once, as the
+     Owner's word of 18 November has it: "The roster and the tracker format stay together in v0.21.0.";
    - both formats are read throughout v0.21.x, so a repository converted halfway passes the gate; reading `.md` goes no
      earlier than the release after;
    - built and proven in one repository first, in today's in-repo mode, which stays supported (the Owner's word of 18
@@ -118,5 +119,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | Decision 9's first line reads "together with the roster", in the Owner's words of 18 November, where it read "beside". Records only. |
 | 2026-11-19 | FM-175-Q1 answered, yes, as proposed; judged before its first build commit, keep P2, In Progress; the lane in v0.21.0. Records only. |
 | 2026-11-18 | Filed, Proposed, with FM-175-Q1 put: the lane that makes each tracker one toml file the tool writes and checks, as the design settled by the Owner gives it, in v0.21.0. Records only. |

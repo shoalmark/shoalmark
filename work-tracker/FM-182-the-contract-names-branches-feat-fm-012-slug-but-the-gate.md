@@ -27,14 +27,19 @@ Seat: the Planner (a1730572) · filed 2026-11-20, on the coordinator's word of t
   branch of pull request #311.
 - **What each gives:** by `branch_tracker`'s pattern, `fm/029-slug` gives FM-029; `feat/fm-012-slug`,
   `fix/fm-013-slug`, `feat/fm-001-slug` and `lane/fm-172-answer-changes-b` give none.
-- **Where it bites:** a commit is judged under the trackers its subject names, else its branch's (`named_trackers`,
-  line 8999). A commit whose subject names no id, on a branch named as the contract says, is refused as naming no
-  tracker (lines 9105 to 9107), and the refusal names a form the contract never gives.
+- **Where it bites:** a commit is judged under the trackers its subject names, else its branch's (`named_trackers`, line
+  8999). A commit whose subject names no id, on a branch named as the contract says, is refused as naming no tracker
+  (lines 9105 to 9107), and the refusal names a form the contract never gives. The refusal comes only where the gate
+  judges the commit: `judged_before_build` is true, which is off by default (line 83) and on in this repository
+  (`shoalmark.toml` line 5); the commit changes a path outside the tracker folder and is not an Owner's
+  (`judge_commits`, lines 9060 to 9068); and its branch is not the default branch (lines 9140 to 9142). A records-only
+  commit, an Owner's commit, or one whose subject names an id is not refused.
 
 ## Why
 
 The contract is what an agent reads; the gate is what it meets. When they name different forms, an agent that follows
-the contract is refused, and the refusal teaches it a third way to read the rule.
+the contract, in a repository whose gate is on, is refused for a build commit whose subject names no id, and the refusal
+teaches it a third way to read the rule.
 
 ## The decision, proposed
 
@@ -60,4 +65,5 @@ a change there reaches each copy only when its owner runs `--init` again; the co
 
 | Date | What |
 |---|---|
+| 2026-11-20 | The refusal's conditions stated, in *Where it bites* and *Why*: the gate on, a commit outside the tracker folder that is not an Owner's, off the default branch. Records only. |
 | 2026-11-20 | Filed, Proposed. |
