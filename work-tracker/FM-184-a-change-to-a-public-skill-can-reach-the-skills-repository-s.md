@@ -4,7 +4,7 @@ status: Proposed
 considered: FM-143, FM-163
 tags: process
 next: build
-hook: "A change to a public skill can reach shoalmark/skills' main without the Owner's own signed commit. A required check there refuses any commit that touches a skill unless it is one."
+hook: "A change to a public skill can reach shoalmark/skills' main without the Owner's own signed commit. A required check there is to refuse any commit that touches a skill, or the check's own files, unless it is one."
 ---
 
 # FM-184 — a change to a public skill can reach the skills repository's main without the Owner's own signed commit
@@ -13,11 +13,12 @@ Seat: the Planner (a1730572) · filed 2026-11-20, on the coordinator's word of t
 
 ## What is true now
 
-**Filed 2026-11-20, Proposed; the check's lane has started, and nothing is merged.** On the Owner's ruling of 20
-November, a skill, or a change to one, enters shoalmark/skills only by the Owner's own signed commit, which is its
-READY, after proof in our own use and an eval with its numbers filed. Two things hold the rule: no bot's push grant
-covers that repository, and a required check on its main refuses any commit that touches a skill unless it is the
-Owner's own signed commit. This tracker carries the check.
+**Filed 2026-11-20, Proposed; nothing is merged.** On the Owner's ruling of 20 November, a skill, or a change to one,
+enters shoalmark/skills only by the Owner's own signed commit, which is its READY, after proof in our own use and an
+eval with its numbers filed. The ruling names two means to hold it, neither in force yet: no bot's push grant is to
+cover that repository, a change to the organisation's roster; and a required check on its main is to refuse any commit
+that touches a skill unless it is the Owner's own signed commit. This tracker carries the check, whose lane started on
+20 November, on the coordinator's word of that day.
 
 - **Today,** at shoalmark/skills' main
   [`344ba36`](https://github.com/shoalmark/skills/commit/344ba36c0afec954260ce76d726512f255afe3c5): main takes
@@ -50,4 +51,5 @@ before it is proven costs more than any delay.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | Renamed to the tool's slug of its title; *What is true now* says the two means are not in force yet, and where the lane's start is recorded. Records only. |
 | 2026-11-20 | Filed, Proposed: the check that holds the Owner's ruling of 20 November on shoalmark/skills. Records only. |

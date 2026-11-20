@@ -33,7 +33,7 @@ Seat: the Planner (a1730572) · filed 2026-11-20, on the coordinator's word of t
   judges the commit: `judged_before_build` is true, which is off by default (line 83) and on in this repository
   (`shoalmark.toml` line 5); the commit changes a path outside the tracker folder and is not an Owner's
   (`judge_commits`, lines 9060 to 9068); and its branch is not the default branch (lines 9140 to 9142). A records-only
-  commit, an Owner's commit, or one whose subject names an id is not refused.
+  commit, an Owner's commit, or one whose subject names an id is not refused as naming no tracker.
 
 ## Why
 

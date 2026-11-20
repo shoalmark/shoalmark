@@ -7,13 +7,6 @@ next: build
 triaged: 2026-10-13
 tier: P1
 rank: 2
-ask: "Do you rule the probe's road to its first outside run as FM-004's *What is true now* entry of 21 October sets it out: one feedback channel through the landing's form, the notes' pin following v0.20.1's tag, and four clean local runs before the switch?"
-ask-kind: ruling
-ask-since: 2026-10-21
-ask-proposal: "Accept all three as that entry sets them out; the clean-run wording may be changed in the answer."
-answer: "accepted - Accept all three as that entry sets them out; the clean-run wording may be changed in the answer. The feedback channel must also be accessible from agent side."
-answered: 2026-10-21
-answered-by: holgo99
 hook: "A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if asked cold, 70 % with a measurement instead of a pitch. A guess is not a number."
 ---
 
@@ -153,10 +146,16 @@ the limits are said: three runs, one model family, an invented project.
 **relation** — accepted the proposal
 **signed** — 25dc9db · G
 
+**2026-10-21** · Do you rule the probe's road to its first outside run as FM-004's *What is true now* entry of 21 October sets it out: one feedback channel through the landing's form, the notes' pin following v0.20.1's tag, and four clean local runs before the switch?
+**answered** — accepted - Accept all three as that entry sets them out; the clean-run wording may be changed in the answer. The feedback channel must also be accessible from agent side. · holgo99
+**relation** — accepted with a change
+**signed** — 2625879 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-004's ask of 21 October cleared, with its record under *Asks*; `next: build` stands. Records only. |
 | 2026-11-03 | FM-006's fifth state, an outside Owner who follows the setup page without asking anything, joins this tracker's first outside run, on the Owner's word of 2 November. Records only. |
 | 2026-10-22 05:57 CEST | P3 on `fm/004-probe-prompt`, after round 1's NOT READY `39a76c1`: step 13 fills, checks and shows the feedback and opens the form only on the person's yes, as FM-004's answer `2625879` asks (`e74456e`); RV-3551 (`89ddfac`), RV-3552 (`4dffd7f`) and RV-3553 (`0470627`) by their exact fixes. Round 2 is next. |
 | 2026-10-21 22:21 CEST | The probe's final notes, `5e47133` on `fm/004-probe-prompt`: the probe lane's draft 2 (recorded privately), made true for v0.20.0 and pinned to it, the archive's SHA-256 the published line, which an offline rebuild gives too. The Subversion notes join, `--ratio` leaves the git-only lists, and step 13 offers one channel, pending the Owner's answer on the Board. The pin test reads the pin line. Round 1 of the review is next. |

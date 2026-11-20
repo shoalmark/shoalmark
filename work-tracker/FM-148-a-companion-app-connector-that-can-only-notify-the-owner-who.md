@@ -5,15 +5,6 @@ considered: FM-147, FM-007, FM-059, FM-115, FM-054, FM-030, FM-008
 tags: process, security
 epic: FM-147
 next: build
-ask-id: FM-148-Q3
-ask: "Which keys may sign in the companion app on mobile, weighed against the risks under Decisions, for the Owner, and does the bots' connector stay notify-only?"
-ask-kind: ruling
-ask-since: 2026-11-04
-ask-proposal: "(a) defer to a design round; (b) yes, notify-only"
-ask-options: "(a) both, Owner chooses; (b) yes, notify-only | (a) biometric only; (b) yes, notify-only | (a) hardware key only; (b) yes, notify-only | (a) desktop only; (b) yes, notify-only | (a) defer to a design round; (b) yes, notify-only"
-answer: "accepted - (a) both, Owner chooses; (b) yes, notify-only"
-answered: 2026-11-04
-answered-by: holgo99
 hook: "A companion connector that can only notify the Owner — list, read, ask, check status — with no tool to answer, sign, merge or change rights; whether, and with which keys, the Owner signs on mobile is the Owner's ruling."
 ---
 
@@ -25,7 +16,7 @@ Seat: Planner · filed 2026-11-04 · chapter of FM-147.
 
 **2026-11-04 — filed; nothing is built.** Need: a remote connector that can only **notify** the Owner — list, read, ask and check status — with **no** tool to answer, sign, merge or change rights. Signing stays the Owner's act on their own device; whether that may include the phone, and with which keys, is the open ruling. Held against FM-007 and FM-059 (both Shipped; neither is reopened), FM-115 (Proposed: the Board's one answer dialog), FM-054, FM-030 and FM-008.
 
-**Ruled (ask FM-148-Q3 above):** which keys may sign in the companion app on mobile, and whether the bots' connector stays notify-only. The Owner's answer, "accepted - (a) both, Owner chooses; (b) yes, notify-only" ([#265](https://github.com/shoalmark/shoalmark/pull/265)): a biometric-gated phone key and a hardware security key are both supported, the Owner chooses which to enroll, and the bots' connector stays notify-only.
+**Ruled (ask FM-148-Q3, its record under *Asks*):** which keys may sign in the companion app on mobile, and whether the bots' connector stays notify-only. The Owner's answer, "accepted - (a) both, Owner chooses; (b) yes, notify-only" ([#265](https://github.com/shoalmark/shoalmark/pull/265)): a biometric-gated phone key and a hardware security key are both supported, the Owner chooses which to enroll, and the bots' connector stays notify-only.
 
 **The Owner's direction in chat, 2026-11-03 — logged, not an answer.** The value of mobile is signing, the board and the guided answer together; which keys are enough is the Owner's choice. The risks below are what that choice is weighed against.
 
@@ -69,10 +60,18 @@ Whatever is chosen, a new key counts only after the Owner's signed change to the
 - A companion connector exists that can list, read, ask and check status, and has no tool to answer, sign, merge or change rights — or a later ruling parks the work.
 - Per the ruling, the Owner signs on their own device with the enrolled key or keys, each in the signers file on the default branch, with a second signer registered.
 
+## Asks
+
+**FM-148-Q3** · 2026-11-04 · Which keys may sign in the companion app on mobile, weighed against the risks under Decisions, for the Owner, and does the bots' connector stay notify-only?
+**answered** — accepted - (a) both, Owner chooses; (b) yes, notify-only · holgo99
+**relation** — chose option 1: (a) both, Owner chooses; (b) yes…
+**signed** — d307a18 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-148-Q3 cleared, with its record under *Asks*; `next: build` stands. Records only. |
 | 2026-11-04 | Filed under FM-147 on the Auditor's direction (relayed by the Owner), with ask FM-148-Q3 put as a ruling over *Decisions, for the Owner*; the Owner's chat direction of 2026-11-03 logged, not an answer. Critical review tier. |
 | 2026-11-04 | The Owner's chat word after FM-148-Q3's answer logged under *What is true now*. Records only. |
 | 2026-11-04 | The Owner's answer to FM-148-Q3 (#265) marked: `blocked-by:` dropped, the open ruling ruled, and Done when's first item. Records only. |

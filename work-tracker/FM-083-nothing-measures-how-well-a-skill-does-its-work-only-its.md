@@ -5,19 +5,16 @@ considered: FM-062, FM-065
 tags: research
 next: build
 hook: "nothing measures how well a skill does its work, only its structure and its proof"
-ask: "Is FM-083's suite for skills allocated to v0.20.3, as FM-083's section The allocation, for the Owner sets out?"
-ask-kind: ruling
-ask-since: 2026-10-27
-ask-options: "yes, v0.20.3 | no: a later release"
-ask-proposal: "yes, v0.20.3"
-answer: "accepted - yes, v0.20.3"
-answered: 2026-10-28
-answered-by: holgo99
 ---
 
 # FM-083 — nothing measures how well a skill does its work, only its structure and its proof
 
 ## What is true now
+
+**2026-11-20 — FM-083's answer is cleared, and its release is not ruled yet.** The answer of 28 October placed the suite
+in v0.20.3 (its record is under *Asks*). The Owner's word of 18 November left it out: "A small v0.20.3: FM-172 and
+FM-169, nothing else." The Owner's words of 19 and 20 November widened v0.20.3 to four items, and this is not among
+them. Which release takes it is not ruled yet.
 
 **Filed 2026-10-27, Proposed, on the Owner's word of 27 October as relayed by the Auditor; nothing is built.** The
 tests of `/find-drift` and `/prune-drift` on the v0.20.2 lane check a skill's files and its proof. Nothing measures
@@ -64,10 +61,18 @@ when it is wrong.
 - **The proposal:** yes. v0.20.2 ships as signed, and the suite measures both skills once they have shipped.
 - **The options:** yes, v0.20.3; or no, a later release.
 
+## Asks
+
+**2026-10-28** · Is FM-083's suite for skills allocated to v0.20.3, as FM-083's section The allocation, for the Owner sets out?
+**answered** — accepted - yes, v0.20.3 · holgo99
+**relation** — accepted the proposal
+**signed** — d7f5a54 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-083's ask cleared, with its record under *Asks*; the answer placed it in v0.20.3, the Owner's word of 18 November left it out, and its release is not ruled yet. Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-13 | `epic: FM-139`: a chapter of v0.20.3's epic, as the Owner's answer of 28 October allocated it. Records only. |
 | 2026-10-27 | Filed, Proposed, on the Owner's word of 27 October, with one ruling ask: its allocation to v0.20.3. |

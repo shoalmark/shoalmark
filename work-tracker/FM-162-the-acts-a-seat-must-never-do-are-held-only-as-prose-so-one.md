@@ -4,11 +4,11 @@ status: Proposed
 considered: FM-019, FM-024, FM-028, FM-031, FM-037, FM-062, FM-078, FM-104, FM-119, FM-121, FM-125
 tags: process
 next: owner
-hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q2: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks installed in its administrator layer, where a seat cannot change them, and names the rule and a safe alternative."
-ask-id: FM-162-Q2
-ask: "Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default for seats and installed in each harness's administrator layer, a critical review, and the lane in v0.20.3?"
+hook: "Five acts a seat must never do are held only as prose: removing files instead of moving them to the Trash, killing processes by name, bypassing hooks, reading or writing in the person's own checkout, and fetching into another seat's repository. One slips through now and then and is caught after the fact. The proposal, put to the Owner as FM-162-Q3: the tool ships a seat guard that refuses each act before it runs, through each harness's own hooks installed in its administrator layer, where a seat cannot change them, and names the rule and a safe alternative."
+ask-id: FM-162-Q3
+ask: "Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default for seats and installed in each harness's administrator layer, a critical review, and the lane in a release after v0.20.3?"
 ask-kind: ruling
-ask-since: 2026-11-13
+ask-since: 2026-11-20
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
 ---
@@ -18,6 +18,10 @@ ask-proposal: "yes, as proposed"
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-20 — FM-162-Q2 withdrawn and put again as FM-162-Q3, with the lane in a release after v0.20.3.** The Owner's
+words of 18 to 20 November set v0.20.3 at four items, and this lane is not among them. Decision 5 now places the lane in
+a release after v0.20.3; the other decisions, and the ask's options and proposal, are Q2's word for word.
 
 **2026-11-13 — the two harnesses' pages read again for a research round of that day, recorded privately,** on the
 Auditor's word of that day. Three facts for the Owner to read before answering FM-162-Q2, and for the build. The
@@ -88,7 +92,7 @@ alternative, the slip becomes a corrected command.
 
 ## Decisions, for the Owner
 
-The ask, FM-162-Q2, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
+The ask, FM-162-Q3, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
 its number.
 
 1. **The guard refuses the five acts in their plain forms,** and each refusal names the rule and a safe alternative.
@@ -122,7 +126,7 @@ its number.
      [FM-121](FM-121-a-seat-can-change-the-seat-definitions-and-the-skills-folder.md)'s, which guards the seat
      definitions and the skills folder the same way.
 4. **The review is critical:** the guard decides what a seat may run.
-5. **The lane is in v0.20.3,** after FM-121's design round.
+5. **The lane is in a release after v0.20.3,** after FM-121's design round.
 6. **Where the guard lives: each harness's administrator layer.**
    - The entries are installed in the settings a harness takes from the machine's administrator, which a seat
      cannot edit and no other layer can widen. They are never in project settings, which a seat can change.
@@ -149,7 +153,7 @@ its number.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-162-Q2.
+- [ ] **The Owner has answered the ask,** FM-162-Q3.
 - [ ] **The design round** settles the exact commands, which file tools each harness's hook sees, and how a session
   is known as a seat, with FM-121's design round.
 - [ ] **The guard** reads a tool call from either harness's hook input and refuses each act's plain forms, naming
@@ -169,10 +173,14 @@ Each item names its commit or pull request when it lands.
 **FM-162-Q1** · 2026-11-13 · Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default in seat worktrees, a critical review, and the lane in v0.20.3?
 **withdrawn** — no answer was given
 
+**FM-162-Q2** · 2026-11-20 · Do you take FM-162's decisions as proposed: the five acts refused in their plain forms, the person's checkouts listed in ~/.config/shoalmark/, the guard on by default for seats and installed in each harness's administrator layer, a critical review, and the lane in v0.20.3?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-162-Q2 withdrawn, with its record under *Asks*, and put again as FM-162-Q3 with the lane in a release after v0.20.3. Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-13 | A dated line of three facts from the two harnesses' pages, read again, for the Owner before FM-162-Q2 is answered; the Codex links updated to the pages they redirect to. The decisions and the ask are unchanged. Records only. |
 | 2026-11-13 | FM-162-Q1 withdrawn with no answer given; FM-162-Q2 put, with decision 6 added: the guard is installed in each harness's administrator layer, and a harness without one is named as a limit. Records only. |
