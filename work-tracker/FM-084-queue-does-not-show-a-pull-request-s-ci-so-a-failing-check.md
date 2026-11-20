@@ -5,19 +5,15 @@ considered: FM-031, FM-082
 tags: process
 next: build
 hook: "--queue does not show a pull request's CI, so a failing check is found on the forge by hand"
-ask: "Is FM-084's check word in --queue allocated to v0.20.3, as FM-084's section The allocation, for the Owner sets out?"
-ask-kind: ruling
-ask-since: 2026-10-27
-ask-options: "yes, v0.20.3 | no: a later release"
-ask-proposal: "yes, v0.20.3"
-answer: "accepted - yes, v0.20.3"
-answered: 2026-10-28
-answered-by: holgo99
 ---
 
 # FM-084 — --queue does not show a pull request's CI, so a failing check is found on the forge by hand
 
 ## What is true now
+
+**2026-11-20 — FM-084's answer is cleared, and its release is not ruled yet.** The answer of 28 October placed the check
+word in v0.20.3 (its record is under *Asks*). The Owner's word of 18 November left it out: "A small v0.20.3: FM-172 and
+FM-169, nothing else." Which release takes it is not ruled yet.
 
 **Filed 2026-10-27, Proposed, as a quick win for v0.20.3, on the Owner's word of 27 October as relayed by the Auditor;
 nothing is built.** `--queue` (FM-031's S2) lists every open pull request with one action, the pull requests merged or
@@ -55,10 +51,18 @@ to read each pull request by hand, which is what `--queue` was built to end.
 - **The proposal:** yes. It is small, reads nothing new from the network, and changes no Board.
 - **The options:** yes, v0.20.3; or no, a later release.
 
+## Asks
+
+**2026-10-28** · Is FM-084's check word in --queue allocated to v0.20.3, as FM-084's section The allocation, for the Owner sets out?
+**answered** — accepted - yes, v0.20.3 · holgo99
+**relation** — accepted the proposal
+**signed** — 858b6fc · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-084's ask cleared, with its record under *Asks*; the answer placed it in v0.20.3, the Owner's word of 18 November left it out, and its release is not ruled yet. Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-13 | `epic: FM-139`: a chapter of v0.20.3's epic, as the Owner's answer of 28 October allocated it. Records only. |
 | 2026-10-27 | Filed, Proposed, a quick win for v0.20.3 on the Owner's word of 27 October, with one ruling ask: its allocation to v0.20.3. |

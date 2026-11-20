@@ -5,15 +5,6 @@ considered: FM-024, FM-123, FM-139, FM-156
 tags: process
 next: build
 hook: "The coordinator, the Owner's lead seat, has no icon: SEAT_ICONS holds the seven, so a coordinator session's row keeps an empty slot and its avatar has no picture. The imagery round of 13 November names it the radio operator, with an icon brief for a two-way headset, and variant B, the sea bag, stays unassigned. The Designer has drawn it, variant 2, and FM-160-Q2 is put on the render."
-ask-id: FM-160-Q2
-ask: "Do you take FM-160's decisions as proposed: the radio operator's icon as rendered (variant 2), option 2's lines with the landing line in English and German, and the lane in v0.20.3?"
-ask-kind: ruling
-ask-since: 2026-11-13
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-14
-answered-by: holgo99
 ---
 
 # FM-160 — the coordinator seat has no icon, so its session row keeps an empty slot
@@ -21,6 +12,11 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-20 — FM-160-Q2 is cleared, and its release is not ruled yet.** The answer of 14 November took the decisions as
+proposed, the lane in v0.20.3 among them (its record is under *Asks*). The Owner's word of 18 November left it out: "A
+small v0.20.3: FM-172 and FM-169, nothing else." The other decisions stand; which release takes the lane is not ruled
+yet.
 
 **2026-11-13 — the Designer's render exists, and FM-160-Q2 is put on it,** on the Auditor's word. The Designer's
 hand-back is filed as [its record](evidence/FM-160/2026-11-13-radio-operator-icon.md), with the seat's session and harness keys taken out of its key list,
@@ -188,7 +184,7 @@ Each item names its commit or pull request when it lands.
 
 - [ ] **The Designer's render exists,** on the record's icon brief and option 2's lines, and FM-160-Q2 is put on the
   rendered preview.
-- [ ] **The Owner has answered FM-160-Q2.**
+- [x] **The Owner has answered FM-160-Q2.** · `4318e0e`, #300 (`e9adcd9`)
 - [ ] **`brand/seats/coordinator.svg` is the drawing FM-160-Q2 takes, byte for byte,** and `export.py` exits 0 for all
   eight.
 - [ ] **A coordinator session's row shows its icon,** 20 px, grey, without the ground, and the seven's rows are
@@ -205,10 +201,16 @@ Each item names its commit or pull request when it lands.
 **FM-160-Q1** · 2026-11-13 · Do you take variant B as the coordinator's icon, as drawn, with the README row and the other words FM-160 proposes, and the lane in v0.20.3?
 **withdrawn** — no answer was given
 
+**FM-160-Q2** · 2026-11-14 · Do you take FM-160's decisions as proposed: the radio operator's icon as rendered (variant 2), option 2's lines with the landing line in English and German, and the lane in v0.20.3?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 4318e0e · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-160-Q2 cleared, with its record under *Asks*; its lane's release is not ruled yet, since the Owner's word of 18 November left it out of v0.20.3. Done when: the Owner's answer to FM-160-Q2 (#300). Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-13 | The Designer's render filed under evidence, its key list without the seat's session and harness keys; variant 2 drawn to the icon brief; FM-160-Q2 put on the render; decision 6's export.py line dated; the landing line lands in English and German together. Records only. |
 | 2026-11-13 | Decided from the imagery round, on the Auditor's word: FM-160-Q1 withdrawn with no answer given; the epithet is the radio operator, the icon follows the round's icon brief, variant B stays unassigned, and the round's option 2 joins this lane. FM-160-Q2 waits for the Designer's render. Records only. |
