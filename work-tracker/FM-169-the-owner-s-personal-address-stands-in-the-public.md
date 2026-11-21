@@ -19,7 +19,8 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 **2026-11-21 — judged before its first build commit, keep P1, In Progress.** The change lands in v0.20.3, as its
 own lane, on the coordinator's word of 21 November. The design round is done: the Owner's words of 20 November ruled
 its open questions, and its patch was read READY by a critical reader. The Owner's two signed commits that move the
-address come after it lands, as the signing pages set out.
+address come after it lands, as the signing pages set out. One P3 that read found, the Board's headings on a clone
+without the whole history, is fixed forward in [FM-186](FM-186-on-a-clone-without-the-whole-history-the-board-files-the.md).
 
 **2026-11-16 — in v0.20.3, a chapter of [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), by
 FM-139-Q1's answer; its design round has started,** on the coordinator's word of that day. The round answers the four
