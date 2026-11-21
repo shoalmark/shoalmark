@@ -29,8 +29,8 @@ Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that 
 - From then on a new case comes through the spec, never from what an implementation does (decision 4's last part).
 - A plan comes to the Owner before anything is built or moved.
 
-FM-168-Q2 asks what no word has settled: decision 3, the first two parts of decision 4, and decision 7. When chart is
-public is not in it, as that word names the ask, and it stays open.
+FM-168-Q2 asks what no word has settled: decision 3, the first two parts of decision 4, and decision 7. Decision 6's
+open parts are not in it, as that word names the ask, and they stay open.
 
 **2026-11-20 — FM-168-Q1 withdrawn, with no answer given.** Later words of the Owner's settled part of what it asked:
 - **16 November:** sealanes/1's cases sit in a repository of their own, which the spec's repository holds pinned to
@@ -101,8 +101,9 @@ public before that release, or an adopter cannot read the rules the tool holds t
    - the edition of hail/1 that takes its roster from sealanes/1 is public with it;
    - chart is public at chart/1's first edition.
 
-   Settled on 20 November, by a signed answer, but for chart: when chart is public stays open, and no ask carries it
-   now.
+   Its hail/1 part is settled, on 20 November, by a signed answer: the edition of hail/1 that rests on sealanes/1 is
+   published no earlier than sealanes/1's first edition is public. The rest, sealanes/1 before a release that reads
+   `[roster]` and when chart is public, stays open, and no ask carries it now.
 7. **A private repository in public text:** it is named, never linked, and called "not yet public" until it is
    public. Asked in FM-168-Q2.
 
@@ -143,6 +144,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
-| 2026-11-21 | On the Owner's word of 21 November, hail/1's cases get a repository of their own, which shoalmark/hail holds at `conformance/` pinned to the edition's commit; decisions 1 and 2 now hold for hail/1 too, and decision 4's last part is settled. FM-168-Q2 is put on what is left of decisions 3, 4 and 7; when chart is public stays open; `next: owner`. Records only. |
+| 2026-11-21 | On the Owner's word of 21 November, hail/1's cases get a repository of their own, which shoalmark/hail holds at `conformance/` pinned to the edition's commit; decisions 1 and 2 now hold for hail/1 too, and decision 4's last part is settled. FM-168-Q2 is put on what is left of decisions 3, 4 and 7; decision 6's open parts stay open; `next: owner`. Records only. |
 | 2026-11-20 | FM-168-Q1 withdrawn, with its record under *Asks*: the Owner's words of 16 and 20 November settled decisions 1, 2, 5 and 6. The hook and *Done when* say so, and a new ask will cover decisions 3, 4 and 7 and chart; `next: build`. Records only. |
 | 2026-11-13 | Filed, Proposed, with FM-168-Q1 put: plain-file conformance cases for each spec, the spec and its cases as the reference, a second implementation's target, and when each spec goes public. No release. Records only. |
