@@ -3,8 +3,14 @@ id: FM-164
 status: Proposed
 considered: FM-003, FM-004, FM-005, FM-006, FM-007, FM-008, FM-014, FM-023, FM-027, FM-030, FM-031, FM-032, FM-035, FM-037, FM-044, FM-045, FM-046, FM-050, FM-054, FM-057, FM-058, FM-059, FM-068, FM-069, FM-070, FM-074, FM-100, FM-129, FM-151
 tags: process
-next: build
-hook: "shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is built and proven twice. With one version-control system and the plain folder, every lane is simpler. The proposal: Subversion is deprecated with a release's notice, then removed, and the VCS layer stays, with Git, the plain folder and a test double behind it. Its first ask, FM-164-Q1, which put the notice in v0.20.3, is withdrawn."
+next: owner
+hook: "shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is built and proven twice. With one version-control system and the plain folder, every lane is simpler. The proposal: Subversion is deprecated with a release's notice, then removed, and the VCS layer stays, with Git, the plain folder and a test double behind it. Its first ask put the notice in v0.20.3, which is now closed; FM-164-Q2 asks where the notice and the removal go after it, with each placement's cost."
+ask-id: FM-164-Q2
+ask: "Where do Subversion's notice and its removal go, now that v0.20.3 is closed: the notice in a v0.20.4 of its own and the removal in v0.21.0; the notice in v0.21.0 and the removal in the release after; or neither yet?"
+ask-kind: ruling
+ask-since: 2026-11-21
+ask-options: "notice in v0.20.4, removal in v0.21.0 | notice in v0.21.0, removal after it | neither yet | another placement I name"
+ask-proposal: "notice in v0.20.4, removal in v0.21.0"
 ---
 
 # FM-164 — Subversion support is deprecated, then removed, while the VCS layer stays
@@ -12,6 +18,11 @@ hook: "shoalmark supports Git, Subversion and the plain folder, so every change 
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-21 — FM-164-Q2 is put.** The Owner's words of 18 and 20 November closed v0.20.3 at four items and put
+the roster and the tracker format together in v0.21.0; no word names a v0.20.4 or rules on Subversion since FM-164-Q1
+was withdrawn. So FM-164-Q2 offers three placements after v0.20.3, each with its cost (decision 1). Decisions 3 to 6 ride
+with whichever the Owner takes.
 
 **2026-11-20 — FM-164-Q1 withdrawn, with no answer given.** The Owner's words of 18 to 20 November set v0.20.3 at four
 items ([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md)), and the notice this ask put in
@@ -76,15 +87,30 @@ layer stays, so that another system can plug in later through the same seam.
 
 ## Decisions, for the Owner
 
-FM-164-Q1 asked for all of these at once, and is withdrawn (above). The next ask offers the releases of decisions 1
-and 2 as options.
+FM-164-Q1 asked for all of these at once, and is withdrawn (above). FM-164-Q2 asks decision 1, the placement.
 
-1. **The deprecation is in v0.20.3.** Its CHANGELOG and the README announce it, and the adoption notes, the setup page
-   and the landing say it where they name Subversion. Subversion keeps working in v0.20.3, unchanged. This part is
-   records and docs only.
-2. **The removal is in v0.21.0,** its own lane. It takes out the Subversion implementation, `ADOPT.svn.md` and
-   `ADOPT.svn.de.md`, Subversion's parts of the documents and the landing, its tests, and CI's Subversion steps.
-   Adopters on Subversion get one release's notice: v0.20.3. Its review is critical, since it touches the gate.
+1. **The placement, asked in FM-164-Q2.** The costs rest on what main `7c93c835` held when FM-164 was filed: the tool
+   branches 41 times on `"svn"`, Subversion has 30 functions of its own, six test files are Subversion's alone and
+   eight more hold Subversion cases, and CI installs and checks Subversion on all three systems.
+   1. **The notice in v0.20.4, a release of its own; the removal in v0.21.0.** *Proposed.*
+      - v0.20.4 is records and docs only: the notice in the CHANGELOG and the README, and in the adoption notes, the
+        setup page and the landing where they name Subversion, in English and German. Subversion keeps working in it.
+      - Its cost: one more release sitting, with its full run, its signed tag and its CHANGELOG date; and v0.21.0
+        carries one more lane, the removal, whose review is critical because it touches the gate.
+      - What it saves: v0.21.0's roster and tracker-format lanes are built, tested and reviewed for Git and the plain
+        folder alone, not for Subversion too.
+   2. **The notice in v0.21.0; the removal in the release after it.**
+      - No new release: the notice rides in v0.21.0 as records and docs.
+      - Its cost: every v0.21.0 lane that reads history, the gate or the hooks, the roster and the tracker format among
+        them, is still built, tested and reviewed for Subversion too, and CI keeps its Subversion steps through
+        v0.21.0. The removal then waits for a release no word names yet.
+   3. **Neither yet.**
+      - Subversion stays supported as today, with no new features.
+      - Its cost: every lane keeps proving two version-control systems on three operating systems, with no end named.
+2. **The removal,** its own lane, in the release the answer names. It takes out the Subversion implementation,
+   `ADOPT.svn.md` and `ADOPT.svn.de.md`, Subversion's parts of the documents and the landing, its tests, and CI's
+   Subversion steps. Adopters on Subversion get one release's notice first. Its review is critical, since it touches
+   the gate.
 3. **The VCS layer stays.**
    - `select_vcs` and `vcs()` keep their place, with Git and the plain folder behind them.
    - A test double, a third system that exists only in the tests, plugs in through the same seam. Its tests hold that
@@ -95,9 +121,10 @@ and 2 as options.
    `--standup`. It has no history, so it holds no rights, signed answers or ship-log proof, as today
    ([`ADOPT.md` L219–L221](https://github.com/shoalmark/shoalmark/blob/7c93c835d6ac9842bb28a37118822f4a6b8a661b/ADOPT.md#L219-L221)).
 5. **The notice, as worded,** the same in the CHANGELOG and the README, with its German twin where the page has one:
-   > **Subversion support is deprecated.** It keeps working in 0.20.3 and is removed in 0.21.0. From then on,
-   > shoalmark supports Git and the plain folder: one version-control system, so every change is simpler to build and
-   > prove. A Subversion working copy can stay on 0.20.3, move to Git, or run as a plain folder, without history.
+   > **Subversion support is deprecated.** It keeps working in [the notice's release] and is removed in [the removal's
+   > release]. From then on, shoalmark supports Git and the plain folder: one version-control system, so every change
+   > is simpler to build and prove. A Subversion working copy can stay on [the notice's release], move to Git, or run
+   > as a plain folder, without history.
 6. **The open trackers follow the removal.** FM-074 and FM-129 close as superseded when it ships. FM-100's stage 1
    drops Subversion from its setups if the removal lands first. FM-151 plans CI without it.
 
@@ -105,7 +132,7 @@ and 2 as options.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-164's next ask,** on the notice's and the removal's releases.
+- [ ] **The Owner has answered FM-164-Q2,** on the notice's and the removal's releases.
 - [ ] **The deprecation, in the release the answer names:** the notice in the CHANGELOG and the README, and in the
   adoption notes, the setup page and the landing where they name Subversion, in English and German, with the pair checks
   passing. Subversion still passes the suites.
@@ -126,5 +153,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-21 | FM-164-Q2 put, a ruling: the notice's and the removal's releases after v0.20.3, as three placements with their costs; the notice in v0.20.4 and the removal in v0.21.0 proposed. Decision 1 holds the placements, decision 2 the removal, and the notice's words leave its releases to the answer; `next: owner`. Records only. |
 | 2026-11-20 | FM-164-Q1 withdrawn, with its record under *Asks*: the Owner's words of 18 to 20 November left its v0.20.3 notice out (FM-139). The hook, the decisions' lead and *Done when* say so, and a new ask will offer the releases as options; `next: build`. Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-164-Q1 put: Subversion deprecated in v0.20.3 and removed in v0.21.0, as proposed. Records only. |
