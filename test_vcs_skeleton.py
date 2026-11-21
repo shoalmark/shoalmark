@@ -639,8 +639,9 @@ def run_review_root_controls(fm, check):
     previous = fm.ROOT
     real_run = subprocess.run
     none = ("_GIT_DIRS", "_TRACKED", "_SVN_LOG", "_GIT_USER", "_STAGED", "_BUILD", "_CHANGES", "_GUARD", "_SIGNERS",
-            "_OWNER_POLICY", "_WALK", "_WALK_FAILED", "_ORIGIN_DEFAULT", "_TRUNK_UNTOLD", "_PARTIAL")
-    maps = ("_LINE_AUTHOR", "_SVN_BLAME", "_OWNER_COMMITS", "_MODES", "_TREES", "_VIEWS", "_SVN_NEW", "_WALK_COMMITS", "_HAS_SESSIONS", "DERIVED_FILES")
+            "_OWNER_POLICY", "_WALK", "_WALK_FAILED", "_ORIGIN_DEFAULT", "_TRUNK_UNTOLD", "_PARTIAL", "_FILED")
+    maps = ("_LINE_AUTHOR", "_SVN_BLAME", "_OWNER_COMMITS", "_MODES", "_TREES", "_VIEWS", "_SVN_NEW", "_WALK_COMMITS", "_HAS_SESSIONS", "DERIVED_FILES",
+            "_FILED_AT", "_FILED_STATES", "_FILED_MATERIAL", "_FILED_PLAIN", "_HELD")
     lists = ("BOARD_UNREAD", "DERIVED_COLUMNS", "DERIVED_NOTES", "INDEX_COLUMNS", "BOARD_COLUMNS")
     flags = ("COMMITTING", "_ASK_ORIGIN", "LAZY_OFF", "DERIVER_LEFT")
 

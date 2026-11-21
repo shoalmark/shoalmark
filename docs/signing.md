@@ -171,10 +171,11 @@ step says *both*.
    both signers. As a signing key only — this key never pushes.
 
 4. **Retire the old key**, if another key signed before — the one you push with, say. Until you do, anything that
-   can use it still signs, and what it signs still verifies. Retire it once none of the answers it signed is still
-   open: an open answer signed by the old key would read unverified once its line leaves the signers file. Then take
-   its line out of the signers file, and delete it under *Signing keys* on the forge. It stays under
-   *Authentication keys*, and keeps pushing.
+   can use it still signs, and what it signs still verifies. Take its line out of the signers file, in a signed
+   commit of your own, and delete it under *Signing keys* on the forge. An answer it signed keeps counting: a commit
+   the default branch already holds is verified against the signers file as that branch held it when the commit
+   landed there (*Changing your address or your key*, below). What the old key signs after its line has left
+   verifies no more. It stays under *Authentication keys*, and keeps pushing.
 
 **A signed line verifies by SSH only.** A GPG signature on it is refused: `sign with SSH; GPG returns with a fingerprint binding`.
 
@@ -190,6 +191,44 @@ At the top of the file, before any table. `you@example.org` is the email the sig
 and any other is refused when the configuration is read (exit 1). `signed` asks for an SSH signature whose principal is
 exactly that email — drop it only under Subversion, where the identity is your server account. Nobody holds the answer
 right unless you name them: nobody may answer by default, on purpose. `[seats] owner` is the old spelling and still reads; the older `answerers = ["yourname"]` still reads where there is no `owner` and no `[seats]` — for a signed answer, write the `owner` line.
+
+**Which address: your forge's noreply address.** `shoalmark.toml` and the signers file are public. Every clone and every
+fork carries them, and every page that shows them shows the address they hold. A personal address there is one a
+stranger can write to, and the record needs to know you by an identity, not by a mailbox. Your forge gives your account
+a noreply address for exactly this: write that one in `owner`, list your keys under it in the signers file, and commit
+under it (`git config user.email`). The examples on this page write `you@example.org` where your address goes.
+
+## Changing your address or your key — what was filed stays counted
+
+**A commit the default branch already holds is judged by what that branch said when the commit landed there**: the identities
+and keys in force immediately before it arrived on that branch. It is never judged again by what the branch says now. So:
+
+- an answer you gave under an address that has since left `owner` still counts, and still reads as yours;
+- an answer signed with a key that has since left the signers file still counts;
+- an address or a key that arrives later counts for nothing that landed before it;
+- a commit under an address that has left counts for nothing once it lands after the change, whatever date it carries;
+- a commit that is not on the default branch yet — a branch's, a pull request's — is judged by the state in force
+  there. A change to `owner` or the signers file takes effect when an identity of the state in force made it, by a
+  verified signature where that identity is signed; a change that lands otherwise leaves that state as it was.
+
+**To move to another address,** make two commits of your own, each signed, and let each land on the default branch
+before you make the next:
+
+1. **Add the new address to `owner`, keeping the old address, and list your keys under both addresses**: a second
+   line for each key, under the lines you have. You still commit under the old address. One key may stand under two addresses — git names only the first line that holds a
+   key, and the gate reads the lines of the address a commit is under.
+2. **Take the old address out** of `owner` and of the signers file, in a commit under the new address. That this
+   commit verifies shows that the new address and its keys work before the old address is gone.
+
+`--check` passes on each of the two branches and after each merge. From then on you commit under the new address.
+Earlier commits keep the old one: history is not rewritten, and it need not be.
+
+**Your first key.** Where the default branch holds no key yet, your own signed commit that lists your first key, and
+leaves `owner` as it is, takes effect by the key it lists. It never replaces a key that is there: a new key is listed
+in a commit signed with a key the signers file already holds.
+
+**Two limits.** Before the first Owner enrollment, earlier commits are judged by that first enrollment. A clone that
+verifies against a signers file outside the repository has only that file as it is now: keep the earlier lines in it.
 
 ## Check it
 
@@ -251,6 +290,8 @@ key. Under Subversion this guard is out of scope: its working copy carries no si
 | *the answer is not committed yet* | commit it — the commit is the record |
 | *`answered-by: x` but the git author of the answer is `y`* | someone else committed your answer; it does not count |
 | *the answer's commit does not verify as `x`* | unsigned, or signed by a key the signers file on the default branch does not tie to exactly your email — a new key counts once it is merged there |
+| *the answer's commit … is by `x` — the default branch did not name that author as one who may answer when the commit was filed there* | the answer landed before `owner` named that address, or after the address had left: give the answer again, `--answer … --supersede` |
+| *… its signers file held no such key for that identity then* | the answer landed before its key reached the signers file on the default branch, and a key that arrives later verifies nothing that landed before it: give the answer again |
 | *sign with SSH; GPG returns with a fingerprint binding* | the answer is signed with a GPG key: sign it with your SSH key (Route A) |
 | *`owner` names `x` as signed, and a signed identity is an email address* | write the email the signers file names for your key |
 | a *note* that the author is unverified | you wrote `["name"]` without `signed` under git — it works, and it proves nothing |

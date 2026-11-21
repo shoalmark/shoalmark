@@ -973,7 +973,7 @@ MUTANTS = (
     ("C5 against the branch's own base", "proposed_id_findings", "t_open, t_put, t_records = held_ids(there)", "t_open, t_put, t_records = held_ids(base)", (rows_branches,)),
     ("C5 without the default branch's records", "proposed_id_findings",
      "theirs = {n for n in (ask_number(a, tid) for a in [t_open, *t_records]) if n}", "t_records = {}\n        theirs = {n for n in (ask_number(a, tid) for a in [t_open]) if n}", (rows_branches,)),
-    ("signers read from the checkout", "verified_as", 'v = vcs_process("git", *signers_args(), "log"', 'v = vcs_process("git", "log"', (rows_binding,)),
+    ("signers read from the checkout", "verified_as", 'v = vcs_process("git", *signers_args(identity, at), "log"', 'v = vcs_process("git", "log"', (rows_binding,)),
     ("the next number from the front matter alone", "file_numbers", '[t.get("ask_id") or ""] + [i for i, _d in t.get("asks_ids") or []]', '[t.get("ask_id") or ""]', (rows_records, rows_minting)),
     ("`--answer` by tracker id on an ask with an id", "answer_cmd", "if held and not by_id:", "if False:", (rows_commands,)),
     ("C2 off", "id_moves", "if which:", "if False:", (rows_minting, rows_binding)),
