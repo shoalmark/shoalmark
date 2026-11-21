@@ -3,7 +3,7 @@ id: FM-164
 status: Proposed
 considered: FM-003, FM-004, FM-005, FM-006, FM-007, FM-008, FM-014, FM-023, FM-027, FM-030, FM-031, FM-032, FM-035, FM-037, FM-044, FM-045, FM-046, FM-050, FM-054, FM-057, FM-058, FM-059, FM-068, FM-069, FM-070, FM-074, FM-100, FM-129, FM-151
 tags: process
-next: owner
+next: build
 hook: "shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is built and proven twice. With one version-control system and the plain folder, every lane is simpler. The proposal: Subversion is deprecated with a release's notice, then removed, and the VCS layer stays, with Git, the plain folder and a test double behind it. Its first ask put the notice in v0.20.3, which is now closed; FM-164-Q2 asks where the notice and the removal go after it, with each placement's cost."
 ask-id: FM-164-Q2
 ask: "Where do Subversion's notice and its removal go, now that v0.20.3 is closed: the notice in a v0.20.4 of its own and the removal in v0.21.0; the notice in v0.21.0 and the removal in the release after; or neither yet?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-21
 ask-options: "notice in v0.20.4, removal in v0.21.0 | notice in v0.21.0, removal after it | neither yet | another placement I name"
 ask-proposal: "notice in v0.20.4, removal in v0.21.0"
+answer: "accepted - notice in v0.20.4, removal in v0.21.0"
+answered: 2026-11-21
+answered-by: holgo99
 ---
 
 # FM-164 — Subversion support is deprecated, then removed, while the VCS layer stays
