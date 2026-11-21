@@ -15,8 +15,9 @@ Seat: the Planner (a1730572) · filed 2026-11-20, on the coordinator's word of t
 
 **Filed 2026-11-20, Proposed; nothing is merged.** On the Owner's ruling of 20 November, a skill, or a change to one,
 enters shoalmark/skills only by the Owner's own signed commit, which is its READY, after proof in our own use and an
-eval with its numbers filed. The ruling names two means to hold it, neither in force yet: no bot's push grant is to
-cover that repository, a change to the organisation's roster; and a required check on its main is to refuse any commit
+eval with its numbers filed. The ruling names two means to hold it. The first is in force: by the Owner's signed
+change to the organisation's roster of 20 November, no bot's push grant covers that repository, and each branch, pull
+request and push there is the Owner's own act. The second is not: a required check on its main, to refuse any commit
 that touches a skill unless it is the Owner's own signed commit. This tracker carries the check, whose lane started on
 20 November, on the coordinator's word of that day.
 
@@ -51,5 +52,6 @@ before it is proven costs more than any delay.
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | *What is true now* said neither of the ruling's two means was in force; the roster's had been since earlier that day, by the Owner's signed change, as the organisation's record has it. It now says so; the check is still to come. Records only. |
 | 2026-11-20 | Renamed to the tool's slug of its title; *What is true now* says the two means are not in force yet, and where the lane's start is recorded. Records only. |
 | 2026-11-20 | Filed, Proposed: the check that holds the Owner's ruling of 20 November on shoalmark/skills. Records only. |

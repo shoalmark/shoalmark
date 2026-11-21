@@ -5,15 +5,6 @@ considered: FM-023, FM-024, FM-031, FM-078, FM-123, FM-139
 tags: process
 next: build
 hook: "The Board gives a resume command only to the sessions of the last 24 hours, so a session closed two days ago has no way back on it. Its paste check never asks whether the folder or the log is still there, so over a week a command could fail on paste."
-ask-id: FM-159-Q2
-ask: "Are FM-159's decisions taken, as its section Decisions, for the Owner sets out, with the lane in v0.20.3?"
-ask-kind: ruling
-ask-since: 2026-11-20
-ask-options: "yes, as proposed | yes, in a release after v0.20.3 | no"
-ask-proposal: "yes, in a release after v0.20.3"
-answer: "accepted - yes, in a release after v0.20.3"
-answered: 2026-11-20
-answered-by: holgo99
 ---
 
 # FM-159 — a session can be resumed from the Board only for 24 hours, and its command can name a folder that is gone
@@ -21,6 +12,9 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-20 — FM-159-Q2 answered: "yes, in a release after v0.20.3", its proposal.** Decision 8 reads so now;
+which release takes the lane is not ruled yet. The record is under *Asks*.
 
 **2026-11-20 — FM-159-Q1 withdrawn and put again as FM-159-Q2, with a new proposal.** The Owner's words of 18 to 20
 November set v0.20.3 at four items, and this lane is not among them. FM-159-Q2's question and options are Q1's word for
@@ -119,7 +113,8 @@ Board offers it as the way back.
    - the differential's pinned lines change with the page;
    - the design guide's §1, §7 and §8 say where the sessions now stand.
 7. **The build:** a rendered-surface lane, with the Designer's check of the page beside its review.
-8. **Allocation:** v0.20.3, a chapter of FM-139. FM-159-Q2 proposes instead a release after v0.20.3, its second option.
+8. **Allocation:** a release after v0.20.3, by the Owner's answer to FM-159-Q2; which one is not ruled yet. It read
+   v0.20.3, a chapter of FM-139, when FM-159-Q1 was put.
 
 ## Done when
 
@@ -139,10 +134,16 @@ Each item names its commit or pull request when it lands.
 **FM-159-Q1** · 2026-11-20 · Are FM-159's decisions taken, as its section Decisions, for the Owner sets out, with the lane in v0.20.3?
 **withdrawn** — no answer was given
 
+**FM-159-Q2** · 2026-11-20 · Are FM-159's decisions taken, as its section Decisions, for the Owner sets out, with the lane in v0.20.3?
+**answered** — accepted - yes, in a release after v0.20.3 · holgo99
+**relation** — accepted the proposal
+**signed** — 702aabf · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-159-Q2 cleared, with its record under *Asks*; decision 8 reads a release after v0.20.3, as the answer has it, and which one is not ruled yet. `next: build` stands. Records only. |
 | 2026-11-20 | FM-159-Q1 withdrawn, with its record under *Asks*, and put again as FM-159-Q2, its proposal "yes, in a release after v0.20.3". Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-159-Q1, on the Auditor's word: `epic: FM-139`, under v0.20.3's epic until the Owner decides whether it goes in. Nothing is built. |

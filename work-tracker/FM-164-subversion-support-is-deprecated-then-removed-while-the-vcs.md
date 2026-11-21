@@ -3,14 +3,8 @@ id: FM-164
 status: Proposed
 considered: FM-003, FM-004, FM-005, FM-006, FM-007, FM-008, FM-014, FM-023, FM-027, FM-030, FM-031, FM-032, FM-035, FM-037, FM-044, FM-045, FM-046, FM-050, FM-054, FM-057, FM-058, FM-059, FM-068, FM-069, FM-070, FM-074, FM-100, FM-129, FM-151
 tags: process
-next: owner
-hook: "shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is built and proven twice. With one version-control system and the plain folder, every lane is simpler. The proposal, put to the Owner as FM-164-Q1: Subversion is deprecated with a release's notice, then removed, and the VCS layer stays, with Git, the plain folder and a test double behind it."
-ask-id: FM-164-Q1
-ask: "Do you take FM-164's decisions as proposed: Subversion deprecated in v0.20.3 and removed in v0.21.0, the VCS layer kept with Git, the plain folder as it is today and a test double, and the notice as worded?"
-ask-kind: ruling
-ask-since: 2026-11-12
-ask-options: "yes, as proposed | yes, with the changes I name | no, Subversion stays"
-ask-proposal: "yes, as proposed"
+next: build
+hook: "shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is built and proven twice. With one version-control system and the plain folder, every lane is simpler. The proposal: Subversion is deprecated with a release's notice, then removed, and the VCS layer stays, with Git, the plain folder and a test double behind it. Its first ask, FM-164-Q1, which put the notice in v0.20.3, is withdrawn."
 ---
 
 # FM-164 — Subversion support is deprecated, then removed, while the VCS layer stays
@@ -18,6 +12,12 @@ ask-proposal: "yes, as proposed"
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-20 — FM-164-Q1 withdrawn, with no answer given.** The Owner's words of 18 to 20 November set v0.20.3 at four
+items ([FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md)), and the notice this ask put in
+v0.20.3, decision 1, is not among them. On the Owner's word of 20 November, an ask a later word has overtaken is
+withdrawn, and is not put again as it stands. A new ask will offer the notice's and the removal's releases as options,
+each with its cost. Until it is answered, decisions 1 and 2 are not ruled.
 
 **Filed 2026-11-12, Proposed, with FM-164-Q1 put; nothing is built.** Every place below was found by reading main at
 `7c93c835`.
@@ -76,8 +76,8 @@ layer stays, so that another system can plug in later through the same seam.
 
 ## Decisions, for the Owner
 
-The ask, FM-164-Q1, asks for all of these at once. An answer of "yes, with the changes I name" names each change by
-its number.
+FM-164-Q1 asked for all of these at once, and is withdrawn (above). The next ask offers the releases of decisions 1
+and 2 as options.
 
 1. **The deprecation is in v0.20.3.** Its CHANGELOG and the README announce it, and the adoption notes, the setup page
    and the landing say it where they name Subversion. Subversion keeps working in v0.20.3, unchanged. This part is
@@ -105,20 +105,26 @@ its number.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered the ask,** FM-164-Q1.
-- [ ] **v0.20.3, the deprecation:** the notice in the CHANGELOG and the README, and in the adoption notes, the setup
-  page and the landing where they name Subversion, in English and German, with the pair checks passing. Subversion
-  still passes the suites.
-- [ ] **v0.21.0, the removal:** the Subversion implementation, its documents, its tests and CI's steps are gone, and
-  a `.svn` folder reads as a plain folder, with a test.
+- [ ] **The Owner has answered FM-164's next ask,** on the notice's and the removal's releases.
+- [ ] **The deprecation, in the release the answer names:** the notice in the CHANGELOG and the README, and in the
+  adoption notes, the setup page and the landing where they name Subversion, in English and German, with the pair checks
+  passing. Subversion still passes the suites.
+- [ ] **The removal, in the release the answer names:** the Subversion implementation, its documents, its tests and CI's
+  steps are gone, and a `.svn` folder reads as a plain folder, with a test.
 - [ ] **The seam:** the test double plugs into `select_vcs` and `vcs()`, and its tests fail where a place branches on
   the system without asking the layer; a mutant shows it.
 - [ ] **The plain folder** does what decision 4 says, held by the existing tests and one for the `.svn` case.
 - [ ] **The open trackers** are closed or changed as decision 6 says, each in its own commit.
 - [ ] **The removal's critical review is READY.**
 
+## Asks
+
+**FM-164-Q1** · 2026-11-20 · Do you take FM-164's decisions as proposed: Subversion deprecated in v0.20.3 and removed in v0.21.0, the VCS layer kept with Git, the plain folder as it is today and a test double, and the notice as worded?
+**withdrawn** — no answer was given
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-20 | FM-164-Q1 withdrawn, with its record under *Asks*: the Owner's words of 18 to 20 November left its v0.20.3 notice out (FM-139). The hook, the decisions' lead and *Done when* say so, and a new ask will offer the releases as options; `next: build`. Records only. |
 | 2026-11-12 | Filed, Proposed, with FM-164-Q1 put: Subversion deprecated in v0.20.3 and removed in v0.21.0, as proposed. Records only. |
