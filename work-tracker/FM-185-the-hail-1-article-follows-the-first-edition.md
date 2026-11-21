@@ -3,7 +3,7 @@ id: FM-185
 status: Proposed
 considered: FM-153, FM-168
 tags: process
-next: owner
+next: build
 hook: "The hail/1 article on the site follows hail/1's first edition, and both pages shoalmark/hail publishes send readers to it. When the next edition is published, the article must already say what that edition says. The proposal, put to the Owner as FM-185-Q1: the article is revised before that publication, its branch kept local until the publication's sitting."
 ask-id: FM-185-Q1
 ask: "Is the hail/1 article revised for hail/1's next edition before that edition's publication, as FM-185's decisions set out, its branch local until the publication's sitting?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-20
 ask-options: "yes, as planned | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as planned"
+answer: "accepted - The article is not tied to the edition. hail/1's next edition is published without waiting for the article. The article is revised after that publication, on a day I choose. Until I name that day, nothing is built for it and FM-185 waits. On the day the edition is published, one dated line at the top of the article says that it describes the first edition and that a revised article will follow."
+answered: 2026-11-21
+answered-by: holgo99
 ---
 
 # FM-185 — the hail/1 article follows the first edition
