@@ -197,6 +197,7 @@ it* · any other code comes from the repository's deriver (§7) and its message 
 | `carries no Session: trailer` · `a session id is eight hex characters` · `names the seat …` | set `seat.session` in your worktree: the harness's id, or `<parent>/<seat>-<n>` for a sub-agent of your own seat (§6 *Sessions*) |
 | `--answer: X is answered already` | an answer is never overwritten in place: `--answer X revoke "<reason>"` takes it back, `--answer X accept\|reject "<option>" --supersede` replaces it — the old one moves into the ship log |
 | `no commit answers <id>` | the answer to an ask with an id is the Owner's ordinary commit that carries `Answers: <id>`, signed where the default branch asks for it. A new answer is made that way: `--answer <id> …`, on the branch they stand on. This line is about an answer already committed: an `answer:` stands, and no commit counts as its answer. Where that commit lacks `Answers: <id>`, answering again refuses (*is answered already*), and `--supersede` alone does not clear it: `--check` still reads that commit among the branch's own, and refuses it. Carry the work onto a fresh branch from the commit before it (never force a pushed one), leave the put ask as it stands, and run `--answer <id> accept\|reject ["text"]` there. Where the commit carries the trailer and its signature does not verify — a key the default branch's signers file does not hold for that email, or a clone that cannot check it — the signature rows above say what to do |
+| `` the answer's commit … is by `x` — the default branch did not name that author as one who may answer when the commit was filed there `` · `its signers file held no such key for that identity then` | a commit the default branch already holds is judged by what that branch said when the commit landed there — who `owner` named, and which keys its signers file listed for them — and never by what it says now (below the table). This answer landed before its address or its key did, or under an address that had left: the Owner gives it again, `--answer <id> accept\|reject ["text"] --supersede`. `no commit answers <id>` says the same of an answer with an id that landed so |
 | `` refused: commit … changes the text under `## The intent` `` · `## The current path` · `renames or removes the heading` · `deletes or moves …/TRIAGE.md` · `points the tracker directory elsewhere` · `brings a text … that no parent had` (FM-037) | the two sections are the Owner's, and only their signed commit changes them. Every commit of the branch is judged, so a revert does not clear it — the revert changes the text too: carry the work onto a fresh branch without that commit (never force a pushed one), and put the change to them as an ask — `ask:` in its tracker, one sentence, `ask-kind: ruling`, `ask-since:`, `next: owner`. They commit it themselves, signed. Below the table |
 | `changes the signers file …` (FM-037, AU-19) | the keys their signature is verified against are theirs too: a seat proposes a key as an ask, and they commit it, signed |
 | `wait: TRIAGE.md changed unsigned` (`--queue`) | a commit on that branch changes their intent or current path and is not their signed commit — the refusal above, read on the pull request: do not merge it |
@@ -235,6 +236,22 @@ signature. `--queue` reads such a branch `wait: TRIAGE.md changed unsigned`. Whe
 **the author only**, and says so. **Subversion is out of scope**: its working copy carries no signature, so nothing there
 can tell their commit from a seat's. **Its limit** (FM-007): a commit signed with the Owner's key passes; at tier 0 any
 process on their account holds that key.
+
+**A commit the default branch already holds is judged by what that branch said when the commit landed there.** Who the
+Owner is, and which keys are theirs, is read from the identities and keys in force immediately before the commit arrived on that
+branch, and never again from its tip. So an answer given under
+an address that has since left `owner`, or signed with a key that has since left the signers file, still counts and still
+reads as the Owner's. It holds the other way too: an address or a key that arrives later counts for nothing that landed
+before it, and a commit under an address that has left counts for nothing once it lands after, whatever date it carries.
+A commit that is not on the default branch yet — a branch's, a pull request's — is judged by the state in force there,
+and so are the guard over the Owner's two sections and the Owner's signed commits. A change to `owner`, to the signers
+file or to who may answer takes effect when an identity of the state in force made it: by a verified signature where
+that identity is signed, and by its author where it is not. A change that lands otherwise leaves that state as it was.
+Where that state holds no key yet, the Owner's own signed commit that lists their first key, and leaves `owner` as it is,
+takes effect by the key it lists; it never replaces a key that is there. Commits before the first Owner enrollment are
+judged by that enrollment.
+A key listed for two addresses verifies for each: git names one address for a key, the first line that holds it, and the
+gate reads the lines of the address a commit is under. The signing page has the order for changing an address or a key.
 
 Never `--no-verify`. Never hand-edit `INDEX.md` — it is generated.
 
@@ -371,6 +388,12 @@ builder     = "builder@seat"
 [rights]
 chef = ["answer", "close"]              # only for a name of your own — not owner, planner, reviewer or builder
 ```
+
+**Name the Owner by the forge's noreply address.** `shoalmark.toml` and the signers file are public: every clone and every
+fork carries them, and every page that shows them shows the address they hold. A personal address there is one a stranger
+can write to, and the record needs to know the Owner by an identity, not by a mailbox. A forge gives each account a noreply
+address for this: write that one in `owner`, list the Owner's keys under it in the signers file, and commit under it. An
+address that stood there before can leave: what was filed under it keeps counting (§5), and the signing page has the order.
 
 **The badge:** `git config extensions.worktreeConfig true` once, then `git config --worktree user.email planner@seat`
 in each seat's worktree. A signed seat's key belongs where only that seat runs — a container, later; the Owner's key is
@@ -511,7 +534,11 @@ design; what protects the default branch is `--check` on the branch. Without `or
 none — `--check` asks `origin` for its default branch where `origin/main` or `origin/master` is all it holds, and
 refuses in one line where origin cannot be read — a private repository's checkout that keeps no credentials
 (`persist-credentials: false`), on a push to the default branch or with `fetch-depth: 0`, or a clone offline: run
-`git remote set-head origin <default>` first there.
+`git remote set-head origin <default>` first there. **`--check` reads the default branch's history whole.** On a shallow
+checkout, which a CI checkout often is, who the Owner is and which keys verify cannot be read: every open ask put under
+the Owner's identity is refused, even where the branch adds nothing, and so is every commit of the branch's own under
+the Owner's address and every change to the Owner's two sections. Each line says the way through: fetch the history
+whole (`fetch-depth: 0`).
 
 **The registry is a report:** `<cmd> --sessions` prints it from the trailers of the checkout's history — one row
 per session id: its seat (the author through `[seats]`), its first and last commit, how many commits carry it, and its

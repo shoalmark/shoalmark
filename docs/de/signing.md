@@ -187,9 +187,11 @@ speichern. Unten mit dieser Datei weitermachen — und mit der des zweiten Signi
    beide Signierer. Nur als Signierschlüssel — dieser Schlüssel pusht nie.
 
 4. **Den alten Schlüssel stilllegen**, falls vorher ein anderer signiert hat — etwa der, mit dem du pushst. Bis
-   dahin signiert alles, was ihn benutzen kann, weiter, und was er signiert, lässt sich weiter verifizieren. Lege
-   ihn still, sobald keine der Antworten, die er signiert hat, mehr offen ist: Eine offene Antwort, die der alte
-   Schlüssel signiert hat, gälte als unverifiziert, sobald seine Zeile die Signierer-Datei verlässt. Dann seine Zeile
+   dahin signiert alles, was ihn benutzen kann, weiter, und was er signiert, lässt sich weiter verifizieren. Eine
+   Antwort, die er signiert hat, zählt auch danach: Einen Commit, der schon auf dem Standard-Branch liegt, prüft das
+   Gate gegen die Signierer-Datei, wie der Standard-Branch sie führte, als der Commit dort ankam (*Adresse oder
+   Schlüssel wechseln*, unten). Was er signiert, nachdem seine Zeile weg ist, wird nicht mehr verifiziert. Dann
+   seine Zeile, in einem eigenen signierten Commit,
    aus der Signierer-Datei nehmen und ihn auf der Git-Plattform unter *Signing keys* löschen. Unter *Authentication keys*
    bleibt er stehen und pusht weiter.
 
@@ -209,6 +211,53 @@ eine SSH-Signatur, deren Prinzipal genau diese E-Mail ist — nur unter Subversi
 Identität ist. Solange du niemanden benennst, darf niemand antworten: Das ist die Voreinstellung, absichtlich.
 `[seats] owner` ist die alte Schreibweise und gilt weiter; das ältere `answerers = ["ihrname"]` gilt weiter, wo es weder
 `owner` noch `[seats]` gibt — für eine signierte Antwort schreibst du die `owner`-Zeile.
+
+**Welche Adresse: die Noreply-Adresse deiner Git-Plattform.** `shoalmark.toml` und die Signierer-Datei sind öffentlich.
+Jeder Klon und jeder Fork enthält beide, und jede Seite, die beide zeigt, zeigt die Adresse darin. Eine persönliche
+Adresse dort kann jeder Fremde anschreiben, und der Beleg soll dich an einer Identität erkennen, nicht an einem
+Postfach. Deine Git-Plattform gibt deinem Konto genau dafür eine Noreply-Adresse: Trage diese in `owner` ein, führe
+deine Schlüssel in der Signierer-Datei unter ihr und committe unter ihr (`git config user.email`). Die Beispiele auf
+dieser Seite schreiben `sie@example.org`, wo deine Adresse steht.
+
+## Adresse oder Schlüssel wechseln — was schon auf dem Standard-Branch liegt, zählt weiter
+
+**Einen Commit, der schon auf dem Standard-Branch liegt, beurteilt das Gate nach dem, was der Branch sagte, als der
+Commit dort ankam**: welche Identitäten und Schlüssel unmittelbar davor auf diesem Branch galten. Nach dem heutigen Stand des Branches wird er nie neu
+beurteilt. Also:
+
+- eine Antwort, die du unter einer Adresse gegeben hast, die `owner` inzwischen verlassen hat, zählt weiter und gilt
+  weiter als deine;
+- eine Antwort, die ein Schlüssel signiert hat, der die Signierer-Datei inzwischen verlassen hat, zählt weiter;
+- eine Adresse oder ein Schlüssel, die später dazukommen, zählen für nichts, was vorher ankam;
+- ein Commit unter einer Adresse, die gegangen ist, zählt für nichts, sobald er nach dem Wechsel ankommt, welches
+  Datum er auch trägt;
+- ein Commit, der noch nicht auf dem Standard-Branch liegt — der eines Branches, eines Pull Requests —, wird nach dem
+  Stand beurteilt, der dort gilt. Eine Änderung an `owner` oder an der Signierer-Datei gilt, wenn eine Identität des
+  geltenden Stands sie gemacht hat, mit verifizierter Signatur, wo diese Identität signiert; eine Änderung, die anders
+  ankommt, lässt diesen Stand, wie er war.
+
+**Um die Adresse zu wechseln,** machst du zwei eigene Commits, jeden signiert, und lässt jeden auf dem Standard-Branch
+ankommen, bevor du den nächsten machst:
+
+1. **Die neue Adresse in `owner` aufnehmen, die alte behalten und die Schlüssel unter beiden Adressen führen**:
+   je Schlüssel eine zweite Zeile unter den vorhandenen. Du committest noch unter der alten Adresse. Ein Schlüssel darf unter zwei Adressen stehen — git nennt
+   nur die erste Zeile, die einen Schlüssel führt, und das Gate liest die Zeilen der Adresse, unter der ein Commit
+   steht.
+2. **Die alte Adresse herausnehmen**, aus `owner` und aus der Signierer-Datei, in einem Commit unter der neuen
+   Adresse. Dass dieser Commit verifiziert wird, zeigt, dass die neue Adresse und ihre Schlüssel funktionieren, bevor
+   die alte weg ist.
+
+`--check` geht auf jedem der beiden Branches und nach jedem Merge durch. Von da an committest du unter der neuen
+Adresse. Frühere Commits behalten die alte: Die Historie wird nicht umgeschrieben, und das ist auch nicht nötig.
+
+**Dein erster Schlüssel.** Führt der Standard-Branch noch keinen Schlüssel, gilt dein eigener signierter Commit, der
+deinen ersten Schlüssel einträgt und `owner` lässt, wie es ist, mit dem Schlüssel, den er einträgt. Er ersetzt nie einen
+Schlüssel, der schon dasteht: Einen neuen Schlüssel trägt ein Commit ein, den ein Schlüssel signiert, der schon in der
+Signierer-Datei steht.
+
+**Zwei Grenzen.** Commits vor der ersten Aufnahme deiner Identität werden nach diesem ersten Stand beurteilt. Ein Klon,
+der gegen eine Signierer-Datei außerhalb des Repositorys prüft, hat nur diese Datei, wie sie jetzt ist: Lass die
+früheren Zeilen darin stehen.
 
 ## Prüfen
 
@@ -281,6 +330,8 @@ außerhalb des Umfangs: seine Arbeitskopie trägt keine Signatur.
 | *the answer is not committed yet* | committen — der Commit ist der Beleg |
 | *`answered-by: x` but the git author of the answer is `y`* | jemand anderes hat deine Antwort committet; sie zählt nicht |
 | *the answer's commit does not verify as `x`* | unsigniert, oder mit einem Schlüssel signiert, den die Signierer-Datei auf dem Standard-Branch nicht an genau deine E-Mail bindet — ein neuer Schlüssel zählt, sobald er dort gemergt ist |
+| *the answer's commit … is by `x` — the default branch did not name that author as one who may answer when the commit was filed there* | die Antwort kam an, bevor `owner` diese Adresse nannte, oder nachdem die Adresse gegangen war: Gib die Antwort erneut, `--answer … --supersede` |
+| *… its signers file held no such key for that identity then* | die Antwort kam an, bevor ihr Schlüssel in der Signierer-Datei auf dem Standard-Branch stand, und ein Schlüssel, der später dazukommt, verifiziert nichts, was vorher ankam: Gib die Antwort erneut |
 | *sign with SSH; GPG returns with a fingerprint binding* | die Antwort ist mit einem GPG-Schlüssel signiert: signiere sie mit deinem SSH-Schlüssel (Weg A) |
 | *`owner` names `x` as signed, and a signed identity is an email address* | die E-Mail eintragen, die die Signierer-Datei für deinen Schlüssel nennt |
 | ein *note*, dass der Autor unverifiziert ist | du hast unter git `["name"]` ohne `signed` geschrieben — es funktioniert, und beweist nichts |

@@ -1224,9 +1224,9 @@ FM054_PAGE_EDITS = (
 
 
 def fm054_own(rows):
-    """The rows made neither by the reading of the default branch's configuration (`proof_reading`) nor by the stand-up's
-    variant (`day_vcs`): the baseline makes neither."""
-    return [row for row in rows if not {"proof_reading", "day_vcs"} & set(row.get("product_stack") or [])]
+    """The rows made neither by the reading of the default branch's configuration (`proof_reading`), nor by the stand-up's
+    variant (`day_vcs`), nor by the reading of that branch's history (FM169_SITES): the baseline makes none of them."""
+    return [row for row in rows if not ({"proof_reading", "day_vcs"} | set(FM169_SITES)) & set(row.get("product_stack") or [])]
 
 
 DAY_READ = ("config", "--local", "--get", "remote.origin.url")
@@ -1245,8 +1245,9 @@ def day_read(argv):
 
 
 def fm054_reads(rows):
-    """The starts, or `subprocess.run` calls, FM-054's reading makes: those with `proof_reading` on the tool's own stack."""
-    return [row for row in rows if "proof_reading" in (row.get("product_stack") or [])]
+    """The starts, or `subprocess.run` calls, the reading of the default branch's configuration makes: those with `proof_reading` on
+    the tool's own stack — but the history's reads it reaches (FM169_SITES), which are `fm169_reads`'."""
+    return [row for row in rows if "proof_reading" in (row.get("product_stack") or []) and not set(FM169_SITES) & set(row.get("product_stack") or [])]
 
 
 def fm054_read(argv):
@@ -1254,6 +1255,29 @@ def fm054_read(argv):
     argv = [str(a) for a in argv] if isinstance(argv, list) else []
     return (len(argv) > 1 and Path(argv[0]).name.lower() in ("git", "git.exe")
             and any(tuple(argv[1:1 + len(form)]) == form for form in FM054_READS))
+
+
+# The reading of the default branch's history — the default branch, its first-parent line with each commit's parents and author, the
+# commits there that change the configuration, where the signers file is set, whether the clone is shallow, and the configuration as
+# each of those commits held it — nine reads, made inside `filed_line` alone: one allowance, held to that site as the configuration's
+# reading is to `proof_reading`
+FM169_SITES = ("filed_line",)
+FM169_READS = (("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"), ("rev-parse", "--verify", "--quiet"), ("log", "--format=%H %P%x00%an%x00%ae"),
+               ("rev-parse", "--show-prefix"), ("config", "--path", "--get", "gpg.ssh.allowedSignersFile"), ("log", "--full-history", "--format=%H"),
+               ("rev-parse", "--is-shallow-repository"), ("cat-file", "--batch"), ("ls-tree", "-z", "--full-tree"))
+
+
+def fm169_reads(rows):
+    """The starts, or `subprocess.run` calls, the reading of the default branch's history makes: those with one of FM169_SITES on the
+    tool's own stack."""
+    return [row for row in rows if set(FM169_SITES) & set(row.get("product_stack") or [])]
+
+
+def fm169_read(argv):
+    """Whether one argv is a read the reading of the default branch's history may start: git, and one of FM169_READS."""
+    argv = [str(a) for a in argv] if isinstance(argv, list) else []
+    return (len(argv) > 1 and Path(argv[0]).name.lower() in ("git", "git.exe")
+            and any(tuple(argv[1:1 + len(form)]) == form for form in FM169_READS))
 
 
 def fm054_transform(page):
@@ -1943,19 +1967,22 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                                (before["status"], before["stdout"], before["stderr"]) == said)
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
-            assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads of the default branch's configuration, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
+            assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes, FM-054's "
+                           "reads of the default branch's configuration and FM-169's of its history, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
                            rows_match(origin_undone(answers_undone(before["starts"])), fm054_own(id_rules_undone(after["starts"])), counted) and not fm054_reads(before["starts"])
                            and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"]))
                            and not day_reads(before["starts"]) and all(day_read(row["argv"]) for row in day_reads(after["starts"]))
-                           and len(day_reads(after["starts"])) == (1 if label in DAY_READ_CASES else 0))
-            assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes and FM-054's "
-                           "reads, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
+                           and len(day_reads(after["starts"])) == (1 if label in DAY_READ_CASES else 0)
+                           and not fm169_reads(before["starts"]) and all(fm169_read(row["argv"]) for row in fm169_reads(after["starts"])))
+            assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes, FM-054's "
+                           "reads and FM-169's, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
                            rows_match(origin_undone(answers_undone(before["run_calls"])), fm054_own(id_rules_undone(after["run_calls"])), counted) and not fm054_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and fm054_read(row["args"][0]) for row in fm054_reads(after["run_calls"]))
                            and not day_reads(before["run_calls"])
                            and all(isinstance(row.get("args"), list) and row["args"] and day_read(row["args"][0]) for row in day_reads(after["run_calls"]))
-                           and len(day_reads(after["run_calls"])) == (1 if label in DAY_READ_CASES else 0))
+                           and len(day_reads(after["run_calls"])) == (1 if label in DAY_READ_CASES else 0)
+                           and not fm169_reads(before["run_calls"])
+                           and all(isinstance(row.get("args"), list) and row["args"] and fm169_read(row["args"][0]) for row in fm169_reads(after["run_calls"])))
             assert_control(label_prefix + "the candidate reads the working tree's edits once where the baseline reads them, and not where it does not",
                            edit_reads(after["starts_raw"]) == (1 if edit_reads(before["starts_raw"]) else 0))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
@@ -2196,6 +2223,17 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         writes = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads[0] else row for row in new["starts"]] if reads else []
         assert_control(fm054 + "a start inside `proof_reading` that is not one of its reads is not one",
                        bool(writes) and not all(fm054_read(row["argv"]) for row in fm054_reads(writes)))
+        # The history reading's allowance is held to its difference on the same pair: only the reads of the default branch's history are new
+        fm169 = "Git entry FM-169 allowance: "
+        reads169 = fm169_reads(new["starts"])
+        assert_control(fm169 + "the default run reads the default branch's history — starts inside its reading, each a read, which the baseline never makes",
+                       bool(reads169) and all(fm169_read(row["argv"]) for row in reads169) and not fm169_reads(old["starts"]))
+        unsited = [dict(row, product_stack=[s for s in row["product_stack"] if s not in FM169_SITES]) for row in new["starts"]]
+        assert_control(fm169 + "the same reads made outside that reading are not set aside, and do not match the baseline's starts",
+                       not rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(unsited)) and rows_match(origin_undone(answers_undone(old["starts"])), fm054_own(new["starts"])))
+        written = [dict(row, argv=[row["argv"][0], "update-ref", "refs/heads/x", "HEAD"]) if row is reads169[0] else row for row in new["starts"]] if reads169 else []
+        assert_control(fm169 + "a start inside that reading that is not one of its reads is not one",
+                       bool(written) and not all(fm169_read(row["argv"]) for row in fm169_reads(written)))
         day = "Git entry stand-up allowance: "
         said = day_reads(new["starts"])
         assert_control(day + "the default run's board reads origin's URL once inside `day_vcs`, `git config --local --get remote.origin.url`, and no "

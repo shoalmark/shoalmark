@@ -1,11 +1,13 @@
 ---
 id: FM-169
-status: Proposed
+status: In Progress
 considered: FM-015, FM-019, FM-024, FM-029, FM-037, FM-156, FM-166
 tags: security, process
 epic: FM-139
 next: review
-hook: "shoalmark.toml's top-level owner names the Owner's personal address beside the forge noreply address, and the signers file lists the Owner's two keys under the personal address alone, so every clone carries it. The proposal: the personal address leaves owner and the signers file, the keys are listed under the forge noreply address, and the Owner commits under it from then on. A design round comes first, and no ask is put until it closes. No release is named."
+triaged: 2026-11-21
+tier: P1
+hook: "shoalmark.toml's top-level owner names the Owner's personal address beside the forge noreply address, and the signers file lists the Owner's two keys under the personal address alone, so every clone carries it. The proposal: the personal address leaves owner and the signers file, the keys are listed under the forge noreply address, and the Owner commits under it from then on. The design round is done and its patch was read READY by a critical reader; the change lands in v0.20.3, and the Owner's two signed commits that move the address follow it."
 ---
 
 # FM-169 — the Owner's personal address stands in the public configuration and the signers file, so every clone carries it
@@ -13,6 +15,28 @@ hook: "shoalmark.toml's top-level owner names the Owner's personal address besid
 Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-22 — the fix round for this lane's first full CI run is built, as one commit,
+[`871dcd0`](https://github.com/shoalmark/shoalmark/commit/871dcd04da9609d2c08587b205d33dc2d525b7c3),** on the coordinator's
+word of 21 and 22 November. That CI run failed 51 rows in five families; each is fixed in this commit, by the Builder seat
+on `claude-opus-5-5` at effort `max`, as its launch was recorded. Its trailers carry no `Model` or `Effort`, because
+its hooks ran with a home folder of their own and read no harness log.
+- **Where `owner` names one identity,** a refusal names it as before. Where `owner` names two, it names each by its
+  place in `owner`.
+- **The guard over the Owner's two sections** keeps the state in force for `owner` and for the signers file. A landed
+  unsigned change to either does not move it.
+- **FM-045's reading** follows every git start the tool makes, and the Git entry differential names this item's reads.
+- **FM-032's row** pins short hashes at 7 characters. Git writes them 8 characters long once a clone holds 16,384
+  objects, so main's full run may fail that row until this lands. A red FM-032 row elsewhere is that, and known.
+
+The next step is the round's read, by difference from the patch read before. CI's full run at this lane's head, every
+step on all five jobs, is the run that read names.
+
+**2026-11-21 — judged before its first build commit, keep P1, In Progress.** The change lands in v0.20.3, as its
+own lane, on the coordinator's word of 21 November. The design round is done: the Owner's words of 20 November ruled
+its open questions, and its patch was read READY by a critical reader. The Owner's two signed commits that move the
+address come after it lands, as the signing pages set out. One P3 that read found, the Board's headings on a clone
+without the whole history, is fixed forward in [FM-186](FM-186-on-a-clone-without-the-whole-history-the-board-files-the.md).
 
 **2026-11-16 — in v0.20.3, a chapter of [FM-139](FM-139-v0-20-3-s-rows-sit-in-fm-023-fm-006-and-fm-053-so-no-one.md), by
 FM-139-Q1's answer; its design round has started,** on the coordinator's word of that day. The round answers the four
@@ -106,5 +130,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-21 | Judged before its first build commit, keep P1, In Progress: the change lands in v0.20.3, its patch read READY by a critical reader. Records only. |
 | 2026-11-16 | In v0.20.3, a chapter of FM-139, by FM-139-Q1's answer; its design round started. Records only. |
 | 2026-11-13 | Filed, Proposed, with no release and no ask: the personal address leaves owner and the signers file, after a design round. Records only. |

@@ -27,6 +27,7 @@ Configuration is `shoalmark.toml` at the repository root; every key has a defaul
 import argparse
 import atexit
 import base64
+
 import datetime
 import difflib
 import fnmatch
@@ -825,6 +826,13 @@ def configure(root=None):
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
     global _OWNER_POLICY, _OWNER_COMMITS
     _OWNER_POLICY, _OWNER_COMMITS = None, {}
+    global _FILED
+    _FILED = None
+    _FILED_AT.clear()
+    _FILED_STATES.clear()
+    _FILED_MATERIAL.clear()
+    _FILED_PLAIN.clear()
+    _HELD.clear()
     _MODES.clear()                                      # …and the modes git records for a configuration's path (`path_mode`)
     _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
     _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
@@ -2396,9 +2404,11 @@ def answer_commits(trackers):
     history simplification skips a side branch — printing each commit's parents, author and plain trailer block, from which the
     `Answers:` values are picked in Python (`trailer_values`), as every trailer the tool reads.
     A candidate for an id is an ordinary commit (one parent) whose trailer value IS the id; whose author may answer by the DEFAULT
-    branch's configuration (`owners_at`: the `owner` line, and any name its `[rights]` gives `answer`), signed and verifying against the
-    default branch's signers file where that identity is `signed` (`verified_as` — never a branch's own configuration or signers file);
-    whose own change writes that tracker's `answer:` line — the tracker at the commit and at its parent, one `cat_blobs` for all,
+    branch's configuration — as it stood when the commit landed there, where that branch holds the commit (`filed_state`), else as it
+    is in force there, the last state that branch accepted (`filed_now`), or where it has none to read, as it stands (`owners_at`: the
+    `owner` line, and any name its `[rights]` gives `answer`), and by nobody where that branch's history cannot be read — signed and
+    verifying against the default branch's signers file of that same state where that identity is `signed` (`verified_as` — never a
+    branch's own configuration or signers file); whose own change writes that tracker's `answer:` line — the tracker at the commit and at its parent, one `cat_blobs` for all,
     differ there; and whose own change leaves the put ask as its parent has it — `ask-id:` and `put_ask` equal on both sides. The head
     is the one candidate no other descends from (`git merge-base --independent`, asked only where an id has two). It must hold the
     file's `answer:` line byte for byte, its id, and the put ask the file shows — the parent, the head and the file hold one put ask —
@@ -2426,8 +2436,10 @@ def answer_commits(trackers):
     for aid, t in asked.items():
         rel, keep = rels[aid], []
         for sha, parent, name, email in found[aid]:
-            identity, mode = next(((who, m) for who, m in answerers.items() if who and who in (email, name)), (None, None))
-            if identity is None or (mode == "signed" and not verified_as(sha, identity)):
+            then = filed_state(sha)
+            may, at = (then[0], then[2]) if then else (answerers, None)
+            identity, mode = next(((who, m) for who, m in may.items() if who and who in (email, name)), (None, None))
+            if identity is None or (mode == "signed" and not verified_as(sha, identity, at)):
                 continue
             at, before = blobs.get(f"{sha}:{rel}"), blobs.get(f"{parent}:{rel}")
             if at is None or front_line(at, "answer") == front_line(before, "answer"):
@@ -3201,7 +3213,7 @@ def triage_reading(head, base):
     the walk's: `--queue` asks this for every pull request."""
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, why = default_trunk(git) or base, []
-    owners = owners_at(trunk, why)
+    owners = owners_now(trunk, why)
     if not owners and not why:
         return None
     changed = guard_walk(head, "^" + base, keys=signers_paths(trunk), unread=not owners)[1]
@@ -3728,14 +3740,14 @@ PROOF_FORMAT = {"signed": "%G?", "author": "%an"}                # what the seco
 
 def proof_reading():
     """(who may answer, the Owner's identities, the default branch, why its configuration cannot be read) — each `{identity: "signed" | ""}`
-    — as the gate reads them: `owners_at` on the default branch, the answerers and the Owner its configuration names (`owner_policy`'s
+    — as the gate reads them: `owners_now` on the default branch, the answerers and the Owner its configuration names (`owner_policy`'s
     reading). Where there is no default branch here, or it carries no configuration, `owners_at` reads this checkout's answerers, as the
     gate then does, and no Owner of the default branch's; where this tool refuses the default branch's configuration, `owner_policy`
     refuses nothing, and the gate that judges an answer is `lint`'s, which reads this checkout's — so does this, and `why` says so. Git only."""
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, why = default_trunk(git), []
-    answerers = owners_at(trunk, why)
-    owner = owners_at(trunk, [], owner_only=True) if not why else {}
+    answerers = owners_now(trunk, why)
+    owner = owners_now(trunk, [], owner_only=True) if not why else {}
     if why:
         answerers = may_answer()
     return answerers, owner, trunk, (why[0] if why else "")
@@ -6852,12 +6864,12 @@ _OWNER_POLICY, _OWNER_COMMITS = None, {}
 
 
 def owner_policy():
-    """The configured Owner identities from the default branch, read once per run."""
+    """The configured Owner identities from the default branch, as the state in force there names them (`owners_now`), read once per run."""
     global _OWNER_POLICY
     if _OWNER_POLICY is None:
         git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         why = []
-        owners = owners_at(default_trunk(git), why, owner_only=True)
+        owners = owners_now(default_trunk(git), why, owner_only=True)
         _OWNER_POLICY = owners, why
     return _OWNER_POLICY
 
@@ -6883,14 +6895,20 @@ def verified_owner(commit):
 
 
 def owner_signature_problems():
-    """R14: signed Owner identities in the branch's own committed history verify as an Owner principal."""
+    """R14: signed Owner identities in the branch's own committed history verify as an Owner principal. Where the default branch's
+    history cannot be read whole (`owner_policy` names nobody and says so, `FILED_CLOSED`), the identities are the ones its tip names
+    (`owners_at`), and nothing verifies: every commit under one of them is refused, signed or not, with the way through — fetch that
+    history whole."""
     if vcs() != "git":
         return []
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk = default_trunk(git, ask=True)
     if not trunk:
         return []
-    owners, _why = owner_policy()
+    owners, reasons = owner_policy()
+    closed = not owners and any(w.endswith(FILED_CLOSED) for w in reasons)
+    if closed:
+        owners = owners_at(trunk, [], owner_only=True)
     signed = {who: mode for who, mode in owners.items() if mode == "signed"}
     if not signed:
         return []
@@ -6906,7 +6924,10 @@ def owner_signature_problems():
         if len(fields) != 3:
             return ["refused: the Owner commit authors cannot be read — repair the branch's history, then run --check again"]
         commit, name, email = fields
-        if not owner_author(name, email, signed) or verified_owner(commit):
+        if not owner_author(name, email, signed) or (not closed and verified_owner(commit)):
+            continue
+        if closed:
+            problems.append(f"refused: Owner commit {commit[:10]} ({identity_label(email)}) cannot be verified — {ref_name(trunk)}: {FILED_CLOSED}")
             continue
         if email.endswith("@users.noreply.github.com"):
             why = ("was made on GitHub and carries no verified signature of the Owner's — redo it in the Owner's checkout, "
@@ -6914,7 +6935,7 @@ def owner_signature_problems():
         else:
             why = ("carries no verified signature of the Owner's — "
                    + unverified(commit, "redo it in the Owner's checkout, signed with their SSH key"))
-        problems.append(f"refused: Owner commit {commit[:10]} ({email}) {why}")
+        problems.append(f"refused: Owner commit {commit[:10]} ({identity_label(email)}) {why}")
     return problems
 
 
@@ -6937,14 +6958,17 @@ def signature_kind(commit):
             else "x509" if "BEGIN SIGNED MESSAGE" in first or "BEGIN CMS" in first else "other")
 
 
-def verified_as(commit, identity):
+def verified_as(commit, identity, at=None):
     """The gate's ONE signature test, shared by every rule that asks for a signed line — the identity a signature must name is the configured one
     (`signed_identity`), never the commit's author standing in for it. All three must hold: the signature, read from the commit object's own header,
     is SSH; `%G?` is G under the DEFAULT branch's signers file (`trusted_signers`, FM-037's AU-19: a branch that appends its own key under the
-    Owner's email vouches for nothing); and the principal that file trusts the key for (`%GS`) IS the identity's email — equal, never containing it."""
-    if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or signature_gap(commit):
+    Owner's email vouches for nothing); and the principal that file trusts the key for (`%GS`) IS the identity's email — equal, never containing it.
+    That file is read as the default branch held it at `at`, the revision of the state a commit is judged by, or as it is in force where `at` is
+    None, and for the identity's own lines alone (`signers_held`): git names one identity for a key, so a key listed under two verifies for each.
+    Whether a file is there is asked of that state alone: a file the tip no longer holds does not stop a state that held one."""
+    if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or (at is None and signature_gap(commit)) or not signers_held(identity, at):
         return False
-    v = vcs_process("git", *signers_args(), "log", "-1", "--format=%G?%n%GS", commit, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    v = vcs_process("git", "-c", f"gpg.ssh.allowedSignersFile={signers_held(identity, at)}", "log", "-1", "--format=%G?%n%GS", commit, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     good, signer = (v.stdout.split("\n") + ["", ""])[:2]
     return good.strip() == "G" and signer.strip() == identity
 
@@ -7063,16 +7087,93 @@ def signers_rel(top, below, real, trunk):
 
 
 def signers_args():
-    """`-c gpg.ssh.allowedSignersFile=<the trusted file>` for a git call that reads `%G?` — nothing where there is none."""
+    """`-c gpg.ssh.allowedSignersFile=<the trusted file>` for a git call that reads `%G?` — the signers file of the state in force on the
+    default branch (`signers_now`) — nothing where there is none. One identity's own lines are `signers_held`'s (`verified_as`)."""
+    held = signers_now()["file"]
+    return ["-c", f"gpg.ssh.allowedSignersFile={held}"] if held else []
+
+
+def signers_now():
+    """`trusted_signers()` at the state in force on the default branch (`filed_tip`): {"file", "why", "rel", "trunk"} — the signers file as
+    the last state that branch accepted holds it, never as a change it did not accept left its tip; where that history is closed,
+    nothing verifies, and `why` says so. Where there is no such history to read, `trusted_signers()` as it is. Read once per run."""
     s = trusted_signers()
-    return ["-c", f"gpg.ssh.allowedSignersFile={s['file']}"] if s["file"] else []
+    at, closed = filed_tip() if s["rel"] and s["trunk"] else (None, False)
+    if at is None and not closed:
+        return s
+    key = (str(ROOT), None, at)
+    if key not in _HELD:
+        blob = filed_signers(at, s["rel"]) if at else None
+        held = None
+        if blob is not None:
+            fd, held = tempfile.mkstemp(prefix="shoalmark-signers-")
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+                f.write(blob)
+            atexit.register(lambda tmp=held: os.path.exists(tmp) and os.remove(tmp))
+        why = ("" if held else f"{ref_name(s['trunk'])}: {FILED_CLOSED}" if closed else s["why"] if not s["file"]
+               else f"`{s['rel']}` on {ref_name(s['trunk'])} is not the one in force — the change that put it there is not the Owner's verified commit: "
+                    "commit it again, signed")
+        _HELD[key] = dict(s, file=held, why=why)
+    return _HELD[key]
+
+
+def signers_refused():
+    """Why no signers file can be read in this clone at all, whatever state a commit is judged by — none set, a symlink, another checkout's,
+    one outside every checkout that is not there — or ""."""
+    s = trusted_signers()
+    return s["why"] if not s["rel"] and not s["file"] else ""
+
+
+_HELD = {}
+
+
+def signers_named(line):
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return [], ""
+    if line.startswith('"'):
+        field, _, rest = line[1:].partition('"')
+    else:
+        field, rest = (line.split(None, 1) + [""])[:2]
+    return [w for w in field.split(",") if w], rest.strip()
+
+
+def signers_rows(text, identity):
+    return [rest for names, rest in map(signers_named, (text or "").split("\n")) if identity in names and rest and not any(w.startswith("!") for w in names)]
+
+
+def signers_held(identity, at=None):
+    s = trusted_signers()
+    key = (str(ROOT), identity, at if s["rel"] and s["trunk"] else None)
+    if key not in _HELD:
+        text, now = None, signers_now()["file"] if not key[2] else None
+        if key[2]:
+            text = filed_signers(at, s["rel"])
+        elif now:
+            with open(now, encoding="utf-8", errors="replace", newline="") as f:
+                text = f.read()
+        rows = signers_rows(text, identity)
+        _HELD[key] = None
+        if rows:
+            fd, tmp = tempfile.mkstemp(prefix="shoalmark-signers-")
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+                f.write("".join(f"{identity} {rest}\n" for rest in rows))
+            atexit.register(lambda: os.path.exists(tmp) and os.remove(tmp))
+            _HELD[key] = tmp
+    return _HELD[key]
+
+
+def filed_signers(at, rel):
+    """The signers file `rel` as the default branch held it at `at`, the revision of a state — one `cat_blobs` — or None where it held none."""
+    return cat_blobs([f"{at}:{rel}"], raw=True).get(f"{at}:{rel}")
 
 
 def signers_gap(commit):
     """Why an SSH signature cannot be verified here, or "": no signers file to verify against — none set, none there, or
     one in a checkout that the default branch does not carry yet: a signers file a branch writes vouches for nothing (AU-19,
-    and the cold re-review's R2). The same for every commit; the argument keeps the callers' shape."""
-    return trusted_signers()["why"]
+    and the cold re-review's R2). The same for every commit; the argument keeps the callers' shape. The file is the one in
+    force on the default branch (`signers_now`)."""
+    return signers_now()["why"]
 
 
 def signature_gap(commit):
@@ -7094,7 +7195,7 @@ def unverified(commit, tail):
     gap = signature_gap(commit)
     if gap:
         return f"it is signed, but {CHECKOUT_MARKS[0]}: {gap} — see {SIGNING_PAGE}"
-    s = trusted_signers()
+    s = signers_now()
     ssh = signature_kind(commit) == "ssh"
     if ssh and s["file"] and (git_out(*signers_args(), "log", "-1", "--format=%G?", commit) or "").strip() in ("G", "U"):
         held = f"`{s['rel']}` on {ref_name(s['trunk'])}" if s["rel"] and s["trunk"] else f"`{s['file']}`"
@@ -7306,10 +7407,10 @@ def answerers_problems():
 def no_seat(name, email, right, what):
     """The one refusal, worded once: who the version control system says made the change, the right it needed, and
     what the repository's seats are. It names the seat and the right — an agent told only *refused* tries again."""
-    who = email or name or "nobody the version control system can name"
+    who = identity_label(email or name) or "nobody the version control system can name"
     seat = seat_of(name, email)
     known = ", ".join(f"{s} ({' · '.join(who for who, _m in SEATS[s])})" for s in sorted(SEATS) if s != "owner") or "none"
-    owner = " · ".join(w for w, _m in SEATS.get("owner", ()) if w)             # the Owner is not a seat (FM-024, D2): named apart from the list
+    owner = " · ".join(identity_label(w) for w, _m in SEATS.get("owner", ()) if w)             # the Owner is not a seat (FM-024, D2): named apart from the list
     if seat is None:
         return (f'{what} — `{who}` is not a seat. The seats are: {known}' + (f". The Owner, who is not a seat, is {owner}" if owner else "")
                 + ("" if vcs() == "svn" else ". A seat wears its badge: `git config --worktree user.email <identity>`"))
@@ -7323,7 +7424,8 @@ def seat_problems(t):
 
     Absent `[seats]`, nothing is enforced. Present, the gate finds the commit that introduced this tracker's current
     `next: owner` line and refuses it when that author is not a seat holding `ask`; under `signed` the commit must
-    also verify as that seat. In the pre-commit run the line is not committed yet, and the author is the one git is
+    also verify as that seat. Where the default branch's history cannot be read whole, an ask under the Owner's identity
+    is refused as this clone's own finding (`checkout_finding`), with the way through: fetch that history whole. In the pre-commit run the line is not committed yet, and the author is the one git is
     about to write. The other three rights are judged on the change itself (`rights_problems`) — this one is judged on
     the line, so the Owner's QUEUE can drop an ask that reached them another way. A made merge's own `next: owner` is
     judged on its change as well, under that merge's author (`rights_problems`). Anywhere else, a line no commit can be
@@ -7344,7 +7446,21 @@ def seat_problems(t):
             return []                                    # a tracker Subversion holds no revision of: the rights refuse it, in one line
         else:
             return [unattributed(t, "next: owner", how, named=False)]        # `lint` names the tracker on `ask_problems`' lines
+    theirs = filed_owner(commit, name, email) if how == "git" else None
+    if theirs:
+        if theirs[1] != "signed" or verified_as(commit, theirs[0], theirs[2]):
+            return []
+        if not filed_held(commit):
+            return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the seat `owner` — '
+                    + unverified(commit, f'{"`owner`" if at_top("owner") else "`[seats]`"} asks this seat to sign, and a git author is only a string: sign it (`git commit -S`), or the ask does not reach them')]
+        return [f'the commit `{commit[:10]}` that set `next: owner` does not verify as the Owner under the identities and keys in force when the ask was filed — put the ask again in a signed commit']
     seat = seat_of(name, email)
+    if how == "git" and seat == "owner" and filed_state(commit) is not None:
+        if filed_tip()[1]:                               # the default branch's history cannot be read whole: this clone's own finding, not the ledger's
+            git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+            return [f"the commit that set `next: owner` cannot be verified — {CHECKOUT_MARKS[0]}: {ref_name(default_trunk(git))}: {FILED_CLOSED}"]
+        return [f'the commit `{commit[:10]}` that set `next: owner` is by `{identity_label(email or name)}`, whom the default branch '
+                + ('did not name as the Owner when the ask was filed there' if filed_held(commit) else f'does not name as the Owner in the state in force — {NOW_NOT_NAMED}')]
     if seat is None or not holds(seat, "ask"):
         return [no_seat(name, email, "ask", "`next: owner` puts a question in front of the Owner")]
     if seat_mode(seat, name, email) == "signed" and how != "svn":
@@ -8241,8 +8357,9 @@ def session_rows():
     `[seats]`, else the raw author), its first and last commit (time, short sha), how many commits carry it, and its
     worktree (the `Worktree:` trailer, written from 0.18.0 on; an id with two is shown with both), and its model and
     effort (the newest `Model:` and `Effort:` trailers, from 0.19.0 on; empty where none) — in the order of the first commits. Nothing is opened or closed: a session is what its commits say, and it ends at its last one."""
-    rows = {}
-    for sha, stamp, email, name, block in session_log():
+    rows, log = {}, session_log()
+    full = resolve_commits([sha for sha, _stamp, email, name, _block in log if not seat_of(name, email)])
+    for sha, stamp, email, name, block in log:
         sid = (trailer_values(block, "Session") or [""])[0]
         if not sid:
             continue
@@ -8251,7 +8368,8 @@ def session_rows():
             v = (trailer_values(block, key) or [""])[0]
             if v and stamp >= r["_at"].get(key, -1):
                 r[key], r["_at"][key] = v, stamp
-        seat, where = seat_of(name, email) or email or name, (trailer_values(block, "Worktree") or [""])[0]
+        seat = seat_of(name, email) or ("owner" if filed_owner(full.get(sha), name, email) else identity_label(email or name))
+        where = (trailer_values(block, "Worktree") or [""])[0]
         r["seats"] += [seat] if seat not in r["seats"] else []
         r["worktrees"] += [where] if where and where not in r["worktrees"] else []
         r["first"] = (stamp, sha) if stamp < r["first"][0] else r["first"]          # oldest first: a tie keeps the earlier
@@ -8928,7 +9046,7 @@ def session_problems():
             continue
         sid = ((trailer_values(_WALK_COMMITS[commit][1], "Session") if commit in _WALK_COMMITS else trailers_of(commit, "Session")) or [""])[0] if commit \
             else (git_out("config", "--get", "seat.session") or "").strip()
-        who = f"commit {commit[:10]} by {email or name}" if commit else f"this commit by {email or name}"
+        who = f"commit {commit[:10]} by {identity_label(email or name)}" if commit else f"this commit by {identity_label(email or name)}"
         shape = SESSION_ID_RE.fullmatch(sid)
         if not sid:
             why = f"{who} carries no Session: trailer — set `git config --worktree seat.session <id>` in its worktree: the harness's session id, its first eight hex characters, or `<parent>/{seat}-<n>` for a sub-agent"
@@ -9558,10 +9676,10 @@ def owners_of(cfg):
     return {w: m for w, m in out.items() if w}
 
 
-def owners_at(rev, refused=None, owner_only=False):
+def owners_at(rev, refused=None, owner_only=False, here=True):
     """The Owner as `rev`'s `shoalmark.toml` names them — the default branch's, so a branch never names its own Owner — or
-    this checkout's where `rev` is None or carries no configuration — nothing at its path (`path_mode`); a submodule or a
-    folder there is a configuration this tool cannot read. Where this tool refuses that configuration, nobody —
+    this checkout's where `rev` is None or carries no configuration — nothing at its path (`path_mode`), and nobody there where `here`
+    is false; a submodule or a folder there is a configuration this tool cannot read. Where this tool refuses that configuration, nobody —
     and the refusal is appended to `refused`, so the caller says so rather than that it names no Owner (FM-024, D2), and
     refuses every change to the two sections (v0.19.1) — a configuration whose tracker directory or `[headings]` the guard
     cannot read (`guard_config`) is refused the same way. `owner_only` selects the configured Owner identities."""
@@ -9574,7 +9692,7 @@ def owners_at(rev, refused=None, owner_only=False):
     if kind == "blob" and path_mode(rev, prefix + CONFIG_NAME) == "120000":       # a symlink: its text is no configuration
         kind = "120000"
     if not kind:                                        # nothing at that path: no configuration — the adoption, as documented
-        return {} if owner_only else may_answer()
+        return {} if owner_only or not here else may_answer()
     try:
         if kind != "blob":
             raise SystemExit(config_not_file(kind))
@@ -9586,6 +9704,274 @@ def owners_at(rev, refused=None, owner_only=False):
         if refused is not None:
             refused.append(str(e))
         return {}
+
+
+_FILED, _FILED_AT, _FILED_STATES, _FILED_MATERIAL, _FILED_PLAIN = None, {}, {}, {}, {}
+
+
+def filed_line():
+    global _FILED
+    if _FILED is None:
+        _FILED = ()
+        git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        trunk = default_trunk(git) if vcs() == "git" else None
+        log, _FILED = (git_out("log", "--format=%H %P%x00%an%x00%ae", trunk) if trunk else None), (({}, {}, [], []) if trunk else ())
+        prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if log else ""
+        rel = trusted_signers()["rel"] if log else None
+        changes = git_out("log", "--full-history", "--format=%H", trunk, "--", *[f":(top,literal){p}" for p in (prefix + CONFIG_NAME, *([rel] if rel else []))]) if log else None
+        if log and changes is None and unread_here():
+            note_unread(f"where {ref_name(trunk)} changes its configuration or its signers file")
+        if changes is not None and (git_out("rev-parse", "--is-shallow-repository") or "").strip() == "false":
+            records = [l.split("\x00") for l in log.splitlines() if l.strip()]
+            parents = {words[0]: words[1:] for fields in records for words in [fields[0].split()]}
+            authors = {fields[0].split()[0]: fields[1:] for fields in records}
+            line, at = [], records[0][0].split()[0]
+            while at in parents:
+                line.append(at)
+                at = (parents[at] or [""])[0]
+            line.reverse()
+            brought, incoming = {}, {}
+            for landing in line:
+                todo, incoming[landing] = [landing], []
+                while todo:
+                    c = todo.pop()
+                    if c in parents and c not in brought:
+                        brought[c] = landing
+                        incoming[landing].append(c)
+                        todo += parents[c]
+            place = {c: n for n, c in enumerate(line)}
+            changed = set(changes.split())
+            turns = sorted({place[brought[c]] for c in changed if c in brought})
+            _FILED = (brought, place, turns, line)
+            revisions = changed | {p for c in changed for p in parents.get(c, ())} | {line[n] for n in turns}
+            filed_read(revisions, prefix, rel)
+            accepted, enrolled, first, unhealed = None, False, None, set()
+            for landing in line:
+                candidates = [c for c in incoming[landing] if c in changed]
+                if candidates:
+                    candidate = filed_at(landing)
+                    enrolled = enrolled or filed_material(landing)[4]
+                    if not enrolled:
+                        if candidate[0] and not candidate[3]:
+                            enrolled = True
+                            accepted = landing
+                            first = landing
+                    elif accepted:
+                        made = {c: filed_parts(filed_material(c), filed_material(parents[c][0]) if parents[c] else None) for c in candidates}
+                        vouched = [c for c in candidates if not filed_material(c)[3] and filed_vouched(c, accepted, authors.get(c, []))]
+                        produced = [filed_material(c) for c in vouched if made[c]]
+                        different = filed_material(landing) != filed_material(accepted)
+                        supplied = any(made[c] and made[c] >= unhealed and filed_material(c) == filed_material(landing) for c in candidates)
+                        if all(filed_transition(c, parents[c], accepted, produced, c in vouched) for c in candidates) and not candidate[3] and (not different or supplied):
+                            accepted, unhealed = landing, set()
+                        else:
+                            unhealed |= filed_parts(filed_material(landing), filed_material(accepted)).union(*made.values())
+                _FILED_STATES[landing] = accepted
+            _FILED_STATES[None] = first
+    return _FILED or None
+
+
+def filed_material(rev):
+    if not rev:
+        return {}, {}, None, False, False
+    if rev not in _FILED_MATERIAL:
+        filed_at(rev)
+    return _FILED_MATERIAL[rev]
+
+
+def filed_parts(state, before):
+    return {part for part, n in (("configuration", slice(0, 2)), ("signers", slice(2, 3))) if before is None or state[n] != before[n]}
+
+
+def filed_vouched(commit, at, author):
+    may, owner = filed_at(at)[:2]
+    who_may = owner or (may if _FILED_PLAIN.get((str(ROOT), at)) else {})
+    keys = filed_keys(commit, at)
+    return len(author) == 2 and any(who in author and (mode != "signed" or (keys is not None and verified_as(commit, who, keys)))
+                                    for who, mode in who_may.items() if who)
+
+
+def filed_keyed(blob):
+    return any(names and rest for names, rest in map(signers_named, (blob or "").split("\n")))
+
+
+def filed_keys(commit, at):
+    """The revision whose signers file proves `commit` for an identity of the state at `at`: `at`'s own — or, where that state holds no key
+    at all, `commit`'s, where `commit` keeps that state's identities and lists a key: a first key is proved by the commit that enrolls it.
+    It never replaces a key, and never names anyone. None where neither holds."""
+    if not trusted_signers()["rel"] or filed_keyed(filed_material(at)[2]):
+        return at
+    mine = filed_material(commit)
+    return commit if not mine[3] and mine[:2] == filed_material(at)[:2] and filed_keyed(mine[2]) else None
+
+
+def filed_transition(commit, parents, at, produced, vouched):
+    state = filed_material(commit)
+    if parents and state == filed_material(parents[0]):
+        return True
+    if state[3]:
+        return False
+    if vouched:
+        return True
+    return len(parents) > 1 and (state == filed_material(at) or state in produced)
+
+
+def filed_read(revisions, prefix, rel):
+    revisions = sorted(revisions)
+    specs = [f"{rev}:{path}" for rev in revisions for path in (prefix + CONFIG_NAME, *([rel] if rel else []))]
+    types = {}
+    got = cat_blobs(specs, types=types, raw=True)
+    for rev in revisions:
+        key, spec = (str(ROOT), rev), f"{rev}:{prefix}{CONFIG_NAME}"
+        paths = [prefix + CONFIG_NAME, *([rel] if rel else [])]
+        missing = [f"{rev}:{path}" for path in paths if got.get(f"{rev}:{path}") is None]
+        unavailable = bool(specs_unread(missing))
+        if unavailable:
+            note_unread(f"the configuration and the signers file as {rev[:7]} held them")
+            state = {}, {}, False, True
+        else:
+            out = git_out("ls-tree", "-z", "--full-tree", rev, "--", *paths)
+            modes = {name: head.split()[0] for row in (out or "").split("\x00") if row for head, _tab, name in [row.partition("\t")]}
+            unavailable = out is None or any(modes.get(path) in ("100644", "100755") and got.get(f"{rev}:{path}") is None for path in paths)
+            try:
+                mode = modes.get(prefix + CONFIG_NAME, "")
+                if unavailable or mode not in ("", "100644", "100755") or types.get(spec, "blob") != "blob":
+                    raise SystemExit(config_not_file(mode))
+                if rel and modes.get(rel, "") not in ("", "100644", "100755"):
+                    raise SystemExit("the signers file is not a regular file")
+                guard_config(got.get(spec))
+                cfg = read_config(got[spec]) if got.get(spec) is not None else {}
+                may = owners_of(cfg)
+                owner = dict(seat_identities(seats_of(cfg).get("owner", []))) if may else {}
+                held = bool(rel) and got.get(f"{rev}:{rel}") is not None and modes.get(rel) in ("100644", "100755")
+                state = may, owner, held, False
+                _FILED_PLAIN[key] = not seats_of(cfg)
+            except SystemExit:
+                state = {}, {}, False, True
+        _FILED_AT[key] = state
+        _FILED_MATERIAL[rev] = state[0], state[1], got.get(f"{rev}:{rel}") if state[2] else None, state[3], unavailable
+
+
+def filed_at(rev):
+    key = (str(ROOT), rev)
+    if key not in _FILED_AT:
+        prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+        filed_read([rev], prefix, trusted_signers()["rel"])
+    return _FILED_AT[key]
+
+
+def filed_tip():
+    """(the revision of the state in force on the default branch now — the last one `filed_line` accepted on its line — or None, and
+    whether that history is closed: the line cannot be read, nor the change at its tip, or a state it could not read stands before any
+    it accepted). (None, False) where there is none to read: no default branch here, or a line on which no state has named anyone yet."""
+    line = filed_line()
+    if not line:
+        return None, False
+    if not line[3]:
+        return None, True
+    _brought, _place, turns, chain = line
+    tip = filed_material(chain[turns[-1]]) if turns else None
+    at = _FILED_STATES.get(chain[-1])
+    if (tip and (tip[3] or tip[4])) or (at and filed_at(at)[3]):
+        return None, True
+    return at, at is None and any(state[4] for state in _FILED_MATERIAL.values())
+
+
+def filed_now():
+    """The state in force on the default branch now, as `filed_state` gives a state (`filed_tip`): (who may answer, the Owner's
+    identities, the revision whose signers file verifies) — ({}, {}, None), nobody, where that history is closed — None where there
+    is none to read, and that branch is read as it stands."""
+    at, closed = filed_tip()
+    if closed:
+        return {}, {}, None
+    if at is None:
+        return None
+    may, owner = filed_at(at)[:2]
+    return may, owner, at if trusted_signers()["rel"] else None
+
+
+FILED_CLOSED = "its history, where its configuration and its signers file change, cannot be read here — the gate reads it whole: fetch it whole"
+
+
+def owners_now(trunk, refused=None, owner_only=False):
+    """`owners_at(trunk, …)` read at the state in force on the default branch (`filed_now`): who may answer — with `owner_only`, the
+    Owner's identities — as the last state that branch accepted names them, never as a change it did not accept left its tip. Where
+    that history is closed, nobody, and `FILED_CLOSED` is appended to `refused`; where the tip's own configuration is refused, as
+    `owners_at` says. `trunk` is the default branch, or None."""
+    said = [] if refused is None else refused
+    seen = len(said)
+    tip = owners_at(trunk, said, owner_only)
+    at, closed = filed_tip() if trunk else (None, False)
+    if len(said) > seen or (at is None and not closed):
+        return tip
+    if closed:
+        said.append(f"{ref_name(trunk)}: {FILED_CLOSED}")
+        return {}
+    may, owner = filed_at(at)[:2]
+    return owner if owner_only else may
+
+
+def filed_state(commit):
+    line = filed_line()
+    landing = line[0].get(commit) if line else None
+    if landing is None:
+        return filed_now()
+    _brought, place, _turns, chain = line
+    position = place[landing]
+    at = _FILED_STATES.get(chain[position - 1]) if position else None
+    if at is None and _FILED_STATES.get(None):
+        first = _FILED_STATES[None]
+        if position <= place[first]:
+            at = first
+    if at is None:
+        return {}, {}, None
+    may, owner, held, unread = filed_at(at)
+    return ({}, {}, None) if unread else (may, owner, at if trusted_signers()["rel"] else None)
+
+
+def filed_owner(commit, name, email):
+    then = filed_state(commit) if commit else None
+    hit = next(((who, mode) for who, mode in (then[1] if then else {}).items() if who and who in (email, name)), None)
+    return (*hit, then[2]) if hit else None
+
+
+def filed_held(commit):
+    line = filed_line()
+    return bool(line and commit and line[0].get(commit))
+
+
+def owner_named():
+    """(the identities `owner` names in the state in force on the default branch, in its order — as the checkout's configuration names them
+    where that branch's history gives no state —, every identity a state on that history named as the Owner, and whether that history or a
+    state on it cannot be read here)."""
+    now = filed_now()
+    named = list(now[1]) if now and now[1] else [w for w, _m in SEATS.get("owner", ())]
+    before = {w for rev in set(_FILED_STATES.values()) if rev for w in filed_at(rev)[1]} if filed_line() else set()
+    return named, before, bool(_FILED) and (not _FILED[3] or any(state[4] for state in _FILED_MATERIAL.values()))
+
+
+def identity_label(identity):
+    """How a refusal or a page names an identity: as it is — but an Owner identity that `owner` names beside another by its place there
+    (`the Owner's identity 1 of 2`), one a state on the default branch named as the Owner and the state in force does not as `a former Owner
+    identity`, and where that history or a state on it cannot be read here, any other as `an unrecognized identity`: an identity the
+    Owner's order removes is printed at no step of it. Chosen by what the configuration says, never by the identity's form."""
+    if not identity:
+        return identity
+    named, before, unread = owner_named()
+    if identity in named:
+        return f"the Owner's identity {named.index(identity) + 1} of {len(named)}" if len(named) > 1 else identity
+    if identity in before:
+        return "a former Owner identity"
+    return "an unrecognized identity" if unread else identity
+
+
+FILED_NOT_THEIRS = ("the default branch did not name that author as one who may answer when the commit was filed there, and a filed commit is judged by "
+                    "what the branch said then, never by what it says now: the answer is given again (`--answer … --supersede`)")
+FILED_NOT_SIGNED = ("the default branch asked for a signed answer when the commit was filed there, and its signers file held no such key for that "
+                    "identity then; a key that arrives later verifies nothing filed before it: the answer is given again (`--answer … --supersede`)")
+NOW_NOT_NAMED = ("a change to `owner`, the signers file or who may answer takes effect when an identity of the state in force made it, "
+                 "by a verified signature where that identity is signed — a change that lands otherwise leaves that state as it was")
+NOW_NOT_THEIRS = "the default branch does not name that author as one who may answer in the state in force there — " + NOW_NOT_NAMED
 
 
 def guard_verdicts(changed, owners):
@@ -9605,17 +9991,17 @@ def guard_verdicts(changed, owners):
         identity, mode = next(((who, m) for who, m in owners.items() if who in (email, name)), (None, None))
         kind = signature_kind(c)
         if mode is None:
-            verdict, why = "refused", f"its author `{email or name or 'nobody git can name'}` is not the Owner ({' · '.join(f'`{w}`' for w in owners)})"
+            verdict, why = "refused", f"its author `{identity_label(email or name) or 'nobody git can name'}` is not the Owner ({' · '.join(f'`{identity_label(w)}`' for w in owners)})"
         elif mode != "signed":
             verdict, why = "author", ""
         elif kind not in ("", "ssh"):                       # GPG, X.509: the Owner's signed line verifies by SSH only
             verdict, why = "refused", SIGN_WITH_SSH
         elif signature_gap(c):                              # before `%G?`: read against a signers file the branch wrote, it says G
             verdict, why = "checkout", signature_gap(c)
-        elif good == "G" and signer.strip() == identity:    # the principal IS the Owner's configured email — never a principal that contains it, never the author
+        elif good == "G" and (signer.strip() == identity or verified_as(c, identity)):    # git names one identity for a key: the first line of the signers file that holds it
             verdict, why = "signed", ""
         elif good == "G":
-            verdict, why = "refused", f"signed as `{signer}`, not as the Owner's `{identity}`"
+            verdict, why = "refused", f"signed as `{identity_label(signer)}`, not as the Owner's `{identity_label(identity)}`"
         else:
             verdict, why = "refused", ("the Owner's email, unsigned — a git author is a string anyone can type" if good == "N"
                                        else f"the Owner's email, and its signature does not verify (`%G?` {good})")
@@ -9681,7 +10067,7 @@ def triage_pending(subject):
         return [], []
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, why = default_trunk(git), []
-    owners = owners_at(trunk, why)
+    owners = owners_now(trunk, why)
     if not owners and not why:
         return [], []
     heads = merge_heads()
@@ -9705,8 +10091,8 @@ def triage_pending(subject):
         if not owners:
             refused.append(f'refused: {this} {did_words(what)} — {unread_why(trunk)}')
         elif mode is None:
-            refused.append(f'refused: {this} {did_words(what)} — its author `{email or name or "nobody git can name"}` is not the Owner '
-                           f'({" · ".join(f"`{w}`" for w in owners)}): {guard_proof(owners)} — {guard_why(what)}. The way through: {GUARD_WAY}')
+            refused.append(f'refused: {this} {did_words(what)} — its author `{identity_label(email or name) or "nobody git can name"}` is not the Owner '
+                           f'({" · ".join(f"`{identity_label(w)}`" for w in owners)}): {guard_proof(owners)} — {guard_why(what)}. The way through: {GUARD_WAY}')
         else:
             notes.append(f"note: {this} {did_words(what)}, under the Owner's name — "
                          + ("its signature is judged on the commit, by `--check` on the branch" if mode == "signed" else GUARD_AUTHOR_ONLY))
@@ -9809,7 +10195,7 @@ def triage_guard():
                                                       else "no `origin` default branch to measure from — nothing is judged"))
         return _GUARD
     why = []
-    owners = owners_at(trunk, why)
+    owners = owners_now(trunk, why)
     if not owners and why:                                   # refused here: every change to the two sections, their signers file, a TRIAGE.md or the configuration
         n, changed = guard_walk("HEAD", "^" + trunk, keys=signers_paths(trunk), unread=True)
         refused = unread_lines(changed, trunk) + tip_variants(trunk)
@@ -10628,35 +11014,48 @@ def lint(trackers, committing=False):
         problems += [f'{t["id"]}: {why}' for why in ask_id_problems(t, keys=False, history=True)]
         problems += record_problems(t) if committing else []
         if t.get("answer"):
-            # the pre-mortem's rule: an answer counts only from the account it is filed from. Who that may be comes
-            # from `may_answer()` — the seats that hold `answer`, or `answerers` where there are no seats
-            allowed = may_answer()
-            if not allowed:
+            # the pre-mortem's rule: an answer counts only from the account it is filed from. Who that may be comes from the state
+            # the default branch judges the answer's commit by (`filed_state`); where there is none, from `may_answer()` — the seats
+            # that hold `answer`, or `answerers` where there are no seats
+            allowed, by_id, author, pending, why = may_answer(), t.get("ask_id") and vcs() == "git", None, False, ""
+            if by_id:
+                committed = front_line(cat_blobs([f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}"]).get(
+                    f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}") or "", "answer")
+                pending = committed != front_line((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"), "answer")
+                head, why = ("", "") if pending else answer_commit(t)
+                judged = filed_state(head) if head else None
+            else:
+                author = line_author(TRACKER_DIR / t["file"], "answer:") if vcs() == "git" else None
+                judged = filed_state(author[3]) if author and author[2] == "git" else None
+            if judged is None and not allowed:
                 problems.append(f'{t["id"]}: an answer, but ' + (f'no seat in `[seats]` holds the `answer` right — name the Owner (`owner = "<email> signed"`, before any table), or give one seat `answer` in `[rights]`'
                                                                  if SEATS else f'`answerers` in {CONFIG_NAME} names nobody — say who may answer')
                                 + ", then the commit's author is checked against it")
-            elif not SEATS and t.get("answered_by") not in allowed:
+            elif judged is None and not SEATS and t.get("answered_by") not in allowed:
                 problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(allowed)}) — an answer counts only from an account that may give one')
-            elif t.get("ask_id") and vcs() == "git":
-                committed = front_line(cat_blobs([f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}"]).get(
-                    f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}") or "", "answer")
-                if committed != front_line((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"), "answer"):
+            elif by_id:
+                if pending:
                     if committing:
                         print(f'  {t["id"]}: the answer to {t["ask_id"]} is being committed now — its commit is found by its id and verified by the next run', file=sys.stderr)
                     else:
                         problems.append(f'{t["id"]}: the answer to {t["ask_id"]} is not committed yet — '
                                         + (f'`{CMD} --answer {t["ask_id"]} …` commits it, signed, naming the id' if ask_cmd_id(t["ask_id"], t["id"]) else UNFORMED_ASK.format(t["id"])))
-                else:
-                    _head, why = answer_commit(t)
-                    if why:
-                        problems.append(f'{t["id"]}: {why}')
+                elif why:
+                    problems.append(f'{t["id"]}: {why}')
             else:
                 try:
-                    who, email, how, commit = line_author(TRACKER_DIR / t["file"], "answer:")
+                    who, email, how, commit = author or line_author(TRACKER_DIR / t["file"], "answer:")
                 except SvnUnreadable as e:
                     problems += blame_refusal(t, e)
                     who, email, how, commit = None, None, "unreadable", ""
                 seat = seat_of(who, email) if SEATS else None
+                then = filed_state(commit) if how == "git" else None
+                filed = next(((w, m) for w, m in then[0].items() if w and w in (email, who)), None) if then else None
+                held = how == "git" and filed_held(commit)
+                sign_tail = (f'{(("`owner`" if at_top(seat) else "`[seats]`") + " asks this seat") if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
+                             f'sign it (`git commit -S`), or it does not count')
+                plain_note = (f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
+                              f'{("`owner`" if at_top(seat) else "that seat in `[seats]`") if SEATS else "that entry in `answerers`"} to require a signature')
                 if how == "unreadable":
                     pass                                 # refused above: who wrote the answer cannot be read
                 elif how == "uncommitted" and committing:
@@ -10667,24 +11066,35 @@ def lint(trackers, committing=False):
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
                 elif how in ("unattributed", "merged"):
                     problems.append(unattributed(t, "answer:", how))
-                elif SEATS and not holds(seat, "answer"):
+                elif then and not filed:
+                    problems.append(f'{t["id"]}: ' + (f'the answer\'s commit `{commit[:10]}` is by `{identity_label(email or who)}` — {FILED_NOT_THEIRS}' if held
+                                                      else no_seat(who, email, "answer", "an answer counts only from a seat that may give one") if SEATS and not holds(seat, "answer")
+                                                      else f'`answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(allowed)}) — an answer counts only from an account that may give one'
+                                                      if not SEATS and t.get("answered_by") not in allowed
+                                                      else f'the answer\'s commit `{commit[:10]}` is by `{identity_label(email or who)}` — {NOW_NOT_THEIRS}'))
+                elif not then and SEATS and not holds(seat, "answer"):
                     problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
                 elif who != t.get("answered_by"):
                     problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
                 elif how == "svn" and t.get("ask_id") and not svn_names_answer(t, commit):
                     problems.append(f'{t["id"]}: the revision {commit} that wrote the answer does not name {t["ask_id"]} in its message — on Subversion an answer to an ask with an id '
                                     f'is committed with `Answers: {t["ask_id"]}` in its message')
+                elif filed and filed[1] == "signed":
+                    if not verified_as(commit, filed[0], then[2]):
+                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{identity_label(filed[0])}` — '
+                                        + (unverified(commit, sign_tail) if not held
+                                           else unverified(commit, "") if signature_kind(commit) not in ("", "ssh") or signers_refused() else FILED_NOT_SIGNED))
+                elif filed:
+                    print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — the default branch asked for no signature when it was filed'
+                          if held else plain_note, file=sys.stderr)
                 elif how == "git" and (seat_mode(seat, who, email) if SEATS else allowed[who]) == "signed":
                     # ONE signature test for the whole gate — `verified_as`: a good signature under a trusted key, and
                     # the identity that key is trusted FOR being the one claimed. A seat's `signed` entry asks the same
                     claimed = signed_identity(seat, who, email) if SEATS else who
                     if not verified_as(commit, claimed):
-                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{claimed}` — '
-                                        + unverified(commit, f'{(("`owner`" if at_top(seat) else "`[seats]`") + " asks this seat") if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
-                                                             f'sign it (`git commit -S`), or it does not count'))
+                        problems.append(f'{t["id"]}: the answer\'s commit `{commit[:10]}` does not verify as `{identity_label(claimed)}` — ' + unverified(commit, sign_tail))
                 elif how == "git":
-                    print(f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
-                          f'{("`owner`" if at_top(seat) else "that seat in `[seats]`") if SEATS else "that entry in `answerers`"} to require a signature', file=sys.stderr)
+                    print(plain_note, file=sys.stderr)
         # `ask-proposal:` is the RECOMMENDED option, and the board offers it first: with options named, it must be one
         # of them, or the Owner is shown a recommendation they cannot pick
         if t.get("ask_proposal") and t.get("ask_options") and t["ask_proposal"] not in t["ask_options"]:
