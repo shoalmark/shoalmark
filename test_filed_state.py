@@ -31,6 +31,7 @@ from test_ask_ids import REL, accepted, answered, ask, git, heads_of, mutated, r
 LEAVES = ("Owner", "owner.leaves@example.com")
 STAYS = ("Owner", "12345+owner@users.noreply.example.com")
 STRANGER = ("Owner", "stranger@example.com")
+FORGE = ("Owner", "1234+owner@users.noreply.example.invalid")
 NEWCOMER = ("Owner", "newcomer@example.com")
 ALICE = ("Alice", "alice@example.com")
 BOB = ("Bob", "bob@example.com")
@@ -326,7 +327,7 @@ def rows_refused(area, add):
     r.answer("FM-004", LEAVES, "owner", aid="FM-004-Q1")
     said = r.check()
     add("refused · an answer under the address that left, made after the change and signed with the Owner's own key, on its branch — every earlier answer still counting",
-        refused(said, no_answer("FM-004"), "`the Owner's personal address` is not a seat") and stands(said, "FM-004"), seen(said))
+        refused(said, no_answer("FM-004"), "`a former Owner identity` is not a seat") and stands(said, "FM-004"), seen(said))
     r.land("answer-fm-004")
     said = r.check()
     add("refused · …and landed by a merge all the same: it was filed when the default branch no longer named that address — every earlier answer still counting",
@@ -345,7 +346,7 @@ def rows_refused(area, add):
     r.commit("the intent, under the address that left", who=LEAVES, key="owner")
     said = r.check()
     add("refused · a change to the Owner's two sections under the address that left, after the change — every earlier answer still counting",
-        refused(said, "its author `the Owner's personal address` is not the Owner") and stands(said), seen(said))
+        refused(said, "its author `a former Owner identity` is not the Owner") and stands(said), seen(said))
 
     r, _head = after(area / "unknown-key")
     r.answer("FM-003", STAYS, "stranger", aid="FM-003-Q1")
@@ -855,6 +856,9 @@ def rows_current_state(area, add):
             f"answer or ask, {what}, is refused, the Owner read as signed, and every earlier answer still counts", ok, seen(said))
 
 
+NOT_IN_FORCE = "is not the one in force"   # where the default branch holds a signers file its state in force does not
+
+
 def rows_current_signers(area, add):
     r, _head = after(area / "current-signers")
     r.switch("-c", "candidate", "main")
@@ -884,6 +888,18 @@ def rows_current_signers(area, add):
     s("a new answer", accepted(said), said)
     s.add(add, "the state in force · the signers file deleted by a seat's unsigned commit, landed and never accepted: the Owner's signed change to the "
                "two sections, and a new signed answer, each on its branch, verify against the file the state in force holds — accepted")
+    r = Ledger(area / "current-first-file").start(owner=(STAYS,), signers=(), who=STAYS)
+    r.switch("-c", "first-file", "main")
+    r.signers((STAYS, "owner"))
+    r.commit("a first signers file, by a seat", who=SEAT)
+    r.forward("first-file")
+    r.switch("-c", "intent", "main")
+    r.triage("a change signed with the key a seat's first signers file lists")
+    r.commit("the intent", who=STAYS, key="owner")
+    said = r.check()
+    add("the state in force · a first signers file a seat's unsigned commit put on the default branch, fast-forwarded and never accepted: the Owner's "
+        "change to the two sections signed with the key it lists is not verified here — the file is not the one in force", refused(said, NOT_IN_FORCE),
+        f"exit {said[0]}; the file said not to be the one in force: {NOT_IN_FORCE in said[2]}")
 
 
 def rows_tip_unread(area, add):
@@ -1028,6 +1044,58 @@ def rows_unhealed(area, add):
         "that change's key, landed after both, is refused — every earlier answer still counting", refused(said, no_answer("FM-003")) and stands(said, "FM-003"), seen(said))
 
 
+def private_pages(r):
+    """What the tool prints and writes for one ledger: `--check`, `--owner`, `--print-written` and `--html-only`, stdout and stderr, then
+    the pages under the tracker folder — INDEX.md, the Board and every view."""
+    texts = []
+    for flags in (("--check",), ("--owner",), ("--print-written",), ("--html-only",)):
+        texts += list(run(r.root, *flags)[1:])
+    for page in sorted((r.root / REL).rglob("*")):
+        if page.is_file() and (page.name in ("INDEX.md", "index.html") or "view" in page.relative_to(r.root / REL).parts):
+            texts.append(page.read_text(encoding="utf-8", errors="replace"))
+    return texts
+
+
+def rows_order_private(area, add):
+    """Through the Owner's order — both addresses named, signed, the key under each; then the Owner's signed commit that takes one out — an
+    answer and an ask under each address at each step, and one answer refused: no refusal and no page names the address that leaves."""
+    for step in (1, 2):
+        r, _head = before(area / f"order-{step}")
+        listed_again(r)
+        r.land("key-listed-again")
+        if step == 2:
+            taken_out(r)
+            r.land("address-leaves")
+        for n, (who, tid, new) in enumerate(((LEAVES, "FM-003", "FM-007"), (STAYS, "FM-004", "FM-008"))):
+            r.answer(tid, who, "owner", aid=f"{tid}-Q1")
+            r.land("answer-" + tid.lower())
+            r.switch("-c", f"ask-{n}", "main")
+            write(r.root, new, text(new, ask(aid=f"{new}-Q1")))
+            r.commit(f"an ask under address {n + 1}", who=who, key="owner")
+            r.land(f"ask-{n}")
+        r.answer("FM-005", LEAVES, "stranger")
+        texts = private_pages(r)
+        hits = sum(LEAVES[1] in s for s in texts)
+        add(f"the order's step {step} · " + ("both addresses named, signed, the key under each" if step == 1 else "the Owner's signed commit has taken one out")
+            + ": an answer and an ask under each address, one answer refused — no refusal and no page names the address that leaves",
+            hits == 0, f"{hits} of {len(texts)} outputs and pages name it")
+
+
+def rows_form_free(area, add):
+    """What a refusal prints for an Owner identity is chosen by what `owner` says, never by the identity's form."""
+    seen_ = {}
+    for name, owner in (("alone", (FORGE,)), ("beside", (FORGE, STAYS))):
+        r = Ledger(area / f"form-{name}").start(owner=owner, signers=tuple((w, "owner") for w in owner), who=FORGE)
+        r.switch("-c", "unsigned", "main")
+        (r.root / "notes.md").write_text("one line\n", encoding="utf-8")
+        r.commit("an unsigned commit of the Owner's", who=FORGE)
+        said = r.check()
+        seen_[name] = (said[0] == fm.EXIT_LINT, FORGE[1] in said[2], "the Owner's identity 1 of 2" in said[2], "noreply address" in said[2])
+    add("the form apart · an Owner identity is printed by what `owner` says, never by its form: named alone, an address that holds `noreply` "
+        "prints as it is; named beside another, by its place", seen_["alone"] == (True, True, False, False) and seen_["beside"] == (True, False, True, False),
+        f"refused, printed, placed, labelled by form — alone {seen_['alone']}, beside {seen_['beside']}")
+
+
 CLOSED_WORDS = ("refused: Owner commit", "cannot be verified", "fetch it whole")
 
 
@@ -1137,7 +1205,7 @@ ROWS = (rows_single_start, rows_display, rows_current_ask, rows_state_selection,
         rows_state_boundary, rows_state_unread, rows_state_prelude, rows_steps, rows_after, rows_new_answer, rows_other_order, rows_one_line, rows_refused,
         rows_refused_branches, rows_key_later, rows_named_later, rows_key_left, rows_first_state, rows_lines, rows_cost, rows_unsigned_owner, rows_answerers,
         rows_removed_owner, rows_current_state, rows_current_signers, rows_tip_unread, rows_signers_deleted, rows_first_key, rows_first_key_narrow,
-        rows_merge_rejected, rows_unhealed, rows_closed_history, rows_closed_asks)
+        rows_merge_rejected, rows_unhealed, rows_closed_history, rows_closed_asks, rows_order_private, rows_form_free)
 
 
 MUTANTS = (
@@ -1148,7 +1216,9 @@ MUTANTS = (
     ("alternate material selection", "filed_state", 'at if trusted_signers()["rel"] else None', "at if held else None", (rows_state_material,)),
     ("an alternate supplied state", "filed_line", "not candidate[3] and (not different or supplied)", "not candidate[3]", (rows_state_inherited,)),
     ("one initial identity remains alone", "owners_of", "out.update(seat_identities(value))", "out.update(seat_identities(value)[:1])", (rows_single_start,)),
-    ("display uses the literal identity", "identity_label", "if identity and filed_line() and any(", "if False and identity and filed_line() and any(", (rows_display,)),
+    ("display uses the literal identity", "identity_label", "if identity in before:", "if False:", (rows_display, rows_order_private)),
+    ("the label chosen by the address's form", "identity_label", "    named, before, unread = owner_named()\n",
+     "    named, before, unread = owner_named()\n    if \"noreply\" in identity:\n        return \"the Owner's forge noreply address\"\n", (rows_form_free,)),
     ("the current Owner path uses the current key", "seat_problems", "if theirs:", 'if theirs and seat_of(name, email) != "owner":', (rows_current_ask,)),
     ("alternate state selection", "filed_line", "if all(filed_transition(c, parents[c], accepted, produced, c in vouched) for c in candidates) and not candidate[3]", "if not candidate[3]", (rows_state_selection, rows_state_gaps)),
     ("an answer with an id judged by the default branch's tip", "answer_commits", "then = filed_state(sha)", "then = None", (rows_after,)),
@@ -1160,8 +1230,8 @@ MUTANTS = (
      "if not verified_as(commit, filed[0]):", (rows_key_later,)),
     ("a state that names nobody is not passed over", "filed_state", "if position <= place[first]:",
      "if False:", (rows_first_state,)),
-    ("the identity git names first decides", "signers_args", 'held = signers_held(identity, at) if identity else signers_now()["file"]',
-     'held = signers_now()["file"]', (rows_steps,)),
+    ("the identity git names first decides", "verified_as", '"-c", f"gpg.ssh.allowedSignersFile={signers_held(identity, at)}"',
+     '"-c", f"gpg.ssh.allowedSignersFile={signers_now()[\'file\']}"', (rows_steps,)),
     ("the guard reads the identity git names first", "guard_verdicts", "(signer.strip() == identity or verified_as(c, identity))", "signer.strip() == identity", (rows_steps,)),
     ("a line that lists two identities holds its key for neither", "signers_rows", "if identity in names and rest and", "if names == [identity] and rest and", (rows_one_line,)),
     ("a line whose list negates an identity is read", "signers_rows", ' and not any(w.startswith("!") for w in names)]', "]", (rows_lines,)),
@@ -1177,8 +1247,8 @@ MUTANTS = (
     ("the Owner the guard and R14 read taken from the default branch's tip", "owners_now", "if len(said) > seen or (at is None and not closed):", "if True:", (rows_current_state,)),
     ("an ask by an Owner the checkout names and the state in force does not", "seat_problems", 'if how == "git" and seat == "owner" and filed_state(commit) is not None:',
      "if False:", (rows_current_state,)),
-    ("the signers file the guard reads taken from the default branch's tip", "signers_args", 'held = signers_held(identity, at) if identity else signers_now()["file"]',
-     'held = signers_held(identity, at) if identity else trusted_signers()["file"]', (rows_current_signers,)),
+    ("the signers file the guard reads taken from the default branch's tip", "signers_args", 'held = signers_now()["file"]',
+     'held = trusted_signers()["file"]', (rows_current_signers,)),
     ("an identity's keys in force taken from the default branch's tip", "signers_held", 'text, now = None, signers_now()["file"] if not key[2] else None',
      'text, now = None, trusted_signers()["file"] if not key[2] else None', (rows_current_signers,)),
     ("whether a signers file is in force asked of the default branch's tip", "signers_gap", 'return signers_now()["why"]', 'return trusted_signers()["why"]', (rows_current_signers,)),

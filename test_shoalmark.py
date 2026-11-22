@@ -4100,6 +4100,18 @@ with tempfile.TemporaryDirectory() as d:
     check(f"FM-045 · the classification's control: a source line starting a git command the table does not hold fails it, in each form the reading follows — a literal argv, "
           f"`git_out`, after `*signers_args()`, a local wrapper, a wrapper handed to a function, an argv built apart, in a loop or bound whole to a name, a program named by "
           f"`executable=` — and a start in a form it does not follow is named (saw {caught_})", all(caught_.values()))
+    held_form_ = {      # the signature read's own form: `-c` and its value written out before the command, read through to the command; and the form it
+                        # replaced, options from a helper called with arguments, still not read
+        "`-c` written out, its value a formatted string": ('def _injected(held):\n    return vcs_process("git", "-c", f"gpg.ssh.allowedSignersFile={held}", "notes", "add", capture_output=True)\n', "notes"),
+        "not followed: options from a helper called with arguments": ('def _injected(x):\n    return git_out(*signers_args(x), "log", "-1")\n', None),
+    }
+    held_caught_ = {}
+    for what_, (code_, want_) in held_form_.items():
+        copy_ = Path(d) / "shoalmark.py"; copy_.write_text(src_ + "\n\n" + code_, encoding="utf-8")
+        f_, u_, _o, _x = _git_starts(copy_.read_text(encoding="utf-8"))
+        held_caught_[what_] = unclassified_(f_) == [want_] if want_ else len(u_) > len(unread_)
+    check(f"FM-045 · the signature read's form: `-c` and its value written out before the command are read through to the command, so a command the table does "
+          f"not hold fails in that form; options from a helper called with arguments are still not read (saw {held_caught_})", all(held_caught_.values()))
     standup_ = {        # FM-031, Q7: the stand-up's starts — a row of a table where git's command goes, and the stand-up's options — followed exactly
         'a row of a table the source spells out': ('_INJ_ROWS = (("gc",), ("log",))\n\n\ndef _injected():\n    return git_out(*_INJ_ROWS[0])\n', 'gc'),
         "the stand-up's options for git": ('def _injected():\n    return vcs_process("git", "gc", capture_output=True, **standup_program("git"))\n', 'gc'),
@@ -17674,9 +17686,33 @@ with tempfile.TemporaryDirectory() as tmp:
     owners_tag_ = fm.owners_at(fm.default_trunk(lambda *a: subprocess.run(["git", "-C", str(root), *a], capture_output=True, text=True, env=_ENV))); git(root, "tag", "-d", "origin/main")
     check(f"FM-006 · v0.19.1 · with a tag named `origin/main` at a branch that names its own Owner, the Owner is read from the default branch — the seat's change is refused (saw {owners_tag_!r}, {g_tself_[0]!r})",
           owners_tag_ == {"h@x": "signed"} and len(g_tself_[0]) == 1 and "its author `implementer@seat` is not the Owner (`h@x`)" in g_tself_[0][0])
+    def clone37_(name, signers=None):                   # a clone of the default branch as it stands, with an origin of its own: what lands on its main leaves this one's as it is
+        subprocess.run(["git", "clone", "-q", "--bare", str(base / "origin.git"), str(base / f"{name}.git")], check=True, capture_output=True, env=_ENV)
+        subprocess.run(["git", "clone", "-q", "--branch", "main", str(base / f"{name}.git"), str(base / name)], check=True, capture_output=True, env=_ENV)
+        git(base / name, "remote", "set-head", "origin", "main")
+        for k_, v_ in (("gpg.format", "ssh"), ("user.signingkey", str(okey_)), ("gpg.ssh.allowedSignersFile", str(signers or base / "signers"))):
+            git(base / name, "config", k_, v_)
+        return base / name
+    def landed37_(at_, subject, edit, *how):            # one commit on the clone's main, pushed to its origin
+        git(at_, "switch", "-q", "main"); edit(); git(at_, "add", "-A"); git(at_, "commit", "-q", "-m", subject, *how); git(at_, "push", "-q", "origin", "main")
+    def made_in37_(at_, branch, subject, old, new, *how, pre=()):   # as `made37_`, in a clone: a branch cut from its main, one commit that changes TRIAGE.md — then the guard there
+        git(at_, "switch", "-q", "-c", branch, "main"); home37_ = at_ / "docs/work-tracker/TRIAGE.md"
+        home37_.write_text(home37_.read_text().replace(old, new, 1)); run(at_); git(at_, "add", "-A"); git(at_, *pre, "commit", "-q", "-m", subject, *how)
+        sha_ = subprocess.run(["git", "-C", str(at_), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
+        fm.configure(at_); g_ = _no_git_env(fm.triage_guard); fm.configure(root)
+        return sha_, g_
+    # where the default branch names no Owner nothing is guarded: the Owner's verified signature takes them out of `owner` — in a clone of its
+    # own, for a state that names no Owner takes no later change, and this fixture's default branch keeps its Owner for what follows
+    none37_ = clone37_("none")
+    landed37_(none37_, "no Owner named", lambda: (none37_ / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")), "-S", OWNER_)
+    c_none_, g_none_ = made_in37_(none37_, "ap/037-no-owner", "AP-037: a better intent", "lose a loan", "lose a book", SEAT_)
+    # the same change made by a plain unsigned commit is not taken: the guard still reads the Owner the state in force names
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"\n', "")); git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "no Owner named"); git(root, "push", "-q", "origin", "main"); readable37_ = sha37_("main")
-    c_none_, g_none_ = made37_("ap/037-no-owner", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
+    c_nonep_, g_nonep_ = made37_("ap/037-no-owner-plain", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
+    check(f"FM-037 · the state in force · control · a plain unsigned commit that takes the Owner out of the default branch's `owner` is not taken: the guard still names the Owner, and a seat's change to `## The intent` is refused (saw {[l_.split(' — ')[0] for l_ in g_nonep_[0]]!r}, {g_nonep_[1]!r})",
+          g_nonep_[0] == [f'refused: commit {c_nonep_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
+          and g_nonep_[1] == "the Owner's two sections: guarded — 1 commit(s) on `ap/037-no-owner-plain` since origin/main, 1 change them or their signers file, 1 refused")
     check(f"FM-037 · the Owner is read from the default branch's configuration, never the branch's: a branch that makes a seat the Owner is still refused; where the default branch names no Owner nothing is guarded, and `--check` says so (saw {g_none_!r})",
           len(g_self_[0]) == 1 and "its author `implementer@seat` is not the Owner (`h@x`)" in g_self_[0][0]
           and g_none_ == ([], "the Owner's two sections: not guarded — origin/main's configuration names no Owner: name them (`owner = \"<email> signed\"`, before any table)"))
@@ -17978,9 +18014,20 @@ with tempfile.TemporaryDirectory() as tmp:
     if os.path.lexists(root / "shoalmark.toml"):
         (root / "shoalmark.toml").unlink()
     (root / "shoalmark.toml").write_text(cfg37_); git(root, "add", "-A"); git(root, "commit", "-q", "-m", "the configuration, a file again"); git(root, "push", "-q", "origin", "main")
-    # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope
+    # clause 5 · where the Owner's seat asks for no signature, the author is all it proves — and it says so; Subversion is out of scope.
+    # The same change made by a plain unsigned commit is not taken — in a clone of its own: the Owner is still read as signed
+    plain37_ = clone37_("author-only-plain")
+    landed37_(plain37_, "`owner` not signed, in a plain unsigned commit", lambda: (plain37_ / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')))
+    c_aop_, g_aop_ = made_in37_(plain37_, "ap/037-author-only-plain", "AP-037: a better intent", "lose a loan", "lose a book", SEAT_)
+    c_awp_, g_awp_ = made_in37_(plain37_, "ap/037-author-owner-plain", "AP-037: his line, his name", "lose a loan", "lose a page", OWNER_)
+    check(f"FM-037 · clause 5 · the state in force · control · a plain unsigned commit that drops `signed` from the default branch's `owner` is not taken: a seat's change is refused as not the Owner's signed commit, "
+          f"and the Owner's own unsigned change is refused — the guard is not the author only (saw {[l_.split(' — ')[0] for l_ in g_aop_[0] + g_awp_[0]]!r}, {g_aop_[1]!r}, {g_awp_[1]!r})",
+          g_aop_[0] == [f'refused: commit {c_aop_[:7]} "AP-037: a better intent" changes the text under `## The intent` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`h@x`): not the Owner\'s signed commit — {fm.GUARD_WHY}. The way through: {fm.GUARD_WAY}']
+          and g_aop_[1] == "the Owner's two sections: guarded — 1 commit(s) on `ap/037-author-only-plain` since origin/main, 1 change them or their signers file, 1 refused"
+          and len(g_awp_[0]) == 1 and g_awp_[0][0].startswith(f'refused: commit {c_awp_[:7]} "AP-037: his line, his name" changes the text under `## The intent`') and "the Owner's email, unsigned" in g_awp_[0][0]
+          and g_awp_[1] == "the Owner's two sections: guarded — 1 commit(s) on `ap/037-author-owner-plain` since origin/main, 1 change them or their signers file, 1 refused")
     git(root, "switch", "-q", "main"); (root / "shoalmark.toml").write_text(cfg37_.replace('owner = "h@x signed"', 'owner = "h@x"')); git(root, "add", "-A")
-    git(root, "commit", "-q", "-m", "the Owner, unsigned"); git(root, "push", "-q", "origin", "main")
+    git(root, "commit", "-q", "-S", "-m", "`owner` not signed, in the Owner's signed commit", OWNER_); git(root, "push", "-q", "origin", "main")
     c_ao_, g_ao_ = made37_("ap/037-author-only", "AP-037: a better intent", text37_("lose a loan", "lose a book"), SEAT_)
     c_aw_, g_aw_ = made37_("ap/037-author-owner", "AP-037: his line, his name", text37_("lose a loan", "lose a page"), OWNER_)
     check(f"FM-037 · clause 5 · with the Owner's `owner` not `signed`, a seat's change is refused on its author and the refusal says it proves the author only; their own unsigned change passes on their name, and `--check` says the same of the whole guard (saw {g_ao_[0]!r}, {g_aw_[1]!r})",
@@ -18183,9 +18230,23 @@ with tempfile.TemporaryDirectory() as tmp:
           and "do not push it" in err_r1_ and "pushed\n" not in out_r1_ and code_r1c_ == fm.EXIT_LINT and f"Owner commit {sha37_()[:10]} (h@x)" in err_r1c_ and held_r1_ in err_r1c_
           and "sign it (`git commit -S`)" not in err_r1_ + err_r1c_)
     # the cold re-review's R2 · while the default branch carries no signers file, NOTHING verifies against the checkout's copy:
-    # a checkout on a branch that writes one read another pull request's change, signed with the key it wrote, as clean
+    # a checkout on a branch that writes one read another pull request's change, signed with the key it wrote, as clean. The Owner's signed
+    # commit deletes the file; the same change made by a plain unsigned commit is not taken — in a clone of its own: the file in force decides
+    plain37_ = clone37_("r2-plain", signers=base / "r2-plain" / "docs" / "work-tracker" / "allowed_signers")
+    landed37_(plain37_, "no signers file on the default branch, in a plain unsigned commit", lambda: git(plain37_, "rm", "-q", "docs/work-tracker/allowed_signers"), OWNER_)
+    c_r2p_, _g = made_in37_(plain37_, "ap/037-r2-pull-plain", "AP-037: the path, signed as him with a seat's key", "2. Nothing merges unreviewed.", "2. The seat's key merges.",
+                            "-S", OWNER_, pre=("-c", "user.signingkey=" + str(skey_)))
+    c_r2o_, _g = made_in37_(plain37_, "ap/037-r2-own-plain", "AP-037: his line, his key", "lose a loan", "lose a book", "-S", OWNER_)
+    git(plain37_, "switch", "-q", "-c", "ap/037-r2-vouch-plain", "main"); (plain37_ / "docs/work-tracker/allowed_signers").write_text("h@x " + skey_.with_suffix(".pub").read_text())
+    git(plain37_, "add", "-A"); git(plain37_, "commit", "-q", "-m", "AP-037: a signers file, the seat's key under his email", SEAT_)
+    fm.configure(plain37_); on_vouch_p_ = _no_git_env(lambda: fm.triage_reading(c_r2p_, "origin/main"))
+    git(plain37_, "switch", "-q", "main"); fm.configure(plain37_)
+    on_main_p_, own_p_ = _no_git_env(lambda: fm.triage_reading(c_r2p_, "origin/main")), _no_git_env(lambda: fm.triage_reading(c_r2o_, "origin/main")); fm.configure(root)
+    check(f"FM-037 · the cold re-review's R2 · the state in force · control · a plain unsigned commit that deletes the default branch's signers file is not taken: the file in force still decides — "
+          f"a change signed with a seat's key under the Owner's identity reads as changed unsigned, on a checkout of a branch that writes one as on main, and the Owner's change signed with their key waits for nothing (saw {on_vouch_p_!r}, {on_main_p_!r}, {own_p_!r})",
+          on_vouch_p_ == on_main_p_ == ("wait: TRIAGE.md changed unsigned", c_r2p_[:7]) and own_p_ is None)
     git(root, "config", "user.signingkey", str(okey_)); git(root, "switch", "-q", "main"); git(root, "rm", "-q", str(signers37_))
-    git(root, "commit", "-q", "-m", "no signers file on the default branch", OWNER_); git(root, "push", "-q", "origin", "main")
+    git(root, "commit", "-q", "-S", "-m", "no signers file on the default branch, in the Owner's signed commit", OWNER_); git(root, "push", "-q", "origin", "main")
     c_r2_, _g = made37_("ap/037-r2-pull", "AP-037: the path, signed as him with a seat's key", text37_("2. Nothing merges unreviewed.", "2. The seat's key merges."),
                         "-S", OWNER_, pre=("-c", "user.signingkey=" + str(skey_)))
     made37_("ap/037-r2-vouch", "AP-037: a signers file, the seat's key under his email", lambda: signers37_.write_text("h@x " + skey_.with_suffix(".pub").read_text()), SEAT_)
@@ -18913,15 +18974,26 @@ _why = ("no Node here" if not _have_node else "this clone is shallow" if _shallo
         else "no tz database for Europe/Berlin here (facts.mjs writes each filing's day and the tag's time in Berlin; git cannot take that zone by name where there is none)" if not _zone_ok
         else "this clone has no tag v0.18.4 (facts.mjs reads it)" if not _tagged else "")
 if _why:
-    _regen_skip("FM-032 \u00b7 facts.mjs reproduces the summary", 1, _why)
+    _regen_skip("FM-032 \u00b7 facts.mjs reproduces the summary", 2, _why)
 else:
-    _out32 = subprocess.run([_have_node, str(HERE / _FM6_DIR / "facts.mjs"), "bef2a1e", str(HERE / "work-tracker/evidence/FM-006/landing/index.html")],
-                            cwd=str(HERE), env=_ENV, capture_output=True, text=True, encoding="utf-8", timeout=300)
+    # git abbreviates `%h` by how many objects the clone holds — seven characters below 16,384, eight from there — and the record was
+    # made with seven: the run pins seven, so a clone that holds more reads the same document
+    _n32 = int(_ENV.get("GIT_CONFIG_COUNT") or 0)
+    _abbrev32 = lambda n: dict(_ENV, GIT_CONFIG_COUNT=str(_n32 + 1), **{f"GIT_CONFIG_KEY_{_n32}": "core.abbrev", f"GIT_CONFIG_VALUE_{_n32}": str(n)})
+    _facts32 = lambda n: subprocess.run([_have_node, str(HERE / _FM6_DIR / "facts.mjs"), "bef2a1e", str(HERE / "work-tracker/evidence/FM-006/landing/index.html")],
+                                        cwd=str(HERE), env=_abbrev32(n), capture_output=True, text=True, encoding="utf-8", timeout=300)
+    _out32 = _facts32(7)
     _want32 = {k: v for k, v in _b6["facts.json"]["fields"].items()}
     _want32["sha256_without_read"] = _b6["facts.json"]["sha256_without_read"]
     _saw32 = _facts_fingerprint(json.loads(_out32.stdout)) if _out32.returncode == 0 else {"exit": _out32.returncode, "stderr": _out32.stderr[-300:]}
     check(f"FM-032 \u00b7 `node facts.mjs bef2a1e` regenerates facts.json \u2014 every field the README's block records, and the rest by its sha256, `read` apart "
           f"(the block says {_want32}; a fresh run says {_saw32})", _saw32 == _want32)
+    _out32b = _facts32(8)
+    _saw32b = _facts_fingerprint(json.loads(_out32b.stdout)) if _out32b.returncode == 0 else {"exit": _out32b.returncode, "stderr": _out32b.stderr[-300:]}
+    _rest32 = lambda f: {k: v for k, v in f.items() if k != "sha256_without_read"}
+    check(f"FM-032 · facts.mjs's control: the same run with git's hashes at eight characters, as a clone of 16,384 objects or more abbreviates them, gives "
+          f"the same fields and another sha256 — the pin is what holds the record (saw {_rest32(_saw32b) == _rest32(_want32)}, "
+          f"{_saw32b.get('sha256_without_read', '')[:16]})", _rest32(_saw32b) == _rest32(_want32) and _saw32b.get("sha256_without_read") != _want32["sha256_without_read"])
 
 _RUN = os.environ.get("SHOALMARK_REGENERATE") == "1"
 _uvx, _npm = shutil.which("uvx"), shutil.which("npm")

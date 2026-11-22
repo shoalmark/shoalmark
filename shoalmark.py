@@ -6966,9 +6966,9 @@ def verified_as(commit, identity, at=None):
     That file is read as the default branch held it at `at`, the revision of the state a commit is judged by, or as it is in force where `at` is
     None, and for the identity's own lines alone (`signers_held`): git names one identity for a key, so a key listed under two verifies for each.
     Whether a file is there is asked of that state alone: a file the tip no longer holds does not stop a state that held one."""
-    if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or (at is None and signature_gap(commit)) or not signers_args(identity, at):
+    if not identity or not EMAIL_RE.fullmatch(identity) or signature_kind(commit) != "ssh" or (at is None and signature_gap(commit)) or not signers_held(identity, at):
         return False
-    v = vcs_process("git", *signers_args(identity, at), "log", "-1", "--format=%G?%n%GS", commit, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    v = vcs_process("git", "-c", f"gpg.ssh.allowedSignersFile={signers_held(identity, at)}", "log", "-1", "--format=%G?%n%GS", commit, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     good, signer = (v.stdout.split("\n") + ["", ""])[:2]
     return good.strip() == "G" and signer.strip() == identity
 
@@ -7086,11 +7086,10 @@ def signers_rel(top, below, real, trunk):
     return typed if typed in same or len(same) != 1 else same[0]
 
 
-def signers_args(identity=None, at=None):
+def signers_args():
     """`-c gpg.ssh.allowedSignersFile=<the trusted file>` for a git call that reads `%G?` — the signers file of the state in force on the
-    default branch (`signers_now`), or with an `identity`, a file of that identity's lines alone, from the signers file as the default branch
-    held it at `at` or as it is in force (`signers_held`) — nothing where there is none."""
-    held = signers_held(identity, at) if identity else signers_now()["file"]
+    default branch (`signers_now`) — nothing where there is none. One identity's own lines are `signers_held`'s (`verified_as`)."""
+    held = signers_now()["file"]
     return ["-c", f"gpg.ssh.allowedSignersFile={held}"] if held else []
 
 
@@ -7104,7 +7103,7 @@ def signers_now():
         return s
     key = (str(ROOT), None, at)
     if key not in _HELD:
-        blob = cat_blobs([f"{at}:{s['rel']}"], raw=True).get(f"{at}:{s['rel']}") if at else None
+        blob = filed_signers(at, s["rel"]) if at else None
         held = None
         if blob is not None:
             fd, held = tempfile.mkstemp(prefix="shoalmark-signers-")
@@ -7149,7 +7148,7 @@ def signers_held(identity, at=None):
     if key not in _HELD:
         text, now = None, signers_now()["file"] if not key[2] else None
         if key[2]:
-            text = cat_blobs([f"{at}:{s['rel']}"], raw=True).get(f"{at}:{s['rel']}")
+            text = filed_signers(at, s["rel"])
         elif now:
             with open(now, encoding="utf-8", errors="replace", newline="") as f:
                 text = f.read()
@@ -7162,6 +7161,11 @@ def signers_held(identity, at=None):
             atexit.register(lambda: os.path.exists(tmp) and os.remove(tmp))
             _HELD[key] = tmp
     return _HELD[key]
+
+
+def filed_signers(at, rel):
+    """The signers file `rel` as the default branch held it at `at`, the revision of a state — one `cat_blobs` — or None where it held none."""
+    return cat_blobs([f"{at}:{rel}"], raw=True).get(f"{at}:{rel}")
 
 
 def signers_gap(commit):
@@ -9936,12 +9940,29 @@ def filed_held(commit):
     return bool(line and commit and line[0].get(commit))
 
 
+def owner_named():
+    """(the identities `owner` names in the state in force on the default branch, in its order — as the checkout's configuration names them
+    where that branch's history gives no state —, every identity a state on that history named as the Owner, and whether that history or a
+    state on it cannot be read here)."""
+    now = filed_now()
+    named = list(now[1]) if now and now[1] else [w for w, _m in SEATS.get("owner", ())]
+    before = {w for rev in set(_FILED_STATES.values()) if rev for w in filed_at(rev)[1]} if filed_line() else set()
+    return named, before, bool(_FILED) and (not _FILED[3] or any(state[4] for state in _FILED_MATERIAL.values()))
+
+
 def identity_label(identity):
-    if identity and filed_now() is None and any(identity == w for w, _m in SEATS.get("owner", ())):
-        return "the Owner's forge noreply address" if "noreply" in identity else "the Owner's personal address"
-    if identity and filed_line() and any(identity in filed_at(rev)[1] for rev in set(_FILED_STATES.values()) if rev):
-        return "the Owner's forge noreply address" if "noreply" in identity else "the Owner's personal address"
-    return "an unrecognized identity" if identity and _FILED and (not _FILED[3] or any(state[4] for state in _FILED_MATERIAL.values())) else identity
+    """How a refusal or a page names an identity: as it is — but an Owner identity that `owner` names beside another by its place there
+    (`the Owner's identity 1 of 2`), one a state on the default branch named as the Owner and the state in force does not as `a former Owner
+    identity`, and where that history or a state on it cannot be read here, any other as `an unrecognized identity`: an identity the
+    Owner's order removes is printed at no step of it. Chosen by what the configuration says, never by the identity's form."""
+    if not identity:
+        return identity
+    named, before, unread = owner_named()
+    if identity in named:
+        return f"the Owner's identity {named.index(identity) + 1} of {len(named)}" if len(named) > 1 else identity
+    if identity in before:
+        return "a former Owner identity"
+    return "an unrecognized identity" if unread else identity
 
 
 FILED_NOT_THEIRS = ("the default branch did not name that author as one who may answer when the commit was filed there, and a filed commit is judged by "
