@@ -3,7 +3,7 @@ id: FM-187
 status: Proposed
 considered: FM-033, FM-161, FM-175
 tags: process
-next: owner
+next: build
 hook: "A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a revision by a path git takes from the top, finds nothing, and passes. And a tracker shipped before the trackers move out of a code repository fails for commits left behind. The small change, put as FM-187-Q1: refuse to run below the top until FM-161's fix, and freeze the trackers the Owner's signed import adds already Shipped."
 ask-id: FM-187-Q1
 ask: "Do you take FM-187's small change as proposed, or as changed under other: the tool refuses to run where the project root is not the git top until FM-161's fix, and a tracker your signed import adds already Shipped is frozen and not checked again, held by its Tracker-import: trailer?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-25
 ask-options: "yes, as proposed | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-25
+answered-by: holgo99
 ---
 
 # FM-187 — the gate passes a project below the git top unjudged, and a tracker shipped before a move fails for a commit left behind
