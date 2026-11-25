@@ -6,7 +6,7 @@ tags: process
 next: build
 triaged: 2026-11-25
 tier: P1
-hook: "A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a revision by a path git takes from the top, finds nothing, and passes. And a tracker shipped before the trackers move out of a code repository fails for commits left behind. FM-187-Q1 accepted the small change: refuse to run below the top until FM-161's fix, and freeze the trackers the Owner's signed import adds already Shipped. It is built at once."
+hook: "A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a revision by a path git takes from the top, finds nothing, and passes. And a tracker shipped before the trackers move out of a code repository fails for commits left behind. FM-187-Q1 accepted the small change: refuse to run below the top until FM-161's fix, and freeze the trackers the Owner's signed import adds already Shipped. It is to be built at once."
 ---
 
 # FM-187 — the gate passes a project below the git top unjudged, and a tracker shipped before a move fails for a commit left behind
@@ -16,9 +16,9 @@ Seat: the Planner (27f31560), the tool team's lead · filed 2026-11-25, on the c
 ## What is true now
 
 **2026-11-25 — FM-187-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build
-commit, P1, In Progress,** on the coordinator's word of that day. Decisions 1 to 6 stand as put. The lane is built from
-main, from a patch prepared before the answer, and its review is critical, by a reviewer session independent of the
-builder. It ships where the Owner's answer on the release puts it.
+commit, P1, In Progress,** on the coordinator's word of that day. Decisions 1 to 6 stand as put. The lane is to be built
+from main, from a patch prepared before the answer; nothing is built yet. Its review is critical, by a reviewer session
+independent of the builder. Which release takes it is not decided: [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts it.
 
 **2026-11-25 — filed, Proposed, with FM-187-Q1 put; nothing is built.** The organisation is moving the teams' trackers
 out of the code repositories into its own repository, with each team a project in a folder of its own and its own
@@ -45,8 +45,9 @@ out of the code repositories into its own repository, with each team a project i
 
 The tool's first promise is never a false pass. A project it cannot judge is refused, not passed, until it can judge
 it. A move that only changes where trackers live must not turn trackers judged Shipped, where their commits are, into
-refusals. [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s gate, which needs a judged
-tracker before a build commit, stays as it is.
+refusals. This change leaves [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s gate,
+which needs a judged tracker before a build commit, as it is. FM-161's decision 12 turns that rule off in a code
+repository whose trackers live elsewhere, until the pinned read.
 
 ## Decisions, for the Owner
 
@@ -84,8 +85,9 @@ Each item names its commit or pull request when it lands.
 - [x] **The Owner has answered FM-187-Q1.** · `198dd6b`, #330 (`c069017`)
 - [ ] **A run below the git top is refused,** with its tests.
 - [ ] **The frozen rule,** held by the Owner's signed import, with its tests and its line in `--check`.
-- [ ] **The README states both rules.**
-- [ ] **The organisation's acceptance checks for the move** run against the build, each reported with its output.
+- [ ] **The README states the frozen rule,** as decision 4 says.
+- [ ] **The organisation's acceptance checks for the move** run against the build, each reported with its output, on
+  the coordinator's word of 25 November.
 - [ ] **The critical review is READY.**
 
 ## Asks
@@ -99,5 +101,6 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | The records reviews' findings fixed forward: the hook and dated line say the lane is still to be built, the release is FM-188-Q1's, FM-033's gate is left as it is, and two Done when items match decision 4 and their source. Records only. |
 | 2026-11-25 | FM-187-Q1 answered, yes, as proposed; judged before its first build commit, P1, In Progress. Records only. |
 | 2026-11-25 | Filed, Proposed, with FM-187-Q1 put: refuse a project below the git top until FM-161's fix, and freeze the trackers shipped before the move, held by the Owner's signed import. Records only. |
