@@ -3,7 +3,7 @@ id: FM-168
 status: Proposed
 considered: FM-042, FM-100, FM-153, FM-161, FM-165, FM-166
 tags: process
-next: owner
+next: build
 hook: "hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementation can run them, and a second one would learn the rules from the first. The Owner's words of 16, 20 and 21 November settled where the cases live: each spec's as plain files in a repository of their own, which the spec's repository holds pinned to the edition's commit, with a new case coming only through the spec. FM-168-Q2 asks the rest: every implementation runs the whole case set in its CI, the spec and its cases are the reference, and a private repository is named in public text, never linked. No release is named."
 ask-id: FM-168-Q2
 ask: "Do you take what is left of FM-168's decisions 3, 4 and 7: every implementation runs its edition's whole case set in CI and claims it only while every case passes; the spec and its cases are the reference, never an implementation; and a private repository is named in public text, never linked?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-21
 ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "rejected - tool fix and tracker cut takes priority."
+answered: 2026-11-25
+answered-by: holgo99
 ---
 
 # FM-168 — a spec's conformance tests are prose, so no implementation can run them and a second one would learn the rules from the first
