@@ -5,7 +5,8 @@ Each row builds its history in a scratch repository — a bare `origin` with `ma
 default branch's signers file — and lays the same project out twice: at the top of its repository, and in `teams/tool/` of a larger
 one whose top holds other files. It runs the tool in this process and states each layout's verdict, which must be the same. The
 acceptance shapes put an outer project at the top beside a team project in `teams/tool/`, each with its own `shoalmark.toml` and
-tracker folder. Each mutant patches one function of the imported module, putting back what the reads did before — or, for the hooks,
+tracker folder; in that layout, with the hooks installed once, the commit that creates a project below the top is the project's
+around it, which judges it. Each mutant patches one function of the imported module, putting back what the reads did before — or, for the hooks,
 of the copy of the tool they run in a process of their own — and must turn at least one row red.
 
 Run: `python3 test_below_top.py` — exit 1 on a failure; `--no-mutants` runs the rows alone. test_shoalmark.py runs it as it runs
@@ -923,7 +924,7 @@ def rows_other_project(area, add):
             msg = r.base / "msg"
             msg.write_text("build the team's tool\n", encoding="utf-8")
             o, t = run(r.root(outer), "--commit-msg", str(msg), who=COORD), run(r.root(team), "--commit-msg", str(msg), who=LEAD)
-            return [(f"another project · {where}: the commit being made, every path in the team project, whose `shoalmark.toml` the index holds — the "
+            return [(f"another project · {where}: the commit being made, every path in the team project, whose `shoalmark.toml` HEAD holds — the "
                      f"outer commit-msg check skips it, the team's judges it", o[0] == 0 and refused(t, GATE), seen(o) + " · " + seen(t))]
         one("staged", f"another project · {where}: the commit being made, every path in the team project", staged)
 
@@ -957,7 +958,7 @@ def rows_other_project(area, add):
     def before():
         r, outer, team = gated(area, "before-toml", before=True)
         o = r.check(outer, who=COORD)
-        return [("another project · a commit in a folder whose `shoalmark.toml` that commit's tree does not hold, though the working tree does — "
+        return [("another project · a commit in a folder whose `shoalmark.toml` that commit's parent does not hold, though the working tree does — "
                  "judged by the outer check", refused(o, GATE), seen(o))]
     one("before-toml", "another project · a commit in a folder before its `shoalmark.toml` was committed", before)
 
@@ -1006,10 +1007,12 @@ def install_once(r, outer):
     return said
 
 
-def hooked(r, message, who=LEAD):
-    """`git commit` of what is staged, through the hooks the clone has installed, as `who`: (exit, what git and the hooks printed)."""
+def hooked(r, message, who=LEAD, sign=False, trailers=()):
+    """`git commit` of what is staged, through the hooks the clone has installed, as `who` — signed with the Owner's key where `sign`, each of
+    `trailers` a paragraph after the subject: (exit, what git and the hooks printed)."""
     env = dict(ids.ENV, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
-    done = subprocess.run(["git", "-C", str(r.top), "-c", "commit.gpgsign=false", "commit", "-q", "-m", message], capture_output=True, text=True,
+    extra = [x for t in trailers for x in ("-m", t)] + (["-S"] if sign else [])
+    done = subprocess.run(["git", "-C", str(r.top), "-c", "commit.gpgsign=false", "commit", "-q", "-m", message, *extra], capture_output=True, text=True,
                           encoding="utf-8", errors="replace", env=env)
     return done.returncode, done.stdout + done.stderr
 
@@ -1078,6 +1081,189 @@ def rows_hooks(area, add):
             fm.configure(HERE)
         add("hooks · the copy, judging the project below the top, finds the repository's own tool where its COPY says, from the top of the working "
             "tree — the folder it finds for every project", want is not None and got == want, f"tree_tool_dir() = {got}, not {want}")
+
+
+# --- a new project: the project around it judges the commit that creates it ----------------------------------------------------------
+
+RUST, SIDE = "teams/rust", "teams/side"
+IMPORTS = ("Tracker-import: shoalmark/tool 0123456789abcdef0123456789abcdef01234567", "Tracker-import: shoalmark/rust 89abcdef0123456789abcdef0123456789abcdef")
+
+
+def org_hooked(area, name):
+    """Org's layout before its imports: the outer project at the top with its own tracker folder and the build gate on, OR-001 triaged and
+    In Progress, the hooks installed once from it, and a branch `import` cut from `main`."""
+    r = Repo(area / name, {"": org_config(GATED)}, {("", "OR-001"): text("OR-001", f"tier: P2\ntriaged: {TODAY}\n")}, {"src/app.py": "print('app')\n"})
+    installed = install_once(r, "")
+    if installed[0] != 0:
+        raise AssertionError(f"--install-hook: {seen(installed)}")
+    r.switch("-c", "import")
+    return r
+
+
+def laid(r, folder, cfg, tids, signers=True):
+    """A project written into `folder` as an import brings it, every path inside that folder — its `shoalmark.toml`, its trackers, In
+    Progress and none `Shipped`, where `signers` a signers file in its tracker folder holding the Owner's key, its board's files ignored,
+    and its INDEX.md as the tool writes it — and staged. Its staged paths, from the top."""
+    r.projects[folder] = cfg
+    r.put(r_at(folder, "shoalmark.toml"), cfg)
+    r.put(r_at(folder, ".gitignore"), f"{REL}/index.html\n{REL}/view/\n")
+    for tid in tids:
+        r.write(folder, tid, text(tid))
+    if signers:
+        r.put(r_at(folder, REL + "/allowed_signers"), (r.top / r.signers_rel).read_text(encoding="utf-8"))
+    run(r.root(folder), "--print-written", who=OWNER)
+    git(r.top, "add", "-A")
+    return git(r.top, "diff", "--cached", "--name-only").split()
+
+
+@contextlib.contextmanager
+def as_run(who=COORD):
+    """The environment `run` gives the tool, for a call of its functions in this process."""
+    saved = {k: os.environ.pop(k) for k in [k for k in os.environ if k.startswith("GIT_")]}
+    os.environ.update(GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1],
+                      GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0")
+    try:
+        yield
+    finally:
+        for k in [k for k in os.environ if k.startswith("GIT_")]:
+            del os.environ[k]
+        os.environ.update(saved)
+
+
+def judged(root, commits):
+    """Whether the check of the project at `root` holds each of `commits` among the changes it judges, none skipped as another project's;
+    and the first ten characters of each it holds."""
+    with as_run():
+        fm.configure(root)
+        try:
+            held = {c[4] for c in fm.changes_under_review()}
+        finally:
+            fm.configure(HERE)
+    return all(c in held for c in commits), sorted(c[:10] for c in held if c)
+
+
+def top_created(area, name):
+    """A repository whose `main` holds no project, a README and the app, and a branch `start`: its first commit, the Owner's, signed, creates
+    the project at the top — its `shoalmark.toml` with the build gate on, its tracker folder with OR-001, and the signers file holding the
+    Owner's key, which git's configuration names; its second, by the planner that configuration names, builds in `src/`, naming no tracker.
+    (the top, the commit that creates the project, the build commit)"""
+    keys = run_area()["keys"]
+    base = area / name
+    top, origin = base / "wc", base / "origin.git"
+    top.mkdir(parents=True)
+    git(base, "init", "-q", "--bare", "--initial-branch=main", str(origin))
+    git(top, "init", "-q", "--initial-branch=main")
+    for k, v in (("user.name", OWNER[0]), ("user.email", OWNER[1]), ("gpg.format", "ssh"), ("user.signingkey", str(keys["owner"])),
+                 ("gpg.ssh.allowedSignersFile", REL + "/allowed_signers"), ("commit.gpgsign", "false")):
+        git(top, "config", k, v)
+    git(top, "remote", "add", "origin", str(origin))
+    (top / "README.md").write_text("a repository with no project yet\n", encoding="utf-8")
+    (top / "src").mkdir()
+    (top / "src/app.py").write_text("print('app')\n", encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-m", "the start, with no project", "-S", who=OWNER, sign=keys["owner"])
+    git(top, "push", "-q", "-u", "origin", "main")
+    git(top, "remote", "set-head", "origin", "main")
+    git(top, "switch", "-q", "-c", "start")
+    (top / "shoalmark.toml").write_text(org_config(GATED), encoding="utf-8")
+    (top / ".gitignore").write_text(f"{REL}/index.html\n{REL}/view/\n", encoding="utf-8")
+    (top / REL).mkdir(parents=True)
+    (top / REL / "OR-001-x.md").write_text(text("OR-001", f"tier: P2\ntriaged: {TODAY}\n"), encoding="utf-8")
+    (top / REL / "allowed_signers").write_text(f"{OWNER[1]} " + keys["owner"].with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
+    run(top, "--print-written", who=OWNER)
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-m", "the project, created", "-S", who=OWNER, sign=keys["owner"])
+    created = git(top, "rev-parse", "HEAD").strip()
+    (top / "src/app.py").write_text("print('app, built')\n", encoding="utf-8")
+    git(top, "commit", "-q", "-am", "build the app", who=COORD)
+    return top, created, git(top, "rev-parse", "HEAD").strip()
+
+
+def rows_new_project(area, add):
+    def one(name, label, build):
+        """One case: `build()` → (ok, what it saw); a step that fails is its row's failure, and the next case runs."""
+        if not picked(name):
+            return
+        try:
+            ok, saw = build()
+        except Exception as e:
+            ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm.configure(HERE)
+        add(label, ok, saw)
+
+    def owner():
+        r = org_hooked(area, "import-owner")
+        paths, before = laid(r, TEAM, team_config(GATED), ("FM-001", "FM-002")), r.head()
+        code, said = hooked(r, "the tool team's trackers, imported", who=OWNER, sign=True, trailers=IMPORTS[:1])
+        made, o = r.head(), r.check("", who=COORD)
+        sig = git(r.top, "log", "-1", "--format=%G?").strip()
+        trailer = git(r.top, "log", "-1", "--format=%(trailers:key=Tracker-import,valueonly)").strip()
+        held, got = judged(r.root(""), [made])
+        return (code == 0 and made != before and sig == "G" and trailer == IMPORTS[0].split(": ", 1)[1]
+                and all(p.startswith(TEAM + "/") for p in paths) and accepted(o, "refused") and held,
+                f"hook exit {code}: {said.strip()[-400:]!r} · signature {sig!r} · trailer {trailer!r} · paths {paths} · {seen(o)} · judged {got}")
+    one("import-owner", "a new project · the Owner's import of a team project, signed, carrying `Tracker-import:`, every path in the team's "
+        "folder, made with the hooks on: the commit that creates the team project is the outer project's — its check judges it and refuses "
+        "nothing in it", owner)
+
+    def two():
+        r = org_hooked(area, "import-two")
+        laid(r, TEAM, team_config(GATED), ("FM-001", "FM-002"))
+        before = r.head()
+        first = hooked(r, "the tool team's trackers, imported", who=OWNER, sign=True, trailers=IMPORTS[:1])
+        one_ = r.head()
+        paths = laid(r, RUST, config("rust", "RS", (("planner", LEAD), ("builder", BUILDER)), GATED), ("RS-001",))
+        second = hooked(r, "the rust team's trackers, imported", who=OWNER, sign=True, trailers=IMPORTS[1:])
+        two_, o = r.head(), r.check("", who=COORD)
+        held, got = judged(r.root(""), [one_, two_])
+        return (first[0] == 0 and second[0] == 0 and len({before, one_, two_}) == 3 and all(p.startswith(RUST + "/") for p in paths)
+                and accepted(o, "refused") and held,
+                f"hooks exit {first[0]}, {second[0]}: {(first[1] + second[1]).strip()[-400:]!r} · {seen(o)} · judged {got}")
+    one("import-two", "a new project · two teams' imports on one branch, the second on top of the first, each the Owner's, signed, made with "
+        "the hooks on: the outer project's check judges each and refuses neither", two)
+
+    def seat():
+        r = org_hooked(area, "import-seat")
+        laid(r, TEAM, team_config(GATED), ("FM-001", "FM-002"))
+        before = r.head()
+        code, said = hooked(r, "the tool team's trackers, imported", who=COORD, trailers=IMPORTS[:1])
+        kept = r.head() == before
+        if kept:                                                # the same commit, the hooks off, where the hook kept it out
+            git(r.top, "commit", "-q", "-m", "the tool team's trackers, imported", "-m", IMPORTS[0], who=COORD)
+        o = r.check("", who=COORD)
+        return (code != 0 and kept and NO_OUTER in said and NO_TEAM not in said and refused(o, GATE),
+                f"hook exit {code}, commit kept out {kept}: {said.strip()[-400:]!r} · {seen(o)}")
+    one("import-seat", "a new project · a seat's import: the same commit by the outer project's planner, unsigned, under no `In Progress` "
+        "tracker of the outer project — the outer hook refuses it by the outer project's build gate, and so does the outer check", seat)
+
+    def own():
+        r = org_hooked(area, "import-side")
+        laid(r, SIDE, config("side", "SD", (("planner", COORD),)), ("SD-001", "SD-002"), signers=False)
+        before = r.head()
+        code, said = hooked(r, "a project of my own", who=COORD)
+        kept = r.head() == before
+        if kept:                                                # the same commit, the hooks off, where the hook kept it out
+            git(r.top, "commit", "-q", "-m", "a project of my own", who=COORD)
+        o = r.check("", who=COORD)
+        return (code != 0 and kept and NO_OUTER in said and refused(o, GATE), f"hook exit {code}, commit kept out {kept}: {said.strip()[-400:]!r} · {seen(o)}")
+    one("import-side", "a new project · a seat's own project: the outer project's planner creates a project below the top, its trackers in "
+        "it, no build gate and no signers file, unsigned, under no `In Progress` tracker of the outer project — the outer hook refuses it by the outer "
+        "project's build gate, and so does the outer check", own)
+
+    def top():
+        root, created, built = top_created(area, "top-created")
+        said = run(root, "--check", who=COORD)
+        real = fm.other_project_changes
+        fm.other_project_changes = lambda items: set()          # no folder another project: the reading at the top before any was below it
+        try:
+            plain = run(root, "--check", who=COORD)
+        finally:
+            fm.other_project_changes = real
+        held, got = judged(root, [created, built])
+        return said == plain and held, f"{seen(said)} · with no project below {seen(plain)} · judged {got}"
+    one("top-created", "a new project · at the top: on a branch whose first commit creates the project at the top, its check reads every "
+        "commit as it reads them with no project below it, the commit that creates it and the build commit after it both judged", top)
 
 
 # --- after the move: a team project's ship-log row names its code repository's commit; a code repository names where its trackers live ---
@@ -1185,7 +1371,7 @@ def rows_after_move(area, add):
 
 
 ROWS = (rows_rights, rows_shipped, rows_records, rows_asks, rows_ids, rows_lost_answer, rows_index, rows_signers, rows_reads, rows_acceptance,
-        rows_other_project, rows_hooks, rows_after_move)
+        rows_other_project, rows_hooks, rows_new_project, rows_after_move)
 
 
 # --- mutants: each read put back as it read before -----------------------------------------------------------------------------------
@@ -1256,7 +1442,7 @@ MUTANTS = (
     ("another project's skip taken by the working tree alone", "other_project_changes", [("held.get(spec(rev, home)) is not None", "True", 1)],
      (rows_other_project,), {"before-toml"}, False),
     ("another project's `shoalmark.toml` read from the top", "other_project_changes",
-     [('f"{rev}:./{home}/{CONFIG_NAME}"', 'f"{rev}:{home}/{CONFIG_NAME}"', 1)], (rows_other_project,), {"skip", "staged"}, False),
+     [('f"{parent(rev)}:./{home}/{CONFIG_NAME}"', 'f"{parent(rev)}:{home}/{CONFIG_NAME}"', 1)], (rows_other_project,), {"skip", "staged"}, False),
     ("another project's commits judged by the rights, the sessions and the Shipped rule", "changes_under_review",
      [("[c for n, c in enumerate(changes) if n not in theirs]", "changes", 1)], (rows_other_project,), {"session"}, False),
     ("another project's commits judged by the build gate", "judge_commits", [("if n in theirs or (", "if (", 1)], (rows_other_project,), {"skip", "staged"}, False),
@@ -1277,6 +1463,25 @@ MUTANTS = (
      (rows_hooks,), {"copy-tool"}, False),
     ("the hooks' copy names what it wrote from the project root, where the hook stages from the top", "copy:each_project",
      [('folder = "" if root == top else root.relative_to(top).as_posix() + "/"', 'folder = ""', 1)], (rows_hooks,), {"hooks-below"}, False),
+    ("a new project decided on disk, not at the commit's parent, in the check", "other_project_changes",
+     [("held.get(spec(rev, home)) is not None", "True", 1)], (rows_new_project,), {"import-owner", "import-seat"}, False),
+    ("the hooks' copy, judging the commit being made, decides a new project in the index, not at HEAD", "copy:other_project_changes",
+     [('parent = lambda rev: f"{rev}^" if rev else "HEAD"', 'parent = lambda rev: f"{rev}^" if rev else ""', 1),
+      ("held = cat_blobs(sorted({spec(r, h) for r, h in asked}))", "held = cat_blobs(sorted({spec(r, h) for r, h in asked}), index_env())", 1)],
+     (rows_new_project,), {"import-seat", "import-side"}, False),
+    ("a new project decided at the commit itself, not at its parent, in the check", "other_project_changes",
+     [('parent = lambda rev: f"{rev}^" if rev else "HEAD"', 'parent = lambda rev: rev or "HEAD"', 1)], (rows_new_project,), {"import-two", "import-side"}, False),
+    ("the hooks' copy reads a new project's `shoalmark.toml` from the index, not from HEAD", "copy:staged_projects",
+     [('spec = lambda folder: f"HEAD:{folder}/{CONFIG_NAME}"', 'spec = lambda folder: f":{folder}/{CONFIG_NAME}"', 1),
+      ("held = cat_blobs([spec(folder) for folder in on_disk]) if on_disk else {}",
+       "held = cat_blobs([spec(folder) for folder in on_disk], index_env()) if on_disk else {}", 1)],
+     (rows_new_project,), {"import-owner", "import-seat", "import-side"}, False),
+    ("the hooks' copy decides a new project on disk, not at HEAD", "copy:staged_projects",
+     [("projects = {folder for folder in on_disk if held.get(spec(folder)) is not None}", "projects = set(on_disk)", 1)],
+     (rows_new_project,), {"import-two", "import-side"}, False),
+    ("the project at the top decided at the parent too, as if it were a project below itself", "other_project_changes",
+     [("if f.parts and os.path.lexists(ROOT / f / CONFIG_NAME)]", "if os.path.lexists(ROOT / f / CONFIG_NAME)]", 1)], (rows_new_project,),
+     {"top-created"}, False),
     ("a `<repository>@<commit>` row counted as no commit, though `[repositories]` names its repository", "code_row_verdicts",
      [('"" if name in named else', '"" if False else', 1)], (rows_after_move,), {"code-named"}, False),
     ("a `<repository>@<commit>` row taken whatever repository it names", "code_row_verdicts", [('"" if name in named else', '"" if True else', 1)],

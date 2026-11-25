@@ -7582,12 +7582,14 @@ _CHANGES = None
 
 
 def other_project_changes(items):
-    """Of `items` — each (the revision that holds a change's result, "" for the index of the commit being made; the paths it changes,
-    written from the project root) — the places of those whose every path lies in another project below this one: a folder below the
-    root whose `shoalmark.toml` that revision holds, the commit that adds it included. That project's own check judges such a change,
-    and this one skips it. A change with a path of this project's own, or with no path inside the project at all, is not one. Git is
-    asked only of a folder that holds a `shoalmark.toml` in the working tree: one `cat_blobs` for all of them, and one for the index,
-    which is read as the hook hands it (`index_env`)."""
+    """Of `items` — each (the commit that holds a change's result, "" for the commit being made; the paths it changes, written from the
+    project root) — the places of those whose every path lies in another project below this one: a folder below the root whose
+    `shoalmark.toml` is at the commit's parent — its first, `<commit>^` — or, for the commit being made, at HEAD. That project's own check
+    judges such a change, and this one skips it. A change with a path of this project's own, or with no path inside the project at all,
+    is not one. The project is decided at the parent: the commit that adds a folder's `shoalmark.toml` is not yet that project's, so this
+    project judges it, by its own Owner and signers, and the project it creates judges it too, by its own state. A root commit has no
+    parent, and no folder is another project for it. Git is asked only of a folder that holds a `shoalmark.toml` in the working tree: one
+    `cat_blobs` for all of them."""
     if vcs() != "git":
         return set()
     homes = {}                                          # each path: the folders on its way, below the root, with a configuration on disk
@@ -7600,8 +7602,9 @@ def other_project_changes(items):
     asked = {(rev, home) for rev, rels in items for rel in rels for home in homes[rel]}
     if not asked:
         return set()
-    spec = lambda rev, home: f"{rev}:./{home}/{CONFIG_NAME}"       # `./`: from the project root, git's working directory
-    held = {**cat_blobs(sorted(spec(r, h) for r, h in asked if r)), **cat_blobs(sorted(spec(r, h) for r, h in asked if not r), index_env())}
+    parent = lambda rev: f"{rev}^" if rev else "HEAD"              # the project is decided at the parent: the commit being made's is HEAD
+    spec = lambda rev, home: f"{parent(rev)}:./{home}/{CONFIG_NAME}"   # `./`: from the project root, git's working directory
+    held = cat_blobs(sorted({spec(r, h) for r, h in asked}))
     return {n for n, (rev, rels) in enumerate(items)
             if rels and all(any(held.get(spec(rev, home)) is not None for home in homes[rel]) for rel in rels)}
 
@@ -7614,7 +7617,7 @@ def changes_under_review():
     global _CHANGES
     if _CHANGES is None or _CHANGES[0] != COMMITTING:
         changes = read_changes()
-        theirs = other_project_changes([(c[5] or "", c[1]) for c in changes])     # the revision of its result: a commit, HEAD, or the index
+        theirs = other_project_changes([(c[5] or "", c[1]) for c in changes])     # the commit of its result, or "" for the commit being made: each decided at its parent
         _CHANGES = (COMMITTING, [c for n, c in enumerate(changes) if n not in theirs])
     return _CHANGES[1]
 
@@ -9345,7 +9348,7 @@ def judge_commits(commits, branch):
     another project below this one is not judged here (`other_project_changes`): that project's own check judges it."""
     rel = TRACKER_DIR.resolve().relative_to(ROOT).as_posix().rstrip("/") + "/"
     work = []
-    theirs = other_project_changes([(commit, files) for commit, _parent, files, _subject in commits])     # "" is the commit being made: its index
+    theirs = other_project_changes([(commit, files) for commit, _parent, files, _subject in commits])     # "" is the commit being made: decided at HEAD
     for n, (commit, parent, files, subject) in enumerate(commits):
         if n in theirs or (verified_owner(commit) if commit else pending_owner()):
             continue
@@ -12975,12 +12978,19 @@ _DRIFT_SAID = set()                                                 # the drift 
 
 def staged_projects(top, paths):
     """{project root: its paths, written from it} for `paths`, the commit being made's, named from the top: each path is in the folder of its nearest
-    `shoalmark.toml` on disk below the top, else the top's — the project the hooks have always judged it by. The top first, then each other project
-    in the order of its folder."""
+    project below the top, else the top's. A folder is a project for the commit being made where its `shoalmark.toml` is at HEAD, the commit's
+    parent, as the check decides it (`other_project_changes`), and on disk, where that project's run reads it: the commit that adds a folder's
+    `shoalmark.toml` is the enclosing project's. One `cat_blobs` asks HEAD of every folder that holds one on disk. The top first, then each other
+    project in the order of its folder."""
+    on_disk = sorted({"/".join(parts[:n]) for parts in (path.split("/") for path in paths) for n in range(1, len(parts))
+                      if os.path.lexists(top.joinpath(*parts[:n], CONFIG_NAME))})
+    spec = lambda folder: f"HEAD:{folder}/{CONFIG_NAME}"           # the project is decided at the parent, as the check decides it
+    held = cat_blobs([spec(folder) for folder in on_disk]) if on_disk else {}
+    projects = {folder for folder in on_disk if held.get(spec(folder)) is not None}
     homes = {}
     for path in paths:
         parts = path.split("/")
-        at = next((n for n in range(len(parts) - 1, 0, -1) if os.path.lexists(top.joinpath(*parts[:n], CONFIG_NAME))), 0)
+        at = next((n for n in range(len(parts) - 1, 0, -1) if "/".join(parts[:n]) in projects), 0)
         homes.setdefault(top.joinpath(*parts[:at]), []).append("/".join(parts[at:]))
     return dict(sorted(homes.items(), key=lambda home: (home[0] != top, home[0].as_posix())))
 
