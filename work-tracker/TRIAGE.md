@@ -26,6 +26,12 @@ below; its worksheets are the record, in `evidence/triage/`.
 
 Newest first — one paragraph per pass: its date, what it changed, its worksheet.
 
+**2026-11-25 — a build judged before its first commit and a park, a partial pass** (Planner seat, on the
+coordinator's word of that day; the worksheet `work-tracker/evidence/triage/triage-2026-11-25.md`, two rows of one
+hundred and twelve filled and applied by the command): **FM-187 keep P1** — the small change its signed answer of
+that day accepted, built at once; **FM-168 park P2** — its signed answer of that day put the tool fix and the tracker
+cut first. The other rows wait for the next full pass.
+
 **2026-11-21 — a build judged before its first commit, a partial pass** (Planner seat, on the coordinator's word of
 that day; the worksheet `work-tracker/evidence/triage/triage-2026-11-21.md`, one row of one hundred and seven filled
 and applied by the command): **FM-169 keep P1** — the Owner's personal address leaves the configuration and the

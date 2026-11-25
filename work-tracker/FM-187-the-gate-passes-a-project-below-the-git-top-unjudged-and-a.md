@@ -1,19 +1,12 @@
 ---
 id: FM-187
-status: Proposed
+status: In Progress
 considered: FM-033, FM-161, FM-175
 tags: process
 next: build
-hook: "A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a revision by a path git takes from the top, finds nothing, and passes. And a tracker shipped before the trackers move out of a code repository fails for commits left behind. The small change, put as FM-187-Q1: refuse to run below the top until FM-161's fix, and freeze the trackers the Owner's signed import adds already Shipped."
-ask-id: FM-187-Q1
-ask: "Do you take FM-187's small change as proposed, or as changed under other: the tool refuses to run where the project root is not the git top until FM-161's fix, and a tracker your signed import adds already Shipped is frozen and not checked again, held by its Tracker-import: trailer?"
-ask-kind: ruling
-ask-since: 2026-11-25
-ask-options: "yes, as proposed | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-25
-answered-by: holgo99
+triaged: 2026-11-25
+tier: P1
+hook: "A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a revision by a path git takes from the top, finds nothing, and passes. And a tracker shipped before the trackers move out of a code repository fails for commits left behind. FM-187-Q1 accepted the small change: refuse to run below the top until FM-161's fix, and freeze the trackers the Owner's signed import adds already Shipped. It is built at once."
 ---
 
 # FM-187 — the gate passes a project below the git top unjudged, and a tracker shipped before a move fails for a commit left behind
@@ -21,6 +14,11 @@ answered-by: holgo99
 Seat: the Planner (27f31560), the tool team's lead · filed 2026-11-25, on the coordinator's word of that day.
 
 ## What is true now
+
+**2026-11-25 — FM-187-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build
+commit, P1, In Progress,** on the coordinator's word of that day. Decisions 1 to 6 stand as put. The lane is built from
+main, from a patch prepared before the answer, and its review is critical, by a reviewer session independent of the
+builder. It ships where the Owner's answer on the release puts it.
 
 **2026-11-25 — filed, Proposed, with FM-187-Q1 put; nothing is built.** The organisation is moving the teams' trackers
 out of the code repositories into its own repository, with each team a project in a folder of its own and its own
@@ -83,15 +81,23 @@ All six are put as FM-187-Q1.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-187-Q1.**
+- [x] **The Owner has answered FM-187-Q1.** · `198dd6b`, #330 (`c069017`)
 - [ ] **A run below the git top is refused,** with its tests.
 - [ ] **The frozen rule,** held by the Owner's signed import, with its tests and its line in `--check`.
 - [ ] **The README states both rules.**
 - [ ] **The organisation's acceptance checks for the move** run against the build, each reported with its output.
 - [ ] **The critical review is READY.**
 
+## Asks
+
+**FM-187-Q1** · 2026-11-25 · Do you take FM-187's small change as proposed, or as changed under other: the tool refuses to run where the project root is not the git top until FM-161's fix, and a tracker your signed import adds already Shipped is frozen and not checked again, held by its Tracker-import: trailer?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 198dd6b · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-187-Q1 answered, yes, as proposed; judged before its first build commit, P1, In Progress. Records only. |
 | 2026-11-25 | Filed, Proposed, with FM-187-Q1 put: refuse a project below the git top until FM-161's fix, and freeze the trackers shipped before the move, held by the Owner's signed import. Records only. |
