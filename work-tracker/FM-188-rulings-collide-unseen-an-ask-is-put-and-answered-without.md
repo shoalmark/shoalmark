@@ -4,7 +4,7 @@ status: Proposed
 considered: FM-033, FM-076, FM-095, FM-097, FM-117, FM-118, FM-139, FM-161, FM-164, FM-170, FM-175, FM-187
 tags: process
 next: owner
-hook: "Rulings collide unseen: an ask is put and answered without the earlier rulings it overturns, because --related reads titles and hooks, not asks and answers. Two decisions met FM-175's signed answer that way, and the releases meet the tracker cut. FM-188-Q1 puts five additions, FM-175 amended, no v0.20.4, and v0.20.3 reopened to add FM-187 and FM-161, so the cut has its release."
+hook: "Rulings collide unseen: an ask is put and answered without the earlier rulings it overturns, because --related reads titles and hooks, not asks and answers. Two decisions met FM-175's signed answer that way, and the releases meet the tracker cut. FM-188-Q1 puts five additions, FM-175 amended, no v0.20.4, and v0.20.3 reopened to add FM-187, FM-161 and the cut's provenance change, so the cut's release can come before v0.21.0."
 ask-id: FM-188-Q1
 ask: "Do you take FM-188's rulings as proposed, or as changed under other: Part 1's five additions in v0.21.0, FM-175 amended (trackers private in org, views uncommitted, git only, verdicts by signed tag), no v0.20.4, and v0.20.3 from main with FM-187 and FM-161 added, for the cut?"
 ask-kind: ruling
@@ -40,7 +40,8 @@ and [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) s
   notice in a v0.20.4 of its own and its removal in v0.21.0.
 - **The tracker cut needs a release:** the plan for moving the trackers into the organisation's repository lands
   FM-187's and FM-161's changes in a tool release, which the organisation pins before the import. The plan also names a
-  provenance change for that release and leaves it to the Owner's choice; that choice is not part of this ask.
+  provenance change for that release and leaves its form to the Owner's choice. That choice is not part of this ask;
+  decision 10 says how v0.20.3 waits for it.
 
 ## Why
 
@@ -95,8 +96,11 @@ and it reopens the Owner's word of 18 to 20 November on v0.20.3's scope (decisio
 10. **v0.20.3:**
     - **Proposed:** v0.20.3 ships from main with FM-187 and FM-161 added to the four items FM-139 records. This
       reopens the Owner's word of 18 to 20 November, which set v0.20.3's scope at those four items and took FM-161 out
-      of it. The organisation pins it for the tracker cut. Its tag comes when FM-161 has landed, about 2.5 working days
-      from its answer, as FM-161's decision 13 sizes it.
+      of it. The organisation pins it for the tracker cut, so it also carries the cut's provenance change, once the Owner has
+      chosen its form. Its tag comes when FM-161 and that change have landed: FM-161 takes about 2.5 working days from
+      its answer, as FM-161's decision 13 sizes it. The provenance change adds its own build and review on top: the
+      plan calls the form it proposes a small change, and the other form, a bridge to the code repository's history,
+      is not sized.
     - **v0.20.3 without FM-187 and FM-161:** v0.20.3 ships as FM-139 records it, and FM-187 and FM-161 ship in
       v0.21.0. The tracker cut then waits for v0.21.0, since the cut needs them in a release, and v0.21.0 has no
       date.
