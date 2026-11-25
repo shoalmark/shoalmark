@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-189](FM-189-an-import-brings-trackers-without-their-history-so-who-put.md) | P1 | An import brings trackers into another repository without their history, so every rule that reads who set a line, which… | In Progress | progress | 2026-11-25 |
 | [FM-187](FM-187-the-gate-passes-a-project-below-the-git-top-unjudged-and-a.md) | P1 | A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a… | In Progress | progress | 2026-11-25 |
 | [FM-175](FM-175-trackers-are-prose-the-gate-cannot-read-so-each-becomes-a.md) | P2 | A tracker's Done when, its ship log and much of its state are prose: the gate cannot verify one box, and agents read wh… | In Progress | progress | 2026-11-19 |
 | [FM-173](FM-173-a-signed-answer-this-clone-cannot-verify-reads-as-a-missing.md) | P1 | In a clone with no signers file set up, --check reads a signed answer it cannot verify as no answer at all: a ledger-in… | In Progress | progress | 2026-11-16 |
