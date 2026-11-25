@@ -1080,8 +1080,112 @@ def rows_hooks(area, add):
             "tree — the folder it finds for every project", want is not None and got == want, f"tree_tool_dir() = {got}, not {want}")
 
 
+# --- after the move: a team project's ship-log row names its code repository's commit; a code repository names where its trackers live ---
+
+CODE = '[repositories]\ntool = "https://example.invalid/tool.git"\n'
+ELSEWHERE = '[trackers]\nelsewhere = "https://example.invalid/planning.git, teams/tool/"\n'
+OTHER = "0123456789abcdef0123456789abcdef01234567"      # a commit of the code repository, which this repository does not hold
+CODE_LINE = ("the Shipped rule: 1 move to `Shipped` rests on a ship-log row naming `<repository>@<commit>` for a code repository "
+             "`[repositories]` names (tool) — taken as the commit behind the move, that repository unread: FM-001")
+ELSEWHERE_SAID = "this repository's trackers live elsewhere — https://example.invalid/planning.git, teams/tool/ (`[trackers] elsewhere` in shoalmark.toml)"
+
+
+def rows_after_move(area, add):
+    def named(r, f):
+        r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Built in tool@{OTHER[:12]}."))
+        r.commit("FM-001: shipped")
+        said = r.check(f)
+        return accepted(said, "with no commit behind it"), seen(said)
+    each(area, add, "code-named", "after the move · a ship-log row naming `tool@<commit>`, a code repository `[repositories]` names, the commit one "
+         "this repository does not hold — accepted as the commit behind the move, the other repository unread", named, {"FM-001": text("FM-001")},
+         tables=CODE)
+
+    def not_named(r, f):
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        built = r.commit("FM-001: built", paths=[r.at(f, "src/tool.py")])
+        r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Built in web@{built[:12]}."))
+        r.commit("FM-001: shipped")
+        said = r.check(f)
+        return refused(said, f"FM-001: moved to `Shipped` with no commit behind it — `web@{built[:12]}` names a code repository `[repositories]` "
+                       "does not name, so it counts as no commit"), seen(said)
+    each(area, add, "code-not-named", "after the move · a ship-log row naming `web@<commit>`, a repository `[repositories]` does not name — refused: "
+         "it counts as no commit, though its hash is this repository's commit that built the change", not_named, {"FM-001": text("FM-001")},
+         tables=CODE)
+
+    def the_line(r, f):
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        built = r.commit("FM-002: built", paths=[r.at(f, "src/tool.py")])
+        r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Built in tool@{OTHER[:12]}."))
+        r.write(f, "FM-002", shipped(r.read(f, "FM-002"), f"Built in {built[:12]}, and in tool@{OTHER[:12]}."))
+        r.commit("FM-001, FM-002: shipped")
+        said = r.check(f)
+        lines = [line for line in said[1].splitlines() if line.startswith("the Shipped rule: ")]
+        return accepted(said, "with no commit behind it") and lines == [CODE_LINE], f"{lines} · " + seen(said)
+    each(area, add, "code-line", "after the move · `--check` says in one line how many moves rest on such a row: one, FM-001's — FM-002 names "
+         "this repository's commit behind it as well, and rests on that", the_line, {"FM-001": text("FM-001"), "FM-002": text("FM-002")},
+         tables=CODE)
+
+    def unfit(r, f):
+        said = {}
+        for name, tables in (("repositories", '[repositories]\ntool = ""\n'), ("trackers", '[trackers]\nelsewhere = "x"\nwhere = "y"\n')):
+            r.root(f).joinpath("shoalmark.toml").write_text(team_config(tables=tables), encoding="utf-8")
+            said[name] = r.check(f)
+        lines = {"repositories": "shoalmark.toml: `[repositories]` names each code repository a ship-log row may name as `<repository>@<commit>` — "
+                                 "`<repository> = \"<where it is>\"`, its URL or its path, a non-empty string. Got {'tool': ''}",
+                 "trackers": "shoalmark.toml: `[trackers]` holds one key, `elsewhere = \"<where>\"` — where this code repository's trackers live, a "
+                             "non-empty string. Got {'elsewhere': 'x', 'where': 'y'}"}
+        return (all(said[k][0] == 1 and said[k][2].strip() == lines[k] and not said[k][1].strip() for k in lines),
+                " · ".join(f"exit {c}: {e.strip()[:300]!r}" for c, _o, e in said.values()))
+    each(area, add, "code-unfit", "after the move · a `[repositories]` value that is empty, and a `[trackers]` with a key besides `elsewhere`, are "
+         "each refused at configuration in one line, exit 1", unfit, {"FM-001": text("FM-001")})
+
+    def elsewhere_check(r, f):
+        r.switch("-c", "work")                          # off the default branch, where the build gate judges every commit
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        r.commit("build the tool", paths=[r.at(f, "src/tool.py")])
+        said = r.check(f)
+        want = ELSEWHERE_SAID + ": nothing here is judged, and the build gate, `judged_before_build`, is off\n"
+        return said[0] == 0 and said[1] == want and not said[2], f"exit {said[0]}: stdout {said[1][:300]!r} · stderr {said[2][:300]!r}"
+    each(area, add, "elsewhere-check", "trackers elsewhere · a code repository marked so: `--check` says so in one line and passes — a build commit "
+         "on a branch, naming no tracker, under `judged_before_build = true`, is not judged", elsewhere_check, top=GATED, tables=ELSEWHERE)
+
+    def refusal(argvs, line):
+        def case(r, f):
+            state = lambda: git(r.top, "status", "--porcelain", "--untracked-files=all", "--ignored")
+            before = state()
+            said = [run(r.root(f), *argv, who=LEAD) for argv in argvs]
+            after = state()
+            return (all(s[0] == fm.EXIT_LINT and s[2] == line + "\n" and not s[1] for s in said) and before == after,
+                    " · ".join(f"exit {s[0]}: {s[2].strip()[:300]!r}" for s in said) + ("" if before == after else f" · wrote {after!r}"))
+        return case
+    for name, what, argvs, said in (("elsewhere-init", "`--init`", [("--init",)], "--init: {}: run it there"),
+                                    ("elsewhere-new", "`--new`", [("--new", "a", "new", "tracker")], "--new: {}: file the tracker there"),
+                                    ("elsewhere-board", "the board — `--html-only`, and the run that writes INDEX.md and the board —", [("--html-only",), ()],
+                                     "the board: {}: its board is built there")):
+        each(area, add, name, f"trackers elsewhere · a code repository marked so: {what} refuses in one line, exit 4, and writes nothing",
+             refusal(argvs, said.format(ELSEWHERE_SAID) + " — nothing is written"), tables=ELSEWHERE)
+
+    def gate_off(r, f):
+        r.switch("-c", "work")
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        git(r.top, "add", "--", r.at(f, "src/tool.py"))
+        msg = r.base / "msg"
+        msg.write_text("build the tool\n", encoding="utf-8")
+        said = run(r.root(f), "--commit-msg", str(msg), who=LEAD)
+        return said[0] == 0 and GATE not in said[2], seen(said)
+    each(area, add, "elsewhere-gate", "trackers elsewhere · a code repository marked so, with `judged_before_build = true`: the build gate is off — "
+         "the commit being made on a branch, naming no tracker, passes the commit-msg check", gate_off, top=GATED, tables=ELSEWHERE)
+
+    if picked("code-schema"):
+        code, out, err = run(HERE, "--schema")
+        found = [line for line in out.split("\n") if line.startswith(("| `[repositories] <repository>` |", "| `[trackers] elsewhere` |"))]
+        add("after the move · `--schema` names `[repositories]` — a ship-log row's `<repository>@<commit>` — and `[trackers] elsewhere`, a row each",
+            code == 0 and len(found) == 2 and "`<repository>@<commit>`" in found[0] and "counts as no commit" in found[0]
+            and "`judged_before_build` is off" in found[1], f"exit {code}: {found}")
+
+
 ROWS = (rows_rights, rows_shipped, rows_records, rows_asks, rows_ids, rows_lost_answer, rows_index, rows_signers, rows_reads, rows_acceptance,
-        rows_other_project, rows_hooks)
+        rows_other_project, rows_hooks, rows_after_move)
 
 
 # --- mutants: each read put back as it read before -----------------------------------------------------------------------------------
@@ -1173,6 +1277,29 @@ MUTANTS = (
      (rows_hooks,), {"copy-tool"}, False),
     ("the hooks' copy names what it wrote from the project root, where the hook stages from the top", "copy:each_project",
      [('folder = "" if root == top else root.relative_to(top).as_posix() + "/"', 'folder = ""', 1)], (rows_hooks,), {"hooks-below"}, False),
+    ("a `<repository>@<commit>` row counted as no commit, though `[repositories]` names its repository", "code_row_verdicts",
+     [('"" if name in named else', '"" if False else', 1)], (rows_after_move,), {"code-named"}, False),
+    ("a `<repository>@<commit>` row taken whatever repository it names", "code_row_verdicts", [('"" if name in named else', '"" if True else', 1)],
+     (rows_after_move,), {"code-not-named"}, False),
+    ("a `<repository>@<commit>` row's hash read as a commit of this repository", "ship_problems",
+     [('names = commits_named(CODE_ROW_RE.sub(" ", rows))', "names = commits_named(rows)", 1)], (rows_after_move,), {"code-not-named"}, False),
+    ("`--check` says no line of the moves that rest on such a row", "code_rows_report", [("if not named:", "if True:", 1)], (rows_after_move,),
+     {"code-line"}, False),
+    ("a move with this repository's commit behind it counted as resting on the other's", "ship_problems",
+     [('if "" in verdicts.values():\n                continue\n', 'if "" in verdicts.values() and "" not in code.values():\n                continue\n', 1)],
+     (rows_after_move,), {"code-line"}, False),
+    ("`--check` in a code repository whose trackers live elsewhere judges as anywhere", "elsewhere_run",
+     [('if operation == "check" or args.print_written:', "if False:", 1)], (rows_after_move,), {"elsewhere-check"}, False),
+    ("`--init` in such a repository runs as anywhere", "elsewhere_run", [('if operation in ("init", "new", "write"):', 'if operation in ("new", "write"):', 1)],
+     (rows_after_move,), {"elsewhere-init"}, False),
+    ("`--new` in such a repository files the tracker here", "elsewhere_run",
+     [('if operation in ("init", "new", "write"):', 'if operation in ("init", "write"):', 1)], (rows_after_move,), {"elsewhere-new"}, False),
+    ("the board's own run, in such a repository, builds the board here", "board_run", [("        if trackers_elsewhere():", "        if False:", 1)],
+     (rows_after_move,), {"elsewhere-board"}, False),
+    ("the run that writes INDEX.md and the board, in such a repository, writes them here", "elsewhere_run",
+     [('if operation in ("init", "new", "write"):', 'if operation in ("init", "new"):', 1)], (rows_after_move,), {"elsewhere-board"}, False),
+    ("the build gate on in such a repository, where its configuration turns it on", "configure",
+     [('        CONFIG["judged_before_build"] = False\n', "        pass\n", 1)], (rows_after_move,), {"elsewhere-gate"}, False),
 )
 
 

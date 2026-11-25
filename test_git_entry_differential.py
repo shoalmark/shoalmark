@@ -823,8 +823,40 @@ def r4_schema(stdout):
     return "\n".join(lines[:at[0] + 1] + [ASK_ID_SCHEMA_ROW] + lines[at[0] + 1:])
 
 
+# …and the two rows a code repository's configuration adds, each pinned whole and inserted right after the row of its anchor: `[repositories]`
+# after the `[ratio] exclude` row, beside what a move to `Shipped` reads, and `[trackers] elsewhere` after the row of `judged_before_build`,
+# the gate it turns off. A candidate without either row, with one moved, or with a word more, does not match.
+CODE_SCHEMA_ROWS = (
+    ("| `[ratio] exclude` |",
+     '| `[repositories] <repository>` | `"<where it is>"` — its URL or its path, a non-empty string; `<repository>` is a bare key: letters, '
+     "digits, `-` and `_` | a code repository this project's trackers ship from: a move to `Shipped` may name `<repository>@<commit>` in a "
+     'ship-log row — seven hex characters or more — and the gate takes that commit as the one behind the move without reading the other '
+     'repository; `--check` says in one line how many moves rest on such rows. A `<repository>@<commit>` whose repository the table does not name '
+     'counts as no commit, and its hash is never read as a commit of this repository. A value that is no string, or is empty, is refused at '
+     'configuration (exit 1) |'),
+    ("| `judged_before_build` |",
+     '| `[trackers] elsewhere` | `"<where>"` — the repository, and the folder in it, that holds this code repository\'s trackers; a non-empty '
+     "string, the table's one key | a code repository whose trackers live in another: `--check` says so in one line and passes, reading no "
+     'tracker; `--init`, `--new` and the board — `--html-only`, and the run that writes INDEX.md and the board — refuse in one line each (exit 4); '
+     '`judged_before_build` is off, whatever it says. Another key in `[trackers]`, or an empty value, is refused at configuration (exit 1) |'),
+)
+
+
+def code_schema(stdout):
+    """`stdout` with CODE_SCHEMA_ROWS' rows inserted, each right after the one line its anchor starts — else None."""
+    if stdout is None:
+        return None
+    lines = stdout.split("\n")
+    for anchor, row in CODE_SCHEMA_ROWS:
+        at = [i for i, line in enumerate(lines) if line.startswith(anchor)]
+        if len(at) != 1:
+            return None
+        lines = lines[:at[0] + 1] + [row] + lines[at[0] + 1:]
+    return "\n".join(lines)
+
+
 def schema_matches(before, after):
-    staged = r4_schema(fm053_schema(before["stdout"]))
+    staged = code_schema(r4_schema(fm053_schema(before["stdout"])))
     return staged is not None and d_batch_schema_matches(dict(before, stdout=staged), after)
 
 
@@ -1978,7 +2010,8 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                                r13_named(before) == said)
             elif label == SCHEMA_CASE:
                 assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, but for `--schema`'s two freeze rows, gone (R15), "
-                               "and its two `[ratio]` rows, rewritten (R13)", schema_matches(before, after))
+                               "its two `[ratio]` rows, rewritten (R13), and the two rows of a code repository's configuration, inserted",
+                               schema_matches(before, after))
             else:
                 assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
                                (before["status"], before["stdout"], before["stderr"]) == said)
@@ -2049,7 +2082,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and r13_named(old13) != (new13["status"], new13["stdout"], new13["stderr"].replace("R13", "R14")))
         assert_control(r13 + "a baseline run that does not say the line once is not allowed at all",
                        r13_named(dict(old13, stderr="")) is None and r13_named(dict(old13, stderr=R13_OLD * 2)) is None)
-        # The schema allowance is held to its four rows on the real schema pair: two gone, two rewritten, and nothing else.
+        # The schema allowance is held to its six rows on the real schema pair: two gone, two rewritten, two inserted, and nothing else.
         olds, news = (next(row for row in rows if row["case"] == SCHEMA_CASE and row["version"] == version) for version in ("baseline", "candidate"))
         schema, lines = "Git entry schema allowance (R15 and R13): ", news["stdout"].split("\n")
         other = next(i for i, line in enumerate(lines) if line.strip() and not line.startswith(R13_SCHEMA_ROWS))
@@ -2070,6 +2103,17 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and not schema_matches(olds, dict(news, stdout=news["stdout"].replace("a list of prefixes written from the project root",
                                                                                              "a list of repository-relative prefixes", 1)))
                        and not schema_matches(olds, dict(news, stdout=news["stdout"].replace(RATIO_SCHEMA_ROWS[1], RATIO_SCHEMA_ROWS[1][:-2] + " more |", 1))))
+        added = [row for _anchor, row in CODE_SCHEMA_ROWS]
+        moved = [line for line in lines if line != added[0]]
+        moved = moved[:moved.index(added[1]) + 1] + [added[0]] + moved[moved.index(added[1]) + 1:] if added[1] in moved else lines
+        assert_control(schema + "the two rows of a code repository's configuration are pinned whole, each right after its anchor's row: the "
+                       "candidate prints each as pinned, and one without a row, with a row moved, or with one word more, does not match",
+                       all(lines.count(row) == 1 for row in added)
+                       and all(lines.index(row) == lines.index(next(l for l in lines if l.startswith(anchor))) + 1 for anchor, row in CODE_SCHEMA_ROWS)
+                       and all(not schema_matches(olds, dict(news, stdout="\n".join(l for l in lines if l != row))) for row in added)
+                       and not schema_matches(olds, dict(news, stdout="\n".join(moved)))
+                       and all(not schema_matches(olds, dict(news, stdout=news["stdout"].replace(row, row[:-2] + " more |", 1))) for row in added)
+                       and code_schema(olds["stdout"].replace("| `judged_before_build` |", "| `judged_before_build` | twice |\n| `judged_before_build` |", 1)) is None)
         assert_control(schema + "a schema that changes its exit or its stderr does not match, and a baseline that does not hold each freeze row once is not allowed at all",
                        not schema_matches(olds, dict(news, status=news["status"] + 1)) and not schema_matches(olds, dict(news, stderr=news["stderr"] + "x\n"))
                        and r15_schema_dropped(dict(olds, stdout="")) is None
@@ -2358,7 +2402,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         moved = "\n".join(rest[:rest.index(brand)] + [palette] + rest[rest.index(brand):]) if brand in rest else schema_new
         r13_rows = {row: next((line for line in lines if line.startswith(row)), "") for row in R13_SCHEMA_ROWS}
         d_batch_old = [next((r13_rows[row] for row in R13_SCHEMA_ROWS if line.startswith(row)), line)
-                       for line in (r4_schema(schema_old) or schema_old).split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
+                       for line in (code_schema(r4_schema(schema_old)) or schema_old).split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
         def two_lines(new):
             n = new.split("\n")
             found = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]

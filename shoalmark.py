@@ -828,6 +828,8 @@ def configure(root=None):
     _OWNER_POLICY, _OWNER_COMMITS = None, {}
     global _FILED
     _FILED = None
+    global _CODE_MOVES
+    _CODE_MOVES = {}                                    # the moves to `Shipped` that rest on a commit of another code repository (`ship_problems`)
     _FILED_AT.clear()
     _FILED_STATES.clear()
     _FILED_MATERIAL.clear()
@@ -869,6 +871,11 @@ def configure(root=None):
     from_top = records_from_top()                       # below the top, a records entry written from the top: refused, never read as naming nothing
     if from_top:
         raise SystemExit(from_top)
+    code_refused = code_config_problem()                # `[repositories]` and `[trackers]`, each as `--schema` says it
+    if code_refused:
+        raise SystemExit(code_refused)
+    if trackers_elsewhere():                            # a code repository whose trackers live in another: no build commit here is judged
+        CONFIG["judged_before_build"] = False
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
@@ -6473,12 +6480,24 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
     "[ratio] exclude": ("a list of prefixes written from the project root; `[]` (the default)",
                         "kept as written (R26), and checked as `records` is; nothing counts with it since R13 removed `--ratio`, which left these "
                         "prefixes out of both sides — a move to `Shipped` reads `records` alone, as it always has, and `--check` says so where it is set"),
+    "[repositories] <repository>": ("`\"<where it is>\"` — its URL or its path, a non-empty string; `<repository>` is a bare key: letters, digits, `-` and `_`",
+                                    "a code repository this project's trackers ship from: a move to `Shipped` may name `<repository>@<commit>` in a ship-log row "
+                                    "— seven hex characters or more — and the gate takes that commit as the one behind the move without reading the other "
+                                    "repository; `--check` says in one line how many moves rest on such rows. A `<repository>@<commit>` whose repository "
+                                    "the table does not name counts as no commit, and its hash is never read as a commit of this repository. A value that is "
+                                    "no string, or is empty, is refused at configuration (exit 1)"),
     "judged_before_build": ("`true` or `false` (the default)",
                             "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
                             "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
                             "`In Progress`; else it is refused, and so is one that names none. The commit-msg hook (`--commit-msg`) judges the commit being made, with its subject, before it is made; "
                             "`--check` judges each commit of the branch since `origin`'s default branch, a merge by the commits it carries; on the default "
                             "branch nothing is judged. Owner authors pass the pending hook; verified Owner commits pass the branch's judgement. `--check` says whether it is on"),
+    "[trackers] elsewhere": ("`\"<where>\"` — the repository, and the folder in it, that holds this code repository's trackers; a non-empty string, the "
+                             "table's one key",
+                             "a code repository whose trackers live in another: `--check` says so in one line and passes, reading no tracker; `--init`, "
+                             "`--new` and the board — `--html-only`, and the run that writes INDEX.md and the board — refuse in one line each (exit 4); "
+                             "`judged_before_build` is off, whatever it says. Another key in `[trackers]`, or an empty value, is refused at configuration "
+                             "(exit 1)"),
 }
 
 
@@ -7829,9 +7848,11 @@ def rights_problems(trackers):
 # change leaves it, names a commit that is (a) in the change's history (an ancestor of the commit being judged: a commit being made
 # cannot name itself) and (b) changes at least one path outside the records. It judges exactly the changes the gate already
 # judges (`changes_under_review`), so a `Shipped` tracker no change moves is never read. It holds for every author, the Owner
-# included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged.
+# included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged. A row may instead name a commit of a code
+# repository the configuration names, `<repository>@<commit>` (`[repositories]`): the commit behind the move, taken without reading that repository.
 GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,64}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more, up to a SHA-256 hash's 64
 SVN_NAME_RE = re.compile(r"(?<![0-9A-Za-z])r[0-9]+(?![0-9A-Za-z])")             # …and on Subversion a revision, `r123`
+CODE_ROW_RE = re.compile(r"(?<![0-9A-Za-z_./-])([0-9A-Za-z_./-]+)@([0-9a-f]{7,64})(?![0-9A-Za-z])")     # …and a commit of another code repository, `<repository>@<commit>`
 
 
 def is_shipped(text):
@@ -7850,6 +7871,47 @@ def ship_log_rows(text):
 def commits_named(rows):
     """The commits a ship log's rows name, once each in the order written: git hashes, or on Subversion `r<N>` revisions."""
     return list(dict.fromkeys((SVN_NAME_RE if vcs() == "svn" else GIT_NAME_RE).findall(rows)))
+
+
+def code_row_verdicts(rows):
+    """{each `<repository>@<commit>` a ship log's rows name, once: "" where `[repositories]` names that repository — the commit behind the move,
+    taken without reading the other repository — else why it counts as no commit}. Its hash is never read as a commit of this repository: the
+    rows' other commits are read with every such name taken out (`ship_problems`)."""
+    named = CONFIG.get("repositories") or {}
+    return {f"{name}@{commit}": "" if name in named else "names a code repository `[repositories]` does not name, so it counts as no commit"
+            for name, commit in CODE_ROW_RE.findall(rows)}
+
+
+def code_config_problem():
+    """The one line that refuses `[repositories]` or `[trackers]` where it is not as `--schema` says it, else None."""
+    named = CONFIG.get("repositories")
+    if named is not None and (not isinstance(named, dict) or not all(isinstance(v, str) and v.strip() for v in named.values())):
+        return (f"{CONFIG_NAME}: `[repositories]` names each code repository a ship-log row may name as `<repository>@<commit>` — "
+                f"`<repository> = \"<where it is>\"`, its URL or its path, a non-empty string. Got {named!r}")
+    section = CONFIG.get("trackers")
+    if section is not None and not (isinstance(section, dict) and set(section) == {"elsewhere"} and isinstance(section["elsewhere"], str)
+                                    and section["elsewhere"].strip()):
+        return (f"{CONFIG_NAME}: `[trackers]` holds one key, `elsewhere = \"<where>\"` — where this code repository's trackers live, a non-empty "
+                f"string. Got {section!r}")
+    return None
+
+
+def trackers_elsewhere():
+    """Where this code repository's trackers live, as `[trackers] elsewhere` names it — "" where they live here."""
+    section = CONFIG.get("trackers")
+    return section["elsewhere"].strip() if isinstance(section, dict) and isinstance(section.get("elsewhere"), str) else ""
+
+
+def code_rows_report():
+    """What `--check` says of `[repositories]`, in one line where it names a code repository: how many of the moves to `Shipped` it judged rest
+    on a row naming `<repository>@<commit>` for one of them, with no commit of this repository behind the move. A report, never a refusal."""
+    named = CONFIG.get("repositories")
+    if not named:
+        return []
+    moves = list(_CODE_MOVES.values())
+    return [f"the Shipped rule: {len(moves)} move{'' if len(moves) == 1 else 's'} to `Shipped` rest{'s' if len(moves) == 1 else ''} on a ship-log row "
+            f"naming `<repository>@<commit>` for a code repository `[repositories]` names ({', '.join(sorted(named))}) — taken as the commit behind "
+            "the move, that repository unread" + (f": {', '.join(dict.fromkeys(moves))}" if moves else "")]
 
 
 def ship_records():
@@ -8331,7 +8393,9 @@ def shipped_moves(rels):
 
 def ship_problems(trackers):
     """THE SHIPPED RULE's refusals, one line for each tracker a change moves to Shipped without a commit behind it: which tracker,
-    what is missing — no commit named · not in the history · nothing changed outside the records — and the way through."""
+    what is missing — no commit named · not in the history · nothing changed outside the records · a code repository `[repositories]`
+    does not name — and the way through. A move whose rows name a commit of a code repository it names rests on that commit, unread, where
+    no commit of this repository is behind it, and `--check` counts it (`code_rows_report`)."""
     if vcs() not in ("git", "svn"):
         return []
     rels = {}
@@ -8363,7 +8427,8 @@ def ship_problems(trackers):
 
     try:
         for t, where, rows, judge in shipped_moves(rels):
-            names = commits_named(rows)
+            code = code_row_verdicts(rows)                  # another code repository's commit: taken where `[repositories]` names it, never read
+            names = commits_named(CODE_ROW_RE.sub(" ", rows))
             try:
                 records = records or ship_records()
             except ValueError as bad:
@@ -8372,14 +8437,22 @@ def ship_problems(trackers):
             try:
                 verdicts = judge(names, records) if names else {}
             except SvnUnreadable as e:
+                if "" in code.values():                     # the history could not be read, and the move rests on the other repository's commit
+                    _CODE_MOVES[t["id"] + where] = t["id"]
+                    continue
                 unread(e, t["id"])
                 continue
             if "" in verdicts.values():
                 continue
+            if "" in code.values():                         # no commit of this repository is behind it: the move rests on the other's
+                _CODE_MOVES[t["id"] + where] = t["id"]
+                continue
+            verdicts.update(code)
             found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(printed_arg(f":(exclude,top){p}") for p in records)
+            other = ", or `<repository>@<commit>` for a code repository `[repositories]` names" if CONFIG.get("repositories") else ""
             out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
-                       + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
-                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
+                       + (f"its ship log names no {noun}" if not verdicts else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
+                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it){other}, or, where nothing was built, mark it `Closed`, not `Shipped`')
     except SvnUnreadable as e:
         unread(e, e.tracker, e.newest, getattr(e, "checked", False))
     return out
@@ -13216,6 +13289,9 @@ def board_run(root):
     os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
     try:
         configure(root)
+        if trackers_elsewhere():                                    # a code repository whose trackers live in another: its board is built there
+            print(elsewhere_said("the board"), file=sys.stderr)
+            return EXIT_LINT
         lazy_fetch_off()                                            # before its first git: every read of this run fetches nothing
         sys.path[:] = [e for e in sys.path if not in_tree(e or ".") or _norm(e or ".") == _norm(HERE)]      # nothing is imported from the tree, but the tool's own place
         refused = tracker_folder_problem()
@@ -13502,6 +13578,27 @@ def main(argv=None, *, _notice=True):
             print(SVN_VERIFY_LIMIT, file=sys.stderr)
 
 
+def elsewhere_said(run):
+    """The one line a run refuses with in a code repository whose trackers live in another (`[trackers] elsewhere`)."""
+    return (f"{run}: this repository's trackers live elsewhere — {trackers_elsewhere()} (`[trackers] elsewhere` in {CONFIG_NAME}): "
+            f"{'its board is built' if run == 'the board' else 'file the tracker' if run == '--new' else 'run it'} there — nothing is written")
+
+
+def elsewhere_run(args):
+    """In a code repository whose trackers live in another (`[trackers] elsewhere`): `--check`, and the pre-commit hook's run, say so in one
+    line and pass — no tracker is read and nothing is judged or written; `--init`, `--new` and the board's runs refuse in one line each, exit 4.
+    None for any other run, which goes on as it would."""
+    operation = cli_operation(args)
+    if operation == "check" or args.print_written:
+        print(f"this repository's trackers live elsewhere — {trackers_elsewhere()} (`[trackers] elsewhere` in {CONFIG_NAME}): nothing here is "
+              "judged, and the build gate, `judged_before_build`, is off", file=sys.stderr if args.print_written else sys.stdout)
+        return EXIT_OK
+    if operation in ("init", "new", "write"):
+        print(elsewhere_said({"init": "--init", "new": "--new"}.get(operation, "the board")), file=sys.stderr)
+        return EXIT_LINT
+    return None
+
+
 def main_run(args):
     if args.html_only:                                      # …and nothing else, whatever else was said: the board's run is read-only and stands alone
         others = [f"--{k.replace('_', '-')}" for k, v in vars(args).items() if v and k not in ("html_only", "root")]
@@ -13526,6 +13623,10 @@ def main_run(args):
         except (SvnUnreadable, OSError) as error:
             print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written", file=sys.stderr)
             return EXIT_LINT
+    if trackers_elsewhere():                                # a code repository whose trackers live in another: what a run of them does here
+        code = elsewhere_run(args)
+        if code is not None:
+            return code
     diagnostic, code = cli_preflight(args, vcs()) if vcs() == "svn" else (None, EXIT_OK)
     if diagnostic is not None:
         print(diagnostic, file=sys.stderr)
@@ -13705,6 +13806,8 @@ def main_run(args):
         if not drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
         for line in sessions_report() + pin_report() + ratio_notices():     # reports, never refusals (FM-024, FM-011, R13)
+            print(line, file=log)
+        for line in code_rows_report():                     # …and how many moves to `Shipped` rest on another code repository's commit
             print(line, file=log)
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         if vcs() == "git":

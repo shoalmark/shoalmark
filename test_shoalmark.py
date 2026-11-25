@@ -15195,9 +15195,15 @@ with tempfile.TemporaryDirectory() as d:
               f"(saw {seen_[(ignore_, 'committed')]})", seen_[(ignore_, "committed")]["files"] == ["README.md", "subproject"])
     (Path(d).resolve() / "hooked").mkdir()
     hooked_root_, _i = _bm_repo(Path(d).resolve() / "hooked")                 # a throwaway repository: what `--install-hook` writes
-    written_ = [l_.strip() for l_ in (hooked_root_ / ".git/hooks/pre-commit").read_text(encoding="utf-8").splitlines() if "diff --cached" in l_]
-    check(f"FM-045 · the pre-commit hook `--install-hook` writes reads the staged names with every submodule's pointer, whatever `.gitmodules` says "
-          f"(saw {written_})", len(written_) == 1 and "diff --cached --name-only --ignore-submodules=none" in written_[0])
+    hook_ = (hooked_root_ / ".git/hooks/pre-commit").read_text(encoding="utf-8")
+    written_ = [l_.strip() for l_ in hook_.splitlines() if "diff --cached" in l_]
+    tool_ = Path(fm.__file__).read_text(encoding="utf-8")
+    each_ = next(n_ for n_ in ast.parse(tool_).body if isinstance(n_, ast.FunctionDef) and n_.name == "each_project")
+    read_ = [l_.strip() for l_ in ast.get_source_segment(tool_, each_).splitlines() if '"diff", "--cached"' in l_]
+    check(f"FM-045 · the pre-commit hook `--install-hook` writes leaves the staged names to the copy it runs (`--each-project`), which reads them with "
+          f"every submodule's pointer, whatever `.gitmodules` says (saw {written_} in the hook, {read_} in the tool)",
+          not written_ and "--each-project --print-written" in hook_ and len(read_) == 1 and '"--name-only"' in read_[0]
+          and '"--ignore-submodules=none"' in read_[0])
     rm_git(hooked_root_)
 fm.configure(HERE)
 
