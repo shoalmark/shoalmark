@@ -12,7 +12,8 @@ hook: "v0.20.3's allocation in one place: the rows and trackers the release hold
 ## What is true now
 
 **2026-11-25 — [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts v0.20.3's release,** on the coordinator's word of that day. Proposed: v0.20.3
-ships from main with FM-187 and FM-161 added to its four items, so the tracker cut has its release. The other
+ships from main with FM-187 and FM-161 added to its four items, reopening the Owner's word of 18 to 20 November on
+its scope, so the tracker cut has its release. The other
 options leave them for v0.21.0 or fold v0.20.3 into v0.21.0. It also moves FM-076 and FM-118, planned for v0.20.4, to
 v0.21.0. Nothing here changes until its answer.
 
@@ -301,7 +302,6 @@ at its allocation sitting and at its tag.
 
 | Date | Event |
 |---|---|
-| 2026-11-25 | FM-188-Q1 put: v0.20.3 from main with FM-187 and FM-161 added, proposed; FM-076 and FM-118 to v0.21.0. Records only. |
 | 2026-11-03 | Filed as v0.20.3's allocation, with FM-023's and FM-006's rows of 1 November moved in. Records only. |
 | 2026-11-04 | FM-143's allocation joins the list, and FM-149, FM-150 and FM-151 join it as proposed. Records only. |
 | 2026-11-04 | v0.20.3's epic, on the Owner's word in chat, logged under *What is true now*. Records only. |
@@ -317,3 +317,4 @@ at its allocation sitting and at its tag.
 | 2026-11-16 | FM-161, FM-172 and FM-173 join v0.20.3 by their answers; FM-100's stage 1 stays, stage 2 moves to the next release; the order of the work. Records only. |
 | 2026-11-20 | RV-4422: the third test-suite row adds that the `pwsh` limit allows for a cold start, folded from #274. Records only. |
 | 2026-11-20 | v0.20.3's scope is four items, on the Owner's word of 18 to 20 November: FM-172, FM-169, the security branch and the top-bar fix; the roster and the tracker format stay together in v0.21.0; 27 chapters leave the epic, and FM-163, FM-164, FM-167 and the rows leave v0.20.3. Records only. |
+| 2026-11-25 | FM-188-Q1 put: v0.20.3 reopened to add FM-187 and FM-161, proposed; FM-076 and FM-118 to v0.21.0, replacing FM-139-Q1's item 4. Records only. |

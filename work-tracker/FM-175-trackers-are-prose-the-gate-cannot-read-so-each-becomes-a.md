@@ -16,8 +16,8 @@ Seat: the Planner (a1730572) · filed 2026-11-18, on the coordinator's word of t
 ## What is true now
 
 **2026-11-25 — [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts an amendment of four decisions,** on the coordinator's word of that day:
-decision 9 (the tool team's trackers move privately into the organisation's repository at the tracker cut, before
-v0.21.0), decision 5 (views are not committed), decision 8 (git only, every commit that counts signed) and decision 2
+decision 9 (the tool team's trackers move privately into the organisation's repository at the tracker cut, which comes
+before v0.21.0 under its proposal and after it under its other options), decision 5 (views are not committed), decision 8 (git only, every commit that counts signed) and decision 2
 (a verdict check reads the signed verdict tag). Nothing here changes until its answer.
 
 **2026-11-19 — FM-175-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,

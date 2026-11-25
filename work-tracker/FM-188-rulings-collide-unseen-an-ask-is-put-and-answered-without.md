@@ -1,10 +1,10 @@
 ---
 id: FM-188
 status: Proposed
-considered: FM-076, FM-095, FM-097, FM-117, FM-118, FM-139, FM-161, FM-164, FM-170, FM-175, FM-187
+considered: FM-033, FM-076, FM-095, FM-097, FM-117, FM-118, FM-139, FM-161, FM-164, FM-170, FM-175, FM-187
 tags: process
 next: owner
-hook: "Rulings collide unseen: an ask is put and answered without the earlier rulings it overturns, because --related reads titles and hooks, not asks and answers. Two decisions met FM-175's signed answer that way, and the releases meet the tracker cut. FM-188-Q1 puts five additions, FM-175 amended, no v0.20.4, and v0.20.3 from main with FM-187 and FM-161 added, so the cut has its release."
+hook: "Rulings collide unseen: an ask is put and answered without the earlier rulings it overturns, because --related reads titles and hooks, not asks and answers. Two decisions met FM-175's signed answer that way, and the releases meet the tracker cut. FM-188-Q1 puts five additions, FM-175 amended, no v0.20.4, and v0.20.3 reopened to add FM-187 and FM-161, so the cut has its release."
 ask-id: FM-188-Q1
 ask: "Do you take FM-188's rulings as proposed, or as changed under other: Part 1's five additions in v0.21.0, FM-175 amended (trackers private in org, views uncommitted, git only, verdicts by signed tag), no v0.20.4, and v0.20.3 from main with FM-187 and FM-161 added, for the cut?"
 ask-kind: ruling
@@ -39,7 +39,8 @@ and [FM-161](FM-161-a-team-can-only-be-one-whole-repository-so-a-team-in-a.md) s
   [FM-164](FM-164-subversion-support-is-deprecated-then-removed-while-the-vcs.md)-Q2's signed answer puts Subversion's
   notice in a v0.20.4 of its own and its removal in v0.21.0.
 - **The tracker cut needs a release:** the plan for moving the trackers into the organisation's repository lands
-  FM-187's and FM-161's changes in a tool release, which the organisation pins before the import.
+  FM-187's and FM-161's changes in a tool release, which the organisation pins before the import. The plan also names a
+  provenance change for that release and leaves it to the Owner's choice; that choice is not part of this ask.
 
 ## Why
 
@@ -49,7 +50,8 @@ an ask needs the same, and an answer needs to say what it replaces.
 
 ## Decisions, for the Owner
 
-All are put as FM-188-Q1. An answer to it replaces FM-164-Q2's answer, as decision 7 says.
+All are put as FM-188-Q1. An answer to it replaces FM-164-Q2's answer (decision 7) and FM-139-Q1's item 4 (decision 9),
+and it reopens the Owner's word of 18 to 20 November on v0.20.3's scope (decision 10).
 
 **Part 1: the additions.**
 
@@ -69,9 +71,11 @@ All are put as FM-188-Q1. An answer to it replaces FM-164-Q2's answer, as decisi
 
 6. **FM-175's decisions change in four places:**
    - **Decision 9, where the trackers go:** the tool team's trackers move privately into the organisation's
-     repository at the tracker cut, before v0.21.0, each team a project in a folder of its own, and the tool reads
-     them there as FM-161 serves it. No public records repository is made. The read at a pin is no longer a condition
-     of the move.
+     repository at the tracker cut, each team a project in a folder of its own, and the tool reads them there as
+     FM-161 serves it. The cut comes before v0.21.0 under decision 10's proposal, and after it under the other two
+     options. No public records repository is made. The read at a pin is no longer a condition of the move, as
+     FM-161-Q2's signed decisions 12 and 13 already put the move before it. Until that read, FM-033's gate does not
+     run in a code repository whose trackers live elsewhere.
    - **Decision 5, views:** `INDEX.md` and each tracker's view are built when asked for and are not committed.
    - **Decision 8, the migration:** git only. No rehearsal on Subversion, and no plain folder. Every commit that counts
      is signed, so the unsigned form of the migration commit goes.
@@ -86,22 +90,26 @@ All are put as FM-188-Q1. An answer to it replaces FM-164-Q2's answer, as decisi
      mode's (decision 8);
    - [FM-076](FM-076-a-seat-s-work-that-only-another-seat-can-push-is-refused-or.md) moves to v0.21.0;
    - [FM-118](FM-118-shoalmark-py-s-prose-is-not-pruned-and-nothing-holds-code.md) moves to v0.21.0.
-   No tag, branch or open pull request is for v0.20.4, so nothing built is lost.
+   The two moves replace FM-139-Q1's item 4, which moved both to v0.20.4. No tag, branch or open pull request is for
+   v0.20.4, so nothing built is lost.
 10. **v0.20.3:**
-    - **Proposed:** v0.20.3 ships from main with FM-187 and FM-161 added to the four items FM-139 records. The
-      organisation pins it for the tracker cut. Its tag comes when FM-161 has landed, about 2.5 working days from its
-      answer, as FM-161's decision 13 sizes it.
+    - **Proposed:** v0.20.3 ships from main with FM-187 and FM-161 added to the four items FM-139 records. This
+      reopens the Owner's word of 18 to 20 November, which set v0.20.3's scope at those four items and took FM-161 out
+      of it. The organisation pins it for the tracker cut. Its tag comes when FM-161 has landed, about 2.5 working days
+      from its answer, as FM-161's decision 13 sizes it.
     - **v0.20.3 without FM-187 and FM-161:** v0.20.3 ships as FM-139 records it, and FM-187 and FM-161 ship in
-      v0.21.0. The tracker cut then waits for v0.21.0, since the cut needs them in a release.
+      v0.21.0. The tracker cut then waits for v0.21.0, since the cut needs them in a release, and v0.21.0 has no
+      date.
     - **v0.20.3 folded into v0.21.0:** no v0.20.3 tag, and its items ship in v0.21.0. The cut waits for v0.21.0 in this
-      case too.
+      case too, with no date.
 
 ## Done when
 
 Each item names its commit or pull request when it lands.
 
 - [ ] **The Owner has answered FM-188-Q1.**
-- [ ] **FM-175, FM-164, FM-139, FM-076 and FM-118 follow the answer** in the records, each with a dated line.
+- [ ] **FM-175, FM-164, FM-139, FM-076, FM-118, FM-187 and FM-161 follow the answer** in the records, each with a
+  dated line.
 - [ ] **Part 1's five additions** are built in v0.21.0, each with its tests, and their fields are in the draft schema.
 - [ ] **v0.20.3 ships as the answer puts it,** with its tag.
 
@@ -109,4 +117,4 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
-| 2026-11-25 | Filed, Proposed, with FM-188-Q1 put: five additions so that a ruling's collisions are seen, FM-175 amended, no v0.20.4, v0.21.0 git only, and v0.20.3 from main with FM-187 and FM-161 added for the tracker cut. Records only. |
+| 2026-11-25 | Filed, Proposed, with FM-188-Q1 put: five additions so that a ruling's collisions are seen, FM-175 amended, no v0.20.4, v0.21.0 git only, and v0.20.3 reopened to add FM-187 and FM-161 for the tracker cut. Records only. |

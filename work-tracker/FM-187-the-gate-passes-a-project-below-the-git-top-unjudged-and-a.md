@@ -46,8 +46,8 @@ out of the code repositories into its own repository, with each team a project i
 The tool's first promise is never a false pass. A project it cannot judge is refused, not passed, until it can judge
 it. A move that only changes where trackers live must not turn trackers judged Shipped, where their commits are, into
 refusals. This change leaves [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s gate,
-which needs a judged tracker before a build commit, as it is. What holds that rule in a code repository after the move
-is FM-161's decision 12.
+which needs a judged tracker before a build commit, as it is. FM-161's decision 12 turns that rule off in a code
+repository whose trackers live elsewhere, until the pinned read.
 
 ## Decisions, for the Owner
 
@@ -86,8 +86,8 @@ Each item names its commit or pull request when it lands.
 - [ ] **A run below the git top is refused,** with its tests.
 - [ ] **The frozen rule,** held by the Owner's signed import, with its tests and its line in `--check`.
 - [ ] **The README states the frozen rule,** as decision 4 says.
-- [ ] **The organisation's acceptance checks for the move** run against the build, each reported with its output, as
-  the coordinator's order for the tracker cut asks.
+- [ ] **The organisation's acceptance checks for the move** run against the build, each reported with its output, on
+  the coordinator's word of 25 November.
 - [ ] **The critical review is READY.**
 
 ## Asks
