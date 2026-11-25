@@ -11,6 +11,11 @@ hook: "v0.20.3's allocation in one place: the rows and trackers the release hold
 
 ## What is true now
 
+**2026-11-25 — [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts v0.20.3's release,** on the coordinator's word of that day. Proposed: v0.20.3
+ships from main with FM-187 and FM-161 added to its four items, so the tracker cut has its release. The other
+options leave them for v0.21.0 or fold v0.20.3 into v0.21.0. It also moves FM-076 and FM-118, planned for v0.20.4, to
+v0.21.0. Nothing here changes until its answer.
+
 **2026-11-20 — v0.20.3's scope is four items, on the Owner's word of 18, 19 and 20 November.** It replaces the order of
 16 November below. The lists below no longer say what v0.20.3 holds; they stay as the record of what was planned.
 - **[FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) and
@@ -296,6 +301,7 @@ at its allocation sitting and at its tag.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-188-Q1 put: v0.20.3 from main with FM-187 and FM-161 added, proposed; FM-076 and FM-118 to v0.21.0. Records only. |
 | 2026-11-03 | Filed as v0.20.3's allocation, with FM-023's and FM-006's rows of 1 November moved in. Records only. |
 | 2026-11-04 | FM-143's allocation joins the list, and FM-149, FM-150 and FM-151 join it as proposed. Records only. |
 | 2026-11-04 | v0.20.3's epic, on the Owner's word in chat, logged under *What is true now*. Records only. |

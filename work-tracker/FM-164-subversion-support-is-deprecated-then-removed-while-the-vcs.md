@@ -13,6 +13,10 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-25 — [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts the replacement of FM-164-Q2's answer,** on the coordinator's word of that day:
+no v0.20.4 and no release that carries a notice alone, so the notice is dropped, and v0.21.0 removes Subversion and
+the folder-only mode together. FM-164-Q2's answer stands until FM-188-Q1's.
+
 **2026-11-21 — FM-164-Q2 answered: the notice in v0.20.4, the removal in v0.21.0.** The Owner's signed answer
 (#326) took the proposal, the first placement of decision 1:
 - v0.20.4 is a release of its own after v0.20.3, records and docs only: the notice in the CHANGELOG, the README, the
@@ -164,6 +168,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-188-Q1 put, which would replace FM-164-Q2's answer: no v0.20.4, the notice dropped, v0.21.0 git only. Records only. |
 | 2026-11-21 | FM-164-Q2 answered and cleared, with its record under *Asks*: the notice in v0.20.4, a release of its own after v0.20.3, and the removal in v0.21.0, the proposal (#326). A dated line, the hook, decisions 1, 2 and 5 and *Done when* follow; FM-164 waits until v0.20.3 ships; `next: wait`. Records only. |
 | 2026-11-21 | FM-164-Q2 put, a ruling: the notice's and the removal's releases after v0.20.3, as three placements with their costs; the notice in v0.20.4 and the removal in v0.21.0 proposed. Decision 1 holds the placements, decision 2 the removal, and the notice's words leave its releases to the answer; `next: owner`. Records only. |
 | 2026-11-20 | FM-164-Q1 withdrawn, with its record under *Asks*: the Owner's words of 18 to 20 November left its v0.20.3 notice out (FM-139). The hook, the decisions' lead and *Done when* say so, and a new ask will offer the releases as options; `next: build`. Records only. |

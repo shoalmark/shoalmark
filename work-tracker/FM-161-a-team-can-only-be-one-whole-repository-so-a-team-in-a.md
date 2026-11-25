@@ -15,10 +15,19 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-25 — FM-033's gate in a code repository after the move,** for the records review of FM-161-Q2's filing.
+- Decision 12, as FM-161-Q2's signed answer takes it, makes `judged_before_build` false in a code repository whose
+  trackers live elsewhere. So [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s gate
+  does not run there.
+- Until the tool reads the team's tracker project at a pinned commit, nothing in the code repository holds that
+  rule. The team project's daily read checks the ship-log row that names the code commit.
+- [FM-175](FM-175-trackers-are-prose-the-gate-cannot-read-so-each-becomes-a.md)'s decision 9 moves the trackers only
+  with v0.21.0, after that pinned read. [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts its amendment, so that the move comes first.
+
 **2026-11-25 — FM-161-Q2 answered "yes, as proposed", with the Owner's signature; keep P1, In Progress,** on the
 coordinator's word of that day. Decisions 7 to 13 stand as put. The build starts from main, from patches prepared
-before the answer, decisions 7, 9, 10 and 11 first. Its review is critical, and the release answer names where it
-ships.
+before the answer: the tool lead's first patch takes decisions 7, 9, 10 and 11, and a second the rest. Its review is
+critical. Which release takes it is not decided: [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts it.
 
 **2026-11-25 — FM-161-Q2 put: a project below the git top judged exactly as one at the top,** on the coordinator's
 word of that day.
@@ -31,7 +40,7 @@ word of that day.
   [FM-187](FM-187-the-gate-passes-a-project-below-the-git-top-unjudged-and-a.md) refuses such a run until this lands.
 - **What is put:** decisions 7 to 13 below, as FM-161-Q2.
 - **What stands:** decisions 1 to 5, as FM-161-Q1 answered them. Decision 6's release left v0.20.3 on 20 November, and
-  the release ask names where this ships.
+  which release takes this is not decided.
 
 **2026-11-20 — out of v0.20.3, on the Owner's word of 18 November:** "A small v0.20.3: FM-172 and FM-169, nothing else."
 The Owner's words of 19 and 20 November widened v0.20.3 to four items
@@ -139,7 +148,8 @@ Each item names its commit or pull request when it lands.
 - [ ] **The review at the tier its design sets is READY.**
 - [x] **The Owner has answered FM-161-Q2.** · `453601f`, #330 (`c069017`)
 - [ ] **A project below the git top is judged exactly as one at the top:** each gate, with its tests and mutants.
-- [ ] **Hooks, signers and the records list** read from the project root, each with its tests.
+- [ ] **The hooks run the gate once for each project a staged path falls in, a relative signers file resolves from
+  the top, and the records list is written from the project root,** each with its tests.
 - [ ] **After the move:** a Shipped tracker names its team's code commit, and a code repository keeps its trackers
   elsewhere, each with its tests.
 - [ ] **The organisation's acceptance checks for the move** pass on the build, each reported with its output.
@@ -160,6 +170,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | The records reviews' findings fixed forward: FM-033's gate in a code repository after the move, the first patch's order named as the lead's, the release FM-188-Q1's, and the hooks, signers and records list item worded as decisions 8 to 10. Records only. |
 | 2026-11-25 | FM-161-Q2 answered, yes, as proposed; keep P1, In Progress; the build starts. Records only. |
 | 2026-11-25 | FM-161-Q2 put: a project below the git top judged exactly as one at the top, every gate reading the project's root and configuration, with its tests; after the move, a Shipped tracker names its team's code commit. Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |

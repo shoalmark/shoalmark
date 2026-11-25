@@ -125,7 +125,7 @@ No release is named.
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-168-Q2,** on what is left of decisions 3, 4 and 7.
+- [ ] **The Owner has answered the ask put again after the tracker cut,** on what is left of decisions 3, 4 and 7.
 - [ ] **hail/1's cases are plain files** in a repository of their own, which shoalmark/hail holds at `conformance/`
   pinned to the edition's commit, each with its input, its expected accept or refuse, and the reason code of a refusal.
 - [ ] **sealanes/1's first edition ships with its cases.**
@@ -149,6 +149,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | The records review's finding fixed forward: the first Done when item names the ask put again after the tracker cut. Records only. |
 | 2026-11-25 | FM-168-Q2 answered no: the tool fix and the tracker cut take priority. Parked, P2, until the cut is done; the ask is put again then. Records only. |
 | 2026-11-21 | On the Owner's word of 21 November, hail/1's cases get a repository of their own, which shoalmark/hail holds at `conformance/` pinned to the edition's commit; decisions 1 and 2 now hold for hail/1 too, and decision 4's last part is settled. FM-168-Q2 is put on what is left of decisions 3, 4 and 7; decision 6's open parts stay open; `next: owner`. Records only. |
 | 2026-11-20 | FM-168-Q1 withdrawn, with its record under *Asks*: the Owner's words of 16 and 20 November settled decisions 1, 2, 5 and 6. The hook and *Done when* say so, and a new ask will cover decisions 3, 4 and 7 and chart; `next: build`. Records only. |

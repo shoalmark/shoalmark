@@ -15,6 +15,11 @@ Seat: the Planner (a1730572) · filed 2026-11-18, on the coordinator's word of t
 
 ## What is true now
 
+**2026-11-25 — [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1 puts an amendment of four decisions,** on the coordinator's word of that day:
+decision 9 (the tool team's trackers move privately into the organisation's repository at the tracker cut, before
+v0.21.0), decision 5 (views are not committed), decision 8 (git only, every commit that counts signed) and decision 2
+(a verdict check reads the signed verdict tag). Nothing here changes until its answer.
+
 **2026-11-19 — FM-175-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build commit,
 keep P2, In Progress; nothing is built.** The lane is in v0.21.0, as the answer gives it.
 
@@ -119,6 +124,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-188-Q1 put, which amends decisions 2, 5, 8 and 9; nothing changes here until its answer. Records only. |
 | 2026-11-20 | A correction to the row below: decision 9's first line quotes the Owner's word of 18 November, "stay together in v0.21.0", where it said "beside the roster"; "together with the roster" is the line's own phrase, not the Owner's. The row below had been rewritten in place the same day; it is restored as first written, since a ship log is only added to. Records only. |
 | 2026-11-20 | Decision 9's first line reads "together with the roster", in the Owner's words of 18 November, where it read "beside". Records only. |
 | 2026-11-19 | FM-175-Q1 answered, yes, as proposed; judged before its first build commit, keep P2, In Progress; the lane in v0.21.0. Records only. |
