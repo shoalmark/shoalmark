@@ -3,7 +3,7 @@ id: FM-161
 status: In Progress
 considered: FM-033, FM-100, FM-166, FM-175, FM-187, FM-188
 tags: process
-next: owner
+next: build
 triaged: 2026-11-16
 tier: P1
 hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 accepted the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
@@ -13,6 +13,9 @@ ask-kind: ruling
 ask-since: 2026-11-25
 ask-options: "yes, as proposed | yes, but decision 8 in v0.20.4 | yes, but decision 8 and decision 12's ship-log row in v0.20.4 | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-25
+answered-by: holgo99
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
