@@ -1,0 +1,141 @@
+  ok    rights · a close by an identity no `[seats]` lists: refused, naming the right · at the top
+  ok    rights · a close by an identity no `[seats]` lists: refused, naming the right · below the top
+  ok    rights · a close by a seat that does not hold `close`: refused · at the top
+  ok    rights · a close by a seat that does not hold `close`: refused · below the top
+  ok    rights · the planner seat's triage, then its close: each accepted · at the top
+  ok    rights · the planner seat's triage, then its close: each accepted · below the top
+  ok    rights · the commit being made: a close staged by an identity no `[seats]` lists, refused at commit time · at the top
+  ok    rights · the commit being made: a close staged by an identity no `[seats]` lists, refused at commit time · below the top
+  ok    rights · the commit being made: the builder seat, which holds no right, edits a triaged tracker's body and moves no guarded key — accepted · at the top
+  ok    rights · the commit being made: the builder seat, which holds no right, edits a triaged tracker's body and moves no guarded key — accepted · below the top
+  ok    Shipped · a move to Shipped whose ship log names no commit: refused · at the top
+  ok    Shipped · a move to Shipped whose ship log names no commit: refused · below the top
+  ok    Shipped · a move to Shipped naming the commit that built it: accepted · at the top
+  ok    Shipped · a move to Shipped naming the commit that built it: accepted · below the top
+  ok    `[ratio] records` · a move to Shipped naming a commit that changed only `notes/`, a record: refused · at the top
+  ok    `[ratio] records` · a move to Shipped naming a commit that changed only `notes/`, a record: refused · below the top
+  ok    `[ratio] records` · a move to Shipped naming a commit that changed `src/`, outside the records: accepted · at the top
+  ok    `[ratio] records` · a move to Shipped naming a commit that changed `src/`, outside the records: accepted · below the top
+  ok    `[ratio] records` · the prefixes held against `git log`'s paths: each written from the project root, then named from the top · at the top
+  ok    `[ratio] records` · the prefixes held against `git log`'s paths: each written from the project root, then named from the top · below the top
+  ok    ask · the planner seat puts an ask under its id: accepted, its `next: owner` line read as the seat's · at the top
+  ok    ask · the planner seat puts an ask under its id: accepted, its `next: owner` line read as the seat's · below the top
+  ok    ask · a seat that does not hold `ask` puts one: refused · at the top
+  ok    ask · a seat that does not hold `ask` puts one: refused · below the top
+  ok    answer · the Owner's `--answer`, signed with the key the default branch's signers file holds: accepted · at the top
+  ok    answer · the Owner's `--answer`, signed with the key the default branch's signers file holds: accepted · below the top
+  ok    answer · a seat's unsigned answer by its id: refused — no commit answers it · at the top
+  ok    answer · a seat's unsigned answer by its id: refused — no commit answers it · below the top
+  ok    answer · the Owner's identity, unsigned, answering by its id: refused · at the top
+  ok    answer · the Owner's identity, unsigned, answering by its id: refused · below the top
+  ok    answer · the Owner's signed answer whose commit also changes the put ask: refused · at the top
+  ok    answer · the Owner's signed answer whose commit also changes the put ask: refused · below the top
+  ok    answer · a commit naming `Answers:` for an id its tracker does not carry at that commit: refused, naming it · at the top
+  ok    answer · a commit naming `Answers:` for an id its tracker does not carry at that commit: refused, naming it · below the top
+  ok    answer · `Answers: FM-001-Q1` on the commit whose tracker carries it: not refused for its trailer · at the top
+  ok    answer · `Answers: FM-001-Q1` on the commit whose tracker carries it: not refused for its trailer · below the top
+  ok    ask ids · a put ask renumbered with no record of its old number: refused, naming `--clear-ask` · at the top
+  ok    ask ids · a put ask renumbered with no record of its old number: refused, naming `--clear-ask` · below the top
+  ok    ask ids · a put ask changed under its id: refused, naming the next number · at the top
+  ok    ask ids · a put ask changed under its id: refused, naming the next number · below the top
+  ok    ask ids · an ask put under a number below one a record held before this commit: refused, naming the highest · at the top
+  ok    ask ids · an ask put under a number below one a record held before this commit: refused, naming the highest · below the top
+  ok    ask ids · both branches put FM-001-Q1 and one lands: the other refused by `--check`, and its pull request waits in the queue's reading · at the top
+  ok    ask ids · both branches put FM-001-Q1 and one lands: the other refused by `--check`, and its pull request waits in the queue's reading · below the top
+  ok    ask ids · …and the other branch's ask renumbered FM-001-Q2, its put ask unchanged, with no record of the number the default branch holds: accepted · at the top
+  ok    ask ids · …and the other branch's ask renumbered FM-001-Q2, its put ask unchanged, with no record of the number the default branch holds: accepted · below the top
+  ok    ask ids · on the default branch, the open ask renumbered beside the record that holds its old number: accepted, with no record of its own · at the top
+  ok    ask ids · on the default branch, the open ask renumbered beside the record that holds its old number: accepted, with no record of its own · below the top
+  ok    ask ids · two records with one id, new on a branch: refused · at the top
+  ok    ask ids · two records with one id, new on a branch: refused · below the top
+  ok    ask ids · two records with one id that the default branch holds: kept with a note, not refused · at the top
+  ok    ask ids · two records with one id that the default branch holds: kept with a note, not refused · below the top
+  ok    answer · the commit being made drops the committed answer and writes it nowhere: refused · at the top
+  ok    answer · the commit being made drops the committed answer and writes it nowhere: refused · below the top
+  ok    INDEX · a commit that changes a hook and leaves INDEX.md as it was: refused, naming INDEX.md · at the top
+  ok    INDEX · a commit that changes a hook and leaves INDEX.md as it was: refused, naming INDEX.md · below the top
+  ok    INDEX · the same change with INDEX.md as the tool writes it: accepted · at the top
+  ok    INDEX · the same change with INDEX.md as the tool writes it: accepted · below the top
+  ok    signers · a relative `gpg.ssh.allowedSignersFile` read from the top, as git reads it: the default branch's copy verifies · at the top
+  ok    signers · a relative `gpg.ssh.allowedSignersFile` read from the top, as git reads it: the default branch's copy verifies · below the top
+  ok    signers · the file named through a symlink in the checkout: refused, naming the link · at the top
+  ok    signers · the file named through a symlink in the checkout: refused, naming the link · below the top
+  ok    signers · `../other/allowed_signers`, read from the top, inside another clone: refused · at the top
+  ok    signers · `../other/allowed_signers`, read from the top, inside another clone: refused · below the top
+  ok    signers · a file the default branch does not hold: nothing verifies, and it is named from the top · at the top
+  ok    signers · a file the default branch does not hold: nothing verifies, and it is named from the top · below the top
+  ok    signers · no default branch to read: the clone's own file, found where git finds it, verifies · at the top
+  ok    signers · no default branch to read: the clone's own file, found where git finds it, verifies · below the top
+  ok    queue · a review addendum's paths, as `git log` names them from the top: the registry, the review folder and the verdict's own file, and nothing beside the project · at the top
+  ok    queue · a review addendum's paths, as `git log` names them from the top: the registry, the review folder and the verdict's own file, and nothing beside the project · below the top
+  ok    queue · the Owner's own pull request of answers, its tracker paths read from the top: read as the Owner's answers · at the top
+  ok    queue · the Owner's own pull request of answers, its tracker paths read from the top: read as the Owner's answers · below the top
+  ok    the working tree · a tracker staged, then changed again, and nothing else: one path changed, counted once · at the top
+  ok    the working tree · a tracker staged, then changed again, and nothing else: one path changed, counted once · below the top
+  ok    a partial clone · a spec written from the project root that the tree holds is named unread; one it does not hold is not · at the top
+  ok    a partial clone · a spec written from the project root that the tree holds is named unread; one it does not hold is not · below the top
+  ok    the root's folder below the top, and the top: as git names them · at the top
+  ok    the root's folder below the top, and the top: as git names them · below the top
+  ok    acceptance 1 · the outer project's own check names no change for the import of the team's project
+  ok    acceptance 2 · the shape of check 2: a move to Shipped in the team project naming a commit this repository lacks is judged as at the top — refused, not in the history
+  ok    acceptance 3 · the control: an identity the team's `[seats]` does not list sets FM-001 Shipped — the team project's check names "this change is a `close`"
+  ok    acceptance O1 · the team lead's triage and close: the team project's check exits 0, and the outer project's on the same commits
+  ok    acceptance O2 · the Owner's `--answer` in the team project, with a scratch key enrolled as the Owner's: the answer's commit is found, signed, and `--check` accepts it in both projects
+  ok    acceptance O2 · …and the Board built for the team project proves answers by signature, and the answer's record names its commit, signed `G`
+  ok    another project · the outer project at the top: a build commit whose every path lies in the team project — the outer check skips it
+  ok    another project · the outer project at the top: …and the team project's own check judges it, as a build commit naming no tracker
+  ok    another project · the outer project at the top: a build commit with paths in both projects — the outer check judges it as before
+  ok    another project · the outer project at the top: a build commit wholly in a folder with no `shoalmark.toml` — judged by the outer check
+  ok    another project · the outer project at the top: the commit being made, every path in the team project, whose `shoalmark.toml` the index holds — the outer commit-msg check skips it, the team's judges it
+  ok    another project · the outer project at the top: a seat's change to the signers file git names, the file in the team project — the outer check's guard skips it, the team's refuses it
+  ok    another project · the outer project at the top: a seat's change to that signers file with a path of the outer project's too — the outer check's guard refuses it, as before
+  ok    another project · the outer project at the top: the commit being made changes only that signers file, in the team project — the outer commit-msg check's guard skips it, the team's refuses it
+  ok    another project · the outer project itself below the top: a build commit whose every path lies in the team project — the outer check skips it
+  ok    another project · the outer project itself below the top: …and the team project's own check judges it, as a build commit naming no tracker
+  ok    another project · the outer project itself below the top: a build commit with paths in both projects — the outer check judges it as before
+  ok    another project · the outer project itself below the top: a build commit wholly in a folder with no `shoalmark.toml` — judged by the outer check
+  ok    another project · the outer project itself below the top: the commit being made, every path in the team project, whose `shoalmark.toml` the index holds — the outer commit-msg check skips it, the team's judges it
+  ok    another project · the outer project itself below the top: a seat's change to the signers file git names, the file in the team project — the outer check's guard skips it, the team's refuses it
+  ok    another project · the outer project itself below the top: a seat's change to that signers file with a path of the outer project's too — the outer check's guard refuses it, as before
+  ok    another project · the outer project itself below the top: the commit being made changes only that signers file, in the team project — the outer commit-msg check's guard skips it, the team's refuses it
+  ok    another project · a commit in a folder whose `shoalmark.toml` that commit's tree does not hold, though the working tree does — judged by the outer check
+  ok    another project · a commit by the outer project's seat with no `Session:` trailer, where the history carries them, every path in the team project: the outer check skips it, the team's judges it
+  ok    another project · an unsigned commit by the Owner's identity, wholly in the team project: the outer check skips it, the team's refuses it
+  ok    another project · an unsigned commit by the Owner's identity with paths in both projects: the outer check refuses it, as before
+  ok    mutant · the walk's id rules read each tracker from the top: at least one row turns red
+  ok    mutant · the walk's id rules read each result from the top: at least one row turns red
+  ok    mutant · the walk's id rules read each parent from the top: at least one row turns red
+  ok    mutant · the walk's renumbering reads its parents from the top: at least one row turns red
+  ok    mutant · the walk's numbers used read its parents from the top: at least one row turns red
+  ok    mutant · a renumbering's repair reads the default branch from the top: at least one row turns red
+  ok    mutant · the answer's change rule reads each tracker from the top: at least one row turns red
+  ok    mutant · an answer's trailer read from the top: at least one row turns red
+  ok    mutant · an id taken on the default branch read from the top: at least one row turns red
+  ok    mutant · the queue's reading of proposed ids from the top: at least one row turns red
+  ok    mutant · the queue's reading of proposed ids lists its paths from the top: at least one row turns red
+  ok    mutant · an answer's commit read from the top: at least one row turns red
+  ok    mutant · the rights read each tracker from the top: at least one row turns red
+  ok    mutant · the rights' lookups read from the top: at least one row turns red
+  ok    mutant · a line's author read at each tip from the top: at least one row turns red
+  ok    mutant · two records with one id read from the top: at least one row turns red
+  ok    mutant · a lost answer read from the top: at least one row turns red
+  ok    mutant · the gate's committed answer read from the top: at least one row turns red
+  ok    mutant · a partial clone's specs listed as written: at least one row turns red
+  ok    mutant · a review addendum's paths from the project root: at least one row turns red
+  ok    mutant · the Owner's pull request's paths from the project root: at least one row turns red
+  ok    mutant · the index's paths taken as the tree's: at least one row turns red
+  ok    mutant · the signers resolved from the project root: at least one row turns red
+  ok    mutant · this working tree named by the project root: at least one row turns red
+  ok    mutant · `[ratio] records` read from the top: at least one row turns red
+  ok    mutant · another project's skip taken where only some paths lie in it: at least one row turns red
+  ok    mutant · another project's skip taken for a folder with no `shoalmark.toml`: at least one row turns red
+  ok    mutant · another project's skip taken by the working tree alone: at least one row turns red
+  ok    mutant · another project's `shoalmark.toml` read from the top: at least one row turns red
+  ok    mutant · another project's commits judged by the rights, the sessions and the Shipped rule: at least one row turns red
+  ok    mutant · another project's commits judged by the build gate: at least one row turns red
+  ok    mutant · another project's Owner commits judged by the Owner's signature rule: at least one row turns red
+  ok    mutant · another project's commits judged by the guard: at least one row turns red
+  ok    mutant · another project's paths in the guard's walk taken as written from the top: at least one row turns red
+  ok    mutant · another project's commit being made judged by the commit-time guard: at least one row turns red
+all green
+exit 0
