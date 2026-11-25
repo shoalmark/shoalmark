@@ -131,7 +131,7 @@ def git_readings(fm, root, ending):
         "boundary": all("\r" not in b for b in blobs.values() if b is not None)
                     and blobs[specs[-1]] is None and all(types[s] == "blob" for s in specs[:-1]),
         "status": fm.is_shipped(at(after, "TX-001")),
-        "Shipped": [(t["id"], bool(rows), len(fm.commits_named(rows))) for t, _where, rows, _judge in moves],
+        "Shipped": [(t["id"], bool(rows), len(fm.commits_named(rows))) for t, _where, rows, _judge, _frozen_not in moves],
         "answer": fm.transitions(at(before, "TX-003"), at(after, "TX-003")),
         "ask": fm.transitions(at(before, "TX-002"), at(after, "TX-002")),
         "triage": fm.transitions(at(before, "TX-004"), at(after, "TX-004")),
@@ -182,7 +182,7 @@ def svn_readings(fm, base, ending):
     return {
         "boundary": all("\r" not in value for value in (*before.values(), *after.values())),
         "status": fm.is_shipped(after["TX-001"]),
-        "Shipped": [(t["id"], bool(rows), len(fm.commits_named(rows))) for t, _where, rows, _judge in moves],
+        "Shipped": [(t["id"], bool(rows), len(fm.commits_named(rows))) for t, _where, rows, _judge, _frozen_not in moves],
         **{right: fm.transitions(before[tid], after[tid]) for right, tid in
            (("answer", "TX-003"), ("ask", "TX-002"), ("triage", "TX-004"), ("close", "TX-005"))},
         "rights verdicts": (fm.rights_problems(trackers), fm.seat_problems(trackers[1])),
