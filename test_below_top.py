@@ -5,8 +5,8 @@ Each row builds its history in a scratch repository — a bare `origin` with `ma
 default branch's signers file — and lays the same project out twice: at the top of its repository, and in `teams/tool/` of a larger
 one whose top holds other files. It runs the tool in this process and states each layout's verdict, which must be the same. The
 acceptance shapes put an outer project at the top beside a team project in `teams/tool/`, each with its own `shoalmark.toml` and
-tracker folder. Each mutant patches one function of the imported module, putting back what the reads did before, and must turn at
-least one row red.
+tracker folder. Each mutant patches one function of the imported module, putting back what the reads did before — or, for the hooks,
+of the copy of the tool they run in a process of their own — and must turn at least one row red.
 
 Run: `python3 test_below_top.py` — exit 1 on a failure; `--no-mutants` runs the rows alone. test_shoalmark.py runs it as it runs
 test_ask_ids.py. No browser and no network: every repository is a scratch one, `origin` a bare one beside it.
@@ -991,8 +991,97 @@ def rows_other_project(area, add):
     one("r14-both", "another project · an unsigned commit by the Owner's identity with paths in both projects", r14_both)
 
 
+# --- the hooks: one install per clone, the gate once for each project a staged path falls in ---------------------------------------
+
+NO_TEAM, NO_OUTER = "no FM-N in its subject", "no OR-N in its subject"      # each project's build gate, by the kind it names
+_COPY = {"source": None}           # a mutant of the hooks' copy: the tool's text with its pairs replaced, written over each copy a row installs
+
+
+def install_once(r, outer):
+    """`--install-hook`, once for the clone, run in the outer project — the copy it writes replaced by the mutant's text where one is set."""
+    said = run(r.root(outer), "--install-hook", who=OWNER)
+    if _COPY["source"] is not None:
+        common = git(r.top, "rev-parse", "--git-common-dir").strip()
+        (r.top / common / fm.COPY_DIR / "shoalmark.py").write_text(_COPY["source"], encoding="utf-8")
+    return said
+
+
+def hooked(r, message, who=LEAD):
+    """`git commit` of what is staged, through the hooks the clone has installed, as `who`: (exit, what git and the hooks printed)."""
+    env = dict(ids.ENV, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
+    done = subprocess.run(["git", "-C", str(r.top), "-c", "commit.gpgsign=false", "commit", "-q", "-m", message], capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", env=env)
+    return done.returncode, done.stdout + done.stderr
+
+
+def rows_hooks(area, add):
+    for where, outer_at in other_layouts():
+        name = f"hooks-{'below' if outer_at else 'top'}"
+        if not picked(name):
+            continue
+        rows = []
+        try:
+            r, outer, team = gated(area, name, outer_at)
+            installed = install_once(r, outer)
+            if installed[0] != 0:
+                raise AssertionError(f"--install-hook: {seen(installed)}")
+            cases = (("the team project only", [r_at(team, "src/tool.py")], {team: NO_TEAM}),
+                     ("the outer project only", [r_at(outer, "src/app.py")], {outer: NO_OUTER}),
+                     ("both projects", [r_at(team, "src/tool.py"), r_at(outer, "src/app.py")], {team: NO_TEAM, outer: NO_OUTER}))
+            for what, paths, refusals in cases:
+                for path in paths:
+                    r.put(path, f"print('built in {what}')\n")
+                git(r.top, "add", "--", *paths)
+                code, said = hooked(r, f"build in {what}")
+                git(r.top, "commit", "-q", "-m", f"build in {what}")                  # the same commit, made with the hooks off
+                checks = {folder: r.check(folder, who=LEAD if folder == team else COORD) for folder in (team, outer)}
+                git(r.top, "reset", "-q", "--hard", "HEAD~1")
+                spared = {folder: words for folder, words in ((team, NO_TEAM), (outer, NO_OUTER)) if folder not in refusals}
+                rules = " and ".join("the team's rule" if folder == team else "the outer project's" for folder in refusals)
+                rows.append((f"hooks · {where}, installed once: a build commit staged in {what}, its subject naming no tracker, is refused in the "
+                             f"hook by {rules} and no other, as each project's own --check judges it",
+                             code != 0 and all(words in said for words in refusals.values()) and not any(words in said for words in spared.values())
+                             and all(refused(checks[folder], words) for folder, words in refusals.items())
+                             and not any(words in checks[folder][2] for folder, words in spared.items()),
+                             f"hook exit {code}: {said.strip()[-500:]!r} · " + " · ".join(seen(c) for c in checks.values())))
+            for path in (r_at(team, "src/tool.py"), r_at(outer, "src/app.py")):
+                r.put(path, "print('built under its tracker')\n")
+            git(r.top, "add", "-A")
+            code, said = hooked(r, "FM-001, OR-001: build both, each under its judged tracker")
+            rows.append((f"hooks · {where}, installed once: a build commit in both projects whose subject names each one's judged tracker passes "
+                         "the hooks", code == 0, f"hook exit {code}: {said.strip()[-500:]!r}"))
+            tracker = r.path(team, "FM-001")
+            tracker.write_text(tracker.read_text(encoding="utf-8").replace('hook: "h of FM-001"', 'hook: "h of FM-001, reworded"'), encoding="utf-8")
+            git(r.top, "add", "--", tracker.relative_to(r.top).as_posix())
+            code, said = hooked(r, "FM-001: its hook, reworded")
+            held, index = git(r.top, "show", "--name-only", "--format=", "HEAD").split(), r_at(team, REL + "/INDEX.md")
+            rows.append((f"hooks · {where}, installed once: a tracker of the team's staged — the hook writes the team's INDEX.md and stages it, named "
+                         "from the top, in the same commit", code == 0 and index in held and not git(r.top, "status", "--porcelain", "--", index).strip(),
+                         f"hook exit {code}: {said.strip()[-300:]!r} · the commit holds {held}"))
+        except Exception as e:
+            rows.append((f"hooks · {where}: a fixture step failed", False, f"{type(e).__name__}: {str(e)[:300]}"))
+        finally:
+            fm.configure(HERE)
+        for row in rows:
+            add(*row)
+
+    if picked("copy-tool"):                             # the copy judges each project with the repository's own tool, found once, from the top
+        saved, got, want = fm._COPY_RECORD, None, None
+        try:
+            r = layout(area, "copy-tool", TEAM, {"FM-001": text("FM-001")})
+            fm._COPY_RECORD, want = {"tool": "tools/shoalmark"}, r.top / "tools/shoalmark"
+            got = r.configured(TEAM).tree_tool_dir()
+        except Exception as e:
+            got = f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm._COPY_RECORD = saved
+            fm.configure(HERE)
+        add("hooks · the copy, judging the project below the top, finds the repository's own tool where its COPY says, from the top of the working "
+            "tree — the folder it finds for every project", want is not None and got == want, f"tree_tool_dir() = {got}, not {want}")
+
+
 ROWS = (rows_rights, rows_shipped, rows_records, rows_asks, rows_ids, rows_lost_answer, rows_index, rows_signers, rows_reads, rows_acceptance,
-        rows_other_project)
+        rows_other_project, rows_hooks)
 
 
 # --- mutants: each read put back as it read before -----------------------------------------------------------------------------------
@@ -1074,6 +1163,16 @@ MUTANTS = (
      [("[f[len(prefix):] for f in paths[row[0]] if f.startswith(prefix)]", "paths[row[0]]", 1)], (rows_other_project,), {"guard"}, False),
     ("another project's commit being made judged by the commit-time guard", "triage_pending", [("if what and other_project_changes(", "if False and other_project_changes(", 1)],
      (rows_other_project,), {"guard-staged"}, False),
+    ("the hooks' copy judges every staged path by the top's project alone", "copy:staged_projects",
+     [('homes.setdefault(top.joinpath(*parts[:at]), []).append("/".join(parts[at:]))', "homes.setdefault(top, []).append(path)", 1)],
+     (rows_hooks,), {"hooks-top"}, False),
+    ("the hooks' copy runs one project where the commit stages paths in two", "copy:each_project",
+     [("for root, rels in (staged_projects(top, paths) or {top: []}).items():", "for root, rels in list((staged_projects(top, paths) or {top: []}).items())[:1]:", 1)],
+     (rows_hooks,), {"hooks-top"}, False),
+    ("the hooks' copy finds the repository's own tool from each project's root", "tree_tool_dir", [("return top / tool if tool else top", "return ROOT / tool if tool else ROOT", 1)],
+     (rows_hooks,), {"copy-tool"}, False),
+    ("the hooks' copy names what it wrote from the project root, where the hook stages from the top", "copy:each_project",
+     [('folder = "" if root == top else root.relative_to(top).as_posix() + "/"', 'folder = ""', 1)], (rows_hooks,), {"hooks-below"}, False),
 )
 
 
@@ -1081,6 +1180,18 @@ MUTANTS = (
 def mutated(name, pairs):
     """`fm.<name>` replaced by a patched copy of its own source, compiled in the module's namespace — and put back after. A table of the
     module's (a dict of tuples of words) is patched in its words instead, value by value."""
+    if name.startswith("copy:"):                                    # the hooks' copy runs in a process of its own: its file carries the mutant (`install_once`)
+        src, whole = textwrap.dedent(inspect.getsource(getattr(fm, name[5:]))), Path(fm.__file__).read_text(encoding="utf-8")
+        for old, new, count in pairs:
+            if src.count(old) != count or whole.count(old) != count:
+                raise AssertionError(f"{name}: {old[:60]!r} is in its source {src.count(old)} times and in the tool {whole.count(old)}, not {count}")
+            whole = whole.replace(old, new)
+        _COPY["source"] = whole
+        try:
+            yield
+        finally:
+            _COPY["source"] = None
+        return
     real = getattr(fm, name)
     if isinstance(real, dict):
         table = dict(real)

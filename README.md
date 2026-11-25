@@ -267,7 +267,10 @@ python3 tools/shoalmark/shoalmark.py --install-hook                 # plain git 
 
 `--install-hook` writes the three commit hooks — `pre-commit`, `prepare-commit-msg` and `commit-msg` — and the three board refresh hooks —
 `post-checkout`, `post-merge` and `post-rewrite`. Every one runs **a copy of the tool kept in the git directory** (`shoalmark-trusted/`, shared by every
-worktree), never the tool a branch brings. After a checkout or switch, a merge (including a fast-forward pull), or a rebase, the refresh hooks run
+worktree), never the tool a branch brings. One install serves every project of the clone: the commit's hooks judge the commit being made once for
+each project a staged path falls in — each path's nearest `shoalmark.toml`, up to the top, and the top's project for a path in none (`--each-project`) —
+and the pre-commit hook rebuilds a project's INDEX.md where the commit stages one of its trackers, its configuration or the tool. After a checkout or
+switch, a merge (including a fast-forward pull), or a rebase, the refresh hooks run
 `--html-only`. The board says what it read, and when; each refresh hook exits 0, with one line if the refresh failed or was stopped.
 The explicit refresh stays, as do the commit's own rebuild where it stages a tracker and the rebuild right after each answer or act.
 An unchanged refresh hook an earlier version wrote is replaced, with one line; a changed hook is kept byte for byte and named. A person's own hook
@@ -504,13 +507,13 @@ From: a9f3c2d1/reviewer-1 reviewer (reviewer-2) · claude-opus-4-8 · high
 A repository
 with its own hook runner adds three entries, each running the copy of the tool in the git directory as `--install-hook`'s
 own hooks do — with lefthook, the session rule on every commit, the trailers, and the judgement of the commit with its
-message:
+message, each judging line once for each project a staged path falls in:
 
 ```yaml
 pre-commit:
   commands:
     session:                     # the session rule on EVERY commit, a tracker staged or not
-      run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --session-check
+      run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --each-project --session-check
 prepare-commit-msg:
   commands:
     session:
@@ -518,7 +521,7 @@ prepare-commit-msg:
 commit-msg:
   commands:
     judged:                      # where `judged_before_build` is on: the commit judged with its subject (FM-033)
-      run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --commit-msg {1}
+      run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" --each-project --commit-msg {1}
 ```
 
 Run `--install-hook` once, on your default branch, so the copy is there: it writes the copy, leaves the runner's own hooks

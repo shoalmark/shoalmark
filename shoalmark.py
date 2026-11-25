@@ -11478,6 +11478,11 @@ def cli_parser():
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
                                                      "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
+    add("--each-project", action="store_true", help="with one of --session-check, --print-written and --commit-msg, and --root naming the top of the working "
+                                                    "tree: that line once for each project the commit being made stages a path in — each path's nearest "
+                                                    "shoalmark.toml, up to the top; a path in no project is the top's. --print-written runs for a project whose "
+                                                    "tracker, configuration or tool is staged, and names what it wrote from the top. What the hooks run: one "
+                                                    "install per clone")
     add("--commit-msg", nargs=1, metavar="FILE", help="what a commit-msg hook calls with its message file: where `judged_before_build` is on, the commit being made is "
                                                       "judged with its subject (FM-033) — the ids it names, else its branch `<kind>/<NNN>-…`, judged and In Progress at HEAD — "
                                                       "and refused before it is made, with the line `--check` prints of it; and, where the default branch's configuration names the "
@@ -12304,22 +12309,23 @@ COPY_AT = '"$(git rev-parse --git-common-dir)/' + COPY_DIR + '/shoalmark.py" --r
 _COPY_FIND = 'root=$(git rev-parse --show-toplevel 2>/dev/null)\ncopy="$(git rev-parse --git-common-dir 2>/dev/null)/' + COPY_DIR + '/shoalmark.py"\n'
 _COPY_SAYS = ("# It runs the copy of the tool kept in the git directory, which only `--install-hook` writes — never the tool a branch brings; the commit is refused\n"
               "# with one line where the copy is not there, refuses it, or does not finish within its bound.\n")
+_EACH_SAYS = ("# It judges the commit once for each project a staged path falls in — each path's nearest shoalmark.toml, up to the top, and the top's\n"
+              "# for a path in none (--each-project): one install serves every project of the clone.\n")
 _COPY_GONE = ('if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the commit is refused — the hooks\' copy of the tool is not in the git directory: run --install-hook" >&2\n'
               '  exit 1\nfi\n')
 HOOKS = {
-    "pre-commit": "#!/bin/sh\n{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit.\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
-                  + '{py} -I "$copy" --root "$root" --session-check || exit $?\n'
-                  "if git -c core.quotePath=false diff --cached --name-only --ignore-submodules=none | grep -q -E '^\"?({dir}/.*\\.md|{config}|{tool}/)'; then\n"
-                  '  written=$({py} -I "$copy" --root "$root" --print-written) || exit $?\n'
-                  "  [ -z \"$written\" ] || printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\nfi\n",
+    "pre-commit": "#!/bin/sh\n{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit.\n" + _COPY_SAYS + _EACH_SAYS + _COPY_FIND + _COPY_GONE
+                  + '{py} -I "$copy" --root "$root" --each-project --session-check || exit $?\n'
+                  'written=$({py} -I "$copy" --root "$root" --each-project --print-written) || exit $?\n'
+                  "[ -z \"$written\" ] || printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\n",
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
                           + 'exec {py} -I "$copy" --root "$root" --session-trailer "$1" "$2"\n',
-    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
-                  + 'exec {py} -I "$copy" --root "$root" --commit-msg "$1"\n',
+    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033).\n" + _COPY_SAYS + _EACH_SAYS + _COPY_FIND + _COPY_GONE
+                  + 'exec {py} -I "$copy" --root "$root" --each-project --commit-msg "$1"\n',
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
+HOOK_LINES = {"pre-commit": "--each-project --print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--each-project --commit-msg "$1"',
               "post-checkout": "--html-only", "post-merge": "--html-only", "post-rewrite": "--html-only"}
 REFRESH_HOOKS = {"post-checkout": "checkout", "post-merge": "merge", "post-rewrite": "rebase or an amend"}
 FORMER_PLAIN = "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n"
@@ -12557,7 +12563,9 @@ def install_copy():
         files[rel] = data
     if not pin.exists():
         lines.append(f"this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool, {HERE}")
-    here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"
+    top = git_top()                                         # the tool's folder from the top of the working tree: one folder for every project the copy judges
+    inside = _norm(HERE) == _norm(top) or _norm(HERE).startswith(_norm(top).rstrip(os.sep) + os.sep)
+    here_rel = os.path.relpath(HERE, top).replace(os.sep, "/") if inside else "-"
     if pin.exists():
         manifest, _ = pin_manifest(pin.read_text(encoding="utf-8"), __version__)
         sha = manifest.get("commit") or manifest.get("untagged", "").removesuffix(" (dirty)") or "not recorded"
@@ -12635,12 +12643,13 @@ def copy_provenance_notice():
 
 
 def tree_tool_dir():
-    """In the hooks' copy: the folder of the repository's own tool — the one `--install-hook` was run from, as its `COPY` says — or None where that was outside
-    the repository, or is not said."""
+    """In the hooks' copy: the folder of the repository's own tool — the one `--install-hook` was run from, as its `COPY` says, from the top of the
+    working tree: the same folder for every project the copy judges — or None where that was outside the repository, or is not said."""
     tool = copy_record().get("tool", "-")
     if tool == "-" or not re.fullmatch(r"[A-Za-z0-9_./-]*", tool) or ".." in tool.split("/"):
         return None
-    return ROOT / tool if tool else ROOT
+    top = git_top() if vcs() == "git" else ROOT
+    return top / tool if tool else top
 
 
 def tool_here():
@@ -12887,6 +12896,74 @@ def include_targets(listing):
     return found
 
 
+EACH_PROJECT = ("session_check", "print_written", "commit_msg")        # the hooks' lines that judge the commit being made, run per project
+_DRIFT_SAID = set()                                                 # the drift line, said once in a run (`main_run`)
+
+
+def staged_projects(top, paths):
+    """{project root: its paths, written from it} for `paths`, the commit being made's, named from the top: each path is in the folder of its nearest
+    `shoalmark.toml` on disk below the top, else the top's — the project the hooks have always judged it by. The top first, then each other project
+    in the order of its folder."""
+    homes = {}
+    for path in paths:
+        parts = path.split("/")
+        at = next((n for n in range(len(parts) - 1, 0, -1) if os.path.lexists(top.joinpath(*parts[:n], CONFIG_NAME))), 0)
+        homes.setdefault(top.joinpath(*parts[:at]), []).append("/".join(parts[at:]))
+    return dict(sorted(homes.items(), key=lambda home: (home[0] != top, home[0].as_posix())))
+
+
+def hook_writes(rels):
+    """Whether the pre-commit hook runs this project's whole gate, `--print-written`, on the commit being made: one of `rels`, the paths it stages
+    written from the project root, starts as the hook's own test read them before it ran per project — a tracker file under the tracker folder,
+    the configuration, or the tool's own folder, `<tracker dir>/….md|shoalmark.toml|<tool folder>/`, the folder as `--install-hook` names it."""
+    tool = tool_here()
+    where = tool.relative_to(ROOT).as_posix() if tool is not None and ROOT in (tool, *tool.parents) else "tools/shoalmark"
+    pattern = re.compile(f"({TRACKER_DIR.relative_to(ROOT).as_posix()}/.*\\.md|{CONFIG_NAME}|{where}/)")
+    return any(pattern.match(rel) for rel in rels)
+
+
+def each_project(args):
+    """`--each-project`, with one of the hooks' lines that judge the commit being made: the line run once for each project the commit stages a path in
+    (`staged_projects`) — `--root` names the top, and a path in no project is the top's, as is a commit that stages none. `--print-written` runs
+    for a project only where the commit stages its tracker, its configuration or the tool (`hook_writes`), and names each file it wrote from the
+    top, where the hook stages it. Every project's run is made, whatever another's said, and the first that refuses gives the exit."""
+    line = [k for k in EACH_PROJECT if vars(args).get(k)]
+    alone = parse_args([f"--{line[0].replace('_', '-')}", *(args.commit_msg or [])]) if len(line) == 1 else None
+    if alone is None or any(v != vars(alone).get(k) for k, v in vars(args).items() if k not in ("each_project", "root")):
+        print("--each-project goes with one of --session-check, --print-written and --commit-msg, and with --root: the lines a hook runs", file=sys.stderr)
+        return 2
+    top = pathlib.Path(args.root or ".").resolve()
+    configure(top)
+    paths = []
+    if vcs() == "git":                                  # the index the hook hands it, every path named from the top
+        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--no-renames", "--ignore-submodules=none", cwd=top, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace", env=index_env())
+        paths = [p for p in out.stdout.split("\x00") if p] if out.returncode == 0 else []
+    code = EXIT_OK
+    for root, rels in (staged_projects(top, paths) or {top: []}).items():
+        try:
+            configure(root)
+            if args.print_written and not hook_writes(rels):
+                continue
+            sub = parse_args([f"--{line[0].replace('_', '-')}", *(args.commit_msg or []), "--root", str(root)])
+            if not args.print_written:
+                got = main_run(sub)
+            else:                                       # the paths it wrote, from the top: the hook stages them there
+                said = io.StringIO()
+                with contextlib.redirect_stdout(said):
+                    got = main_run(sub)
+                folder = "" if root == top else root.relative_to(top).as_posix() + "/"
+                for rel in said.getvalue().splitlines():
+                    if rel:
+                        print(folder + rel)
+        except SystemExit as stop:                      # a project's configuration refused: its line, and the next project is judged
+            if stop.code is not None and not isinstance(stop.code, int):
+                print(stop.code, file=sys.stderr)
+            got = stop.code if isinstance(stop.code, int) else 0 if stop.code is None else 1
+        code = code or got or EXIT_OK
+    return code
+
+
 def install_hook():
     """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
@@ -12902,8 +12979,7 @@ def install_hook():
         print(refused, file=sys.stderr)
         return EXIT_LINT
     hooks.mkdir(parents=True, exist_ok=True)
-    fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT).as_posix(), config=CONFIG_NAME,
-                tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
+    fill = dict(mark=HOOK_MARK, cmd=CMD)                  # the pre-commit hook's test of what is staged is the tool's now, per project (`hook_writes`)
     code = EXIT_OK
     copy_code, copy_lines = install_copy()
     hook_set = HOOKS if copy_code == EXIT_OK else {}      # every hook runs the copy: none is written where it is not there
@@ -13416,6 +13492,8 @@ def main(argv=None, *, _notice=True):
             print("--standup DIR … reads the repositories it names, and --root names the one a run reads: name that folder after --standup", file=sys.stderr)
             return 2
         return standup_across(args.standup)
+    if args.each_project:                                   # a hook's line, once for each project the commit being made stages a path in
+        return each_project(args)
     notice = _notice and not args.tsvn_hook and cli_operation(args) in ("init", "check")
     try:
         return main_run(args)
@@ -13460,7 +13538,8 @@ def main_run(args):
         SAFE_WRITES = True
         os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts a program from the current directory first, and the checkout's is the branch's
         drift = "" if args.print_written else hooks_copy_drift()        # once per hook: the pre-commit hook says it with --session-check, before --print-written
-        if drift:
+        if drift and drift not in _DRIFT_SAID:                          # …and once in a run that judges several projects (`each_project`)
+            _DRIFT_SAID.add(drift)
             print(drift, file=sys.stderr)
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
