@@ -1,12 +1,18 @@
 ---
 id: FM-161
 status: In Progress
-considered: FM-033, FM-100, FM-166, FM-175, FM-187
+considered: FM-033, FM-100, FM-166, FM-175, FM-187, FM-188
 tags: process
-next: build
+next: owner
 triaged: 2026-11-16
 tier: P1
 hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 accepted the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
+ask-id: FM-161-Q3
+ask: "Do you place FM-161-Q2's decisions 7 to 13 as proposed, every part in the tracker cut's release and none in a v0.20.4, or as changed under other, where a part in v0.20.4 changes FM-161-Q2's answer and reopens FM-188-Q1's decision 7?"
+ask-kind: ruling
+ask-since: 2026-11-25
+ask-options: "yes, as proposed | yes, but decision 8 in v0.20.4 | yes, but decision 8 and decision 12's ship-log row in v0.20.4 | no, not now"
+ask-proposal: "yes, as proposed"
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -14,6 +20,17 @@ hook: "A team can only be one whole repository: a project whose shoalmark.toml s
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-25 — FM-161-Q3 put, as a change to FM-161-Q2: where each part of decisions 7 to 13 ships,** on the
+coordinator's word of that day.
+- **Proposed:** every part in the tracker cut's release, none in a v0.20.4. Each part is built on the lane, in the
+  Builder's passes 1 and 2, except decision 11's part (a), which pass 3 builds. Nothing of the lane is pushed or
+  reviewed yet. The table under *Decisions*, *Put as FM-161-Q3*, gives each part's place, its agent hours, and what does
+  not work until v0.20.4 if it goes there.
+- **A part placed in v0.20.4** changes FM-161-Q2's answer, and reopens
+  [FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1's decision 7, which put no v0.20.4.
+- **Not put:** reading a commit that creates a project by the state of the project around it. It is put only if pass
+  3 still refuses the Owner's import, with pass 3's output beside it.
 
 **2026-11-25 — FM-033's gate in a code repository after the move,** for the records review of FM-161-Q2's filing.
 - Decision 12, as FM-161-Q2's signed answer takes it, makes `judged_before_build` false in a code repository whose
@@ -136,6 +153,47 @@ Decisions 7 to 13 are put as FM-161-Q2.
       about 2.5 working days from the answer. The move waits on it, and v0.21's format migration follows the move, so
       v0.21 moves by about the same.
 
+**Put as FM-161-Q3: where each part ships.** Pass 1 built decisions 7, 9, 10 and 11 as one patch, in about 5 agent
+hours. Pass 2 built the rest in about 2 more.
+
+| Part | Proposed | Built, and agent hours left | If in v0.20.4, what does not work until then |
+|---|---|---|---|
+| 7. One root for every gate | in the cut | pass 1; left: its review | Nothing below the top is judged, so the cut cannot be made: [FM-187](FM-187-the-gate-passes-a-project-below-the-git-top-unjudged-and-a.md) refuses every run in a team's folder. |
+| 8. Hooks, once per project | in the cut | pass 2; left: its review | The commit hook judges only the top's project. A team's rules hold a commit only at `--check` on its branch and in CI. |
+| 9. Signers from the top | in the cut | pass 1; left: its review | In a team's folder, the signers file's symlink, other-checkout and no-default-branch checks read a path that is not there. |
+| 10. The records list from the project root | in the cut | pass 1, with its wording and the refusal of an entry written from the top in pass 2; left: its review | In a team project, `[ratio] records` is not matched against the paths git names, so a commit that changes only records counts, for the Shipped rule, as one that built something. |
+| 11. Commits of another project | in the cut | pass 1; part (a), a path's project decided at the commit's parent, in pass 3, about 2 | The organisation's own check judges every team commit as its own, and its build gate refuses each one not built under an `In Progress` tracker of its own. Without part (a), a commit that creates a project passes the project around it unjudged. |
+| 12. A Shipped tracker naming `<repository>@<commit>` | in the cut | pass 2; left: its review | No team tracker in the organisation's repository can move to `Shipped`, since its build commit is not in that history: it can only be `Closed`. |
+| 12. A code repository whose trackers live elsewhere | in the cut | pass 2; left: its review | After the cut, `--check` and the commit hook in the code repository refuse every run, since its tracker folder is gone. |
+| 13. Tests and size | in the cut | rows and mutants with each part; left: the critical review, two or three rounds, about 5, and the acceptance run, about 1 | — |
+
+**After the cut, can a tracker in the organisation's repository be moved to `Shipped`?** Under the proposal, yes:
+- A tracker of the organisation's own project, at the top, as today: the commit that built it is in that history.
+- A team's tracker, by decision 12: a ship-log row names `<repository>@<commit>` for a code repository the team's
+  configuration names. The gate takes the row without reading that repository and says in one `--check` line how many
+  moves rest on such rows; the team's daily read checks the commit. A repository the configuration does not name counts
+  as no commit.
+- If decision 12's ship-log row goes to v0.20.4, no: until then a team's tracker can only be `Closed`.
+- The trackers the import brings already `Shipped` stay so, under FM-187's frozen rule, once the cut's release holds both
+  lanes.
+
+**Which gates below the top have run their tests?** Each gate ran its rows at the top and below it on pass 1's tool:
+104 rows and 35 mutants, all green on Python 3.15.0 and 3.9.6. The two runs printed the same output byte for byte:
+[evidence/FM-161/below-top-rows-pass-1.txt](evidence/FM-161/below-top-rows-pass-1.txt), sha256
+`be53f14e753f25a4a36b6168edafff040d7ea24ddb38b35904db562c16209f7d`.
+- **The rules:** the rights rule, for made commits and for the commit being made, the Shipped rule, `[ratio] records`,
+  the ask rule, the answer rules, the ask-id rules, INDEX, the signers file, the queue's reads, the working tree and a
+  partial clone.
+- **Decision 11's skip,** for the build gate, the guard of the Owner's two sections and the signers file, and the
+  Owner-commit signature rule.
+- **The shapes of the organisation's acceptance checks 1 to 3.**
+- **Not yet run:**
+  - the rows of pass 2 (the hooks once per project, the ship-log row, trackers elsewhere) and of pass 3 (part (a)),
+    whose hand-backs are not in;
+  - CI's full suites on the lane;
+  - the organisation's acceptance on one candidate that holds FM-187 and FM-161; until both merge, a scratch join of
+    the two lanes stands in for that run.
+
 ## Done when
 
 Each item names its commit or pull request when it lands.
@@ -147,6 +205,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **FM-100's `standup-teams` takes such a place** where it refused it, with a test.
 - [ ] **The review at the tier its design sets is READY.**
 - [x] **The Owner has answered FM-161-Q2.** · `453601f`, #330 (`c069017`)
+- [ ] **The Owner has answered FM-161-Q3.**
 - [ ] **A project below the git top is judged exactly as one at the top:** each gate, with its tests and mutants.
 - [ ] **The hooks run the gate once for each project a staged path falls in, a relative signers file resolves from
   the top, and the records list is written from the project root,** each with its tests.
@@ -170,6 +229,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-161-Q3 put, as a change to FM-161-Q2: each part of decisions 7 to 13 in the tracker cut's release or in a v0.20.4, every part proposed for the cut; pass 1's rows below the top filed as evidence. Records only. |
 | 2026-11-25 | The records reviews' findings fixed forward: FM-033's gate in a code repository after the move, the first patch's order named as the lead's, the release FM-188-Q1's, and the hooks, signers and records list item worded as decisions 8 to 10. Records only. |
 | 2026-11-25 | FM-161-Q2 answered, yes, as proposed; keep P1, In Progress; the build starts. Records only. |
 | 2026-11-25 | FM-161-Q2 put: a project below the git top judged exactly as one at the top, every gate reading the project's root and configuration, with its tests; after the move, a Shipped tracker names its team's code commit. Records only. |

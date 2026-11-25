@@ -5,15 +5,6 @@ considered: FM-033, FM-076, FM-095, FM-097, FM-117, FM-118, FM-139, FM-161, FM-1
 tags: process
 next: build
 hook: "Rulings collide unseen: an ask is put and answered without the earlier rulings it overturns, because --related reads titles and hooks, not asks and answers. Two decisions met FM-175's signed answer that way, and the releases meet the tracker cut. FM-188-Q1 puts five additions, FM-175 amended, no v0.20.4, and v0.20.3 reopened to add FM-187, FM-161 and the cut's provenance change, so the cut's release can come before v0.21.0."
-ask-id: FM-188-Q1
-ask: "Do you take FM-188's rulings as proposed, or as changed under other: Part 1's five additions in v0.21.0, FM-175 amended (trackers private in org, views uncommitted, git only, verdicts by signed tag), no v0.20.4, and v0.20.3 from main with FM-187 and FM-161 added, for the cut?"
-ask-kind: ruling
-ask-since: 2026-11-25
-ask-options: "yes, as proposed | yes, but v0.20.3 without FM-187 and FM-161, which go in v0.21.0 | yes, but v0.20.3 folded into v0.21.0 | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-25
-answered-by: holgo99
 ---
 
 # FM-188 — rulings collide unseen: an ask is put and answered without the rulings it overturns, and the release plan meets the move
@@ -114,11 +105,18 @@ and it reopens the Owner's word of 18 to 20 November on v0.20.3's scope (decisio
 
 Each item names its commit or pull request when it lands.
 
-- [ ] **The Owner has answered FM-188-Q1.**
+- [x] **The Owner has answered FM-188-Q1.** c77909d, in #333.
 - [ ] **FM-175, FM-164, FM-139, FM-076, FM-118, FM-187 and FM-161 follow the answer** in the records, each with a
   dated line.
 - [ ] **Part 1's five additions** are built in v0.21.0, each with its tests, and their fields are in the draft schema.
 - [ ] **v0.20.3 ships as the answer puts it,** with its tag.
+
+## Asks
+
+**FM-188-Q1** · 2026-11-25 · Do you take FM-188's rulings as proposed, or as changed under other: Part 1's five additions in v0.21.0, FM-175 amended (trackers private in org, views uncommitted, git only, verdicts by signed tag), no v0.20.4, and v0.20.3 from main with FM-187 and FM-161 added, for the cut?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — c77909d · G
 
 ## Ship log
 
