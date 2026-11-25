@@ -1,12 +1,18 @@
 ---
 id: FM-161
 status: In Progress
-considered: FM-100, FM-166
+considered: FM-033, FM-100, FM-166, FM-175, FM-187
 tags: process
-next: build
+next: owner
 triaged: 2026-11-16
 tier: P1
-hook: "A team can only be one whole repository: FM-100's standup-teams refuses a team in a folder of a monorepo, or several teams in one repository, though sealanes/1, the roster spec, may name such places. Lifting that needs the tool's side and the roster spec's side, and waits until sealanes/1 is in force. Its design is put to the Owner as FM-161-Q1, with the lane in v0.20.3 beside FM-166's."
+hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 puts the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
+ask-id: FM-161-Q2
+ask: "Do you take FM-161's fix as proposed, or as changed under other: a project below the git top judged exactly as one at the top, every gate reading the project's root and configuration, with its tests, and after the move a Shipped tracker naming <repository>@<commit> of its team's code?"
+ask-kind: ruling
+ask-since: 2026-11-25
+ask-options: "yes, as proposed | no, not now"
+ask-proposal: "yes, as proposed"
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -14,6 +20,19 @@ hook: "A team can only be one whole repository: FM-100's standup-teams refuses a
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-25 — FM-161-Q2 put: a project below the git top judged exactly as one at the top,** on the coordinator's
+word of that day.
+- **Why now:** the organisation is moving the teams' trackers out of the code repositories into its own repository.
+  Each team becomes a project in a folder of its own, with its own `shoalmark.toml`, so this fix is part of the move
+  whatever its size.
+- **What fails today:** the tool reads a tracker at a revision as `<rev>:<path>`, with the path written from the
+  project's root, and git reads it from the top of the repository. Below the top it finds nothing, so the rights rule,
+  the Shipped rule and every rule that compares a tracker before and after a commit pass without judging.
+  [FM-187](FM-187-the-gate-passes-a-project-below-the-git-top-unjudged-and-a.md) refuses such a run until this lands.
+- **What is put:** decisions 7 to 13 below, as FM-161-Q2.
+- **What stands:** decisions 1 to 5, as FM-161-Q1 answered them. Decision 6's release left v0.20.3 on 20 November, and
+  the release ask names where this ships.
 
 **2026-11-20 — out of v0.20.3, on the Owner's word of 18 November:** "A small v0.20.3: FM-172 and FM-169, nothing else."
 The Owner's words of 19 and 20 November widened v0.20.3 to four items
@@ -83,6 +102,32 @@ All six are put as FM-161-Q1.
    lanes: built against their contract, and joined with them. Its review is critical, since it changes
    `shoalmark.py`.
 
+Decisions 7 to 13 are put as FM-161-Q2.
+
+7. **One root for every gate.** The project root is the nearest `shoalmark.toml`, as today.
+   - Every read of a file at a revision names its path from that root, as git reads `<rev>:./<path>`, and every list
+     of changed paths is taken from it.
+   - The rights rule, the Shipped rule, the answer and ask rules, the signers, INDEX and every `--check` rule then judge
+     a project below the top exactly as one at the top.
+8. **Hooks.** One install per clone. The pre-commit hook runs the gate once for each project a staged path falls in.
+9. **Signers.** A relative `gpg.ssh.allowedSignersFile` resolves from the top of the repository, as git resolves it.
+10. **The records list.** `[ratio] records` is written from the project root.
+11. **Commits of another project.** A project's check skips a commit whose every path lies in another project below it.
+    That project's own check judges it.
+12. **After the move.**
+    - Until the tool reads a team's code repository at a pinned commit, a move to Shipped in a team project names
+      `<repository>@<commit>` in a ship-log row, for a code repository its configuration names. The team's daily read
+      checks that row, not the gate.
+    - A code repository's configuration may say that its trackers live elsewhere. `--check` then says so and passes,
+      `--init`, `--new` and the Board refuse there, and `judged_before_build` is false there.
+13. **Tests and size.**
+    - Each gate's rule classes run again in a project below the top, each with its mutant.
+    - The organisation's acceptance checks for the move run against the build before its pull request, each reported
+      with its output.
+    - Size: about 16 agent hours of build (12 to 24) and 4 of fixes, with a critical review of two or three rounds, so
+      about 2.5 working days from the answer. The move waits on it, and v0.21's format migration follows the move, so
+      v0.21 moves by about the same.
+
 ## Done when
 
 Each item names its commit or pull request when it lands.
@@ -93,6 +138,12 @@ Each item names its commit or pull request when it lands.
 - [ ] **The tool serves a team whose root is a folder:** `--standup DIR …`, the gate and the hooks, each with its tests.
 - [ ] **FM-100's `standup-teams` takes such a place** where it refused it, with a test.
 - [ ] **The review at the tier its design sets is READY.**
+- [ ] **The Owner has answered FM-161-Q2.**
+- [ ] **A project below the git top is judged exactly as one at the top:** each gate, with its tests and mutants.
+- [ ] **Hooks, signers and the records list** read from the project root, each with its tests.
+- [ ] **After the move:** a Shipped tracker names its team's code commit, and a code repository keeps its trackers
+  elsewhere, each with its tests.
+- [ ] **The organisation's acceptance checks for the move** pass on the build, each reported with its output.
 
 ## Asks
 
@@ -105,6 +156,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-161-Q2 put: a project below the git top judged exactly as one at the top, every gate reading the project's root and configuration, with its tests; after the move, a Shipped tracker names its team's code commit. Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-16 | FM-161-Q1 answered, yes, as proposed; judged before its first build commit, keep P1, In Progress; a chapter of FM-139. Records only. |
 | 2026-11-16 | The design, and FM-161-Q1 put: each team's tracker folder, and a shared one by team key and id ranges, served by --check, the gate, the hooks, --new and --standup; the lane in v0.20.3 beside FM-166's. Records only. |
