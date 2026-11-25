@@ -7943,7 +7943,7 @@ check("FM-006 · a private security report · RV-2300 · the README's hooks sect
 check("FM-006 · a private security report · the README's entries for a repository with its own hook runner run the copy with the installed hooks' invocation, say what an entry does where the copy is "
       "missing, and say plainly that a hook runner reads its configuration from the tree, `--install-hook` being the safe default; this repository keeps no `lefthook.yml`",
       all(f'run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" {flag_}' in _rd("README.md")
-          for flag_ in ("--session-check", "--session-trailer {1}", "--commit-msg {1}"))
+          for flag_ in ("--each-project --session-check", "--session-trailer {1}", "--each-project --commit-msg {1}"))
       and "tools/shoalmark/shoalmark.py --session-check" not in _rd("README.md") and "Python cannot open the file, exit 2 — and the runner refuses the commit" in _readme_
       and "A hook runner reads its configuration from the tree, so a merged branch's configuration runs whatever it names" in _readme_
       and "shoalmark's own `--install-hook` is the safe default" in _readme_ and not (HERE / "lefthook.yml").exists())
@@ -15350,7 +15350,7 @@ with tempfile.TemporaryDirectory() as d:
     agents, hook = (root / "AGENTS.md").read_text(), (root / ".git/hooks/pre-commit").read_text()
     check("a contract block and a hook written under the old name are replaced, not stranded — the repository's own text is kept",
           code == 0 and "old rules" not in agents and "fathom-mark" not in agents and agents.count(fm.CONTRACT_BEGIN) == 1 and "kept." in agents and agents.startswith("# mine")
-          and "fathom" not in hook and 'shoalmark-trusted/shoalmark.py"' in hook and '--root "$root" --print-written' in hook)
+          and "fathom" not in hook and 'shoalmark-trusted/shoalmark.py"' in hook and '--root "$root" --each-project --print-written' in hook)
 fm.configure(HERE)
 
 # --- FM-031 S2: the queue in one view — every open pull request, ONE action, in the order the Owner takes them -------
