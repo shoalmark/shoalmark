@@ -34,6 +34,7 @@
 
 | ID | Tier | Hook | Status | Board | Triaged |
 |----|------|------|--------|-------|---------|
+| [FM-187](FM-187-the-gate-passes-a-project-below-the-git-top-unjudged-and-a.md) | P1 | A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a… | In Progress | progress | 2026-11-25 |
 | [FM-175](FM-175-trackers-are-prose-the-gate-cannot-read-so-each-becomes-a.md) | P2 | A tracker's Done when, its ship log and much of its state are prose: the gate cannot verify one box, and agents read wh… | In Progress | progress | 2026-11-19 |
 | [FM-173](FM-173-a-signed-answer-this-clone-cannot-verify-reads-as-a-missing.md) | P1 | In a clone with no signers file set up, --check reads a signed answer it cannot verify as no answer at all: a ledger-in… | In Progress | progress | 2026-11-16 |
 | [FM-172](FM-172-an-answer-with-the-changes-the-owner-names-has-nowhere-to.md) | P1 | An ask's option can read yes, with the changes I name, but the Board's answer dialog opens its text box only for an ans… | In Progress | progress | 2026-11-16 |
@@ -47,6 +48,7 @@
 | [FM-024](FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) | P2 | Two sessions of one seat are one author in git; a seat's commit must name its session, and the record must know what th… | In Progress | progress | 2026-10-15 |
 | [FM-004](FM-004-nobody-knows-whether-another-project-s-agents-would.md) | P1 | A first outside Owner will hand ADOPT.de.md to his agents mid-way through a 60-package plan. My guess was 35 % yes if a… | In Progress | progress | 2026-10-13 |
 | [FM-001](FM-001-the-repository-it-was-cut-from-still-runs-its-own-copy.md) | P3 | fathom-mark 0.1.0 was cut out of a larger repository's tracker generator on 2026-09-21 — and that repository still runs… | In Progress | progress | 2026-09-23 |
+| [FM-168](FM-168-a-spec-s-conformance-tests-are-prose-so-no-implementation.md) | P2 | hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementat… | Parked | backlog | 2026-11-25 |
 | [FM-052](FM-052-a-fixture-that-watches-git-lets-git-s-own-housekeeping-run.md) | — | A fixture that watches .git lets git's own housekeeping run inside the watch, so a green commit can fail once | Parked | triage | — |
 | [FM-043](FM-043-the-upgrade-notes-leave-an-adopter-with-a-hook-runner-short.md) | — | the upgrade notes leave an adopter with a hook runner short of 0.19.0 | Parked | triage | — |
 | [FM-042](FM-042-requirements-in-the-repository-tested-as-a-contract-a-layer-for.md) | P2 | Developer and tester work from one ground truth — requirements in the repository, tested as a contract, not by reading… | Parked | backlog | 2026-10-13 |
@@ -58,7 +60,6 @@
 | [FM-026](FM-026-an-existing-fleet-has-no-migration-path-the-adopt-note-must.md) | P3 | Three outside agent fleets asked cold said no, and all three named the same reason — two sources of truth — because not… | Parked | backlog | 2026-09-24 |
 | [FM-025](FM-025-a-cold-start-reads-thirty-thousand-tokens-before-it-can-work.md) | P3 | A session that takes a seat cold reads about thirty thousand tokens of pages and trackers before it can do anything; th… | Parked | backlog | 2026-09-24 |
 | [FM-023](FM-023-a-plan-names-its-seats-their-estimates-and-when-the-person.md) | P3 | A plan names its seats, their estimates and when the person is needed; it is updated as the work runs and recorded when… | Parked | backlog | 2026-09-24 |
-| [FM-187](FM-187-the-gate-passes-a-project-below-the-git-top-unjudged-and-a.md) | — | A project whose shoalmark.toml sits below the top of its git repository is not judged: the gate reads each tracker at a… | Proposed | triage | — |
 | [FM-186](FM-186-on-a-clone-without-the-whole-history-the-board-files-the.md) | — | On a clone that does not hold the default branch's history whole, the Board opens with \"NOTHING NEEDS THE OWNER.\" and… | Proposed | triage | — |
 | [FM-185](FM-185-the-hail-1-article-follows-the-first-edition.md) | — | The hail/1 article on the site follows hail/1's first edition, and both pages shoalmark/hail publishes send readers to… | Proposed | triage | — |
 | [FM-184](FM-184-a-change-to-a-public-skill-can-reach-the-skills-repository-s.md) | — | A change to a public skill can reach shoalmark/skills' main without the Owner's own signed commit. A required check the… | Proposed | triage | — |
@@ -68,7 +69,6 @@
 | [FM-174](FM-174-the-answer-dialog-s-ok-button-runs-past-the-dialog-s-left.md) | — | On a phone, 320 px wide, the Board's answer dialog draws its OK button past the dialog's left edge: by about 21 px in G… | Proposed | triage | — |
 | [FM-171](FM-171-reviewers-who-know-a-spec-s-design-read-past-what-its-text.md) | — | Reviewers who know a spec's design read past what its text leaves out. A fresh session given only sealanes/1's text bui… | Proposed | triage | — |
 | [FM-170](FM-170-trackers-hold-the-state-agents-act-on-as-prose-so-every.md) | — | Trackers hold much of the state agents act on as prose: a row's release, what blocks what, the Done when items and thei… | Proposed | triage | — |
-| [FM-168](FM-168-a-spec-s-conformance-tests-are-prose-so-no-implementation.md) | — | hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementat… | Proposed | triage | — |
 | [FM-167](FM-167-the-owner-s-act-on-an-ask-has-no-fixed-name-so-the-board.md) | — | The Owner's act on an ask has no fixed name, and the Board's answer dialog opens with Your decision is made. before the… | Proposed | triage | — |
 | [FM-165](FM-165-a-tracker-can-only-be-closed-by-hand-so-its-open-asks-where.md) | — | A tracker is closed by hand: a status, a line in its own words, and its open asks left waiting in the Owner's queue. No… | Proposed | triage | — |
 | [FM-164](FM-164-subversion-support-is-deprecated-then-removed-while-the-vcs.md) | — | shoalmark supports Git, Subversion and the plain folder, so every change touching history, the gate or the hooks is bui… | Proposed | triage | — |

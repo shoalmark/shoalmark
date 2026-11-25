@@ -1,19 +1,12 @@
 ---
 id: FM-168
-status: Proposed
+status: Parked
 considered: FM-042, FM-100, FM-153, FM-161, FM-165, FM-166
 tags: process
-next: build
-hook: "hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementation can run them, and a second one would learn the rules from the first. The Owner's words of 16, 20 and 21 November settled where the cases live: each spec's as plain files in a repository of their own, which the spec's repository holds pinned to the edition's commit, with a new case coming only through the spec. FM-168-Q2 asks the rest: every implementation runs the whole case set in its CI, the spec and its cases are the reference, and a private repository is named in public text, never linked. No release is named."
-ask-id: FM-168-Q2
-ask: "Do you take what is left of FM-168's decisions 3, 4 and 7: every implementation runs its edition's whole case set in CI and claims it only while every case passes; the spec and its cases are the reference, never an implementation; and a private repository is named in public text, never linked?"
-ask-kind: ruling
-ask-since: 2026-11-21
-ask-options: "yes, as proposed | yes, with the changes I name | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "rejected - tool fix and tracker cut takes priority."
-answered: 2026-11-25
-answered-by: holgo99
+next: wait
+triaged: 2026-11-25
+tier: P2
+hook: "hail/1's first edition names its conformance tests in sentences, and its repository holds no case files. No implementation can run them, and a second one would learn the rules from the first. The Owner's words of 16, 20 and 21 November settled where the cases live: each spec's as plain files in a repository of their own, which the spec's repository holds pinned to the edition's commit, with a new case coming only through the spec. FM-168-Q2 asked the rest, and the Owner said no for now: the tool fix and the tracker cut take priority. Parked until the cut is done, when the ask is put again."
 ---
 
 # FM-168 — a spec's conformance tests are prose, so no implementation can run them and a second one would learn the rules from the first
@@ -21,6 +14,10 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-13, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-25 — FM-168-Q2 answered no, with the Owner's signature: "tool fix and tracker cut takes priority." Parked,
+P2,** on the coordinator's word of that day. Nothing is built from decisions 3, 4 and 7. After the tracker cut is
+done, the ask is put again, with the record under *Asks*.
 
 **2026-11-21 — hail/1's cases get a repository of their own; FM-168-Q2 is put.** On the Owner's word of 21 November:
 - hail/1's cases sit in a repository of their own, shaped as sealanes/1's: the cases as plain files, their schema, the
@@ -143,10 +140,16 @@ Each item names its commit or pull request when it lands.
 **FM-168-Q1** · 2026-11-20 · Do you take FM-168's decisions as proposed: plain-file conformance cases for each spec, run in CI by every implementation, the spec and its cases as the reference, a second implementation aimed at a later edition of hail/1, and sealanes/1 and chart public at their first editions?
 **withdrawn** — no answer was given
 
+**FM-168-Q2** · 2026-11-25 · Do you take what is left of FM-168's decisions 3, 4 and 7: every implementation runs its edition's whole case set in CI and claims it only while every case passes; the spec and its cases are the reference, never an implementation; and a private repository is named in public text, never linked?
+**answered** — rejected - tool fix and tracker cut takes priority. · holgo99
+**relation** — rejected: tool fix and tracker cut takes priority.
+**signed** — 619d15f · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-168-Q2 answered no: the tool fix and the tracker cut take priority. Parked, P2, until the cut is done; the ask is put again then. Records only. |
 | 2026-11-21 | On the Owner's word of 21 November, hail/1's cases get a repository of their own, which shoalmark/hail holds at `conformance/` pinned to the edition's commit; decisions 1 and 2 now hold for hail/1 too, and decision 4's last part is settled. FM-168-Q2 is put on what is left of decisions 3, 4 and 7; decision 6's open parts stay open; `next: owner`. Records only. |
 | 2026-11-20 | FM-168-Q1 withdrawn, with its record under *Asks*: the Owner's words of 16 and 20 November settled decisions 1, 2, 5 and 6. The hook and *Done when* say so, and a new ask will cover decisions 3, 4 and 7 and chart; `next: build`. Records only. |
 | 2026-11-13 | Filed, Proposed, with FM-168-Q1 put: plain-file conformance cases for each spec, the spec and its cases as the reference, a second implementation's target, and when each spec goes public. No release. Records only. |

@@ -6,16 +6,7 @@ tags: process
 next: build
 triaged: 2026-11-16
 tier: P1
-hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 puts the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
-ask-id: FM-161-Q2
-ask: "Do you take FM-161's fix as proposed, or as changed under other: a project below the git top judged exactly as one at the top, every gate reading the project's root and configuration, with its tests, and after the move a Shipped tracker naming <repository>@<commit> of its team's code?"
-ask-kind: ruling
-ask-since: 2026-11-25
-ask-options: "yes, as proposed | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-25
-answered-by: holgo99
+hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 accepted the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -23,6 +14,11 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-25 — FM-161-Q2 answered "yes, as proposed", with the Owner's signature; keep P1, In Progress,** on the
+coordinator's word of that day. Decisions 7 to 13 stand as put. The build starts from main, from patches prepared
+before the answer, decisions 7, 9, 10 and 11 first. Its review is critical, and the release answer names where it
+ships.
 
 **2026-11-25 — FM-161-Q2 put: a project below the git top judged exactly as one at the top,** on the coordinator's
 word of that day.
@@ -141,7 +137,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **The tool serves a team whose root is a folder:** `--standup DIR …`, the gate and the hooks, each with its tests.
 - [ ] **FM-100's `standup-teams` takes such a place** where it refused it, with a test.
 - [ ] **The review at the tier its design sets is READY.**
-- [ ] **The Owner has answered FM-161-Q2.**
+- [x] **The Owner has answered FM-161-Q2.** · `453601f`, #330 (`c069017`)
 - [ ] **A project below the git top is judged exactly as one at the top:** each gate, with its tests and mutants.
 - [ ] **Hooks, signers and the records list** read from the project root, each with its tests.
 - [ ] **After the move:** a Shipped tracker names its team's code commit, and a code repository keeps its trackers
@@ -155,10 +151,16 @@ Each item names its commit or pull request when it lands.
 **relation** — accepted the proposal
 **signed** — 832a472 · G
 
+**FM-161-Q2** · 2026-11-25 · Do you take FM-161's fix as proposed, or as changed under other: a project below the git top judged exactly as one at the top, every gate reading the project's root and configuration, with its tests, and after the move a Shipped tracker naming <repository>@<commit> of its team's code?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — 453601f · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-161-Q2 answered, yes, as proposed; keep P1, In Progress; the build starts. Records only. |
 | 2026-11-25 | FM-161-Q2 put: a project below the git top judged exactly as one at the top, every gate reading the project's root and configuration, with its tests; after the move, a Shipped tracker names its team's code commit. Records only. |
 | 2026-11-20 | `epic: FM-139` removed: v0.20.3's scope is four items, on the Owner's word of 18 to 20 November, and this tracker is not among them (FM-139). Records only. |
 | 2026-11-16 | FM-161-Q1 answered, yes, as proposed; judged before its first build commit, keep P1, In Progress; a chapter of FM-139. Records only. |
