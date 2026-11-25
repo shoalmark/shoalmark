@@ -8291,9 +8291,32 @@ def folder_names(rev, folder):
 
 def tracker_name(tid, names):
     """Of `names`, each a name directly in the tracker folder, the first that is the tracker file of `tid`, `<id>-….md`, or None. The Shipped
-    rule finds a tracker at a parent by it where the tracker's path is absent there, and `--check`'s count of frozen trackers reads the
-    import's parents and the later commits by it, so the count holds what the rule freezes."""
+    rule finds a tracker at a parent by it where the tracker's path is absent there (`tracker_at`). `--check`'s count of frozen trackers
+    finds by it what an import adds against the import's parents, the files of a frozen tracker that later commits touch, and the tracker
+    at HEAD, and reads each later commit's parents as the rule does, so the count holds a tracker while the rule finds no move for it."""
     return next((n for n in names if n.startswith(tid + "-") and n.endswith(".md")), None)
+
+
+def tracker_at(wanted):
+    """What each tracker is at a parent, as the Shipped rule reads it: for each (parent, path, id) of `wanted`, {(parent, path): the text of
+    the file at `path` there, or, where that path is absent there, of the tracker file of `id` directly in the same folder (`tracker_name`),
+    since a tracker renamed is still itself; None where neither is there}. One `cat_blobs` by path, one `git ls-tree` for each parent and
+    folder where a path is absent, and one `cat_blobs` by id. The rule reads a move's parents by it, and `--check`'s frozen count the parents
+    of each later commit that touches a frozen tracker."""
+    texts = cat_blobs([f"{base}:./{rel}" for base, rel, _tid in wanted])
+    got = {(base, rel): texts.get(f"{base}:./{rel}") for base, rel, _tid in wanted}
+    folders, by_id = {}, {}
+    for base, rel, tid in wanted:
+        if got[(base, rel)] is None and tid:
+            d = pathlib.PurePath(rel).parent.as_posix()
+            if (base, d) not in folders:
+                folders[(base, d)] = folder_names(base, d)
+            was = tracker_name(tid, folders[(base, d)])
+            if was:
+                by_id[(base, rel)] = f"{base}:./{d}/{was}"
+    texts = cat_blobs(sorted(set(by_id.values())))
+    got.update({key: texts.get(spec) for key, spec in by_id.items()})
+    return got
 
 
 def shipped_moves(rels):
@@ -8321,14 +8344,10 @@ def shipped_moves(rels):
         else:
             now = {rel: made.get(spec(result, rel)) for rel in touched}
         moved.append((bases, label, now, [rel for rel in touched if is_shipped(now.get(rel))], (commit, name, email)))
-    earlier = cat_blobs([spec(base, rel) for bases, _l, _n, shipped, _by in moved for rel in shipped for base in bases])      # …and what each move was against, one call
+    earlier = tracker_at([(base, rel, rels[rel]["id"]) for bases, _l, _n, shipped, _by in moved for rel in shipped for base in bases])   # …and what each move was against: by path, else by id
     left = 0                                            # how many trackers the commit being made adds already Shipped, left to `--check`
     for bases, label, now, shipped, (commit, name, email) in moved:
-        before = {spec(base, rel): earlier.get(spec(base, rel)) for rel in shipped for base in bases}
-        for base, rel in [(b, r) for r in shipped for b in bases if before.get(spec(b, r)) is None]:     # absent at a base: new, or the same tracker renamed — its id says which
-            d = pathlib.PurePath(rel).parent.as_posix()
-            was = tracker_name(rels[rel]["id"], folder_names(base, d))
-            before[spec(base, rel)] = cat_blobs([f"{base}:./{d}/{was}"]).get(f"{base}:./{d}/{was}") if was else None
+        before = {spec(base, rel): earlier.get((base, rel)) for rel in shipped for base in bases}
         added = {rel for rel in shipped if all(before.get(spec(base, rel)) is None for base in bases)}
         later = added if COMMITTING and not commit else set()        # the commit hook's run, on the commit being made: its trailer and signature do not exist yet
         left += len(later)
@@ -8447,33 +8466,42 @@ def tracker_imports():
     return held, other
 
 
-def frozen_left(sha, froze):
-    """The ids of `froze` — what the import commit `sha` froze — that no later commit of HEAD's history has left not Shipped: one where every
-    file of its id that a commit touches is gone or not Shipped there ends its freeze for good. A file of its id is a tracker file of that id
-    directly in the tracker folder (`tracker_name`), as the rule reads a tracker; a file below that folder, such as a note under `evidence/`,
-    is no tracker's. One `git log` and one `cat_blobs`."""
+def frozen_left(sha, froze, held):
+    """The ids of `froze` — what the import commit `sha` froze — that no later commit of HEAD's history moves to Shipped, as the Shipped rule
+    judges a move: a commit, a merge included, where the tracker is Shipped and at none of whose parents it is, found at each parent by its
+    path or else by its id (`tracker_at`). A deletion or a move away from Shipped ends nothing by itself: on the line HEAD holds, a later
+    move back is such a move, and a side branch's deletion that the merge did not keep moves nothing back. A later import of `held` that
+    freezes the same tracker is no such move: it freezes it anew, and the count holds it once. The history is one `git log`, which reads a
+    merge by its own change, the files where its result differs from every parent, as the rule reads a merge. Only a tracker file of a
+    frozen id directly in the tracker folder (`tracker_name`) is read: a note below that folder is no tracker's. One `cat_blobs` for the
+    commits, and `tracker_at` for their parents."""
     if not froze:
         return set()
     home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
-    log = git_out("log", "-z", "--full-history", "--format=%x01%H", "--name-only", "--no-renames", "--relative", f"{sha}..HEAD", "--", home) or ""
+    log = git_out("log", "-z", "-c", "--full-history", "--format=%x01%H %P", "--name-only", "--no-renames", "--relative", f"{sha}..HEAD", "--", home) or ""
     def of(r):                                          # the frozen id whose tracker file `r` is, or None
         path = pathlib.PurePosixPath(r)
         return next((tid for tid in froze if tracker_name(tid, [path.name])), None) if path.parent.as_posix() == home else None
-    touched = []
+    touched = {}                                        # (commit, file) -> (the commit's parents, the frozen id whose file it is)
     for record in log.split("\x01")[1:]:
-        commit, _, files = record.partition("\x00")
-        touched += [(commit.strip(), r) for r in files.lstrip("\n").split("\x00") if r and of(r)]
+        head, _, files = record.partition("\x00")
+        commit, *parents = head.split()
+        touched.update({(commit, r): (parents, of(r)) for r in files.lstrip("\n").split("\x00") if r and of(r)})
     texts = cat_blobs([f"{c}:./{r}" for c, r in touched])
-    shipped_at = {}
-    for c, r in touched:
-        shipped_at.setdefault((c, of(r)), []).append(is_shipped(texts.get(f"{c}:./{r}")))
-    return set(froze) - {tid for (_c, tid), kept in shipped_at.items() if not any(kept)}
+    shipped = {(c, r): v for (c, r), v in touched.items() if is_shipped(texts.get(f"{c}:./{r}"))}
+    before = tracker_at([(p, r, tid) for (c, r), (parents, tid) in shipped.items() for p in parents])
+    again = {c: f for c, _v, f in held}                 # what each import freezes: at its own commit, a tracker it freezes anew is no move
+    moved = {tid for (c, r), (parents, tid) in shipped.items() if tid not in again.get(c, {}) and not any(is_shipped(before.get((p, r))) for p in parents)}
+    return set(froze) - moved
 
 
 def frozen_line(trackers):
-    """`--check`'s one line on the frozen rule: how many trackers are frozen — what an import commit that verifies added already Shipped,
-    still Shipped here and never left so since — and each such commit's short hash with its trailer; or that none is, naming the newest
-    commit that carries the trailer and freezes nothing, and why."""
+    """`--check`'s one line on the frozen rule: how many trackers are frozen, and each import commit's short hash with its trailer; or that
+    none is, naming the newest commit that carries the trailer and freezes nothing, and why. A tracker is frozen while the rule finds no
+    move for it: an import commit that verifies added it already Shipped, no later commit moves it to Shipped as the rule judges a move
+    (`frozen_left`), and it is Shipped at HEAD, its tracker file directly in the tracker folder found by its id, and in the working state.
+    So after a move away from Shipped or a deletion on the line HEAD holds, a later move back is judged and the count leaves the tracker
+    out, and a move back not yet committed is judged in the change being made."""
     found = tracker_imports()
     if found is None:
         return f"frozen trackers: none — HEAD's history cannot be read, so no `{IMPORT_TRAILER}:` commit freezes anything"
@@ -8482,7 +8510,12 @@ def frozen_line(trackers):
         return (f"frozen trackers: none — no commit of HEAD's history carries `{IMPORT_TRAILER}:` and verifies as the Owner's own signed commit"
                 + (f"; {other[0][0][:7]} carries `{IMPORT_TRAILER}: {other[0][1]}` and {other[0][2]}, so it freezes nothing" if other else ""))
     now = {t["id"] for t in trackers if t.get("status") == "Shipped"}
-    frozen = set().union(*(frozen_left(sha, froze) for sha, _v, froze in held)) & now
+    frozen = set().union(*(frozen_left(sha, froze, held) for sha, _v, froze in held)) & now
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    names = folder_names("HEAD", home)
+    at_head = {tid: f"HEAD:./{home}/{n}" for tid in frozen for n in [tracker_name(tid, names)] if n}
+    texts = cat_blobs(list(at_head.values()))
+    frozen = {tid for tid, spec in at_head.items() if is_shipped(texts.get(spec))}
     return (f"frozen trackers: {len(frozen)} — added already `Shipped` by "
             + " and ".join(f"the import commit {sha[:7]} ({IMPORT_TRAILER}: {value})" for sha, value, _f in held)
             + ", the Owner's own signed commit; the Shipped rule finds no move for them")

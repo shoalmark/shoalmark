@@ -5,8 +5,11 @@ is frozen: the Shipped rule finds no move for it, and `--check` says in one line
 The same commit unsigned, by a seat, or with a trailer out of its form freezes nothing, and each tracker it adds is refused; a tracker the
 import modifies is judged; a later move of a tracker that is not frozen is judged as ever; a frozen tracker reopened and shipped again is
 judged, and stays unfrozen. `--check` counts what the rule freezes: a tracker the import renames onto `Shipped` is present at the parent
-by its id, so the rule judges it and the count leaves it out; a later file named for a frozen tracker below the tracker folder is no
-tracker's, so the count keeps that tracker. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
+by its id, so the rule judges it and the count leaves it out; a later file named for a frozen tracker below the tracker folder, even one
+that reads `Shipped`, is no tracker's, so the count keeps that tracker. The count ends a freeze only where the rule judges a move, merges
+included: a side branch's deletion that the merge does not keep moves nothing back, so the count stays 48 and nothing is refused; a merge
+that deletes a frozen tracker, then the seat's commit or the seat's own merge that adds it back `Shipped`, is a move the rule refuses, and
+the count says 47. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
 commit adds already `Shipped` to `--check` and says so in one line, so the Owner's signed import is made and frozen, a seat's same commit is
 made and refused by `--check`, and a move of a tracker present at a parent is refused by the hook as before. A run whose project root is
 below the top of its git repository is refused in one line, a run at the top is not, and `--version` and `--help` still run below the top.
@@ -321,13 +324,93 @@ def rows_later_note(area, add):
     note = r.root / REL / "evidence" / f"{tid}-note.md"
     note.parent.mkdir(parents=True)
     with open(note, "w", encoding="utf-8", newline="\n") as f:
-        f.write(f"# {tid}: what the import brought\n\nA note.\n")
+        f.write(imported(tid))                          # the tracker as the import brought it, quoted: it reads Shipped, and is still no tracker's
     r.commit(f"{tid}: a note on what the import brought", who=OWNER, sign=True)
     said = r.check()
-    s("a later commit adds a note named for a frozen tracker, below the tracker folder: passes", said[0] == 0 and not named(said, IMPORTED), said)
+    s("a later commit adds a note named for a frozen tracker, below the tracker folder, that quotes it as the import brought it: passes",
+      said[0] == 0 and not named(said, IMPORTED), said)
     s("…and --check still names 48 frozen: the note is no tracker's file", frozen_said(said).startswith("frozen trackers: 48 —"), extra=repr(frozen_said(said)))
     s.add(add, "after the signed import, a later commit adds a note named for a frozen tracker under evidence/: that tracker stays frozen, and "
                "--check still names 48")
+
+
+# --- the count ends a freeze only where the rule judges a move, merges included ---------------------------------------------------
+
+def merged(r, branch, *, then=None):
+    """`branch` merged into the branch checked out, as the seat, with a merge commit: `then(r)` runs before it is made, with the merge's
+    result in the working tree, and INDEX.md is written as the tool writes it. Where the merge stops on a conflict, the working tree's
+    files are taken as they are. Its commit."""
+    git(r.root, "merge", "-q", "--no-ff", "--no-commit", branch, check=False)
+    if then:
+        then(r)
+    run(r.root, "--print-written", who=SEAT)
+    git(r.root, "add", "-A")
+    git(r.root, "commit", "-q", "--no-edit")
+    return r.head()
+
+
+def rows_side_deletion_kept(area, add):
+    r = seeded(area, "import")
+    s = Steps()
+    tid = IMPORTED[0]
+    r.switch("-c", "side")
+    git(r.root, "rm", "-q", f"{REL}/{tid}-x.md")
+    r.commit(f"{tid}: deleted on a side branch")
+    r.switch("import")
+    r.write(tid, r.read(tid) + "\nA note after the import.\n")
+    r.commit(f"{tid}: a note")
+    m = merged(r, "side")                               # the modify/delete conflict, resolved by keeping the edited file
+    kept = len(git(r.root, "log", "-1", "--format=%P", m).split()) == 2 and (r.root / REL / f"{tid}-x.md").exists()
+    said = r.check()
+    s("a side branch deletes a frozen tracker while the line edits it, and the merge keeps the edited file: passes, no tracker refused",
+      kept and said[0] == 0 and not named(said, IMPORTED), said)
+    s("…and --check still names 48 frozen: the deletion the merge did not keep moves nothing back", frozen_said(said).startswith("frozen trackers: 48 —"),
+      extra=repr(frozen_said(said)))
+    r.switch("side")
+    merged(r, "import", then=lambda r: r.write(tid, r.read(tid) + "Merged into the side branch.\n"))
+    said = r.check()
+    s("the side branch, where it is deleted, then takes the line in a merge that also edits it: passes, no tracker refused",
+      said[0] == 0 and not named(said, IMPORTED), said)
+    s("…and --check still names 48 frozen: the tracker is Shipped at the merge's second parent, so the merge is no move",
+      frozen_said(said).startswith("frozen trackers: 48 —"), extra=repr(frozen_said(said)))
+    s.add(add, "after the signed import, a side branch deletes a frozen tracker and the merge keeps the edited file: nothing moves back, so "
+               "nothing is refused and --check still names 48; nor when the side branch takes the line in a merge that edits the tracker")
+
+
+def rows_merge_deletes(area, add):
+    r = seeded(area, "import")
+    s = Steps()
+    tid = IMPORTED[0]
+    r.switch("-c", "side")
+    (r.root / "src" / "side.py").write_text("side\n", encoding="utf-8")
+    r.commit("a side change")
+    r.switch("import")
+    m = merged(r, "side", then=lambda r: git(r.root, "rm", "-q", f"{REL}/{tid}-x.md"))
+    said = r.check()
+    s("a merge that deletes a frozen tracker itself: passes, and --check names 47 frozen", said[0] == 0 and not named(said, IMPORTED)
+      and frozen_said(said).startswith("frozen trackers: 47 —"), said, repr(frozen_said(said)))
+    r.write(tid, imported(tid))
+    git(r.root, "add", "-A")
+    said = r.check()
+    s("the seat adds it back Shipped, staged and not yet committed: refused, it alone, and --check names 47 frozen, since it is not Shipped at HEAD",
+      said[0] == fm.EXIT_LINT and refused_for(said, [tid]) and named(said, IMPORTED) == [tid] and frozen_said(said).startswith("frozen trackers: 47 —"),
+      said, repr(frozen_said(said)))
+    r.commit(f"{tid}: added again")
+    said = r.check()
+    s("…committed: refused, it alone, and --check names 47 frozen", said[0] == fm.EXIT_LINT and refused_for(said, [tid]) and named(said, IMPORTED) == [tid]
+      and frozen_said(said).startswith("frozen trackers: 47 —"), said, repr(frozen_said(said)))
+    git(r.root, "reset", "-q", "--hard", m)
+    r.switch("-c", "side-2")
+    (r.root / "src" / "side.py").write_text("side 2\n", encoding="utf-8")
+    r.commit("a second side change")
+    r.switch("import")
+    merged(r, "side-2", then=lambda r: write(r.root, tid, imported(tid)))
+    said = r.check()
+    s("…and added back Shipped in the seat's own merge instead: refused, it alone, and --check names 47 frozen",
+      said[0] == fm.EXIT_LINT and refused_for(said, [tid]) and named(said, IMPORTED) == [tid] and frozen_said(said).startswith("frozen trackers: 47 —"),
+      said, repr(frozen_said(said)))
+    s.add(add, "after the signed import, a merge deletes a frozen tracker and the seat adds it back Shipped, in a commit or in a merge of its "
+               "own: the rule refuses that move and --check names 47; before the commit, the staged move is refused and --check names 47")
 
 
 # --- a project below the top of its git repository is refused; at the top it is not; --version and --help still run ----------------
@@ -514,7 +597,8 @@ def rows_hooked_merge(area, add):
 
 
 ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_renamed_by_import, rows_later_note,
-        rows_root_import, rows_owner_unmarked, rows_below_top, rows_act_below_top, rows_hooked_import, rows_hooked_merge)
+        rows_root_import, rows_owner_unmarked, rows_below_top, rows_act_below_top, rows_hooked_import, rows_hooked_merge, rows_side_deletion_kept,
+        rows_merge_deletes)
 
 
 # Each mutant: (what it breaks, the function it patches, the text it replaces, its replacement, the rows that must catch it).
@@ -530,7 +614,7 @@ MUTANTS = (
     ("a trailer read in any form", "import_value", "if IMPORT_VALUE_RE.fullmatch(v)", "if v", (rows_unverified_import,)),
     ("a tracker modified, not added, by the import also frozen", "shipped_moves",
      "added = {rel for rel in shipped if all(before.get(spec(base, rel)) is None for base in bases)}", "added = set(shipped)", (rows_modified_by_import,)),
-    ("the unfreeze not lasting", "frozen_left", "    return set(froze) - {", "    return set(froze) or {", (rows_reopened,)),
+    ("a later move to Shipped not ending the freeze", "frozen_left", "    return set(froze) - moved", "    return set(froze)", (rows_reopened,)),
     ("a tracker reopened in the working state counted frozen", "frozen_line", "for sha, _v, froze in held)) & now", "for sha, _v, froze in held))", (rows_reopened,)),
     ("the count read by path: a tracker the import renames onto Shipped counted frozen", "tracker_imports",
      " and not any(tracker_name(tid, names) for names in there)", "", (rows_renamed_by_import,)),
@@ -552,6 +636,11 @@ MUTANTS = (
      "later = added if COMMITTING else set()", (rows_hooked_merge,)),
     ("the freeze held by an Owner whom the configuration does not mark signed", "import_verified",
      'bool(theirs) and theirs[1] == "signed" and verified_as(', "bool(theirs) and verified_as(", (rows_owner_unmarked,)),
+    ("the history read as before, by --name-only of each commit, with no merge's own change", "frozen_left", '"log", "-z", "-c", ', '"log", "-z", ',
+     (rows_merge_deletes,)),
+    ("the Shipped at HEAD test dropped", "frozen_line", "    frozen = {tid for tid, spec in at_head.items() if is_shipped(texts.get(spec))}\n", "",
+     (rows_merge_deletes,)),
+    ("a move judged against the first parent alone", "frozen_left", "for p in parents)}", "for p in parents[:1])}", (rows_side_deletion_kept,)),
 )
 
 
