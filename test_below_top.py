@@ -301,6 +301,46 @@ def rows_shipped(area, add):
         return accepted(said, "with no commit behind it"), seen(said)
     each(area, add, "ship-built", "Shipped · a move to Shipped naming the commit that built it: accepted", with_commit, {"FM-001": text("FM-001")})
 
+    if picked("ship-outside"):
+        rows = []
+        try:
+            r = org(area, "ship-outside")
+            r.commit("the import: the tool team's project", who=OWNER, sign=True)
+
+            def moved(folder, tid, sha, who):
+                r.write(folder, tid, shipped(r.read(folder, tid), f"Built in {sha[:10]}."))
+                r.commit(f"{tid}: shipped", who=who)
+                said = r.check(folder, who=who)
+                git(r.top, "reset", "-q", "--hard", "HEAD~1")
+                return said
+            r.put("src/app.py", "print('app, changed')\n")
+            outside = r.commit("the outer project's app", who=COORD, paths=["src/app.py"])
+            team, outer = moved(TEAM, "FM-002", outside, LEAD), moved("", "OR-001", outside, COORD)
+            r.put("src/app.py", "print('app, again')\n")
+            r.put(r_at(TEAM, REL + "/evidence/note.md"), "a note\n")
+            noted = r.commit("the app, and a note of the team's", who=LEAD, paths=["src/app.py", r_at(TEAM, REL + "/evidence/note.md")])
+            team_noted = moved(TEAM, "FM-002", noted, LEAD)
+            r.put("src/app.py", "print('app, a third time')\n")
+            r.put(r_at(TEAM, "src/tool.py"), "print('tool')\n")
+            built = r.commit("the app, and the team's tool", who=LEAD, paths=["src/app.py", r_at(TEAM, "src/tool.py")])
+            team_built = moved(TEAM, "FM-002", built, LEAD)
+            why = f"`{outside[:10]}` changes nothing outside the records ({TEAM}/{REL}/) under the project root, `{TEAM}/`"
+            rows = [("Shipped · below the top: a move naming a commit whose every path lies outside the project root — the outer project's "
+                     "`src/app.py` — is refused: it changes nothing outside the records, under the root",
+                     refused(team, "FM-002: moved to `Shipped` with no commit behind it — " + why), seen(team)),
+                    ("Shipped · below the top: a commit with a path outside the root and, under it, only a record of the team's — refused",
+                     refused(team_noted, f"`{noted[:10]}` changes nothing outside the records ("), seen(team_noted)),
+                    ("Shipped · below the top: a commit with a path outside the root and a path of the team's product — accepted",
+                     accepted(team_built, "with no commit behind it"), seen(team_built)),
+                    ("Shipped · at the top: the outer project's move naming the commit that changed its `src/app.py` — accepted, as before",
+                     accepted(outer, "with no commit behind it"), seen(outer))]
+        except Exception as e:
+            rows.append(("Shipped · a commit outside the project root: a fixture step failed", False, f"{type(e).__name__}: {str(e)[:300]}"))
+        finally:
+            fm.configure(HERE)
+        for row in rows:
+            add(*row)
+
 
 # --- `[ratio] records`: written from the project root -------------------------------------------------------------------------------
 
@@ -334,6 +374,45 @@ def rows_records(area, add):
         return got == want, f"ship_records() = {got}, not {want}"
     each(area, add, "records-list", "`[ratio] records` · the prefixes held against `git log`'s paths: each written from the project root, "
          "then named from the top", listed, {"FM-001": text("FM-001")}, tables=RATIO)
+
+    def no_list(r, f):
+        (r.root(f) / "shoalmark.toml").write_text(team_config(tables='[ratio]\nrecords = "docs/"\n'), encoding="utf-8")
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        built = r.commit("FM-001: built", paths=[r.at(f, "src/tool.py")])
+        r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Built in {built[:10]}."))
+        r.commit("FM-001: shipped")
+        said = r.check(f)
+        return (refused(said, "FM-001: moved to `Shipped`, which needs the records told from the product",
+                        "`[ratio] records` is a list of prefixes written from the project root") and "repository-relative" not in said[2]), seen(said)
+    each(area, add, "records-no-list", "`[ratio] records` · a value that is no list: the move's refusal says the prefixes are written from the "
+         "project root", no_list, {"FM-001": text("FM-001")})
+
+    def from_top(r, f):
+        entry = r.at(f, "notes/")
+        (r.root(f) / "shoalmark.toml").write_text(team_config(tables=f'[ratio]\nrecords = ["docs/", "{entry}"]\n'), encoding="utf-8")
+        r.put(r.at(f, "notes/plan.md"), "the plan\n")
+        noted = r.commit("FM-001: the plan", paths=[r.at(f, "notes/plan.md")])
+        r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Planned in {noted[:10]}."))
+        r.commit("FM-001: shipped")
+        said = r.check(f)
+        if not f:                                       # at the top the entry is the root's own words: read as written
+            return refused(said, f"`{noted[:10]}` changes nothing outside the records (docs/, notes/)"), seen(said)
+        hook = run(r.root(f), "--print-written", who=LEAD)
+        line = f'shoalmark.toml: `[ratio] records` is written from the project root, `{f}/` — "{entry}" starts with the root\'s own folder: write it "notes/"'
+        return (said[0] == 1 and said[2].strip() == line and not said[1].strip() and hook[0] == 1 and hook[2].strip() == line,
+                f"--check exit {said[0]}: {said[2].strip()[:300]!r} · --print-written exit {hook[0]}: {hook[2].strip()[:300]!r}")
+    each(area, add, "records-from-top", "`[ratio] records` · an entry written from the top of the repository: at the top, the root's own words, read "
+         "as written; below the top, the run is refused in one line — the records are written from the project root, the entry, and the "
+         "entry as it should read", from_top, {"FM-001": text("FM-001")})
+
+    if picked("records-schema"):
+        code, out, err = run(HERE, "--schema")
+        ratio = [line for line in out.split("\n") if line.startswith(("| `[ratio] records` |", "| `[ratio] exclude` |"))]
+        add("`[ratio]` · `--schema`'s two rows say each list's prefixes are written from the project root, and that an entry of `records` "
+            "written from the top is refused below it",
+            code == 0 and len(ratio) == 2 and all("| a list of prefixes written from the project root; " in line for line in ratio)
+            and "repository-relative" not in "".join(ratio) and "an entry that starts with the root's own folder is refused" in ratio[0],
+            f"exit {code}: {ratio}")
 
 
 # --- asks and answers --------------------------------------------------------------------------------------------------------------
@@ -966,6 +1045,16 @@ MUTANTS = (
     ("`[ratio] records` read from the top", "ship_records", [("return [prefix + p for p in records]",
                                                             "return records if isinstance(section, dict) else [prefix + p for p in records]", 1)],
      (rows_records,), {"records-only", "records-list"}, BELOW),
+    ("the commit behind a move counted by its paths outside the project root", "git_ship_verdicts",
+     [("any(f.startswith(prefix) and ratio_class(", "any(ratio_class(", 1)], (rows_shipped,), {"ship-outside"}, False),
+    ("`[ratio]`'s refusal says repository-relative prefixes", "ratio_paths",
+     [("is a list of prefixes written from the project root", "is a list of repository-relative prefixes", 1)], (rows_records,), {"records-no-list"}, False),
+    ("`--schema`'s `[ratio]` rows say repository-relative prefixes", "CONFIG_KEYS",
+     [("a list of prefixes written from the project root;", "a list of repository-relative prefixes;", 2)], (rows_records,), {"records-schema"}, False),
+    ("a records entry written from the top read as written, below the top", "records_from_top", [("if entry.startswith(prefix):", "if False:", 1)],
+     (rows_records,), {"records-from-top"}, BELOW),
+    ("a records entry refused at the top too, where the root's folder is empty", "records_from_top",
+     [("if not prefix or not isinstance(records, list)", "if not isinstance(records, list)", 1)], (rows_records,), {"records-from-top", "records-only"}, False),
     ("another project's skip taken where only some paths lie in it", "other_project_changes", [("if rels and all(", "if rels and any(", 1)],
      (rows_other_project,), {"both"}, False),
     ("another project's skip taken for a folder with no `shoalmark.toml`", "other_project_changes",
@@ -990,8 +1079,22 @@ MUTANTS = (
 
 @contextlib.contextmanager
 def mutated(name, pairs):
-    """`fm.<name>` replaced by a patched copy of its own source, compiled in the module's namespace — and put back after."""
+    """`fm.<name>` replaced by a patched copy of its own source, compiled in the module's namespace — and put back after. A table of the
+    module's (a dict of tuples of words) is patched in its words instead, value by value."""
     real = getattr(fm, name)
+    if isinstance(real, dict):
+        table = dict(real)
+        for old, new, count in pairs:
+            found = sum(w.count(old) for v in table.values() for w in v)
+            if (found < 1) if count is None else (found != count):
+                raise AssertionError(f"{name}: {old[:60]!r} is in its words {found} times, not {count or 'one or more'}")
+            table = {k: tuple(w.replace(old, new) for w in v) for k, v in table.items()}
+        setattr(fm, name, table)
+        try:
+            yield
+        finally:
+            setattr(fm, name, real)
+        return
     src = textwrap.dedent(inspect.getsource(real))
     for old, new, count in pairs:
         if (src.count(old) < 1) if count is None else (src.count(old) != count):
@@ -1019,7 +1122,7 @@ def run_mutants(*, results=None, only=None):
                     rows_(area / f"m{n}", lambda l, ok, saw="": reds.append(l) if not ok else None)
         except AssertionError as e:
             broke = str(e)
-        except Exception as e:                                        # a mutant that crashes a row turned it red
+        except (Exception, SystemExit) as e:                          # a mutant that crashes a row, or refuses the run itself, turned it red
             reds.append(f"a row crashed: {type(e).__name__}: {str(e)[:120]}")
         finally:
             _PICK.update(cases=None, below=False)

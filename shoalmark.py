@@ -866,6 +866,9 @@ def configure(root=None):
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
+    from_top = records_from_top()                       # below the top, a records entry written from the top: refused, never read as naming nothing
+    if from_top:
+        raise SystemExit(from_top)
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
@@ -6461,11 +6464,13 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                        "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
                        "`principal` and `implementer`, the former names of `planner` and `builder`, still read and hold the same. "
                        "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none"),
-    "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default, with or without `[ratio]`",
+    "[ratio] records": ("a list of prefixes written from the project root; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default, with or without `[ratio]`",
                         "the records, as a move to `Shipped` reads them (FM-005, FM-032): a commit its ship log names is a commit behind the change only "
-                        "where it changes a path outside them — a prefix with a trailing slash is a directory, a plain path is that one file. The ratio "
+                        "where it changes a path of the project outside them — a prefix with a trailing slash is a directory, a plain path is that one file. "
+                        "Where the project root is below the top of its repository, an entry that starts with the root's own folder is refused at "
+                        "configuration, naming it as it should read (exit 1). The ratio "
                         "`--ratio` counted from them is gone (R13); a key of `[ratio]` other than these two is named by `--check` and not read"),
-    "[ratio] exclude": ("a list of repository-relative prefixes; `[]` (the default)",
+    "[ratio] exclude": ("a list of prefixes written from the project root; `[]` (the default)",
                         "kept as written (R26), and checked as `records` is; nothing counts with it since R13 removed `--ratio`, which left these "
                         "prefixes out of both sides — a move to `Shipped` reads `records` alone, as it always has, and `--check` says so where it is set"),
     "judged_before_build": ("`true` or `false` (the default)",
@@ -7570,6 +7575,8 @@ def other_project_changes(items):
     for _rev, rels in items:
         for rel in rels:
             if rel not in homes:
+                # the limit: a folder is another project only where its `shoalmark.toml` is on disk now — one the working tree lacks, not
+                # checked out or removed since, is not seen, and its commits are judged here as this project's: more is judged, never less
                 homes[rel] = [f.as_posix() for f in pathlib.PurePosixPath(rel).parents if f.parts and os.path.lexists(ROOT / f / CONFIG_NAME)]
     asked = {(rev, home) for rev, rels in items for rel in rels for home in homes[rel]}
     if not asked:
@@ -7858,7 +7865,9 @@ def ship_records():
 def git_ship_verdicts(names, bases, records):
     """{name: "" when that commit is a commit behind the change, else why it is not} — in the change's history (reachable from its
     parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
-    At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
+    A path outside the project root is no path of this project's: below the top, a commit that changes nothing under the root but
+    records changes nothing outside the records (`root_prefix`). At most three git calls for all the names — which of them are
+    commits, which of those the parents reach, what those change."""
     git = lambda *a, **k: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}\n{n}^{{commit}}\n" for n in names))     # each name twice: as written, where git says *ambiguous*, and peeled to its commit
     lines = found.stdout.split("\n") + [""] * (2 * len(names))
@@ -7874,16 +7883,16 @@ def git_ship_verdicts(names, bases, records):
         for record in log.stdout.split("\x01")[1:]:         # NUL-separated names: a `"` or a tab in a name is no quoted name here (RV-2151)
             sha, _, files = record.partition("\x00")
             changed[sha.strip()] = [f for f in files.lstrip("\n").split("\x00") if f]
-    out = {}
+    out, prefix = {}, root_prefix()                    # the paths git names from the top: this project's are those under its root
     for n in names:
         if n in ambiguous:
             out[n] = "names more than one commit — write more of its hash"
         elif n not in behind:
             out[n] = "is not in the history" + ("" if n in shas else " (no such commit)")
-        elif any(ratio_class(f, records, []) == "product" for f in changed.get(behind[n], [])):
+        elif any(f.startswith(prefix) and ratio_class(f, records, []) == "product" for f in changed.get(behind[n], [])):
             out[n] = ""
         else:
-            out[n] = f"changes nothing outside the records ({', '.join(records)})"
+            out[n] = f"changes nothing outside the records ({', '.join(records)})" + (f" under the project root, `{prefix}`" if prefix else "")
     return out
 
 
@@ -8496,7 +8505,7 @@ def ratio_paths(section):
     for key, default in ratio_defaults().items():
         value = section.get(key, default)
         if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
-            raise ValueError(f"{CONFIG_NAME}: `[ratio] {key}` is a list of repository-relative prefixes, each a non-empty string — "
+            raise ValueError(f"{CONFIG_NAME}: `[ratio] {key}` is a list of prefixes written from the project root, each a non-empty string — "
                              f"`{key} = {json.dumps(default)}`. Got {value!r}")
         out.append([v.strip() for v in value])
     return out
@@ -8506,6 +8515,27 @@ def ratio_class(path, records, exclude):
     """"skip" for a path left out, "records", or "product" — a prefix with a trailing slash is a directory, a plain one is that file."""
     hit = lambda prefixes: any(path.startswith(p) if p.endswith("/") else path == p for p in prefixes)
     return "skip" if hit(exclude) else "records" if hit(records) else "product"
+
+
+def records_from_top():
+    """The one line that refuses the run where the project root is below the top of its git working tree and a `[ratio] records` entry
+    starts with the root's own folder: every entry is written from the root, so such an entry names a folder of that name inside the
+    root, and a move to `Shipped` would hold its commits against a path that holds nothing. None at the top, where that folder is empty,
+    and where `records` is no list of prefixes — `ratio_paths` says so, for the move that reads it. Told from the folders, with no git
+    started: the folder `select_vcs` found the working tree's `.git` in is its top."""
+    section = CONFIG.get("ratio")
+    if _VCS[0] != "git" or _VCS[1] is None or not isinstance(section, dict):
+        return None
+    prefix = "" if _VCS[1] == ROOT else ROOT.relative_to(_VCS[1]).as_posix() + "/"
+    records = section.get("records")
+    if not prefix or not isinstance(records, list) or not all(isinstance(v, str) and v.strip() for v in records):
+        return None
+    for entry in (v.strip() for v in records):
+        if entry.startswith(prefix):
+            rest = entry[len(prefix):]
+            return (f"{CONFIG_NAME}: `[ratio] records` is written from the project root, `{prefix}` — {json.dumps(entry)} starts with the root's own "
+                    + (f"folder: write it {json.dumps(rest)}" if rest else "folder and names nothing inside it: write the folders inside the root that hold the records"))
+    return None
 
 
 def session_cmd(words):
@@ -9717,7 +9747,8 @@ def guard_walk(*revs, keys=(), unread=False):
                               files, prefix, keys, unread, lambda c=c: tree_paths(c)))
                for c, ps, subject, files in commits]
     rows, paths = [row for row in changed if row[3]], {c: files for c, _ps, _s, files in commits}
-    # another project's commit is its own check's (`other_project_changes`): its paths, named from the top, taken from the project root
+    # another project's commit is its own check's (`other_project_changes`): its paths, named from the top, taken from the project root.
+    # A signers file inside that project is one of them: a commit that changes it alone is judged by that project's guard, by the same rule
     theirs = other_project_changes([(row[0], [f[len(prefix):] for f in paths[row[0]] if f.startswith(prefix)]) for row in rows])
     return len(commits), [row for n, row in enumerate(rows) if n not in theirs]
 
@@ -10148,7 +10179,8 @@ def triage_pending(subject):
     what = guard_changes(views[""], [views[p] for p in parents],
                          [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])],
                          staged, prefix, keys, not owners, lambda: tree_paths("", env))
-    # another project's commit being made is its own check's (`other_project_changes`): its staged paths, named from the top, taken from the project root
+    # another project's commit being made is its own check's (`other_project_changes`): its staged paths, named from the top, taken from the project root.
+    # A signers file inside that project is one of them: that project's commit-time guard judges a change to it, by the same rule
     if what and other_project_changes([("", [f[len(prefix):] for f in staged if f.startswith(prefix)])]):
         what = []
     brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys, unread=not owners)[1] if heads else []

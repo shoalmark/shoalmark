@@ -12990,7 +12990,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = made5_(512, f"built in {built5_[:7]}")
     (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")
     check("FM-005 · a `[ratio] records` that is no list is refused in one line, for the move that needs it — never a traceback",
-          code == fm.EXIT_LINT and "AP-512: moved to `Shipped`, which needs the records told from the product" in err and "`[ratio] records` is a list of repository-relative prefixes" in err and "Traceback" not in err)
+          code == fm.EXIT_LINT and "AP-512: moved to `Shipped`, which needs the records told from the product" in err and "`[ratio] records` is a list of prefixes written from the project root" in err and "Traceback" not in err)
     # a merge is judged commit by commit: each commit it brings, against its own parent
     merged5_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
                                          env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))

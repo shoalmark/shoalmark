@@ -82,6 +82,20 @@ R13_NEW = "--since: R13, the Owner's ruling of 12 October, removed it with --rat
 SCHEMA_CASE = "schema-check-priority"
 R15_SCHEMA_ROWS = ("| `freeze_at` |", "| `freeze_tag` |")
 R13_SCHEMA_ROWS = ("| `[ratio] records` |", "| `[ratio] exclude` |")
+# …and those two rows pinned whole, as the candidate prints them: each list's prefixes are written from the project root, and an entry
+# of `records` that starts with the root's own folder, below the top, is refused. The rows re-pinned with these words; a candidate whose
+# row says anything else — `repository-relative prefixes`, as before — does not match.
+RATIO_SCHEMA_ROWS = (
+    '| `[ratio] records` | a list of prefixes written from the project root; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default, '
+    'with or without `[ratio]` | the records, as a move to `Shipped` reads them (FM-005, FM-032): a commit its ship log names is a commit behind the '
+    'change only where it changes a path of the project outside them — a prefix with a trailing slash is a directory, a plain path is that one file. '
+    "Where the project root is below the top of its repository, an entry that starts with the root's own folder is refused at configuration, naming it "
+    'as it should read (exit 1). The ratio `--ratio` counted from them is gone (R13); a key of `[ratio]` other than these two is named by `--check` and '
+    'not read |',
+    '| `[ratio] exclude` | a list of prefixes written from the project root; `[]` (the default) | kept as written (R26), and checked as `records` is; '
+    'nothing counts with it since R13 removed `--ratio`, which left these prefixes out of both sides — a move to `Shipped` reads `records` alone, as it '
+    'always has, and `--check` says so where it is set |',
+)
 
 
 def r15_schema_dropped(observed):
@@ -93,11 +107,14 @@ def r15_schema_dropped(observed):
 
 
 def r13_schema_matches(before, after):
-    """Whether a candidate's run of the schema case matches the baseline's but for R13's two `[ratio]` rows, each still one row of its key."""
+    """Whether a candidate's run of the schema case matches the baseline's but for R13's two `[ratio]` rows, each still one row of its key,
+    and each the row pinned for it (`RATIO_SCHEMA_ROWS`)."""
     if (before["status"], before["stderr"]) != (after["status"], after["stderr"]):
         return False
     old, new = before["stdout"].split("\n"), after["stdout"].split("\n")
     if len(old) != len(new) or any(sum(line.startswith(row) for line in lines) != 1 for row in R13_SCHEMA_ROWS for lines in (old, new)):
+        return False
+    if any(line.startswith(R13_SCHEMA_ROWS) and line not in RATIO_SCHEMA_ROWS for line in new):
         return False
     return all(any(a.startswith(row) and b.startswith(row) for row in R13_SCHEMA_ROWS) for a, b in zip(old, new) if a != b)
 
@@ -2047,6 +2064,12 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        not schema_matches(olds, dict(news, stdout="\n".join(lines[:other] + [lines[other] + " changed"] + lines[other + 1:])))
                        and not schema_matches(olds, dict(news, stdout="\n".join(l for l in lines if not l.startswith(R13_SCHEMA_ROWS[1])) + "\n"))
                        and not schema_matches(olds, dict(news, stdout=news["stdout"].replace(R13_SCHEMA_ROWS[0], R13_SCHEMA_ROWS[1], 1))))
+        assert_control(schema + "the two `[ratio]` rows are pinned whole: the candidate prints each as pinned, and one whose row says "
+                       "`repository-relative prefixes` again, or carries one word more, does not match",
+                       all(row in lines for row in RATIO_SCHEMA_ROWS)
+                       and not schema_matches(olds, dict(news, stdout=news["stdout"].replace("a list of prefixes written from the project root",
+                                                                                             "a list of repository-relative prefixes", 1)))
+                       and not schema_matches(olds, dict(news, stdout=news["stdout"].replace(RATIO_SCHEMA_ROWS[1], RATIO_SCHEMA_ROWS[1][:-2] + " more |", 1))))
         assert_control(schema + "a schema that changes its exit or its stderr does not match, and a baseline that does not hold each freeze row once is not allowed at all",
                        not schema_matches(olds, dict(news, status=news["status"] + 1)) and not schema_matches(olds, dict(news, stderr=news["stderr"] + "x\n"))
                        and r15_schema_dropped(dict(olds, stdout="")) is None
