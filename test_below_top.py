@@ -6,13 +6,16 @@ default branch's signers file — and lays the same project out twice: at the to
 one whose top holds other files. It runs the tool in this process and states each layout's verdict, which must be the same. The
 acceptance shapes put an outer project at the top beside a team project in `teams/tool/`, each with its own `shoalmark.toml` and
 tracker folder; in that layout, with the hooks installed once, the commit that creates a project below the top is the project's
-around it, which judges it. Each mutant patches one function of the imported module, putting back what the reads did before — or, for the hooks,
-of the copy of the tool they run in a process of their own — and must turn at least one row red.
+around it, which judges it. In that layout, with the tool kept in the top's `tools/`, a run from the team project, a run with `--root` and the
+hooks' run write one INDEX.md, the tool named by its path from the project's root. Each mutant patches one function of the imported module,
+putting back what the reads did before — or, for the hooks and for the tool a row keeps in its repository, of the file they run in a process of
+their own — and must turn at least one row red.
 
 Run: `python3 test_below_top.py` — exit 1 on a failure; `--no-mutants` runs the rows alone. test_shoalmark.py runs it as it runs
 test_ask_ids.py. No browser and no network: every repository is a scratch one, `origin` a bare one beside it.
 """
 import contextlib
+import hashlib
 import inspect
 import io
 import json
@@ -1007,10 +1010,11 @@ def install_once(r, outer):
     return said
 
 
-def hooked(r, message, who=LEAD, sign=False, trailers=()):
+def hooked(r, message, who=LEAD, sign=False, trailers=(), shell=None):
     """`git commit` of what is staged, through the hooks the clone has installed, as `who` — signed with the Owner's key where `sign`, each of
-    `trailers` a paragraph after the subject: (exit, what git and the hooks printed)."""
-    env = dict(ids.ENV, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
+    `trailers` a paragraph after the subject — in `shell`, the environment it runs in, else `ids.ENV`, whose `SHOALMARK_CMD` names the tool's
+    command: (exit, what git and the hooks printed)."""
+    env = dict(ids.ENV if shell is None else shell, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
     extra = [x for t in trailers for x in ("-m", t)] + (["-S"] if sign else [])
     done = subprocess.run(["git", "-C", str(r.top), "-c", "commit.gpgsign=false", "commit", "-q", "-m", message, *extra], capture_output=True, text=True,
                           encoding="utf-8", errors="replace", env=env)
@@ -1266,6 +1270,117 @@ def rows_new_project(area, add):
         "commit as it reads them with no project below it, the commit that creates it and the build commit after it both judged", top)
 
 
+# --- the tool's command: a project below the top names the tool from its own root, so every run writes one INDEX.md -------------------
+
+_TREE = {"source": None}           # a mutant of the tool a row keeps in its repository: the tool's text with its pairs replaced, written where it is kept
+TOOL_AT = "tools/shoalmark"        # where org's layout keeps the tool: the top's `tools/`
+PERSON = {k: v for k, v in ids.ENV.items() if k != "SHOALMARK_CMD"}    # a person's shell: no wrapper names the command
+
+
+def vendored(r):
+    """The tool written into the top's `tools/shoalmark/` — the files the hooks' copy holds, `shoalmark.py` the mutant's text where one is set —
+    each pinned in its PIN as `--vendor` pins it, committed by the Owner, signed, and pushed."""
+    dest, lines = r.top / TOOL_AT, []
+    for rel in fm.copy_files():
+        data = _TREE["source"].encode("utf-8") if rel == "shoalmark.py" and _TREE["source"] is not None else (HERE / rel).read_bytes()
+        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+        (dest / rel).write_bytes(data)
+        normalized = data.replace(b"\r\n", b"\n")
+        lines.append(f"{hashlib.sha256(normalized).hexdigest()}  {rel}")
+    (dest / "PIN").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    r.commit("the tool, vendored", who=OWNER, sign=True, paths=[TOOL_AT])
+    git(r.top, "push", "-q", "origin", "main")
+
+
+def by_hand(cwd, path, *argv, who=LEAD):
+    """The tool at `path`, run in a process of its own from `cwd`, as `who` runs it in a shell: (exit, stdout, stderr)."""
+    env = dict(PERSON, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
+    done = subprocess.run([sys.executable, "-I", str(path), *argv], cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    return done.returncode, done.stdout, done.stderr
+
+
+def org_tools(area, name, projects, trackers):
+    """Org's layout with the tool in the top's `tools/shoalmark/`: `projects` as `Repo` takes them, the tool vendored on `main`, and the hooks
+    installed once, at the top, with that tool — the copy it writes replaced by the mutant's text where one is set."""
+    r = Repo(area / name, projects, trackers, {"src/app.py": "print('app')\n"})
+    vendored(r)
+    said = by_hand(r.top, f"{TOOL_AT}/shoalmark.py", "--install-hook", who=OWNER)
+    if said[0] != 0:
+        raise AssertionError(f"--install-hook: {seen(said)}")
+    if _COPY["source"] is not None:
+        common = git(r.top, "rev-parse", "--git-common-dir").strip()
+        (r.top / common / fm.COPY_DIR / "shoalmark.py").write_text(_COPY["source"], encoding="utf-8")
+    return r
+
+
+def written_thrice(r, folder, tid, who):
+    """INDEX.md of the project in `folder`, once one of its trackers is reworded, as three runs write it over a placeholder: a run from the
+    project, by the tool's path from there; a run with `--root`, from outside the repository; and the hooks' pre-commit run of the commit that
+    stages the change. (the three as bytes, the tool's path from the project, the exits of the first two, the commit's exit and what it printed)"""
+    index, t = r.root(folder) / REL / "INDEX.md", r.path(folder, tid)
+    t.write_text(t.read_text(encoding="utf-8").replace(f'hook: "h of {tid}"', f'hook: "h of {tid}, reworded"'), encoding="utf-8")
+    typed = os.path.relpath(r.top / TOOL_AT / "shoalmark.py", r.root(folder)).replace(os.sep, "/")
+    got, exits = [], []
+    for cwd, argv in ((r.root(folder), (typed,)), (r.base, (r.top / TOOL_AT / "shoalmark.py", "--root", r.root(folder)))):
+        index.write_bytes(b"placeholder\n")
+        exits.append(by_hand(cwd, *argv, who=who)[0])
+        got.append(index.read_bytes())
+    index.write_bytes(b"placeholder\n")
+    git(r.top, "add", "-A")
+    code, said = hooked(r, f"{tid}: its hook, reworded", who=who, shell=PERSON)
+    got.append(subprocess.run(["git", "-C", str(r.top), "show", f"HEAD:{r_at(folder, REL + '/INDEX.md')}"], capture_output=True, env=ids.ENV).stdout)
+    return got, typed, exits, code, said
+
+
+def rows_command(area, add):
+    def one(name, label, build):
+        """One case: `build()` → (ok, what it saw); a step that fails is its row's failure, and the next case runs."""
+        if not picked(name):
+            return
+        try:
+            ok, saw = build()
+        except Exception as e:
+            ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm.configure(HERE)
+        add(label, ok, saw)
+
+    def thrice(name, folder, tid, who, named):
+        def build():
+            r = org_tools(area, name, {"": org_config(), TEAM: team_config()}, {("", "OR-001"): text("OR-001"), (TEAM, "FM-001"): text("FM-001")})
+            got, typed, exits, code, said = written_thrice(r, folder, tid, who)
+            header = [next((l for l in g.decode("utf-8", "replace").splitlines() if "GENERATED" in l), "") for g in got]
+            return (code == 0 and got[0] == got[1] == got[2] and typed == named and f"Run `{fm.PY} {named}` after" in header[0],
+                    f"exits {exits}, hook exit {code}: {said.strip()[-300:]!r} · the same bytes {got[0] == got[1]}, {got[1] == got[2]} · headers {header}")
+        return build
+
+    one("command-below", "the tool's command · below the top, the tool in the top's `tools/`: a run from the team project, a run with `--root` and "
+        "the hooks' pre-commit run write one INDEX.md, byte for byte, whose header names the tool from the project's root, "
+        "`../../tools/shoalmark/shoalmark.py`", thrice("command-below", TEAM, "FM-001", LEAD, "../../tools/shoalmark/shoalmark.py"))
+    one("command-top", "the tool's command · at the top, the tool in its `tools/`: the same three runs write one INDEX.md, byte for byte, whose "
+        "header names `tools/shoalmark/shoalmark.py` as it did", thrice("command-top", "", "OR-001", COORD, "tools/shoalmark/shoalmark.py"))
+
+    def imported():
+        r = org_tools(area, "command-import", {"": org_config(GATED)}, {("", "OR-001"): text("OR-001", f"tier: P2\ntriaged: {TODAY}\n")})
+        r.switch("-c", "import")
+        laid(r, TEAM, team_config(), ("FM-001", "FM-002"))         # no build gate: the team's own reading of the commit that creates it is not this row's
+        wrote = by_hand(r.top, f"{TOOL_AT}/shoalmark.py", "--root", TEAM, "--print-written", who=OWNER)      # the creating commit's hooks write none of its files
+        git(r.top, "add", "-A")
+        code, said = hooked(r, "the tool team's trackers, imported", who=OWNER, sign=True, trailers=IMPORTS[:1], shell=PERSON)
+        git(r.top, "push", "-q", "origin", "import")
+        elsewhere = r.base / "elsewhere"                     # the team's own clone of the same repository, at another path
+        git(r.base, "clone", "-q", "--branch", "import", str(r.origin), str(elsewhere))
+        git(elsewhere, "config", "gpg.ssh.allowedSignersFile", r.signers_rel)      # set up as the Owner's clone is
+        checks = [by_hand(top / TEAM, f"../../{TOOL_AT}/shoalmark.py", "--check", who=LEAD) for top in (r.top, elsewhere)]
+        stale = [[l for l in (c[1] + c[2]).splitlines() if "STALE" in l or l.lstrip().startswith(("-> **GENERATED", "+> **GENERATED"))] for c in checks]
+        return (wrote[0] == 0 and code == 0 and not any(stale),
+                f"--root exit {wrote[0]}, hook exit {code}: {said.strip()[-200:]!r} · the team's --check in the Owner's clone and in its own: exits "
+                f"{[c[0] for c in checks]}, {stale}")
+    one("command-import", "the tool's command · after the Owner's import of a team project without a build gate — its INDEX.md written by a run "
+        "with `--root` from the top, the commit made with the hooks on — the team's `--check`, run from the project by the tool's path from there, "
+        "prints no STALE line, in the Owner's clone and in another", imported)
+
+
 # --- after the move: a team project's ship-log row names its code repository's commit; a code repository names where its trackers live ---
 
 CODE = '[repositories]\ntool = "https://example.invalid/tool.git"\n'
@@ -1371,7 +1486,7 @@ def rows_after_move(area, add):
 
 
 ROWS = (rows_rights, rows_shipped, rows_records, rows_asks, rows_ids, rows_lost_answer, rows_index, rows_signers, rows_reads, rows_acceptance,
-        rows_other_project, rows_hooks, rows_new_project, rows_after_move)
+        rows_other_project, rows_hooks, rows_new_project, rows_command, rows_after_move)
 
 
 # --- mutants: each read put back as it read before -----------------------------------------------------------------------------------
@@ -1505,6 +1620,10 @@ MUTANTS = (
      [('if operation in ("init", "new", "write"):', 'if operation in ("init", "new"):', 1)], (rows_after_move,), {"elsewhere-board"}, False),
     ("the build gate on in such a repository, where its configuration turns it on", "configure",
      [('        CONFIG["judged_before_build"] = False\n', "        pass\n", 1)], (rows_after_move,), {"elsewhere-gate"}, False),
+    ("the tool named by its absolute path again where it lies outside the project root, in the root's working tree", "tree:tool_named",
+     [("if inside(ROOT) or inside(top):", "if inside(ROOT):", 1)], (rows_command,), {"command-below", "command-import"}, False),
+    ("the hooks' copy names the command `--install-hook` recorded, from the top, for a project below it", "copy:configure",
+     [('CMD_OWN = PY + " " + tool_named(_VCS[1] / folder / pathlib.Path(__file__).name)', "pass", 1)], (rows_command,), {"command-below"}, False),
 )
 
 
@@ -1512,17 +1631,18 @@ MUTANTS = (
 def mutated(name, pairs):
     """`fm.<name>` replaced by a patched copy of its own source, compiled in the module's namespace — and put back after. A table of the
     module's (a dict of tuples of words) is patched in its words instead, value by value."""
-    if name.startswith("copy:"):                                    # the hooks' copy runs in a process of its own: its file carries the mutant (`install_once`)
+    if name.startswith(("copy:", "tree:")):                         # the hooks' copy, and the tool a row keeps in its repository, run in a process of their own:
+        held = _COPY if name.startswith("copy:") else _TREE         # their file carries the mutant (`install_once`, `org_tools`; `vendored`)
         src, whole = textwrap.dedent(inspect.getsource(getattr(fm, name[5:]))), Path(fm.__file__).read_text(encoding="utf-8")
         for old, new, count in pairs:
             if src.count(old) != count or whole.count(old) != count:
                 raise AssertionError(f"{name}: {old[:60]!r} is in its source {src.count(old)} times and in the tool {whole.count(old)}, not {count}")
             whole = whole.replace(old, new)
-        _COPY["source"] = whole
+        held["source"] = whole
         try:
             yield
         finally:
-            _COPY["source"] = None
+            held["source"] = None
         return
     real = getattr(fm, name)
     if isinstance(real, dict):

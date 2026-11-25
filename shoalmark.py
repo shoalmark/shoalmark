@@ -267,6 +267,17 @@ def _norm(path):
     return os.path.normcase(os.path.abspath(os.fspath(path)))
 
 
+def tool_named(path):
+    """The tool's file as a person runs it from the project root, in forward slashes — a hook is a `sh` script, and `\\` is its escape: its path from
+    the root where it lies inside the root or elsewhere in the root's git working tree, as `../../tools/shoalmark/shoalmark.py` from a project two
+    folders below the top, so a run from the project, a run with `--root` and the hooks' run name it alike; else its absolute path."""
+    top = _VCS[1] if vcs() == "git" else ROOT
+    inside = lambda folder: _norm(path).startswith(_norm(folder).rstrip(os.sep) + os.sep)
+    if inside(ROOT) or inside(top):
+        return os.path.relpath(path, ROOT).replace(os.sep, "/")
+    return pathlib.Path(path).as_posix()
+
+
 def in_tree(path):
     """Whether `path`, as written, lies inside the repository ROOT."""
     p, root = _norm(path), _norm(ROOT)
@@ -926,12 +937,12 @@ def configure(root=None):
     H1_ID_RE = re.compile(rf"^#\s+[*_~`]*((?:{alt})-\d+)\b")
     ROW_ID_RE = re.compile(rf"^\| \[((?:{alt})-\d+)\]")
     TRACKER_LINK_RE = re.compile(rf"\]\(((?:{alt})-\d+-[a-z0-9-]+\.md)\)")
-    try:
-        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
-    except ValueError:
-        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().as_posix()      # forward slashes: a hook is a `sh` script, and `\\` is its escape
+    CMD_OWN = PY + " " + tool_named(pathlib.Path(__file__).resolve())
     if HOOK_RUN:                                        # the hooks' copy names the command a person runs — the one `--install-hook` was run with — never its own place
         CMD_OWN = copy_record().get("cmd") or CMD_OWN
+        folder = copy_tool_folder()
+        if folder is not None and vcs() == "git" and CMD_OWN.startswith(PY + " "):     # …with the tool's path taken from this project's root, as a run from it names it
+            CMD_OWN = PY + " " + tool_named(_VCS[1] / folder / pathlib.Path(__file__).name)
     CMD = os.environ.get("SHOALMARK_CMD") or CMD_OWN    # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 
@@ -12721,11 +12732,20 @@ def copy_provenance_notice():
 def tree_tool_dir():
     """In the hooks' copy: the folder of the repository's own tool — the one `--install-hook` was run from, as its `COPY` says, from the top of the
     working tree: the same folder for every project the copy judges — or None where that was outside the repository, or is not said."""
-    tool = copy_record().get("tool", "-")
-    if tool == "-" or not re.fullmatch(r"[A-Za-z0-9_./-]*", tool) or ".." in tool.split("/"):
+    tool = copy_tool_folder()
+    if tool is None:
         return None
     top = git_top() if vcs() == "git" else ROOT
     return top / tool if tool else top
+
+
+def copy_tool_folder():
+    """In the hooks' copy: the folder of the repository's own tool from the top of the working tree, as its `COPY` says — "" for the top itself —
+    or None where it lay outside the repository, or is not said."""
+    tool = copy_record().get("tool", "-")
+    if tool == "-" or not re.fullmatch(r"[A-Za-z0-9_./-]*", tool) or ".." in tool.split("/"):
+        return None
+    return tool
 
 
 def tool_here():

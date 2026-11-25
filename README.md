@@ -68,7 +68,11 @@ them all, and checks you can run locally and in your project's CI. It needs no s
 | giving the board a name, a logo, colours, another language | [§9 Branding](#9-branding-the-board) |
 
 `<cmd>` below is `python3 tools/shoalmark/shoalmark.py` in a repository that vendors it — or whatever command that
-repository's own messages name. Every command finds the repository by itself: the nearest `shoalmark.toml`, else the
+repository's own messages name. A project below the top of its git working tree, with the tool elsewhere in that tree,
+names it by its path from the project's root — `python3 ../../tools/shoalmark/shoalmark.py` in `teams/tool/`, the tool
+in the top's `tools/` — in its messages and in its INDEX.md's header, and so do the hooks: a run from the project, a
+run with `--root` and the commit's hook write the same INDEX.md. Only a tool outside the working tree is named by its
+absolute path. Every command finds the repository by itself: the nearest `shoalmark.toml`, else the
 nearest Git or SVN working-copy root. `--root DIR` selects the consumer project when the tool lives in a different
 folder; the tool's own source does not supply that project's identity or authority. Printed retry commands for answers
 and acts use PowerShell argument spelling on Windows and POSIX shell spelling on macOS and Linux.
@@ -672,7 +676,8 @@ and reads this from stdout:
 - **A deriver is told things on stdin and never reads the environment** — the core runs it with `PATH`, `HOME`,
   the locale and nothing else. A git hook inherits whatever the shell that ran `git commit` had exported; a deriver
   that listened to that would let a stray variable decide what gets staged.
-- A wrapper script may set `SHOALMARK_CMD` so every message names the repository's own command.
+- A wrapper script may set `SHOALMARK_CMD` so every message, and INDEX.md's header, names the repository's own command,
+  as written: in a project below the top too, where the tool is otherwise named by its path from the project's root.
 
 ## 8. Working on shoalmark
 
