@@ -706,30 +706,34 @@ def rows_spelled(area, add):
     printed_w = next((l.split(head_w, 1)[1] for l in said_w[2].splitlines() if head_w in l), None)
     add("3c · …and the retry line as the tool prints it on Windows, read by the Windows text: the id and the reason as `printed_arg` makes them there",
         said_w[0] == fm.EXIT_LINT and printed_w == reason_win, seen(said_w) + f" · printed {printed_w!r}")
-    top = area / "spelled top"
-    sub = top / "sub"
-    sub.mkdir(parents=True)
-    git(top, "init", "-q", "--initial-branch=main")
-    (sub / "shoalmark.toml").write_text(CONFIG, encoding="utf-8")
     name = "FM-001-x y$(echo z);w.md"
-    for tid, file_, body in (("FM-001", name, text("FM-001", ask(aid="FM-001-Q1"))), ("FM-002", "FM-002-x.md", text("FM-002", ask(q="Ship the old one?")))):
-        (sub / REL).mkdir(parents=True, exist_ok=True)
-        (sub / REL / file_).write_text(body, encoding="utf-8")
-    run(sub, "--print-written")
-    git(top, "add", "-A")
-    git(top, "commit", "-q", "-m", "the start", who=OWNER)
-    (sub / REL / name).write_text(answered((sub / REL / name).read_text(encoding="utf-8")), encoding="utf-8")
-    said = run(sub, "--answer", "FM-002", "accept")
-    shown = next((l.strip() for l in said[2].splitlines() if l.strip().startswith("git ") and " restore " in l), "")
-    toplevel = str(Path(git(top, "rev-parse", "--show-toplevel").strip()))
-    paths = [e[3:] for e in git(top, "status", "--porcelain", "-z", "--untracked-files=no").split("\0") if e[3:]]
-    want = ["-C", toplevel, "restore", "--staged", "--worktree", "--", *paths]
-    if WIN_ARGS:
-        ok = shown == "git " + " ".join("'" + a.replace("'", "''") + "'" if a in [toplevel, *paths] else a for a in want)
-    else:
-        ok = f"sub/{REL}/{name}" in paths and sh_args(shown[len("git "):]) == want
-    add("3c · the restore line spells its arguments as every copied command does: each comes back unchanged", said[0] == fm.EXIT_LINT and ok,
-        seen(said) + f" · shown {shown!r} · want {want!r}")
+    for top, sub in ((area / "spelled top", area / "spelled top" / "sub"), (area / "spelled at top", area / "spelled at top")):
+        sub.mkdir(parents=True)
+        git(top, "init", "-q", "--initial-branch=main")
+        (sub / "shoalmark.toml").write_text(CONFIG, encoding="utf-8")
+        for tid, file_, body in (("FM-001", name, text("FM-001", ask(aid="FM-001-Q1"))), ("FM-002", "FM-002-x.md", text("FM-002", ask(q="Ship the old one?")))):
+            (sub / REL).mkdir(parents=True, exist_ok=True)
+            (sub / REL / file_).write_text(body, encoding="utf-8")
+        run(sub, "--print-written")
+        git(top, "add", "-A")
+        git(top, "commit", "-q", "-m", "the start", who=OWNER)
+        (sub / REL / name).write_text(answered((sub / REL / name).read_text(encoding="utf-8")), encoding="utf-8")
+        said = run(sub, "--answer", "FM-002", "accept")
+        shown = next((l.strip() for l in said[2].splitlines() if l.strip().startswith("git ") and " restore " in l), "")
+        toplevel = str(Path(git(top, "rev-parse", "--show-toplevel").strip()))
+        paths = [e[3:] for e in git(top, "status", "--porcelain", "-z", "--untracked-files=no").split("\0") if e[3:]]
+        if sub != top:
+            add("3c · below the top of its repository the run is refused in one line naming FM-161, the project root and the top, and no restore line is shown",
+                said[0] == fm.EXIT_LINT and "FM-161" in said[2] and f"the project root {sub} is below the top of its git repository, {toplevel}:" in said[2]
+                and len(said[2].strip().splitlines()) == 1 and not shown, seen(said))
+            continue
+        want = ["restore", "--staged", "--worktree", "--", *paths]
+        if WIN_ARGS:
+            ok = shown == "git " + " ".join("'" + a.replace("'", "''") + "'" if a in [toplevel, *paths] else a for a in want)
+        else:
+            ok = f"{REL}/{name}" in paths and sh_args(shown[len("git "):]) == want
+        add("3c · the restore line spells its arguments as every copied command does: each comes back unchanged", said[0] == fm.EXIT_LINT and ok,
+            seen(said) + f" · shown {shown!r} · want {want!r}")
 
 
 SHIP_RECORDS = ["docs/work-tracker/", "it's $(echo x) notes/"]

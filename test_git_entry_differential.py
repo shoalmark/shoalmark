@@ -1225,8 +1225,9 @@ FM054_PAGE_EDITS = (
 
 def fm054_own(rows):
     """The rows made neither by the reading of the default branch's configuration (`proof_reading`), nor by the stand-up's
-    variant (`day_vcs`), nor by the reading of that branch's history (FM169_SITES): the baseline makes none of them."""
-    return [row for row in rows if not ({"proof_reading", "day_vcs"} | set(FM169_SITES)) & set(row.get("product_stack") or [])]
+    variant (`day_vcs`), nor by the reading of that branch's history (FM169_SITES), nor by the refusal below the top or `--check`'s
+    line on the frozen rule (FROZEN_SITES): the baseline makes none of them."""
+    return [row for row in rows if not ({"proof_reading", "day_vcs"} | set(FM169_SITES) | set(FROZEN_SITES)) & set(row.get("product_stack") or [])]
 
 
 DAY_READ = ("config", "--local", "--get", "remote.origin.url")
@@ -1278,6 +1279,48 @@ def fm169_read(argv):
     argv = [str(a) for a in argv] if isinstance(argv, list) else []
     return (len(argv) > 1 and Path(argv[0]).name.lower() in ("git", "git.exe")
             and any(tuple(argv[1:1 + len(form)]) == form for form in FM169_READS))
+
+
+# The refusal of a project below the top of its git repository asks git where the project root sits, once in every run (`below_top`), and
+# `--check`'s line on the frozen rule reads the commits that carry `Tracker-import:` (`frozen_line`). The baseline makes neither: one
+# allowance, held to those two sites and those reads, and to that line as a repository with no import commit prints it, once.
+FROZEN_SITES = ("below_top", "frozen_line")
+FROZEN_READS = (("rev-parse", "--show-prefix"), ("rev-parse", "--show-toplevel"), ("log", "-i", "--grep=^Tracker-import:"))
+FROZEN_NONE = "frozen trackers: none — no commit of HEAD's history carries `Tracker-import:` and verifies as the Owner's own signed commit"
+
+
+def frozen_reads(rows):
+    """The starts, or `subprocess.run` calls, made with one of FROZEN_SITES on the tool's own stack."""
+    return [row for row in rows if set(FROZEN_SITES) & set(row.get("product_stack") or [])]
+
+
+def frozen_read(argv):
+    """Whether one argv is a read those sites may start: git, and one of FROZEN_READS."""
+    argv = [str(a) for a in argv] if isinstance(argv, list) else []
+    return (len(argv) > 1 and Path(argv[0]).name.lower() in ("git", "git.exe")
+            and any(tuple(argv[1:1 + len(form)]) == form for form in FROZEN_READS))
+
+
+def frozen_held(rows, arg=lambda row: row.get("argv")):
+    """Whether the frozen rule's and the refusal's starts or calls in `rows` are reads, and the refusal's question of where the root sits is
+    asked once at most."""
+    reads = frozen_reads(rows)
+    asked = [row for row in reads if "below_top" in row["product_stack"] and [str(a) for a in (arg(row) or [])][1:] == ["rev-parse", "--show-prefix"]]
+    return all(frozen_read(arg(row)) for row in reads) and len(asked) <= 1
+
+
+def frozen_said(said):
+    """(status, stdout, stderr) with `--check`'s line on the frozen rule taken out, where a stream holds it exactly as FROZEN_NONE says it —
+    stdout, or stderr under `--print-written` — once in both together; None where it is there more than once."""
+    status, out, err = said
+    lines = [(n, l) for n, text in enumerate((out, err)) for l in text.split("\n") if l == FROZEN_NONE]
+    if len(lines) > 1:
+        return None
+    if not lines:
+        return said
+    n = lines[0][0]
+    cut = lambda text: text.replace(FROZEN_NONE + "\n", "", 1) if FROZEN_NONE + "\n" in text else text.replace(FROZEN_NONE, "", 1)
+    return (status, cut(out) if n == 0 else out, cut(err) if n == 1 else err)
 
 
 def fm054_transform(page):
@@ -1963,8 +2006,8 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, but for `--schema`'s two freeze rows, gone (R15), "
                                "and its two `[ratio]` rows, rewritten (R13)", schema_matches(before, after))
             else:
-                assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline",
-                               (before["status"], before["stdout"], before["stderr"]) == said)
+                assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, but for `--check`'s line on the frozen rule, once",
+                               (before["status"], before["stdout"], before["stderr"]) == frozen_said(said))
             strip_stack = lambda entries: [{key: value for key, value in row.items() if key != "product_stack"} for row in entries]
             counted = "--html-only" not in flags                 # FM-057: the board's own run reads no changed paths
             assert_control(label_prefix + "all actual process argv/effective cwd/env match, once FM-057's reads, the starts `origin_undone` removes, FM-054's "
@@ -1973,7 +2016,8 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                            and all(fm054_read(row["argv"]) for row in fm054_reads(after["starts"]))
                            and not day_reads(before["starts"]) and all(day_read(row["argv"]) for row in day_reads(after["starts"]))
                            and len(day_reads(after["starts"])) == (1 if label in DAY_READ_CASES else 0)
-                           and not fm169_reads(before["starts"]) and all(fm169_read(row["argv"]) for row in fm169_reads(after["starts"])))
+                           and not fm169_reads(before["starts"]) and all(fm169_read(row["argv"]) for row in fm169_reads(after["starts"]))
+                           and not frozen_reads(before["starts"]) and frozen_held(after["starts"]))
             assert_control(label_prefix + "run options and actual process results match, once FM-057's reads, the starts `origin_undone` removes, FM-054's "
                            "reads and FM-169's, each a read, the baseline's reads of answer branches and the id rules' first-commit read are set aside, and the stand-up's one read of origin's URL",
                            rows_match(origin_undone(answers_undone(before["run_calls"])), fm054_own(id_rules_undone(after["run_calls"])), counted) and not fm054_reads(before["run_calls"])
@@ -1982,7 +2026,9 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                            and all(isinstance(row.get("args"), list) and row["args"] and day_read(row["args"][0]) for row in day_reads(after["run_calls"]))
                            and len(day_reads(after["run_calls"])) == (1 if label in DAY_READ_CASES else 0)
                            and not fm169_reads(before["run_calls"])
-                           and all(isinstance(row.get("args"), list) and row["args"] and fm169_read(row["args"][0]) for row in fm169_reads(after["run_calls"])))
+                           and all(isinstance(row.get("args"), list) and row["args"] and fm169_read(row["args"][0]) for row in fm169_reads(after["run_calls"]))
+                           and not frozen_reads(before["run_calls"])
+                           and frozen_held(after["run_calls"], lambda row: row["args"][0] if isinstance(row.get("args"), list) and row["args"] else None))
             assert_control(label_prefix + "the candidate reads the working tree's edits once where the baseline reads them, and not where it does not",
                            edit_reads(after["starts_raw"]) == (1 if edit_reads(before["starts_raw"]) else 0))
             assert_control(label_prefix + "consumer byte/symlink/ref/config/hook snapshots match", snapshots_match(before, after))
@@ -2244,6 +2290,25 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         other = [dict(row, argv=[row["argv"][0], "config", "--get", "user.email"]) if row is said[0] else row for row in new["starts"]] if said else []
         assert_control(day + "a start inside `day_vcs` that is not its one read is not one",
                        bool(other) and not all(day_read(row["argv"]) for row in day_reads(other)))
+        # the refusal's and the frozen rule's allowance, held on the clean `--check` pair: their reads alone, and the line as written, once
+        frozen = "Git entry frozen-rule allowance: "
+        old_c, new_c = (next(row for row in rows if row["case"] == "clean-check-origin" and row["version"] == version) for version in ("baseline", "candidate"))
+        base_c, reads_c = origin_undone(answers_undone(old_c["starts"])), frozen_reads(new_c["starts"])
+        assert_control(frozen + "`--check` asks once where the project root sits and reads once the commits that carry `Tracker-import:` — each a read, "
+                       "which the baseline never makes",
+                       sorted(tuple(str(a) for a in row["argv"][1:4]) for row in reads_c) == [("log", "-i", "--grep=^Tracker-import:"), ("rev-parse", "--show-prefix")]
+                       and frozen_held(new_c["starts"]) and not frozen_reads(old_c["starts"]))
+        unsited_c = [dict(row, product_stack=[s for s in row["product_stack"] if s not in FROZEN_SITES]) for row in new_c["starts"]]
+        twice_c = new_c["starts"] + [r for r in reads_c if "below_top" in r["product_stack"]]
+        assert_control(frozen + "the same reads made outside those sites are not set aside, and the root's question asked twice is not held",
+                       not rows_match(base_c, fm054_own(id_rules_undone(unsited_c))) and rows_match(base_c, fm054_own(id_rules_undone(new_c["starts"])))
+                       and not frozen_held(twice_c))
+        said_c = (new_c["status"], new_c["stdout"], new_c["stderr"])
+        was_c = (old_c["status"], old_c["stdout"], old_c["stderr"])
+        assert_control(frozen + "the line is taken out once and only as written: twice, or with one word changed, the run does not match",
+                       FROZEN_NONE in new_c["stdout"] and frozen_said(said_c) == was_c
+                       and frozen_said((said_c[0], said_c[1] + FROZEN_NONE + "\n", said_c[2])) != was_c
+                       and frozen_said((said_c[0], said_c[1].replace(FROZEN_NONE, FROZEN_NONE.replace("none", "no"), 1), said_c[2])) != was_c)
         page = base64.b64decode(new["board_after"][PAGE_PATH]["bytes_base64"]) if isinstance((new.get("board_after") or {}).get(PAGE_PATH), dict) else b""
         unproved = page.replace(PROOF_MARK, b',PRUEF={"state": ')
         as_page = lambda data: with_board(new, PAGE_PATH, data)
