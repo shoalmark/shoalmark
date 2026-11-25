@@ -7770,7 +7770,10 @@ def rights_problems(trackers):
 # `Tracker-import: <repository> <commit>` — where its trackers come from — and counts only where it verifies as the Owner's own signed
 # commit, by the verification an answer gets (`import_verified`); a seat's commit, or one unsigned, freezes nothing. A tracker the
 # import modifies is judged as ever. A later edit of a frozen tracker is judged as any change to a `Shipped` tracker is, and a change
-# that leaves it not `Shipped` ends the freeze for good: a later move back is judged. Git alone: a Subversion revision carries no signature.
+# that leaves it not `Shipped` ends the freeze for good: a later move back is judged. The commit hook runs before the commit's trailer and
+# signature exist, so its run finds no move in a tracker the commit adds already `Shipped`: it leaves that tracker to `--check`, which
+# judges the made commit, and says so in one line. A move to `Shipped` of a tracker present at a parent is judged there as ever. Every
+# other run judges as above. Git alone: a Subversion revision carries no signature.
 GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,64}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more, up to a SHA-256 hash's 64
 SVN_NAME_RE = re.compile(r"(?<![0-9A-Za-z])r[0-9]+(?![0-9A-Za-z])")             # …and on Subversion a revision, `r123`
 
@@ -8286,7 +8289,9 @@ def shipped_moves(rels):
     leaves them, what tells the commits those rows name apart, and why an import commit that adds it froze nothing, or ""). Git: each
     change `changes_under_review` lists — the ship log read from the working tree for the commit being made, from the commit otherwise —
     and a move is one the tracker makes against EVERY parent. Only a tracker that is Shipped after is read on the other side. A tracker
-    the change adds — absent at every parent — is no move where the change is an import commit that freezes it (`import_freezes`)."""
+    the change adds — absent at every parent — is no move where the change is an import commit that freezes it (`import_freezes`). In the
+    commit hook's run, a tracker the commit being made adds already Shipped is no move either: it is left to `--check`, and the run says
+    how many in one line."""
     if vcs() == "svn":
         yield from svn_shipped_moves(rels)
         return
@@ -8305,6 +8310,7 @@ def shipped_moves(rels):
             now = {rel: made.get(spec(result, rel)) for rel in touched}
         moved.append((bases, label, now, [rel for rel in touched if is_shipped(now.get(rel))], (commit, name, email)))
     earlier = cat_blobs([spec(base, rel) for bases, _l, _n, shipped, _by in moved for rel in shipped for base in bases])      # …and what each move was against, one call
+    left = 0                                            # how many trackers the commit being made adds already Shipped, left to `--check`
     for bases, label, now, shipped, (commit, name, email) in moved:
         before = {spec(base, rel): earlier.get(spec(base, rel)) for rel in shipped for base in bases}
         for base, rel in [(b, r) for r in shipped for b in bases if before.get(spec(b, r)) is None]:     # absent at a base: new, or the same tracker renamed — its id says which
@@ -8312,13 +8318,21 @@ def shipped_moves(rels):
             was = next((n for n in (git_out("ls-tree", "-z", "--name-only", f"{base}:./{d}") or "").split("\x00") if n.startswith(rels[rel]["id"] + "-") and n.endswith(".md")), None)
             before[spec(base, rel)] = cat_blobs([f"{base}:./{d}/{was}"]).get(f"{base}:./{d}/{was}") if was else None
         added = {rel for rel in shipped if all(before.get(spec(base, rel)) is None for base in bases)}
-        why, frozen = import_freezes(commit, name, email, bases) if added else ("", False)
+        later = added if COMMITTING and not commit else set()        # the commit hook's run, on the commit being made: its trailer and signature do not exist yet
+        left += len(later)
+        why, frozen = import_freezes(commit, name, email, bases) if added - later else ("", False)
         for rel in shipped:
+            if rel in later:
+                continue                                # left to `--check`, which judges the made commit: frozen where it is the Owner's signed import, refused otherwise
             if frozen and rel in added:
                 continue                                # frozen: added already Shipped by the Owner's signed import — no move, and its log is not read
             if not any(is_shipped(before.get(spec(base, rel))) for base in bases):
                 yield (rels[rel], (label + " — " if label else ""), ship_log_rows(now[rel]), lambda names, records, bases=bases: git_ship_verdicts(names, bases, records),
                        why if rel in added else "")
+    if left:
+        print(f"  {left} tracker{'s' if left > 1 else ''} this commit adds already `Shipped` {'are' if left > 1 else 'is'} left to `--check`: this hook runs before "
+              f"the commit's trailer and signature exist. `--check` freezes {'them' if left > 1 else 'it'} where the commit is the Owner's own signed import, "
+              f"carrying `{IMPORT_TRAILER}:`, and refuses {'each of them' if left > 1 else 'it'} otherwise", file=sys.stderr)
 
 
 def ship_problems(trackers):

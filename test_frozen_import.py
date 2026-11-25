@@ -4,13 +4,16 @@ A tracker that the Owner's own signed import commit adds already `Shipped` — t
 is frozen: the Shipped rule finds no move for it, and `--check` says in one line how many trackers are frozen and by which import commit.
 The same commit unsigned, by a seat, or with a trailer out of its form freezes nothing, and each tracker it adds is refused; a tracker the
 import modifies is judged; a later move of a tracker that is not frozen is judged as ever; a frozen tracker reopened and shipped again is
-judged, and stays unfrozen. A run whose project root is below the top of its git repository is refused in one line, a run at the top is
-not, and `--version` and `--help` still run below the top.
+judged, and stays unfrozen. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
+commit adds already `Shipped` to `--check` and says so in one line, so the Owner's signed import is made and frozen, a seat's same commit is
+made and refused by `--check`, and a move of a tracker present at a parent is refused by the hook as before. A run whose project root is
+below the top of its git repository is refused in one line, a run at the top is not, and `--version` and `--help` still run below the top.
 
 Each row builds its history in a scratch repository — test_ask_ids' `Repo`: a bare `origin` whose `main` is the default branch, the Owner
 named `signed`, their key in the default branch's signers file, a planner seat — runs the tool in this process, and states its verdict as
 one check made of steps, each of which must hold: every row fails on a tool without the rule. Each mutant patches one function of the
-imported module and must turn at least one row red. A function this tool lacks fails the row that asks for it.
+imported module — and of the hooks' copy of the tool, where a row runs the hooks — and must turn at least one row red. A function this tool
+lacks fails the row that asks for it.
 
 Run: `python3 test_frozen_import.py` — exit 1 on a failure; `python3 test_frozen_import.py rows_<name> …` runs those rows alone, without the
 mutants, and with `--with-mutants` beside them, with the mutants that run those rows; `--no-mutants` runs every row and no mutant.
@@ -293,7 +296,98 @@ def rows_below_top(area, add):
                "--check, the default run, the board's run, --next, and the program started there; a run at the top is not; --version and --help run below the top")
 
 
-ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_below_top)
+# --- the import made with the hooks on: the commit hook leaves the trackers a commit adds already Shipped to --check -----------------
+
+LEFT = ("48 trackers this commit adds already `Shipped` are left to `--check`: this hook runs before the commit's trailer and signature exist. "
+        "`--check` freezes them where the commit is the Owner's own signed import, carrying `Tracker-import:`, and refuses each of them otherwise")
+_ACTIVE = []                                                    # the mutant running now, (function, old, new): the hooks' copy carries it too
+
+
+def install(r):
+    """The tool's hooks installed in the row's clone, from the default branch — their copy of the tool patched as the mutant running now
+    patches the module, each function it names in place, since the hooks run that copy and not this process."""
+    said = run(r.root, "--install-hook", who=OWNER)
+    if said[0] != 0:
+        raise RuntimeError(f"--install-hook exited {said[0]}: {said[2][-300:]}")
+    copy = r.root / ".git" / fm.COPY_DIR / "shoalmark.py"
+    tool = copy.read_text(encoding="utf-8")
+    for name, old, new in _ACTIVE:
+        at = tool.index(f"\ndef {name}(") + 1
+        end = tool.index("\n\n\n", at)
+        if tool[at:end].count(old) != 1:
+            raise AssertionError(f"{name}: {old[:60]!r} is not in the hooks' copy exactly once")
+        tool = tool[:at] + tool[at:end].replace(old, new) + tool[end:]
+    with open(copy, "w", encoding="utf-8", newline="\n") as f:
+        f.write(tool)
+
+
+def hooked(r, who, message, *more, sign=False):
+    """`git commit` in the row's clone as `who`, the hooks on, with `message` and `more` as its message lines — signed with the Owner's key
+    where `sign`: (exit, what git and the hooks printed). The hooks' copy names the tool as this process does, so the INDEX.md it writes is
+    the one `--check` here expects."""
+    fm.configure(r.root)
+    try:
+        cmd = fm.CMD
+    finally:
+        fm.configure(HERE)
+    env = dict(ENV, SHOALMARK_CMD=cmd, GIT_AUTHOR_NAME=who[0], GIT_AUTHOR_EMAIL=who[1], GIT_COMMITTER_NAME=who[0], GIT_COMMITTER_EMAIL=who[1])
+    lines = [x for m in (message, *more) for x in ("-m", m)]
+    done = subprocess.run(["git", "-C", str(r.root), "-c", "commit.gpgsign=false", "commit", "-q", *lines, *(["-S"] if sign else [])],
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    return done.returncode, done.stdout + done.stderr
+
+
+def staged_import(r):
+    """The 48 trackers written on the branch `import`, INDEX.md as the tool writes it, and everything staged: the import, not yet made."""
+    r.switch("-c", "import")
+    for tid in IMPORTED:
+        write(r.root, tid, imported(tid))
+    run(r.root, "--print-written", who=OWNER)
+    git(r.root, "add", "-A")
+
+
+def rows_hooked_import(area, add):
+    s = Steps()
+    r = seeded(area, "before")
+    install(r)
+    staged_import(r)
+    said = r.check()
+    s("--check on the import staged, not yet made: each of the 48 refused as before, and no tracker left to it",
+      said[0] != 0 and refused_for(said, IMPORTED) and "left to `--check`" not in said[2], said)
+    before = r.head()
+    code, printed = hooked(r, OWNER, "the trackers, imported from the code repository", TRAILER, sign=True)
+    sha = r.head()
+    s("the Owner's signed import, made with the hooks on: the commit is made", code == 0 and sha != before, extra=f"exit {code}: {printed[-600:]!r}")
+    s("…and the commit hook prints the line: 48 left to --check, why, and what --check does with them", printed.count(LEFT) == 1, extra=repr(printed[-600:]))
+    s("…and the commit carries its trailer", TRAILER in git(r.root, "log", "-1", "--format=%B"))
+    said = r.check()
+    want = f"frozen trackers: 48 — added already `Shipped` by the import commit {sha[:7]} (Tracker-import: shoalmark/shoalmark {FOREIGN})"
+    s("--check on the made import passes, and names 48 frozen by that commit", said[0] == 0 and not named(said, IMPORTED) and frozen_said(said).startswith(want),
+      said, repr(frozen_said(said)))
+    r.write("FM-001", r.read("FM-001").replace("status: In Progress", "status: Shipped").rstrip("\n") + "\n\n## Ship log\n\n| Date | Event |\n|---|---|\n| 2026-11-25 | Done. |\n")
+    git(r.root, "add", "-A")
+    code, printed = hooked(r, OWNER, "FM-001: shipped", sign=True)
+    s("a move to Shipped of a tracker present at the parent, no commit behind it, is refused by the commit hook as before: the commit is not made",
+      code != 0 and r.head() == sha and f"FM-001: {REFUSED} — its ship log names no commit" in printed and "left to `--check`" not in printed,
+      extra=f"exit {code}: {printed[-600:]!r}")
+    git(r.root, "reset", "-q", "--hard")
+    seat = seeded(area.parent / f"{area.name}-seat", "before")
+    install(seat)
+    staged_import(seat)
+    before = seat.head()
+    code, printed = hooked(seat, SEAT, "the trackers, imported from the code repository", TRAILER)
+    sha = seat.head()
+    s("a seat's commit adding the same 48 Shipped trackers, with the hooks on: the commit is made, with the line",
+      code == 0 and sha != before and printed.count(LEFT) == 1, extra=f"exit {code}: {printed[-600:]!r}")
+    said = seat.check()
+    s("…and --check refuses each of the 48, saying the import freezes nothing", said[0] == fm.EXIT_LINT and refused_for(said, IMPORTED, NOT_VERIFIED)
+      and frozen_said(said).startswith("frozen trackers: none —"), said, repr(frozen_said(said)))
+    s.add(add, "the import made with the hooks on: the Owner's signed import is made, the commit hook says 48 are left to --check, and --check "
+               "passes naming 48 frozen; a seat's same commit is made with that line and --check refuses each; a move of a tracker present at the "
+               "parent is refused by the hook as before; --check on the import not yet made refuses each")
+
+
+ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_below_top, rows_hooked_import)
 
 
 # Each mutant: (what it breaks, the function it patches, the text it replaces, its replacement, the rows that must catch it).
@@ -316,6 +410,11 @@ MUTANTS = (
     ("the board's run below the top not refused", "board_run", "refused = below_top() or tracker_folder_problem()", "refused = tracker_folder_problem()",
      (rows_below_top,)),
     ("a run at the top refused too", "below_top", '    if not prefix:\n        return ""\n', "", (rows_below_top,)),
+    ("the commit hook's deferral applied to a tracker present at a parent", "shipped_moves", "later = added if COMMITTING and not commit else set()",
+     "later = set(shipped) if COMMITTING and not commit else set()", (rows_hooked_import,)),
+    ("the commit hook's deferral with no line", "shipped_moves", "    if left:\n", "    if False:\n", (rows_hooked_import,)),
+    ("the deferral in --check too, not only in the commit hook's run", "shipped_moves", "if COMMITTING and not commit else set()", "if not commit else set()",
+     (rows_hooked_import,)),
 )
 
 
@@ -327,6 +426,7 @@ def run_mutants(*, results=None, only=None):
         if only and not any(rows_.__name__ in only for rows_ in rows):
             continue
         reds, broke = [], ""
+        _ACTIVE[:] = [(name, old, new)]
         try:
             with mutated(name, old, new), tempfile.TemporaryDirectory(prefix="shoalmark-frozen-m-") as tmp:
                 area = Path(tmp).resolve()
@@ -337,6 +437,7 @@ def run_mutants(*, results=None, only=None):
         except Exception as e:
             reds.append(f"a row crashed: {type(e).__name__}: {str(e)[:120]}")
         finally:
+            _ACTIVE[:] = []
             fm.configure(HERE)
         results.append((f"mutant · {label}: at least one row turns red", bool(reds) and not broke, broke or "no row turned red"))
     return results
