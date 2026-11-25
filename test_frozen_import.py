@@ -4,7 +4,9 @@ A tracker that the Owner's own signed import commit adds already `Shipped` — t
 is frozen: the Shipped rule finds no move for it, and `--check` says in one line how many trackers are frozen and by which import commit.
 The same commit unsigned, by a seat, or with a trailer out of its form freezes nothing, and each tracker it adds is refused; a tracker the
 import modifies is judged; a later move of a tracker that is not frozen is judged as ever; a frozen tracker reopened and shipped again is
-judged, and stays unfrozen. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
+judged, and stays unfrozen. `--check` counts what the rule freezes: a tracker the import renames onto `Shipped` is present at the parent
+by its id, so the rule judges it and the count leaves it out; a later file named for a frozen tracker below the tracker folder is no
+tracker's, so the count keeps that tracker. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
 commit adds already `Shipped` to `--check` and says so in one line, so the Owner's signed import is made and frozen, a seat's same commit is
 made and refused by `--check`, and a move of a tracker present at a parent is refused by the hook as before. A run whose project root is
 below the top of its git repository is refused in one line, a run at the top is not, and `--version` and `--help` still run below the top.
@@ -118,14 +120,20 @@ def seeded(area, kind):
     return copied(_SEEDS[(home, kind)], area)
 
 
-def made_import(r, who=OWNER, sign=True, trailer=TRAILER, modify=()):
-    """The import on the branch `import`: every one of `IMPORTED` added already Shipped — and each of `modify`, an open tracker, moved to
-    Shipped — committed by `who`, signed with the Owner's key where `sign`, carrying `trailer`. Its commit."""
+def made_import(r, who=OWNER, sign=True, trailer=TRAILER, modify=(), rename=()):
+    """The import on the branch `import`: every one of `IMPORTED` added already Shipped — each of `modify`, an open tracker, moved to
+    Shipped, and each of `rename`, an open tracker, moved to Shipped under a new file name — committed by `who`, signed with the Owner's
+    key where `sign`, carrying `trailer`. Its commit."""
     r.switch("-c", "import")
     for tid in IMPORTED:
         write(r.root, tid, imported(tid))
     for tid in modify:
         write(r.root, tid, r.read(tid).replace("status: In Progress", "status: Shipped"))
+    for tid in rename:
+        was = r.read(tid)
+        git(r.root, "mv", f"{REL}/{tid}-x.md", f"{REL}/{tid}-renamed-by-the-import.md")
+        with open(r.root / REL / f"{tid}-renamed-by-the-import.md", "w", encoding="utf-8", newline="\n") as f:
+            f.write(was.replace("status: In Progress", "status: Shipped"))
     return r.commit("the trackers, imported from the code repository", who=who, sign=sign, trailers=(trailer,) if trailer else ())
 
 
@@ -238,6 +246,36 @@ def rows_reopened(area, add):
     s("…and --check still names 47 frozen", frozen_said(said).startswith("frozen trackers: 47 —"), extra=repr(frozen_said(said)))
     s.add(add, "a frozen tracker reopened and shipped again is judged: refused on the commit only the code repository holds, passed on the "
                "commit that built it — and it stays unfrozen, so --check names 47")
+
+
+# --- --check counts what the rule freezes: a tracker the import renames is not frozen, and a note below the tracker folder is no tracker's
+
+def rows_renamed_by_import(area, add):
+    r = seeded(area, "before")
+    made_import(r, rename=("FM-001",))
+    s = Steps()
+    said = r.check()
+    s("the tracker the import renames and moves to Shipped is refused by the Shipped rule, it alone",
+      said[0] == fm.EXIT_LINT and refused_for(said, ["FM-001"]) and named(said, ["FM-001", *IMPORTED]) == ["FM-001"], said)
+    s("--check names the 48 it adds as frozen, not the one it renames", frozen_said(said).startswith("frozen trackers: 48 —"), extra=repr(frozen_said(said)))
+    s.add(add, "the Owner's signed import that also renames an open tracker and moves it to Shipped: the rule finds that tracker at the parent "
+               "by its id and refuses it, and --check counts the 48 the import adds, not that one")
+
+
+def rows_later_note(area, add):
+    r = seeded(area, "import")
+    s = Steps()
+    tid = IMPORTED[0]
+    note = r.root / REL / "evidence" / f"{tid}-note.md"
+    note.parent.mkdir(parents=True)
+    with open(note, "w", encoding="utf-8", newline="\n") as f:
+        f.write(f"# {tid}: what the import brought\n\nA note.\n")
+    r.commit(f"{tid}: a note on what the import brought", who=OWNER, sign=True)
+    said = r.check()
+    s("a later commit adds a note named for a frozen tracker, below the tracker folder: passes", said[0] == 0 and not named(said, IMPORTED), said)
+    s("…and --check still names 48 frozen: the note is no tracker's file", frozen_said(said).startswith("frozen trackers: 48 —"), extra=repr(frozen_said(said)))
+    s.add(add, "after the signed import, a later commit adds a note named for a frozen tracker under evidence/: that tracker stays frozen, and "
+               "--check still names 48")
 
 
 # --- a project below the top of its git repository is refused; at the top it is not; --version and --help still run ----------------
@@ -387,7 +425,8 @@ def rows_hooked_import(area, add):
                "parent is refused by the hook as before; --check on the import not yet made refuses each")
 
 
-ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_below_top, rows_hooked_import)
+ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_renamed_by_import, rows_later_note,
+        rows_below_top, rows_hooked_import)
 
 
 # Each mutant: (what it breaks, the function it patches, the text it replaces, its replacement, the rows that must catch it).
@@ -405,6 +444,9 @@ MUTANTS = (
      "added = {rel for rel in shipped if all(before.get(spec(base, rel)) is None for base in bases)}", "added = set(shipped)", (rows_modified_by_import,)),
     ("the unfreeze not lasting", "frozen_left", "    return set(froze) - {", "    return set(froze) or {", (rows_reopened,)),
     ("a tracker reopened in the working state counted frozen", "frozen_line", "for sha, _v, froze in held)) & now", "for sha, _v, froze in held))", (rows_reopened,)),
+    ("the count read by path: a tracker the import renames onto Shipped counted frozen", "tracker_imports",
+     " and not any(tracker_name(tid, names) for names in there)", "", (rows_renamed_by_import,)),
+    ("a later file below the tracker folder read as a frozen tracker's", "frozen_left", " if path.parent.as_posix() == home else None", "", (rows_later_note,)),
     ("the refusal below the top skipped", "main_run", "    refused = below_top()                                   #", "    refused = ''                                            #",
      (rows_below_top,)),
     ("the board's run below the top not refused", "board_run", "refused = below_top() or tracker_folder_problem()", "refused = tracker_folder_problem()",
