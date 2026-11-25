@@ -982,7 +982,7 @@ MUTANTS = (
     ("the answer's change rule reads a tracker with no file", "answer_change_problems", 'for t in trackers if t.get("file")}', "for t in trackers}",
      (rows_minting,)),
     ("a renumbering passes with no record wherever it stands", "id_walk_problems",
-     'if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:{rel}") or "" for b in bases]):',
+     'if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:./{rel}") or "" for b in bases]):',
      'if move[0] == "gone" and move[2] == "renumbered":', (rows_renumber,)),
     ("`--revoke` chooses by `done:` alone", "revoke_cmd", "    if by_id:\n", "    if False:\n", (rows_revoke,)),
     ("an answer with an id made on an unborn branch", "answer_cmd", 'if held and vcs() == "git" and not head_commit():', "if False:", (rows_unborn,)),

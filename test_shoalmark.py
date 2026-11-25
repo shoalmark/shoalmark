@@ -21721,6 +21721,9 @@ import test_filed_state
 _module_guard(test_filed_state, check)
 import test_answer_changes
 _module_guard(test_answer_changes, check)
+# a project below the top of its repository, judged as one at the top: its class test, a program of its own so its mutants can run it
+import test_below_top
+_module_guard(test_below_top, check)
 
 # R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
 import test_r9_removals
