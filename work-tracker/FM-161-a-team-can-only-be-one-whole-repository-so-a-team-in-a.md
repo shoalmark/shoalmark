@@ -7,15 +7,6 @@ next: build
 triaged: 2026-11-16
 tier: P1
 hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 accepted the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
-ask-id: FM-161-Q3
-ask: "Do you place FM-161-Q2's decisions 7 to 13 as proposed, every part in the tracker cut's release and none in a v0.20.4, or as changed under other, where a part in v0.20.4 changes FM-161-Q2's answer and reopens FM-188-Q1's decision 7?"
-ask-kind: ruling
-ask-since: 2026-11-25
-ask-options: "yes, as proposed | yes, but decision 8 in v0.20.4 | yes, but decision 8 and decision 12's ship-log row in v0.20.4 | no, not now"
-ask-proposal: "yes, as proposed"
-answer: "accepted - yes, as proposed"
-answered: 2026-11-25
-answered-by: holgo99
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -23,6 +14,11 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-25 — FM-161-Q3 answered "yes, as proposed", with the Owner's signature: every part of decisions 7 to 13 is
+in the tracker cut's release; keep P1, In Progress,** on the coordinator's word of that day. None goes to a v0.20.4, so
+[FM-188](FM-188-rulings-collide-unseen-an-ask-is-put-and-answered-without.md)-Q1's decision 7 stands. The answer is
+cleared into the record before the cut's rehearsal, so the import carries no standing answer.
 
 **2026-11-25 — FM-161-Q3 put, as a change to FM-161-Q2: where each part of decisions 7 to 13 ships,** on the
 coordinator's word of that day.
@@ -208,7 +204,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **FM-100's `standup-teams` takes such a place** where it refused it, with a test.
 - [ ] **The review at the tier its design sets is READY.**
 - [x] **The Owner has answered FM-161-Q2.** · `453601f`, #330 (`c069017`)
-- [ ] **The Owner has answered FM-161-Q3.**
+- [x] **The Owner has answered FM-161-Q3.** · `e2c964b`, #335 (`72a8415`)
 - [ ] **A project below the git top is judged exactly as one at the top:** each gate, with its tests and mutants.
 - [ ] **The hooks run the gate once for each project a staged path falls in, a relative signers file resolves from
   the top, and the records list is written from the project root,** each with its tests.
@@ -228,10 +224,16 @@ Each item names its commit or pull request when it lands.
 **relation** — accepted the proposal
 **signed** — 453601f · G
 
+**FM-161-Q3** · 2026-11-25 · Do you place FM-161-Q2's decisions 7 to 13 as proposed, every part in the tracker cut's release and none in a v0.20.4, or as changed under other, where a part in v0.20.4 changes FM-161-Q2's answer and reopens FM-188-Q1's decision 7?
+**answered** — accepted - yes, as proposed · holgo99
+**relation** — accepted the proposal
+**signed** — e2c964b · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-25 | FM-161-Q3 answered, yes, as proposed: every part of decisions 7 to 13 in the cut; the answer cleared into the record; keep P1, In Progress. Records only. |
 | 2026-11-25 | FM-161-Q3 put, as a change to FM-161-Q2: each part of decisions 7 to 13 in the tracker cut's release or in a v0.20.4, every part proposed for the cut; pass 1's rows below the top filed as evidence. Records only. |
 | 2026-11-25 | The records reviews' findings fixed forward: FM-033's gate in a code repository after the move, the first patch's order named as the lead's, the release FM-188-Q1's, and the hooks, signers and records list item worded as decisions 8 to 10. Records only. |
 | 2026-11-25 | FM-161-Q2 answered, yes, as proposed; keep P1, In Progress; the build starts. Records only. |
