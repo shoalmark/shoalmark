@@ -13503,7 +13503,8 @@ def below_top():
         return ""
     if not prefix:
         return ""
-    return (f"shoalmark: refused — the project root {ROOT} is below the top of its git repository, {top or 'which git does not name'}: a tracker "
+    named = str(pathlib.Path(top)) if top else "which git does not name"     # the top as the platform writes a path, as the root is: git writes it with forward slashes on Windows
+    return (f"shoalmark: refused — the project root {ROOT} is below the top of its git repository, {named}: a tracker "
             "is read at a revision by its path from the top, so nothing here would be judged; the tool runs only at the top until FM-161 — nothing was written")
 
 
