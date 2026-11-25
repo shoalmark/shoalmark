@@ -10,6 +10,9 @@ tracker's, so the count keeps that tracker. With the hooks on, the commit hook r
 commit adds already `Shipped` to `--check` and says so in one line, so the Owner's signed import is made and frozen, a seat's same commit is
 made and refused by `--check`, and a move of a tracker present at a parent is refused by the hook as before. A run whose project root is
 below the top of its git repository is refused in one line, a run at the top is not, and `--version` and `--help` still run below the top.
+Four rules more: an import with no parent here, the root of an unrelated history merged in, freezes nothing; an act run such as
+`--install-hook` is refused below the top and writes nothing; the commit hook judges what a merge being made brings, and leaves to `--check`
+only what the commit being made adds; and the freeze needs an Owner whom the configuration marks `signed`.
 
 Each row builds its history in a scratch repository — test_ask_ids' `Repo`: a bare `origin` whose `main` is the default branch, the Owner
 named `signed`, their key in the default branch's signers file, a planner seat — runs the tool in this process, and states its verdict as
@@ -190,6 +193,55 @@ def rows_unverified_import(area, add):
                "nothing: each of the 48 is refused, and --check names none frozen")
 
 
+# --- an import with no parent here freezes nothing, nor one by an Owner whom the configuration does not mark signed --------------------
+
+def rows_root_import(area, add):
+    r = seeded(area, "before")
+    r.switch("--orphan", "roots")
+    for tid in IMPORTED:
+        write(r.root, tid, imported(tid))
+    git(r.root, "add", "--", *(f"{REL}/{tid}-x.md" for tid in IMPORTED))
+    git(r.root, "commit", "-q", "-m", "the trackers, imported from the code repository", "-m", TRAILER, "-S", who=OWNER, sign=r.keys["owner"])
+    root = r.head()
+    r.switch("main")
+    git(r.root, "merge", "-q", "--no-ff", "--no-edit", "--allow-unrelated-histories", "roots")
+    r.commit("the index, with the imported trackers")
+    s = Steps()
+    s("the import is the root of its history: it has no parent", git(r.root, "rev-list", "--parents", "-n", "1", root).split() == [root])
+    said = r.check()
+    s("the Owner's signed import as the root of an unrelated history, merged into main: each of the 48 refused by the Shipped rule",
+      said[0] == fm.EXIT_LINT and refused_for(said, IMPORTED), said)
+    s("…each refusal says the import freezes nothing, its parent unread", refused_for(said, IMPORTED, "its parent cannot be read here, so it freezes nothing"), said)
+    s("…and --check names none frozen, and the import with no parent here",
+      frozen_said(said).startswith("frozen trackers: none —") and f"{root[:7]} carries `{TRAILER}` and has no parent here" in frozen_said(said),
+      extra=repr(frozen_said(said)))
+    s.add(add, "the Owner's signed import made as the root of an unrelated history and merged into main freezes nothing: it has no parent here to "
+               "tell what it adds from what it changes, so each of the 48 is refused, and --check names none frozen")
+
+
+def rows_owner_unmarked(area, add):
+    r = seeded(area, "before")
+    toml = r.root / "shoalmark.toml"
+    was = toml.read_text(encoding="utf-8")
+    with open(toml, "w", encoding="utf-8", newline="\n") as f:
+        f.write(was.replace(f'owner = "{OWNER[1]} signed"', f'owner = "{OWNER[1]}"'))
+    r.commit("the Owner, not marked signed", who=OWNER, sign=True)
+    git(r.root, "push", "-q", "origin", "main")
+    git(r.root, "fetch", "-q", "origin")
+    s = Steps()
+    s("the default branch's owner line names the Owner, not marked signed", f'owner = "{OWNER[1]}"\n' in git(r.root, "show", "origin/main:shoalmark.toml"))
+    sha = made_import(r)
+    said = r.check()
+    s("the Owner's signed import, where the owner line does not mark the Owner signed: each of the 48 refused by the Shipped rule",
+      said[0] == fm.EXIT_LINT and refused_for(said, IMPORTED), said)
+    s("…each refusal says the import does not verify, so it freezes nothing", refused_for(said, IMPORTED, NOT_VERIFIED), said)
+    s("…and --check names none frozen, and the commit that does not verify",
+      frozen_said(said).startswith("frozen trackers: none —") and f"{sha[:7]} carries `{TRAILER}` {NOT_VERIFIED}" in frozen_said(said),
+      extra=repr(frozen_said(said)))
+    s.add(add, "where the owner line does not mark the Owner signed, the Owner's signed import freezes nothing: each of the 48 is refused, and "
+               "--check names none frozen")
+
+
 # --- after the import: a tracker not frozen is judged as ever, and a frozen one reopened and shipped again is judged -----------------
 
 def product(r, v):
@@ -334,6 +386,21 @@ def rows_below_top(area, add):
                "--check, the default run, the board's run, --next, and the program started there; a run at the top is not; --version and --help run below the top")
 
 
+def rows_act_below_top(area, add):
+    top, sub = below(area)
+    real_top = Path(git(top, "rev-parse", "--show-toplevel").strip())
+    s = Steps()
+    for argv in (("--install-hook",), ("--init",)):
+        said = run(sub, *argv, who=SEAT)
+        first = (said[2].strip().splitlines() or [""])[0]
+        s(f"below the top, {argv[0]}: refused in the one line naming FM-161, the project root and the top",
+          said[0] == fm.EXIT_LINT and "FM-161" in first and str(sub) in first and f", {real_top}:" in first, said, repr(first))
+    s("…and no hook and no copy of the tool was written", not (top / ".git" / "hooks" / "pre-commit").exists() and not (top / ".git" / fm.COPY_DIR).exists())
+    s("…and nothing in the working tree changed", git(top, "status", "--porcelain", "--untracked-files=all") == "", extra=git(top, "status", "--porcelain"))
+    s.add(add, "an act run from a project below the top of its git repository — --install-hook, --init — is refused in the one line naming FM-161, "
+               "and writes no hook, no copy of the tool and nothing in the working tree")
+
+
 # --- the import made with the hooks on: the commit hook leaves the trackers a commit adds already Shipped to --check -----------------
 
 LEFT = ("48 trackers this commit adds already `Shipped` are left to `--check`: this hook runs before the commit's trailer and signature exist. "
@@ -425,8 +492,29 @@ def rows_hooked_import(area, add):
                "parent is refused by the hook as before; --check on the import not yet made refuses each")
 
 
+def rows_hooked_merge(area, add):
+    s = Steps()
+    r = seeded(area, "before")
+    install(r)
+    r.switch("-c", "filed")
+    write(r.root, "FM-160", shipped("FM-160", "Filed."))
+    r.commit("FM-160: filed, already Shipped")
+    r.switch("main")
+    git(r.root, "merge", "-q", "--no-ff", "--no-commit", "filed")
+    before = r.head()
+    code, printed = hooked(r, SEAT, "the branch filed, merged")
+    s("a merge being made, with the hooks on, that brings a seat's commit adding a tracker already Shipped: the commit hook refuses that "
+      "tracker, and the merge is not made", code != 0 and r.head() == before
+      and any(l.strip().startswith("lint: FM-160: in `") and "which the merge brings" in l and REFUSED in l for l in printed.splitlines()),
+      extra=f"exit {code}: {printed[-600:]!r}")
+    s("…and the hook leaves nothing to --check: the commit the merge brings is made, so it is judged there", "left to `--check`" not in printed,
+      extra=repr(printed[-600:]))
+    s.add(add, "a merge being made with the hooks on, bringing a seat's commit that adds a tracker already Shipped: the commit hook judges that "
+               "commit, refuses the tracker and leaves nothing to --check, so the merge is not made")
+
+
 ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_renamed_by_import, rows_later_note,
-        rows_below_top, rows_hooked_import)
+        rows_root_import, rows_owner_unmarked, rows_below_top, rows_act_below_top, rows_hooked_import, rows_hooked_merge)
 
 
 # Each mutant: (what it breaks, the function it patches, the text it replaces, its replacement, the rows that must catch it).
@@ -457,6 +545,13 @@ MUTANTS = (
     ("the commit hook's deferral with no line", "shipped_moves", "    if left:\n", "    if False:\n", (rows_hooked_import,)),
     ("the deferral in --check too, not only in the commit hook's run", "shipped_moves", "if COMMITTING and not commit else set()", "if not commit else set()",
      (rows_hooked_import,)),
+    ("an import with no parent here freezing what it adds", "import_freezes", "    if not commits_held(bases):\n", "    if False:\n", (rows_root_import,)),
+    ("an act run not refused below the top", "main_run", "    refused = below_top()                                   #",
+     "    refused = '' if any(vars(args).get(f) for f in ACT_RUNS) else below_top()  #", (rows_act_below_top,)),
+    ("the commit hook's deferral reaching what a merge being made brings", "shipped_moves", "later = added if COMMITTING and not commit else set()",
+     "later = added if COMMITTING else set()", (rows_hooked_merge,)),
+    ("the freeze held by an Owner whom the configuration does not mark signed", "import_verified",
+     'bool(theirs) and theirs[1] == "signed" and verified_as(', "bool(theirs) and verified_as(", (rows_owner_unmarked,)),
 )
 
 
