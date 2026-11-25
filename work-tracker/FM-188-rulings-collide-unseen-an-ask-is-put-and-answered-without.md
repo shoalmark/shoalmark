@@ -3,7 +3,7 @@ id: FM-188
 status: Proposed
 considered: FM-033, FM-076, FM-095, FM-097, FM-117, FM-118, FM-139, FM-161, FM-164, FM-170, FM-175, FM-187
 tags: process
-next: owner
+next: build
 hook: "Rulings collide unseen: an ask is put and answered without the earlier rulings it overturns, because --related reads titles and hooks, not asks and answers. Two decisions met FM-175's signed answer that way, and the releases meet the tracker cut. FM-188-Q1 puts five additions, FM-175 amended, no v0.20.4, and v0.20.3 reopened to add FM-187, FM-161 and the cut's provenance change, so the cut's release can come before v0.21.0."
 ask-id: FM-188-Q1
 ask: "Do you take FM-188's rulings as proposed, or as changed under other: Part 1's five additions in v0.21.0, FM-175 amended (trackers private in org, views uncommitted, git only, verdicts by signed tag), no v0.20.4, and v0.20.3 from main with FM-187 and FM-161 added, for the cut?"
@@ -11,6 +11,9 @@ ask-kind: ruling
 ask-since: 2026-11-25
 ask-options: "yes, as proposed | yes, but v0.20.3 without FM-187 and FM-161, which go in v0.21.0 | yes, but v0.20.3 folded into v0.21.0 | no, not now"
 ask-proposal: "yes, as proposed"
+answer: "accepted - yes, as proposed"
+answered: 2026-11-25
+answered-by: holgo99
 ---
 
 # FM-188 — rulings collide unseen: an ask is put and answered without the rulings it overturns, and the release plan meets the move
