@@ -1,0 +1,43 @@
+== the import through the hooks: exit 0; 6 paths, every one under teams/tool/: True
+   hooks | the hooks' COPY record is incomplete (full commit is not recorded): run --install-hook to record it whole
+   hooks | the hooks' COPY record is incomplete (full commit is not recorded): run --install-hook to record it whole
+   hooks | the hooks' COPY record is incomplete (full commit is not recorded): run --install-hook to record it whole
+   hooks | the hooks' COPY record is incomplete (full commit is not recorded): run --install-hook to record it whole
+== the commit: 0c141ac G Owner <owner@example.invalid> · the tool team's trackers, imported
+   message trailers: Tracker-import: shoalmark/tool 0123456789abcdef0123456789abcdef01234567
+== the team project's own --check (teams/tool), as its planner: exit 4
+   stdout | judged before build: on — 1 commit(s) on `import` since origin/main, 1 refused
+   stdout | the Owner's two sections: guarded — 1 commit(s) on `import` since origin/main, 1 change them or their signers file, each their own commit
+   stderr | docs/work-tracker/INDEX.md is STALE — a tracker changed without regenerating. Run: python3 <workbench>/scratch/c5/shoalmark.py
+   stderr |   --- docs/work-tracker/INDEX.md, as it stands
+   stderr |   +++ docs/work-tracker/INDEX.md, as the tool would write it
+   stderr |   @@ -11,0 +12,4 @@
+   stderr |   +>
+   stderr |   +> ❌ 1 ledger-integrity violation(s):
+   stderr |   +>
+   stderr |   +> - refused: commit 0c141ac "the tool team's trackers, imported" changes .gitignore (+1 more) outside docs/work-tracker/ — names no tracker: no FM-N in its subject, and its branch `import` names none (`<kind>/<NNN>-…`) — a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker
+   stderr |   lint: refused: commit 0c141ac "the tool team's trackers, imported" changes .gitignore (+1 more) outside docs/work-tracker/ — names no tracker: no FM-N in its subject, and its branch `import` names none (`<kind>/<NNN>-…`) — a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker
+   stderr | FAILED: 1 ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.
+== the outer project's --check (the top), as its planner: exit 0
+   stdout | docs/work-tracker/INDEX.md is up to date — 1 trackers.
+   stdout | judged before build: on — 1 commit(s) on `import` since origin/main, every build commit under a judged In Progress tracker or verified as the Owner's
+   stdout | the Owner's two sections: guarded — 1 commit(s) on `import` since origin/main, none changes them or their signers file
+== at the top: the branch `start` — 9f0dd5e creates the project (the Owner's, signed), f6597d5 builds in src/ (its planner)
+== the project at the top, its own --check on `start`: exit 4
+   stdout | judged before build: on — 2 commit(s) on `start` since origin/main, 2 refused
+   stdout | the Owner's two sections: guarded — 2 commit(s) on `start` since origin/main, 1 change them or their signers file, 1 refused
+   stderr | docs/work-tracker/INDEX.md is STALE — a tracker changed without regenerating. Run: python3 <workbench>/scratch/c5/shoalmark.py
+   stderr |   --- docs/work-tracker/INDEX.md, as it stands
+   stderr |   +++ docs/work-tracker/INDEX.md, as the tool would write it
+   stderr |   @@ -11,0 +12,5 @@
+   stderr |   +>
+   stderr |   +> ❌ 2 ledger-integrity violation(s):
+   stderr |   +>
+   stderr |   +> - refused: commit f6597d5 "build the app" changes src/app.py outside docs/work-tracker/ — names no tracker: no OR-N in its subject, and its branch `start` names none (`<kind>/<NNN>-…`) — a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker
+   stderr |   +> - refused: commit 9f0dd5e "the project, created" changes .gitignore (+1 more) outside docs/work-tracker/ — names no tracker: no OR-N in its subject, and its branch `start` names none (`<kind>/<NNN>-…`) — a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker
+   stderr |   lint: refused: commit f6597d5 "build the app" changes src/app.py outside docs/work-tracker/ — names no tracker: no OR-N in its subject, and its branch `start` names none (`<kind>/<NNN>-…`) — a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker
+   stderr |   lint: refused: commit 9f0dd5e "the project, created" changes .gitignore (+1 more) outside docs/work-tracker/ — names no tracker: no OR-N in its subject, and its branch `start` names none (`<kind>/<NNN>-…`) — a pass judges before the first build commit (FM-033): keep it with --triage first, or build under a judged In Progress tracker
+   stderr |   checkout: it is signed, but this clone cannot verify: `docs/work-tracker/allowed_signers` is not on origin/main: commit its first version there, signed — a branch cannot prove a key the default branch does not hold — see https://shoalmark.github.io/shoalmark/signing.html — 1 signed commit(s) it could not check: OR-001 `9f0dd5e5f9`
+   stderr |   the limit: a commit signed with the Owner's key passes; at tier 0 any process on their account holds that key (FM-007)
+   stderr | FAILED: 2 ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.
+exit 0 · 71 s

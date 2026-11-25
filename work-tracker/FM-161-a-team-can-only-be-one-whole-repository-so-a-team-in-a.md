@@ -1,12 +1,18 @@
 ---
 id: FM-161
 status: In Progress
-considered: FM-033, FM-100, FM-166, FM-175, FM-187, FM-188
+considered: FM-033, FM-100, FM-166, FM-175, FM-187, FM-188, FM-189
 tags: process
-next: build
+next: owner
 triaged: 2026-11-16
 tier: P1
 hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 accepted the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
+ask-id: FM-161-Q4
+ask: "How does an import that creates its team's project verify as yours there: as proposed, you land each team's shoalmark.toml and signers file first, then its trackers, or the tool reads that commit by the Owner and signers of the project around it?"
+ask-kind: ruling
+ask-since: 2026-11-25
+ask-options: "yes, as proposed: two landings, one more signed commit and merge of yours per team | the tool reads the creating commit by the project around it: no added act of yours, one more build pass and review | no, not now: no added act of yours; each team's check refuses its import on the import's branch"
+ask-proposal: "yes, as proposed: two landings, one more signed commit and merge of yours per team"
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -14,6 +20,31 @@ hook: "A team can only be one whole repository: a project whose shoalmark.toml s
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-25 — FM-161-Q4 put: by which state an import that creates its team's project verifies as the Owner's
+there,** on the coordinator's word of that day.
+- **Pass 3** (`be885a79`) builds decision 11's part (a): the project around a new project judges the commit that
+  creates it. In the organisation's layout, the Owner's import passes the outer project's check and its hooks.
+- **The team's own check still refuses it,** exit 4, by
+  [FM-033](FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s build gate. The default branch names
+  no Owner for a project the import creates, so the import is not the Owner's there.
+  [FM-187](FM-187-the-gate-passes-a-project-below-the-git-top-unjudged-and-a.md)'s frozen rule and
+  [FM-189](FM-189-an-import-brings-trackers-without-their-history-so-who-put.md)'s attestation read the same check, so
+  neither holds for that project on the import's branch. Pass 3's lines are filed as
+  [evidence/FM-161/team-half-pass-3.txt](evidence/FM-161/team-half-pass-3.txt), with the Builder's folder written
+  `<workbench>`.
+- **Proposed, two landings.** The Owner lands each team's `shoalmark.toml` and signers file on the default branch
+  first, in a signed commit that the project around it judges by part (a), and merges it. Then the team's trackers are
+  imported. The Owner's added acts: one more signed commit and merge per team. No code.
+  - The organisation's acceptance checks, run on a scratch join of FM-187 and FM-161's pass 2, pass checks 1 to 3 for
+    both teams this way. As the import is made today, the same join fails the import's hook and checks 2 and 2b:
+    [evidence/FM-161/two-landings-runs.txt](evidence/FM-161/two-landings-runs.txt). The hook's refusal in the first
+    run is pass 2's, which pass 3 ends.
+- **The other way:** the new project's own check reads the commit that creates it by the Owner and signers of the
+  project around it. It needs no added act of the Owner's, but it reads past decision 7, which judges a project below
+  the top exactly as one at the top, and needs one more build pass and a critical review before the cut's candidate.
+- **No, not now:** each team's check refuses its import on the import's branch, so the acceptance's checks 2 and 2b
+  fail there.
 
 **2026-11-25 — FM-161-Q3 answered "yes, as proposed", with the Owner's signature: every part of decisions 7 to 13 is
 in the tracker cut's release; keep P1, In Progress,** on the coordinator's word of that day. None goes to a v0.20.4, so
@@ -205,6 +236,7 @@ Each item names its commit or pull request when it lands.
 - [ ] **The review at the tier its design sets is READY.**
 - [x] **The Owner has answered FM-161-Q2.** · `453601f`, #330 (`c069017`)
 - [x] **The Owner has answered FM-161-Q3.** · `e2c964b`, #335 (`72a8415`)
+- [ ] **The Owner has answered FM-161-Q4.**
 - [ ] **A project below the git top is judged exactly as one at the top:** each gate, with its tests and mutants.
 - [ ] **The hooks run the gate once for each project a staged path falls in, a relative signers file resolves from
   the top, and the records list is written from the project root,** each with its tests.

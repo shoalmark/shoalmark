@@ -1,0 +1,37 @@
+The organisation's acceptance checks, revision 2, on one scratch join: FM-187's lane at 6f88e038 and FM-161's lane at 904ec0d3 (pass 2), with FM-187's refusal below the top lifted. Checks 4 and 5 read the real repositories, where the cut is not made. The rust team's two tracker ids are written <rust tracker 1> and <rust tracker 2>.
+
+Run 1, as the import is made today: each team's import creates its project, one signed commit of the Owner's per team.
+FAIL  H tool: the import commit is made signed, with the hooks on and no --no-verify (commit exit 1; hooks: commit-msg post-checkout post-merge post-rewrite pre-commit prepare-commit-msg ; the hook said:   FM-001: a `triage` change is being committed now — the seat's signature is verified on the commit, by the next run   FM-002: a `close` change is being committed now — the seat's signature is verified on the commit, by the next run )
+FAIL  H rust: the import commit is made signed, with the hooks on and no --no-verify (commit exit 1; hooks: commit-msg post-checkout post-merge post-rewrite pre-commit prepare-commit-msg ; the hook said:   <rust tracker 1>: a `triage` change is being committed now — the seat's signature is verified on the commit, by the next run   <rust tracker 2>: a `triage` change is being committed now — the seat's signature is verified on the commit, by the next run )
+PASS  1 org's own project is undisturbed by the import (exit 0, before 0; 0 violations, before 0)
+FAIL  2 tool: no shipped tracker fails for a commit kept in the code repository (48 trackers do: 9 name no commit, 39 name commits not in this repository)
+FAIL  2b tool: the team's check refuses nothing in the import alone (exit 4; 49 refusals; 0 of them rights violations)
+PASS  3 tool: a non-seat's close is refused by the check (1 close violations, 0 before the control; the commit hook refused it too)
+PASS  2 rust: no shipped tracker fails for a commit kept in the code repository (0 trackers do: 0 name no commit, 0 name commits not in this repository)
+FAIL  2b rust: the team's check refuses nothing in the import alone (exit 4; 1 refusals; 0 of them rights violations)
+PASS  3 rust: a non-seat's close is refused by the check (1 close violations, 0 before the control; the commit hook refused it too)
+FAIL  4 shoalmark: no tracker folder on its default branch (703 files there)
+FAIL  4 rust: no tracker folder on its default branch (255 files there)
+FAIL  5 org holds the tool team's trackers (0 files)
+FAIL  5 org holds the rust team's trackers (0 files)
+  the tool team's check:
+    judged before build: on — 2 commit(s) on `import` since origin/main, 1 refused
+    frozen trackers: none — no commit of HEAD's history carries `Tracker-import:` and verifies as the Owner's own signed commit; 063df8c carries `Tracker-import: shoalmark/rust <commit>` and does not verify as the Owner's own signed commit, so it freezes nothing
+
+Run 2, two landings: the base also lands each team's shoalmark.toml, naming the Owner, and its signers file on the default branch; then the same imports.
+PASS  H tool: the import commit is made signed, with the hooks on and no --no-verify (commit exit 0; hooks: commit-msg post-checkout post-merge post-rewrite pre-commit prepare-commit-msg ; the hook said:   FM-001: a `triage` change is being committed now — the seat's signature is verified on the commit, by the next run   FM-002: a `close` change is being committed now — the seat's signature is verified on the commit, by the next run )
+PASS  H rust: the import commit is made signed, with the hooks on and no --no-verify (commit exit 0; hooks: commit-msg post-checkout post-merge post-rewrite pre-commit prepare-commit-msg ; the hook said:   <rust tracker 1>: a `triage` change is being committed now — the seat's signature is verified on the commit, by the next run   <rust tracker 2>: a `triage` change is being committed now — the seat's signature is verified on the commit, by the next run )
+PASS  1 org's own project is undisturbed by the import (exit 0, before 0; 0 violations, before 0)
+PASS  2 tool: no shipped tracker fails for a commit kept in the code repository (0 trackers do: 0 name no commit, 0 name commits not in this repository)
+PASS  2b tool: the team's check refuses nothing in the import alone (exit 3; 0 refusals; 0 of them rights violations)
+PASS  3 tool: a non-seat's close is refused by the check (1 close violations, 0 before the control; the commit hook refused it too)
+PASS  2 rust: no shipped tracker fails for a commit kept in the code repository (0 trackers do: 0 name no commit, 0 name commits not in this repository)
+PASS  2b rust: the team's check refuses nothing in the import alone (exit 3; 0 refusals; 0 of them rights violations)
+PASS  3 rust: a non-seat's close is refused by the check (1 close violations, 0 before the control; the commit hook refused it too)
+FAIL  4 shoalmark: no tracker folder on its default branch (703 files there)
+FAIL  4 rust: no tracker folder on its default branch (255 files there)
+FAIL  5 org holds the tool team's trackers (0 files)
+FAIL  5 org holds the rust team's trackers (0 files)
+  the tool team's check:
+    judged before build: on — 2 commit(s) on `import` since origin/main, every build commit under a judged In Progress tracker or verified as the Owner's
+    frozen trackers: 48 — added already `Shipped` by the import commit af7036a (Tracker-import: shoalmark/rust <commit>) and the import commit a03e893 (Tracker-import: shoalmark/shoalmark <commit>), the Owner's own signed commit; the Shipped rule finds no move for them
