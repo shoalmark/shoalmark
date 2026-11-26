@@ -8766,14 +8766,16 @@ def ship_problems(trackers):
 def tracker_imports():
     """The frozen rule as HEAD's history holds it: ([(an import commit that verifies, its trailer's value, {tracker id: path} of what it
     froze)], [(a commit that carries the trailer and freezes nothing, its value, why)]), newest first — or None where git cannot read that
-    history. One `git log` finds every commit that carries the trailer; for an import that verifies, what it adds already Shipped is read
-    against each of its parents as `shipped_moves` reads it: a file directly in the tracker folder, absent at every parent by its path and
-    by its id (`tracker_name`). A tracker the import renames is present by its id, so the rule judges it and it is not counted. A commit
-    with no parent here freezes nothing."""
-    log = git_out("log", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}", "HEAD")
+    history. One `git log` finds every commit that carries the trailer and changes this project's tracker folder, every side of a merge
+    walked (`--full-history`), so an import that a merge did not keep is read too: an import commit that changes nothing in that folder,
+    such as another project's import into its own, is neither named nor read here, whether it verifies or not. For an import that verifies,
+    what it adds already Shipped is read against each of its parents as `shipped_moves` reads it: a file directly in the tracker folder,
+    absent at every parent by its path and by its id (`tracker_name`). A tracker the import renames is present by its id, so the rule judges
+    it and it is not counted. A commit with no parent here freezes nothing."""
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    log = git_out("log", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}", "HEAD", "--full-history", "--", home)
     if log is None:
         return None
-    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
     held, other = [], []
     for rec in log.split("\x00")[1:]:
         sha, parents, name, email, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
@@ -8836,8 +8838,8 @@ def frozen_left(sha, froze, held):
 
 
 def frozen_line(trackers):
-    """`--check`'s one line on the frozen rule: how many trackers are frozen, and each import commit's short hash with its trailer; or that
-    none is, naming the newest commit that carries the trailer and freezes nothing, and why. A tracker is frozen while the rule finds no
+    """`--check`'s one line on the frozen rule: how many trackers are frozen, and the short hash and trailer of each import commit that
+    changes the tracker folder (`tracker_imports`); or that none is, naming the newest such commit that freezes nothing, and why. A tracker is frozen while the rule finds no
     move for it: an import commit that verifies added it already Shipped, no later commit moves it to Shipped as the rule judges a move
     (`frozen_left`), and it is Shipped at HEAD, its tracker file directly in the tracker folder found by its id, and in the working state.
     So after a move away from Shipped or a deletion on the line HEAD holds, a later move back is judged and the count leaves the tracker
@@ -8847,7 +8849,8 @@ def frozen_line(trackers):
         return f"frozen trackers: none — HEAD's history cannot be read, so no `{IMPORT_TRAILER}:` commit freezes anything"
     held, other = found
     if not held:
-        return (f"frozen trackers: none — no commit of HEAD's history carries `{IMPORT_TRAILER}:` and verifies as the Owner's own signed commit"
+        return (f"frozen trackers: none — no commit of HEAD's history that changes the tracker folder carries `{IMPORT_TRAILER}:` and verifies as the "
+                "Owner's own signed commit"
                 + (f"; {other[0][0][:7]} carries `{IMPORT_TRAILER}: {other[0][1]}` and {other[0][2]}, so it freezes nothing" if other else ""))
     now = {t["id"] for t in trackers if t.get("status") == "Shipped"}
     frozen = set().union(*(frozen_left(sha, froze, held) for sha, _v, froze in held)) & now

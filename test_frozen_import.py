@@ -15,7 +15,9 @@ made and refused by `--check`, and a move of a tracker present at a parent is re
 below the top of its git repository is judged as the same project at the top is: the same exit, the same lines and the same INDEX.md,
 and `--version` and `--help` run there. Below the top, the tracker folder at a revision is read whole, as at the top: `--check` counts the
 48 the Owner's signed import freezes, a tracker the import renames onto `Shipped` is found at the parent by its id and refused, and a
-later commit that renames a frozen tracker is no move. Four rules more: an import with no parent here, the root of an unrelated history merged in,
+later commit that renames a frozen tracker is no move. In a repository of two projects, each with the Owner's signed import of its
+own, each project's frozen line names its own import alone, with its count; an import that a merge did not keep is still named, as
+before. Four rules more: an import with no parent here, the root of an unrelated history merged in,
 freezes nothing; an act run such as `--install-hook` does below the top what it does at the top; the commit hook judges what a merge
 being made brings, and leaves to `--check` only what the commit being made adds; and the freeze needs an Owner whom the configuration
 marks `signed`.
@@ -583,6 +585,55 @@ def rows_renamed_later_below_top(area, add):
                "Shipped, so a seat's rename of a frozen tracker passes, and --check still counts 48")
 
 
+# --- two projects in one repository: each project's frozen line names the imports into its own tracker folder alone ----------------
+
+TEAM = [f"FM-{n}" for n in range(201, 206)]                     # the team's 5 trackers, imported into its own project below the top
+TEAM_TRAILER = "Tracker-import: shoalmark/tool 3d5c7e9f0a1b2c3d4e5f60718293a4b5c6d7e8f9"
+
+
+def rows_two_projects(area, add):
+    r = seeded(area, "import")
+    ours = r.head("import")
+    r.land("import")
+    team = r.root / "teams" / "tool"
+    r.switch("-c", "team")
+    (team / REL).mkdir(parents=True)
+    (team / "shoalmark.toml").write_text(CONFIG.replace('name = "ids"', 'name = "tool"'), encoding="utf-8")
+    (team / REL / "allowed_signers").write_text(f"{OWNER[1]} " + r.keys["owner"].with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
+    r.commit("the team's project: its configuration and signers file", who=OWNER, sign=True)
+    r.land("team")
+    r.switch("-c", "team-import")
+    (team / ".gitignore").write_text(f"{REL}/index.html\n{REL}/view/\n", encoding="utf-8")
+    for tid in TEAM:
+        write(team, tid, imported(tid))
+    run(team, "--print-written", who=OWNER)
+    theirs = r.commit("the team's trackers, imported from its code repository", who=OWNER, sign=True, trailers=(TEAM_TRAILER,))
+    r.land("team-import")
+    s = Steps()
+    said, here = r.check(), run(team, "--check", who=SEAT)
+    want = f"frozen trackers: 48 — added already `Shipped` by the import commit {ours[:7]} ({TRAILER}), the Owner's own signed commit;"
+    s("the project at the top: its frozen line names its own import alone, with its 48", frozen_said(said).startswith(want), said, repr(frozen_said(said)))
+    want = f"frozen trackers: {len(TEAM)} — added already `Shipped` by the import commit {theirs[:7]} ({TEAM_TRAILER}), the Owner's own signed commit;"
+    s(f"the team's project below it: its frozen line names its own import alone, with its {len(TEAM)}", frozen_said(here).startswith(want), here,
+      repr(frozen_said(here)))
+    s.add(add, "two projects in one repository, each with the Owner's signed import of its own: each project's frozen line names its own import "
+               f"alone, with its count — 48 at the top, {len(TEAM)} in the team's folder below it")
+
+
+def rows_import_not_kept(area, add):
+    r = seeded(area, "import")
+    sha = r.head("import")
+    r.switch("main")
+    git(r.root, "merge", "-q", "-s", "ours", "--no-edit", "import")
+    s = Steps()
+    said = r.check()
+    want = f"frozen trackers: 0 — added already `Shipped` by the import commit {sha[:7]} ({TRAILER})"
+    s("the Owner's signed import merged with none of its trackers kept: --check still names it, as before, and counts none of what it added",
+      frozen_said(said).startswith(want), said, repr(frozen_said(said)))
+    s.add(add, "the Owner's signed import merged with none of its trackers kept: the frozen line still names that import, as it did when it "
+               "read every import commit, and counts 0")
+
+
 # --- the import made with the hooks on: the commit hook leaves the trackers a commit adds already Shipped to --check -----------------
 
 LEFT = ("48 trackers this commit adds already `Shipped` are left to `--check`: this hook runs before the commit's trailer and signature exist. "
@@ -697,7 +748,8 @@ def rows_hooked_merge(area, add):
 
 ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_renamed_by_import, rows_later_note,
         rows_root_import, rows_owner_unmarked, rows_below_top, rows_act_below_top, rows_frozen_below_top, rows_renamed_by_import_below_top,
-        rows_renamed_later_below_top, rows_hooked_import, rows_hooked_merge, rows_side_deletion_kept, rows_merge_deletes)
+        rows_renamed_later_below_top, rows_two_projects, rows_import_not_kept, rows_hooked_import, rows_hooked_merge, rows_side_deletion_kept,
+        rows_merge_deletes)
 
 
 # Each mutant: (what it breaks, the function it patches, the text it replaces, its replacement, the rows that must catch it).
@@ -735,6 +787,10 @@ MUTANTS = (
     ("a move judged against the first parent alone", "frozen_left", "for p in parents)}", "for p in parents[:1])}", (rows_side_deletion_kept,)),
     ("the tracker folder at a revision listed without --full-tree: below the top, only what lies below the working directory's place in it",
      "folder_names", '"--name-only", "--full-tree", ', '"--name-only", ', (rows_frozen_below_top, rows_renamed_by_import_below_top, rows_renamed_later_below_top)),
+    ("the read of every import commit in HEAD's history, whatever folder it changes", "tracker_imports", '"HEAD", "--full-history", "--", home)', '"HEAD")',
+     (rows_two_projects,)),
+    ("the imports read by git's default history simplification: an import a merge did not keep goes unread", "tracker_imports",
+     '"HEAD", "--full-history", "--", home)', '"HEAD", "--", home)', (rows_import_not_kept,)),
 )
 
 

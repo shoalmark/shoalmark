@@ -1348,7 +1348,8 @@ def fm169_read(argv):
 # allowance, held to that site and that read, made once, and to that line as a repository with no import commit prints it, once.
 FROZEN_SITES = ("frozen_line",)
 FROZEN_READS = (("log", "-i", "--grep=^Tracker-import:"),)
-FROZEN_NONE = "frozen trackers: none — no commit of HEAD's history carries `Tracker-import:` and verifies as the Owner's own signed commit"
+FROZEN_NONE = ("frozen trackers: none — no commit of HEAD's history that changes the tracker folder carries `Tracker-import:` and verifies as "
+               "the Owner's own signed commit")
 
 
 def frozen_reads(rows):
