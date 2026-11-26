@@ -18,6 +18,9 @@ least one row red. A function this tool lacks fails the row that asks for it. On
 repository of its own and asks the import's reader alone, with the import's verification and its held-parents test stubbed: a run from
 below the top is refused until such a project is read as one at the top, and that verification rests on the same reading.
 
+A merge that is the import attests what its own change adds, in every rule: no commit's change holds the lines a merge wrote, so the
+import sets them. An import whose parent's tree this clone cannot read — a partial clone whose origin is out of reach — attests nothing.
+
 Run: `python3 test_import_attests.py` — exit 1 on a failure; `python3 test_import_attests.py rows_<name> …` runs those rows alone, without
 the mutants, and with `--with-mutants` beside them, with the mutants that run those rows; `--no-mutants` runs every row and no mutant.
 test_shoalmark.py runs it as it runs test_frozen_import.py. No network: every repository is a scratch one, `origin` a bare one beside it.
@@ -454,8 +457,85 @@ def rows_below_top_verification_stubbed(area, add):
                "tracker folder at the import and at its parent, and finds the four open trackers the Owner's signed import adds")
 
 
+# --- a merge that is the import: it attests what its own change adds, in every rule -------------------------------------------------
+
+LEGACY = text("FM-205", ask(q="Ship the old one?", move="build") + answer_lines())    # an answer given before ask ids: no `ask-id:` beside it
+
+
+def merged(r, bodies, side=None):
+    """On the branch `r` stands on, the Owner's signed merge of a side branch cut from there — whose own commit, a seat's, writes
+    `side`'s trackers, or a note on FM-001 where none are given — that adds `bodies` in the merge's own change, with the trailer. Its
+    commit."""
+    here = git(r.root, "rev-parse", "--abbrev-ref", "HEAD").strip()
+    r.switch("-c", f"side-of-{here}")
+    for tid, body in (side or {"FM-001": r.read("FM-001").replace("One thing is left.", "One thing is left, on the side.")}).items():
+        write(r.root, tid, body)
+    commit(r, "side: a change of its own")
+    r.switch(here)
+    git(r.root, "merge", "-q", "--no-ff", "--no-commit", f"side-of-{here}", who=OWNER)
+    for tid, body in bodies.items():
+        write(r.root, tid, body)
+    return commit(r, "the trackers, imported by a merge", OWNER, "owner", (TRAILER,))
+
+
+def rows_merge_import(area, add):
+    r = seeded(area, "before")
+    sha = merged(r, dict(imported(), **{"FM-205": LEGACY}))
+    s = Steps()
+    said = r.check()
+    s("--check passes, and names none of the five the merge adds", said[0] == 0 and not named(said, IMPORTED + ("FM-205",)), said)
+    with reading(r.root) as ts:
+        queue = sorted(t["id"] for t, _age, _held in fm.owner_queue(list(ts.values())))
+        bad = [t["id"] for t, _why in fm.malformed_asks(list(ts.values()))]
+        who = [author_of(ts, "FM-201", "next: owner"), author_of(ts, "FM-205", "answer:")]
+        got = fm.answer_commit(ts["FM-202"])
+    s("the Owner's queue, built offline, holds FM-201 beside the two asks put before, and no ask is sent back",
+      queue == ["FM-001", "FM-002", "FM-201"] and not bad, extra=repr((queue, bad)))
+    s("FM-201's `next: owner` and FM-205's answer with no ask id are the merge's own lines, set by the import, by the Owner",
+      who == [(OWNER[0], OWNER[1], "git", sha)] * 2, extra=repr(who))
+    s("the answer beside FM-202-Q1 counts, the merge its commit", got == (sha, ""), extra=repr(got))
+    s.add(add, "the Owner's signed merge that adds the trackers in its own change is the import in every rule: the open ask stays in the "
+               "Owner's queue, `next: owner` and an answer with no ask id pass as the import's, and the answer beside its id counts")
+
+
+def rows_parent_unread(area, add):
+    """The import on its branch, on top of a seat's commit `main` does not hold. A clone that holds no tree it did not check out
+    (`--filter=tree:0`) reads `main`'s history in full while `origin` is there; then `origin` is out of reach, and git can read the
+    import's parent's tree no more, while the import still verifies and its parent is held."""
+    r = seeded(area, "before")
+    r.switch("-c", "import")
+    (r.root / "notes.txt").write_text("a note\n", encoding="utf-8")
+    parent = commit(r, "a note, before the import")
+    for tid, body in imported().items():
+        write(r.root, tid, body)
+    sha = commit(r, "the trackers, imported", OWNER, "owner", (TRAILER,))
+    git(r.root, "push", "-q", "origin", "import")
+    with reading(r.root):
+        full = {tid: [c for c, _name, _text in held] for tid, held in fm.import_attests().items()}
+    for k, v in (("uploadpack.allowFilter", "true"), ("uploadpack.allowAnySHA1InWant", "true")):
+        git(r.origin, "config", k, v)
+    pc = area / "partial"
+    git(area, "clone", "-q", "--filter=tree:0", "--no-local", "--branch", "import", f"file://{r.origin}", str(pc))
+    for k, v in (("user.name", OWNER[0]), ("user.email", OWNER[1]), ("gpg.ssh.allowedSignersFile", f"{REL}/allowed_signers")):
+        git(pc, "config", k, v)
+    git(pc, "remote", "set-head", "origin", "main")
+    git(pc, "log", "-p", "--format=%H", "origin/main")
+    r.origin.rename(r.origin.with_name("origin-out-of-reach.git"))
+    unread = subprocess.run(["git", "-C", str(pc), "cat-file", "-e", f"{parent}^{{tree}}"], capture_output=True).returncode != 0
+    with reading(pc):
+        verified, held = fm.import_verified(sha, *OWNER), fm.commits_held([parent])
+        got = {tid: [c for c, _name, _text in held_] for tid, held_ in fm.import_attests().items()}
+    s = Steps()
+    s("in the full clone the import attests the four it adds", full == {tid: [sha] for tid in IMPORTED}, extra=repr(full))
+    s("in the partial clone, origin out of reach, the import verifies and its parent is held, while the parent's tree cannot be read",
+      verified and held and unread, extra=repr((verified, held, unread)))
+    s("…and the import attests nothing", got == {}, extra=repr(got))
+    s.add(add, "an import whose parent's tree this clone cannot read — a partial clone whose origin is out of reach — attests nothing, "
+               "though it verifies and its parent is held")
+
+
 ROWS = (rows_check, rows_modified, rows_queue, rows_owner, rows_answer_counts, rows_ask_numbers, rows_after_import, rows_attests_nothing,
-        rows_done_left, rows_below_top_verification_stubbed)
+        rows_done_left, rows_below_top_verification_stubbed, rows_merge_import, rows_parent_unread)
 
 
 @contextlib.contextmanager
@@ -513,6 +593,10 @@ MUTANTS = (
      (('attested = how == "git" and import_adds(t, commit)', "attested = False"),), (rows_owner,)),
     ("the tracker folder listed without `--full-tree`: below the top it lists nothing", "import_attests",
      (('"--full-tree", ', ""),), (rows_below_top_verification_stubbed,)),
+    ("`line_author`'s readers without the import: a line a merge that is the import wrote names no commit", "line_author",
+     (('out = import_setter(rel, key, line) or (None, None, "unattributed", "")', 'out = (None, None, "unattributed", "")'),), (rows_merge_import,)),
+    ("an import whose parent's tracker folder this clone cannot read attests what that folder's listing misses", "import_attests",
+     (("if any(names(p) is None for p in parents):", "if False:"),), (rows_parent_unread,)),
 )
 
 

@@ -2404,14 +2404,15 @@ def front_line(text, key):
     return next((l for l in reversed(head.split("\n")[1:]) if l.partition(":")[0].strip().lower() == key and ":" in l), "")
 
 
-_ATTESTS, _REACHES = None, {}
+_ATTESTS, _REACHES, _ATTEST_EMAILS = None, {}, {}
 
 
 def import_attests():
     """WHAT AN IMPORT ATTESTS, one reader for every rule that asks it: {tracker id: [(the import commit, its author's name, the tracker's
     text as that commit holds it), …], newest first} — each tracker an import commit of this history adds open. An import commit carries
     `Tracker-import: <repository> <commit>` in its form (`import_value`), verifies as the Owner's own signed commit (`import_verified`), and
-    has every parent held here (`commits_held`): a first commit, or one whose parent a shallow clone cut off, attests nothing. A tracker it
+    has every parent held here (`commits_held`): a first commit, or one whose parent a shallow clone cut off, attests nothing, and neither
+    does one whose tracker folder at a parent this clone cannot read, as in a partial clone whose reads cannot fetch it. A tracker it
     adds is one that no file of its id stands for in the tracker folder at any parent; one it adds already `Shipped` or `Closed` is the
     frozen rule's and is not read here. Such a commit attests every guarded line of each tracker it adds, as it holds them: a line it wrote
     that no later commit changed is the Owner's, set with every right it needs, and a line changed later is its own commit's. The history
@@ -2421,16 +2422,34 @@ def import_attests():
     global _ATTESTS
     if _ATTESTS is None:
         _ATTESTS = {}
+        _ATTEST_EMAILS.clear()
         log = git_out("log", "--topo-order", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}",
                       "HEAD", *merge_heads()) if vcs() == "git" else None
         home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix() if log else ""
-        ids = lambda rev: {"-".join(n.split("-")[:2]): n for n in (git_out("ls-tree", "-z", "--full-tree", "--name-only", f"{rev}:./{home}") or "").split("\x00")
-                           if n.endswith(".md") and KIND_RE.match(n)}      # `--full-tree`: from a project below the top, ls-tree lists only what lies under the working directory's prefix inside that tree, which is nothing
+        listed = {}
+
+        def names(rev, folder=home):
+            """The names directly in `folder` at `rev`: none where `rev` has no such folder, None where this clone cannot read it — its
+            tree, or a tree on the way to it, is not here. Each folder read once."""
+            if (rev, folder) not in listed:
+                got = git_out("ls-tree", "-z", "--full-tree", "--name-only", f"{rev}:./{folder}")   # `--full-tree`: from a project below the top, ls-tree lists only what lies under the working directory's prefix inside that tree, which is nothing
+                if got is not None or not folder:
+                    listed[(rev, folder)] = None if got is None else got.split("\x00")
+                else:
+                    up, _, last = folder.rpartition("/")
+                    above = names(rev, up)
+                    listed[(rev, folder)] = None if above is None or last in above else []
+            return listed[(rev, folder)]
+
+        ids = lambda rev: {"-".join(n.split("-")[:2]): n for n in (names(rev) or []) if n.endswith(".md") and KIND_RE.match(n)}
         for rec in (log or "").split("\x00")[1:]:
             sha, parents, name, email, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
             parents = parents.split()
             if not import_value(block.strip("\n")) or not parents or not import_verified(sha, name, email) or not commits_held(parents):
                 continue
+            if any(names(p) is None for p in parents):
+                continue                                # a parent's tracker folder this clone cannot read: what the import adds is not known, so it attests nothing
+            _ATTEST_EMAILS[sha] = email
             before = set().union(*(ids(p) for p in parents))
             added = {tid: f"{home}/{n}" for tid, n in ids(sha).items() if tid not in before}
             texts = cat_blobs([f"{sha}:./{rel}" for rel in added.values()])
@@ -2445,6 +2464,18 @@ def import_adds(t, commit):
     """Whether `commit` is an import commit that attests `t`, one that adds it open (`import_attests`): each guarded line of `t` as that
     commit wrote it is the Owner's, set with every right it needs."""
     return bool(commit) and any(sha == commit for sha, _name, _text in import_attests().get(t.get("id"), ()))
+
+
+def import_setter(rel, key, line):
+    """Who set `line`, the guarded line under `key` of the tracker file `rel`, where no commit's change holds it: a merge carries no diff,
+    so a merge that is the import names no commit for a line its own change wrote (`line_author`). The newest import commit that attests
+    the tracker (`import_attests`) and whose copy holds that line as the file does sets it, as `line_author` names a setter — (its author's
+    name and email, "git", the import commit) —; else None."""
+    for sha, name, text in import_attests().get("-".join(pathlib.PurePosixPath(rel).name.split("-")[:2]), ()):
+        n = guarded_line(text, key)
+        if n is not None and text.split("\n")[n - 1].rstrip("\r") == line:
+            return name, _ATTEST_EMAILS.get(sha, ""), "git", sha
+    return None
 
 
 def reaches(sha, rev):
@@ -6825,7 +6856,8 @@ def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
     file: (name, email, system, commit) — or (None, None, "uncommitted", "") where version control's own record says the line
     is not committed yet (the working copy or the index carries it, no commit does), (None, None, "unattributed", "")
-    where it names no commit for a line a commit carries, and on Subversion (None, None, "merged", <revision>) for a line older
+    where it names no commit for a line a commit carries — save a line of a tracker an import attests, as a merge that is the import
+    writes it, whose copy holds it as the file does: that import sets it (`import_setter`) —, and on Subversion (None, None, "merged", <revision>) for a line older
     than a merge that put the tracker's path here (`svn_blame`) — and (None, None, "unread", "") where a run whose reads fetch nothing meets an object
     of its history this partial clone does not hold (`unread_here`): not read, which judges nothing. Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
@@ -6899,7 +6931,7 @@ def line_author(path, needle):
             elif log is not None and log.returncode != 0 and unread_here():
                 out = (None, None, "unread", "")        # the walk met an object the partial clone lacks: who set it is not read here
             else:
-                out = (None, None, "unattributed", "")
+                out = import_setter(rel, key, line) or (None, None, "unattributed", "")     # a merge that is the import wrote it: the import sets it
         if out[2] == "unread":
             note_unread(f"the history of {rel}")
     _LINE_AUTHOR[(rel, key)] = out
