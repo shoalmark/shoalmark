@@ -8612,8 +8612,10 @@ def import_freezes(commit, name, email, bases):
 
 
 def folder_names(rev, folder):
-    """The names of what sits directly in `folder` at `rev`, one `git ls-tree`: none where `rev` holds no such folder."""
-    return [n for n in (git_out("ls-tree", "-z", "--name-only", f"{rev}:./{folder}") or "").split("\x00") if n]
+    """The names of what sits directly in `folder` at `rev`, one `git ls-tree`: none where `rev` holds no such folder. The folder is listed
+    whole (`--full-tree`): git otherwise lists a tree only below the working directory's own place in it, which from a project below the
+    top of its repository is nothing."""
+    return [n for n in (git_out("ls-tree", "-z", "--name-only", "--full-tree", f"{rev}:./{folder}") or "").split("\x00") if n]
 
 
 def tracker_name(tid, names):
