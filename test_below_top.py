@@ -1325,7 +1325,8 @@ def rows_hooks(area, add):
             refused_cfg = hooked(r, "FM-001: name the tool's repository")
             lines = lambda said, words: [one for one in said.splitlines() if words in one]
             mine = lambda one, folder: one.startswith(f"{folder}: ") if folder else not one.startswith(f"{team}:") and one.lstrip().startswith("refused")
-            ok = (alone[0] != 0 and lines(alone[1], NO_TEAM) and all(one.startswith(f"{team}: ") for one in alone[1].splitlines() if one.strip())
+            own = lambda said: [one for one in said.splitlines() if one.strip() and not one.startswith("the hooks' COPY record is incomplete")]
+            ok = (alone[0] != 0 and lines(alone[1], NO_TEAM) and all(one.startswith(f"{team}: ") for one in own(alone[1]))
                   and both[0] != 0 and lines(both[1], NO_TEAM) and lines(both[1], NO_OUTER)
                   and all(mine(one, team) for one in lines(both[1], NO_TEAM)) and all(mine(one, outer) for one in lines(both[1], NO_OUTER))
                   and refused_cfg[0] != 0 and lines(refused_cfg[1], "[repositories]")
@@ -1597,6 +1598,59 @@ def rows_new_project(area, add):
         return refused(o, GATE), seen(o)
     one("landed-refused", "a new project · the default branch holds the folder's `shoalmark.toml` as a configuration the tool refuses, and a branch "
         "mends it: a build commit there after the mend, under no tracker, is judged by the outer check, and refused", landed_refused)
+
+    def taken_out(name):
+        r, outer, team = gated(area, name, "")
+        git(r.top, "rm", "-q", "--", r_at(team, "shoalmark.toml"))
+        r.commit("take the team's configuration out", who=COORD, index=False)
+        git(r.top, "checkout", "-q", "main", "--", r_at(team, "shoalmark.toml"))
+        r.put(r_at(team, "src/evil.py"), "print('built as the project comes back')\n")
+        return r, outer, team
+
+    def recreated():
+        r, outer, team = taken_out("re-created")
+        r.commit("put the team's configuration back, and build", who=COORD, index=False)
+        said = r.check(outer, who=COORD)
+        return refused(said, NO_OUTER, "put the team's configuration back"), seen(said)
+    one("re-created", "a new project · the default branch holds the team project, and a branch takes its configuration out, then puts it back "
+        "beside a build under no tracker: at that commit's parent the folder is no project, so the outer check judges the commit, and refuses "
+        "it", recreated)
+
+    def recreated_hooks():
+        r, outer, team = taken_out("re-created-hooks")
+        installed = install_once(r, outer)
+        git(r.top, "add", "-A")
+        code, said = hooked(r, "put the team's configuration back, and build", who=COORD)
+        return (installed[0] == 0 and code != 0 and NO_OUTER in said and NO_TEAM not in said,
+                f"--install-hook exit {installed[0]} · hook exit {code}: {said.strip()[-400:]!r}")
+    one("re-created-hooks", "a new project · the same commit made with the hooks on: HEAD holds no configuration in the team's folder, so the "
+        "outer project judges the commit being made, by its own rule, and refuses it", recreated_hooks)
+
+    def tracker_out(name):
+        r, outer, team = gated(area, name, "")
+        git(r.top, "rm", "-q", "-r", "--", r_at(team, REL))
+        r.commit("take the team's tracker folder out", who=COORD, index=False)
+        r.put(r_at(team, "src/evil.py"), "print('built where the project lost its tracker folder')\n")
+        return r, outer, team
+
+    def tracker_gone():
+        r, outer, team = tracker_out("tracker-out")
+        r.commit("build where the team's tracker folder was", who=COORD, index=False)
+        said = r.check(outer, who=COORD)
+        return refused(said, NO_OUTER, "build where the team's tracker folder was"), seen(said)
+    one("tracker-out", "a new project · the default branch holds the team project, and a branch takes its tracker folder out, then builds in "
+        "its folder under no tracker: at that commit's parent the folder holds no tracker folder, so it is no project, and the outer check "
+        "judges the commit, and refuses it", tracker_gone)
+
+    def tracker_gone_hooks():
+        r, outer, team = tracker_out("tracker-out-hooks")
+        installed = install_once(r, outer)
+        git(r.top, "add", "-A")
+        code, said = hooked(r, "build where the team's tracker folder was", who=COORD)
+        return (installed[0] == 0 and code != 0 and NO_OUTER in said and NO_TEAM not in said,
+                f"--install-hook exit {installed[0]} · hook exit {code}: {said.strip()[-400:]!r}")
+    one("tracker-out-hooks", "a new project · the same commit made with the hooks on: HEAD holds no tracker folder in the team's folder, so "
+        "the outer project judges the commit being made, and refuses it", tracker_gone_hooks)
 
 
 MINE = "teams/mine"
@@ -2115,30 +2169,32 @@ MUTANTS = (
     ("the hooks' copy, judging the commit being made, decides a new project in the index, not at HEAD", "copy:other_project_changes",
      [('parent = lambda rev: f"{rev}^" if rev else "HEAD"', 'parent = lambda rev: f"{rev}^" if rev else ""', 1),
       ("held = project_blobs(sorted({spec(r, h) for r, h in asked}))", "held = project_blobs(sorted({spec(r, h) for r, h in asked}), index_env())", 1)],
-     (rows_new_project,), {"import-seat", "import-side"}, False),
+     (rows_new_project,), {"import-seat", "import-side", "re-created-hooks"}, False),
     ("a new project decided at the commit itself, not at its parent, in the check", "other_project_changes",
-     [('parent = lambda rev: f"{rev}^" if rev else "HEAD"', 'parent = lambda rev: rev or "HEAD"', 1)], (rows_new_project,), {"import-two", "import-side"}, False),
+     [('parent = lambda rev: f"{rev}^" if rev else "HEAD"', 'parent = lambda rev: rev or "HEAD"', 1)], (rows_new_project,),
+     {"import-two", "import-side", "re-created"}, False),
     ("the hooks' copy reads a new project's `shoalmark.toml` from the index, not from HEAD", "copy:staged_projects",
      [('spec = lambda folder: f"HEAD:{folder}/{CONFIG_NAME}"', 'spec = lambda folder: f":{folder}/{CONFIG_NAME}"', 1),
       ("held = project_blobs([spec(folder) for folder in on_disk]) if on_disk else {}",
        "held = project_blobs([spec(folder) for folder in on_disk], index_env()) if on_disk else {}", 1)],
-     (rows_new_project,), {"import-owner", "import-seat", "import-side"}, False),
+     (rows_new_project,), {"import-owner", "import-seat", "import-side", "re-created-hooks"}, False),
     ("the hooks' copy decides a new project on disk, not at HEAD", "copy:staged_projects",
      [("projects = {folder for folder in on_disk if held.get(spec(folder)) is not None}", "projects = set(on_disk)", 1)],
      (rows_new_project,), {"import-two", "import-side"}, False),
     ("the project at the top decided at the parent too, as if it were a project below itself", "other_project_changes",
-     [("if f.parts and os.path.lexists(ROOT / f / CONFIG_NAME)]", "if os.path.lexists(ROOT / f / CONFIG_NAME)]", 1)], (rows_new_project,),
-     {"top-created"}, False),
+     [("if f.parts and os.path.lexists(ROOT / f / CONFIG_NAME)]", "if os.path.lexists(ROOT / f / CONFIG_NAME)]", 1),
+      ('spec = lambda rev, home: f"{parent(rev)}:./{home}/{CONFIG_NAME}"', 'spec = lambda rev, home: f"{parent(rev)}:./{home}/{CONFIG_NAME}".replace("/./", "/")', 1)],
+     (rows_new_project,), {"top-created", "re-created"}, False),
     ("another project taken whatever its `shoalmark.toml` is, a file or not, with or without its tracker folder", "project_blobs",
-     [('if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000":', "if _rev == rev:", 1),
+     [('if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000" and path in landed:', "if _rev == rev and path in landed:", 1),
       ('if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None', "if got.get(spec) is not None else {}", 1)],
-     (rows_other_project,), {"nested"}, False),
+     (rows_other_project, rows_new_project), {"nested", "tracker-out"}, False),
     ("another project taken whatever configuration its `shoalmark.toml` holds", "project_blobs",
      [("cfg = config_accepted(got[spec], path[:-len(CONFIG_NAME)])", "cfg = read_config(got[spec])", 1)], (rows_other_project,), {"nested"}, False),
     ("the hooks' copy takes a folder for another project whatever its `shoalmark.toml` is, with or without its tracker folder", "copy:project_blobs",
-     [('if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000":', "if _rev == rev:", 1),
+     [('if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000" and path in landed:', "if _rev == rev and path in landed:", 1),
       ('if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None', "if got.get(spec) is not None else {}", 1)],
-     (rows_hooks,), {"hooks-nested"}, False),
+     (rows_hooks, rows_new_project), {"hooks-nested", "tracker-out-hooks"}, False),
     ("another project taken before the default branch holds its configuration", "project_blobs",
      [(' and path in landed:', ':', 1)], (rows_new_project,), {"self-named", "amended"}, False),
     ("the hooks' copy takes another project before the default branch holds its configuration", "copy:project_blobs",
