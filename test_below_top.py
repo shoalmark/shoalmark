@@ -654,7 +654,8 @@ def rows_signers(area, add):
         (r.top / r.at(f, "lnk")).symlink_to(real, target_is_directory=True)
         git(r.top, "config", "gpg.ssh.allowedSignersFile", r.at(f, "lnk/allowed_signers"))
         s = signers_of(r, f)
-        return s["file"] is None and f"wc/{r.at(f, 'lnk')}` on the way to it is a symlink in a checkout" in s["why"], f"{s}"
+        named = Path("wc", r.at(f, "lnk"))                                  # the link as the platform writes a path, as the tool names it
+        return s["file"] is None and f"{named}` on the way to it is a symlink in a checkout" in s["why"], f"{s}"
     each(area, add, "signers-link", "signers · the file named through a symlink in the checkout: refused, naming the link", link,
          {"FM-001": text("FM-001")})
 
