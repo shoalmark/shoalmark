@@ -9,7 +9,8 @@ by its id, so the rule judges it and the count leaves it out; a later file named
 that reads `Shipped`, is no tracker's, so the count keeps that tracker. The count ends a freeze only where the rule judges a move, merges
 included: a side branch's deletion that the merge does not keep moves nothing back, so the count stays 48 and nothing is refused; a merge
 that deletes a frozen tracker, then the seat's commit or the seat's own merge that adds it back `Shipped`, is a move the rule refuses, and
-the count says 47. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
+the count says 47; two signed imports of the same trackers on two branches from one base, merged, each freeze them anew, so the count
+holds 48, names both imports, and nothing is refused. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
 commit adds already `Shipped` to `--check` and says so in one line, so the Owner's signed import is made and frozen, a seat's same commit is
 made and refused by `--check`, and a move of a tracker present at a parent is refused by the hook as before. A run whose project root is
 below the top of its git repository is refused in one line, a run at the top is not, and `--version` and `--help` still run below the top.
@@ -413,6 +414,26 @@ def rows_merge_deletes(area, add):
                "own: the rule refuses that move and --check names 47; before the commit, the staged move is refused and --check names 47")
 
 
+def rows_second_import(area, add):
+    r = seeded(area, "before")
+    s = Steps()
+    base = r.head()
+    first = made_import(r)                              # the Owner's signed import of the 48, on `import`
+    r.switch("-c", "import-2", base)
+    for tid in IMPORTED:
+        write(r.root, tid, imported(tid))
+    second = r.commit("the trackers, imported again on a second branch", who=OWNER, sign=True, trailers=(TRAILER,))
+    r.switch("import")
+    merged(r, "import-2")
+    said = r.check()
+    line = frozen_said(said)
+    s("two signed imports of the 48 on two branches from one base, merged: passes, no tracker refused", said[0] == 0 and not named(said, IMPORTED), said)
+    s("…and --check names 48 frozen, by both import commits", line.startswith("frozen trackers: 48 —") and f"the import commit {first[:7]} (" in line
+      and f"the import commit {second[:7]} (" in line, extra=repr(line))
+    s.add(add, "two signed imports of the same 48 trackers on two branches from one base, merged: each import freezes them anew, so the rule "
+               "refuses none and --check names 48 frozen, by both imports")
+
+
 # --- a project below the top of its git repository is refused; at the top it is not; --version and --help still run ----------------
 
 def below(area):
@@ -598,7 +619,7 @@ def rows_hooked_merge(area, add):
 
 ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_renamed_by_import, rows_later_note,
         rows_root_import, rows_owner_unmarked, rows_below_top, rows_act_below_top, rows_hooked_import, rows_hooked_merge, rows_side_deletion_kept,
-        rows_merge_deletes)
+        rows_merge_deletes, rows_second_import)
 
 
 # Each mutant: (what it breaks, the function it patches, the text it replaces, its replacement, the rows that must catch it).
@@ -641,6 +662,8 @@ MUTANTS = (
     ("the Shipped at HEAD test dropped", "frozen_line", "    frozen = {tid for tid, spec in at_head.items() if is_shipped(texts.get(spec))}\n", "",
      (rows_merge_deletes,)),
     ("a move judged against the first parent alone", "frozen_left", "for p in parents)}", "for p in parents[:1])}", (rows_side_deletion_kept,)),
+    ("a later import that freezes a tracker anew read as a move that ends its freeze", "frozen_left", "if tid not in again.get(c, {}) and not any(",
+     "if not any(", (rows_second_import,)),
 )
 
 
