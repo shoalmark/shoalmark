@@ -8504,7 +8504,7 @@ def frozen_line(trackers):
     So the count leaves out a tracker that a later commit moves to Shipped, a commit where it is Shipped and at none of whose parents it is,
     which the rule judges as any move, and one moved back to Shipped and not yet committed, which the rule judges in the change being made;
     it keeps one that a merge takes from a parent where it is Shipped, since that merge moves nothing, whichever parent deleted or reopened
-    it."""
+    it, and also one that a later import freezes anew, since that import is no move."""
     found = tracker_imports()
     if found is None:
         return f"frozen trackers: none — HEAD's history cannot be read, so no `{IMPORT_TRAILER}:` commit freezes anything"
