@@ -22,7 +22,8 @@ A merge that is the import attests what its own change adds, in every rule: no c
 import sets them. An import whose parent's tree this clone cannot read — a partial clone whose origin is out of reach — attests nothing.
 A merge adds only what none of its parents holds; a merge being made reads the history its incoming head brings; an answer with no ask
 id that a later commit changes is that commit's; the Owner's signed first commit attests nothing; and the import's copy gives an answer
-only to the ask id it holds.
+only to the ask id it holds. An import that brings a tracker back, after a commit took its lines out, sets those lines: the
+commit that took them out is in the import's history, so it set nothing the file now holds.
 
 Run: `python3 test_import_attests.py` — exit 1 on a failure; `python3 test_import_attests.py rows_<name> …` runs those rows alone, without
 the mutants, and with `--with-mutants` beside them, with the mutants that run those rows; `--no-mutants` runs every row and no mutant.
@@ -626,9 +627,67 @@ def rows_answer_other_id(area, add):
                "commit, counts as that commit's, though the import that adds FM-210 holds an answer beside FM-210-Q2")
 
 
+
+# --- an import that brings a tracker back: the commit that took its lines out set none of them ------------------------------------
+
+FIVE = dict(imported(), **{"FM-205": LEGACY})
+WHO = (("FM-201", "next: owner"), ("FM-205", "answer:"), ("FM-204", "tier:"))
+
+
+def taken_out(r, who=SEAT, key=None):
+    """The five trackers taken out again in one commit by `who`, signed with `key` where one is named. Its commit."""
+    for tid in FIVE:
+        (r.root / REL / f"{tid}-x.md").unlink()
+    return commit(r, "the five, taken out again", who, key)
+
+
+def rows_merge_reimport(area, add):
+    """The Owner's signed import of the four and FM-205 lands on `main`; a seat's commit there takes the five out; then the Owner's
+    signed merge imports them again, in its own change, as they were."""
+    r = seeded(area, "before")
+    made_import(r, bodies=FIVE)
+    r.land("import")
+    gone = taken_out(r)
+    again = merged(r, FIVE)
+    said = r.check()
+    with reading(r.root) as ts:
+        who = [author_of(ts, tid, needle) for tid, needle in WHO]
+    s = Steps()
+    s("FM-201's `next: owner`, FM-205's answer with no ask id and FM-204's `tier:` are the second import's, by the Owner, not the seat's "
+      "commit that took them out", who == [(OWNER[0], OWNER[1], "git", again)] * 3, extra=repr((gone[:10], who)))
+    lines_ = [l for l in said_lines(said) if "FM-205:" in l]
+    s("…so --check no longer refuses FM-205's answer as one from a seat that may not give one, while the seat's commit that took it out "
+      "is still judged for that change of its own", said[0] == fm.EXIT_LINT and not any("an answer counts only from a seat" in l for l in lines_)
+      and any(f"in `{gone[:10]}`" in l and "this change is a `answer`" in l for l in lines_), said)
+    s.add(add, "a merge that imports a tracker again, after a seat's commit took its lines out, sets those lines: the Owner's, and "
+               "FM-205's answer with no ask id is not refused for the seat's right")
+
+
+def rows_merge_reimport_landed(area, add):
+    """The same with the history behind the second import landed: the first import lands on `main`, then a commit that takes the five
+    out — a seat's, or the Owner's own signed one —, and the Owner's signed merge imports them again on a branch of its own."""
+    s = Steps()
+    for case, who, key in (("a seat's", SEAT, None), ("the Owner's own signed", OWNER, "owner")):
+        r = seeded(area if key is None else area.with_name(f"{area.name}-owner"), "before")
+        made_import(r, bodies=FIVE)
+        r.land("import")
+        r.switch("-c", "gone")
+        gone = taken_out(r, who, key)
+        r.land("gone")
+        r.switch("-c", "again")
+        again = merged(r, FIVE)
+        said = r.check()
+        with reading(r.root) as ts:
+            got = [author_of(ts, tid, needle) for tid, needle in WHO]
+        s(f"{case} commit took them out, and landed: the three lines are the second import's, by the Owner",
+          got == [(OWNER[0], OWNER[1], "git", again)] * 3, extra=repr((gone[:10], got)))
+        s("…and --check refuses nothing of FM-205's answer", not named(said, ("FM-205",)), said)
+    s.add(add, "with the history behind it landed, a merge that imports a tracker again sets its lines, whoever took them out: after a "
+               "seat's commit FM-205's answer is no longer refused, and after the Owner's own nothing is refused, as before")
+
 ROWS = (rows_check, rows_modified, rows_queue, rows_owner, rows_answer_counts, rows_ask_numbers, rows_after_import, rows_attests_nothing,
         rows_done_left, rows_below_top_verification_stubbed, rows_merge_import, rows_parent_unread, rows_merge_first_parent,
-        rows_merge_being_made, rows_legacy_reworded, rows_first_commit, rows_answer_other_id)
+        rows_merge_being_made, rows_legacy_reworded, rows_first_commit, rows_answer_other_id, rows_merge_reimport, rows_merge_reimport_landed)
 
 
 @contextlib.contextmanager
@@ -702,6 +761,9 @@ MUTANTS = (
     ("an import's answer taken whatever ask id its copy holds", "answer_commits",
      (('if (fm_.get("ask-id") or "").strip() == aid and answer_fields(fm_)["answer"]:', 'if answer_fields(fm_)["answer"]:'),),
      (rows_answer_other_id,)),
+    ("the search's commit taken without asking the import: a line an import brings back is the commit's that took it out", "line_author",
+     (('out = import_setter(rel, key, line, commit) or (name, email, "git", commit)', 'out = (name, email, "git", commit)'),),
+     (rows_merge_reimport, rows_merge_reimport_landed)),
 )
 
 

@@ -2466,14 +2466,17 @@ def import_adds(t, commit):
     return bool(commit) and any(sha == commit for sha, _name, _text in import_attests().get(t.get("id"), ()))
 
 
-def import_setter(rel, key, line):
-    """Who set `line`, the guarded line under `key` of the tracker file `rel`, where no commit's change holds it: a merge carries no diff,
-    so a merge that is the import names no commit for a line its own change wrote (`line_author`). The newest import commit that attests
-    the tracker (`import_attests`) and whose copy holds that line as the file does sets it, as `line_author` names a setter — (its author's
-    name and email, "git", the import commit) —; else None."""
+def import_setter(rel, key, line, found=""):
+    """Who set `line`, the guarded line under `key` of the tracker file `rel`, where an import wrote it and no commit's change after that
+    import holds it. A merge carries no diff, so a merge that is the import names no commit for a line its own change wrote, and where a
+    commit before it took the line out, the search names that commit, `found` (`line_author`). The newest import commit that attests the
+    tracker (`import_attests`), whose copy holds that line as the file does, and whose history holds `found` where the search names one
+    (`reaches`), sets it, as `line_author` names a setter — (its author's name and email, "git", the import commit) —; else None."""
     for sha, name, text in import_attests().get("-".join(pathlib.PurePosixPath(rel).name.split("-")[:2]), ()):
         n = guarded_line(text, key)
         if n is not None and text.split("\n")[n - 1].rstrip("\r") == line:
+            if found and found != sha and not reaches(found, sha):
+                continue                                # the commit the search names is not in this import's history: that commit wrote the line after it, or beside it
             return name, _ATTEST_EMAILS.get(sha, ""), "git", sha
     return None
 
@@ -6856,8 +6859,9 @@ def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
     file: (name, email, system, commit) — or (None, None, "uncommitted", "") where version control's own record says the line
     is not committed yet (the working copy or the index carries it, no commit does), (None, None, "unattributed", "")
-    where it names no commit for a line a commit carries — save a line of a tracker an import attests, as a merge that is the import
-    writes it, whose copy holds it as the file does: that import sets it (`import_setter`) —, and on Subversion (None, None, "merged", <revision>) for a line older
+    where it names no commit for a line a commit carries — save a line of a tracker an import attests whose copy holds it as the file
+    does, where no commit is named or the one named is in that import's history, as a merge that is the import writes a line, or brings
+    one back after a commit took it out: that import sets it (`import_setter`) —, and on Subversion (None, None, "merged", <revision>) for a line older
     than a merge that put the tracker's path here (`svn_blame`) — and (None, None, "unread", "") where a run whose reads fetch nothing meets an object
     of its history this partial clone does not hold (`unread_here`): not read, which judges nothing. Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
@@ -6927,7 +6931,7 @@ def line_author(path, needle):
                 log = None
             if log is not None and log.returncode == 0 and log.stdout.strip():
                 commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
-                out = (name, email, "git", commit)
+                out = import_setter(rel, key, line, commit) or (name, email, "git", commit)     # a commit an import's history holds: the import that brings the line back sets it
             elif log is not None and log.returncode != 0 and unread_here():
                 out = (None, None, "unread", "")        # the walk met an object the partial clone lacks: who set it is not read here
             else:
