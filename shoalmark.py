@@ -278,6 +278,15 @@ def tool_named(path):
     return pathlib.Path(path).as_posix()
 
 
+def root_holds_tool(written):
+    """Whether the project root holds a tool at `written`, the path the hooks' recorded command names, read from the root: a regular file
+    inside the root. There the hooks' copy names the project by that command, its own tool, as a run from the root by that path does."""
+    if not written or os.path.isabs(written):
+        return False
+    path = os.path.normpath(os.path.join(ROOT, written))
+    return in_tree(path) and os.path.isfile(path)
+
+
 def in_tree(path):
     """Whether `path`, as written, lies inside the repository ROOT."""
     p, root = _norm(path), _norm(ROOT)
@@ -919,8 +928,8 @@ def configure(root=None):
     if HOOK_RUN:                                        # the hooks' copy names the command a person runs — the one `--install-hook` was run with — never its own place
         CMD_OWN = copy_record().get("cmd") or CMD_OWN
         folder = copy_tool_folder()
-        if folder is not None and vcs() == "git" and CMD_OWN.startswith(PY + " "):     # …with the tool's path taken from this project's root, as a run from it names it
-            CMD_OWN = PY + " " + tool_named(_VCS[1] / folder / pathlib.Path(__file__).name)
+        if folder is not None and vcs() == "git" and CMD_OWN.startswith(PY + " ") and not root_holds_tool(CMD_OWN[len(PY) + 1:]):
+            CMD_OWN = PY + " " + tool_named(_VCS[1] / folder / pathlib.Path(__file__).name)    # …kept where this project's root holds the tool there, else named from it
     CMD = os.environ.get("SHOALMARK_CMD") or CMD_OWN    # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
 

@@ -71,11 +71,13 @@ them all, and checks you can run locally and in your project's CI. It needs no s
 repository's own messages name. A project below the top of its git working tree, with the tool elsewhere in that tree,
 names it by its path from the project's root — `python3 ../../tools/shoalmark/shoalmark.py` in `teams/tool/`, the tool
 in the top's `tools/` — in its messages and in its INDEX.md's header, and so do the hooks: a run from the project, a
-run with `--root` and the commit's hook write the same INDEX.md. Only a tool outside the working tree is named by its
-absolute path. Every command finds the repository by itself: the nearest `shoalmark.toml`, else the
-nearest Git or SVN working-copy root. `--root DIR` selects the consumer project when the tool lives in a different
-folder; the tool's own source does not supply that project's identity or authority. Printed retry commands for answers
-and acts use PowerShell argument spelling on Windows and POSIX shell spelling on macOS and Linux.
+run with `--root` and the commit's hook write the same INDEX.md. A project that keeps its own tool at the path the
+hooks were installed with, as `tools/shoalmark/shoalmark.py` under `teams/tool/`, is named by that tool, in the hooks
+too. Only a tool outside the working tree is named by its absolute path. Every command finds the repository by itself:
+the nearest `shoalmark.toml`, else the nearest Git or SVN working-copy root. `--root DIR` selects the consumer project
+when the tool lives in a different folder; the tool's own source does not supply that project's identity or authority.
+Printed retry commands for answers and acts use PowerShell argument spelling on Windows and POSIX shell spelling on
+macOS and Linux.
 
 ## The five rules
 

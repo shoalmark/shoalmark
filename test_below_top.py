@@ -1484,10 +1484,10 @@ TOOL_AT = "tools/shoalmark"        # where org's layout keeps the tool: the top'
 PERSON = {k: v for k, v in ids.ENV.items() if k != "SHOALMARK_CMD"}    # a person's shell: no wrapper names the command
 
 
-def vendored(r):
-    """The tool written into the top's `tools/shoalmark/` — the files the hooks' copy holds, `shoalmark.py` the mutant's text where one is set —
-    each pinned in its PIN as `--vendor` pins it, committed by the Owner, signed, and pushed."""
-    dest, lines = r.top / TOOL_AT, []
+def vendored(r, at=TOOL_AT):
+    """The tool written into `at` from the top, the top's `tools/shoalmark/` unless named — the files the hooks' copy holds, `shoalmark.py` the
+    mutant's text where one is set — each pinned in its PIN as `--vendor` pins it, committed by the Owner, signed, and pushed."""
+    dest, lines = r.top / at, []
     for rel in fm.copy_files():
         data = _TREE["source"].encode("utf-8") if rel == "shoalmark.py" and _TREE["source"] is not None else (HERE / rel).read_bytes()
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -1495,7 +1495,7 @@ def vendored(r):
         normalized = data.replace(b"\r\n", b"\n")
         lines.append(f"{hashlib.sha256(normalized).hexdigest()}  {rel}")
     (dest / "PIN").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    r.commit("the tool, vendored", who=OWNER, sign=True, paths=[TOOL_AT])
+    r.commit("the tool, vendored", who=OWNER, sign=True, paths=[at])
     git(r.top, "push", "-q", "origin", "main")
 
 
@@ -1583,6 +1583,28 @@ def rows_command(area, add):
         return (wrote[0] == 0 and code == 0 and not any(stale),
                 f"--root exit {wrote[0]}, hook exit {code}: {said.strip()[-200:]!r} · the team's --check in the Owner's clone and in its own: exits "
                 f"{[c[0] for c in checks]}, {stale}")
+    def own_tool():
+        r = org_tools(area, "command-own", {"": org_config(), TEAM: team_config()}, {("", "OR-001"): text("OR-001"), (TEAM, "FM-001"): text("FM-001")})
+        vendored(r, f"{TEAM}/{TOOL_AT}")                     # the team keeps its own tool, at its root's `tools/shoalmark/`
+        own, t = f"{TOOL_AT}/shoalmark.py", r.path(TEAM, "FM-001")
+        header = lambda b: next((l for l in b.decode("utf-8", "replace").splitlines() if "GENERATED" in l), "")
+        ok, saw = True, []
+        for n, (old, new) in enumerate((("h of FM-001", "h of FM-001, reworded"), ("h of FM-001, reworded", "h of FM-001, reworded again"))):
+            t.write_text(t.read_text(encoding="utf-8").replace(f'hook: "{old}"', f'hook: "{new}"'), encoding="utf-8")
+            direct = by_hand(r.root(TEAM), own, who=LEAD)[0] if n == 0 else None     # first by the team's own run, then by the hooks alone
+            wrote = (r.root(TEAM) / REL / "INDEX.md").read_bytes()
+            git(r.top, "add", "-A")
+            code, said = hooked(r, f"FM-001: its hook, reworded, step {n}", who=LEAD, shell=PERSON)
+            got = subprocess.run(["git", "-C", str(r.top), "show", f"HEAD:{TEAM}/{REL}/INDEX.md"], capture_output=True, env=ids.ENV).stdout
+            check = by_hand(r.root(TEAM), own, "--check", who=LEAD)
+            ok = (ok and code == 0 and check[0] == 0 and f"Run `{fm.PY} {own}` after" in header(got) and (n or got == wrote))
+            saw.append(f"step {n}: run exit {direct}, hook exit {code} {said.strip()[-160:]!r}, header {header(got)!r}, "
+                       f"the team's --check exit {check[0]} {(check[1] + check[2]).strip()[-200:]!r}")
+        return ok, " · ".join(saw)
+    one("command-own", "the tool's command · a team project that keeps its own tool at its root's `tools/`, the hooks installed at the top: "
+        "each commit the hooks write names the team's own tool, `tools/shoalmark/shoalmark.py`, in its INDEX.md — the same bytes as the team's "
+        "own run — and the team's `--check`, by its own tool, passes after each", own_tool)
+
     one("command-import", "the tool's command · after the Owner's import of a team project without a build gate — its INDEX.md written by a run "
         "with `--root` from the top, the commit made with the hooks on — the team's `--check`, run from the project by the tool's path from there, "
         "prints no STALE line, in the Owner's clone and in another", imported)
@@ -1978,6 +2000,11 @@ MUTANTS = (
      [('if path_mode(trunk, root_prefix() + folder) not in ("", "?"):', "if False:", 1)], (rows_after_move,), {"elsewhere-folder-landed"}, False),
     ("the tool named by its absolute path again where it lies outside the project root, in the root's working tree", "tree:tool_named",
      [("if inside(ROOT) or inside(top):", "if inside(ROOT):", 1)], (rows_command,), {"command-below", "command-import"}, False),
+    ("the hooks' copy names a project that keeps its own tool by the top's tool", "copy:configure",
+     [('CMD_OWN.startswith(PY + " ") and not root_holds_tool(CMD_OWN[len(PY) + 1:]):', 'CMD_OWN.startswith(PY + " "):', 1)], (rows_command,),
+     {"command-own"}, False),
+    ("the hooks' copy keeps the recorded command for every project", "copy:root_holds_tool",
+     [("return in_tree(path) and os.path.isfile(path)", "return True", 1)], (rows_command,), {"command-below"}, False),
     ("the hooks' copy names the command `--install-hook` recorded, from the top, for a project below it", "copy:configure",
      [('CMD_OWN = PY + " " + tool_named(_VCS[1] / folder / pathlib.Path(__file__).name)', "pass", 1)], (rows_command,), {"command-below"}, False),
 )
