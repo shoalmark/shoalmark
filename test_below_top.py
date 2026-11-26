@@ -1016,6 +1016,44 @@ def rows_other_project(area, add):
         return rows
     one("nested", "another project · a folder that is no project", nested)
 
+    def moved_in():
+        r, outer, team = gated(area, "moved-in")
+        (r.root(team) / "src").mkdir(parents=True, exist_ok=True)
+        git(r.top, "mv", "src/app.py", r_at(team, "src/app.py"))
+        r.commit("FM-001: the app moves into the team's project", index=False)
+        o = r.check(outer, who=COORD)
+        return [("another project · a commit that moves a file of the outer project into the team project, naming the team's tracker alone: the "
+                 "outer check judges it by the path it leaves, and its build gate refuses it", refused(o, GATE), seen(o))]
+    one("moved-in", "another project · a file moved from the outer project into the team project", moved_in)
+
+    def moved_out():
+        r, outer, team = gated(area, "moved-out")
+        r.put(r_at(team, "src/moved.py"), "print('the team file')\n")
+        r.commit("FM-001: the team's file", paths=[r_at(team, "src/moved.py")])
+        git(r.top, "mv", r_at(team, "src/moved.py"), "src/moved.py")
+        r.commit("OR-001: the team's file moves to the app", who=COORD, index=False)
+        t = r.check(team)
+        return [("another project · a commit that moves a file of the team project into the outer project, naming the outer project's tracker "
+                 "alone: the team's check judges it by the path it leaves, and its build gate refuses it", refused(t, GATE), seen(t))]
+    one("moved-out", "another project · a file moved from the team project into the outer project", moved_out)
+
+    def moved_session(below_head):
+        def build():
+            r, outer, team = gated(area, f"moved-session{'-below' if below_head else ''}", trailers=("Session: aaaaaaaa",))
+            (r.root(team) / "src").mkdir(parents=True, exist_ok=True)
+            git(r.top, "mv", "src/app.py", r_at(team, "src/app.py"))
+            r.commit("FM-001: the app moves into the team's project", who=COORD, index=False)
+            if below_head:
+                r.put("src/other.py", "print('another file')\n")
+                r.commit("OR-001: another file", who=COORD, index=False, trailers=("Session: bbbbbbbb",), paths=["src/other.py"])
+            o = r.check(outer, who=COORD)
+            return [(f"another project · a commit by the outer project's seat with no `Session:` trailer, where the history carries them, that moves a "
+                     f"file of the outer project into the team project{', with a later commit on top of it' if below_head else ''}: the outer check's "
+                     "session rule judges it by the path it leaves, and refuses it", refused(o, "Session"), seen(o))]
+        return build
+    one("moved-session", "another project · a seat's move into the team project with no `Session:` trailer", moved_session(False))
+    one("moved-session-below", "another project · a seat's move into the team project with no `Session:` trailer, below HEAD", moved_session(True))
+
 
 NESTS = (("no `shoalmark.toml`", ""), ("a one-line `shoalmark.toml`", "file"), ("a folder named `shoalmark.toml`", "dir"),
          ("a dangling symlink named `shoalmark.toml`", "link"), ("a configuration the tool refuses, beside its tracker folder", "refused"),
@@ -1118,6 +1156,23 @@ def rows_hooks(area, add):
             fm.configure(HERE)
         for row in rows:
             add(*row)
+
+    if picked("hooks-moved"):
+        try:
+            r, outer, team = gated(area, "hooks-moved", "")
+            installed = install_once(r, outer)
+            if installed[0] != 0:
+                raise AssertionError(f"--install-hook: {seen(installed)}")
+            (r.root(team) / "src").mkdir(parents=True, exist_ok=True)
+            git(r.top, "mv", "src/app.py", r_at(team, "src/app.py"))
+            code, said = hooked(r, "FM-001: the app moves into the team's project")
+            ok, saw = code != 0 and NO_OUTER in said and NO_TEAM not in said, f"hook exit {code}: {said.strip()[-400:]!r}"
+        except Exception as e:
+            ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm.configure(HERE)
+        add("hooks · a commit being made that moves a file of the outer project into the team project, naming the team's tracker alone: the outer "
+            "project's commit-msg check judges it by the path it leaves, and refuses it", ok, saw)
 
     if picked("hooks-nested"):
         rows, control = [], None
@@ -1826,6 +1881,16 @@ MUTANTS = (
      [(' and config_accepted(got[f"{trunk}:{path}"], path[:-len(CONFIG_NAME)]) is not None}', '}', 1)], (rows_new_project,), {"landed-refused"}, False),
     ("a project the default branch holds is taken for none", "landed_projects", [("return {path for path in paths if", "return {path for path in () if", 1)],
      (rows_new_project,), {"landed"}, False),
+    ("the build gate's commits listed with renames", "commit_list", [('"--name-only", "--no-renames", "--ignore-submodules=none"', '"--name-only", "--ignore-submodules=none"', 1)],
+     (rows_other_project,), {"moved-in", "moved-out"}, False),
+    ("the branch's commits walked with renames", "read_changes",
+     [('"--relative", "--name-only", "--no-renames", "--ignore-submodules=none", f"--format=', '"--relative", "--name-only", "--ignore-submodules=none", f"--format=', 1)],
+     (rows_other_project,), {"moved-session-below"}, False),
+    ("the commit at HEAD read against its parents with renames", "read_changes",
+     [('"diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", parent, "HEAD"',
+       '"diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", parent, "HEAD"', 1)], (rows_other_project,), {"moved-session"}, False),
+    ("the commit being made's names read with renames by the commit-msg check, in the hooks' copy", "copy:pending_judgement",
+     [('"diff", "--cached", "--name-only", "--no-renames", "--relative"', '"diff", "--cached", "--name-only", "--relative"', 1)], (rows_hooks,), {"hooks-moved"}, False),
     ("a `<repository>@<commit>` row counted as no commit, though `[repositories]` names its repository", "code_row_verdicts",
      [('"" if name in named else', '"" if False else', 1)], (rows_after_move,), {"code-named"}, False),
     ("a `<repository>@<commit>` row taken whatever repository it names", "code_row_verdicts", [('"" if name in named else', '"" if True else', 1)],

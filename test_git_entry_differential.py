@@ -1029,10 +1029,20 @@ def settings_undone(env):
     return dict(out, GIT_CONFIG_PARAMETERS=" ".join(kept)) if kept else out
 
 
+# …and, from the candidate's, `--no-renames` on each list of a commit's paths that another project's skip decides on, and the rules it feeds, made at one
+# of RENAME_SITES: the baseline took those lists with git's rename detection on, so a move named the path it takes alone.
+RENAME_SITES = ("staged_now", "read_changes", "commit_list", "pending_judgement")
+
+
+def renames_word(row, word):
+    """Whether `word` of a candidate's start or call is the `--no-renames` one of RENAME_SITES' lists added."""
+    return word == "--no-renames" and bool(set(RENAME_SITES) & set(row.get("product_stack") or []))
+
+
 def board_settings_undone(rows, candidate):
     """The starts or calls of a run, each read of the working tree's edits taken out; and, from the candidate's, its settings, its drivers' lists, its
-    `check-attr`, its `ls-files` tag, its `--no-textconv` outside the board's own run, and each read of `origin/master` directly after one of
-    `origin/main` (`TRUNK_READS`) — each as specified above."""
+    `check-attr`, its `ls-files` tag, its `--no-textconv` outside the board's own run, each read of `origin/master` directly after one of
+    `origin/main` (`TRUNK_READS`), and `--no-renames` where RENAME_SITES added it — each as specified above."""
     out, last = [], None
     for row in rows:
         words = git_words(row)
@@ -1043,7 +1053,8 @@ def board_settings_undone(rows, candidate):
             out.append(row)
             continue
         argv = list((row.get("argv") if "argv" in row else (row.get("args") or [None])[0]) or [])
-        kept = [word for word in words if not (word == "--no-textconv" and "--text" not in words) and not (words[:1] == ("ls-files",) and word == "-t")]
+        kept = [word for word in words if not (word == "--no-textconv" and "--text" not in words) and not (words[:1] == ("ls-files",) and word == "-t")
+                and not renames_word(row, word)]
         new_argv = argv[:len(argv) - len(words)] + kept if len(argv) >= len(words) else argv
         row = dict(row)
         if "argv" in row:
@@ -2052,7 +2063,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 assert_control(label_prefix + "read-only entry leaves consumer snapshot identical", all(observed["before"] == observed["after"] for observed in pair))
             if label in ("clean-check-origin", "dirty-check-fallback", "clean-default-origin", "dirty-default-fallback"):
                 probe_argv = {"baseline": ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"],
-                              "candidate": ["git", "diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", "HEAD"]}
+                              "candidate": ["git", "diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=dirty", "HEAD"]}
                 main_probe = lambda observed: [row for row in observed["starts_raw"] if same_start(row["argv"], row.get("raw"), probe_argv[observed["version"]])
                                               and ("main" in row["product_stack"] and "worktree_edited" in row["product_stack"]
                                                    and "read_changes" not in row["product_stack"] if observed["version"] == "baseline"

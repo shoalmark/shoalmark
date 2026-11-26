@@ -274,7 +274,9 @@ python3 tools/shoalmark/shoalmark.py --install-hook                 # plain git 
 worktree), never the tool a branch brings. One install serves every project of the clone: the commit's hooks judge the commit being made once for
 each project a staged path falls in — each path's nearest folder, up to the top, that is another project at HEAD, and the top's project for a path
 in none (`--each-project`) — and the pre-commit hook rebuilds a project's INDEX.md where the commit stages one of its trackers, its configuration or
-the tool. A project's `--check` skips a commit whose every path lies in another project below it: that project's own check judges it. A folder is
+the tool. A project's `--check` skips a commit whose every path lies in another project below it: that project's own check judges it. Every list of a
+commit's paths is taken with no rename read into it, so a file moved from one project into another names the path it leaves and the path it takes,
+and each project judges the commit — at the top too, where a file moved into the tracker folder from outside it makes a build commit. A folder is
 another project at a commit where its `shoalmark.toml` at the commit's parent — at HEAD for the commit being made — is a regular file the tool accepts
 as a configuration, with its tracker folder there too; a one-line file, a folder or a symlink of that name, or a configuration the tool refuses, leaves
 the folder the enclosing project's, in the check and in the hooks alike. The folder is another project only once the default branch holds that

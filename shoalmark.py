@@ -7360,7 +7360,7 @@ def staged_now():
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
+        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
         _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
@@ -7757,7 +7757,7 @@ def read_changes():
         if not tips:
             return []
         out = []
-        log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", "--ignore-submodules=none", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
+        log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", "--no-renames", "--ignore-submodules=none", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
                   *tips, "--not", first, *exclude)      # parents and trailers too: the rules read them from here, one call however long the walk (v0.19.1)
         if log.returncode != 0:                         # a walk git cannot make judges nothing — refused, never passed unread (v0.19.1)
             global _WALK_FAILED
@@ -7782,7 +7782,7 @@ def read_changes():
         if not COMMITTING:
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
         for n, h in enumerate(heads):
-            files &= names(git("diff", "-z", "--cached", "--name-only", "--relative", "--ignore-submodules=none", h)) if COMMITTING else against[n]
+            files &= names(git("diff", "-z", "--cached", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", h)) if COMMITTING else against[n]
         trunk = default_trunk(git) if heads else None
         return brought(heads, "HEAD", exclude=[trunk] if trunk else []) + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
@@ -7791,7 +7791,7 @@ def read_changes():
     trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
     files = None
     for parent in parents:
-        got = names(git("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", parent, "HEAD"))
+        got = names(git("diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
     merged = brought(parents[1:], parents[0], exclude=[trunk] if trunk else []) if len(parents) > 1 else []
@@ -7826,7 +7826,7 @@ def worktree_edits(rev="HEAD"):
     that repository, under its own configuration."""
     global _TREE_UNREAD
     if rev not in _EDITS:
-        got, edits = compared("diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", rev), None
+        got, edits = compared("diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=dirty", rev), None
         if got is not None and got[0].returncode == 0:
             paths = {p for p in got[0].stdout.split("\0") if p}
             edits = paths if driver_paths(sorted(paths), got[1]) == set() else None
@@ -9467,8 +9467,9 @@ def named_trackers(subject, branch):
 
 def commit_list(*revs):
     """[(commit, its first parent, the paths it changes relative to ROOT, its subject)] of `git log --no-merges <revs>`,
-    newest first — one call for all of them."""
-    out = git_out("log", "--no-merges", "--relative", "--name-only", "--ignore-submodules=none", "--format=%x00%H%x00%P%x00%s", *revs) or ""
+    newest first — one call for all of them. A move names the path it leaves and the path it takes (`--no-renames`): each project a path lies
+    in judges the commit (`other_project_changes`)."""
+    out = git_out("log", "--no-merges", "--relative", "--name-only", "--no-renames", "--ignore-submodules=none", "--format=%x00%H%x00%P%x00%s", *revs) or ""
     records, got = out.split("\x00")[1:], []
     for i in range(0, len(records) - 2, 3):
         subject, _, files = records[i + 2].partition("\n")
@@ -9629,7 +9630,7 @@ def pending_judgement(subject, git, trunk, branch):
         return []                                          # a first commit has no parent to be judged at
     # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-    staged = vcs_process("git", "diff", "--cached", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True,
+    staged = vcs_process("git", "diff", "--cached", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True,
                             encoding="utf-8", errors="replace", env=env).stdout
     return judge_commits([("", "HEAD", set(staged.split("\n")) - {""}, subject)], branch)
 
