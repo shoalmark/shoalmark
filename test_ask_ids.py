@@ -722,17 +722,15 @@ def rows_spelled(area, add):
         shown = next((l.strip() for l in said[2].splitlines() if l.strip().startswith("git ") and " restore " in l), "")
         toplevel = str(Path(git(top, "rev-parse", "--show-toplevel").strip()))
         paths = [e[3:] for e in git(top, "status", "--porcelain", "-z", "--untracked-files=no").split("\0") if e[3:]]
-        if sub != top:
-            add("3c · below the top of its repository the run is refused in one line naming FM-161, the project root and the top, and no restore line is shown",
-                said[0] == fm.EXIT_LINT and "FM-161" in said[2] and f"the project root {sub} is below the top of its git repository, {toplevel}:" in said[2]
-                and len(said[2].strip().splitlines()) == 1 and not shown, seen(said))
-            continue
-        want = ["restore", "--staged", "--worktree", "--", *paths]
+        below = sub != top
+        want = (["-C", toplevel] if below else []) + ["restore", "--staged", "--worktree", "--", *paths]
         if WIN_ARGS:
             ok = shown == "git " + " ".join("'" + a.replace("'", "''") + "'" if a in [toplevel, *paths] else a for a in want)
         else:
-            ok = f"{REL}/{name}" in paths and sh_args(shown[len("git "):]) == want
-        add("3c · the restore line spells its arguments as every copied command does: each comes back unchanged", said[0] == fm.EXIT_LINT and ok,
+            ok = f"{'sub/' if below else ''}{REL}/{name}" in paths and sh_args(shown[len("git "):]) == want
+        add("3c · below the top of its repository the run is judged as at the top: the restore line names the top and the paths from it, each "
+            "argument spelled as every copied command spells it, so each comes back unchanged" if below else
+            "3c · the restore line spells its arguments as every copied command does: each comes back unchanged", said[0] == fm.EXIT_LINT and ok,
             seen(said) + f" · shown {shown!r} · want {want!r}")
 
 
@@ -986,7 +984,7 @@ MUTANTS = (
     ("the answer's change rule reads a tracker with no file", "answer_change_problems", 'for t in trackers if t.get("file")}', "for t in trackers}",
      (rows_minting,)),
     ("a renumbering passes with no record wherever it stands", "id_walk_problems",
-     'if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:{rel}") or "" for b in bases]):',
+     'if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:./{rel}") or "" for b in bases]):',
      'if move[0] == "gone" and move[2] == "renumbered":', (rows_renumber,)),
     ("`--revoke` chooses by `done:` alone", "revoke_cmd", "    if by_id:\n", "    if False:\n", (rows_revoke,)),
     ("an answer with an id made on an unborn branch", "answer_cmd", 'if held and vcs() == "git" and not head_commit():', "if False:", (rows_unborn,)),

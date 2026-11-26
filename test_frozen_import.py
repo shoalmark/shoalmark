@@ -1,4 +1,4 @@
-"""The frozen rule's class test, and the refusal of a project below the top of its git repository.
+"""The frozen rule's class test, and a project below the top of its git repository judged as one at the top.
 
 A tracker that the Owner's own signed import commit adds already `Shipped` — the commit carries `Tracker-import: <repository> <commit>` —
 is frozen: the Shipped rule finds no move for it, and `--check` says in one line how many trackers are frozen and by which import commit.
@@ -12,10 +12,11 @@ that deletes a frozen tracker, then the seat's commit or the seat's own merge th
 the count says 47. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
 commit adds already `Shipped` to `--check` and says so in one line, so the Owner's signed import is made and frozen, a seat's same commit is
 made and refused by `--check`, and a move of a tracker present at a parent is refused by the hook as before. A run whose project root is
-below the top of its git repository is refused in one line, a run at the top is not, and `--version` and `--help` still run below the top.
-Four rules more: an import with no parent here, the root of an unrelated history merged in, freezes nothing; an act run such as
-`--install-hook` is refused below the top and writes nothing; the commit hook judges what a merge being made brings, and leaves to `--check`
-only what the commit being made adds; and the freeze needs an Owner whom the configuration marks `signed`.
+below the top of its git repository is judged as the same project at the top is: the same exit, the same lines and the same INDEX.md,
+and `--version` and `--help` run there. Four rules more: an import with no parent here, the root of an unrelated history merged in,
+freezes nothing; an act run such as `--install-hook` does below the top what it does at the top; the commit hook judges what a merge
+being made brings, and leaves to `--check` only what the commit being made adds; and the freeze needs an Owner whom the configuration
+marks `signed`.
 
 Each row builds its history in a scratch repository — test_ask_ids' `Repo`: a bare `origin` whose `main` is the default branch, the Owner
 named `signed`, their key in the default branch's signers file, a planner seat — runs the tool in this process, and states its verdict as
@@ -413,7 +414,7 @@ def rows_merge_deletes(area, add):
                "own: the rule refuses that move and --check names 47; before the commit, the staged move is refused and --check names 47")
 
 
-# --- a project below the top of its git repository is refused; at the top it is not; --version and --help still run ----------------
+# --- a project below the top of its git repository is judged as the same project at the top; --version and --help run there ---------
 
 def below(area):
     """A git repository at `top` whose one project sits below it, in `teams/tool`, with a tracker committed: (top, the project)."""
@@ -435,53 +436,70 @@ def program(cwd, *argv):
     return done.returncode, done.stdout, done.stderr
 
 
+def at_top(area):
+    """The same project at the top of a git repository of its own, with the same tracker committed: its root, which is the top."""
+    at = area / "at-top"
+    (at / REL).mkdir(parents=True)
+    git(at, "init", "-q", "--initial-branch=main")
+    (at / "shoalmark.toml").write_text('name = "tool"\n[kinds]\nFM = "Work"\n', encoding="utf-8")
+    write(at, "FM-001", text("FM-001"))
+    git(at, "add", "-A")
+    git(at, "commit", "-q", "-m", "the team's trackers")
+    return at
+
+
+def placed(said, *paths):
+    """(exit, stdout, stderr), each path in `paths` — the project root, then the top — written as one placeholder: what a run says, where
+    it ran aside."""
+    def put(text):
+        for path in paths:
+            text = text.replace(str(path), "<place>")
+        return text
+    return said[0], put(said[1]), put(said[2])
+
+
 def rows_below_top(area, add):
     top, sub = below(area)
-    real_top = Path(git(top, "rev-parse", "--show-toplevel").strip())
+    at = at_top(area)
     s = Steps()
-    one = lambda said: [l for l in said[2].splitlines() if l.strip()]
-    line = lambda said: (one(said) or [""])[0]
-    refusal = lambda said: (said[0] != 0 and len(one(said)) == 1 and "FM-161" in line(said) and str(sub) in line(said) and f", {real_top}:" in line(said))
-    for argv in (("--check",), (), ("--html-only",), ("--next",)):
-        said = run(sub, *argv, who=SEAT)
-        s(f"below the top, {' '.join(argv) or 'the default run'}: refused in one line naming FM-161, the project root and the top", refusal(said), said, repr(line(said)))
-    s("…and the default run wrote nothing", not (sub / REL / "INDEX.md").exists())
-    said = program(sub, "--check")
-    s("below the top, as a program started there: refused in that line", refusal(said), said, repr(line(said)))
+    for argv in (("--check",), (), ("--html-only",), ("--next",), ("--check",)):
+        here, there = run(sub, *argv, who=SEAT), run(at, *argv, who=SEAT)
+        s(f"below the top, {' '.join(argv) or 'the default run'}: judged as at the top, the same exit and the same lines, where each ran aside",
+          placed(here, sub, top) == placed(there, at), here, f"at the top: {seen(there)}")
+    s("…and the default run wrote below the top the INDEX.md it wrote at the top, byte for byte",
+      (sub / REL / "INDEX.md").read_bytes() == (at / REL / "INDEX.md").read_bytes())
+    here, there = program(sub, "--check"), program(at, "--check")
+    s("below the top, as a program started there: --check says what it says at the top, its frozen line too",
+      placed(here, sub, top) == placed(there, at) and frozen_said(here).startswith("frozen trackers: none —"), here, repr(frozen_said(here)))
     said = program(sub, "--version")
     s("below the top, --version runs", said[0] == 0 and said[1].strip() == fm.__version__, said)
     said = program(sub, "--help")
     s("below the top, --help runs", said[0] == 0 and said[1].startswith("usage:"), said)
     said = run(sub, "--version", who=SEAT)
     s("below the top, --version runs with --root naming the project", said[0] == 0 and said[1].strip() == fm.__version__, said)
-    at = area / "at-top"
-    (at / REL).mkdir(parents=True)
-    git(at, "init", "-q", "--initial-branch=main")
-    (at / "shoalmark.toml").write_text('name = "tool"\n[kinds]\nFM = "Work"\n', encoding="utf-8")
-    write(at, "FM-001", text("FM-001"))
-    run(at, who=SEAT)
-    git(at, "add", "-A")
-    git(at, "commit", "-q", "-m", "the team's trackers")
-    said = run(at, "--check", who=SEAT)
-    s("at the top, --check is not refused: it passes, and says none is frozen", said[0] == 0 and "FM-161" not in said[2]
-      and frozen_said(said).startswith("frozen trackers: none —"), said, repr(frozen_said(said)))
-    s.add(add, "a run from a project below the top of its git repository is refused in one line naming FM-161, the project root and the top — "
-               "--check, the default run, the board's run, --next, and the program started there; a run at the top is not; --version and --help run below the top")
+    s.add(add, "a run from a project below the top of its git repository is judged as the same project at the top is — --check, the default "
+               "run, the board's run, --next, and the program started there: the same exit, the same lines and the same INDEX.md; --version and "
+               "--help run there")
 
 
 def rows_act_below_top(area, add):
     top, sub = below(area)
-    real_top = Path(git(top, "rev-parse", "--show-toplevel").strip())
+    at = at_top(area)
     s = Steps()
+    prefix = sub.relative_to(top).as_posix() + "/"
     for argv in (("--install-hook",), ("--init",)):
-        said = run(sub, *argv, who=SEAT)
-        first = (said[2].strip().splitlines() or [""])[0]
-        s(f"below the top, {argv[0]}: refused in the one line naming FM-161, the project root and the top",
-          said[0] == fm.EXIT_LINT and "FM-161" in first and str(sub) in first and f", {real_top}:" in first, said, repr(first))
-    s("…and no hook and no copy of the tool was written", not (top / ".git" / "hooks" / "pre-commit").exists() and not (top / ".git" / fm.COPY_DIR).exists())
-    s("…and nothing in the working tree changed", git(top, "status", "--porcelain", "--untracked-files=all") == "", extra=git(top, "status", "--porcelain"))
-    s.add(add, "an act run from a project below the top of its git repository — --install-hook, --init — is refused in the one line naming FM-161, "
-               "and writes no hook, no copy of the tool and nothing in the working tree")
+        here, there = run(sub, *argv, who=SEAT), run(at, *argv, who=SEAT)
+        s(f"below the top, {argv[0]}: does what it does at the top, the same exit and the same lines, where each ran aside",
+          placed(here, sub, top) == placed(there, at), here, f"at the top: {seen(there)}")
+    hooks = lambda base: sorted(p.name for p in (base / ".git" / "hooks").glob("*") if not p.name.endswith(".sample"))
+    s("…and the hooks and their copy of the tool are written in the top's git directory, as at the top",
+      hooks(top) == hooks(at) and "pre-commit" in hooks(top) and (top / ".git" / fm.COPY_DIR).is_dir() and (at / ".git" / fm.COPY_DIR).is_dir(),
+      extra=f"{hooks(top)} · {hooks(at)}")
+    status = lambda base, cut: sorted(l[3:].removeprefix(cut) for l in git(base, "status", "--porcelain", "--untracked-files=all").splitlines() if l.strip())
+    s("…and the same files are written in the project, below the top as at the top", status(top, prefix) == status(at, ""),
+      extra=f"{status(top, prefix)} · {status(at, '')}")
+    s.add(add, "an act run from a project below the top of its git repository — --install-hook, --init — does what it does at the top: the "
+               "same exit and lines, the hooks and their copy of the tool in the top's git directory, and the same files in the project")
 
 
 # --- the import made with the hooks on: the commit hook leaves the trackers a commit adds already Shipped to --check -----------------
@@ -619,19 +637,12 @@ MUTANTS = (
     ("the count read by path: a tracker the import renames onto Shipped counted frozen", "tracker_imports",
      " and not any(tracker_name(tid, names) for names in there)", "", (rows_renamed_by_import,)),
     ("a later file below the tracker folder read as a frozen tracker's", "frozen_left", " if path.parent.as_posix() == home else None", "", (rows_later_note,)),
-    ("the refusal below the top skipped", "main_run", "    refused = below_top()                                   #", "    refused = ''                                            #",
-     (rows_below_top,)),
-    ("the board's run below the top not refused", "board_run", "refused = below_top() or tracker_folder_problem()", "refused = tracker_folder_problem()",
-     (rows_below_top,)),
-    ("a run at the top refused too", "below_top", '    if not prefix:\n        return ""\n', "", (rows_below_top,)),
     ("the commit hook's deferral applied to a tracker present at a parent", "shipped_moves", "later = added if COMMITTING and not commit else set()",
      "later = set(shipped) if COMMITTING and not commit else set()", (rows_hooked_import,)),
     ("the commit hook's deferral with no line", "shipped_moves", "    if left:\n", "    if False:\n", (rows_hooked_import,)),
     ("the deferral in --check too, not only in the commit hook's run", "shipped_moves", "if COMMITTING and not commit else set()", "if not commit else set()",
      (rows_hooked_import,)),
     ("an import with no parent here freezing what it adds", "import_freezes", "    if not commits_held(bases):\n", "    if False:\n", (rows_root_import,)),
-    ("an act run not refused below the top", "main_run", "    refused = below_top()                                   #",
-     "    refused = '' if any(vars(args).get(f) for f in ACT_RUNS) else below_top()  #", (rows_act_below_top,)),
     ("the commit hook's deferral reaching what a merge being made brings", "shipped_moves", "later = added if COMMITTING and not commit else set()",
      "later = added if COMMITTING else set()", (rows_hooked_merge,)),
     ("the freeze held by an Owner whom the configuration does not mark signed", "import_verified",

@@ -82,6 +82,20 @@ R13_NEW = "--since: R13, the Owner's ruling of 12 October, removed it with --rat
 SCHEMA_CASE = "schema-check-priority"
 R15_SCHEMA_ROWS = ("| `freeze_at` |", "| `freeze_tag` |")
 R13_SCHEMA_ROWS = ("| `[ratio] records` |", "| `[ratio] exclude` |")
+# …and those two rows pinned whole, as the candidate prints them: each list's prefixes are written from the project root, and an entry
+# of `records` that starts with the root's own folder, below the top, is refused. The rows re-pinned with these words; a candidate whose
+# row says anything else — `repository-relative prefixes`, as before — does not match.
+RATIO_SCHEMA_ROWS = (
+    '| `[ratio] records` | a list of prefixes written from the project root; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default, '
+    'with or without `[ratio]` | the records, as a move to `Shipped` reads them (FM-005, FM-032): a commit its ship log names is a commit behind the '
+    'change only where it changes a path of the project outside them — a prefix with a trailing slash is a directory, a plain path is that one file. '
+    "Where the project root is below the top of its repository, an entry that starts with the root's own folder is refused at configuration, naming it "
+    'as it should read (exit 1). The ratio `--ratio` counted from them is gone (R13); a key of `[ratio]` other than these two is named by `--check` and '
+    'not read |',
+    '| `[ratio] exclude` | a list of prefixes written from the project root; `[]` (the default) | kept as written (R26), and checked as `records` is; '
+    'nothing counts with it since R13 removed `--ratio`, which left these prefixes out of both sides — a move to `Shipped` reads `records` alone, as it '
+    'always has, and `--check` says so where it is set |',
+)
 
 
 def r15_schema_dropped(observed):
@@ -93,11 +107,14 @@ def r15_schema_dropped(observed):
 
 
 def r13_schema_matches(before, after):
-    """Whether a candidate's run of the schema case matches the baseline's but for R13's two `[ratio]` rows, each still one row of its key."""
+    """Whether a candidate's run of the schema case matches the baseline's but for R13's two `[ratio]` rows, each still one row of its key,
+    and each the row pinned for it (`RATIO_SCHEMA_ROWS`)."""
     if (before["status"], before["stderr"]) != (after["status"], after["stderr"]):
         return False
     old, new = before["stdout"].split("\n"), after["stdout"].split("\n")
     if len(old) != len(new) or any(sum(line.startswith(row) for line in lines) != 1 for row in R13_SCHEMA_ROWS for lines in (old, new)):
+        return False
+    if any(line.startswith(R13_SCHEMA_ROWS) and line not in RATIO_SCHEMA_ROWS for line in new):
         return False
     return all(any(a.startswith(row) and b.startswith(row) for row in R13_SCHEMA_ROWS) for a, b in zip(old, new) if a != b)
 
@@ -806,8 +823,43 @@ def r4_schema(stdout):
     return "\n".join(lines[:at[0] + 1] + [ASK_ID_SCHEMA_ROW] + lines[at[0] + 1:])
 
 
+# …and the two rows a code repository's configuration adds, each pinned whole and inserted right after the row of its anchor: `[repositories]`
+# after the `[ratio] exclude` row, beside what a move to `Shipped` reads, and `[trackers] elsewhere` after the row of `judged_before_build`,
+# the gate it turns off. A candidate without either row, with one moved, or with a word more, does not match.
+CODE_SCHEMA_ROWS = (
+    ("| `[ratio] exclude` |",
+     '| `[repositories] <repository>` | `"<where it is>"` — its URL or its path, a non-empty string; `<repository>` is a bare key: letters, '
+     "digits, `-` and `_` | a code repository this project's trackers ship from: a move to `Shipped` may name `<repository>@<commit>` in a "
+     'ship-log row — seven hex characters or more — and the gate takes that commit as the one behind the move without reading the other '
+     'repository; `--check` says in one line how many moves rest on such rows. A `<repository>@<commit>` whose repository the table does not name '
+     'counts as no commit, and its hash is never read as a commit of this repository. A repository counts as the default branch\'s '
+     'configuration names it, read as the Owner is: one a branch adds counts once it lands. A value that is no string, or is empty, is '
+     'refused at configuration (exit 1) |'),
+    ("| `judged_before_build` |",
+     '| `[trackers] elsewhere` | `"<where>"` — the repository, and the folder in it, that holds this code repository\'s trackers; a non-empty '
+     "string, the table's one key | a code repository whose trackers live in another: `--check` says so in one line and passes, reading no "
+     'tracker; `--init`, `--new` and the board — `--html-only`, and the run that writes INDEX.md and the board — refuse in one line each (exit 4); '
+     '`judged_before_build` is off, whatever it says. In force as the default branch\'s configuration holds it, read as the Owner is: a branch '
+     'that adds it is judged by every rule, and where that branch cannot be read it is not in force. Another key in `[trackers]`, or an empty '
+     'value, is refused at configuration (exit 1), and so is the table where the project, or its default branch, holds a tracker folder |'),
+)
+
+
+def code_schema(stdout):
+    """`stdout` with CODE_SCHEMA_ROWS' rows inserted, each right after the one line its anchor starts — else None."""
+    if stdout is None:
+        return None
+    lines = stdout.split("\n")
+    for anchor, row in CODE_SCHEMA_ROWS:
+        at = [i for i, line in enumerate(lines) if line.startswith(anchor)]
+        if len(at) != 1:
+            return None
+        lines = lines[:at[0] + 1] + [row] + lines[at[0] + 1:]
+    return "\n".join(lines)
+
+
 def schema_matches(before, after):
-    staged = r4_schema(fm053_schema(before["stdout"]))
+    staged = code_schema(r4_schema(fm053_schema(before["stdout"])))
     return staged is not None and d_batch_schema_matches(dict(before, stdout=staged), after)
 
 
@@ -978,10 +1030,20 @@ def settings_undone(env):
     return dict(out, GIT_CONFIG_PARAMETERS=" ".join(kept)) if kept else out
 
 
+# …and, from the candidate's, `--no-renames` on each list of a commit's paths that another project's skip decides on, and the rules it feeds, made at one
+# of RENAME_SITES: the baseline took those lists with git's rename detection on, so a move named the path it takes alone.
+RENAME_SITES = ("staged_now", "read_changes", "commit_list", "pending_judgement")
+
+
+def renames_word(row, word):
+    """Whether `word` of a candidate's start or call is the `--no-renames` one of RENAME_SITES' lists added."""
+    return word == "--no-renames" and bool(set(RENAME_SITES) & set(row.get("product_stack") or []))
+
+
 def board_settings_undone(rows, candidate):
     """The starts or calls of a run, each read of the working tree's edits taken out; and, from the candidate's, its settings, its drivers' lists, its
-    `check-attr`, its `ls-files` tag, its `--no-textconv` outside the board's own run, and each read of `origin/master` directly after one of
-    `origin/main` (`TRUNK_READS`) — each as specified above."""
+    `check-attr`, its `ls-files` tag, its `--no-textconv` outside the board's own run, each read of `origin/master` directly after one of
+    `origin/main` (`TRUNK_READS`), and `--no-renames` where RENAME_SITES added it — each as specified above."""
     out, last = [], None
     for row in rows:
         words = git_words(row)
@@ -992,7 +1054,8 @@ def board_settings_undone(rows, candidate):
             out.append(row)
             continue
         argv = list((row.get("argv") if "argv" in row else (row.get("args") or [None])[0]) or [])
-        kept = [word for word in words if not (word == "--no-textconv" and "--text" not in words) and not (words[:1] == ("ls-files",) and word == "-t")]
+        kept = [word for word in words if not (word == "--no-textconv" and "--text" not in words) and not (words[:1] == ("ls-files",) and word == "-t")
+                and not renames_word(row, word)]
         new_argv = argv[:len(argv) - len(words)] + kept if len(argv) >= len(words) else argv
         row = dict(row)
         if "argv" in row:
@@ -1225,8 +1288,8 @@ FM054_PAGE_EDITS = (
 
 def fm054_own(rows):
     """The rows made neither by the reading of the default branch's configuration (`proof_reading`), nor by the stand-up's
-    variant (`day_vcs`), nor by the reading of that branch's history (FM169_SITES), nor by the refusal below the top or `--check`'s
-    line on the frozen rule (FROZEN_SITES): the baseline makes none of them."""
+    variant (`day_vcs`), nor by the reading of that branch's history (FM169_SITES), nor by `--check`'s line on the frozen rule
+    (FROZEN_SITES): the baseline makes none of them."""
     return [row for row in rows if not ({"proof_reading", "day_vcs"} | set(FM169_SITES) | set(FROZEN_SITES)) & set(row.get("product_stack") or [])]
 
 
@@ -1281,11 +1344,10 @@ def fm169_read(argv):
             and any(tuple(argv[1:1 + len(form)]) == form for form in FM169_READS))
 
 
-# The refusal of a project below the top of its git repository asks git where the project root sits, once in every run (`below_top`), and
-# `--check`'s line on the frozen rule reads the commits that carry `Tracker-import:` (`frozen_line`). The baseline makes neither: one
-# allowance, held to those two sites and those reads, and to that line as a repository with no import commit prints it, once.
-FROZEN_SITES = ("below_top", "frozen_line")
-FROZEN_READS = (("rev-parse", "--show-prefix"), ("rev-parse", "--show-toplevel"), ("log", "-i", "--grep=^Tracker-import:"))
+# `--check`'s line on the frozen rule reads the commits that carry `Tracker-import:` (`frozen_line`). The baseline does not: one
+# allowance, held to that site and that read, made once, and to that line as a repository with no import commit prints it, once.
+FROZEN_SITES = ("frozen_line",)
+FROZEN_READS = (("log", "-i", "--grep=^Tracker-import:"),)
 FROZEN_NONE = "frozen trackers: none — no commit of HEAD's history carries `Tracker-import:` and verifies as the Owner's own signed commit"
 
 
@@ -1302,11 +1364,10 @@ def frozen_read(argv):
 
 
 def frozen_held(rows, arg=lambda row: row.get("argv")):
-    """Whether the frozen rule's and the refusal's starts or calls in `rows` are reads, and the refusal's question of where the root sits is
-    asked once at most."""
+    """Whether the frozen rule's starts or calls in `rows` are reads, and the commits that carry `Tracker-import:` are read once at most."""
     reads = frozen_reads(rows)
-    asked = [row for row in reads if "below_top" in row["product_stack"] and [str(a) for a in (arg(row) or [])][1:] == ["rev-parse", "--show-prefix"]]
-    return all(frozen_read(arg(row)) for row in reads) and len(asked) <= 1
+    logged = [row for row in reads if [str(a) for a in (arg(row) or [])][1:4] == list(FROZEN_READS[0])]
+    return all(frozen_read(arg(row)) for row in reads) and len(logged) <= 1
 
 
 def frozen_said(said):
@@ -2004,7 +2065,8 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                                r13_named(before) == said)
             elif label == SCHEMA_CASE:
                 assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, but for `--schema`'s two freeze rows, gone (R15), "
-                               "and its two `[ratio]` rows, rewritten (R13)", schema_matches(before, after))
+                               "its two `[ratio]` rows, rewritten (R13), and the two rows of a code repository's configuration, inserted",
+                               schema_matches(before, after))
             else:
                 assert_control(label_prefix + "actual stdout/stderr/status match immutable baseline, but for `--check`'s line on the frozen rule, once",
                                (before["status"], before["stdout"], before["stderr"]) == frozen_said(said))
@@ -2046,7 +2108,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                 assert_control(label_prefix + "read-only entry leaves consumer snapshot identical", all(observed["before"] == observed["after"] for observed in pair))
             if label in ("clean-check-origin", "dirty-check-fallback", "clean-default-origin", "dirty-default-fallback"):
                 probe_argv = {"baseline": ["git", "diff", "--name-only", "--relative", "--ignore-submodules=none", "HEAD"],
-                              "candidate": ["git", "diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", "HEAD"]}
+                              "candidate": ["git", "diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=dirty", "HEAD"]}
                 main_probe = lambda observed: [row for row in observed["starts_raw"] if same_start(row["argv"], row.get("raw"), probe_argv[observed["version"]])
                                               and ("main" in row["product_stack"] and "worktree_edited" in row["product_stack"]
                                                    and "read_changes" not in row["product_stack"] if observed["version"] == "baseline"
@@ -2078,7 +2140,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        and r13_named(old13) != (new13["status"], new13["stdout"], new13["stderr"].replace("R13", "R14")))
         assert_control(r13 + "a baseline run that does not say the line once is not allowed at all",
                        r13_named(dict(old13, stderr="")) is None and r13_named(dict(old13, stderr=R13_OLD * 2)) is None)
-        # The schema allowance is held to its four rows on the real schema pair: two gone, two rewritten, and nothing else.
+        # The schema allowance is held to its six rows on the real schema pair: two gone, two rewritten, two inserted, and nothing else.
         olds, news = (next(row for row in rows if row["case"] == SCHEMA_CASE and row["version"] == version) for version in ("baseline", "candidate"))
         schema, lines = "Git entry schema allowance (R15 and R13): ", news["stdout"].split("\n")
         other = next(i for i, line in enumerate(lines) if line.strip() and not line.startswith(R13_SCHEMA_ROWS))
@@ -2093,6 +2155,23 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
                        not schema_matches(olds, dict(news, stdout="\n".join(lines[:other] + [lines[other] + " changed"] + lines[other + 1:])))
                        and not schema_matches(olds, dict(news, stdout="\n".join(l for l in lines if not l.startswith(R13_SCHEMA_ROWS[1])) + "\n"))
                        and not schema_matches(olds, dict(news, stdout=news["stdout"].replace(R13_SCHEMA_ROWS[0], R13_SCHEMA_ROWS[1], 1))))
+        assert_control(schema + "the two `[ratio]` rows are pinned whole: the candidate prints each as pinned, and one whose row says "
+                       "`repository-relative prefixes` again, or carries one word more, does not match",
+                       all(row in lines for row in RATIO_SCHEMA_ROWS)
+                       and not schema_matches(olds, dict(news, stdout=news["stdout"].replace("a list of prefixes written from the project root",
+                                                                                             "a list of repository-relative prefixes", 1)))
+                       and not schema_matches(olds, dict(news, stdout=news["stdout"].replace(RATIO_SCHEMA_ROWS[1], RATIO_SCHEMA_ROWS[1][:-2] + " more |", 1))))
+        added = [row for _anchor, row in CODE_SCHEMA_ROWS]
+        moved = [line for line in lines if line != added[0]]
+        moved = moved[:moved.index(added[1]) + 1] + [added[0]] + moved[moved.index(added[1]) + 1:] if added[1] in moved else lines
+        assert_control(schema + "the two rows of a code repository's configuration are pinned whole, each right after its anchor's row: the "
+                       "candidate prints each as pinned, and one without a row, with a row moved, or with one word more, does not match",
+                       all(lines.count(row) == 1 for row in added)
+                       and all(lines.index(row) == lines.index(next(l for l in lines if l.startswith(anchor))) + 1 for anchor, row in CODE_SCHEMA_ROWS)
+                       and all(not schema_matches(olds, dict(news, stdout="\n".join(l for l in lines if l != row))) for row in added)
+                       and not schema_matches(olds, dict(news, stdout="\n".join(moved)))
+                       and all(not schema_matches(olds, dict(news, stdout=news["stdout"].replace(row, row[:-2] + " more |", 1))) for row in added)
+                       and code_schema(olds["stdout"].replace("| `judged_before_build` |", "| `judged_before_build` | twice |\n| `judged_before_build` |", 1)) is None)
         assert_control(schema + "a schema that changes its exit or its stderr does not match, and a baseline that does not hold each freeze row once is not allowed at all",
                        not schema_matches(olds, dict(news, status=news["status"] + 1)) and not schema_matches(olds, dict(news, stderr=news["stderr"] + "x\n"))
                        and r15_schema_dropped(dict(olds, stdout="")) is None
@@ -2290,17 +2369,16 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         other = [dict(row, argv=[row["argv"][0], "config", "--get", "user.email"]) if row is said[0] else row for row in new["starts"]] if said else []
         assert_control(day + "a start inside `day_vcs` that is not its one read is not one",
                        bool(other) and not all(day_read(row["argv"]) for row in day_reads(other)))
-        # the refusal's and the frozen rule's allowance, held on the clean `--check` pair: their reads alone, and the line as written, once
+        # the frozen rule's allowance, held on the clean `--check` pair: its read alone, and the line as written, once
         frozen = "Git entry frozen-rule allowance: "
         old_c, new_c = (next(row for row in rows if row["case"] == "clean-check-origin" and row["version"] == version) for version in ("baseline", "candidate"))
         base_c, reads_c = origin_undone(answers_undone(old_c["starts"])), frozen_reads(new_c["starts"])
-        assert_control(frozen + "`--check` asks once where the project root sits and reads once the commits that carry `Tracker-import:` — each a read, "
-                       "which the baseline never makes",
-                       sorted(tuple(str(a) for a in row["argv"][1:4]) for row in reads_c) == [("log", "-i", "--grep=^Tracker-import:"), ("rev-parse", "--show-prefix")]
+        assert_control(frozen + "`--check` reads once the commits that carry `Tracker-import:` — a read, which the baseline never makes",
+                       sorted(tuple(str(a) for a in row["argv"][1:4]) for row in reads_c) == [("log", "-i", "--grep=^Tracker-import:")]
                        and frozen_held(new_c["starts"]) and not frozen_reads(old_c["starts"]))
         unsited_c = [dict(row, product_stack=[s for s in row["product_stack"] if s not in FROZEN_SITES]) for row in new_c["starts"]]
-        twice_c = new_c["starts"] + [r for r in reads_c if "below_top" in r["product_stack"]]
-        assert_control(frozen + "the same reads made outside those sites are not set aside, and the root's question asked twice is not held",
+        twice_c = new_c["starts"] + reads_c
+        assert_control(frozen + "the same read made outside that site is not set aside, and the commits that carry the trailer read twice are not held",
                        not rows_match(base_c, fm054_own(id_rules_undone(unsited_c))) and rows_match(base_c, fm054_own(id_rules_undone(new_c["starts"])))
                        and not frozen_held(twice_c))
         said_c = (new_c["status"], new_c["stdout"], new_c["stderr"])
@@ -2400,7 +2478,7 @@ def run_git_entry_differentials(candidate, baseline, *, payload, check=None, rep
         moved = "\n".join(rest[:rest.index(brand)] + [palette] + rest[rest.index(brand):]) if brand in rest else schema_new
         r13_rows = {row: next((line for line in lines if line.startswith(row)), "") for row in R13_SCHEMA_ROWS}
         d_batch_old = [next((r13_rows[row] for row in R13_SCHEMA_ROWS if line.startswith(row)), line)
-                       for line in (r4_schema(schema_old) or schema_old).split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
+                       for line in (code_schema(r4_schema(schema_old)) or schema_old).split("\n") if not line.startswith(R15_SCHEMA_ROWS)]
         def two_lines(new):
             n = new.split("\n")
             found = [i for i, line in enumerate(n) if line.startswith(PALETTE_ROW)]
