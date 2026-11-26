@@ -2416,16 +2416,16 @@ def import_attests():
     frozen rule's and is not read here. Such a commit attests every guarded line of each tracker it adds, as it holds them: a line it wrote
     that no later commit changed is the Owner's, set with every right it needs, and a line changed later is its own commit's. The history
     is HEAD's and that of any head a merge being made brings (`merge_heads`): one `git log` for all of it, then for each import one `ls-tree`
-    of the tracker folder at it and at each parent, and one `cat_blobs`. Read once per run. Git alone: under Subversion and without version
-    control nothing is attested."""
+    of the tracker folder at it and at each parent — the whole folder (`--full-tree`), wherever the project sits in its repository — and one
+    `cat_blobs`. Read once per run. Git alone: under Subversion and without version control nothing is attested."""
     global _ATTESTS
     if _ATTESTS is None:
         _ATTESTS = {}
         log = git_out("log", "--topo-order", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}",
                       "HEAD", *merge_heads()) if vcs() == "git" else None
         home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix() if log else ""
-        ids = lambda rev: {"-".join(n.split("-")[:2]): n for n in (git_out("ls-tree", "-z", "--name-only", f"{rev}:./{home}") or "").split("\x00")
-                           if n.endswith(".md") and KIND_RE.match(n)}
+        ids = lambda rev: {"-".join(n.split("-")[:2]): n for n in (git_out("ls-tree", "-z", "--full-tree", "--name-only", f"{rev}:./{home}") or "").split("\x00")
+                           if n.endswith(".md") and KIND_RE.match(n)}      # `--full-tree`: from a project below the top, ls-tree lists only what lies under the working directory's prefix inside that tree, which is nothing
         for rec in (log or "").split("\x00")[1:]:
             sha, parents, name, email, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
             parents = parents.split()

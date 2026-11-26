@@ -14,7 +14,9 @@ named `signed`, their key in the default branch's signers file, a planner seat �
 ask a seat put there, above the record of one answered before it; a standing answer beside its ask id; two records whose signed lines name
 commits this history does not hold; and one In Progress with its triage keys. Each row runs the tool in this process and states its
 verdict as one check made of steps, each of which must hold. Each mutant patches one function of the imported module and must turn at
-least one row red. A function this tool lacks fails the row that asks for it.
+least one row red. A function this tool lacks fails the row that asks for it. One row puts the project one folder below the top of a
+repository of its own and asks the import's reader alone, with the import's verification and its held-parents test stubbed: a run from
+below the top is refused until such a project is read as one at the top, and that verification rests on the same reading.
 
 Run: `python3 test_import_attests.py` — exit 1 on a failure; `python3 test_import_attests.py rows_<name> …` runs those rows alone, without
 the mutants, and with `--with-mutants` beside them, with the mutants that run those rows; `--no-mutants` runs every row and no mutant.
@@ -25,6 +27,7 @@ import inspect
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -409,8 +412,50 @@ def rows_done_left(area, add):
     s.add(add, "a tracker the import adds already Shipped or Closed is not attested: an answer standing beside its id is judged as today")
 
 
+# --- below the top: the import's reader lists the whole tracker folder -------------------------------------------------------------
+
+@contextlib.contextmanager
+def stubbed(**names):
+    """Each of `names` put in place of the module's function of that name, and the real one put back after."""
+    real = {n: getattr(fm, n) for n in names}
+    for n, f in names.items():
+        setattr(fm, n, f)
+    try:
+        yield
+    finally:
+        for n, f in real.items():
+            setattr(fm, n, f)
+
+
+def rows_below_top_verification_stubbed(area, add):
+    """A project one folder below the top of its repository, where the Owner's signed import adds the four open trackers. A run from
+    there is refused until a project below the top is read as one at the top, and the import's verification rests on that reading, so
+    this row stubs the verification and the held-parents test and asks the import's reader alone."""
+    top, key = area / "repo", area / "key-owner"
+    proj = top / "project"
+    proj.mkdir(parents=True)
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key), "-C", "owner"], check=True, capture_output=True)
+    git(top, "init", "-q", "--initial-branch=main")
+    (proj / "shoalmark.toml").write_text(CONFIG, encoding="utf-8")
+    write(proj, "FM-001", text("FM-001"))
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-S", "-m", "the start", who=OWNER, sign=key)
+    for tid, body in imported().items():
+        write(proj, tid, body)
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-S", "-m", "the trackers, imported", "-m", TRAILER, who=OWNER, sign=key)
+    sha = git(top, "rev-parse", "HEAD").strip()
+    with stubbed(import_verified=lambda commit, name, email: True, commits_held=lambda revs: True), reading(proj):
+        got = {tid: [c for c, _name, _text in held] for tid, held in fm.import_attests().items()}
+    s = Steps()
+    s("the reader finds the four open trackers the import adds, each attested by the import, and not the one its parent holds",
+      got == {tid: [sha] for tid in IMPORTED}, extra=repr(got))
+    s.add(add, "below the top, with the import's verification and its held-parents test stubbed: the import's reader lists the whole "
+               "tracker folder at the import and at its parent, and finds the four open trackers the Owner's signed import adds")
+
+
 ROWS = (rows_check, rows_modified, rows_queue, rows_owner, rows_answer_counts, rows_ask_numbers, rows_after_import, rows_attests_nothing,
-        rows_done_left)
+        rows_done_left, rows_below_top_verification_stubbed)
 
 
 @contextlib.contextmanager
@@ -466,6 +511,8 @@ MUTANTS = (
      (("if import_adds(t, commit):", 'if import_attests().get(t["id"]):'),), (rows_after_import,)),
     ("an answer with no ask id that the import wrote judged for the right, as before", "lint",
      (('attested = how == "git" and import_adds(t, commit)', "attested = False"),), (rows_owner,)),
+    ("the tracker folder listed without `--full-tree`: below the top it lists nothing", "import_attests",
+     (('"--full-tree", ', ""),), (rows_below_top_verification_stubbed,)),
 )
 
 
