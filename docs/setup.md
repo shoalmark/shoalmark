@@ -7,7 +7,7 @@ Only want the drift skills, find-drift and prune-drift? You install them without
 ## 1. Put the tool in the repository
 
 ```
-git clone --branch v0.20.2 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
+git clone --branch v0.20.3 https://github.com/shoalmark/shoalmark ~/shoalmark   # a release: the one this page ships with, a clean clone
 ```
 
 Then open your repository's folder in the terminal.

@@ -7,7 +7,7 @@ Willst du nur die Drift-Skills, find-drift und prune-drift? Die installierst du 
 ## 1. Das Werkzeug ins Repository legen
 
 ```
-git clone --branch v0.20.2 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
+git clone --branch v0.20.3 https://github.com/shoalmark/shoalmark ~/shoalmark   # ein Release: das, mit dem diese Seite erscheint, sauber geklont
 ```
 
 Wechsle dann im Terminal in den Ordner deines Repositorys.

@@ -2,7 +2,7 @@
 
 What a repository takes on when it vendors again. Newest first; `--vendor` prints the sections that are new to it.
 
-## Unreleased — 0.20.3
+## 0.20.3 — 2026-11-26
 
 ### Changed
 - A commit the default branch already holds is judged by what that branch said when the commit landed there: the identities and keys in force immediately before it arrived on that branch. An answer given under an address that has since left `owner`, or signed with a key that has since left the signers file, still counts and still reads as the Owner's. An address or a key that arrives later counts for nothing that landed before it. A commit that is not on the default branch yet is judged by the state in force there, and so are the guard over the Owner's two sections and the Owner's signed commits. **An answer that counted only because its address or its key reached the default branch after it did is refused from this release: give it again with `--supersede`.**
