@@ -13233,27 +13233,68 @@ def each_project(args):
         paths = [p for p in out.stdout.split("\x00") if p] if out.returncode == 0 else []
     code = EXIT_OK
     for root, rels in (staged_projects(top, paths) or {top: []}).items():
+        folder = "" if root == top else root.relative_to(top).as_posix() + "/"
         try:
-            configure(root)
-            if args.print_written and not hook_writes(rels):
-                continue
-            sub = parse_args([f"--{line[0].replace('_', '-')}", *(args.commit_msg or []), "--root", str(root)])
-            if not args.print_written:
-                got = main_run(sub)
-            else:                                       # the paths it wrote, from the top: the hook stages them there
+            with lines_named(folder[:-1]):              # each line a project below the top says starts with its folder from the top
+                configure(root)
+                if args.print_written and not hook_writes(rels):
+                    continue
+                sub = parse_args([f"--{line[0].replace('_', '-')}", *(args.commit_msg or []), "--root", str(root)])
                 said = io.StringIO()
-                with contextlib.redirect_stdout(said):
+                with contextlib.redirect_stdout(said) if args.print_written else contextlib.nullcontext():
                     got = main_run(sub)
-                folder = "" if root == top else root.relative_to(top).as_posix() + "/"
-                for rel in said.getvalue().splitlines():
-                    if rel:
-                        print(folder + rel)
+            for rel in said.getvalue().splitlines():    # the paths it wrote, from the top: the hook stages them there
+                if rel:
+                    print(folder + rel)
         except SystemExit as stop:                      # a project's configuration refused: its line, and the next project is judged
             if stop.code is not None and not isinstance(stop.code, int):
-                print(stop.code, file=sys.stderr)
+                with lines_named(folder[:-1]):
+                    print(stop.code, file=sys.stderr)
             got = stop.code if isinstance(stop.code, int) else 0 if stop.code is None else 1
         code = code or got or EXIT_OK
     return code
+
+
+class _Named(io.TextIOBase):
+    """A stream that writes each line to `out` as it ends, with `name: ` before it — a blank line as it is."""
+
+    def __init__(self, out, name):
+        super().__init__()
+        self.out, self.name, self.part = out, name, ""
+
+    def writable(self):
+        return True
+
+    def write(self, text):
+        *ended, self.part = (self.part + text).split("\n")
+        for one in ended:
+            self.out.write(f"{self.name}: {one}\n" if one else "\n")
+        return len(text)
+
+    def flush(self):
+        self.out.flush()
+
+    def end(self):
+        if self.part:
+            self.out.write(f"{self.name}: {self.part}\n")
+            self.part = ""
+        self.out.flush()
+
+
+@contextlib.contextmanager
+def lines_named(name):
+    """Inside it, each line written to stdout and to stderr starts with `name: ` — a project's folder from the top, where `each_project` runs
+    a project below it; with "" they are written as they are."""
+    if not name:
+        yield
+        return
+    out, err = _Named(sys.stdout, name), _Named(sys.stderr, name)
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            yield
+    finally:
+        out.end()
+        err.end()
 
 
 def install_hook():

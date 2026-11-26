@@ -1213,6 +1213,42 @@ def rows_hooks(area, add):
         add("hooks · the copy, judging the project below the top, finds the repository's own tool where its COPY says, from the top of the working "
             "tree — the folder it finds for every project", want is not None and got == want, f"tree_tool_dir() = {got}, not {want}")
 
+    for where, outer_at in other_layouts():             # what a project below the top says in the hooks starts with its folder from the top
+        name = f"hooks-named-{'below' if outer_at else 'top'}"
+        if not picked("hooks-named"):
+            continue
+        try:
+            r, outer, team = gated(area, name, outer_at)
+            installed = install_once(r, outer)
+            if installed[0] != 0:
+                raise AssertionError(f"--install-hook: {seen(installed)}")
+            r.put(r_at(team, "src/tool.py"), "print('built in the team project')\n")
+            git(r.top, "add", "--", r_at(team, "src/tool.py"))
+            alone = hooked(r, "build in the team project, naming no tracker")
+            r.put(r_at(outer, "src/app.py"), "print('built in the outer project')\n")
+            git(r.top, "add", "--", r_at(outer, "src/app.py"))
+            both = hooked(r, "build in both projects, naming no tracker")
+            git(r.top, "reset", "-q", "--hard", "HEAD")
+            cfg = r.root(team) / "shoalmark.toml"
+            cfg.write_text(cfg.read_text(encoding="utf-8") + '[repositories]\ntool = ""\n', encoding="utf-8")
+            git(r.top, "add", "--", r_at(team, "shoalmark.toml"))
+            refused_cfg = hooked(r, "FM-001: name the tool's repository")
+            lines = lambda said, words: [one for one in said.splitlines() if words in one]
+            mine = lambda one, folder: one.startswith(f"{folder}: ") if folder else not one.startswith(f"{team}:") and one.lstrip().startswith("refused")
+            ok = (alone[0] != 0 and lines(alone[1], NO_TEAM) and all(one.startswith(f"{team}: ") for one in alone[1].splitlines() if one.strip())
+                  and both[0] != 0 and lines(both[1], NO_TEAM) and lines(both[1], NO_OUTER)
+                  and all(mine(one, team) for one in lines(both[1], NO_TEAM)) and all(mine(one, outer) for one in lines(both[1], NO_OUTER))
+                  and refused_cfg[0] != 0 and lines(refused_cfg[1], "[repositories]")
+                  and all(one.startswith(f"{team}: shoalmark.toml: ") for one in lines(refused_cfg[1], "[repositories]")))
+            saw = (f"the team alone: exit {alone[0]} {alone[1].strip()[-300:]!r} · both: exit {both[0]} {both[1].strip()[-500:]!r} · "
+                   f"the team's refused configuration: exit {refused_cfg[0]} {refused_cfg[1].strip()[-300:]!r}")
+        except Exception as e:
+            ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm.configure(HERE)
+        add(f"hooks · {where}: each line a project below the top says starts with its folder from the top — the team's build refused alone, "
+            "then beside the outer project's, whose lines name its own folder, or none at the top, and the team's configuration refused", ok, saw)
+
 
 # --- a new project: the project around it judges the commit that creates it ----------------------------------------------------------
 
@@ -1909,6 +1945,14 @@ MUTANTS = (
      (rows_hooks,), {"hooks-top"}, False),
     ("the hooks' copy finds the repository's own tool from each project's root", "tree_tool_dir", [("return top / tool if tool else top", "return ROOT / tool if tool else ROOT", 1)],
      (rows_hooks,), {"copy-tool"}, False),
+    ("the hooks' copy says a project's lines below the top without its folder", "copy:each_project",
+     [("with lines_named(folder[:-1]):              # each line", 'with lines_named(""):              # each line', 1)], (rows_hooks,),
+     {"hooks-named"}, False),
+    ("the hooks' copy says a project's refused configuration below the top without its folder", "copy:each_project",
+     [("with lines_named(folder[:-1]):\n                    print(stop.code, file=sys.stderr)", "if True:\n                    print(stop.code, file=sys.stderr)", 1)],
+     (rows_hooks,), {"hooks-named"}, False),
+    ("the hooks' copy names a line's project without its folder", "copy:_Named",
+     [('self.out.write(f"{self.name}: {one}\\n" if one else "\\n")', 'self.out.write(f"{one}\\n")', 1)], (rows_hooks,), {"hooks-named"}, False),
     ("the hooks' copy names what it wrote from the project root, where the hook stages from the top", "copy:each_project",
      [('folder = "" if root == top else root.relative_to(top).as_posix() + "/"', 'folder = ""', 1)], (rows_hooks,), {"hooks-below"}, False),
     ("a new project decided on disk, not at the commit's parent, in the check", "other_project_changes",
