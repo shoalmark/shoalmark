@@ -489,10 +489,12 @@ def at_top(area):
 
 def placed(said, *paths):
     """(exit, stdout, stderr), each path in `paths` — the project root, then the top — written as one placeholder: what a run says, where
-    it ran aside."""
+    it ran aside. Each path is written so as `str` gives it, then in its POSIX form: a file URI, as in the board's line, names the path
+    with forward slashes, and on Windows `str` gives it with backslashes."""
     def put(text):
         for path in paths:
-            text = text.replace(str(path), "<place>")
+            for form in (str(path), path.as_posix()):
+                text = text.replace(form, "<place>")
         return text
     return said[0], put(said[1]), put(said[2])
 
