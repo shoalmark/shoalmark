@@ -277,8 +277,11 @@ in none (`--each-project`) — and the pre-commit hook rebuilds a project's INDE
 the tool. A project's `--check` skips a commit whose every path lies in another project below it: that project's own check judges it. A folder is
 another project at a commit where its `shoalmark.toml` at the commit's parent — at HEAD for the commit being made — is a regular file the tool accepts
 as a configuration, with its tracker folder there too; a one-line file, a folder or a symlink of that name, or a configuration the tool refuses, leaves
-the folder the enclosing project's, in the check and in the hooks alike. So the commit that adds a folder's `shoalmark.toml` is the enclosing project's: its check and hooks judge it, by its Owner and signers, and the new project's own check judges it
-too. After a checkout or switch, a merge (including a fast-forward pull), or a rebase, the refresh hooks run
+the folder the enclosing project's, in the check and in the hooks alike. The folder is another project only once the default branch holds that
+`shoalmark.toml` too, a regular file the tool accepts, and where the default branch cannot be read it is none: a branch that creates a project is the
+enclosing project's on every commit until the new configuration lands — land it first, or build under the enclosing project's tracker until then. So
+the commit that adds a folder's `shoalmark.toml` is the enclosing project's: its check and hooks judge it, by its Owner and signers, and the new
+project's own check judges it too. After a checkout or switch, a merge (including a fast-forward pull), or a rebase, the refresh hooks run
 `--html-only`. The board says what it read, and when; each refresh hook exits 0, with one line if the refresh failed or was stopped.
 The explicit refresh stays, as do the commit's own rebuild where it stages a tracker and the rebuild right after each answer or act.
 An unchanged refresh hook an earlier version wrote is replaced, with one line; a changed hook is kept byte for byte and named. A person's own hook

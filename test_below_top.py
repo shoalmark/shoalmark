@@ -1341,6 +1341,86 @@ def rows_new_project(area, add):
     one("top-created", "a new project · at the top: on a branch whose first commit creates the project at the top, its check reads every "
         "commit as it reads them with no project below it, the commit that creates it and the build commit after it both judged", top)
 
+    def self_named():
+        r = Repo(area / "self-named", {"": org_config(GATED)}, {("", "OR-001"): text("OR-001", f"tier: P2\ntriaged: {TODAY}\n")},
+                 {"src/app.py": "print('app')\n"})
+        r.switch("-c", "work")
+        laid(r, MINE, MINE_CONFIG, ("MY-001",), signers=False)
+        created = r.commit("OR-001: a project of my own", who=COORD, index=False)     # under the outer project's judged tracker
+        r.put(f"{MINE}/src/x.py", "print('built under no tracker')\n")
+        built = r.commit("build, no tracker", who=COORD, index=False, paths=[f"{MINE}/src/x.py"])
+        r.put(f"{MINE}/src/y.py", "print('the Owner, unsigned')\n")
+        unsigned = r.commit("the Owner's identity, unsigned", who=OWNER, index=False, paths=[f"{MINE}/src/y.py"])
+        o = r.check("", who=COORD)
+        held, got = judged(r.root(""), [created, built, unsigned])
+        return refused(o, GATE) and refused(o, "Owner commit") and held, f"{seen(o)} · judged {got}"
+    one("self-named", "a new project · a seat creates a project on a branch, naming itself its Owner: the outer check judges every commit of "
+        "that branch — a build commit in it under no tracker, and an unsigned commit there by the Owner's identity, are refused", self_named)
+
+    def self_named_hooks():
+        r = org_hooked(area, "self-named-hooks")
+        laid(r, MINE, MINE_CONFIG, ("MY-001",), signers=False)
+        made = hooked(r, "OR-001: a project of my own", who=COORD)
+        r.put(f"{MINE}/src/x.py", "print('built under no tracker')\n")
+        git(r.top, "add", "--", f"{MINE}/src/x.py")
+        code, said = hooked(r, "build, no tracker", who=COORD)
+        return made[0] == 0 and code != 0 and NO_OUTER in said, f"the creating commit: exit {made[0]} · the build: exit {code}: {said.strip()[-400:]!r}"
+    one("self-named-hooks", "a new project · the same with the hooks on: the creating commit passes under the outer project's tracker, and the "
+        "build commit after it, under no tracker, is refused by the outer project", self_named_hooks)
+
+    def amended():
+        r = org_hooked(area, "amended")
+        laid(r, TEAM, team_config(), ("FM-001",))
+        made = hooked(r, "the tool team's trackers, imported", who=OWNER, sign=True, trailers=IMPORTS[:1])
+        r.put(f"{TEAM}/src/tool.py", "print('slipped into the import')\n")
+        git(r.top, "add", "-A")
+        env = dict(ids.ENV, GIT_AUTHOR_NAME=COORD[0], GIT_AUTHOR_EMAIL=COORD[1], GIT_COMMITTER_NAME=COORD[0], GIT_COMMITTER_EMAIL=COORD[1])
+        done = subprocess.run(["git", "-C", str(r.top), "-c", "commit.gpgsign=false", "commit", "-q", "--amend", "--reset-author", "-m",
+                               "the import, amended"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+        said = done.stdout + done.stderr
+        return made[0] == 0 and done.returncode != 0 and NO_OUTER in said, f"the import: exit {made[0]} · the amend: exit {done.returncode}: {said.strip()[-400:]!r}"
+    one("amended", "a new project · a seat amends the Owner's import that creates the team project, adding a build file and naming no tracker, "
+        "with the hooks on: the outer project judges the amend, and refuses it", amended)
+
+    def landed():
+        r = org_hooked(area, "landed")
+        laid(r, TEAM, team_config(GATED), ("FM-001",))
+        made = hooked(r, "the tool team's trackers, imported", who=OWNER, sign=True, trailers=IMPORTS[:1])
+
+        def build():
+            r.put(f"{TEAM}/src/tool.py", "print('built in the team project')\n")
+            git(r.top, "add", "--", f"{TEAM}/src/tool.py")
+            git(r.top, "commit", "-q", "-m", "build the team's tool", who=LEAD)        # the hooks off: each check judges it
+        build()
+        before = r.check("", who=COORD)
+        git(r.top, "reset", "-q", "--hard", "HEAD~1")
+        r.land("import")
+        r.switch("-c", "work")
+        build()
+        o, t = r.check("", who=COORD), r.check(TEAM)
+        return (made[0] == 0 and refused(before, GATE) and accepted(o) and refused(t, GATE),
+                f"the import: exit {made[0]} · on the import's branch: {seen(before)} · landed: {seen(o)} · {seen(t)}")
+    one("landed", "a new project · a build commit wholly in the team project, naming no tracker, is the outer project's while the team's "
+        "configuration is on a branch alone — the outer check refuses it — and once the default branch holds it, the team's own: the outer check "
+        "skips it, and the team's check refuses it", landed)
+
+    def landed_refused():
+        r = Repo(area / "landed-refused", {"": org_config(GATED), MINE: REFUSED}, {("", "OR-001"): text("OR-001", f"tier: P2\ntriaged: {TODAY}\n"),
+                 (MINE, "MY-001"): text("MY-001")}, {"src/app.py": "print('app')\n"})
+        r.switch("-c", "work")
+        r.put(f"{MINE}/shoalmark.toml", MINE_CONFIG)
+        r.commit("OR-001: the project's configuration, mended", who=COORD, index=False)
+        r.put(f"{MINE}/src/x.py", "print('built under no tracker')\n")
+        r.commit("build, no tracker", who=COORD, index=False, paths=[f"{MINE}/src/x.py"])
+        o = r.check("", who=COORD)
+        return refused(o, GATE), seen(o)
+    one("landed-refused", "a new project · the default branch holds the folder's `shoalmark.toml` as a configuration the tool refuses, and a branch "
+        "mends it: a build commit there after the mend, under no tracker, is judged by the outer check, and refused", landed_refused)
+
+
+MINE = "teams/mine"
+MINE_CONFIG = f'name = "mine"\nowner = "{COORD[1]}"\n[kinds]\nMY = "Work"\n[seats]\nplanner = "{LEAD[1]}"\n'     # a seat names itself the Owner
+
 
 # --- the tool's command: a project below the top names the tool from its own root, so every run writes one INDEX.md -------------------
 
@@ -1738,6 +1818,14 @@ MUTANTS = (
      [('if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000":', "if _rev == rev:", 1),
       ('if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None', "if got.get(spec) is not None else {}", 1)],
      (rows_hooks,), {"hooks-nested"}, False),
+    ("another project taken before the default branch holds its configuration", "project_blobs",
+     [(' and path in landed:', ':', 1)], (rows_new_project,), {"self-named", "amended"}, False),
+    ("the hooks' copy takes another project before the default branch holds its configuration", "copy:project_blobs",
+     [(' and path in landed:', ':', 1)], (rows_new_project,), {"self-named-hooks", "amended"}, False),
+    ("the default branch's configuration of another project taken whatever it holds", "landed_projects",
+     [(' and config_accepted(got[f"{trunk}:{path}"], path[:-len(CONFIG_NAME)]) is not None}', '}', 1)], (rows_new_project,), {"landed-refused"}, False),
+    ("a project the default branch holds is taken for none", "landed_projects", [("return {path for path in paths if", "return {path for path in () if", 1)],
+     (rows_new_project,), {"landed"}, False),
     ("a `<repository>@<commit>` row counted as no commit, though `[repositories]` names its repository", "code_row_verdicts",
      [('"" if name in named else', '"" if False else', 1)], (rows_after_move,), {"code-named"}, False),
     ("a `<repository>@<commit>` row taken whatever repository it names", "code_row_verdicts", [('"" if name in named else', '"" if True else', 1)],

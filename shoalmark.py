@@ -7640,7 +7640,8 @@ def other_project_changes(items):
     project judges it, by its own Owner and signers, and the project it creates judges it too, by its own state. A root commit has no
     parent, and no folder is another project for it. Git is asked only of a folder that holds a `shoalmark.toml` in the working tree, and
     there only a configuration this tool accepts, with its tracker folder beside it, makes another project (`project_blobs`): a one-line
-    file, a folder or a symlink of that name, or a configuration it refuses, is judged here, its folder this project's."""
+    file, a folder or a symlink of that name, or a configuration it refuses, is judged here, its folder this project's — and so is a project
+    the default branch does not hold yet: a branch that creates one is this project's on every commit until its configuration lands."""
     if vcs() != "git":
         return set()
     homes = {}                                          # each path: the folders on its way, below the root, with a configuration on disk
@@ -7663,8 +7664,9 @@ def other_project_changes(items):
 def project_blobs(specs, env=None):
     """`cat_blobs(specs)` for specs that each name a folder's `shoalmark.toml` at a revision — `<rev>:./<folder>/shoalmark.toml` from the
     project root, or `<rev>:<folder>/shoalmark.toml` from the top — where that folder is another project there: the text of each that is a
-    regular file this tool accepts as a configuration (`config_accepted`), with its tracker folder, a folder, at the same revision; none for
-    any other. One `cat_blobs`, and one `git ls-tree` for each revision."""
+    regular file this tool accepts as a configuration (`config_accepted`), with its tracker folder, a folder, at the same revision, and that
+    the default branch holds too, a regular file this tool accepts (`landed_projects`); none for any other. A branch that creates a project
+    is the enclosing project's on every commit until its configuration lands. One `cat_blobs`, and one `git ls-tree` for each revision."""
     types, prefix = {}, root_prefix()
     got = cat_blobs(specs, env, types=types, raw=True)
     places, found = {}, {}
@@ -7674,13 +7676,28 @@ def project_blobs(specs, env=None):
         cfg = config_accepted(got[spec], path[:-len(CONFIG_NAME)]) if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None
         if cfg is not None:
             places[spec] = (rev, path, f"{path[:-len(CONFIG_NAME)]}{tracker_folder(cfg).as_posix()}")
+    landed = landed_projects(sorted({place[1] for place in places.values()}))
     for rev in dict.fromkeys(place[0] for place in places.values()):
         paths = [p for place in places.values() if place[0] == rev for p in place[1:]]
         modes = tree_modes(rev, paths, env)
         for spec, (_rev, path, folder) in places.items():
-            if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000":
+            if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000" and path in landed:
                 found[spec] = got[spec]
     return found
+
+
+def landed_projects(paths):
+    """Of `paths` — each a folder's `shoalmark.toml`, from the top — those the default branch holds as a regular file this tool accepts as a
+    configuration: none where there is no default branch here, or it cannot be read. One `cat_blobs` and one `git ls-tree`, or none."""
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git) if paths else None
+    if not trunk:
+        return set()
+    types = {}
+    got = cat_blobs([f"{trunk}:{path}" for path in paths], types=types, raw=True)
+    modes = tree_modes(trunk, paths)
+    return {path for path in paths if got.get(f"{trunk}:{path}") is not None and types.get(f"{trunk}:{path}", "blob") == "blob"
+            and modes.get(path) in ("100644", "100755") and config_accepted(got[f"{trunk}:{path}"], path[:-len(CONFIG_NAME)]) is not None}
 
 
 def tree_modes(rev, paths, env=None):
@@ -13150,7 +13167,7 @@ def staged_projects(top, paths):
     project below the top, else the top's. A folder is a project for the commit being made where its `shoalmark.toml` is at HEAD, the commit's
     parent, as the check decides it (`other_project_changes`), and on disk, where that project's run reads it: the commit that adds a folder's
     `shoalmark.toml` is the enclosing project's, and so is a folder whose `shoalmark.toml` at HEAD is no configuration this tool accepts with its
-    tracker folder beside it (`project_blobs`). HEAD is asked of every folder that holds one on disk. The top first, then each other project in the
+    tracker folder beside it, or one the default branch does not hold yet (`project_blobs`). HEAD is asked of every folder that holds one on disk. The top first, then each other project in the
     order of its folder."""
     on_disk = sorted({"/".join(parts[:n]) for parts in (path.split("/") for path in paths) for n in range(1, len(parts))
                       if os.path.lexists(top.joinpath(*parts[:n], CONFIG_NAME))})
