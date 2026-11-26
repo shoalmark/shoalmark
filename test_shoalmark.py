@@ -21733,6 +21733,9 @@ _module_guard(test_answer_changes, check)
 # a project below the top of its repository, judged as one at the top: its class test, a program of its own so its mutants can run it
 import test_below_top
 _module_guard(test_below_top, check)
+# what the Owner's signed import attests of the open trackers it adds: its class test, a program of its own so its mutants patch the module it imports
+import test_import_attests
+_module_guard(test_import_attests, check)
 
 # R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
 import test_r9_removals

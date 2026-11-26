@@ -877,6 +877,9 @@ def configure(root=None):
     BOARD_READS, _DRIVERS, _TREE_UNREAD = False, None, False
     _EDITS.clear()
     BOARD_UNREAD.clear()
+    global _ATTESTS
+    _ATTESTS = None                                     # what each import commit of the history attests (`import_attests`)
+    _REACHES.clear()                                    # …and which commits a revision's history holds (`reaches`)
     ROOT = find_root(root)
     _VCS = select_vcs(ROOT)
     path = ROOT / CONFIG_NAME
@@ -2148,9 +2151,10 @@ def next_ask_id(t, used=None):
 def ask_numbers(t, rev="HEAD"):
     """THE NUMBERS A TRACKER HAS USED, one reader: its open ask's and its records' (`file_numbers`), and — on git — every `ask-id:` line of
     its own id that the file's history reachable from `rev` added or removed (`git log --full-history -G '^ask-id:' -p`): a line added
-    or removed there both mean the number was used, and no commit is credited with anything. On Subversion, every id of the tracker the
-    log of its path names in a message (`svn log --xml`). With no version control, the file alone. The next number is one more than the
-    highest (`next_ask_id`)."""
+    or removed there both mean the number was used, and no commit is credited with anything — and, where an import commit that `rev`
+    reaches attests the tracker, the numbers its copy shows (`imported_numbers`): the history behind it is not here. On Subversion, every
+    id of the tracker the log of its path names in a message (`svn log --xml`). With no version control, the file alone. The next number is
+    one more than the highest (`next_ask_id`)."""
     used = file_numbers(t)
     try:
         rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
@@ -2161,6 +2165,7 @@ def ask_numbers(t, rev="HEAD"):
         log = git_out("-c", "core.quotePath=false", "log", *board_diff_args(), "--full-history", "--no-renames", "--no-color", "--no-ext-diff", "-U0", "-p",
                       "--format=", "-G", "^ask-id:", rev, "--", rel) or ""
         used |= {n for n in (own(l[len("+ask-id:"):]) for l in log.splitlines() if l.startswith(("+ask-id:", "-ask-id:"))) if n}
+        used |= imported_numbers(t, rev)
     elif vcs() == "svn":
         try:
             log = svn_run("log", "--xml", svn_proof_path(rel), xml=True, answers=("E155010", "E200009"))
@@ -2311,7 +2316,8 @@ def svn_names_answer(t, rev):
 def answer_change_problems(trackers):
     """On git, each change the walk reads (`changes_under_review`) that changes the answer of a tracker with an `ask-id:` — an `answer`
     transition — is refused unless its commit is ordinary, carries `Answers:` naming that id, and changes no line of the put ask. A
-    merge never answers. The commit being made is judged on the commit, by the next run: its message is not written yet. Only a change
+    merge never answers. An import commit's own change on a tracker it attests (`import_attests`) is not refused: the answer it brings
+    counts as given by it. The commit being made is judged on the commit, by the next run: its message is not written yet. Only a change
     that touches a tracker carrying an ask id, open or in a record, is read — its blobs and its trailers; where none carries one, git is
     asked nothing more."""
     if vcs() != "git":
@@ -2324,6 +2330,8 @@ def answer_change_problems(trackers):
     out = []
     for bases, files, _name, _email, commit, result, label in changes:
         for rel in sorted(files & ided):
+            if import_adds(rels[rel], commit):
+                continue                                # the import that brings the tracker gives the answer it holds, naming no id (`import_attests`)
             now = blobs.get(f"{result}:./{rel}")
             aid = (parse_frontmatter(now or "")[0].get("ask-id") or "").strip()
             if not aid:
@@ -2489,6 +2497,96 @@ def front_line(text, key):
     return next((l for l in reversed(head.split("\n")[1:]) if l.partition(":")[0].strip().lower() == key and ":" in l), "")
 
 
+_ATTESTS, _REACHES, _ATTEST_EMAILS = None, {}, {}
+
+
+def import_attests():
+    """WHAT AN IMPORT ATTESTS, one reader for every rule that asks it: {tracker id: [(the import commit, its author's name, the tracker's
+    text as that commit holds it), …], newest first} — each tracker an import commit of this history adds open. An import commit carries
+    `Tracker-import: <repository> <commit>` in its form (`import_value`), verifies as the Owner's own signed commit (`import_verified`), and
+    has every parent held here (`commits_held`): a first commit, or one whose parent a shallow clone cut off, attests nothing, and neither
+    does one whose tracker folder at a parent this clone cannot read, as in a partial clone whose reads cannot fetch it. A tracker it
+    adds is one that no file of its id stands for in the tracker folder at any parent; one it adds already `Shipped` or `Closed` is the
+    frozen rule's and is not read here. Such a commit attests every guarded line of each tracker it adds, as it holds them: a line it wrote
+    that no later commit changed is the Owner's, set with every right it needs, and a line changed later is its own commit's. The history
+    is HEAD's and that of any head a merge being made brings (`merge_heads`): one `git log` for all of it, then for each import one `ls-tree`
+    of the tracker folder at it and at each parent — the whole folder (`--full-tree`), wherever the project sits in its repository — and one
+    `cat_blobs`. Read once per run. Git alone: under Subversion and without version control nothing is attested."""
+    global _ATTESTS
+    if _ATTESTS is None:
+        _ATTESTS = {}
+        _ATTEST_EMAILS.clear()
+        log = git_out("log", "--topo-order", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}",
+                      "HEAD", *merge_heads()) if vcs() == "git" else None
+        home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix() if log else ""
+        listed = {}
+
+        def names(rev, folder=home):
+            """The names directly in `folder` at `rev`: none where `rev` has no such folder, None where this clone cannot read it — its
+            tree, or a tree on the way to it, is not here. Each folder read once."""
+            if (rev, folder) not in listed:
+                got = git_out("ls-tree", "-z", "--full-tree", "--name-only", f"{rev}:./{folder}")   # `--full-tree`: from a project below the top, ls-tree lists only what lies under the working directory's prefix inside that tree, which is nothing
+                if got is not None or not folder:
+                    listed[(rev, folder)] = None if got is None else got.split("\x00")
+                else:
+                    up, _, last = folder.rpartition("/")
+                    above = names(rev, up)
+                    listed[(rev, folder)] = None if above is None or last in above else []
+            return listed[(rev, folder)]
+
+        ids = lambda rev: {"-".join(n.split("-")[:2]): n for n in (names(rev) or []) if n.endswith(".md") and KIND_RE.match(n)}
+        for rec in (log or "").split("\x00")[1:]:
+            sha, parents, name, email, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
+            parents = parents.split()
+            if not import_value(block.strip("\n")) or not parents or not import_verified(sha, name, email) or not commits_held(parents):
+                continue
+            if any(names(p) is None for p in parents):
+                continue                                # a parent's tracker folder this clone cannot read: what the import adds is not known, so it attests nothing
+            _ATTEST_EMAILS[sha] = email
+            before = set().union(*(ids(p) for p in parents))
+            added = {tid: f"{home}/{n}" for tid, n in ids(sha).items() if tid not in before}
+            texts = cat_blobs([f"{sha}:./{rel}" for rel in added.values()])
+            for tid, rel in sorted(added.items()):
+                text = texts.get(f"{sha}:./{rel}")
+                if text is not None and extract(ROOT / rel, text)["status"] in OPEN_STATUSES:
+                    _ATTESTS.setdefault(tid, []).append((sha, name, text))
+    return _ATTESTS
+
+
+def import_adds(t, commit):
+    """Whether `commit` is an import commit that attests `t`, one that adds it open (`import_attests`): each guarded line of `t` as that
+    commit wrote it is the Owner's, set with every right it needs."""
+    return bool(commit) and any(sha == commit for sha, _name, _text in import_attests().get(t.get("id"), ()))
+
+
+def import_setter(rel, key, line, found=""):
+    """Who set `line`, the guarded line under `key` of the tracker file `rel`, where an import wrote it and no commit's change after that
+    import holds it. A merge carries no diff, so a merge that is the import names no commit for a line its own change wrote, and where a
+    commit before it took the line out, the search names that commit, `found` (`line_author`). The newest import commit that attests the
+    tracker (`import_attests`), whose copy holds that line as the file does, and whose history holds `found` where the search names one
+    (`reaches`), sets it, as `line_author` names a setter — (its author's name and email, "git", the import commit) —; else None."""
+    for sha, name, text in import_attests().get("-".join(pathlib.PurePosixPath(rel).name.split("-")[:2]), ()):
+        n = guarded_line(text, key)
+        if n is not None and text.split("\n")[n - 1].rstrip("\r") == line:
+            if found and found != sha and not reaches(found, sha):
+                continue                                # the commit the search names is not in this import's history: that commit wrote the line after it, or beside it
+            return name, _ATTEST_EMAILS.get(sha, ""), "git", sha
+    return None
+
+
+def reaches(sha, rev):
+    """Whether `rev`'s history holds the commit `sha`, `rev` itself included — one `git merge-base --is-ancestor`, read once per run."""
+    if (sha, rev) not in _REACHES:
+        _REACHES[(sha, rev)] = git_out("merge-base", "--is-ancestor", sha, rev) is not None
+    return _REACHES[(sha, rev)]
+
+
+def imported_numbers(t, rev):
+    """The numbers `t`'s ask ids used before an import that attests it (`import_attests`) and that `rev` reaches: its open ask's and its
+    records' as that import holds the tracker (`file_numbers`). The history behind the import is not here, so its copy speaks for it."""
+    return set().union(*(file_numbers(fresh_tracker(t, text)) for sha, _name, text in import_attests().get(t.get("id"), ()) if reaches(sha, rev)))
+
+
 _ANSWER_HEADS = {}
 
 
@@ -2503,7 +2601,9 @@ def answer_commits(trackers):
     `owner` line, and any name its `[rights]` gives `answer`), and by nobody where that branch's history cannot be read — signed and
     verifying against the default branch's signers file of that same state where that identity is `signed` (`verified_as` — never a
     branch's own configuration or signers file); whose own change writes that tracker's `answer:` line — the tracker at the commit and at its parent, one `cat_blobs` for all,
-    differ there; and whose own change leaves the put ask as its parent has it — `ask-id:` and `put_ask` equal on both sides. The head
+    differ there; and whose own change leaves the put ask as its parent has it — `ask-id:` and `put_ask` equal on both sides. An import
+    commit that attests the tracker (`import_attests`) is a candidate too where its copy holds an answer beside that id: it carries no
+    `Answers:` and its parent holds no copy, and the answer it brings counts as given by it, its verified Owner holding the right. The head
     is the one candidate no other descends from (`git merge-base --independent`, asked only where an id has two). It must hold the
     file's `answer:` line byte for byte, its id, and the put ask the file shows — the parent, the head and the file hold one put ask —
     and `answered-by:` is its author's name. A merge is never a candidate: its resolution can only change the file, which must still
@@ -2542,6 +2642,10 @@ def answer_commits(trackers):
             if (a_fm.get("ask-id") or "").strip() != (b_fm.get("ask-id") or "").strip() or put_ask_of(a_fm) != put_ask_of(b_fm):
                 continue
             keep.append((sha, name, at))
+        for sha, name, held in import_attests().get(t["id"], ()):     # the import that brings the tracker gives the answer its copy holds beside this id
+            fm_ = parse_frontmatter(held)[0]
+            if (fm_.get("ask-id") or "").strip() == aid and answer_fields(fm_)["answer"]:
+                keep.append((sha, name, held))
         heads = keep
         if len(keep) > 1:
             tips = set((git("merge-base", "--independent", *[k[0] for k in keep]).stdout or "").split())
@@ -6865,7 +6969,9 @@ def line_author(path, needle):
     """Who committed the line this tracker carries under `needle` — from the version control system, never from the
     file: (name, email, system, commit) — or (None, None, "uncommitted", "") where version control's own record says the line
     is not committed yet (the working copy or the index carries it, no commit does), (None, None, "unattributed", "")
-    where it names no commit for a line a commit carries, and on Subversion (None, None, "merged", <revision>) for a line older
+    where it names no commit for a line a commit carries — save a line of a tracker an import attests whose copy holds it as the file
+    does, where no commit is named or the one named is in that import's history, as a merge that is the import writes a line, or brings
+    one back after a commit took it out: that import sets it (`import_setter`) —, and on Subversion (None, None, "merged", <revision>) for a line older
     than a merge that put the tracker's path here (`svn_blame`) — and (None, None, "unread", "") where a run whose reads fetch nothing meets an object
     of its history this partial clone does not hold (`unread_here`): not read, which judges nothing. Git's author is a string anyone can type,
     so `signed` makes `verified_as` ask the commit; Subversion's author is the one its server authenticated, and it
@@ -6935,11 +7041,11 @@ def line_author(path, needle):
                 log = None
             if log is not None and log.returncode == 0 and log.stdout.strip():
                 commit, name, email = (log.stdout.strip().split("\n") + ["", ""])[:3]
-                out = (name, email, "git", commit)
+                out = import_setter(rel, key, line, commit) or (name, email, "git", commit)     # a commit an import's history holds: the import that brings the line back sets it
             elif log is not None and log.returncode != 0 and unread_here():
                 out = (None, None, "unread", "")        # the walk met an object the partial clone lacks: who set it is not read here
             else:
-                out = (None, None, "unattributed", "")
+                out = import_setter(rel, key, line) or (None, None, "unattributed", "")     # a merge that is the import wrote it: the import sets it
         if out[2] == "unread":
             note_unread(f"the history of {rel}")
     _LINE_AUTHOR[(rel, key)] = out
@@ -7875,6 +7981,7 @@ def rights_problems(trackers):
     the change makes. (`ask` is judged on the line, by `seat_problems` — except the clearing move, which has no line
     left to judge and is read here, from the change, under `ask`: FM-014; and a made merge's own `next: owner`, which no
     parent carries, read from that merge's own change under its author — the Owner's ruling of 2026-10-03, v0.19.1.)
+    On git, an import commit's own change on a tracker it attests (`import_attests`) is the Owner's: each right is taken as held.
     Under Subversion there is no pending commit to read and no client hook to read it in, and the author of each line is
     the one the server authenticated, so the transitions are read from the lines. A tracker Subversion holds no
     committed revision of — added, replaced or copied, or not yet `svn add`ed (`svn_new`) — has no author to read until
@@ -7936,6 +8043,8 @@ def rights_problems(trackers):
         staged = cat_blobs([f":./{rel}" for rel in touched], index_env()) if result is None and COMMITTING else {}     # the commit being made is what its index holds
         for rel in touched:
             t = rels[rel]
+            if import_adds(t, commit):
+                continue                                # every guarded line the import that brings it wrote is the Owner's, each right taken as held
             now = ((show(result, rel) or "") if result is not None else (staged.get(f":./{rel}") or "") if COMMITTING
                    else (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
             moves = None                                # a merge's own move is one it makes against EVERY parent (FM-019)
@@ -11641,6 +11750,7 @@ def lint(trackers, committing=False):
                 then = filed_state(commit) if how == "git" else None
                 filed = next(((w, m) for w, m in then[0].items() if w and w in (email, who)), None) if then else None
                 held = how == "git" and filed_held(commit)
+                attested = how == "git" and import_adds(t, commit)     # written by the import that brings it: its verified Owner gave it, the right taken as held
                 sign_tail = (f'{(("`owner`" if at_top(seat) else "`[seats]`") + " asks this seat") if SEATS else "`answerers` asks"} for a signed answer, and a git author is only a string: '
                              f'sign it (`git commit -S`), or it does not count')
                 plain_note = (f'  note: {t["id"]}: the answer\'s author `{who}` is a git author string, not a verified identity — add `signed` to '
@@ -11655,16 +11765,18 @@ def lint(trackers, committing=False):
                     problems.append(f'{t["id"]}: the answer is not committed yet — commit it under your own name; the commit is the record, the file is the label')
                 elif how in ("unattributed", "merged"):
                     problems.append(unattributed(t, "answer:", how))
-                elif then and not filed:
+                elif then and not filed and not attested:
                     problems.append(f'{t["id"]}: ' + (f'the answer\'s commit `{commit[:10]}` is by `{identity_label(email or who)}` — {FILED_NOT_THEIRS}' if held
                                                       else no_seat(who, email, "answer", "an answer counts only from a seat that may give one") if SEATS and not holds(seat, "answer")
                                                       else f'`answered-by: {t.get("answered_by")}` is not in `answerers` ({", ".join(allowed)}) — an answer counts only from an account that may give one'
                                                       if not SEATS and t.get("answered_by") not in allowed
                                                       else f'the answer\'s commit `{commit[:10]}` is by `{identity_label(email or who)}` — {NOW_NOT_THEIRS}'))
-                elif not then and SEATS and not holds(seat, "answer"):
+                elif not then and SEATS and not holds(seat, "answer") and not attested:
                     problems.append(f'{t["id"]}: ' + no_seat(who, email, "answer", "an answer counts only from a seat that may give one"))
                 elif who != t.get("answered_by"):
                     problems.append(f'{t["id"]}: `answered-by: {t.get("answered_by")}` but the {how} author of the answer is `{who}` — an answer is filed from the account that gives it')
+                elif attested:
+                    pass                                 # the import verified as the Owner's own signed commit: no other signature is asked
                 elif how == "svn" and t.get("ask_id") and not svn_names_answer(t, commit):
                     problems.append(f'{t["id"]}: the revision {commit} that wrote the answer does not name {t["ask_id"]} in its message — on Subversion an answer to an ask with an id '
                                     f'is committed with `Answers: {t["ask_id"]}` in its message')
