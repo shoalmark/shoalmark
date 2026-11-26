@@ -20,6 +20,9 @@ below the top is refused until such a project is read as one at the top, and tha
 
 A merge that is the import attests what its own change adds, in every rule: no commit's change holds the lines a merge wrote, so the
 import sets them. An import whose parent's tree this clone cannot read — a partial clone whose origin is out of reach — attests nothing.
+A merge adds only what none of its parents holds; a merge being made reads the history its incoming head brings; an answer with no ask
+id that a later commit changes is that commit's; the Owner's signed first commit attests nothing; and the import's copy gives an answer
+only to the ask id it holds.
 
 Run: `python3 test_import_attests.py` — exit 1 on a failure; `python3 test_import_attests.py rows_<name> …` runs those rows alone, without
 the mutants, and with `--with-mutants` beside them, with the mutants that run those rows; `--no-mutants` runs every row and no mutant.
@@ -534,8 +537,98 @@ def rows_parent_unread(area, add):
                "though it verifies and its parent is held")
 
 
+# --- four rules of the import, each a row: a merge's other parents, a merge being made, a later change, a first commit --------------
+
+def rows_merge_first_parent(area, add):
+    r = seeded(area, "before")
+    merged(r, imported(), side={"FM-209": text("FM-209", ask(q="Ship the ninth?", aid="FM-209-Q1", move="build") + answer_lines())})
+    s = Steps()
+    said = r.check()
+    with reading(r.root):
+        got = sorted(fm.import_attests())
+    s("the merge attests the four its own change adds, and not FM-209, which its second parent holds", got == list(IMPORTED), extra=repr(got))
+    s("FM-209's answer, which a seat's commit on the side wrote, is judged as today: refused as given by no commit",
+      refusal(said, "FM-209", NO_COMMIT.format("FM-209-Q1")), said)
+    s.add(add, "a merge that is the import adds only what no parent of it holds: a tracker its second parent holds is not attested, and "
+               "the answer standing beside its id is judged as today")
+
+
+def rows_merge_being_made(area, add):
+    r = seeded(area, "before")
+    r.switch("-c", "import")
+    merged(r, imported())
+    r.switch("main")
+    git(r.root, "merge", "-q", "--no-ff", "--no-commit", "import", who=SEAT)
+    said = run(r.root, "--print-written", who=SEAT)
+    with reading(r.root):
+        got = sorted(fm.import_attests())
+    s = Steps()
+    s("while the merge that lands it is being made, the import its incoming head brings attests the four", got == list(IMPORTED), extra=repr(got))
+    s("…and the commit hook's run on that merge passes, FM-201's `next: owner` the import's", said[0] == 0 and not named(said, ("FM-201",)), said)
+    s.add(add, "a merge being made reads the history its incoming head brings: the import there attests the four it adds, and the commit "
+               "hook's run on the merge that lands it passes")
+
+
+def rows_legacy_reworded(area, add):
+    r = seeded(area, "before")
+    made_import(r, bodies=dict(imported(), **{"FM-205": LEGACY}))
+    s = Steps()
+    said = r.check()
+    s("the answer with no ask id that the import brings passes", said[0] == 0 and not named(said, IMPORTED + ("FM-205",)), said)
+    r.write("FM-205", r.read("FM-205").replace(f'answer: "{ANSWER}"', f'answer: "{ANSWER}, and more"'))
+    later = commit(r, "FM-205: the answer, reworded", OWNER)
+    said = r.check()
+    with reading(r.root) as ts:
+        who = author_of(ts, "FM-205", "answer:")
+    s("reworded later in the Owner's own unsigned commit, it is that commit's, and refused for the signature it lacks",
+      refusal(said, "FM-205", f"the answer's commit `{later[:10]}` does not verify as") and who == (OWNER[0], OWNER[1], "git", later), said, repr(who))
+    s.add(add, "an answer with no ask id that the import brings is the import's until a later commit changes it: reworded in the Owner's "
+               "own unsigned commit, it is that commit's, and refused for the signature it lacks")
+
+
+def rows_first_commit(area, add):
+    r = seeded(area, "before")
+    git(r.root, "checkout", "-q", "--orphan", "first")
+    for tid, body in imported().items():
+        write(r.root, tid, body)
+    commit(r, "the trackers, imported as a first commit", OWNER, "owner", (TRAILER,))
+    said = r.check()
+    with reading(r.root) as ts:
+        got, ans = fm.import_attests(), fm.answer_commit(ts["FM-202"])
+    s = Steps()
+    s("the Owner's signed first commit that carries the trailer attests nothing", got == {}, extra=repr(got))
+    s("…so the answer beside FM-202-Q1 is refused as given by no commit", ans[0] == "" and refusal(said, "FM-202", NO_COMMIT.format("FM-202-Q1")),
+      said, repr(ans))
+    s.add(add, "the Owner's signed first commit that carries the trailer attests nothing: no parent tells what it adds")
+
+
+def rows_answer_other_id(area, add):
+    """FM-210 on two lines: on `side` a seat files it and puts FM-210-Q1, which the Owner answers by `--answer`; on `import` the Owner's
+    signed import adds it as the repository it comes from held it, an answer beside FM-210-Q2. Both land, and the side's file stands."""
+    r = seeded(area, "before")
+    r.switch("-c", "side")
+    r.write("FM-210", text("FM-210", ask(q="Ship the tenth?", aid="FM-210-Q1")))
+    commit(r, "FM-210: filed, its ask put")
+    said = run(r.root, "--answer", "FM-210-Q1", "accept")
+    given = r.head()
+    r.switch("main")
+    made_import(r, bodies={"FM-210": text("FM-210", ask(q="Ship the second?", aid="FM-210-Q2", move="build") + answer_lines())})
+    r.land("import")
+    git(r.root, "merge", "-q", "--no-ff", "--no-commit", "side", who=SEAT, check=False)
+    git(r.root, "checkout", "--theirs", "--", f"{REL}/FM-210-x.md")
+    commit(r, "side, landed")
+    with reading(r.root) as ts:
+        got = fm.answer_commit(ts["FM-210"])
+    s = Steps()
+    s("the answer the Owner gave FM-210-Q1 by `--answer` counts; the import, whose copy answers FM-210-Q2, is no candidate for it",
+      said[0] == 0 and got == (given, ""), said, repr(got))
+    s.add(add, "the import's copy gives an answer only to the ask id it holds: FM-210-Q1, answered on another line by its own `Answers:` "
+               "commit, counts as that commit's, though the import that adds FM-210 holds an answer beside FM-210-Q2")
+
+
 ROWS = (rows_check, rows_modified, rows_queue, rows_owner, rows_answer_counts, rows_ask_numbers, rows_after_import, rows_attests_nothing,
-        rows_done_left, rows_below_top_verification_stubbed, rows_merge_import, rows_parent_unread)
+        rows_done_left, rows_below_top_verification_stubbed, rows_merge_import, rows_parent_unread, rows_merge_first_parent,
+        rows_merge_being_made, rows_legacy_reworded, rows_first_commit, rows_answer_other_id)
 
 
 @contextlib.contextmanager
@@ -597,6 +690,18 @@ MUTANTS = (
      (('out = import_setter(rel, key, line) or (None, None, "unattributed", "")', 'out = (None, None, "unattributed", "")'),), (rows_merge_import,)),
     ("an import whose parent's tracker folder this clone cannot read attests what that folder's listing misses", "import_attests",
      (("if any(names(p) is None for p in parents):", "if False:"),), (rows_parent_unread,)),
+    ("a merge import's trackers told added against its first parent alone", "import_attests",
+     (("before = set().union(*(ids(p) for p in parents))", "before = set(ids(parents[0]))"),), (rows_merge_first_parent,)),
+    ("the heads a merge being made brings left out of the import's history", "import_attests",
+     (('"HEAD", *merge_heads())', '"HEAD")'),), (rows_merge_being_made,)),
+    ("an answer with no ask id changed after the import still attested", "lint",
+     (('attested = how == "git" and import_adds(t, commit)', 'attested = how == "git" and bool(import_attests().get(t.get("id")))'),),
+     (rows_legacy_reworded,)),
+    ("a commit with no parents taken as an import: both tests that refuse it dropped at once", "import_attests",
+     (("or not parents or", "or"), (" or not commits_held(parents)", "")), (rows_first_commit,)),
+    ("an import's answer taken whatever ask id its copy holds", "answer_commits",
+     (('if (fm_.get("ask-id") or "").strip() == aid and answer_fields(fm_)["answer"]:', 'if answer_fields(fm_)["answer"]:'),),
+     (rows_answer_other_id,)),
 )
 
 
