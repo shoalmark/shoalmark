@@ -45,8 +45,9 @@ it in the release the organisation pins before the import, beside
   - A seat's commit on a branch cut before a merge import, that writes the trackers as the import's copy holds them and
     lands after it, is named for those lines. The import's `next: owner`, triage keys and an answer with no ask id are
     read as the seat's, and `--check` refuses that answer. An ordinary import made after the same commit is named
-    itself, since its own change holds the line. The refusal fails closed, the reading predates that round, and a
-    commit beside the import stands, as the rule reads it.
+    itself, since its own change holds the line. The refusal fails closed, and the reading predates that round: beside
+    a merge import the seat's commit stands, as the rule reads it, while beside an ordinary import the newer of the two
+    commits is named.
   - An import made again keeps the ask ids its copy holds, and the number rule refuses an open ask whose number the
     first import used. It fails closed; the tracker cut imports once.
 
