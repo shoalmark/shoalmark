@@ -7,15 +7,6 @@ next: build
 triaged: 2026-11-16
 tier: P1
 hook: "A team can only be one whole repository: a project whose shoalmark.toml sits below the top of its repository is not judged, since the gate reads each tracker at a revision by a path git takes from the top. The organisation's move of the teams' trackers into its own repository, each team a project in a folder of its own, needs this fixed. FM-161-Q2 accepted the fix: every gate reads the project's root and configuration, with its tests, and after the move a Shipped tracker names its team's code commit."
-ask-id: FM-161-Q4
-ask: "How does an import that creates its team's project verify as yours there: as proposed, you land each team's shoalmark.toml and signers file first, then its trackers, or the tool reads that commit by the Owner and signers of the project around it?"
-ask-kind: ruling
-ask-since: 2026-11-25
-ask-options: "yes, as proposed: two landings, one more signed commit and merge of yours per team | the tool reads the creating commit by the project around it: no added act of yours, one more build pass and review | no, not now: no added act of yours; each team's check refuses its import on the import's branch"
-ask-proposal: "yes, as proposed: two landings, one more signed commit and merge of yours per team"
-answer: "accepted - other: yes, two landings, on two conditions: (1) each first landing carries only that team's shoalmark.toml and signers file, checked by the acceptance script; (2) the tool's README states two landings as the way a project is created inside a repository, in the cut's release."
-answered: 2026-11-26
-answered-by: holgo99
 ---
 
 # FM-161 — a team can only be one whole repository, so a team in a folder or several teams in one repository is refused
@@ -23,6 +14,18 @@ answered-by: holgo99
 Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that day.
 
 ## What is true now
+
+**2026-11-26 — FM-161-Q4 answered with the Owner's signature: two landings, on two conditions; keep P1, In Progress,**
+on the coordinator's word of that day.
+- **The conditions:** each first landing carries only that team's `shoalmark.toml` and signers file, which the
+  organisation's acceptance script checks; and the tool's README states two landings as the way a project is created
+  inside a repository, in the cut's release. The README's sentence is a commit on this lane, which the critical
+  review's second round reads.
+- **The critical review's finding 3, as the lead answered it:** a folder is another project only once the default
+  branch holds its configuration, so the project around it judges every commit of a branch that creates one. The lead
+  accepted the cost: a team lands its configuration first, as the two landings do, or builds under the tracker of the
+  project around it until that lands. Pass 5 built it on the lane (`62ecf714`).
+- The answer is cleared into the record before the cut's rehearsal, so the import carries no standing answer.
 
 **2026-11-25 — FM-161-Q4 put: by which state an import that creates its team's project verifies as the Owner's
 there,** on the coordinator's word of that day.
@@ -239,7 +242,9 @@ Each item names its commit or pull request when it lands.
 - [ ] **The review at the tier its design sets is READY.**
 - [x] **The Owner has answered FM-161-Q2.** · `453601f`, #330 (`c069017`)
 - [x] **The Owner has answered FM-161-Q3.** · `e2c964b`, #335 (`72a8415`)
-- [ ] **The Owner has answered FM-161-Q4.**
+- [x] **The Owner has answered FM-161-Q4.** · `e7f58a2`, #339 (`62d5f15`)
+- [ ] **The README states two landings** as the way a project is created inside a repository, in the cut's
+  release.
 - [ ] **A project below the git top is judged exactly as one at the top:** each gate, with its tests and mutants.
 - [ ] **The hooks run the gate once for each project a staged path falls in, a relative signers file resolves from
   the top, and the records list is written from the project root,** each with its tests.
@@ -264,10 +269,16 @@ Each item names its commit or pull request when it lands.
 **relation** — accepted the proposal
 **signed** — e2c964b · G
 
+**FM-161-Q4** · 2026-11-26 · How does an import that creates its team's project verify as yours there: as proposed, you land each team's shoalmark.toml and signers file first, then its trackers, or the tool reads that commit by the Owner and signers of the project around it?
+**answered** — accepted - other: yes, two landings, on two conditions: (1) each first landing carries only that team's shoalmark.toml and signers file, checked by the acceptance script; (2) the tool's README states two landings as the way a project is created inside a repository, in the cut's release. · holgo99
+**relation** — accepted with a change
+**signed** — e7f58a2 · G
+
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-26 | FM-161-Q4 answered: two landings, on two conditions; the answer cleared into the record; the critical review's finding 3 recorded as the lead answered it; keep P1, In Progress. Records only. |
 | 2026-11-25 | FM-161-Q3 answered, yes, as proposed: every part of decisions 7 to 13 in the cut; the answer cleared into the record; keep P1, In Progress. Records only. |
 | 2026-11-25 | FM-161-Q3 put, as a change to FM-161-Q2: each part of decisions 7 to 13 in the tracker cut's release or in a v0.20.4, every part proposed for the cut; pass 1's rows below the top filed as evidence. Records only. |
 | 2026-11-25 | The records reviews' findings fixed forward: FM-033's gate in a code repository after the move, the first patch's order named as the lead's, the release FM-188-Q1's, and the hooks, signers and records list item worded as decisions 8 to 10. Records only. |

@@ -15,6 +15,24 @@ Seat: the Planner (27f31560), the tool team's lead · filed 2026-11-25, on the c
 
 ## What is true now
 
+**2026-11-26 — the lane is on main, #337 (`3e69d65`), with three P3s to fix forward; keep P1, In Progress,** on the
+coordinator's word of that day.
+- **The critical review's third round** found the lane READY WITH FINDINGS (`5832b7f`): three P3s, no P1 or P2. #337
+  merged with them standing. One small commit fixes all three, on a lane from main with a standard review, before the
+  cut's candidate:
+  1. the comment over the Shipped rule still says that leaving `Shipped` ends the freeze for good;
+  2. the README, the CHANGELOG and two docstrings do not say that a merge which takes a tracker from a parent where it
+     is `Shipped` moves nothing, whichever parent deleted or reopened it;
+  3. no row holds the clause that a later import freezing the same tracker is no move.
+- **A reading for the Owner, as a line:** decision 2 says that a status which leaves `Shipped` unfreezes a tracker for
+  good. The rule reads a merge by its parents: where a merge did not keep a move away, the tracker is `Shipped` at a
+  parent, so the rule finds no move for it, and `--check` counts it frozen. The count follows the rule, and the
+  follow-up's text says so.
+- **The refusal below the top ends where FM-161 lands,** as decision 1 puts it: FM-161's lane joins main and takes it
+  out, and a project below the top is judged there.
+- **One gap the review found outside this lane,** the folder `shared_harness_lines` names on Windows, is
+  [FM-190](FM-190-on-windows-whoami-and-the-commit-hook-name-another-worktree.md).
+
 **2026-11-25 — FM-187-Q1 answered "yes, as proposed", with the Owner's signature; judged before its first build
 commit, P1, In Progress,** on the coordinator's word of that day. Decisions 1 to 6 stand as put. The lane is to be built
 from main, from a patch prepared before the answer; nothing is built yet. Its review is critical, by a reviewer session
@@ -83,12 +101,15 @@ All six are put as FM-187-Q1.
 Each item names its commit or pull request when it lands.
 
 - [x] **The Owner has answered FM-187-Q1.** · `198dd6b`, #330 (`c069017`)
-- [ ] **A run below the git top is refused,** with its tests.
-- [ ] **The frozen rule,** held by the Owner's signed import, with its tests and its line in `--check`.
-- [ ] **The README states the frozen rule,** as decision 4 says.
+- [x] **A run below the git top is refused,** with its tests. · #337 (`3e69d65`)
+- [x] **The frozen rule,** held by the Owner's signed import, with its tests and its line in `--check`. · #337 (`3e69d65`)
+- [x] **The README states the frozen rule,** as decision 4 says. · #337 (`3e69d65`)
 - [ ] **The organisation's acceptance checks for the move** run against the build, each reported with its output, on
   the coordinator's word of 25 November.
-- [ ] **The critical review is READY.**
+- [x] **The critical review is READY.** · READY WITH FINDINGS at round 3, `5832b7f`
+- [ ] **The third round's three P3s are fixed,** in one commit on a lane from main, with a standard review: the
+  comment over the Shipped rule, how a merge reads in the README, the CHANGELOG and two docstrings, and a row for a
+  second import.
 
 ## Asks
 
@@ -101,6 +122,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-26 | The lane on main, #337, READY WITH FINDINGS at the critical review's third round; its three P3s go to a follow-up commit from main with a standard review; a reading of decision 2 for the Owner, as a line; FM-190 filed. Records only. |
 | 2026-11-25 | The records reviews' findings fixed forward: the hook and dated line say the lane is still to be built, the release is FM-188-Q1's, FM-033's gate is left as it is, and two Done when items match decision 4 and their source. Records only. |
 | 2026-11-25 | FM-187-Q1 answered, yes, as proposed; judged before its first build commit, P1, In Progress. Records only. |
 | 2026-11-25 | Filed, Proposed, with FM-187-Q1 put: refuse a project below the git top until FM-161's fix, and freeze the trackers shipped before the move, held by the Owner's signed import. Records only. |
