@@ -1,7 +1,7 @@
 ---
 id: FM-191
 status: Proposed
-considered: FM-050, FM-141, FM-161
+considered: FM-019, FM-050, FM-141, FM-161
 tags: bug
 hook: "While the default branch is merged into a branch, the ledger's lint reads the asks the default branch put and answered since the branch's base as asks the branch proposes, and the commit hook refuses the merge commit with advice to renumber a record that is right."
 ---
@@ -24,6 +24,10 @@ word of that day.
   lint reads those as asks the branch proposes, and refuses the merge commit in the commit hook, and `--check` says the
   same while the merge is made. Renumbering, as the line advises, would edit the default branch's record of an answered
   ask.
+- **The answer's line too.** While the same merge is staged, `--check` also says `FM-161: the answer to FM-161-Q4 is
+  not committed yet`, with main's tool and the lane's alike: the commit that answered it is in `MERGE_HEAD`'s history,
+  not in `HEAD`'s. FM-161's critical review found it, in its second round. FM-019 reads an answer that a merge being
+  made brings as committed in the line reader; this line shows a reader that does not.
 - **The merge that met it:** FM-161's lane, pass 6. The merge of main `62d5f15a` into the lane's `181f772e` was refused,
   "FM-161-Q3 is taken on origin/main". The same merge was made from main's side instead, main its first parent and the
   lane its second, so that `HEAD` was main while it was made: `c3f97710`, on that lane. Its tree is the one the refused
@@ -43,10 +47,13 @@ Each item names its commit or pull request when it lands.
 - [ ] **During a merge, the asks the merged commits bring from the default branch are not the branch's proposal:**
   the merge base is read with every `MERGE_HEAD`, or an id passes where the branch's copy holds the default branch's
   record of it unchanged. A row holds the merge through the commit hook, and a mutant of the change is killed.
+- [ ] **An answer the merged commits bring reads as committed** while the merge is made, in `--check` and in the
+  commit hook, with a row.
 - [ ] **An id the branch itself proposes is refused as now,** during a merge too, with a row.
 
 ## Ship log
 
 | Date | Event |
 |---|---|
+| 2026-11-26 | The answer's line too: while the merge is staged, `--check` says an answer the default branch gave is not committed yet; FM-161's critical review found it. Records only. |
 | 2026-11-26 | Filed, Proposed: the ledger's lint refuses a merge of the default branch into a branch while that branch's tracker holds asks the branch's base lacks; FM-161's merge of main was made from main's side, `c3f97710`. Records only. |

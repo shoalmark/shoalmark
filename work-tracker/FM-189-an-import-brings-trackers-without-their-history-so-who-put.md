@@ -31,11 +31,16 @@ it in the release the organisation pins before the import, beside
   - an ask number used before the import can be used again.
 - **The organisation's answer:** the Owner's signed import is read as the Owner's attestation of every guarded line of
   the open trackers it brings, as the import's commit holds them, with no bridge to the source history. It is signed in
-  the organisation's records on 25 November. Shipped and Closed trackers are frozen by FM-187 and are not read again.
-  Who put each ask stays readable in the code repository's history, at the commit the import's trailer names.
+  the organisation's records on 25 November. It attests the open trackers; FM-187 freezes a tracker the import adds
+  already Shipped, and only for the Shipped rule. Who put each ask stays readable in the code repository's history,
+  at the commit the import's trailer names.
 - **Its one open point:** by which state the import commit verifies as the Owner's, in a project the import itself
   creates. FM-161's pass 3 shows whether the cut's rows hold without an answer to that. If they do not, it goes to the
   Owner as an ask on FM-161.
+- **2026-11-26 — the lane's limit,** from its critical review, kept as the lead answered it: an answer that stands
+  beside its id in a tracker the import adds already Shipped or Closed is read, and refused as one that no commit gives,
+  since the import attests the open trackers alone. None of this team's 52 Shipped or Closed trackers carries an answer.
+  The code stays as it is.
 
 ## Why
 
@@ -82,4 +87,5 @@ each line from the source repository, needs a reading across repositories that w
 
 | Date | Event |
 |---|---|
+| 2026-11-26 | The lane's limit recorded: an answer beside its id in a tracker the import adds already Shipped or Closed is refused, since the import attests the open trackers alone; FM-187 freezes a Shipped tracker for the Shipped rule only. Records only. |
 | 2026-11-25 | Filed In Progress, P1: the Owner's signed import attests every guarded line of the open trackers it brings, as the organisation's answer puts it. Records only. |
