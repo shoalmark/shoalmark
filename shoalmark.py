@@ -837,6 +837,7 @@ def configure(root=None):
     _TREES.clear()                                      # …and the paths a revision holds, where the guard lists them (`tree_paths`)
     _VIEWS.clear()                                      # …and each revision's view of the two sections (`triage_views`)
     _ANSWER_HEADS.clear()                               # …and each answer's commit, found by its id (`answer_commits`)
+    _IMPORTS.clear()                                    # …and whether a commit verifies as the Owner's own signed import (`import_verified`)
     global _SVN_NEW, _WALK, _WALK_FAILED
     _SVN_NEW = {}                                       # which paths Subversion holds no committed revision of (`svn_new`)
     _WALK = None                                        # the default branch the branch's commits were read since — "" where there is none (`read_changes`)
@@ -7764,6 +7765,15 @@ def rights_problems(trackers):
 # cannot name itself) and (b) changes at least one path outside the records. It judges exactly the changes the gate already
 # judges (`changes_under_review`), so a `Shipped` tracker no change moves is never read. It holds for every author, the Owner
 # included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged.
+# THE FROZEN RULE, its one exception: a tracker that an import commit adds already `Shipped` is frozen. The rule finds no move for it,
+# at that commit or after it, so neither its ship log nor its done items are judged again. An import commit carries the trailer
+# `Tracker-import: <repository> <commit>` — where its trackers come from — and counts only where it verifies as the Owner's own signed
+# commit, by the verification an answer gets (`import_verified`); a seat's commit, or one unsigned, freezes nothing. A tracker the
+# import modifies is judged as ever. A later edit of a frozen tracker is judged as any change to a `Shipped` tracker is, and a change
+# that leaves it not `Shipped` ends the freeze for good: a later move back is judged. The commit hook runs before the commit's trailer and
+# signature exist, so its run finds no move in a tracker the commit adds already `Shipped`: it leaves that tracker to `--check`, which
+# judges the made commit, and says so in one line. A move to `Shipped` of a tracker present at a parent is judged there as ever. Every
+# other run judges as above. Git alone: a Subversion revision carries no signature.
 GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,64}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more, up to a SHA-256 hash's 64
 SVN_NAME_RE = re.compile(r"(?<![0-9A-Za-z])r[0-9]+(?![0-9A-Za-z])")             # …and on Subversion a revision, `r123`
 
@@ -8209,7 +8219,7 @@ def svn_shipped_moves(rels):
         was = lambda rel: read(rel, "cat", "-r", str(at - 1), rel, answers=SVN_ANSWERS)
     for rel, now in touched.items():
         if is_shipped(now) and not is_shipped(was(rel)):
-            yield rels[rel], "", ship_log_rows(now), lambda names, records, at=at: svn_ship_verdicts(names, at, records)
+            yield rels[rel], "", ship_log_rows(now), lambda names, records, at=at: svn_ship_verdicts(names, at, records), ""
 
 
 def svn_ship_verdicts(names, at, records):
@@ -8227,11 +8237,96 @@ def svn_ship_verdicts(names, at, records):
     return out
 
 
+IMPORT_TRAILER = "Tracker-import"
+IMPORT_VALUE_RE = re.compile(r"\S+[ \t]+[0-9a-f]{7,64}")       # `<repository> <commit>`: where an import's trackers come from, and the commit there
+_IMPORTS = {}                                                   # commit -> whether it verifies as the Owner's own signed commit, read once per run
+
+
+def import_value(block):
+    """The first `Tracker-import:` value one TRAILERS field carries in its form, `<repository> <commit>` — or ""."""
+    return next((v for v in trailer_values(block, IMPORT_TRAILER) if IMPORT_VALUE_RE.fullmatch(v)), "")
+
+
+def import_verified(commit, name, email):
+    """Whether `commit` verifies as the Owner's own signed commit, by the verification an answer gets: its author is an identity the default
+    branch names as the Owner in the state that judges the commit — as it stood when the commit was filed there, else the state in force
+    (`filed_owner`) —, that identity is `signed`, and the signature verifies against that state's signers file (`verified_as`). A seat, any
+    identity the Owner's line does not hold, an unsigned commit and a commit no state can be read for verify as nothing."""
+    if commit not in _IMPORTS:
+        theirs = filed_owner(commit, name, email)
+        _IMPORTS[commit] = bool(theirs) and theirs[1] == "signed" and verified_as(commit, theirs[0], theirs[2])
+    return _IMPORTS[commit]
+
+
+def commits_held(revs):
+    """Whether each of `revs` names a commit this clone holds — one `git cat-file` for all. A parent a shallow clone cut off, and the parent a
+    first commit has none of, are not held."""
+    got = vcs_process("git", "cat-file", "--batch-check=%(objecttype)", input="".join(f"{r}^{{commit}}\n" for r in revs), cwd=ROOT, capture_output=True,
+                      text=True, encoding="utf-8", errors="replace", env=nested_git_env()) if revs else None
+    return bool(got) and got.returncode == 0 and got.stdout.split() == ["commit"] * len(revs)
+
+
+def import_freezes(commit, name, email, bases):
+    """THE FROZEN RULE for one change, asked where it adds a tracker already Shipped: ("", True) where the change is an import commit that
+    freezes what it adds — a made commit that carries a `Tracker-import:` trailer in its form, verifies as the Owner's own signed commit
+    (`import_verified`), and whose parents this clone holds, so what it adds is told from what it changes —, else (why it freezes nothing,
+    False): "" where it carries no such trailer, which a refusal need not mention."""
+    if not commit:
+        return "", False                                # the commit being made: neither its trailers nor its signature exist yet
+    block = _WALK_COMMITS[commit][1] if commit in _WALK_COMMITS else (git_out("log", "-1", f"--format={TRAILERS}", commit) or "").strip("\n")
+    value = import_value(block)
+    if not value:
+        return "", False
+    if not import_verified(commit, name, email):
+        return f"its commit carries `{IMPORT_TRAILER}: {value}` and does not verify as the Owner's own signed commit, so it freezes nothing", False
+    if not commits_held(bases):
+        return f"its commit carries `{IMPORT_TRAILER}: {value}`, and its parent cannot be read here, so it freezes nothing", False
+    return "", True
+
+
+def folder_names(rev, folder):
+    """The names of what sits directly in `folder` at `rev`, one `git ls-tree`: none where `rev` holds no such folder."""
+    return [n for n in (git_out("ls-tree", "-z", "--name-only", f"{rev}:./{folder}") or "").split("\x00") if n]
+
+
+def tracker_name(tid, names):
+    """Of `names`, each a name directly in the tracker folder, the first that is the tracker file of `tid`, `<id>-….md`, or None. The Shipped
+    rule finds a tracker at a parent by it where the tracker's path is absent there (`tracker_at`). `--check`'s count of frozen trackers
+    finds by it what an import adds against the import's parents, the files of a frozen tracker that later commits touch, and the tracker
+    at HEAD, and reads each later commit's parents as the rule does, so the count holds a tracker while the rule finds no move for it."""
+    return next((n for n in names if n.startswith(tid + "-") and n.endswith(".md")), None)
+
+
+def tracker_at(wanted):
+    """What each tracker is at a parent, as the Shipped rule reads it: for each (parent, path, id) of `wanted`, {(parent, path): the text of
+    the file at `path` there, or, where that path is absent there, of the tracker file of `id` directly in the same folder (`tracker_name`),
+    since a tracker renamed is still itself; None where neither is there}. One `cat_blobs` by path, one `git ls-tree` for each parent and
+    folder where a path is absent, and one `cat_blobs` by id. The rule reads a move's parents by it, and `--check`'s frozen count the parents
+    of each later commit that touches a frozen tracker."""
+    texts = cat_blobs([f"{base}:./{rel}" for base, rel, _tid in wanted])
+    got = {(base, rel): texts.get(f"{base}:./{rel}") for base, rel, _tid in wanted}
+    folders, by_id = {}, {}
+    for base, rel, tid in wanted:
+        if got[(base, rel)] is None and tid:
+            d = pathlib.PurePath(rel).parent.as_posix()
+            if (base, d) not in folders:
+                folders[(base, d)] = folder_names(base, d)
+            was = tracker_name(tid, folders[(base, d)])
+            if was:
+                by_id[(base, rel)] = f"{base}:./{d}/{was}"
+    texts = cat_blobs(sorted(set(by_id.values())))
+    got.update({key: texts.get(spec) for key, spec in by_id.items()})
+    return got
+
+
 def shipped_moves(rels):
     """Every move to Shipped the run is judging: (the tracker, where the change is said to be, the rows of its ship log as the change
-    leaves them, and what tells the commits those rows name apart). Git: each change `changes_under_review` lists — the ship log read
-    from the working tree for the commit being made, from the commit otherwise — and a move is one the tracker makes against EVERY
-    parent. Only a tracker that is Shipped after is read on the other side."""
+    leaves them, what tells the commits those rows name apart, and why an import commit that adds it froze nothing, or ""). Git: each
+    change `changes_under_review` lists — the ship log read from the working tree for the commit being made, from the commit otherwise —
+    and a move is one the tracker makes against EVERY parent. Only a tracker that is Shipped after is read on the other side. A tracker
+    the change adds — absent at every parent — is no move where the change is an import commit that freezes it (`import_freezes`). In the
+    commit hook's run, a tracker the commit being made adds already Shipped is no move either: it is left to `--check`, and the run says
+    how many in one line."""
     if vcs() == "svn":
         yield from svn_shipped_moves(rels)
         return
@@ -8240,7 +8335,7 @@ def shipped_moves(rels):
     changes = [(c, touched) for c, touched in changes if touched]
     made = cat_blobs([spec(c[5], rel) for c, touched in changes if c[5] is not None for rel in touched])     # every change's trackers, one call (v0.19.1)
     moved = []
-    for (bases, files, _name, _email, _commit, result, label), touched in changes:
+    for (bases, files, name, email, commit, result, label), touched in changes:
         if result is None and COMMITTING:
             texts = cat_blobs([f":./{rel}" for rel in touched], index_env())         # the commit being made is what its index holds, not the working tree
             now = {rel: texts.get(f":./{rel}") for rel in touched}
@@ -8248,17 +8343,27 @@ def shipped_moves(rels):
             now = {rel: (TRACKER_DIR / rels[rel]["file"]).read_text(encoding="utf-8") for rel in touched}
         else:
             now = {rel: made.get(spec(result, rel)) for rel in touched}
-        moved.append((bases, label, now, [rel for rel in touched if is_shipped(now.get(rel))]))
-    earlier = cat_blobs([spec(base, rel) for bases, _l, _n, shipped in moved for rel in shipped for base in bases])      # …and what each move was against, one call
-    for bases, label, now, shipped in moved:
-        before = {spec(base, rel): earlier.get(spec(base, rel)) for rel in shipped for base in bases}
-        for base, rel in [(b, r) for r in shipped for b in bases if before.get(spec(b, r)) is None]:     # absent at a base: new, or the same tracker renamed — its id says which
-            d = pathlib.PurePath(rel).parent.as_posix()
-            was = next((n for n in (git_out("ls-tree", "-z", "--name-only", f"{base}:./{d}") or "").split("\x00") if n.startswith(rels[rel]["id"] + "-") and n.endswith(".md")), None)
-            before[spec(base, rel)] = cat_blobs([f"{base}:./{d}/{was}"]).get(f"{base}:./{d}/{was}") if was else None
+        moved.append((bases, label, now, [rel for rel in touched if is_shipped(now.get(rel))], (commit, name, email)))
+    earlier = tracker_at([(base, rel, rels[rel]["id"]) for bases, _l, _n, shipped, _by in moved for rel in shipped for base in bases])   # …and what each move was against: by path, else by id
+    left = 0                                            # how many trackers the commit being made adds already Shipped, left to `--check`
+    for bases, label, now, shipped, (commit, name, email) in moved:
+        before = {spec(base, rel): earlier.get((base, rel)) for rel in shipped for base in bases}
+        added = {rel for rel in shipped if all(before.get(spec(base, rel)) is None for base in bases)}
+        later = added if COMMITTING and not commit else set()        # the commit hook's run, on the commit being made: its trailer and signature do not exist yet
+        left += len(later)
+        why, frozen = import_freezes(commit, name, email, bases) if added - later else ("", False)
         for rel in shipped:
+            if rel in later:
+                continue                                # left to `--check`, which judges the made commit: frozen where it is the Owner's signed import, refused otherwise
+            if frozen and rel in added:
+                continue                                # frozen: added already Shipped by the Owner's signed import — no move, and its log is not read
             if not any(is_shipped(before.get(spec(base, rel))) for base in bases):
-                yield rels[rel], (label + " — " if label else ""), ship_log_rows(now[rel]), lambda names, records, bases=bases: git_ship_verdicts(names, bases, records)
+                yield (rels[rel], (label + " — " if label else ""), ship_log_rows(now[rel]), lambda names, records, bases=bases: git_ship_verdicts(names, bases, records),
+                       why if rel in added else "")
+    if left:
+        print(f"  {left} tracker{'s' if left > 1 else ''} this commit adds already `Shipped` {'are' if left > 1 else 'is'} left to `--check`: this hook runs before "
+              f"the commit's trailer and signature exist. `--check` freezes {'them' if left > 1 else 'it'} where the commit is the Owner's own signed import, "
+              f"carrying `{IMPORT_TRAILER}:`, and refuses {'each of them' if left > 1 else 'it'} otherwise", file=sys.stderr)
 
 
 def ship_problems(trackers):
@@ -8294,7 +8399,7 @@ def ship_problems(trackers):
                        f'is not judged — and not passed unread. svn said: {why}. Reach the repository, then run again')
 
     try:
-        for t, where, rows, judge in shipped_moves(rels):
+        for t, where, rows, judge, frozen_not in shipped_moves(rels):
             names = commits_named(rows)
             try:
                 records = records or ship_records()
@@ -8311,10 +8416,109 @@ def ship_problems(trackers):
             found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(printed_arg(f":(exclude,top){p}") for p in records)
             out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
                        + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
-                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`')
+                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`'
+                       + (f'. A tracker an import commit adds already `Shipped` is frozen where that commit is the Owner\'s own signed commit — {frozen_not}' if frozen_not else ''))
     except SvnUnreadable as e:
         unread(e, e.tracker, e.newest, getattr(e, "checked", False))
     return out
+
+
+def tracker_imports():
+    """The frozen rule as HEAD's history holds it: ([(an import commit that verifies, its trailer's value, {tracker id: path} of what it
+    froze)], [(a commit that carries the trailer and freezes nothing, its value, why)]), newest first — or None where git cannot read that
+    history. One `git log` finds every commit that carries the trailer; for an import that verifies, what it adds already Shipped is read
+    against each of its parents as `shipped_moves` reads it: a file directly in the tracker folder, absent at every parent by its path and
+    by its id (`tracker_name`). A tracker the import renames is present by its id, so the rule judges it and it is not counted. A commit
+    with no parent here freezes nothing."""
+    log = git_out("log", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}", "HEAD")
+    if log is None:
+        return None
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    held, other = [], []
+    for rec in log.split("\x00")[1:]:
+        sha, parents, name, email, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
+        value = import_value(block.strip("\n"))
+        if not value:
+            continue
+        if not import_verified(sha, name, email):
+            other.append((sha, value, "does not verify as the Owner's own signed commit"))
+            continue
+        if not parents.split():
+            other.append((sha, value, "has no parent here to tell what it adds from what it changes"))
+            continue
+        if not commits_held(parents.split()):
+            other.append((sha, value, "its parent cannot be read here"))
+            continue
+        added = None
+        for parent in parents.split():
+            names = set((git_out("diff", "-z", "--name-only", "--no-renames", "--diff-filter=A", "--relative", parent, sha) or "").split("\x00")) - {""}
+            added = names if added is None else added & names
+        rels = sorted(r for r in added if pathlib.PurePosixPath(r).parent.as_posix() == home and r.endswith(".md") and KIND_RE.match(pathlib.PurePosixPath(r).name))
+        texts = cat_blobs([f"{sha}:./{r}" for r in rels])
+        there = [folder_names(parent, home) for parent in parents.split()]     # the tracker folder at each parent, read as the rule reads it
+        froze = {}
+        for r in rels:
+            text = texts.get(f"{sha}:./{r}")
+            tid = (parse_frontmatter(text)[0].get("id") or "").strip() if text is not None else ""
+            if tid and is_shipped(text) and not any(tracker_name(tid, names) for names in there):
+                froze[tid] = r
+        held.append((sha, value, froze))
+    return held, other
+
+
+def frozen_left(sha, froze, held):
+    """The ids of `froze` — what the import commit `sha` froze — that no later commit of HEAD's history moves to Shipped, as the Shipped rule
+    judges a move: a commit, a merge included, where the tracker is Shipped and at none of whose parents it is, found at each parent by its
+    path or else by its id (`tracker_at`). A deletion or a move away from Shipped ends nothing by itself: on the line HEAD holds, a later
+    move back is such a move, and a side branch's deletion that the merge did not keep moves nothing back. A later import of `held` that
+    freezes the same tracker is no such move: it freezes it anew, and the count holds it once. The history is one `git log`, which reads a
+    merge by its own change, the files where its result differs from every parent, as the rule reads a merge. Only a tracker file of a
+    frozen id directly in the tracker folder (`tracker_name`) is read: a note below that folder is no tracker's. One `cat_blobs` for the
+    commits, and `tracker_at` for their parents."""
+    if not froze:
+        return set()
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    log = git_out("log", "-z", "-c", "--full-history", "--format=%x01%H %P", "--name-only", "--no-renames", "--relative", f"{sha}..HEAD", "--", home) or ""
+    def of(r):                                          # the frozen id whose tracker file `r` is, or None
+        path = pathlib.PurePosixPath(r)
+        return next((tid for tid in froze if tracker_name(tid, [path.name])), None) if path.parent.as_posix() == home else None
+    touched = {}                                        # (commit, file) -> (the commit's parents, the frozen id whose file it is)
+    for record in log.split("\x01")[1:]:
+        head, _, files = record.partition("\x00")
+        commit, *parents = head.split()
+        touched.update({(commit, r): (parents, of(r)) for r in files.lstrip("\n").split("\x00") if r and of(r)})
+    texts = cat_blobs([f"{c}:./{r}" for c, r in touched])
+    shipped = {(c, r): v for (c, r), v in touched.items() if is_shipped(texts.get(f"{c}:./{r}"))}
+    before = tracker_at([(p, r, tid) for (c, r), (parents, tid) in shipped.items() for p in parents])
+    again = {c: f for c, _v, f in held}                 # what each import freezes: at its own commit, a tracker it freezes anew is no move
+    moved = {tid for (c, r), (parents, tid) in shipped.items() if tid not in again.get(c, {}) and not any(is_shipped(before.get((p, r))) for p in parents)}
+    return set(froze) - moved
+
+
+def frozen_line(trackers):
+    """`--check`'s one line on the frozen rule: how many trackers are frozen, and each import commit's short hash with its trailer; or that
+    none is, naming the newest commit that carries the trailer and freezes nothing, and why. A tracker is frozen while the rule finds no
+    move for it: an import commit that verifies added it already Shipped, no later commit moves it to Shipped as the rule judges a move
+    (`frozen_left`), and it is Shipped at HEAD, its tracker file directly in the tracker folder found by its id, and in the working state.
+    So after a move away from Shipped or a deletion on the line HEAD holds, a later move back is judged and the count leaves the tracker
+    out, and a move back not yet committed is judged in the change being made."""
+    found = tracker_imports()
+    if found is None:
+        return f"frozen trackers: none — HEAD's history cannot be read, so no `{IMPORT_TRAILER}:` commit freezes anything"
+    held, other = found
+    if not held:
+        return (f"frozen trackers: none — no commit of HEAD's history carries `{IMPORT_TRAILER}:` and verifies as the Owner's own signed commit"
+                + (f"; {other[0][0][:7]} carries `{IMPORT_TRAILER}: {other[0][1]}` and {other[0][2]}, so it freezes nothing" if other else ""))
+    now = {t["id"] for t in trackers if t.get("status") == "Shipped"}
+    frozen = set().union(*(frozen_left(sha, froze, held) for sha, _v, froze in held)) & now
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    names = folder_names("HEAD", home)
+    at_head = {tid: f"HEAD:./{home}/{n}" for tid in frozen for n in [tracker_name(tid, names)] if n}
+    texts = cat_blobs(list(at_head.values()))
+    frozen = {tid for tid, spec in at_head.items() if is_shipped(texts.get(spec))}
+    return (f"frozen trackers: {len(frozen)} — added already `Shipped` by "
+            + " and ".join(f"the import commit {sha[:7]} ({IMPORT_TRAILER}: {value})" for sha, value, _f in held)
+            + ", the Owner's own signed commit; the Shipped rule finds no move for them")
 
 
 # --- sessions (FM-024, FM-032): a seat's commit names its session, and the registry is a report of the trailers --------
@@ -13039,7 +13243,7 @@ def board_run(root):
         configure(root)
         lazy_fetch_off()                                            # before its first git: every read of this run fetches nothing
         sys.path[:] = [e for e in sys.path if not in_tree(e or ".") or _norm(e or ".") == _norm(HERE)]      # nothing is imported from the tree, but the tool's own place
-        refused = tracker_folder_problem()
+        refused = below_top() or tracker_folder_problem()          # a project below the top of its git repository is refused first, as every run refuses it
         if refused:
             print(refused, file=sys.stderr)
             return EXIT_LINT
@@ -13284,6 +13488,26 @@ def configure_output(argv):
             stream.reconfigure(encoding=encoding, errors="replace", newline="\n")
 
 
+def below_top():
+    """The one line that refuses a run whose project root — the nearest `shoalmark.toml`, or the folder `--root` names — is not the top of
+    its git repository: `git rev-parse --show-prefix` is not empty there. A tracker is read at a revision by its path from the project root,
+    and git takes that path from the top, so below it every rule that reads a tracker at a revision would find nothing and pass: the run is
+    refused, not passed. "" at the top, where git cannot be started or cannot say, under Subversion and without version control. argparse
+    answers `--version` and `--help` before a run binds its root, so they still run."""
+    if vcs() != "git":
+        return ""
+    try:
+        prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
+        top = (git_out("rev-parse", "--show-toplevel") or "").strip() if prefix else ""
+    except OSError:
+        return ""
+    if not prefix:
+        return ""
+    named = str(pathlib.Path(top)) if top else "which git does not name"     # the top as the platform writes a path, as the root is: git writes it with forward slashes on Windows
+    return (f"shoalmark: refused — the project root {ROOT} is below the top of its git repository, {named}: a tracker "
+            "is read at a revision by its path from the top, so nothing here would be judged; the tool runs only at the top until FM-161 — nothing was written")
+
+
 def main(argv=None, *, _notice=True):
     configure_output(sys.argv[1:] if argv is None else argv)
     removed = r17_removed(r17_given(sys.argv[1:] if argv is None else list(argv)))     # before argparse: its --help and --version end the run (RV-3367)
@@ -13339,6 +13563,10 @@ def main_run(args):
         configure(args.root)
     global BOARD_READS
     BOARD_READS = not any(vars(args).get(flag) for flag in ACT_RUNS)
+    refused = below_top()                                   # a project below the top of its git repository is refused, never judged
+    if refused:
+        print(refused, file=sys.stderr)
+        return EXIT_LINT
     if tortoise:
         try:
             svn_local_directory(".")                      # A's validated local WC binding, never a server read
@@ -13527,6 +13755,7 @@ def main_run(args):
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         if vcs() == "git":
             print(triage_guard()[1], file=log)                  # FM-037: whether the Owner's two sections are guarded, and what it read
+            print(frozen_line(trackers), file=log)              # how many trackers are frozen, and the import commit that froze them, or that none is
         if vcs() == "git" and _WALK == "":                                     # v0.19.1: no default branch to read the branch's commits since
             print("the branch's commits: no default branch was found — no `origin/HEAD`, `origin/main` or `origin/master` — so only the newest commit is judged", file=log)
         elif vcs() == "git" and _WALK == "uncommitted":                        # v0.19.1: the tree has edits — they were judged, not the branch's commits

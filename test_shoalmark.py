@@ -13064,7 +13064,8 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# the working copy below the top of the repository: the records are the tracker directory as git writes it from the top
+# the working copy below the top of the repository: the Shipped rule's three cases there — a commit that changes only the records, the
+# feature's commit, no commit named — each refused in one line naming the project root and the top, as every run there is
 with tempfile.TemporaryDirectory() as tmp:
     top5_ = Path(tmp).resolve(); root = top5_ / "proj"; root.mkdir()
     subprocess.run(["git", "init", "-q", str(top5_)], check=True, env=_ENV)
@@ -13084,9 +13085,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = ships5_(530, f"a note in {snote_[:9]}")
     code_b, _, err_b = ships5_(531, f"built in {sbuilt_[:7]}")
     code_n, _, err_n = ships5_(532, "Filed again.")
-    check("FM-005 · with the working copy in a directory below the repository's top, the tracker directory is still the records: a commit that changes only it misses, the feature's passes",
-          code == fm.EXIT_LINT and f"`{snote_[:9]}` changes nothing outside the records (proj/docs/work-tracker/)" in err and "':(exclude,top)proj/docs/work-tracker/'" in err
-          and code_b == 0 and "AP-531" not in err_b and code_n == fm.EXIT_LINT and "its ship log names no commit" in err_n)
+    below5_ = f"the project root {root} is below the top of its git repository, {top5_}:"
+    check("FM-005 · with the working copy in a directory below the repository's top, each of the Shipped rule's cases is refused in one line naming FM-161, the project root and the top",
+          all(c_ == fm.EXIT_LINT and "FM-161" in e_ and below5_ in e_ and len(e_.strip().splitlines()) == 1 for c_, e_ in ((code, err), (code_b, err_b), (code_n, err_n))))
     rm_git(top5_)
 fm.configure(HERE)
 
@@ -21719,6 +21720,9 @@ _module_guard(test_ask_ids, check)
 
 import test_filed_state
 _module_guard(test_filed_state, check)
+# the frozen rule and the refusal of a project below the top: their class test, a program of its own so its mutants patch the module it imports
+import test_frozen_import
+_module_guard(test_frozen_import, check)
 import test_answer_changes
 _module_guard(test_answer_changes, check)
 
