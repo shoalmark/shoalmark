@@ -41,6 +41,14 @@ it in the release the organisation pins before the import, beside
   beside its id in a tracker the import adds already Shipped or Closed is read, and refused as one that no commit gives,
   since the import attests the open trackers alone. None of this team's 52 Shipped or Closed trackers carries an answer.
   The code stays as it is.
+- **2026-11-26 — two more limits, from the critical review's last round, kept as the lead answered them:**
+  - A seat's commit on a branch cut before a merge import, that writes the trackers as the import's copy holds them and
+    lands after it, is named for those lines. The import's `next: owner`, triage keys and an answer with no ask id are
+    read as the seat's, and `--check` refuses that answer. An ordinary import made after the same commit is named
+    itself, since its own change holds the line. The refusal fails closed, the reading predates that round, and a
+    commit beside the import stands, as the rule reads it.
+  - An import made again keeps the ask ids its copy holds, and the number rule refuses an open ask whose number the
+    first import used. It fails closed; the tracker cut imports once.
 
 ## Why
 
@@ -87,5 +95,6 @@ each line from the source repository, needs a reading across repositories that w
 
 | Date | Event |
 |---|---|
+| 2026-11-26 | Two more limits recorded: a seat's commit beside a merge import, made before it, is named for the lines it writes as imported; an import made again is refused by the number rule for the ids its copy holds. Both fail closed. Records only. |
 | 2026-11-26 | The lane's limit recorded: an answer beside its id in a tracker the import adds already Shipped or Closed is refused, since the import attests the open trackers alone; FM-187 freezes a Shipped tracker for the Shipped rule only. Records only. |
 | 2026-11-25 | Filed In Progress, P1: the Owner's signed import attests every guarded line of the open trackers it brings, as the organisation's answer puts it. Records only. |
