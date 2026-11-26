@@ -832,8 +832,9 @@ CODE_SCHEMA_ROWS = (
      "digits, `-` and `_` | a code repository this project's trackers ship from: a move to `Shipped` may name `<repository>@<commit>` in a "
      'ship-log row — seven hex characters or more — and the gate takes that commit as the one behind the move without reading the other '
      'repository; `--check` says in one line how many moves rest on such rows. A `<repository>@<commit>` whose repository the table does not name '
-     'counts as no commit, and its hash is never read as a commit of this repository. A value that is no string, or is empty, is refused at '
-     'configuration (exit 1) |'),
+     'counts as no commit, and its hash is never read as a commit of this repository. A repository counts as the default branch\'s '
+     'configuration names it, read as the Owner is: one a branch adds counts once it lands. A value that is no string, or is empty, is '
+     'refused at configuration (exit 1) |'),
     ("| `judged_before_build` |",
      '| `[trackers] elsewhere` | `"<where>"` — the repository, and the folder in it, that holds this code repository\'s trackers; a non-empty '
      "string, the table's one key | a code repository whose trackers live in another: `--check` says so in one line and passes, reading no "

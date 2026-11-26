@@ -1597,6 +1597,7 @@ CODE_LINE = ("the Shipped rule: 1 move to `Shipped` rests on a ship-log row nami
              "`[repositories]` names (tool) — taken as the commit behind the move, that repository unread: FM-001")
 ELSEWHERE_SAID = "this repository's trackers live elsewhere — https://example.invalid/planning.git, teams/tool/ (`[trackers] elsewhere` in shoalmark.toml)"
 KEYS = "keys/allowed_signers"       # a code repository's signers file, from its root: it holds no tracker folder
+NOT_NAMED = "names a code repository the default branch's `[repositories]` does not name, so it counts as no commit"
 FOLDER_HELD = ("shoalmark.toml: `[trackers] elsewhere` is for a code repository whose trackers live in another, and this project holds a tracker "
                "folder, {} — its trackers live here: take the table out")
 
@@ -1617,8 +1618,7 @@ def rows_after_move(area, add):
         r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Built in web@{built[:12]}."))
         r.commit("FM-001: shipped")
         said = r.check(f)
-        return refused(said, f"FM-001: moved to `Shipped` with no commit behind it — `web@{built[:12]}` names a code repository `[repositories]` "
-                       "does not name, so it counts as no commit"), seen(said)
+        return refused(said, f"FM-001: moved to `Shipped` with no commit behind it — `web@{built[:12]}` " + NOT_NAMED), seen(said)
     each(area, add, "code-not-named", "after the move · a ship-log row naming `web@<commit>`, a repository `[repositories]` does not name — refused: "
          "it counts as no commit, though its hash is this repository's commit that built the change", not_named, {"FM-001": text("FM-001")},
          tables=CODE)
@@ -1742,6 +1742,51 @@ def rows_after_move(area, add):
         return said[0] != 0 and ELSEWHERE_SAID not in said[1] + said[2], seen(said)
     each(area, add, "elsewhere-unread", "trackers elsewhere · where the default branch cannot be read — no `origin` — the table is not in force: "
          "`--check` does not pass", unread, top=GATED, tables=ELSEWHERE, signers_in=KEYS)
+
+    def repositories_on_a_branch(r, f):
+        said = {}
+        for name, extra in (("control", ""), ("named", '[repositories]\nanything = "x"\n')):
+            git(r.top, "switch", "-q", "-c", f"work-{name}", "main")
+            r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Built in anything@{OTHER[:12]}."))
+            cfg = r.root(f) / "shoalmark.toml"
+            cfg.write_text(cfg.read_text(encoding="utf-8") + extra, encoding="utf-8")
+            r.commit("FM-001: shipped", who=LEAD)
+            said[name] = r.check(f, who=LEAD)
+        ok = (refused(said["control"], "FM-001: moved to `Shipped` with no commit behind it")
+              and refused(said["named"], f"FM-001: moved to `Shipped` with no commit behind it — `anything@{OTHER[:12]}` " + NOT_NAMED)
+              and "the Shipped rule: " not in said["named"][1])
+        return ok, " · ".join(f"{k}: exit {c}: {(o + e).strip()[-300:]!r}" for k, (c, o, e) in said.items())
+    each(area, add, "code-branch", "after the move · a branch that adds `[repositories]` and ships on a row naming that repository: refused — "
+         "the repository counts once the default branch names it, and `--check` says nothing of rows resting on it; the same commit without "
+         "the table refused too", repositories_on_a_branch, {"FM-001": text("FM-001")})
+
+    def code_unread(r, f):
+        git(r.top, "remote", "remove", "origin")
+        r.write(f, "FM-001", shipped(r.read(f, "FM-001"), f"Built in tool@{OTHER[:12]}."))
+        r.commit("FM-001: shipped")
+        said = r.check(f)
+        return refused(said, f"FM-001: moved to `Shipped` with no commit behind it — `tool@{OTHER[:12]}` " + NOT_NAMED), seen(said)
+    each(area, add, "code-unread", "after the move · where the default branch cannot be read — no `origin` — no repository `[repositories]` "
+         "names counts: a row naming `tool@<commit>` is refused as no commit", code_unread, {"FM-001": text("FM-001")}, tables=CODE)
+
+    def taken_out(r, f):
+        r.switch("-c", "work")
+        cfg = r.root(f) / "shoalmark.toml"
+        before = cfg.read_text(encoding="utf-8")
+        cfg.write_text(before.replace(ELSEWHERE, ""), encoding="utf-8")
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        r.commit("build the tool", index=False)
+        check = r.check(f)
+        r.put(r.at(f, "src/more.py"), "print('more')\n")
+        git(r.top, "add", "--", r.at(f, "src/more.py"))
+        msg = r.base / "msg"
+        msg.write_text("build more\n", encoding="utf-8")
+        gate = run(r.root(f), "--commit-msg", str(msg), who=LEAD)
+        ok = ELSEWHERE in before and check[0] != 0 and ELSEWHERE_SAID not in check[1] + check[2] and gate[0] != 0 and GATE in gate[2]
+        return ok, f"--check: {seen(check)} · --commit-msg: {seen(gate)}"
+    each(area, add, "elsewhere-removed", "trackers elsewhere · a code repository whose default branch holds the table, a branch that takes it out: "
+         "judged by every rule — `--check` does not pass it, and the commit-msg check refuses a build commit naming no tracker", taken_out,
+         top=GATED, tables=ELSEWHERE, signers_in=KEYS)
 
     if picked("code-schema"):
         code, out, err = run(HERE, "--schema")
@@ -1920,6 +1965,15 @@ MUTANTS = (
      (rows_after_move,), {"elsewhere-branch-code", "elsewhere-unread"}, False),
     ("`[trackers] elsewhere` taken where the project holds a tracker folder", "code_config_problem",
      [('held = tracker_folder_held() if section is not None else ""', 'held = ""', 1)], (rows_after_move,), {"elsewhere-branch"}, False),
+    ("`[trackers]` read from the default branch where this checkout's configuration holds none", "trackers_elsewhere",
+     [('if CONFIG.get("trackers") is None:\n        return ""', 'if False:\n        return ""', 1)], (rows_after_move,), {"elsewhere-removed"}, False),
+    ("`[repositories]` read from this checkout's configuration, not the default branch's", "landed_repositories",
+     [('theirs = (landed_config() or {}).get("repositories") if mine else None', "theirs = mine", 1)], (rows_after_move,),
+     {"code-branch", "code-unread"}, False),
+    ("a ship-log row's repository counted as this checkout's configuration names it", "code_row_verdicts",
+     [("named = landed_repositories()", 'named = CONFIG.get("repositories") or {}', 1)], (rows_after_move,), {"code-branch", "code-unread"}, False),
+    ("`--check`'s line on rows resting on a code repository counts this checkout's `[repositories]`", "code_rows_report",
+     [("named = landed_repositories()", 'named = CONFIG.get("repositories")', 1)], (rows_after_move,), {"code-branch"}, False),
     ("the default branch's tracker folder not looked at", "tracker_folder_held",
      [('if path_mode(trunk, root_prefix() + folder) not in ("", "?"):', "if False:", 1)], (rows_after_move,), {"elsewhere-folder-landed"}, False),
     ("the tool named by its absolute path again where it lies outside the project root, in the root's working tree", "tree:tool_named",

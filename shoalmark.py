@@ -6532,7 +6532,7 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                                     "a code repository this project's trackers ship from: a move to `Shipped` may name `<repository>@<commit>` in a ship-log row "
                                     "— seven hex characters or more — and the gate takes that commit as the one behind the move without reading the other "
                                     "repository; `--check` says in one line how many moves rest on such rows. A `<repository>@<commit>` whose repository "
-                                    "the table does not name counts as no commit, and its hash is never read as a commit of this repository. A value that is "
+                                    "the table does not name counts as no commit, and its hash is never read as a commit of this repository. A repository counts as the default branch's configuration names it, read as the Owner is: one a branch adds counts once it lands. A value that is "
                                     "no string, or is empty, is refused at configuration (exit 1)"),
     "judged_before_build": ("`true` or `false` (the default)",
                             "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
@@ -7981,9 +7981,10 @@ def commits_named(rows):
 def code_row_verdicts(rows):
     """{each `<repository>@<commit>` a ship log's rows name, once: "" where `[repositories]` names that repository — the commit behind the move,
     taken without reading the other repository — else why it counts as no commit}. Its hash is never read as a commit of this repository: the
-    rows' other commits are read with every such name taken out (`ship_problems`)."""
-    named = CONFIG.get("repositories") or {}
-    return {f"{name}@{commit}": "" if name in named else "names a code repository `[repositories]` does not name, so it counts as no commit"
+    rows' other commits are read with every such name taken out (`ship_problems`). The repositories are those the default branch names
+    (`landed_repositories`): one a branch adds counts once it lands."""
+    named = landed_repositories()
+    return {f"{name}@{commit}": "" if name in named else "names a code repository the default branch's `[repositories]` does not name, so it counts as no commit"
             for name, commit in CODE_ROW_RE.findall(rows)}
 
 
@@ -8017,9 +8018,11 @@ def elsewhere_named(section):
 
 def trackers_elsewhere():
     """Where this code repository's trackers live, as `[trackers] elsewhere` names it in the configuration the default branch holds
-    (`landed_config`) — "" where they live here: that configuration holds no such table, the default branch cannot be read, or this project
-    holds a tracker folder (`tracker_folder_held`). What this checkout's configuration says is not read: a branch that adds the table is judged
-    by every rule, and one that takes it out does not turn the gate back on before it lands."""
+    (`landed_config`) — "" where they live here: that configuration holds no such table, the default branch cannot be read, this project holds
+    a tracker folder (`tracker_folder_held`), or this checkout's configuration holds no `[trackers]`, and then the default branch is not read.
+    A branch that adds the table is judged by every rule, and so is one that takes it out."""
+    if CONFIG.get("trackers") is None:
+        return ""
     named = elsewhere_named((landed_config() or {}).get("trackers"))
     return "" if not named or tracker_folder_held() else named
 
@@ -8061,6 +8064,15 @@ def landed_config():
     return _LANDED[0]
 
 
+def landed_repositories():
+    """{repository: where it is} for each code repository `[repositories]` names in this checkout's configuration and in the one the default
+    branch holds (`landed_config`), as the default branch writes it — {} where either names none, or the default branch cannot be read; where
+    this checkout's names none, the default branch is not read. A branch that adds a repository counts it once that lands."""
+    mine = CONFIG.get("repositories")
+    theirs = (landed_config() or {}).get("repositories") if mine else None
+    return {name: where for name, where in theirs.items() if name in mine} if mine and repositories_fit(theirs) else {}
+
+
 def tracker_folder_held():
     """Where this project holds a tracker folder — anything at the path its configuration names, `tracker_dir`: on disk, or at the default
     branch's tip, in the folder this checkout's configuration names or the one the default branch's names — that folder, as the one line
@@ -8081,7 +8093,7 @@ def tracker_folder_held():
 def code_rows_report():
     """What `--check` says of `[repositories]`, in one line where it names a code repository: how many of the moves to `Shipped` it judged rest
     on a row naming `<repository>@<commit>` for one of them, with no commit of this repository behind the move. A report, never a refusal."""
-    named = CONFIG.get("repositories")
+    named = landed_repositories()
     if not named:
         return []
     moves = list(_CODE_MOVES.values())
@@ -8625,7 +8637,7 @@ def ship_problems(trackers):
                 continue
             verdicts.update(code)
             found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(printed_arg(f":(exclude,top){p}") for p in records)
-            other = ", or `<repository>@<commit>` for a code repository `[repositories]` names" if CONFIG.get("repositories") else ""
+            other = ", or `<repository>@<commit>` for a code repository `[repositories]` names" if landed_repositories() else ""
             out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
                        + (f"its ship log names no {noun}" if not verdicts else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
                        + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it){other}, or, where nothing was built, mark it `Closed`, not `Shipped`')
