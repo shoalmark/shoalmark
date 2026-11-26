@@ -1,4 +1,4 @@
-"""The frozen rule's class test, and the refusal of a project below the top of its git repository.
+"""The frozen rule's class test, and a project below the top of its git repository judged as one at the top.
 
 A tracker that the Owner's own signed import commit adds already `Shipped` — the commit carries `Tracker-import: <repository> <commit>` —
 is frozen: the Shipped rule finds no move for it, and `--check` says in one line how many trackers are frozen and by which import commit.
@@ -13,10 +13,15 @@ the count says 47; two signed imports of the same trackers on two branches from 
 holds 48, names both imports, and nothing is refused. With the hooks on, the commit hook runs before the commit's trailer and signature exist: it leaves the trackers a
 commit adds already `Shipped` to `--check` and says so in one line, so the Owner's signed import is made and frozen, a seat's same commit is
 made and refused by `--check`, and a move of a tracker present at a parent is refused by the hook as before. A run whose project root is
-below the top of its git repository is refused in one line, a run at the top is not, and `--version` and `--help` still run below the top.
-Four rules more: an import with no parent here, the root of an unrelated history merged in, freezes nothing; an act run such as
-`--install-hook` is refused below the top and writes nothing; the commit hook judges what a merge being made brings, and leaves to `--check`
-only what the commit being made adds; and the freeze needs an Owner whom the configuration marks `signed`.
+below the top of its git repository is judged as the same project at the top is: the same exit, the same lines and the same INDEX.md,
+and `--version` and `--help` run there. Below the top, the tracker folder at a revision is read whole, as at the top: `--check` counts the
+48 the Owner's signed import freezes, a tracker the import renames onto `Shipped` is found at the parent by its id and refused, and a
+later commit that renames a frozen tracker is no move. In a repository of two projects, each with the Owner's signed import of its
+own, each project's frozen line names its own import alone, with its count; an import that a merge did not keep is still named, as
+before. Four rules more: an import with no parent here, the root of an unrelated history merged in,
+freezes nothing; an act run such as `--install-hook` does below the top what it does at the top; the commit hook judges what a merge
+being made brings, and leaves to `--check` only what the commit being made adds; and the freeze needs an Owner whom the configuration
+marks `signed`.
 
 Each row builds its history in a scratch repository — test_ask_ids' `Repo`: a bare `origin` whose `main` is the default branch, the Owner
 named `signed`, their key in the default branch's signers file, a planner seat — runs the tool in this process, and states its verdict as
@@ -38,7 +43,7 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import shoalmark as fm  # noqa: E402
-from test_ask_ids import ENV, OWNER, REL, SEAT, Repo, git, mutated, run, seen, text, write  # noqa: E402
+from test_ask_ids import CONFIG, ENV, OWNER, REL, SEAT, Repo, git, mutated, run, seen, text, write  # noqa: E402
 
 FOREIGN = "766476abcaab912a1f752d67d28fa5cd5bc93d36"            # a commit of the code repository the trackers come from: this one does not hold it
 TRAILER = f"Tracker-import: shoalmark/shoalmark {FOREIGN}"
@@ -89,9 +94,43 @@ def named(said, ids):
     return [tid for tid in ids if any(f"{tid}:" in l for l in said[2].splitlines())]
 
 
-def repo(area):
-    """The ledger before the import: two open trackers, and a product file, on `main`, the Owner's signed commit."""
-    r = Repo(area, {"FM-001": text("FM-001"), "FM-002": text("FM-002")})
+class Below(Repo):
+    """test_ask_ids' Repo with its project below the top of its git repository, in `teams/tool`: the clone at `wc`, the project — its
+    configuration, its signers file and its trackers — at `wc/teams/tool`, and every git command and run made from the project."""
+
+    def __init__(self, base, trackers=None):
+        top = base / "wc"
+        self.base, self.root, self.origin = base, top / "teams" / "tool", base / "origin.git"
+        self.root.mkdir(parents=True)
+        self.keys = {}
+        for name in ("owner", "other"):
+            key = base / f"key-{name}"
+            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key), "-C", name], check=True, capture_output=True)
+            self.keys[name] = key
+        (self.root / "shoalmark.toml").write_text(CONFIG, encoding="utf-8")
+        git(base, "init", "-q", "--bare", "--initial-branch=main", str(self.origin))
+        git(top, "init", "-q", "--initial-branch=main")
+        for k, v in (("user.name", OWNER[0]), ("user.email", OWNER[1]), ("gpg.format", "ssh"), ("user.signingkey", str(self.keys["owner"])),
+                     ("gpg.ssh.allowedSignersFile", f"teams/tool/{REL}/allowed_signers"), ("commit.gpgsign", "false")):
+            git(top, "config", k, v)
+        git(top, "remote", "add", "origin", str(self.origin))
+        (self.root / ".gitignore").write_text(f"{REL}/index.html\n{REL}/view/\n", encoding="utf-8")
+        self.signers(f"{OWNER[1]} " + self.keys["owner"].with_suffix(".pub").read_text(encoding="utf-8"))
+        for tid, body in (trackers or {}).items():
+            write(self.root, tid, body)
+        self.commit("the start", who=OWNER, sign=True)
+        git(top, "push", "-q", "-u", "origin", "main")
+        git(top, "remote", "set-head", "origin", "main")
+        run(self.root, "--print-written")
+        if git(top, "status", "--porcelain"):
+            self.commit("the index, with the default branch known", who=OWNER, sign=True)
+            git(top, "push", "-q", "origin", "main")
+
+
+def repo(area, below=False):
+    """The ledger before the import: two open trackers, and a product file, on `main`, the Owner's signed commit — its project below the
+    top of its repository where `below`."""
+    r = (Below if below else Repo)(area, {"FM-001": text("FM-001"), "FM-002": text("FM-002")})
     (r.root / "src").mkdir()
     (r.root / "src" / "app.py").write_text("v0\n", encoding="utf-8")
     r.commit("the product", who=OWNER, sign=True)
@@ -101,10 +140,10 @@ def repo(area):
 
 
 def copied(seed, area):
-    """`seed` again under `area`, with an `origin` of its own: a Repo whose folders are the copy's."""
+    """`seed` again under `area`, with an `origin` of its own: a Repo, or a Below, whose folders are the copy's."""
     shutil.copytree(seed.base, area)
-    twin = Repo.__new__(Repo)
-    twin.base, twin.root, twin.origin = area, area / "wc", area / "origin.git"
+    twin = type(seed).__new__(type(seed))
+    twin.base, twin.root, twin.origin = area, area / seed.root.relative_to(seed.base), area / "origin.git"
     twin.keys = {name: area / f"key-{name}" for name in seed.keys}
     git(twin.root, "remote", "set-url", "origin", str(twin.origin))
     git(twin.root, "config", "user.signingkey", str(twin.keys["owner"]))
@@ -114,17 +153,18 @@ def copied(seed, area):
 _SEEDS = {}
 
 
-def seeded(area, kind):
+def seeded(area, kind, below=False):
     """A copy of the row area's seed: "before" the import, or "import" — the Owner's signed import on its branch `import`, every one of
-    `IMPORTED` added already Shipped. Each seed is built once under the folder a run's rows share."""
-    home = area.parent
-    if (home, "before") not in _SEEDS:
-        _SEEDS[(home, "before")] = repo(home / "seed-before")
-    if kind == "import" and (home, "import") not in _SEEDS:
-        r = copied(_SEEDS[(home, "before")], home / "seed-import")
+    `IMPORTED` added already Shipped —, its project below the top of its repository where `below`. Each seed is built once under the
+    folder a run's rows share."""
+    home, where = area.parent, "-below" if below else ""
+    if (home, "before" + where) not in _SEEDS:
+        _SEEDS[(home, "before" + where)] = repo(home / f"seed-before{where}", below)
+    if kind == "import" and (home, "import" + where) not in _SEEDS:
+        r = copied(_SEEDS[(home, "before" + where)], home / f"seed-import{where}")
         made_import(r)
-        _SEEDS[(home, "import")] = r
-    return copied(_SEEDS[(home, kind)], area)
+        _SEEDS[(home, "import" + where)] = r
+    return copied(_SEEDS[(home, kind + where)], area)
 
 
 def made_import(r, who=OWNER, sign=True, trailer=TRAILER, modify=(), rename=()):
@@ -434,7 +474,7 @@ def rows_second_import(area, add):
                "refuses none and --check names 48 frozen, by both imports")
 
 
-# --- a project below the top of its git repository is refused; at the top it is not; --version and --help still run ----------------
+# --- a project below the top of its git repository is judged as the same project at the top; --version and --help run there ---------
 
 def below(area):
     """A git repository at `top` whose one project sits below it, in `teams/tool`, with a tracker committed: (top, the project)."""
@@ -456,53 +496,165 @@ def program(cwd, *argv):
     return done.returncode, done.stdout, done.stderr
 
 
+def at_top(area):
+    """The same project at the top of a git repository of its own, with the same tracker committed: its root, which is the top."""
+    at = area / "at-top"
+    (at / REL).mkdir(parents=True)
+    git(at, "init", "-q", "--initial-branch=main")
+    (at / "shoalmark.toml").write_text('name = "tool"\n[kinds]\nFM = "Work"\n', encoding="utf-8")
+    write(at, "FM-001", text("FM-001"))
+    git(at, "add", "-A")
+    git(at, "commit", "-q", "-m", "the team's trackers")
+    return at
+
+
+def placed(said, *paths):
+    """(exit, stdout, stderr), each path in `paths` — the project root, then the top — written as one placeholder: what a run says, where
+    it ran aside. Each path is written so as `str` gives it, then in its POSIX form: a file URI, as in the board's line, names the path
+    with forward slashes, and on Windows `str` gives it with backslashes."""
+    def put(text):
+        for path in paths:
+            for form in (str(path), path.as_posix()):
+                text = text.replace(form, "<place>")
+        return text
+    return said[0], put(said[1]), put(said[2])
+
+
 def rows_below_top(area, add):
     top, sub = below(area)
-    real_top = Path(git(top, "rev-parse", "--show-toplevel").strip())
+    at = at_top(area)
     s = Steps()
-    one = lambda said: [l for l in said[2].splitlines() if l.strip()]
-    line = lambda said: (one(said) or [""])[0]
-    refusal = lambda said: (said[0] != 0 and len(one(said)) == 1 and "FM-161" in line(said) and str(sub) in line(said) and f", {real_top}:" in line(said))
-    for argv in (("--check",), (), ("--html-only",), ("--next",)):
-        said = run(sub, *argv, who=SEAT)
-        s(f"below the top, {' '.join(argv) or 'the default run'}: refused in one line naming FM-161, the project root and the top", refusal(said), said, repr(line(said)))
-    s("…and the default run wrote nothing", not (sub / REL / "INDEX.md").exists())
-    said = program(sub, "--check")
-    s("below the top, as a program started there: refused in that line", refusal(said), said, repr(line(said)))
+    for argv in (("--check",), (), ("--html-only",), ("--next",), ("--check",)):
+        here, there = run(sub, *argv, who=SEAT), run(at, *argv, who=SEAT)
+        s(f"below the top, {' '.join(argv) or 'the default run'}: judged as at the top, the same exit and the same lines, where each ran aside",
+          placed(here, sub, top) == placed(there, at), here, f"at the top: {seen(there)}")
+    s("…and the default run wrote below the top the INDEX.md it wrote at the top, byte for byte",
+      (sub / REL / "INDEX.md").read_bytes() == (at / REL / "INDEX.md").read_bytes())
+    here, there = program(sub, "--check"), program(at, "--check")
+    s("below the top, as a program started there: --check says what it says at the top, its frozen line too",
+      placed(here, sub, top) == placed(there, at) and frozen_said(here).startswith("frozen trackers: none —"), here, repr(frozen_said(here)))
     said = program(sub, "--version")
     s("below the top, --version runs", said[0] == 0 and said[1].strip() == fm.__version__, said)
     said = program(sub, "--help")
     s("below the top, --help runs", said[0] == 0 and said[1].startswith("usage:"), said)
     said = run(sub, "--version", who=SEAT)
     s("below the top, --version runs with --root naming the project", said[0] == 0 and said[1].strip() == fm.__version__, said)
-    at = area / "at-top"
-    (at / REL).mkdir(parents=True)
-    git(at, "init", "-q", "--initial-branch=main")
-    (at / "shoalmark.toml").write_text('name = "tool"\n[kinds]\nFM = "Work"\n', encoding="utf-8")
-    write(at, "FM-001", text("FM-001"))
-    run(at, who=SEAT)
-    git(at, "add", "-A")
-    git(at, "commit", "-q", "-m", "the team's trackers")
-    said = run(at, "--check", who=SEAT)
-    s("at the top, --check is not refused: it passes, and says none is frozen", said[0] == 0 and "FM-161" not in said[2]
-      and frozen_said(said).startswith("frozen trackers: none —"), said, repr(frozen_said(said)))
-    s.add(add, "a run from a project below the top of its git repository is refused in one line naming FM-161, the project root and the top — "
-               "--check, the default run, the board's run, --next, and the program started there; a run at the top is not; --version and --help run below the top")
+    s.add(add, "a run from a project below the top of its git repository is judged as the same project at the top is — --check, the default "
+               "run, the board's run, --next, and the program started there: the same exit, the same lines and the same INDEX.md; --version and "
+               "--help run there")
 
 
 def rows_act_below_top(area, add):
     top, sub = below(area)
-    real_top = Path(git(top, "rev-parse", "--show-toplevel").strip())
+    at = at_top(area)
     s = Steps()
+    prefix = sub.relative_to(top).as_posix() + "/"
     for argv in (("--install-hook",), ("--init",)):
-        said = run(sub, *argv, who=SEAT)
-        first = (said[2].strip().splitlines() or [""])[0]
-        s(f"below the top, {argv[0]}: refused in the one line naming FM-161, the project root and the top",
-          said[0] == fm.EXIT_LINT and "FM-161" in first and str(sub) in first and f", {real_top}:" in first, said, repr(first))
-    s("…and no hook and no copy of the tool was written", not (top / ".git" / "hooks" / "pre-commit").exists() and not (top / ".git" / fm.COPY_DIR).exists())
-    s("…and nothing in the working tree changed", git(top, "status", "--porcelain", "--untracked-files=all") == "", extra=git(top, "status", "--porcelain"))
-    s.add(add, "an act run from a project below the top of its git repository — --install-hook, --init — is refused in the one line naming FM-161, "
-               "and writes no hook, no copy of the tool and nothing in the working tree")
+        here, there = run(sub, *argv, who=SEAT), run(at, *argv, who=SEAT)
+        s(f"below the top, {argv[0]}: does what it does at the top, the same exit and the same lines, where each ran aside",
+          placed(here, sub, top) == placed(there, at), here, f"at the top: {seen(there)}")
+    hooks = lambda base: sorted(p.name for p in (base / ".git" / "hooks").glob("*") if not p.name.endswith(".sample"))
+    s("…and the hooks and their copy of the tool are written in the top's git directory, as at the top",
+      hooks(top) == hooks(at) and "pre-commit" in hooks(top) and (top / ".git" / fm.COPY_DIR).is_dir() and (at / ".git" / fm.COPY_DIR).is_dir(),
+      extra=f"{hooks(top)} · {hooks(at)}")
+    status = lambda base, cut: sorted(l[3:].removeprefix(cut) for l in git(base, "status", "--porcelain", "--untracked-files=all").splitlines() if l.strip())
+    s("…and the same files are written in the project, below the top as at the top", status(top, prefix) == status(at, ""),
+      extra=f"{status(top, prefix)} · {status(at, '')}")
+    s.add(add, "an act run from a project below the top of its git repository — --install-hook, --init — does what it does at the top: the "
+               "same exit and lines, the hooks and their copy of the tool in the top's git directory, and the same files in the project")
+
+
+# --- below the top, the tracker folder at a revision is read whole: the frozen count, an import's rename, and a later rename ------------
+
+def rows_frozen_below_top(area, add):
+    r = seeded(area, "import", below=True)
+    sha = r.head()
+    s = Steps()
+    said = r.check()
+    s("below the top, the import on its branch passes, no tracker it adds refused", said[0] == 0 and not named(said, IMPORTED), said)
+    want = f"frozen trackers: 48 — added already `Shipped` by the import commit {sha[:7]} (Tracker-import: shoalmark/shoalmark {FOREIGN})"
+    s("…and --check names 48 frozen, as at the top, and the import commit with its trailer", frozen_said(said).startswith(want), extra=repr(frozen_said(said)))
+    r.land("import")
+    said = r.check()
+    s("landed on main: passes, and still 48 frozen by that commit", said[0] == 0 and frozen_said(said).startswith(want), said, repr(frozen_said(said)))
+    s.add(add, "below the top of its git repository, the Owner's signed import adding 48 Shipped trackers: --check counts the 48 it counts at "
+               "the top, on the import's branch and landed, and names the import commit with its trailer")
+
+
+def rows_renamed_by_import_below_top(area, add):
+    r = seeded(area, "before", below=True)
+    made_import(r, rename=("FM-001",))
+    s = Steps()
+    said = r.check()
+    s("below the top, the tracker the import renames and moves to Shipped is refused by the Shipped rule, it alone",
+      said[0] == fm.EXIT_LINT and refused_for(said, ["FM-001"]) and named(said, ["FM-001", *IMPORTED]) == ["FM-001"], said)
+    s("…and --check names the 48 it adds as frozen, not the one it renames", frozen_said(said).startswith("frozen trackers: 48 —"), extra=repr(frozen_said(said)))
+    s.add(add, "below the top, the Owner's signed import that also renames an open tracker and moves it to Shipped freezes nothing of it: the "
+               "rule finds that tracker at the parent by its id and refuses it, and --check counts the 48 the import adds, not that one")
+
+
+def rows_renamed_later_below_top(area, add):
+    r = seeded(area, "import", below=True)
+    r.land("import")
+    tid = NAMING[0]
+    git(r.root, "mv", f"{REL}/{tid}-x.md", f"{REL}/{tid}-renamed.md")
+    r.commit(f"{tid}: renamed")
+    s = Steps()
+    said = r.check()
+    s(f"below the top, a seat's commit renames {tid}, frozen and still Shipped, its ship log naming a commit only the code repository holds: "
+      "passes, nothing refused", said[0] == 0 and not named(said, IMPORTED), said)
+    s("…and --check still names 48 frozen", frozen_said(said).startswith("frozen trackers: 48 —"), extra=repr(frozen_said(said)))
+    s.add(add, "below the top, a later commit that renames a Shipped tracker is no move: the rule finds the tracker at the parent by its id, "
+               "Shipped, so a seat's rename of a frozen tracker passes, and --check still counts 48")
+
+
+# --- two projects in one repository: each project's frozen line names the imports into its own tracker folder alone ----------------
+
+TEAM = [f"FM-{n}" for n in range(201, 206)]                     # the team's 5 trackers, imported into its own project below the top
+TEAM_TRAILER = "Tracker-import: shoalmark/tool 3d5c7e9f0a1b2c3d4e5f60718293a4b5c6d7e8f9"
+
+
+def rows_two_projects(area, add):
+    r = seeded(area, "import")
+    ours = r.head("import")
+    r.land("import")
+    team = r.root / "teams" / "tool"
+    r.switch("-c", "team")
+    (team / REL).mkdir(parents=True)
+    (team / "shoalmark.toml").write_text(CONFIG.replace('name = "ids"', 'name = "tool"'), encoding="utf-8")
+    (team / REL / "allowed_signers").write_text(f"{OWNER[1]} " + r.keys["owner"].with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
+    r.commit("the team's project: its configuration and signers file", who=OWNER, sign=True)
+    r.land("team")
+    r.switch("-c", "team-import")
+    (team / ".gitignore").write_text(f"{REL}/index.html\n{REL}/view/\n", encoding="utf-8")
+    for tid in TEAM:
+        write(team, tid, imported(tid))
+    run(team, "--print-written", who=OWNER)
+    theirs = r.commit("the team's trackers, imported from its code repository", who=OWNER, sign=True, trailers=(TEAM_TRAILER,))
+    r.land("team-import")
+    s = Steps()
+    said, here = r.check(), run(team, "--check", who=SEAT)
+    want = f"frozen trackers: 48 — added already `Shipped` by the import commit {ours[:7]} ({TRAILER}), the Owner's own signed commit;"
+    s("the project at the top: its frozen line names its own import alone, with its 48", frozen_said(said).startswith(want), said, repr(frozen_said(said)))
+    want = f"frozen trackers: {len(TEAM)} — added already `Shipped` by the import commit {theirs[:7]} ({TEAM_TRAILER}), the Owner's own signed commit;"
+    s(f"the team's project below it: its frozen line names its own import alone, with its {len(TEAM)}", frozen_said(here).startswith(want), here,
+      repr(frozen_said(here)))
+    s.add(add, "two projects in one repository, each with the Owner's signed import of its own: each project's frozen line names its own import "
+               f"alone, with its count — 48 at the top, {len(TEAM)} in the team's folder below it")
+
+
+def rows_import_not_kept(area, add):
+    r = seeded(area, "import")
+    sha = r.head("import")
+    r.switch("main")
+    git(r.root, "merge", "-q", "-s", "ours", "--no-edit", "import")
+    s = Steps()
+    said = r.check()
+    want = f"frozen trackers: 0 — added already `Shipped` by the import commit {sha[:7]} ({TRAILER})"
+    s("the Owner's signed import merged with none of its trackers kept: --check still names it, as before, and counts none of what it added",
+      frozen_said(said).startswith(want), said, repr(frozen_said(said)))
+    s.add(add, "the Owner's signed import merged with none of its trackers kept: the frozen line still names that import, as it did when it "
+               "read every import commit, and counts 0")
 
 
 # --- the import made with the hooks on: the commit hook leaves the trackers a commit adds already Shipped to --check -----------------
@@ -618,7 +770,8 @@ def rows_hooked_merge(area, add):
 
 
 ROWS = (rows_signed_import, rows_modified_by_import, rows_unverified_import, rows_later_move, rows_reopened, rows_renamed_by_import, rows_later_note,
-        rows_root_import, rows_owner_unmarked, rows_below_top, rows_act_below_top, rows_hooked_import, rows_hooked_merge, rows_side_deletion_kept,
+        rows_root_import, rows_owner_unmarked, rows_below_top, rows_act_below_top, rows_frozen_below_top, rows_renamed_by_import_below_top,
+        rows_renamed_later_below_top, rows_two_projects, rows_import_not_kept, rows_hooked_import, rows_hooked_merge, rows_side_deletion_kept,
         rows_merge_deletes, rows_second_import)
 
 
@@ -640,19 +793,12 @@ MUTANTS = (
     ("the count read by path: a tracker the import renames onto Shipped counted frozen", "tracker_imports",
      " and not any(tracker_name(tid, names) for names in there)", "", (rows_renamed_by_import,)),
     ("a later file below the tracker folder read as a frozen tracker's", "frozen_left", " if path.parent.as_posix() == home else None", "", (rows_later_note,)),
-    ("the refusal below the top skipped", "main_run", "    refused = below_top()                                   #", "    refused = ''                                            #",
-     (rows_below_top,)),
-    ("the board's run below the top not refused", "board_run", "refused = below_top() or tracker_folder_problem()", "refused = tracker_folder_problem()",
-     (rows_below_top,)),
-    ("a run at the top refused too", "below_top", '    if not prefix:\n        return ""\n', "", (rows_below_top,)),
     ("the commit hook's deferral applied to a tracker present at a parent", "shipped_moves", "later = added if COMMITTING and not commit else set()",
      "later = set(shipped) if COMMITTING and not commit else set()", (rows_hooked_import,)),
     ("the commit hook's deferral with no line", "shipped_moves", "    if left:\n", "    if False:\n", (rows_hooked_import,)),
     ("the deferral in --check too, not only in the commit hook's run", "shipped_moves", "if COMMITTING and not commit else set()", "if not commit else set()",
      (rows_hooked_import,)),
     ("an import with no parent here freezing what it adds", "import_freezes", "    if not commits_held(bases):\n", "    if False:\n", (rows_root_import,)),
-    ("an act run not refused below the top", "main_run", "    refused = below_top()                                   #",
-     "    refused = '' if any(vars(args).get(f) for f in ACT_RUNS) else below_top()  #", (rows_act_below_top,)),
     ("the commit hook's deferral reaching what a merge being made brings", "shipped_moves", "later = added if COMMITTING and not commit else set()",
      "later = added if COMMITTING else set()", (rows_hooked_merge,)),
     ("the freeze held by an Owner whom the configuration does not mark signed", "import_verified",
@@ -664,6 +810,12 @@ MUTANTS = (
     ("a move judged against the first parent alone", "frozen_left", "for p in parents)}", "for p in parents[:1])}", (rows_side_deletion_kept,)),
     ("a later import that freezes a tracker anew read as a move that ends its freeze", "frozen_left", "if tid not in again.get(c, {}) and not any(",
      "if not any(", (rows_second_import,)),
+    ("the tracker folder at a revision listed without --full-tree: below the top, only what lies below the working directory's place in it",
+     "folder_names", '"--name-only", "--full-tree", ', '"--name-only", ', (rows_frozen_below_top, rows_renamed_by_import_below_top, rows_renamed_later_below_top)),
+    ("the read of every import commit in HEAD's history, whatever folder it changes", "tracker_imports", '"HEAD", "--full-history", "--", home)', '"HEAD")',
+     (rows_two_projects,)),
+    ("the imports read by git's default history simplification: an import a merge did not keep goes unread", "tracker_imports",
+     '"HEAD", "--full-history", "--", home)', '"HEAD", "--", home)', (rows_import_not_kept,)),
 )
 
 

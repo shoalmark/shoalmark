@@ -126,8 +126,8 @@ MUTANTS = (
      '''    return ["--no-textconv", "--text"] if LAZY_OFF else []''',
      "the attribute in a tracked `.gitattributes` · a diff driver's `textconv`: none"),
     ("a submodule's own working tree read",
-     '''compared("diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", rev)''',
-     '''compared("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", rev)''',
+     '''compared("diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=dirty", rev)''',
+     '''compared("diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", rev)''',
      "the attribute in a tracked `.gitattributes` · a clean filter a submodule's own configuration names: none"),
     ("the digests' conflict preview under the person's settings, with no driver list read",
      '''        merges, filters = merge_drivers(), filter_drivers()\n'''

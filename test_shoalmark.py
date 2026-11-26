@@ -7943,7 +7943,7 @@ check("FM-006 · a private security report · RV-2300 · the README's hooks sect
 check("FM-006 · a private security report · the README's entries for a repository with its own hook runner run the copy with the installed hooks' invocation, say what an entry does where the copy is "
       "missing, and say plainly that a hook runner reads its configuration from the tree, `--install-hook` being the safe default; this repository keeps no `lefthook.yml`",
       all(f'run: python3 -I "$(git rev-parse --git-common-dir)/shoalmark-trusted/shoalmark.py" --root "$(git rev-parse --show-toplevel)" {flag_}' in _rd("README.md")
-          for flag_ in ("--session-check", "--session-trailer {1}", "--commit-msg {1}"))
+          for flag_ in ("--each-project --session-check", "--session-trailer {1}", "--each-project --commit-msg {1}"))
       and "tools/shoalmark/shoalmark.py --session-check" not in _rd("README.md") and "Python cannot open the file, exit 2 — and the runner refuses the commit" in _readme_
       and "A hook runner reads its configuration from the tree, so a merged branch's configuration runs whatever it names" in _readme_
       and "shoalmark's own `--install-hook` is the safe default" in _readme_ and not (HERE / "lefthook.yml").exists())
@@ -12990,7 +12990,7 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = made5_(512, f"built in {built5_[:7]}")
     (root / "shoalmark.toml").write_text(plain5_, encoding="utf-8")
     check("FM-005 · a `[ratio] records` that is no list is refused in one line, for the move that needs it — never a traceback",
-          code == fm.EXIT_LINT and "AP-512: moved to `Shipped`, which needs the records told from the product" in err and "`[ratio] records` is a list of repository-relative prefixes" in err and "Traceback" not in err)
+          code == fm.EXIT_LINT and "AP-512: moved to `Shipped`, which needs the records told from the product" in err and "`[ratio] records` is a list of prefixes written from the project root" in err and "Traceback" not in err)
     # a merge is judged commit by commit: each commit it brings, against its own parent
     merged5_ = lambda *a: subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *a], capture_output=True, text=True,
                                          env=dict(_ENV, GIT_AUTHOR_NAME="GitHub", GIT_AUTHOR_EMAIL="noreply@github.com", GIT_COMMITTER_NAME="GitHub", GIT_COMMITTER_EMAIL="noreply@github.com"))
@@ -13064,8 +13064,7 @@ with tempfile.TemporaryDirectory() as tmp:
     rm_git(root)
 fm.configure(HERE)
 
-# the working copy below the top of the repository: the Shipped rule's three cases there — a commit that changes only the records, the
-# feature's commit, no commit named — each refused in one line naming the project root and the top, as every run there is
+# the working copy below the top of the repository: the records are the tracker directory as git writes it from the top
 with tempfile.TemporaryDirectory() as tmp:
     top5_ = Path(tmp).resolve(); root = top5_ / "proj"; root.mkdir()
     subprocess.run(["git", "init", "-q", str(top5_)], check=True, env=_ENV)
@@ -13085,9 +13084,9 @@ with tempfile.TemporaryDirectory() as tmp:
     code, _, err = ships5_(530, f"a note in {snote_[:9]}")
     code_b, _, err_b = ships5_(531, f"built in {sbuilt_[:7]}")
     code_n, _, err_n = ships5_(532, "Filed again.")
-    below5_ = f"the project root {root} is below the top of its git repository, {top5_}:"
-    check("FM-005 · with the working copy in a directory below the repository's top, each of the Shipped rule's cases is refused in one line naming FM-161, the project root and the top",
-          all(c_ == fm.EXIT_LINT and "FM-161" in e_ and below5_ in e_ and len(e_.strip().splitlines()) == 1 for c_, e_ in ((code, err), (code_b, err_b), (code_n, err_n))))
+    check("FM-005 · with the working copy in a directory below the repository's top, the tracker directory is still the records: a commit that changes only it misses, the feature's passes",
+          code == fm.EXIT_LINT and f"`{snote_[:9]}` changes nothing outside the records (proj/docs/work-tracker/)" in err and "':(exclude,top)proj/docs/work-tracker/'" in err
+          and code_b == 0 and "AP-531" not in err_b and code_n == fm.EXIT_LINT and "its ship log names no commit" in err_n)
     rm_git(top5_)
 fm.configure(HERE)
 
@@ -15196,9 +15195,15 @@ with tempfile.TemporaryDirectory() as d:
               f"(saw {seen_[(ignore_, 'committed')]})", seen_[(ignore_, "committed")]["files"] == ["README.md", "subproject"])
     (Path(d).resolve() / "hooked").mkdir()
     hooked_root_, _i = _bm_repo(Path(d).resolve() / "hooked")                 # a throwaway repository: what `--install-hook` writes
-    written_ = [l_.strip() for l_ in (hooked_root_ / ".git/hooks/pre-commit").read_text(encoding="utf-8").splitlines() if "diff --cached" in l_]
-    check(f"FM-045 · the pre-commit hook `--install-hook` writes reads the staged names with every submodule's pointer, whatever `.gitmodules` says "
-          f"(saw {written_})", len(written_) == 1 and "diff --cached --name-only --ignore-submodules=none" in written_[0])
+    hook_ = (hooked_root_ / ".git/hooks/pre-commit").read_text(encoding="utf-8")
+    written_ = [l_.strip() for l_ in hook_.splitlines() if "diff --cached" in l_]
+    tool_ = Path(fm.__file__).read_text(encoding="utf-8")
+    each_ = next(n_ for n_ in ast.parse(tool_).body if isinstance(n_, ast.FunctionDef) and n_.name == "each_project")
+    read_ = [l_.strip() for l_ in ast.get_source_segment(tool_, each_).splitlines() if '"diff", "--cached"' in l_]
+    check(f"FM-045 · the pre-commit hook `--install-hook` writes leaves the staged names to the copy it runs (`--each-project`), which reads them with "
+          f"every submodule's pointer, whatever `.gitmodules` says (saw {written_} in the hook, {read_} in the tool)",
+          not written_ and "--each-project --print-written" in hook_ and len(read_) == 1 and '"--name-only"' in read_[0]
+          and '"--ignore-submodules=none"' in read_[0])
     rm_git(hooked_root_)
 fm.configure(HERE)
 
@@ -15345,7 +15350,7 @@ with tempfile.TemporaryDirectory() as d:
     agents, hook = (root / "AGENTS.md").read_text(), (root / ".git/hooks/pre-commit").read_text()
     check("a contract block and a hook written under the old name are replaced, not stranded — the repository's own text is kept",
           code == 0 and "old rules" not in agents and "fathom-mark" not in agents and agents.count(fm.CONTRACT_BEGIN) == 1 and "kept." in agents and agents.startswith("# mine")
-          and "fathom" not in hook and 'shoalmark-trusted/shoalmark.py"' in hook and '--root "$root" --print-written' in hook)
+          and "fathom" not in hook and 'shoalmark-trusted/shoalmark.py"' in hook and '--root "$root" --each-project --print-written' in hook)
 fm.configure(HERE)
 
 # --- FM-031 S2: the queue in one view — every open pull request, ONE action, in the order the Owner takes them -------
@@ -21720,11 +21725,14 @@ _module_guard(test_ask_ids, check)
 
 import test_filed_state
 _module_guard(test_filed_state, check)
-# the frozen rule and the refusal of a project below the top: their class test, a program of its own so its mutants patch the module it imports
+# the frozen rule, and a project below the top judged as at the top: their class test, a program of its own so its mutants patch the module it imports
 import test_frozen_import
 _module_guard(test_frozen_import, check)
 import test_answer_changes
 _module_guard(test_answer_changes, check)
+# a project below the top of its repository, judged as one at the top: its class test, a program of its own so its mutants can run it
+import test_below_top
+_module_guard(test_below_top, check)
 
 # R9 (signed 2026-10-12): invites, notifications and their scheduler state are gone; its class test, in a program of its own so its mutants can run it
 import test_r9_removals

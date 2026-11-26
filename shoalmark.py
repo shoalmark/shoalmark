@@ -267,6 +267,26 @@ def _norm(path):
     return os.path.normcase(os.path.abspath(os.fspath(path)))
 
 
+def tool_named(path):
+    """The tool's file as a person runs it from the project root, in forward slashes — a hook is a `sh` script, and `\\` is its escape: its path from
+    the root where it lies inside the root or elsewhere in the root's git working tree, as `../../tools/shoalmark/shoalmark.py` from a project two
+    folders below the top, so a run from the project, a run with `--root` and the hooks' run name it alike; else its absolute path."""
+    top = _VCS[1] if vcs() == "git" else ROOT
+    inside = lambda folder: _norm(path).startswith(_norm(folder).rstrip(os.sep) + os.sep)
+    if inside(ROOT) or inside(top):
+        return os.path.relpath(path, ROOT).replace(os.sep, "/")
+    return pathlib.Path(path).as_posix()
+
+
+def root_holds_tool(written):
+    """Whether the project root holds a tool at `written`, the path the hooks' recorded command names, read from the root: a regular file
+    inside the root. There the hooks' copy names the project by that command, its own tool, as a run from the root by that path does."""
+    if not written or os.path.isabs(written):
+        return False
+    path = os.path.normpath(os.path.join(ROOT, written))
+    return in_tree(path) and os.path.isfile(path)
+
+
 def in_tree(path):
     """Whether `path`, as written, lies inside the repository ROOT."""
     p, root = _norm(path), _norm(ROOT)
@@ -826,8 +846,10 @@ def configure(root=None):
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
     global _OWNER_POLICY, _OWNER_COMMITS
     _OWNER_POLICY, _OWNER_COMMITS = None, {}
-    global _FILED
-    _FILED = None
+    global _FILED, _LANDED
+    _FILED, _LANDED = None, None                        # …and the configuration the default branch holds for this project (`landed_config`)
+    global _CODE_MOVES
+    _CODE_MOVES = {}                                    # the moves to `Shipped` that rest on a commit of another code repository (`ship_problems`)
     _FILED_AT.clear()
     _FILED_STATES.clear()
     _FILED_MATERIAL.clear()
@@ -867,37 +889,25 @@ def configure(root=None):
     if not isinstance(CONFIG["judged_before_build"], bool):
         raise SystemExit(f"{CONFIG_NAME}: `judged_before_build` is true or false — a pass judges before the first build commit (FM-033); "
                          f"false (the default) turns it off. Got {CONFIG['judged_before_build']!r}")
+    from_top = records_from_top()                       # below the top, a records entry written from the top: refused, never read as naming nothing
+    if from_top:
+        raise SystemExit(from_top)
+    code_refused = code_config_problem()                # `[repositories]` and `[trackers]`, each as `--schema` says it
+    if code_refused:
+        raise SystemExit(code_refused)
+    config_checks(CONFIG)                               # the answerers, the seats, the rights, the headings and the kinds, as another project's are read
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
         ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
-        refuse_signed_name("`answerers`", name, mode)
     SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> [(identity, "signed" | ""), …], and seat name -> rights
-    seen = {}                                           # identity -> the seat that claimed it first
     for name, value in seats_of(CONFIG).items():
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
-        for who, mode in SEATS[name]:                   # a signed identity is an email (the release bar's signed identity)
-            refuse_signed_name("`owner`" if at_top(name) else f"`[seats] {name}`", who, mode)
-        for who, _mode in SEATS[name]:
-            if who and who in seen and at_top(seen[who]):   # the Owner named at the top is no seat and no line of `[seats]` (FM-024, D2)
-                raise SystemExit(f"{CONFIG_NAME}: " + (f"`owner` lists `{who}` twice" if seen[who] == name else f"`{who}` is the Owner's (`owner`, at the top) and the seat `{name}`'s (`[seats]`)")
-                                 + "; an identity is the Owner's or one seat's, listed once")
-            if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
-                raise SystemExit(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
-                                 + "; an identity is one seat's, listed once")
-            if who:
-                seen[who] = name
         SEAT_RIGHTS[name] = set(BUILTIN_RIGHTS.get(name, ()))
     for name, words in (CONFIG.get("rights") or {}).items():
-        if isinstance(words, str) or any(w not in RIGHTS for w in words):
-            bad = [words] if isinstance(words, str) else [w for w in words if w not in RIGHTS]
-            raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
-                             f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
-    if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
-        raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
     STATE_HEAD_RE = re.compile(_STATE_HEADS[:-3] + "|" + re.escape(HEAD["state"]) + r")\b", re.I)
     DONE_RE = re.compile(_DONE_WORDS + "|" + re.escape(HEAD["done"]), re.I)
     # the body section an exchange is moved into when its ask is cleared — the repository's own word, English always
@@ -907,8 +917,6 @@ def configure(root=None):
     # …and the one an act's record is kept under (FM-030): done, scheduled, rescheduled — newest last
     ACTS_HEAD_RE = re.compile(r"^#{2,3}\s+(acts|" + re.escape(HEAD["acts"]) + r")\s*$", re.I | re.M)
     KINDS = tuple(KIND_LABELS)
-    if not KINDS or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in KINDS):
-        raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
     CONSIDERED_FROM = {k: int(CONFIG["considered_from"].get(k, 1)) for k in KINDS}
     alt = "|".join(sorted(KINDS, key=len, reverse=True))
     _IDS = rf"(?:{alt})-\d+"
@@ -917,14 +925,73 @@ def configure(root=None):
     H1_ID_RE = re.compile(rf"^#\s+[*_~`]*((?:{alt})-\d+)\b")
     ROW_ID_RE = re.compile(rf"^\| \[((?:{alt})-\d+)\]")
     TRACKER_LINK_RE = re.compile(rf"\]\(((?:{alt})-\d+-[a-z0-9-]+\.md)\)")
-    try:
-        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().relative_to(ROOT).as_posix()
-    except ValueError:
-        CMD_OWN = PY + " " + pathlib.Path(__file__).resolve().as_posix()      # forward slashes: a hook is a `sh` script, and `\\` is its escape
+    CMD_OWN = PY + " " + tool_named(pathlib.Path(__file__).resolve())
     if HOOK_RUN:                                        # the hooks' copy names the command a person runs — the one `--install-hook` was run with — never its own place
         CMD_OWN = copy_record().get("cmd") or CMD_OWN
+        folder = copy_tool_folder()
+        if folder is not None and vcs() == "git" and CMD_OWN.startswith(PY + " ") and not root_holds_tool(CMD_OWN[len(PY) + 1:]):
+            CMD_OWN = PY + " " + tool_named(_VCS[1] / folder / pathlib.Path(__file__).name)    # …kept where this project's root holds the tool there, else named from it
     CMD = os.environ.get("SHOALMARK_CMD") or CMD_OWN    # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
+
+
+def config_checks(cfg):
+    """The refusals `configure` makes of a configuration's own words once its records list and its two tables pass — `answerers`, `[seats]`,
+    `[rights]`, `[headings]` and `kinds`, in that order — SystemExit with the line; `cfg` as `read_config` reads it, the defaults beneath.
+    `configure` makes them, and so does `config_accepted` of another project's configuration at a revision."""
+    top = lambda seat: seat == "owner" and cfg.get("owner") is not None        # `at_top`, of this configuration
+    for a in (cfg.get("answerers") or []):
+        name, _, mode = str(a).strip().rpartition(" ")
+        refuse_signed_name("`answerers`", name, mode)
+    seen = {}                                           # identity -> the seat that claimed it first
+    for name, value in seats_of(cfg).items():
+        identities = seat_identities(value)             # FM-024: a string is one identity, a list is several — old and new
+        for who, mode in identities:                    # a signed identity is an email (the release bar's signed identity)
+            refuse_signed_name("`owner`" if top(name) else f"`[seats] {name}`", who, mode)
+        for who, _mode in identities:
+            if who and who in seen and top(seen[who]):  # the Owner named at the top is no seat and no line of `[seats]` (FM-024, D2)
+                raise SystemExit(f"{CONFIG_NAME}: " + (f"`owner` lists `{who}` twice" if seen[who] == name else f"`{who}` is the Owner's (`owner`, at the top) and the seat `{name}`'s (`[seats]`)")
+                                 + "; an identity is the Owner's or one seat's, listed once")
+            if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
+                raise SystemExit(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
+                                 + "; an identity is one seat's, listed once")
+            if who:
+                seen[who] = name
+    for name, words in (cfg.get("rights") or {}).items():
+        if isinstance(words, str) or any(w not in RIGHTS for w in words):
+            bad = [words] if isinstance(words, str) else [w for w in words if w not in RIGHTS]
+            raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
+                             f'anything else a tracker can carry is open to every seat and needs none')
+    heads = {**DEFAULTS["headings"], **cfg["headings"]}
+    if set(heads) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in heads.values()):
+        raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
+    kinds = tuple(dict(cfg["kinds"]))
+    if not kinds or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in kinds):
+        raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
+
+
+def config_accepted(text, prefix=""):
+    """`text` read as a configuration — the dict `configure` binds `CONFIG` to — where this tool accepts it, for a project whose root's folder
+    below the top is `prefix`; else None. Every refusal `configure` makes of a configuration itself: `guard_config` and `read_config`, the
+    palette, the numbers and the build gate's key, the records list against the root's place, decision 12's two tables as `--schema` says them,
+    and `config_checks`. A configuration that holds `[trackers]` is never another project's: `[trackers] elsewhere` is refused where the
+    project holds a tracker folder, and another project holds one (`project_blobs`)."""
+    try:
+        guard_config(text)
+        cfg = {**DEFAULTS, **read_config(text)}
+        palette_of(cfg.get("palette"))
+        int(cfg["triage_days"]), dict(cfg["tags"])
+        if not isinstance(cfg["judged_before_build"], bool) or cfg.get("trackers") is not None:
+            return None
+        if isinstance(cfg.get("ratio"), dict) and records_problem(cfg["ratio"], prefix):
+            return None
+        if cfg.get("repositories") is not None and not repositories_fit(cfg["repositories"]):
+            return None
+        config_checks(cfg)
+        {k: int(cfg["considered_from"].get(k, 1)) for k in dict(cfg["kinds"])}
+        return cfg
+    except (SystemExit, ValueError, TypeError, AttributeError, KeyError):
+        return None
 
 
 # `tags:` — the KIND of work. A closed vocabulary on purpose: a synonym is how tags rot. It is `[tags]` in the
@@ -1492,10 +1559,32 @@ def read_out(r):
     return r.stdout.strip()
 
 
+def root_prefix():
+    """The project root's folder below the top of its git working tree, as `git rev-parse --show-prefix` spells it, with its trailing
+    `/` — "" at the top. Where the root holds the working tree's own `.git`, it is the top, and git is not asked. Read once per run."""
+    key = (str(ROOT), "root prefix")
+    if key not in _VIEWS:
+        _VIEWS[key] = "" if _VCS[1] == ROOT else (git_out("rev-parse", "--show-prefix") or "").strip()
+    return _VIEWS[key]
+
+
+def git_top():
+    """The top of the git working tree the project root is in, where git reads a relative path its configuration names: the root itself
+    where it holds the working tree's own `.git`, else as `git rev-parse --show-toplevel` names it. Read once per run."""
+    if _VCS[1] == ROOT:
+        return ROOT
+    key = (str(ROOT), "git top")
+    if key not in _VIEWS:
+        out = (git_out("rev-parse", "--show-toplevel") or "").strip()
+        _VIEWS[key] = pathlib.Path(out) if out else (_VCS[1] or ROOT)
+    return _VIEWS[key]
+
+
 def specs_unread(specs):
     """Of `<rev>:<path>` specs git answered nothing for, those whose objects this clone does not hold — `git ls-tree` names the path at `rev`, or cannot
     read a tree on the way to it — as against a path `rev` does not have. One `git ls-tree` a revision, which reads trees and no file; [] where
-    `unread_here` is not so: there, nothing answered is nothing there."""
+    `unread_here` is not so: there, nothing answered is nothing there. A path written `./<path>`, from the project root, is listed from the top
+    as `--full-tree` reads every path: the root's folder before it (`root_prefix`)."""
     if vcs() != "git":
         return []
     if not unread_here():
@@ -1506,9 +1595,10 @@ def specs_unread(specs):
         by_rev.setdefault(rev, []).append(path)
     out = []
     for rev, paths in by_rev.items():
-        r = vcs_process("git", "ls-tree", "-z", "--full-tree", rev, "--", *paths, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+        full = {p: root_prefix() + p[2:] if p.startswith("./") else p for p in paths}
+        r = vcs_process("git", "ls-tree", "-z", "--full-tree", rev, "--", *[full[p] for p in paths], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
         held = {row.partition("\t")[2] for row in r.stdout.split("\x00") if row} if r.returncode == 0 else None
-        out += [f"{rev}:{p}" for p in paths if held is None or p in held]
+        out += [f"{rev}:{p}" for p in paths if held is None or full[p] in held]
     return out
 
 
@@ -2153,7 +2243,8 @@ def id_walk_problems(trackers):
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers if t.get("file")}
     rels.update(staged_absent(rels))
     changes = changes_under_review()
-    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
+    # `./`: each path is written from the project root, which is git's working directory — as `--relative` listed it
+    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:./{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
                                          for rev in ([result] if result else []) + list(bases))))
     out = []
     for bases, files, _name, _email, commit, result, label in changes:
@@ -2162,19 +2253,19 @@ def id_walk_problems(trackers):
         where = label + " — " if label else ""
         for rel in touched:
             t = rels[rel]
-            now = (blobs.get(f"{result}:{rel}") if result is not None else staged.get(f":./{rel}") if COMMITTING
+            now = (blobs.get(f"{result}:./{rel}") if result is not None else staged.get(f":./{rel}") if COMMITTING
                    else (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"))
             if now is None:
                 continue
             moves = None
             for base in bases:
-                was = blobs.get(f"{base}:{rel}")
+                was = blobs.get(f"{base}:./{rel}")
                 made = set(id_moves(was or "", now, new_file=was is None))
                 moves = made if moves is None else moves & made
             for move in sorted(moves or ()):
-                if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:{rel}") or "" for b in bases]):
+                if move[0] == "gone" and move[2] == "renumbered" and move[1] in renumber_repairs(t, rel, [blobs.get(f"{b}:./{rel}") or "" for b in bases]):
                     continue                              # the record that holds the old number is the other ask's
-                said = id_refusal(t, where, move, numbers_before(t, now, move, [(b, blobs.get(f"{b}:{rel}") or "") for b in bases]))
+                said = id_refusal(t, where, move, numbers_before(t, now, move, [(b, blobs.get(f"{b}:./{rel}") or "") for b in bases]))
                 if said:
                     out.append(said)
     return out
@@ -2192,8 +2283,8 @@ def renumber_repairs(t, rel, befores):
     base = git("merge-base", "HEAD", trunk).stdout.strip() if held else ""
     if not base:
         return set()
-    blobs = cat_blobs([f"{rev}:{rel}" for rev in (base, trunk)])
-    copies = [(t["id"], was, blobs.get(f"{base}:{rel}") or "", blobs.get(f"{trunk}:{rel}") or "") for was in befores]
+    blobs = cat_blobs([f"{rev}:./{rel}" for rev in (base, trunk)])              # `./`: from the project root, git's working directory
+    copies = [(t["id"], was, blobs.get(f"{base}:./{rel}") or "", blobs.get(f"{trunk}:./{rel}") or "") for was in befores]
     return {aid for _tid, aid, _what, _nxt in proposed_id_findings(copies, trunk)}
 
 
@@ -2228,15 +2319,16 @@ def answer_change_problems(trackers):
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers if t.get("file")}
     ided = {rel for rel, t in rels.items() if t.get("ask_id") or t.get("asks_ids")}
     changes = [c for c in changes_under_review() if c[4] and c[1] & ided]
-    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_w, result, _l in changes for rel in sorted(files & ided) for rev in [result, *bases])))
+    # `./`: each path is written from the project root, which is git's working directory — as `--relative` listed it
+    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:./{rel}" for bases, files, *_w, result, _l in changes for rel in sorted(files & ided) for rev in [result, *bases])))
     out = []
     for bases, files, _name, _email, commit, result, label in changes:
         for rel in sorted(files & ided):
-            now = blobs.get(f"{result}:{rel}")
+            now = blobs.get(f"{result}:./{rel}")
             aid = (parse_frontmatter(now or "")[0].get("ask-id") or "").strip()
             if not aid:
                 continue
-            befores = [blobs.get(f"{b}:{rel}") or "" for b in bases]
+            befores = [blobs.get(f"{b}:./{rel}") or "" for b in bases]
             if not all("answer" in transitions(was, now, new_file=not was) for was in befores):
                 continue
             where = label + " — " if label else ""
@@ -2251,10 +2343,10 @@ def answer_change_problems(trackers):
     by_id = {t["id"]: rel for rel, t in rels.items()}
     named = [(c, label, v.strip()) for _b, files, _n, _e, c, result, label in changes_under_review() if c and result and files & ided
              for v in (trailer_values(_WALK_COMMITS[c][1], "Answers") if c in _WALK_COMMITS else trailers_of(c, "Answers")) if v.strip()]
-    held = cat_blobs(list(dict.fromkeys(f"{c}:{by_id[m.group(1)]}" for c, _l, v in named for m in [ASK_ID_ANY_RE.fullmatch(v)] if m and m.group(1) in by_id)))
+    held = cat_blobs(list(dict.fromkeys(f"{c}:./{by_id[m.group(1)]}" for c, _l, v in named for m in [ASK_ID_ANY_RE.fullmatch(v)] if m and m.group(1) in by_id)))
     for c, label, v in named:
         m = ASK_ID_ANY_RE.fullmatch(v)
-        text = held.get(f"{c}:{by_id[m.group(1)]}") if m and m.group(1) in by_id else None
+        text = held.get(f"{c}:./{by_id[m.group(1)]}") if m and m.group(1) in by_id else None
         if text is None or (parse_frontmatter(text)[0].get("ask-id") or "").strip() != v:
             out.append(f"{(label + ' — ') if label else ''}names `Answers: {v}`, and " + (f"{m.group(1)} does not carry {v} at that commit" if m and m.group(1) in by_id else f"no tracker carries {v}")
                        + " — an answer names the ask its tracker holds open")
@@ -2353,8 +2445,8 @@ def proposed_id_problems(trackers):
     if not base:
         return []
     rels = {t["id"]: (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix() for t in asking}
-    blobs = cat_blobs([f"{rev}:{rel}" for rel in rels.values() for rev in (base, trunk)])
-    copies = [(t["id"], (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"), blobs.get(f"{base}:{rels[t['id']]}") or "", blobs.get(f"{trunk}:{rels[t['id']]}") or "")
+    blobs = cat_blobs([f"{rev}:./{rel}" for rel in rels.values() for rev in (base, trunk)])     # `./`: from the project root, git's working directory
+    copies = [(t["id"], (TRACKER_DIR / t["file"]).read_text(encoding="utf-8"), blobs.get(f"{base}:./{rels[t['id']]}") or "", blobs.get(f"{trunk}:./{rels[t['id']]}") or "")
               for t in asking]
     return [f"{tid}: {aid} is taken on {ref_name(trunk)} — {what} — so a merge would make one number two asks: renumber this branch's ask as {nxt}, "
             f"its put ask unchanged; {ref_name(trunk)} keeps its number" for tid, aid, what, nxt in proposed_id_findings(copies, trunk)]
@@ -2368,13 +2460,14 @@ def proposed_id_reading(head, base):
     mb = (git_out("merge-base", head, base) or "").strip()
     if not mb:
         return None
-    names = [x for x in (git_out("-c", "core.quotePath=false", "diff", "--name-only", "-z", "--no-renames", mb, head, "--", rel) or "").split("\0")
+    # `--relative` and `./`: each path written from the project root, git's working directory, as the tracker folder is
+    names = [x for x in (git_out("-c", "core.quotePath=false", "diff", "--name-only", "-z", "--no-renames", "--relative", mb, head, "--", rel) or "").split("\0")
              if x and KIND_RE.match(pathlib.PurePosixPath(x).name) and pathlib.PurePosixPath(x).parent.as_posix() == rel]
     if not names:
         return None
-    blobs = cat_blobs([f"{rev}:{x}" for x in names for rev in (head, mb, base)])
+    blobs = cat_blobs([f"{rev}:./{x}" for x in names for rev in (head, mb, base)])
     tid = lambda x: "-".join(pathlib.PurePosixPath(x).name.split("-")[:2])
-    found = proposed_id_findings([(tid(x), blobs.get(f"{head}:{x}") or "", blobs.get(f"{mb}:{x}") or "", blobs.get(f"{base}:{x}") or "") for x in names], base)
+    found = proposed_id_findings([(tid(x), blobs.get(f"{head}:./{x}") or "", blobs.get(f"{mb}:./{x}") or "", blobs.get(f"{base}:./{x}") or "") for x in names], base)
     return (f"wait: {found[0][1]} is taken on {ref_name(base)} — renumber", "") if found else None
 
 
@@ -2433,7 +2526,7 @@ def answer_commits(trackers):
             if value in found and len(parents.split()) == 1:
                 found[value].append((sha, parents.strip(), name, email))
     rels = {aid: (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix() for aid, t in asked.items()}
-    blobs = cat_blobs([f"{rev}:{rels[aid]}" for aid, cands in found.items() for sha, parent, _n, _e in cands for rev in (sha, parent)])
+    blobs = cat_blobs([f"{rev}:./{rels[aid]}" for aid, cands in found.items() for sha, parent, _n, _e in cands for rev in (sha, parent)])     # `./`: from the project root
     for aid, t in asked.items():
         rel, keep = rels[aid], []
         for sha, parent, name, email in found[aid]:
@@ -2442,7 +2535,7 @@ def answer_commits(trackers):
             identity, mode = next(((who, m) for who, m in may.items() if who and who in (email, name)), (None, None))
             if identity is None or (mode == "signed" and not verified_as(sha, identity, at)):
                 continue
-            at, before = blobs.get(f"{sha}:{rel}"), blobs.get(f"{parent}:{rel}")
+            at, before = blobs.get(f"{sha}:./{rel}"), blobs.get(f"{parent}:./{rel}")
             if at is None or front_line(at, "answer") == front_line(before, "answer"):
                 continue
             a_fm, b_fm = parse_frontmatter(at)[0], parse_frontmatter(before or "")[0]
@@ -3160,8 +3253,8 @@ def review_addendum():
     """(path, own) → whether a commit may touch `path` and still be a review addendum, as `--queue` reads one (FM-031,
     0.18.4): the review folder — `[paths] reviews`, `evidence/reviews/` by default, a glob allowed —, the registry
     `<tracker dir>/sessions.md`, and where `own`, a `review*.md` anywhere under `<tracker dir>/evidence/` — the verdict
-    commit's own file"""
-    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    commit's own file — each path as `git log` names it, from the top: the tracker folder is written from there too (`root_prefix`)"""
+    rel = root_prefix() + TRACKER_DIR.relative_to(ROOT).as_posix()
     folder = str({**DEFAULTS["paths"], **(CONFIG.get("paths") or {})}["reviews"]).strip().strip("/") + "/*"
     own_review = re.compile(r"^" + re.escape(rel) + r"/evidence/(?:.+/)?review[^/]*\.md$")     # the verdict's own file, anywhere
     return lambda x, own: ((x.startswith(rel + "/") and fnmatch.fnmatchcase(x[len(rel) + 1:], folder)) or x == f"{rel}/sessions.md"
@@ -3192,7 +3285,7 @@ def owner_reading(head, base, own):
     Owner's own answers reports and never blocks. None for any other pull request, and where `base` is not here."""
     if not own:
         return None
-    rel = TRACKER_DIR.relative_to(ROOT).as_posix()
+    rel = root_prefix() + TRACKER_DIR.relative_to(ROOT).as_posix()       # `git diff` names every path from the top, beside the project too
     paths = git_out("-c", "core.quotePath=false", "diff", "--name-only", "-z", "--no-renames", "--ignore-submodules=none", f"{base}...{head}")
     if paths is None:
         return None
@@ -5533,7 +5626,8 @@ def tree_changes():
     tree = compared("ls-files", "-z", "-t", "--modified", "--others", "--exclude-standard", "--directory", "--no-empty-directory")
     if staged.returncode or tree is None or tree[0].returncode:
         return None
-    held = {p for p in staged.stdout.split("\0") if p}
+    prefix = root_prefix()                              # `diff --cached` names every path from the top; `ls-files`, those under the project root, from it
+    held = {p[len(prefix):] for p in staged.stdout.split("\0") if p and p.startswith(prefix)}
     listed = [e for e in tree[0].stdout.split("\0") if len(e) > 2]       # with `-t` git writes each entry as its tag, a space and its path; `?` is untracked
     stored = driver_paths(sorted({e[2:] for e in listed if e[0] != "?"} - held), tree[1])
     if stored is None or stored:
@@ -6435,19 +6529,35 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                        "is read per identity. A string is one identity, as ever. An identity under two seats is refused at configuration, naming both (exit 1, as every configuration refusal). "
                        "`principal` and `implementer`, the former names of `planner` and `builder`, still read and hold the same. "
                        "The tool knows the Owner, and three seats with their rights built in — `planner` ask · close · triage, `reviewer` triage, `builder` none"),
-    "[ratio] records": ("a list of repository-relative prefixes; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default, with or without `[ratio]`",
+    "[ratio] records": ("a list of prefixes written from the project root; the tracker directory, `tracker_dir` — `docs/work-tracker/` by default, with or without `[ratio]`",
                         "the records, as a move to `Shipped` reads them (FM-005, FM-032): a commit its ship log names is a commit behind the change only "
-                        "where it changes a path outside them — a prefix with a trailing slash is a directory, a plain path is that one file. The ratio "
+                        "where it changes a path of the project outside them — a prefix with a trailing slash is a directory, a plain path is that one file. "
+                        "Where the project root is below the top of its repository, an entry that starts with the root's own folder is refused at "
+                        "configuration, naming it as it should read (exit 1). The ratio "
                         "`--ratio` counted from them is gone (R13); a key of `[ratio]` other than these two is named by `--check` and not read"),
-    "[ratio] exclude": ("a list of repository-relative prefixes; `[]` (the default)",
+    "[ratio] exclude": ("a list of prefixes written from the project root; `[]` (the default)",
                         "kept as written (R26), and checked as `records` is; nothing counts with it since R13 removed `--ratio`, which left these "
                         "prefixes out of both sides — a move to `Shipped` reads `records` alone, as it always has, and `--check` says so where it is set"),
+    "[repositories] <repository>": ("`\"<where it is>\"` — its URL or its path, a non-empty string; `<repository>` is a bare key: letters, digits, `-` and `_`",
+                                    "a code repository this project's trackers ship from: a move to `Shipped` may name `<repository>@<commit>` in a ship-log row "
+                                    "— seven hex characters or more — and the gate takes that commit as the one behind the move without reading the other "
+                                    "repository; `--check` says in one line how many moves rest on such rows. A `<repository>@<commit>` whose repository "
+                                    "the table does not name counts as no commit, and its hash is never read as a commit of this repository. A repository counts as the default branch's configuration names it, read as the Owner is: one a branch adds counts once it lands. A value that is "
+                                    "no string, or is empty, is refused at configuration (exit 1)"),
     "judged_before_build": ("`true` or `false` (the default)",
                             "a pass judges before the first build commit (FM-033): a commit that changes a path outside the tracker directory names a tracker — "
                             "the ids in its subject, else its branch `<kind>/<NNN>-…` — that at the commit's parent carries `triaged:`, is not Parked and is "
                             "`In Progress`; else it is refused, and so is one that names none. The commit-msg hook (`--commit-msg`) judges the commit being made, with its subject, before it is made; "
                             "`--check` judges each commit of the branch since `origin`'s default branch, a merge by the commits it carries; on the default "
                             "branch nothing is judged. Owner authors pass the pending hook; verified Owner commits pass the branch's judgement. `--check` says whether it is on"),
+    "[trackers] elsewhere": ("`\"<where>\"` — the repository, and the folder in it, that holds this code repository's trackers; a non-empty string, the "
+                             "table's one key",
+                             "a code repository whose trackers live in another: `--check` says so in one line and passes, reading no tracker; `--init`, "
+                             "`--new` and the board — `--html-only`, and the run that writes INDEX.md and the board — refuse in one line each (exit 4); "
+                             "`judged_before_build` is off, whatever it says. In force as the default branch's configuration holds it, read as the Owner "
+                             "is: a branch that adds it is judged by every rule, and where that branch cannot be read it is not in force. Another key in "
+                             "`[trackers]`, or an empty value, is refused at configuration (exit 1), and so is the table where the project, or its default "
+                             "branch, holds a tracker folder"),
 }
 
 
@@ -6809,8 +6919,8 @@ def line_author(path, needle):
         tips = ["HEAD", *merge_heads()]
         n = guarded_line(raw, key)
         line = raw.split("\n")[n - 1].rstrip("\r") if n is not None else None
-        if ("tips", rel) not in _LINE_AUTHOR:           # each tip's copy of the file, read once for all its keys
-            shown = cat_blobs([f"{rev}:{rel}" for rev in tips], raw=True)
+        if ("tips", rel) not in _LINE_AUTHOR:           # each tip's copy of the file, read once for all its keys — `./`: from the project root
+            shown = cat_blobs([f"{rev}:./{rel}" for rev in tips], raw=True)
             _LINE_AUTHOR[("tips", rel)] = [l.rstrip("\r") for text in shown.values() if text is not None for l in text.split("\n")]
             _LINE_AUTHOR[("unread", rel)] = bool(specs_unread([spec for spec, text in shown.items() if text is None]))     # a tip's copy the partial clone lacks
         if _LINE_AUTHOR[("unread", rel)]:
@@ -6899,7 +7009,8 @@ def owner_signature_problems():
     """R14: signed Owner identities in the branch's own committed history verify as an Owner principal. Where the default branch's
     history cannot be read whole (`owner_policy` names nobody and says so, `FILED_CLOSED`), the identities are the ones its tip names
     (`owners_at`), and nothing verifies: every commit under one of them is refused, signed or not, with the way through — fetch that
-    history whole."""
+    history whole. A commit whose every path lies in another project below this one is not refused here (`other_project_changes`):
+    that project's own check judges it."""
     if vcs() != "git":
         return []
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -6928,7 +7039,7 @@ def owner_signature_problems():
         if not owner_author(name, email, signed) or (not closed and verified_owner(commit)):
             continue
         if closed:
-            problems.append(f"refused: Owner commit {commit[:10]} ({identity_label(email)}) cannot be verified — {ref_name(trunk)}: {FILED_CLOSED}")
+            problems.append((commit, f"refused: Owner commit {commit[:10]} ({identity_label(email)}) cannot be verified — {ref_name(trunk)}: {FILED_CLOSED}"))
             continue
         if email.endswith("@users.noreply.github.com"):
             why = ("was made on GitHub and carries no verified signature of the Owner's — redo it in the Owner's checkout, "
@@ -6936,8 +7047,11 @@ def owner_signature_problems():
         else:
             why = ("carries no verified signature of the Owner's — "
                    + unverified(commit, "redo it in the Owner's checkout, signed with their SSH key"))
-        problems.append(f"refused: Owner commit {commit[:10]} ({identity_label(email)}) {why}")
-    return problems
+        problems.append((commit, f"refused: Owner commit {commit[:10]} ({identity_label(email)}) {why}"))
+    # another project's commit is its own check's (`other_project_changes`): the paths of each commit refused here, read from the project root
+    listed = commit_list("--no-walk=unsorted", *dict.fromkeys(c for c, _l in problems)) if problems else []
+    theirs = {listed[n][0] for n in other_project_changes([(c, files) for c, _p, files, _s in listed])}
+    return [line for c, line in problems if c not in theirs]
 
 
 # A SIGNED IDENTITY (FM-024; the Owner's ruling filed in FM-006, *The release bar*, on a private security report): a `signed` identity is an email address —
@@ -6980,7 +7094,8 @@ _SIGNERS = None
 def trusted_signers():
     """{"file": the signers file SSH signatures are verified against, or None; "why": why there is none; "rel": its path in
     the repository, or None; "trunk": the default branch} — FM-037's AU-19, the Auditor seat's: never a file the branch
-    being judged can have written. `gpg.ssh.allowedSignersFile` names the file. Where it sits in a checkout of this
+    being judged can have written. `gpg.ssh.allowedSignersFile` names the file — a relative path from the top of the working tree,
+    as git reads it wherever it runs (`git_top`): the checks below read that one path. Where it sits in a checkout of this
     repository — the signing page keeps it in the tracker directory — what verifies is the DEFAULT branch's copy, written
     to a temporary file for this run: a branch that appends its own key under the Owner's email and signs with it vouches
     for nothing. Where the default branch does not carry it, NOTHING verifies against it until its first version lands
@@ -6998,7 +7113,7 @@ def trusted_signers():
     if not conf:
         _SIGNERS = {"file": None, "why": "`gpg.ssh.allowedSignersFile` is not set", "rel": None, "trunk": None}
         return _SIGNERS
-    written = pathlib.Path(conf) if os.path.isabs(conf) else ROOT / conf
+    written = pathlib.Path(conf) if os.path.isabs(conf) else git_top() / conf      # a relative path is git's: read from the top, wherever git runs
     trees = {top: fs_chain(top)[:1] for top in (os.path.normcase(t) for t in worktree_tops())}
     link = symlink_in_checkout(written, trees)
     if link:
@@ -7255,7 +7370,7 @@ def staged_now():
     a pre-commit hook, and a file this commit does not touch was checked by the run that committed it."""
     global _STAGED
     if _STAGED is None:
-        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
+        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=index_env())
         _STAGED = set(out.stdout.split("\x00")) if out.returncode == 0 else set()         # NUL-separated: git quotes a name with a non-ASCII byte, a `"` or a control character (RV-2151)
     return _STAGED
 
@@ -7526,13 +7641,96 @@ def merge_heads():
 _CHANGES = None
 
 
+def other_project_changes(items):
+    """Of `items` — each (the commit that holds a change's result, "" for the commit being made; the paths it changes, written from the
+    project root) — the places of those whose every path lies in another project below this one: a folder below the root whose
+    `shoalmark.toml` is at the commit's parent — its first, `<commit>^` — or, for the commit being made, at HEAD. That project's own check
+    judges such a change, and this one skips it. A change with a path of this project's own, or with no path inside the project at all,
+    is not one. The project is decided at the parent: the commit that adds a folder's `shoalmark.toml` is not yet that project's, so this
+    project judges it, by its own Owner and signers, and the project it creates judges it too, by its own state. A root commit has no
+    parent, and no folder is another project for it. Git is asked only of a folder that holds a `shoalmark.toml` in the working tree, and
+    there only a configuration this tool accepts, with its tracker folder beside it, makes another project (`project_blobs`): a one-line
+    file, a folder or a symlink of that name, or a configuration it refuses, is judged here, its folder this project's — and so is a project
+    the default branch does not hold yet: a branch that creates one is this project's on every commit until its configuration lands."""
+    if vcs() != "git":
+        return set()
+    homes = {}                                          # each path: the folders on its way, below the root, with a configuration on disk
+    for _rev, rels in items:
+        for rel in rels:
+            if rel not in homes:
+                # the limit: a folder is another project only where its `shoalmark.toml` is on disk now — one the working tree lacks, not
+                # checked out or removed since, is not seen, and its commits are judged here as this project's: more is judged, never less
+                homes[rel] = [f.as_posix() for f in pathlib.PurePosixPath(rel).parents if f.parts and os.path.lexists(ROOT / f / CONFIG_NAME)]
+    asked = {(rev, home) for rev, rels in items for rel in rels for home in homes[rel]}
+    if not asked:
+        return set()
+    parent = lambda rev: f"{rev}^" if rev else "HEAD"              # the project is decided at the parent: the commit being made's is HEAD
+    spec = lambda rev, home: f"{parent(rev)}:./{home}/{CONFIG_NAME}"   # `./`: from the project root, git's working directory
+    held = project_blobs(sorted({spec(r, h) for r, h in asked}))
+    return {n for n, (rev, rels) in enumerate(items)
+            if rels and all(any(held.get(spec(rev, home)) is not None for home in homes[rel]) for rel in rels)}
+
+
+def project_blobs(specs, env=None):
+    """`cat_blobs(specs)` for specs that each name a folder's `shoalmark.toml` at a revision — `<rev>:./<folder>/shoalmark.toml` from the
+    project root, or `<rev>:<folder>/shoalmark.toml` from the top — where that folder is another project there: the text of each that is a
+    regular file this tool accepts as a configuration (`config_accepted`), with its tracker folder, a folder, at the same revision, and that
+    the default branch holds too, a regular file this tool accepts (`landed_projects`); none for any other. A branch that creates a project
+    is the enclosing project's on every commit until its configuration lands. One `cat_blobs`, and one `git ls-tree` for each revision."""
+    types, prefix = {}, root_prefix()
+    got = cat_blobs(specs, env, types=types, raw=True)
+    places, found = {}, {}
+    for spec in specs:
+        rev, _, path = spec.partition(":")
+        path = prefix + path[2:] if path.startswith("./") else path
+        cfg = config_accepted(got[spec], path[:-len(CONFIG_NAME)]) if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None
+        if cfg is not None:
+            places[spec] = (rev, path, f"{path[:-len(CONFIG_NAME)]}{tracker_folder(cfg).as_posix()}")
+    landed = landed_projects(sorted({place[1] for place in places.values()}))
+    for rev in dict.fromkeys(place[0] for place in places.values()):
+        paths = [p for place in places.values() if place[0] == rev for p in place[1:]]
+        modes = tree_modes(rev, paths, env)
+        for spec, (_rev, path, folder) in places.items():
+            if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000" and path in landed:
+                found[spec] = got[spec]
+    return found
+
+
+def landed_projects(paths):
+    """Of `paths` — each a folder's `shoalmark.toml`, from the top — those the default branch holds as a regular file this tool accepts as a
+    configuration: none where there is no default branch here, or it cannot be read. One `cat_blobs` and one `git ls-tree`, or none."""
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git) if paths else None
+    if not trunk:
+        return set()
+    types = {}
+    got = cat_blobs([f"{trunk}:{path}" for path in paths], types=types, raw=True)
+    modes = tree_modes(trunk, paths)
+    return {path for path in paths if got.get(f"{trunk}:{path}") is not None and types.get(f"{trunk}:{path}", "blob") == "blob"
+            and modes.get(path) in ("100644", "100755") and config_accepted(got[f"{trunk}:{path}"], path[:-len(CONFIG_NAME)]) is not None}
+
+
+def tree_modes(rev, paths, env=None):
+    """{path: the mode git records for it at `rev`} for `paths` from the top — "" where nothing is there, "?" where git cannot say: one
+    `git ls-tree` where `rev` is a revision, `path_mode`'s reading of each where it is the index ("")."""
+    if not rev:
+        return {path: path_mode(rev, path, env) for path in paths}
+    r = vcs_process("git", "ls-tree", "-z", "--full-tree", rev, "--", *dict.fromkeys(paths), cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", env=env or nested_git_env())
+    rows = {name: head.split(" ", 1)[0] for head, _tab, name in (row.partition("\t") for row in r.stdout.split("\x00") if row)}
+    return {path: "?" if r.returncode != 0 else rows.get(path, "") for path in paths}
+
+
 def changes_under_review():
     """`read_changes`, read ONCE per run: the rights, the sessions and the Shipped rule judge the same changes, and each reading is
     several version-control calls — 0.07 s in the pre-commit run and 0.13 s on a clean tree, in the repository this tool was cut from.
-    The answer depends on `COMMITTING`, so a run that asks both ways reads twice. No reader changes what it is given."""
+    The answer depends on `COMMITTING`, so a run that asks both ways reads twice. No reader changes what it is given. A change of
+    another project below this one is not among them (`other_project_changes`): that project's own check judges it."""
     global _CHANGES
     if _CHANGES is None or _CHANGES[0] != COMMITTING:
-        _CHANGES = (COMMITTING, read_changes())
+        changes = read_changes()
+        theirs = other_project_changes([(c[5] or "", c[1]) for c in changes])     # the commit of its result, or "" for the commit being made: each decided at its parent
+        _CHANGES = (COMMITTING, [c for n, c in enumerate(changes) if n not in theirs])
     return _CHANGES[1]
 
 
@@ -7569,7 +7767,7 @@ def read_changes():
         if not tips:
             return []
         out = []
-        log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", "--ignore-submodules=none", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
+        log = git("log", "-z", "-c", "--reverse", "--topo-order", "--relative", "--name-only", "--no-renames", "--ignore-submodules=none", f"--format=%x01%H%x02%an%x02%ae%x02%P%x02{TRAILERS}",
                   *tips, "--not", first, *exclude)      # parents and trailers too: the rules read them from here, one call however long the walk (v0.19.1)
         if log.returncode != 0:                         # a walk git cannot make judges nothing — refused, never passed unread (v0.19.1)
             global _WALK_FAILED
@@ -7594,7 +7792,7 @@ def read_changes():
         if not COMMITTING:
             _WALK = "uncommitted"                       # `--check` says it judged the edits against HEAD, not the branch's commits
         for n, h in enumerate(heads):
-            files &= names(git("diff", "-z", "--cached", "--name-only", "--relative", "--ignore-submodules=none", h)) if COMMITTING else against[n]
+            files &= names(git("diff", "-z", "--cached", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", h)) if COMMITTING else against[n]
         trunk = default_trunk(git) if heads else None
         return brought(heads, "HEAD", exclude=[trunk] if trunk else []) + [(["HEAD", *heads], files, *pending_author(), "", None, "")]
     parents = git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()[1:]
@@ -7603,7 +7801,7 @@ def read_changes():
     trunk = default_trunk(git)                          # every commit of the branch since the default branch, read as a merge's are (v0.19.1)
     files = None
     for parent in parents:
-        got = names(git("diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", parent, "HEAD"))
+        got = names(git("diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", parent, "HEAD"))
         files = got if files is None else files & got
     name, email, commit = (git("log", "-1", "--format=%an%n%ae%n%H").stdout.split("\n") + ["", "", ""])[:3]
     merged = brought(parents[1:], parents[0], exclude=[trunk] if trunk else []) if len(parents) > 1 else []
@@ -7638,7 +7836,7 @@ def worktree_edits(rev="HEAD"):
     that repository, under its own configuration."""
     global _TREE_UNREAD
     if rev not in _EDITS:
-        got, edits = compared("diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", rev), None
+        got, edits = compared("diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=dirty", rev), None
         if got is not None and got[0].returncode == 0:
             paths = {p for p in got[0].stdout.split("\0") if p}
             edits = paths if driver_paths(sorted(paths), got[1]) == set() else None
@@ -7727,9 +7925,10 @@ def rights_problems(trackers):
     rels = {(TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix(): t for t in trackers}
     rels.update(staged_absent(rels))                    # the commit being made: a tracker it carries that the working tree lacks is judged too
     changes = changes_under_review()
-    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
+    # `./`: each path is written from the project root, which is git's working directory — as `--relative` listed it
+    blobs = cat_blobs(list(dict.fromkeys(f"{rev}:./{rel}" for bases, files, *_who, result, _l in changes for rel in sorted(files & set(rels))
                                          for rev in ([result] if result else []) + list(bases))))     # one call for every change (v0.19.1)
-    show = lambda rev, rel: blobs.get(f"{rev}:{rel}")
+    show = lambda rev, rel: blobs.get(f"{rev}:./{rel}")
     for bases, files, name, email, commit, result, label in changes:
         seat, where = seat_of(name, email), (label + " — " if label else "")
         on_line = set() if commit and len(bases) > 1 else {"ask"}        # a made merge's own `next: owner` is judged on its change, under its author
@@ -7764,7 +7963,8 @@ def rights_problems(trackers):
 # change leaves it, names a commit that is (a) in the change's history (an ancestor of the commit being judged: a commit being made
 # cannot name itself) and (b) changes at least one path outside the records. It judges exactly the changes the gate already
 # judges (`changes_under_review`), so a `Shipped` tracker no change moves is never read. It holds for every author, the Owner
-# included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged.
+# included, and without `[seats]`: it reads no seat and no right. A move to `Closed` is not judged. A row may instead name a commit of a code
+# repository the configuration names, `<repository>@<commit>` (`[repositories]`): the commit behind the move, taken without reading that repository.
 # THE FROZEN RULE, its one exception: a tracker that an import commit adds already `Shipped` is frozen. The rule finds no move for it,
 # at that commit or after it, so neither its ship log nor its done items are judged again. An import commit carries the trailer
 # `Tracker-import: <repository> <commit>` — where its trackers come from — and counts only where it verifies as the Owner's own signed
@@ -7777,6 +7977,7 @@ def rights_problems(trackers):
 # other run judges as above. Git alone: a Subversion revision carries no signature.
 GIT_NAME_RE = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,64}(?![0-9A-Za-z])")     # a commit as a ship-log row names it: seven hex characters or more, up to a SHA-256 hash's 64
 SVN_NAME_RE = re.compile(r"(?<![0-9A-Za-z])r[0-9]+(?![0-9A-Za-z])")             # …and on Subversion a revision, `r123`
+CODE_ROW_RE = re.compile(r"(?<![0-9A-Za-z_./-])([0-9A-Za-z_./-]+)@([0-9a-f]{7,64})(?![0-9A-Za-z])")     # …and a commit of another code repository, `<repository>@<commit>`
 
 
 def is_shipped(text):
@@ -7797,20 +7998,146 @@ def commits_named(rows):
     return list(dict.fromkeys((SVN_NAME_RE if vcs() == "svn" else GIT_NAME_RE).findall(rows)))
 
 
+def code_row_verdicts(rows):
+    """{each `<repository>@<commit>` a ship log's rows name, once: "" where `[repositories]` names that repository — the commit behind the move,
+    taken without reading the other repository — else why it counts as no commit}. Its hash is never read as a commit of this repository: the
+    rows' other commits are read with every such name taken out (`ship_problems`). The repositories are those the default branch names
+    (`landed_repositories`): one a branch adds counts once it lands."""
+    named = landed_repositories()
+    return {f"{name}@{commit}": "" if name in named else "names a code repository the default branch's `[repositories]` does not name, so it counts as no commit"
+            for name, commit in CODE_ROW_RE.findall(rows)}
+
+
+def repositories_fit(named):
+    """Whether `[repositories]` is as `--schema` says it: each code repository named by a non-empty string."""
+    return isinstance(named, dict) and all(isinstance(v, str) and v.strip() for v in named.values())
+
+
+def code_config_problem():
+    """The one line that refuses `[repositories]` or `[trackers]` where it is not as `--schema` says it, else None."""
+    named = CONFIG.get("repositories")
+    if named is not None and not repositories_fit(named):
+        return (f"{CONFIG_NAME}: `[repositories]` names each code repository a ship-log row may name as `<repository>@<commit>` — "
+                f"`<repository> = \"<where it is>\"`, its URL or its path, a non-empty string. Got {named!r}")
+    section = CONFIG.get("trackers")
+    if section is not None and not elsewhere_named(section):
+        return (f"{CONFIG_NAME}: `[trackers]` holds one key, `elsewhere = \"<where>\"` — where this code repository's trackers live, a non-empty "
+                f"string. Got {section!r}")
+    held = tracker_folder_held() if section is not None else ""
+    if held:
+        return (f"{CONFIG_NAME}: `[trackers] elsewhere` is for a code repository whose trackers live in another, and this project holds a tracker "
+                f"folder, {held} — its trackers live here: take the table out")
+    return None
+
+
+def elsewhere_named(section):
+    """`[trackers] elsewhere`'s value where `section` is the table `--schema` names — one key, a non-empty string — else ""."""
+    ok = isinstance(section, dict) and set(section) == {"elsewhere"} and isinstance(section["elsewhere"], str) and section["elsewhere"].strip()
+    return section["elsewhere"].strip() if ok else ""
+
+
+def trackers_elsewhere():
+    """Where this code repository's trackers live, as `[trackers] elsewhere` names it in the configuration the default branch holds
+    (`landed_config`) — "" where they live here: that configuration holds no such table, the default branch cannot be read, this project holds
+    a tracker folder (`tracker_folder_held`), or this checkout's configuration holds no `[trackers]`, and then the default branch is not read.
+    A branch that adds the table is judged by every rule, and so is one that takes it out."""
+    if CONFIG.get("trackers") is None:
+        return ""
+    named = elsewhere_named((landed_config() or {}).get("trackers"))
+    return "" if not named or tracker_folder_held() else named
+
+
+def config_at(rev):
+    """`rev`'s configuration of this project, read as `owners_at` reads it: a dict — {} where nothing is at its path — or None where it is
+    no regular file, or one this tool refuses."""
+    prefix = root_prefix()
+    spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
+    text = cat_blobs([spec], types=types, raw=True).get(spec)
+    mode = path_mode(rev, prefix + CONFIG_NAME)
+    if not mode:
+        return {}
+    if text is None or types.get(spec, "blob") != "blob" or mode not in ("100644", "100755"):
+        return None
+    try:
+        guard_config(text)
+        return read_config(text)
+    except SystemExit:
+        return None
+
+
+def landed_config():
+    """This project's configuration as the default branch holds it, read as the gate reads the Owner (`owners_now`): at the last state that
+    branch accepted, or at its tip where no state there names anyone yet — a dict, or None where it cannot be read: no git, no default branch
+    here, that history closed, or no regular file this tool accepts at the tip or at that state. Where the tip holds neither `[trackers]` nor
+    `[repositories]`, no state is read: neither is in force, whatever an earlier state held — more is judged, never less. Read once per run."""
+    global _LANDED
+    if _LANDED is None:
+        tip = None
+        if vcs() == "git":
+            git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+            trunk = default_trunk(git)
+            tip = config_at(trunk) if trunk else None
+        if tip and ("trackers" in tip or "repositories" in tip):
+            at, closed = filed_tip()
+            tip = None if closed else tip if at is None else config_at(at)
+        _LANDED = (tip,)
+    return _LANDED[0]
+
+
+def landed_repositories():
+    """{repository: where it is} for each code repository `[repositories]` names in this checkout's configuration and in the one the default
+    branch holds (`landed_config`), as the default branch writes it — {} where either names none, or the default branch cannot be read; where
+    this checkout's names none, the default branch is not read. A branch that adds a repository counts it once that lands."""
+    mine = CONFIG.get("repositories")
+    theirs = (landed_config() or {}).get("repositories") if mine else None
+    return {name: where for name, where in theirs.items() if name in mine} if mine and repositories_fit(theirs) else {}
+
+
+def tracker_folder_held():
+    """Where this project holds a tracker folder — anything at the path its configuration names, `tracker_dir`: on disk, or at the default
+    branch's tip, in the folder this checkout's configuration names or the one the default branch's names — that folder, as the one line
+    that refuses `[trackers] elsewhere` names it; else "". `configure` asks it: the default branch's tip is read as it stands, no state of it."""
+    if os.path.lexists(TRACKER_DIR):
+        return f"{TRACKER_DIR.relative_to(ROOT).as_posix()}/"
+    if vcs() != "git":
+        return ""
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    tip = config_at(trunk) if trunk else None
+    for folder in dict.fromkeys([tracker_folder(CONFIG).as_posix(), *([tracker_folder(tip).as_posix()] if tip else [])]) if trunk else ():
+        if path_mode(trunk, root_prefix() + folder) not in ("", "?"):
+            return f"{folder}/ on {ref_name(trunk)}"
+    return ""
+
+
+def code_rows_report():
+    """What `--check` says of `[repositories]`, in one line where it names a code repository: how many of the moves to `Shipped` it judged rest
+    on a row naming `<repository>@<commit>` for one of them, with no commit of this repository behind the move. A report, never a refusal."""
+    named = landed_repositories()
+    if not named:
+        return []
+    moves = list(_CODE_MOVES.values())
+    return [f"the Shipped rule: {len(moves)} move{'' if len(moves) == 1 else 's'} to `Shipped` rest{'s' if len(moves) == 1 else ''} on a ship-log row "
+            f"naming `<repository>@<commit>` for a code repository `[repositories]` names ({', '.join(sorted(named))}) — taken as the commit behind "
+            "the move, that repository unread" + (f": {', '.join(dict.fromkeys(moves))}" if moves else "")]
+
+
 def ship_records():
     """The prefixes that are the records for this rule — `[ratio] records` where that section is set, else the
-    tracker directory, written from the top of the repository (git). A ValueError with the line to print where `[ratio]` is malformed."""
+    tracker directory — each written from the project root, and returned from the top of the repository (git), as `git log` names
+    the paths they are held against. A ValueError with the line to print where `[ratio]` is malformed."""
     section = CONFIG.get("ratio")
-    if isinstance(section, dict):
-        return ratio_paths(section)[0]
+    records = ratio_paths(section)[0] if isinstance(section, dict) else ratio_defaults()["records"]
     prefix = (git_out("rev-parse", "--show-prefix") or "").strip() if vcs() == "git" else ""
-    return [prefix + p for p in ratio_defaults()["records"]]
+    return [prefix + p for p in records]
 
 
 def git_ship_verdicts(names, bases, records):
     """{name: "" when that commit is a commit behind the change, else why it is not} — in the change's history (reachable from its
     parents, `bases`) and changing a path outside `records`: a merge read against its first parent, a root commit by all its paths.
-    At most three git calls for all the names — which of them are commits, which of those the parents reach, what those change."""
+    A path outside the project root is no path of this project's: below the top, a commit that changes nothing under the root but
+    records changes nothing outside the records (`root_prefix`). At most three git calls for all the names — which of them are
+    commits, which of those the parents reach, what those change."""
     git = lambda *a, **k: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env(), **k)
     found = git("cat-file", "--batch-check=%(objectname) %(objecttype)", input="".join(f"{n}\n{n}^{{commit}}\n" for n in names))     # each name twice: as written, where git says *ambiguous*, and peeled to its commit
     lines = found.stdout.split("\n") + [""] * (2 * len(names))
@@ -7826,16 +8153,16 @@ def git_ship_verdicts(names, bases, records):
         for record in log.stdout.split("\x01")[1:]:         # NUL-separated names: a `"` or a tab in a name is no quoted name here (RV-2151)
             sha, _, files = record.partition("\x00")
             changed[sha.strip()] = [f for f in files.lstrip("\n").split("\x00") if f]
-    out = {}
+    out, prefix = {}, root_prefix()                    # the paths git names from the top: this project's are those under its root
     for n in names:
         if n in ambiguous:
             out[n] = "names more than one commit — write more of its hash"
         elif n not in behind:
             out[n] = "is not in the history" + ("" if n in shas else " (no such commit)")
-        elif any(ratio_class(f, records, []) == "product" for f in changed.get(behind[n], [])):
+        elif any(f.startswith(prefix) and ratio_class(f, records, []) == "product" for f in changed.get(behind[n], [])):
             out[n] = ""
         else:
-            out[n] = f"changes nothing outside the records ({', '.join(records)})"
+            out[n] = f"changes nothing outside the records ({', '.join(records)})" + (f" under the project root, `{prefix}`" if prefix else "")
     return out
 
 
@@ -8286,8 +8613,10 @@ def import_freezes(commit, name, email, bases):
 
 
 def folder_names(rev, folder):
-    """The names of what sits directly in `folder` at `rev`, one `git ls-tree`: none where `rev` holds no such folder."""
-    return [n for n in (git_out("ls-tree", "-z", "--name-only", f"{rev}:./{folder}") or "").split("\x00") if n]
+    """The names of what sits directly in `folder` at `rev`, one `git ls-tree`: none where `rev` holds no such folder. The folder is listed
+    whole (`--full-tree`): git otherwise lists a tree only below the working directory's own place in it, which from a project below the
+    top of its repository is nothing."""
+    return [n for n in (git_out("ls-tree", "-z", "--name-only", "--full-tree", f"{rev}:./{folder}") or "").split("\x00") if n]
 
 
 def tracker_name(tid, names):
@@ -8369,7 +8698,9 @@ def shipped_moves(rels):
 
 def ship_problems(trackers):
     """THE SHIPPED RULE's refusals, one line for each tracker a change moves to Shipped without a commit behind it: which tracker,
-    what is missing — no commit named · not in the history · nothing changed outside the records — and the way through."""
+    what is missing — no commit named · not in the history · nothing changed outside the records · a code repository `[repositories]`
+    does not name — and the way through. A move whose rows name a commit of a code repository it names rests on that commit, unread, where
+    no commit of this repository is behind it, and `--check` counts it (`code_rows_report`)."""
     if vcs() not in ("git", "svn"):
         return []
     rels = {}
@@ -8401,7 +8732,8 @@ def ship_problems(trackers):
 
     try:
         for t, where, rows, judge, frozen_not in shipped_moves(rels):
-            names = commits_named(rows)
+            code = code_row_verdicts(rows)                  # another code repository's commit: taken where `[repositories]` names it, never read
+            names = commits_named(CODE_ROW_RE.sub(" ", rows))
             try:
                 records = records or ship_records()
             except ValueError as bad:
@@ -8410,14 +8742,22 @@ def ship_problems(trackers):
             try:
                 verdicts = judge(names, records) if names else {}
             except SvnUnreadable as e:
+                if "" in code.values():                     # the history could not be read, and the move rests on the other repository's commit
+                    _CODE_MOVES[t["id"] + where] = t["id"]
+                    continue
                 unread(e, t["id"])
                 continue
             if "" in verdicts.values():
                 continue
+            if "" in code.values():                         # no commit of this repository is behind it: the move rests on the other's
+                _CODE_MOVES[t["id"] + where] = t["id"]
+                continue
+            verdicts.update(code)
             found = "svn log -v -l 20" if vcs() == "svn" else "git log --oneline -- . " + " ".join(printed_arg(f":(exclude,top){p}") for p in records)
+            other = ", or `<repository>@<commit>` for a code repository `[repositories]` names" if landed_repositories() else ""
             out.append(f'{t["id"]}: {where}moved to `Shipped` with no {noun} behind it — '
-                       + (f"its ship log names no {noun}" if not names else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
-                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it), or, where nothing was built, mark it `Closed`, not `Shipped`'
+                       + (f"its ship log names no {noun}" if not verdicts else "; ".join(f"`{n}` {why}" for n, why in verdicts.items()))
+                       + f'. Name the {noun} that built it in a ship-log row (`{found}` finds it){other}, or, where nothing was built, mark it `Closed`, not `Shipped`'
                        + (f'. A tracker an import commit adds already `Shipped` is frozen where that commit is the Owner\'s own signed commit — {frozen_not}' if frozen_not else ''))
     except SvnUnreadable as e:
         unread(e, e.tracker, e.newest, getattr(e, "checked", False))
@@ -8427,14 +8767,16 @@ def ship_problems(trackers):
 def tracker_imports():
     """The frozen rule as HEAD's history holds it: ([(an import commit that verifies, its trailer's value, {tracker id: path} of what it
     froze)], [(a commit that carries the trailer and freezes nothing, its value, why)]), newest first — or None where git cannot read that
-    history. One `git log` finds every commit that carries the trailer; for an import that verifies, what it adds already Shipped is read
-    against each of its parents as `shipped_moves` reads it: a file directly in the tracker folder, absent at every parent by its path and
-    by its id (`tracker_name`). A tracker the import renames is present by its id, so the rule judges it and it is not counted. A commit
-    with no parent here freezes nothing."""
-    log = git_out("log", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}", "HEAD")
+    history. One `git log` finds every commit that carries the trailer and changes this project's tracker folder, every side of a merge
+    walked (`--full-history`), so an import that a merge did not keep is read too: an import commit that changes nothing in that folder,
+    such as another project's import into its own, is neither named nor read here, whether it verifies or not. For an import that verifies,
+    what it adds already Shipped is read against each of its parents as `shipped_moves` reads it: a file directly in the tracker folder,
+    absent at every parent by its path and by its id (`tracker_name`). A tracker the import renames is present by its id, so the rule judges
+    it and it is not counted. A commit with no parent here freezes nothing."""
+    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
+    log = git_out("log", "-i", f"--grep=^{IMPORT_TRAILER}:", f"--format=%x00%H%x01%P%x01%an%x01%ae%x01{TRAILERS}", "HEAD", "--full-history", "--", home)
     if log is None:
         return None
-    home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
     held, other = [], []
     for rec in log.split("\x00")[1:]:
         sha, parents, name, email, block = (rec.strip("\n").split("\x01") + [""] * 5)[:5]
@@ -8497,8 +8839,8 @@ def frozen_left(sha, froze, held):
 
 
 def frozen_line(trackers):
-    """`--check`'s one line on the frozen rule: how many trackers are frozen, and each import commit's short hash with its trailer; or that
-    none is, naming the newest commit that carries the trailer and freezes nothing, and why. A tracker is frozen while the rule finds no
+    """`--check`'s one line on the frozen rule: how many trackers are frozen, and the short hash and trailer of each import commit that
+    changes the tracker folder (`tracker_imports`); or that none is, naming the newest such commit that freezes nothing, and why. A tracker is frozen while the rule finds no
     move for it: an import commit that verifies added it already Shipped, no later commit moves it to Shipped as the rule judges a move
     (`frozen_left`), and it is Shipped at HEAD, its tracker file directly in the tracker folder found by its id, and in the working state.
     So the count leaves out a tracker that a later commit moves to Shipped, a commit where it is Shipped and at none of whose parents it is,
@@ -8510,7 +8852,8 @@ def frozen_line(trackers):
         return f"frozen trackers: none — HEAD's history cannot be read, so no `{IMPORT_TRAILER}:` commit freezes anything"
     held, other = found
     if not held:
-        return (f"frozen trackers: none — no commit of HEAD's history carries `{IMPORT_TRAILER}:` and verifies as the Owner's own signed commit"
+        return (f"frozen trackers: none — no commit of HEAD's history that changes the tracker folder carries `{IMPORT_TRAILER}:` and verifies as the "
+                "Owner's own signed commit"
                 + (f"; {other[0][0][:7]} carries `{IMPORT_TRAILER}: {other[0][1]}` and {other[0][2]}, so it freezes nothing" if other else ""))
     now = {t["id"] for t in trackers if t.get("status") == "Shipped"}
     frozen = set().union(*(frozen_left(sha, froze, held) for sha, _v, froze in held)) & now
@@ -8644,7 +8987,7 @@ def ratio_paths(section):
     for key, default in ratio_defaults().items():
         value = section.get(key, default)
         if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
-            raise ValueError(f"{CONFIG_NAME}: `[ratio] {key}` is a list of repository-relative prefixes, each a non-empty string — "
+            raise ValueError(f"{CONFIG_NAME}: `[ratio] {key}` is a list of prefixes written from the project root, each a non-empty string — "
                              f"`{key} = {json.dumps(default)}`. Got {value!r}")
         out.append([v.strip() for v in value])
     return out
@@ -8654,6 +8997,31 @@ def ratio_class(path, records, exclude):
     """"skip" for a path left out, "records", or "product" — a prefix with a trailing slash is a directory, a plain one is that file."""
     hit = lambda prefixes: any(path.startswith(p) if p.endswith("/") else path == p for p in prefixes)
     return "skip" if hit(exclude) else "records" if hit(records) else "product"
+
+
+def records_from_top():
+    """The one line that refuses the run where the project root is below the top of its git working tree and a `[ratio] records` entry
+    starts with the root's own folder: every entry is written from the root, so such an entry names a folder of that name inside the
+    root, and a move to `Shipped` would hold its commits against a path that holds nothing. None at the top, where that folder is empty,
+    and where `records` is no list of prefixes — `ratio_paths` says so, for the move that reads it. Told from the folders, with no git
+    started: the folder `select_vcs` found the working tree's `.git` in is its top."""
+    section = CONFIG.get("ratio")
+    if _VCS[0] != "git" or _VCS[1] is None or not isinstance(section, dict):
+        return None
+    return records_problem(section, "" if _VCS[1] == ROOT else ROOT.relative_to(_VCS[1]).as_posix() + "/")
+
+
+def records_problem(section, prefix):
+    """`records_from_top`'s line for `section`, a `[ratio]` table, in a project whose root's folder below the top is `prefix` — None at the top."""
+    records = section.get("records")
+    if not prefix or not isinstance(records, list) or not all(isinstance(v, str) and v.strip() for v in records):
+        return None
+    for entry in (v.strip() for v in records):
+        if entry.startswith(prefix):
+            rest = entry[len(prefix):]
+            return (f"{CONFIG_NAME}: `[ratio] records` is written from the project root, `{prefix}` — {json.dumps(entry)} starts with the root's own "
+                    + (f"folder: write it {json.dumps(rest)}" if rest else "folder and names nothing inside it: write the folders inside the root that hold the records"))
+    return None
 
 
 def session_cmd(words):
@@ -9332,8 +9700,9 @@ def named_trackers(subject, branch):
 
 def commit_list(*revs):
     """[(commit, its first parent, the paths it changes relative to ROOT, its subject)] of `git log --no-merges <revs>`,
-    newest first — one call for all of them."""
-    out = git_out("log", "--no-merges", "--relative", "--name-only", "--ignore-submodules=none", "--format=%x00%H%x00%P%x00%s", *revs) or ""
+    newest first — one call for all of them. A move names the path it leaves and the path it takes (`--no-renames`): each project a path lies
+    in judges the commit (`other_project_changes`)."""
+    out = git_out("log", "--no-merges", "--relative", "--name-only", "--no-renames", "--ignore-submodules=none", "--format=%x00%H%x00%P%x00%s", *revs) or ""
     records, got = out.split("\x00")[1:], []
     for i in range(0, len(records) - 2, 3):
         subject, _, files = records[i + 2].partition("\n")
@@ -9386,11 +9755,13 @@ def judge_commits(commits, branch):
     """FM-033's gate over made or pending commits — [(commit or "", the parent it is judged at, paths, subject)] — as refusal
     lines. A commit that changes no path outside the tracker directory is not judged. One that does names its trackers
     (`named_trackers`), and at its parent at least one of them carries `triaged:`, is not Parked and is `In Progress`, read
-    through `extract` from the parent's own file: one `git ls-tree` per parent and one `git cat-file --batch` for all."""
+    through `extract` from the parent's own file: one `git ls-tree` per parent and one `git cat-file --batch` for all. A commit of
+    another project below this one is not judged here (`other_project_changes`): that project's own check judges it."""
     rel = TRACKER_DIR.resolve().relative_to(ROOT).as_posix().rstrip("/") + "/"
     work = []
-    for commit, parent, files, subject in commits:
-        if (verified_owner(commit) if commit else pending_owner()):
+    theirs = other_project_changes([(commit, files) for commit, _parent, files, _subject in commits])     # "" is the commit being made: decided at HEAD
+    for n, (commit, parent, files, subject) in enumerate(commits):
+        if n in theirs or (verified_owner(commit) if commit else pending_owner()):
             continue
         outside = sorted(f for f in files if f and not f.startswith(rel))       # `staged_now` keeps git's last empty line
         if outside:
@@ -9454,7 +9825,7 @@ def build_judgement(subject=None):
         return [], ""                                      # the commit-msg stage judges it, with its subject (`pending_judgement`)
     if _BUILD is not None:
         return _BUILD
-    if not CONFIG.get("judged_before_build"):
+    if not CONFIG.get("judged_before_build") or trackers_elsewhere():
         _BUILD = ([], f"judged before build: off — `judged_before_build = true` in {CONFIG_NAME} turns it on")
         return _BUILD
     if vcs() != "git":
@@ -9492,7 +9863,7 @@ def pending_judgement(subject, git, trunk, branch):
         return []                                          # a first commit has no parent to be judged at
     # what THIS commit carries: `commit -a` and `commit <path>` hand the hook an index of their own
     env = dict(nested_git_env(), **({"GIT_INDEX_FILE": os.environ["GIT_INDEX_FILE"]} if os.environ.get("GIT_INDEX_FILE") else {}))
-    staged = vcs_process("git", "diff", "--cached", "--name-only", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True,
+    staged = vcs_process("git", "diff", "--cached", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", cwd=ROOT, capture_output=True, text=True,
                             encoding="utf-8", errors="replace", env=env).stdout
     return judge_commits([("", "HEAD", set(staged.split("\n")) - {""}, subject)], branch)
 
@@ -9531,7 +9902,7 @@ def commit_msg_check(message_file):
     except OSError as e:
         print(f"--commit-msg: cannot read {message_file} — {e}", file=sys.stderr)
         return EXIT_LINT
-    if not CONFIG.get("judged_before_build") or vcs() != "git":
+    if not CONFIG.get("judged_before_build") or vcs() != "git" or trackers_elsewhere():
         return EXIT_OK
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
@@ -9844,7 +10215,9 @@ def guard_walk(*revs, keys=(), unread=False):
     [(commit, subject, TRIAGE.md's path at it, what `guard_changes` says of it)] for each that changes one of the two
     sections, or one of the files `keys` names (`signers_paths`) — or, where a view cannot be read, or the default branch's
     configuration cannot be (`unread`), a file the reading depends on (`guard_touched`). The same one `git log` names the
-    files each commit changes — a merge's, those that differ from every parent — split on a mark no commit can carry."""
+    files each commit changes — a merge's, those that differ from every parent — split on a mark no commit can carry. A
+    commit whose every path lies in another project below this one is not among them (`other_project_changes`): that
+    project's own check judges it."""
     mark = f"\x1f{os.urandom(8).hex()}\x1f"
     out = git_out("-c", "diff.relative=false", "-c", "log.showSignature=false", "-c", "log.showRoot=true", "log", "-z", "-c",
                   "--name-only", "--no-renames", "--ignore-submodules=none", f"--format={mark}%H %P{mark}%s{mark}", *revs) or ""
@@ -9860,7 +10233,11 @@ def guard_walk(*revs, keys=(), unread=False):
                 guard_changes(views[c], [views[p] for p in ps], [w for k in keys for w in kept_changes(k, kept.get(f"{c}:{k}"), [kept.get(f"{p}:{k}") for p in ps])],
                               files, prefix, keys, unread, lambda c=c: tree_paths(c)))
                for c, ps, subject, files in commits]
-    return len(commits), [row for row in changed if row[3]]
+    rows, paths = [row for row in changed if row[3]], {c: files for c, _ps, _s, files in commits}
+    # another project's commit is its own check's (`other_project_changes`): its paths, named from the top, taken from the project root.
+    # A signers file inside that project is one of them: a commit that changes it alone is judged by that project's guard, by the same rule
+    theirs = other_project_changes([(row[0], [f[len(prefix):] for f in paths[row[0]] if f.startswith(prefix)]) for row in rows])
+    return len(commits), [row for n, row in enumerate(rows) if n not in theirs]
 
 
 def owners_of(cfg):
@@ -10268,8 +10645,9 @@ def triage_pending(subject):
     name and a seat's is refused before it is made. `--check` on the branch judges the signature: it is the gate, the hook
     best-effort (the 0.18.3 ruling on FM-033's hook). Where this tool refuses the default branch's configuration, who the Owner
     is is not known, and every such change is refused, whoever makes it (v0.19.1) — as is every change to a file the reading
-    depends on (`guard_touched`), and so where a view of the index or a parent cannot be read. `subject` names the commit in
-    what it says."""
+    depends on (`guard_touched`), and so where a view of the index or a parent cannot be read. A commit being made whose every
+    path lies in another project below this one is not judged here (`other_project_changes`): that project's own check judges
+    it. `subject` names the commit in what it says."""
     if vcs() != "git":
         return [], []
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
@@ -10288,6 +10666,10 @@ def triage_pending(subject):
     what = guard_changes(views[""], [views[p] for p in parents],
                          [w for k in keys for w in kept_changes(k, kept.get(f":{k}"), [kept.get(f"{p}:{k}") for p in parents])],
                          staged, prefix, keys, not owners, lambda: tree_paths("", env))
+    # another project's commit being made is its own check's (`other_project_changes`): its staged paths, named from the top, taken from the project root.
+    # A signers file inside that project is one of them: that project's commit-time guard judges a change to it, by the same rule
+    if what and other_project_changes([("", [f[len(prefix):] for f in staged if f.startswith(prefix)])]):
+        what = []
     brought = guard_walk(*heads, "--not", *parents[:1], *([trunk] if trunk else []), keys=keys, unread=not owners)[1] if heads else []
     refused = guard_lines(guard_verdicts(brought, owners), owners) if owners else unread_lines(brought, trunk)
     notes = []
@@ -10810,11 +11192,11 @@ def duplicate_record_problems(trackers):
     if vcs() == "git":
         trunk = default_trunk(lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env()))
     rels = {id(t): (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix() for t, _a, _d in twice}
-    there = cat_blobs([f"{trunk}:{rels[id(t)]}" for t, _a, _d in twice]) if trunk else {}
+    there = cat_blobs([f"{trunk}:./{rels[id(t)]}" for t, _a, _d in twice]) if trunk else {}       # `./`: from the project root, git's working directory
     out = []
     for t, aid, days in twice:
         rel = rels[id(t)]
-        landed = [i for i, _d in record_ids(parse_frontmatter(there.get(f"{trunk}:{rel}") or "")[1])].count(aid) >= len(days) if trunk else vcs() != "git"
+        landed = [i for i, _d in record_ids(parse_frontmatter(there.get(f"{trunk}:./{rel}") or "")[1])].count(aid) >= len(days) if trunk else vcs() != "git"
         named = " and ".join(f"{aid} of {d}" for d in days)
         if not landed:
             out.append(f"{t['id']}: two records under `## {HEAD['asks']}` carry {aid} — {named} — and {ref_name(trunk) if trunk else 'the default branch'} does not hold "
@@ -10822,7 +11204,7 @@ def duplicate_record_problems(trackers):
             continue
         merge = ""
         if trunk:
-            line = next((l for l in (there.get(f"{trunk}:{rel}") or "").split("\n") if l.startswith(f"**{aid}** · {days[-1]} · ")), "")
+            line = next((l for l in (there.get(f"{trunk}:./{rel}") or "").split("\n") if l.startswith(f"**{aid}** · {days[-1]} · ")), "")
             merge = (git_out("log", "-1", "--first-parent", "--format=%h", "-G", exact_line_regex(line), trunk, "--", rel) or "").strip() if line else ""
         print(f"  note: {t['id']}: two records under `## {HEAD['asks']}` carry {aid} — {named}"
               + (f", the second brought by {merge}" if merge else "") + f"; each is kept as signed, and the next ask is {next_ask_id(t)}", file=sys.stderr)
@@ -10837,14 +11219,14 @@ def record_problems(t):
     if vcs() != "git" or not in_this_commit(t):
         return []
     rel = (TRACKER_DIR / t["file"]).resolve().relative_to(ROOT).as_posix()
-    was = cat_blobs([f"HEAD:{rel}"]).get(f"HEAD:{rel}")
+    was = cat_blobs([f"HEAD:./{rel}"]).get(f"HEAD:./{rel}")      # `./`: from the project root, git's working directory
     if was is None:
         return []                                        # new file: there is no answer to lose
     before, _body = parse_frontmatter(was)
     had = (before.get("answer") or "").strip()
     if not had or t.get("answer"):
         return []
-    parents = cat_blobs([f"{h}:{rel}" for h in merge_heads()])
+    parents = cat_blobs([f"{h}:./{rel}" for h in merge_heads()])
     for other in parents.values():                       # a merge loses an answer only if EVERY parent had it (FM-019)
         if not (parse_frontmatter(other or "")[0].get("answer") or "").strip():
             return []
@@ -11226,8 +11608,8 @@ def lint(trackers, committing=False):
             # that hold `answer`, or `answerers` where there are no seats
             allowed, by_id, author, pending, why = may_answer(), t.get("ask_id") and vcs() == "git", None, False, ""
             if by_id:
-                committed = front_line(cat_blobs([f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}"]).get(
-                    f"HEAD:{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}") or "", "answer")
+                committed = front_line(cat_blobs([f"HEAD:./{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}"]).get(     # `./`: from the project root
+                    f"HEAD:./{(TRACKER_DIR / t['file']).resolve().relative_to(ROOT).as_posix()}") or "", "answer")
                 pending = committed != front_line((TRACKER_DIR / t["file"]).read_text(encoding="utf-8"), "answer")
                 head, why = ("", "") if pending else answer_commit(t)
                 judged = filed_state(head) if head else None
@@ -11583,6 +11965,11 @@ def cli_parser():
                                                "(FM-032): one row per id — its seat, first and last commit, how many, its worktree. Markdown on stdout; nothing is written")
     add("--session-check", action="store_true", help="the session rule alone, on the commit being made — what the pre-commit hook runs on EVERY commit, "
                                                      "a tracker staged or not: a seat's commit carries a `Session:` of its own seat. Reads git, never the trackers")
+    add("--each-project", action="store_true", help="with one of --session-check, --print-written and --commit-msg, and --root naming the top of the working "
+                                                    "tree: that line once for each project the commit being made stages a path in — each path's nearest "
+                                                    "shoalmark.toml, up to the top; a path in no project is the top's. --print-written runs for a project whose "
+                                                    "tracker, configuration or tool is staged, and names what it wrote from the top. What the hooks run: one "
+                                                    "install per clone")
     add("--commit-msg", nargs=1, metavar="FILE", help="what a commit-msg hook calls with its message file: where `judged_before_build` is on, the commit being made is "
                                                       "judged with its subject (FM-033) — the ids it names, else its branch `<kind>/<NNN>-…`, judged and In Progress at HEAD — "
                                                       "and refused before it is made, with the line `--check` prints of it; and, where the default branch's configuration names the "
@@ -12409,22 +12796,23 @@ COPY_AT = '"$(git rev-parse --git-common-dir)/' + COPY_DIR + '/shoalmark.py" --r
 _COPY_FIND = 'root=$(git rev-parse --show-toplevel 2>/dev/null)\ncopy="$(git rev-parse --git-common-dir 2>/dev/null)/' + COPY_DIR + '/shoalmark.py"\n'
 _COPY_SAYS = ("# It runs the copy of the tool kept in the git directory, which only `--install-hook` writes — never the tool a branch brings; the commit is refused\n"
               "# with one line where the copy is not there, refuses it, or does not finish within its bound.\n")
+_EACH_SAYS = ("# It judges the commit once for each project a staged path falls in — each path's nearest shoalmark.toml, up to the top, and the top's\n"
+              "# for a path in none (--each-project): one install serves every project of the clone.\n")
 _COPY_GONE = ('if [ -z "$root" ] || [ ! -f "$copy" ]; then\n  echo "shoalmark: the commit is refused — the hooks\' copy of the tool is not in the git directory: run --install-hook" >&2\n'
               '  exit 1\nfi\n')
 HOOKS = {
-    "pre-commit": "#!/bin/sh\n{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit.\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
-                  + '{py} -I "$copy" --root "$root" --session-check || exit $?\n'
-                  "if git -c core.quotePath=false diff --cached --name-only --ignore-submodules=none | grep -q -E '^\"?({dir}/.*\\.md|{config}|{tool}/)'; then\n"
-                  '  written=$({py} -I "$copy" --root "$root" --print-written) || exit $?\n'
-                  "  [ -z \"$written\" ] || printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\nfi\n",
+    "pre-commit": "#!/bin/sh\n{mark} — regenerate and stage INDEX.md when a tracker changed; a violation refuses the commit.\n" + _COPY_SAYS + _EACH_SAYS + _COPY_FIND + _COPY_GONE
+                  + '{py} -I "$copy" --root "$root" --each-project --session-check || exit $?\n'
+                  'written=$({py} -I "$copy" --root "$root" --each-project --print-written) || exit $?\n'
+                  "[ -z \"$written\" ] || printf '%s\\n' \"$written\" | git add --pathspec-from-file=-\n",
     "prepare-commit-msg": "#!/bin/sh\n{mark} — a seat's commit names its session: `Session: <seat.session>` (FM-024).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
                           + 'exec {py} -I "$copy" --root "$root" --session-trailer "$1" "$2"\n',
-    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033).\n" + _COPY_SAYS + _COPY_FIND + _COPY_GONE
-                  + 'exec {py} -I "$copy" --root "$root" --commit-msg "$1"\n',
+    "commit-msg": "#!/bin/sh\n{mark} — no build commit before a judgement: judged with its subject, before it is made (FM-033).\n" + _COPY_SAYS + _EACH_SAYS + _COPY_FIND + _COPY_GONE
+                  + 'exec {py} -I "$copy" --root "$root" --each-project --commit-msg "$1"\n',
 }
 
 
-HOOK_LINES = {"pre-commit": "--print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--commit-msg "$1"',
+HOOK_LINES = {"pre-commit": "--each-project --print-written", "prepare-commit-msg": '--session-trailer "$1" "$2"', "commit-msg": '--each-project --commit-msg "$1"',
               "post-checkout": "--html-only", "post-merge": "--html-only", "post-rewrite": "--html-only"}
 REFRESH_HOOKS = {"post-checkout": "checkout", "post-merge": "merge", "post-rewrite": "rebase or an amend"}
 FORMER_PLAIN = "#!/bin/sh\n{mark} — refresh the git-ignored board\n{cmd} --html-only || true\n"
@@ -12662,7 +13050,9 @@ def install_copy():
         files[rel] = data
     if not pin.exists():
         lines.append(f"this repository pins no copy of the tool: the hooks' copy is taken from the working tree's tool, {HERE}")
-    here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"
+    top = git_top()                                         # the tool's folder from the top of the working tree: one folder for every project the copy judges
+    inside = _norm(HERE) == _norm(top) or _norm(HERE).startswith(_norm(top).rstrip(os.sep) + os.sep)
+    here_rel = os.path.relpath(HERE, top).replace(os.sep, "/") if inside else "-"
     if pin.exists():
         manifest, _ = pin_manifest(pin.read_text(encoding="utf-8"), __version__)
         sha = manifest.get("commit") or manifest.get("untagged", "").removesuffix(" (dirty)") or "not recorded"
@@ -12740,12 +13130,22 @@ def copy_provenance_notice():
 
 
 def tree_tool_dir():
-    """In the hooks' copy: the folder of the repository's own tool — the one `--install-hook` was run from, as its `COPY` says — or None where that was outside
-    the repository, or is not said."""
+    """In the hooks' copy: the folder of the repository's own tool — the one `--install-hook` was run from, as its `COPY` says, from the top of the
+    working tree: the same folder for every project the copy judges — or None where that was outside the repository, or is not said."""
+    tool = copy_tool_folder()
+    if tool is None:
+        return None
+    top = git_top() if vcs() == "git" else ROOT
+    return top / tool if tool else top
+
+
+def copy_tool_folder():
+    """In the hooks' copy: the folder of the repository's own tool from the top of the working tree, as its `COPY` says — "" for the top itself —
+    or None where it lay outside the repository, or is not said."""
     tool = copy_record().get("tool", "-")
     if tool == "-" or not re.fullmatch(r"[A-Za-z0-9_./-]*", tool) or ".." in tool.split("/"):
         return None
-    return ROOT / tool if tool else ROOT
+    return tool
 
 
 def tool_here():
@@ -12788,8 +13188,9 @@ def hooks_copy_drift():
 
 def worktree_tops():
     """Every working tree of this repository — this one, the main one and every linked one — as `git worktree list` names them, resolved: one it marks
-    `prunable`, whose folder is gone, included, for that folder can come back."""
-    tops = {os.path.realpath(ROOT)}
+    `prunable`, whose folder is gone, included, for that folder can come back. This one is named by its top (`git_top`), which is the project root
+    only where the root is the top: a folder below it is no working tree."""
+    tops = {os.path.realpath(git_top())}
     for record in (git_out("worktree", "list", "--porcelain") or "").split("\n\n"):
         top = next((l[len("worktree "):] for l in record.splitlines() if l.startswith("worktree ")), None)
         if top:
@@ -12991,6 +13392,123 @@ def include_targets(listing):
     return found
 
 
+EACH_PROJECT = ("session_check", "print_written", "commit_msg")        # the hooks' lines that judge the commit being made, run per project
+_DRIFT_SAID = set()                                                 # the drift line, said once in a run (`main_run`)
+
+
+def staged_projects(top, paths):
+    """{project root: its paths, written from it} for `paths`, the commit being made's, named from the top: each path is in the folder of its nearest
+    project below the top, else the top's. A folder is a project for the commit being made where its `shoalmark.toml` is at HEAD, the commit's
+    parent, as the check decides it (`other_project_changes`), and on disk, where that project's run reads it: the commit that adds a folder's
+    `shoalmark.toml` is the enclosing project's, and so is a folder whose `shoalmark.toml` at HEAD is no configuration this tool accepts with its
+    tracker folder beside it, or one the default branch does not hold yet (`project_blobs`). HEAD is asked of every folder that holds one on disk. The top first, then each other project in the
+    order of its folder."""
+    on_disk = sorted({"/".join(parts[:n]) for parts in (path.split("/") for path in paths) for n in range(1, len(parts))
+                      if os.path.lexists(top.joinpath(*parts[:n], CONFIG_NAME))})
+    spec = lambda folder: f"HEAD:{folder}/{CONFIG_NAME}"           # the project is decided at the parent, as the check decides it
+    held = project_blobs([spec(folder) for folder in on_disk]) if on_disk else {}
+    projects = {folder for folder in on_disk if held.get(spec(folder)) is not None}
+    homes = {}
+    for path in paths:
+        parts = path.split("/")
+        at = next((n for n in range(len(parts) - 1, 0, -1) if "/".join(parts[:n]) in projects), 0)
+        homes.setdefault(top.joinpath(*parts[:at]), []).append("/".join(parts[at:]))
+    return dict(sorted(homes.items(), key=lambda home: (home[0] != top, home[0].as_posix())))
+
+
+def hook_writes(rels):
+    """Whether the pre-commit hook runs this project's whole gate, `--print-written`, on the commit being made: one of `rels`, the paths it stages
+    written from the project root, starts as the hook's own test read them before it ran per project — a tracker file under the tracker folder,
+    the configuration, or the tool's own folder, `<tracker dir>/….md|shoalmark.toml|<tool folder>/`, the folder as `--install-hook` names it."""
+    tool = tool_here()
+    where = tool.relative_to(ROOT).as_posix() if tool is not None and ROOT in (tool, *tool.parents) else "tools/shoalmark"
+    pattern = re.compile(f"({TRACKER_DIR.relative_to(ROOT).as_posix()}/.*\\.md|{CONFIG_NAME}|{where}/)")
+    return any(pattern.match(rel) for rel in rels)
+
+
+def each_project(args):
+    """`--each-project`, with one of the hooks' lines that judge the commit being made: the line run once for each project the commit stages a path in
+    (`staged_projects`) — `--root` names the top, and a path in no project is the top's, as is a commit that stages none. `--print-written` runs
+    for a project only where the commit stages its tracker, its configuration or the tool (`hook_writes`), and names each file it wrote from the
+    top, where the hook stages it. Every project's run is made, whatever another's said, and the first that refuses gives the exit."""
+    line = [k for k in EACH_PROJECT if vars(args).get(k)]
+    alone = parse_args([f"--{line[0].replace('_', '-')}", *(args.commit_msg or [])]) if len(line) == 1 else None
+    if alone is None or any(v != vars(alone).get(k) for k, v in vars(args).items() if k not in ("each_project", "root")):
+        print("--each-project goes with one of --session-check, --print-written and --commit-msg, and with --root: the lines a hook runs", file=sys.stderr)
+        return 2
+    top = pathlib.Path(args.root or ".").resolve()
+    configure(top)
+    paths = []
+    if vcs() == "git":                                  # the index the hook hands it, every path named from the top
+        out = vcs_process("git", "diff", "--cached", "-z", "--name-only", "--no-renames", "--ignore-submodules=none", cwd=top, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace", env=index_env())
+        paths = [p for p in out.stdout.split("\x00") if p] if out.returncode == 0 else []
+    code = EXIT_OK
+    for root, rels in (staged_projects(top, paths) or {top: []}).items():
+        folder = "" if root == top else root.relative_to(top).as_posix() + "/"
+        try:
+            with lines_named(folder[:-1]):              # each line a project below the top says starts with its folder from the top
+                configure(root)
+                if args.print_written and not hook_writes(rels):
+                    continue
+                sub = parse_args([f"--{line[0].replace('_', '-')}", *(args.commit_msg or []), "--root", str(root)])
+                said = io.StringIO()
+                with contextlib.redirect_stdout(said) if args.print_written else contextlib.nullcontext():
+                    got = main_run(sub)
+            for rel in said.getvalue().splitlines():    # the paths it wrote, from the top: the hook stages them there
+                if rel:
+                    print(folder + rel)
+        except SystemExit as stop:                      # a project's configuration refused: its line, and the next project is judged
+            if stop.code is not None and not isinstance(stop.code, int):
+                with lines_named(folder[:-1]):
+                    print(stop.code, file=sys.stderr)
+            got = stop.code if isinstance(stop.code, int) else 0 if stop.code is None else 1
+        code = code or got or EXIT_OK
+    return code
+
+
+class _Named(io.TextIOBase):
+    """A stream that writes each line to `out` as it ends, with `name: ` before it — a blank line as it is."""
+
+    def __init__(self, out, name):
+        super().__init__()
+        self.out, self.name, self.part = out, name, ""
+
+    def writable(self):
+        return True
+
+    def write(self, text):
+        *ended, self.part = (self.part + text).split("\n")
+        for one in ended:
+            self.out.write(f"{self.name}: {one}\n" if one else "\n")
+        return len(text)
+
+    def flush(self):
+        self.out.flush()
+
+    def end(self):
+        if self.part:
+            self.out.write(f"{self.name}: {self.part}\n")
+            self.part = ""
+        self.out.flush()
+
+
+@contextlib.contextmanager
+def lines_named(name):
+    """Inside it, each line written to stdout and to stderr starts with `name: ` — a project's folder from the top, where `each_project` runs
+    a project below it; with "" they are written as they are."""
+    if not name:
+        yield
+        return
+    out, err = _Named(sys.stdout, name), _Named(sys.stderr, name)
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            yield
+    finally:
+        out.end()
+        err.end()
+
+
 def install_hook():
     """Plain git hooks — a repository that vendors shoalmark needs Python and nothing else. A hook that is not
     ours is never overwritten: it is named, with the line to add to it."""
@@ -13006,8 +13524,7 @@ def install_hook():
         print(refused, file=sys.stderr)
         return EXIT_LINT
     hooks.mkdir(parents=True, exist_ok=True)
-    fill = dict(mark=HOOK_MARK, cmd=CMD, dir=TRACKER_DIR.relative_to(ROOT).as_posix(), config=CONFIG_NAME,
-                tool=pathlib.Path(__file__).resolve().parent.relative_to(ROOT).as_posix() if ROOT in pathlib.Path(__file__).resolve().parents else "tools/shoalmark")
+    fill = dict(mark=HOOK_MARK, cmd=CMD)                  # the pre-commit hook's test of what is staged is the tool's now, per project (`hook_writes`)
     code = EXIT_OK
     copy_code, copy_lines = install_copy()
     hook_set = HOOKS if copy_code == EXIT_OK else {}      # every hook runs the copy: none is written where it is not there
@@ -13245,8 +13762,11 @@ def board_run(root):
     try:
         configure(root)
         lazy_fetch_off()                                            # before its first git: every read of this run fetches nothing
+        if trackers_elsewhere():                                    # a code repository whose trackers live in another: its board is built there
+            print(elsewhere_said("the board"), file=sys.stderr)
+            return EXIT_LINT
         sys.path[:] = [e for e in sys.path if not in_tree(e or ".") or _norm(e or ".") == _norm(HERE)]      # nothing is imported from the tree, but the tool's own place
-        refused = below_top() or tracker_folder_problem()          # a project below the top of its git repository is refused first, as every run refuses it
+        refused = tracker_folder_problem()
         if refused:
             print(refused, file=sys.stderr)
             return EXIT_LINT
@@ -13491,26 +14011,6 @@ def configure_output(argv):
             stream.reconfigure(encoding=encoding, errors="replace", newline="\n")
 
 
-def below_top():
-    """The one line that refuses a run whose project root — the nearest `shoalmark.toml`, or the folder `--root` names — is not the top of
-    its git repository: `git rev-parse --show-prefix` is not empty there. A tracker is read at a revision by its path from the project root,
-    and git takes that path from the top, so below it every rule that reads a tracker at a revision would find nothing and pass: the run is
-    refused, not passed. "" at the top, where git cannot be started or cannot say, under Subversion and without version control. argparse
-    answers `--version` and `--help` before a run binds its root, so they still run."""
-    if vcs() != "git":
-        return ""
-    try:
-        prefix = (git_out("rev-parse", "--show-prefix") or "").strip()
-        top = (git_out("rev-parse", "--show-toplevel") or "").strip() if prefix else ""
-    except OSError:
-        return ""
-    if not prefix:
-        return ""
-    named = str(pathlib.Path(top)) if top else "which git does not name"     # the top as the platform writes a path, as the root is: git writes it with forward slashes on Windows
-    return (f"shoalmark: refused — the project root {ROOT} is below the top of its git repository, {named}: a tracker "
-            "is read at a revision by its path from the top, so nothing here would be judged; the tool runs only at the top until FM-161 — nothing was written")
-
-
 def main(argv=None, *, _notice=True):
     configure_output(sys.argv[1:] if argv is None else argv)
     removed = r17_removed(r17_given(sys.argv[1:] if argv is None else list(argv)))     # before argparse: its --help and --version end the run (RV-3367)
@@ -13540,12 +14040,37 @@ def main(argv=None, *, _notice=True):
             print("--standup DIR … reads the repositories it names, and --root names the one a run reads: name that folder after --standup", file=sys.stderr)
             return 2
         return standup_across(args.standup)
+    if args.each_project:                                   # a hook's line, once for each project the commit being made stages a path in
+        return each_project(args)
     notice = _notice and not args.tsvn_hook and cli_operation(args) in ("init", "check")
     try:
         return main_run(args)
     finally:
         if notice and vcs() == "svn":
             print(SVN_VERIFY_LIMIT, file=sys.stderr)
+
+
+def elsewhere_said(run):
+    """The one line a run refuses with in a code repository whose trackers live in another (`[trackers] elsewhere`)."""
+    return (f"{run}: this repository's trackers live elsewhere — {trackers_elsewhere()} (`[trackers] elsewhere` in {CONFIG_NAME}): "
+            f"{'its board is built' if run == 'the board' else 'file the tracker' if run == '--new' else 'run it'} there — nothing is written")
+
+
+def elsewhere_run(args):
+    """In a code repository whose trackers live in another (`[trackers] elsewhere`): `--check`, and the pre-commit hook's run, say so in one
+    line and pass — no tracker is read and nothing is judged or written; `--init`, `--new` and the board's runs refuse in one line each, exit 4.
+    None for any other run, which goes on as it would, and wherever the default branch does not say so (`trackers_elsewhere`)."""
+    operation = cli_operation(args)
+    if operation not in ("check", "init", "new", "write") or not trackers_elsewhere():
+        return None
+    if operation == "check" or args.print_written:
+        print(f"this repository's trackers live elsewhere — {trackers_elsewhere()} (`[trackers] elsewhere` in {CONFIG_NAME}): nothing here is "
+              "judged, and the build gate, `judged_before_build`, is off", file=sys.stderr if args.print_written else sys.stdout)
+        return EXIT_OK
+    if operation in ("init", "new", "write"):
+        print(elsewhere_said({"init": "--init", "new": "--new"}.get(operation, "the board")), file=sys.stderr)
+        return EXIT_LINT
+    return None
 
 
 def main_run(args):
@@ -13566,16 +14091,15 @@ def main_run(args):
         configure(args.root)
     global BOARD_READS
     BOARD_READS = not any(vars(args).get(flag) for flag in ACT_RUNS)
-    refused = below_top()                                   # a project below the top of its git repository is refused, never judged
-    if refused:
-        print(refused, file=sys.stderr)
-        return EXIT_LINT
     if tortoise:
         try:
             svn_local_directory(".")                      # A's validated local WC binding, never a server read
         except (SvnUnreadable, OSError) as error:
             print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written", file=sys.stderr)
             return EXIT_LINT
+    code = elsewhere_run(args)                              # a code repository whose trackers live in another, as its default branch says: what a run does here
+    if code is not None:
+        return code
     diagnostic, code = cli_preflight(args, vcs()) if vcs() == "svn" else (None, EXIT_OK)
     if diagnostic is not None:
         print(diagnostic, file=sys.stderr)
@@ -13588,7 +14112,8 @@ def main_run(args):
         SAFE_WRITES = True
         os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts a program from the current directory first, and the checkout's is the branch's
         drift = "" if args.print_written else hooks_copy_drift()        # once per hook: the pre-commit hook says it with --session-check, before --print-written
-        if drift:
+        if drift and drift not in _DRIFT_SAID:                          # …and once in a run that judges several projects (`each_project`)
+            _DRIFT_SAID.add(drift)
             print(drift, file=sys.stderr)
     # under --print-written stdout carries ONE thing: the path list the caller stages
     log = sys.stderr if args.print_written else sys.stdout
@@ -13754,6 +14279,8 @@ def main_run(args):
         if not drifted:
             print(f"{OUT.relative_to(ROOT).as_posix()} is up to date — {len(trackers)} trackers.", file=log)
         for line in sessions_report() + pin_report() + ratio_notices():     # reports, never refusals (FM-024, FM-011, R13)
+            print(line, file=log)
+        for line in code_rows_report():                     # …and how many moves to `Shipped` rest on another code repository's commit
             print(line, file=log)
         print(build_judgement()[1], file=log)               # FM-033: whether the judgement gate is on, and what it judged
         if vcs() == "git":
