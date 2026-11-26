@@ -272,11 +272,12 @@ python3 tools/shoalmark/shoalmark.py --install-hook                 # plain git 
 `--install-hook` writes the three commit hooks — `pre-commit`, `prepare-commit-msg` and `commit-msg` — and the three board refresh hooks —
 `post-checkout`, `post-merge` and `post-rewrite`. Every one runs **a copy of the tool kept in the git directory** (`shoalmark-trusted/`, shared by every
 worktree), never the tool a branch brings. One install serves every project of the clone: the commit's hooks judge the commit being made once for
-each project a staged path falls in — each path's nearest folder, up to the top, whose `shoalmark.toml` HEAD holds, and the top's project for a path
+each project a staged path falls in — each path's nearest folder, up to the top, that is another project at HEAD, and the top's project for a path
 in none (`--each-project`) — and the pre-commit hook rebuilds a project's INDEX.md where the commit stages one of its trackers, its configuration or
 the tool. A project's `--check` skips a commit whose every path lies in another project below it: that project's own check judges it. A folder is
-another project at a commit where its `shoalmark.toml` is at the commit's parent, and at HEAD for the commit being made, so the commit that adds a
-folder's `shoalmark.toml` is the enclosing project's: its check and hooks judge it, by its Owner and signers, and the new project's own check judges it
+another project at a commit where its `shoalmark.toml` at the commit's parent — at HEAD for the commit being made — is a regular file the tool accepts
+as a configuration, with its tracker folder there too; a one-line file, a folder or a symlink of that name, or a configuration the tool refuses, leaves
+the folder the enclosing project's, in the check and in the hooks alike. So the commit that adds a folder's `shoalmark.toml` is the enclosing project's: its check and hooks judge it, by its Owner and signers, and the new project's own check judges it
 too. After a checkout or switch, a merge (including a fast-forward pull), or a rebase, the refresh hooks run
 `--html-only`. The board says what it read, and when; each refresh hook exits 0, with one line if the refresh failed or was stopped.
 The explicit refresh stays, as do the commit's own rebuild where it stages a tracker and the rebuild right after each answer or act.

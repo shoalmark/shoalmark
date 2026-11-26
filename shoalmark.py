@@ -885,37 +885,19 @@ def configure(root=None):
     code_refused = code_config_problem()                # `[repositories]` and `[trackers]`, each as `--schema` says it
     if code_refused:
         raise SystemExit(code_refused)
+    config_checks(CONFIG)                               # the answerers, the seats, the rights, the headings and the kinds, as another project's are read
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
         ANSWERERS[name if mode == "signed" else str(a).strip()] = "signed" if mode == "signed" else ""
-        refuse_signed_name("`answerers`", name, mode)
     SEATS, SEAT_RIGHTS = {}, {}                         # seat name -> [(identity, "signed" | ""), …], and seat name -> rights
-    seen = {}                                           # identity -> the seat that claimed it first
     for name, value in seats_of(CONFIG).items():
         SEATS[name] = seat_identities(value)            # FM-024: a string is one identity, a list is several — old and new
-        for who, mode in SEATS[name]:                   # a signed identity is an email (the release bar's signed identity)
-            refuse_signed_name("`owner`" if at_top(name) else f"`[seats] {name}`", who, mode)
-        for who, _mode in SEATS[name]:
-            if who and who in seen and at_top(seen[who]):   # the Owner named at the top is no seat and no line of `[seats]` (FM-024, D2)
-                raise SystemExit(f"{CONFIG_NAME}: " + (f"`owner` lists `{who}` twice" if seen[who] == name else f"`{who}` is the Owner's (`owner`, at the top) and the seat `{name}`'s (`[seats]`)")
-                                 + "; an identity is the Owner's or one seat's, listed once")
-            if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
-                raise SystemExit(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
-                                 + "; an identity is one seat's, listed once")
-            if who:
-                seen[who] = name
         SEAT_RIGHTS[name] = set(BUILTIN_RIGHTS.get(name, ()))
     for name, words in (CONFIG.get("rights") or {}).items():
-        if isinstance(words, str) or any(w not in RIGHTS for w in words):
-            bad = [words] if isinstance(words, str) else [w for w in words if w not in RIGHTS]
-            raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
-                             f'anything else a tracker can carry is open to every seat and needs none')
         SEAT_RIGHTS[name] = set(words)
     KIND_LABELS = dict(CONFIG["kinds"])
     HEAD = {**DEFAULTS["headings"], **CONFIG["headings"]}
-    if set(HEAD) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in HEAD.values()):
-        raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
     STATE_HEAD_RE = re.compile(_STATE_HEADS[:-3] + "|" + re.escape(HEAD["state"]) + r")\b", re.I)
     DONE_RE = re.compile(_DONE_WORDS + "|" + re.escape(HEAD["done"]), re.I)
     # the body section an exchange is moved into when its ask is cleared — the repository's own word, English always
@@ -925,8 +907,6 @@ def configure(root=None):
     # …and the one an act's record is kept under (FM-030): done, scheduled, rescheduled — newest last
     ACTS_HEAD_RE = re.compile(r"^#{2,3}\s+(acts|" + re.escape(HEAD["acts"]) + r")\s*$", re.I | re.M)
     KINDS = tuple(KIND_LABELS)
-    if not KINDS or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in KINDS):
-        raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
     CONSIDERED_FROM = {k: int(CONFIG["considered_from"].get(k, 1)) for k in KINDS}
     alt = "|".join(sorted(KINDS, key=len, reverse=True))
     _IDS = rf"(?:{alt})-\d+"
@@ -943,6 +923,65 @@ def configure(root=None):
             CMD_OWN = PY + " " + tool_named(_VCS[1] / folder / pathlib.Path(__file__).name)
     CMD = os.environ.get("SHOALMARK_CMD") or CMD_OWN    # a repository that wraps the tool is named by its own command in every message
     FRONT_MATTER = front_matter_schema()
+
+
+def config_checks(cfg):
+    """The refusals `configure` makes of a configuration's own words once its records list and its two tables pass — `answerers`, `[seats]`,
+    `[rights]`, `[headings]` and `kinds`, in that order — SystemExit with the line; `cfg` as `read_config` reads it, the defaults beneath.
+    `configure` makes them, and so does `config_accepted` of another project's configuration at a revision."""
+    top = lambda seat: seat == "owner" and cfg.get("owner") is not None        # `at_top`, of this configuration
+    for a in (cfg.get("answerers") or []):
+        name, _, mode = str(a).strip().rpartition(" ")
+        refuse_signed_name("`answerers`", name, mode)
+    seen = {}                                           # identity -> the seat that claimed it first
+    for name, value in seats_of(cfg).items():
+        identities = seat_identities(value)             # FM-024: a string is one identity, a list is several — old and new
+        for who, mode in identities:                    # a signed identity is an email (the release bar's signed identity)
+            refuse_signed_name("`owner`" if top(name) else f"`[seats] {name}`", who, mode)
+        for who, _mode in identities:
+            if who and who in seen and top(seen[who]):  # the Owner named at the top is no seat and no line of `[seats]` (FM-024, D2)
+                raise SystemExit(f"{CONFIG_NAME}: " + (f"`owner` lists `{who}` twice" if seen[who] == name else f"`{who}` is the Owner's (`owner`, at the top) and the seat `{name}`'s (`[seats]`)")
+                                 + "; an identity is the Owner's or one seat's, listed once")
+            if who and who in seen:                     # under two seats, or twice under one: `signed` would read two ways
+                raise SystemExit(f"{CONFIG_NAME}: `[seats]` — `{who}` is listed " + (f"twice under `{name}`" if seen[who] == name else f"under two seats, `{seen[who]}` and `{name}`")
+                                 + "; an identity is one seat's, listed once")
+            if who:
+                seen[who] = name
+    for name, words in (cfg.get("rights") or {}).items():
+        if isinstance(words, str) or any(w not in RIGHTS for w in words):
+            bad = [words] if isinstance(words, str) else [w for w in words if w not in RIGHTS]
+            raise SystemExit(f'{CONFIG_NAME}: `[rights] {name}` — {bad[0]!r} is not a right. There are four: {" · ".join(RIGHTS)}; '
+                             f'anything else a tracker can carry is open to every seat and needs none')
+    heads = {**DEFAULTS["headings"], **cfg["headings"]}
+    if set(heads) - set(DEFAULTS["headings"]) or not all(str(v).strip() for v in heads.values()):
+        raise SystemExit(f"{CONFIG_NAME}: `[headings]` names {', '.join(DEFAULTS['headings'])} — each a section name, none empty")
+    kinds = tuple(dict(cfg["kinds"]))
+    if not kinds or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", k) for k in kinds):
+        raise SystemExit(f"{CONFIG_NAME}: `kinds` needs at least one id prefix, upper case — e.g. FEAT")
+
+
+def config_accepted(text, prefix=""):
+    """`text` read as a configuration — the dict `configure` binds `CONFIG` to — where this tool accepts it, for a project whose root's folder
+    below the top is `prefix`; else None. Every refusal `configure` makes of a configuration itself: `guard_config` and `read_config`, the
+    palette, the numbers and the build gate's key, the records list against the root's place, decision 12's two tables as `--schema` says them,
+    and `config_checks`. A configuration that holds `[trackers]` is never another project's: `[trackers] elsewhere` is refused where the
+    project holds a tracker folder, and another project holds one (`project_blobs`)."""
+    try:
+        guard_config(text)
+        cfg = {**DEFAULTS, **read_config(text)}
+        palette_of(cfg.get("palette"))
+        int(cfg["triage_days"]), dict(cfg["tags"])
+        if not isinstance(cfg["judged_before_build"], bool) or cfg.get("trackers") is not None:
+            return None
+        if isinstance(cfg.get("ratio"), dict) and records_problem(cfg["ratio"], prefix):
+            return None
+        if cfg.get("repositories") is not None and not repositories_fit(cfg["repositories"]):
+            return None
+        config_checks(cfg)
+        {k: int(cfg["considered_from"].get(k, 1)) for k in dict(cfg["kinds"])}
+        return cfg
+    except (SystemExit, ValueError, TypeError, AttributeError, KeyError):
+        return None
 
 
 # `tags:` — the KIND of work. A closed vocabulary on purpose: a synonym is how tags rot. It is `[tags]` in the
@@ -7599,8 +7638,9 @@ def other_project_changes(items):
     judges such a change, and this one skips it. A change with a path of this project's own, or with no path inside the project at all,
     is not one. The project is decided at the parent: the commit that adds a folder's `shoalmark.toml` is not yet that project's, so this
     project judges it, by its own Owner and signers, and the project it creates judges it too, by its own state. A root commit has no
-    parent, and no folder is another project for it. Git is asked only of a folder that holds a `shoalmark.toml` in the working tree: one
-    `cat_blobs` for all of them."""
+    parent, and no folder is another project for it. Git is asked only of a folder that holds a `shoalmark.toml` in the working tree, and
+    there only a configuration this tool accepts, with its tracker folder beside it, makes another project (`project_blobs`): a one-line
+    file, a folder or a symlink of that name, or a configuration it refuses, is judged here, its folder this project's."""
     if vcs() != "git":
         return set()
     homes = {}                                          # each path: the folders on its way, below the root, with a configuration on disk
@@ -7615,9 +7655,43 @@ def other_project_changes(items):
         return set()
     parent = lambda rev: f"{rev}^" if rev else "HEAD"              # the project is decided at the parent: the commit being made's is HEAD
     spec = lambda rev, home: f"{parent(rev)}:./{home}/{CONFIG_NAME}"   # `./`: from the project root, git's working directory
-    held = cat_blobs(sorted({spec(r, h) for r, h in asked}))
+    held = project_blobs(sorted({spec(r, h) for r, h in asked}))
     return {n for n, (rev, rels) in enumerate(items)
             if rels and all(any(held.get(spec(rev, home)) is not None for home in homes[rel]) for rel in rels)}
+
+
+def project_blobs(specs, env=None):
+    """`cat_blobs(specs)` for specs that each name a folder's `shoalmark.toml` at a revision — `<rev>:./<folder>/shoalmark.toml` from the
+    project root, or `<rev>:<folder>/shoalmark.toml` from the top — where that folder is another project there: the text of each that is a
+    regular file this tool accepts as a configuration (`config_accepted`), with its tracker folder, a folder, at the same revision; none for
+    any other. One `cat_blobs`, and one `git ls-tree` for each revision."""
+    types, prefix = {}, root_prefix()
+    got = cat_blobs(specs, env, types=types, raw=True)
+    places, found = {}, {}
+    for spec in specs:
+        rev, _, path = spec.partition(":")
+        path = prefix + path[2:] if path.startswith("./") else path
+        cfg = config_accepted(got[spec], path[:-len(CONFIG_NAME)]) if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None
+        if cfg is not None:
+            places[spec] = (rev, path, f"{path[:-len(CONFIG_NAME)]}{tracker_folder(cfg).as_posix()}")
+    for rev in dict.fromkeys(place[0] for place in places.values()):
+        paths = [p for place in places.values() if place[0] == rev for p in place[1:]]
+        modes = tree_modes(rev, paths, env)
+        for spec, (_rev, path, folder) in places.items():
+            if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000":
+                found[spec] = got[spec]
+    return found
+
+
+def tree_modes(rev, paths, env=None):
+    """{path: the mode git records for it at `rev`} for `paths` from the top — "" where nothing is there, "?" where git cannot say: one
+    `git ls-tree` where `rev` is a revision, `path_mode`'s reading of each where it is the index ("")."""
+    if not rev:
+        return {path: path_mode(rev, path, env) for path in paths}
+    r = vcs_process("git", "ls-tree", "-z", "--full-tree", rev, "--", *dict.fromkeys(paths), cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", env=env or nested_git_env())
+    rows = {name: head.split(" ", 1)[0] for head, _tab, name in (row.partition("\t") for row in r.stdout.split("\x00") if row)}
+    return {path: "?" if r.returncode != 0 else rows.get(path, "") for path in paths}
 
 
 def changes_under_review():
@@ -7896,10 +7970,15 @@ def code_row_verdicts(rows):
             for name, commit in CODE_ROW_RE.findall(rows)}
 
 
+def repositories_fit(named):
+    """Whether `[repositories]` is as `--schema` says it: each code repository named by a non-empty string."""
+    return isinstance(named, dict) and all(isinstance(v, str) and v.strip() for v in named.values())
+
+
 def code_config_problem():
     """The one line that refuses `[repositories]` or `[trackers]` where it is not as `--schema` says it, else None."""
     named = CONFIG.get("repositories")
-    if named is not None and (not isinstance(named, dict) or not all(isinstance(v, str) and v.strip() for v in named.values())):
+    if named is not None and not repositories_fit(named):
         return (f"{CONFIG_NAME}: `[repositories]` names each code repository a ship-log row may name as `<repository>@<commit>` — "
                 f"`<repository> = \"<where it is>\"`, its URL or its path, a non-empty string. Got {named!r}")
     section = CONFIG.get("trackers")
@@ -8679,7 +8758,11 @@ def records_from_top():
     section = CONFIG.get("ratio")
     if _VCS[0] != "git" or _VCS[1] is None or not isinstance(section, dict):
         return None
-    prefix = "" if _VCS[1] == ROOT else ROOT.relative_to(_VCS[1]).as_posix() + "/"
+    return records_problem(section, "" if _VCS[1] == ROOT else ROOT.relative_to(_VCS[1]).as_posix() + "/")
+
+
+def records_problem(section, prefix):
+    """`records_from_top`'s line for `section`, a `[ratio]` table, in a project whose root's folder below the top is `prefix` — None at the top."""
     records = section.get("records")
     if not prefix or not isinstance(records, list) or not all(isinstance(v, str) and v.strip() for v in records):
         return None
@@ -13066,12 +13149,13 @@ def staged_projects(top, paths):
     """{project root: its paths, written from it} for `paths`, the commit being made's, named from the top: each path is in the folder of its nearest
     project below the top, else the top's. A folder is a project for the commit being made where its `shoalmark.toml` is at HEAD, the commit's
     parent, as the check decides it (`other_project_changes`), and on disk, where that project's run reads it: the commit that adds a folder's
-    `shoalmark.toml` is the enclosing project's. One `cat_blobs` asks HEAD of every folder that holds one on disk. The top first, then each other
-    project in the order of its folder."""
+    `shoalmark.toml` is the enclosing project's, and so is a folder whose `shoalmark.toml` at HEAD is no configuration this tool accepts with its
+    tracker folder beside it (`project_blobs`). HEAD is asked of every folder that holds one on disk. The top first, then each other project in the
+    order of its folder."""
     on_disk = sorted({"/".join(parts[:n]) for parts in (path.split("/") for path in paths) for n in range(1, len(parts))
                       if os.path.lexists(top.joinpath(*parts[:n], CONFIG_NAME))})
     spec = lambda folder: f"HEAD:{folder}/{CONFIG_NAME}"           # the project is decided at the parent, as the check decides it
-    held = cat_blobs([spec(folder) for folder in on_disk]) if on_disk else {}
+    held = project_blobs([spec(folder) for folder in on_disk]) if on_disk else {}
     projects = {folder for folder in on_disk if held.get(spec(folder)) is not None}
     homes = {}
     for path in paths:

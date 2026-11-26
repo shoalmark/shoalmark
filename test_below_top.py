@@ -995,6 +995,52 @@ def rows_other_project(area, add):
                  refused(o, "Owner commit"), seen(o))]
     one("r14-both", "another project · an unsigned commit by the Owner's identity with paths in both projects", r14_both)
 
+    def nested():
+        rows, control = [], None
+        for what, marker in NESTS:
+            r = Repo(area / f"nest-{marker}", {"": org_config(GATED)}, {("", "OR-001"): text("OR-001", f"tier: P2\ntriaged: {TODAY}\n")},
+                     {"src/app.py": "print('app')\n"})
+            r.switch("-c", "work")
+            folder = nest(r, marker)
+            if marker:
+                r.commit("OR-001: a folder of its own", who=COORD, index=False)         # under the outer project's judged tracker
+            r.put(f"{folder}/app.py", "print('changed under no tracker')\n")
+            r.commit("change the app", who=COORD, index=False, paths=[f"{folder}/app.py"])
+            o = r.check("", who=COORD)
+            if not marker:
+                control = o
+                continue
+            rows.append((f"another project · the outer project's `{folder}/` holding {what}, committed under its tracker: a build commit there naming "
+                         "no tracker is judged by the outer check, and refused, as the same commit in a folder with no `shoalmark.toml` is",
+                         refused(o, GATE) and refused(control, GATE), seen(o) + " · the control: " + seen(control)))
+        return rows
+    one("nested", "another project · a folder that is no project", nested)
+
+
+NESTS = (("no `shoalmark.toml`", ""), ("a one-line `shoalmark.toml`", "file"), ("a folder named `shoalmark.toml`", "dir"),
+         ("a dangling symlink named `shoalmark.toml`", "link"), ("a configuration the tool refuses, beside its tracker folder", "refused"),
+         ("this repository's own `examples/de/shoalmark.toml`, a configuration with no tracker folder", "sample"))      # the first: the control
+REFUSED = f'name = "mine"\nowner = "{COORD[1]}"\n[kinds]\nMY = "Work"\n[seats]\nplanner = "{COORD[1]}"\n'     # the Owner's identity is a seat's too
+
+
+def nest(r, marker):
+    """The outer project's folder that `marker` makes look like a project — `src/`, or `examples/de/` for this repository's sample — written,
+    not committed: the folder, from the top."""
+    folder = "examples/de" if marker == "sample" else "src"
+    r.put(f"{folder}/app.py", "print('app')\n")
+    if marker == "file":
+        r.put(f"{folder}/shoalmark.toml", 'name = "mine"\n')
+    elif marker == "dir":
+        r.put(f"{folder}/shoalmark.toml/keep", "x\n")
+    elif marker == "link":
+        os.symlink("nowhere/at/all", r.top / folder / "shoalmark.toml")
+    elif marker == "refused":
+        r.put(f"{folder}/shoalmark.toml", REFUSED)
+        r.put(f"{folder}/{REL}/MY-001-x.md", text("MY-001"))
+    elif marker == "sample":
+        r.put(f"{folder}/shoalmark.toml", (HERE / "examples/de/shoalmark.toml").read_text(encoding="utf-8"))
+    return folder
+
 
 # --- the hooks: one install per clone, the gate once for each project a staged path falls in ---------------------------------------
 
@@ -1070,6 +1116,31 @@ def rows_hooks(area, add):
             rows.append((f"hooks · {where}: a fixture step failed", False, f"{type(e).__name__}: {str(e)[:300]}"))
         finally:
             fm.configure(HERE)
+        for row in rows:
+            add(*row)
+
+    if picked("hooks-nested"):
+        rows, control = [], None
+        for what, marker in NESTS:
+            try:
+                r = org_hooked(area, f"hooks-nest-{marker or 'none'}")
+                folder = nest(r, marker)
+                git(r.top, "add", "-A")
+                made = hooked(r, "OR-001: a folder of its own", who=COORD) if marker else (0, "")
+                r.put(f"{folder}/app.py", "print('changed under no tracker')\n")
+                git(r.top, "add", "--", f"{folder}/app.py")
+                code, said = hooked(r, "change the app", who=COORD)
+                if not marker:
+                    control = (code, said)
+                    continue
+                rows.append((f"hooks · the outer project's `{folder}/` holding {what}, committed under its tracker: a build commit there naming no "
+                             "tracker is judged by the outer project in the hooks, and refused, as the same commit in a folder with no `shoalmark.toml` is",
+                             made[0] == 0 and code != 0 and NO_OUTER in said and control[0] != 0 and NO_OUTER in control[1],
+                             f"the folder's commit: exit {made[0]} · the build: exit {code}: {said.strip()[-300:]!r} · the control: exit {control[0]}"))
+            except Exception as e:
+                rows.append((f"hooks · {what}: a fixture step failed", False, f"{type(e).__name__}: {str(e)[:300]}"))
+            finally:
+                fm.configure(HERE)
         for row in rows:
             add(*row)
 
@@ -1605,9 +1676,9 @@ MUTANTS = (
      [("is a list of prefixes written from the project root", "is a list of repository-relative prefixes", 1)], (rows_records,), {"records-no-list"}, False),
     ("`--schema`'s `[ratio]` rows say repository-relative prefixes", "CONFIG_KEYS",
      [("a list of prefixes written from the project root;", "a list of repository-relative prefixes;", 2)], (rows_records,), {"records-schema"}, False),
-    ("a records entry written from the top read as written, below the top", "records_from_top", [("if entry.startswith(prefix):", "if False:", 1)],
+    ("a records entry written from the top read as written, below the top", "records_problem", [("if entry.startswith(prefix):", "if False:", 1)],
      (rows_records,), {"records-from-top"}, BELOW),
-    ("a records entry refused at the top too, where the root's folder is empty", "records_from_top",
+    ("a records entry refused at the top too, where the root's folder is empty", "records_problem",
      [("if not prefix or not isinstance(records, list)", "if not isinstance(records, list)", 1)], (rows_records,), {"records-from-top", "records-only"}, False),
     ("another project's skip taken where only some paths lie in it", "other_project_changes", [("if rels and all(", "if rels and any(", 1)],
      (rows_other_project,), {"both"}, False),
@@ -1642,14 +1713,14 @@ MUTANTS = (
      [("held.get(spec(rev, home)) is not None", "True", 1)], (rows_new_project,), {"import-owner", "import-seat"}, False),
     ("the hooks' copy, judging the commit being made, decides a new project in the index, not at HEAD", "copy:other_project_changes",
      [('parent = lambda rev: f"{rev}^" if rev else "HEAD"', 'parent = lambda rev: f"{rev}^" if rev else ""', 1),
-      ("held = cat_blobs(sorted({spec(r, h) for r, h in asked}))", "held = cat_blobs(sorted({spec(r, h) for r, h in asked}), index_env())", 1)],
+      ("held = project_blobs(sorted({spec(r, h) for r, h in asked}))", "held = project_blobs(sorted({spec(r, h) for r, h in asked}), index_env())", 1)],
      (rows_new_project,), {"import-seat", "import-side"}, False),
     ("a new project decided at the commit itself, not at its parent, in the check", "other_project_changes",
      [('parent = lambda rev: f"{rev}^" if rev else "HEAD"', 'parent = lambda rev: rev or "HEAD"', 1)], (rows_new_project,), {"import-two", "import-side"}, False),
     ("the hooks' copy reads a new project's `shoalmark.toml` from the index, not from HEAD", "copy:staged_projects",
      [('spec = lambda folder: f"HEAD:{folder}/{CONFIG_NAME}"', 'spec = lambda folder: f":{folder}/{CONFIG_NAME}"', 1),
-      ("held = cat_blobs([spec(folder) for folder in on_disk]) if on_disk else {}",
-       "held = cat_blobs([spec(folder) for folder in on_disk], index_env()) if on_disk else {}", 1)],
+      ("held = project_blobs([spec(folder) for folder in on_disk]) if on_disk else {}",
+       "held = project_blobs([spec(folder) for folder in on_disk], index_env()) if on_disk else {}", 1)],
      (rows_new_project,), {"import-owner", "import-seat", "import-side"}, False),
     ("the hooks' copy decides a new project on disk, not at HEAD", "copy:staged_projects",
      [("projects = {folder for folder in on_disk if held.get(spec(folder)) is not None}", "projects = set(on_disk)", 1)],
@@ -1657,6 +1728,16 @@ MUTANTS = (
     ("the project at the top decided at the parent too, as if it were a project below itself", "other_project_changes",
      [("if f.parts and os.path.lexists(ROOT / f / CONFIG_NAME)]", "if os.path.lexists(ROOT / f / CONFIG_NAME)]", 1)], (rows_new_project,),
      {"top-created"}, False),
+    ("another project taken whatever its `shoalmark.toml` is, a file or not, with or without its tracker folder", "project_blobs",
+     [('if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000":', "if _rev == rev:", 1),
+      ('if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None', "if got.get(spec) is not None else {}", 1)],
+     (rows_other_project,), {"nested"}, False),
+    ("another project taken whatever configuration its `shoalmark.toml` holds", "project_blobs",
+     [("cfg = config_accepted(got[spec], path[:-len(CONFIG_NAME)])", "cfg = read_config(got[spec])", 1)], (rows_other_project,), {"nested"}, False),
+    ("the hooks' copy takes a folder for another project whatever its `shoalmark.toml` is, with or without its tracker folder", "copy:project_blobs",
+     [('if _rev == rev and modes.get(path) in ("100644", "100755") and modes.get(folder) == "040000":', "if _rev == rev:", 1),
+      ('if got.get(spec) is not None and types.get(spec, "blob") == "blob" else None', "if got.get(spec) is not None else {}", 1)],
+     (rows_hooks,), {"hooks-nested"}, False),
     ("a `<repository>@<commit>` row counted as no commit, though `[repositories]` names its repository", "code_row_verdicts",
      [('"" if name in named else', '"" if False else', 1)], (rows_after_move,), {"code-named"}, False),
     ("a `<repository>@<commit>` row taken whatever repository it names", "code_row_verdicts", [('"" if name in named else', '"" if True else', 1)],
