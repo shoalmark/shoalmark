@@ -7769,8 +7769,9 @@ def rights_problems(trackers):
 # at that commit or after it, so neither its ship log nor its done items are judged again. An import commit carries the trailer
 # `Tracker-import: <repository> <commit>` — where its trackers come from — and counts only where it verifies as the Owner's own signed
 # commit, by the verification an answer gets (`import_verified`); a seat's commit, or one unsigned, freezes nothing. A tracker the
-# import modifies is judged as ever. A later edit of a frozen tracker is judged as any change to a `Shipped` tracker is, and a change
-# that leaves it not `Shipped` ends the freeze for good: a later move back is judged. The commit hook runs before the commit's trailer and
+# import modifies is judged as ever. A later edit of a frozen tracker is judged as any change to a `Shipped` tracker is. A later commit
+# where the tracker is `Shipped`, and at none of whose parents it is `Shipped`, is judged as any move is; a merge that takes it from a
+# parent where it is `Shipped` moves nothing, whichever parent deleted or reopened it. The commit hook runs before the commit's trailer and
 # signature exist, so its run finds no move in a tracker the commit adds already `Shipped`: it leaves that tracker to `--check`, which
 # judges the made commit, and says so in one line. A move to `Shipped` of a tracker present at a parent is judged there as ever. Every
 # other run judges as above. Git alone: a Subversion revision carries no signature.
@@ -8469,12 +8470,12 @@ def tracker_imports():
 def frozen_left(sha, froze, held):
     """The ids of `froze` — what the import commit `sha` froze — that no later commit of HEAD's history moves to Shipped, as the Shipped rule
     judges a move: a commit, a merge included, where the tracker is Shipped and at none of whose parents it is, found at each parent by its
-    path or else by its id (`tracker_at`). A deletion or a move away from Shipped ends nothing by itself: on the line HEAD holds, a later
-    move back is such a move, and a side branch's deletion that the merge did not keep moves nothing back. A later import of `held` that
-    freezes the same tracker is no such move: it freezes it anew, and the count holds it once. The history is one `git log`, which reads a
-    merge by its own change, the files where its result differs from every parent, as the rule reads a merge. Only a tracker file of a
-    frozen id directly in the tracker folder (`tracker_name`) is read: a note below that folder is no tracker's. One `cat_blobs` for the
-    commits, and `tracker_at` for their parents."""
+    path or else by its id (`tracker_at`). A deletion or a move away from Shipped ends nothing by itself: a later commit where the tracker
+    is Shipped, and at none of whose parents it is Shipped, is such a move, and a merge that takes it from a parent where it is Shipped
+    moves nothing, whichever parent deleted or reopened it. A later import of `held` that freezes the same tracker is no such move: it
+    freezes it anew, and the count holds it once. The history is one `git log`, which reads a merge by its own change, the files where its
+    result differs from every parent, as the rule reads a merge. Only a tracker file of a frozen id directly in the tracker folder
+    (`tracker_name`) is read: a note below that folder is no tracker's. One `cat_blobs` for the commits, and `tracker_at` for their parents."""
     if not froze:
         return set()
     home = TRACKER_DIR.resolve().relative_to(ROOT).as_posix()
@@ -8500,8 +8501,10 @@ def frozen_line(trackers):
     none is, naming the newest commit that carries the trailer and freezes nothing, and why. A tracker is frozen while the rule finds no
     move for it: an import commit that verifies added it already Shipped, no later commit moves it to Shipped as the rule judges a move
     (`frozen_left`), and it is Shipped at HEAD, its tracker file directly in the tracker folder found by its id, and in the working state.
-    So after a move away from Shipped or a deletion on the line HEAD holds, a later move back is judged and the count leaves the tracker
-    out, and a move back not yet committed is judged in the change being made."""
+    So the count leaves out a tracker that a later commit moves to Shipped, a commit where it is Shipped and at none of whose parents it is,
+    which the rule judges as any move, and one moved back to Shipped and not yet committed, which the rule judges in the change being made;
+    it keeps one that a merge takes from a parent where it is Shipped, since that merge moves nothing, whichever parent deleted or reopened
+    it."""
     found = tracker_imports()
     if found is None:
         return f"frozen trackers: none — HEAD's history cannot be read, so no `{IMPORT_TRAILER}:` commit freezes anything"
