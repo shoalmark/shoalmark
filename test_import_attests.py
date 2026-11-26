@@ -23,7 +23,8 @@ import sets them. An import whose parent's tree this clone cannot read — a par
 A merge adds only what none of its parents holds; a merge being made reads the history its incoming head brings; an answer with no ask
 id that a later commit changes is that commit's; the Owner's signed first commit attests nothing; and the import's copy gives an answer
 only to the ask id it holds. An import that brings a tracker back, after a commit took its lines out, sets those lines: the
-commit that took them out is in the import's history, so it set nothing the file now holds. The parent guard reads a tracker folder
+commit that took them out is in the import's history, so it set nothing the file now holds. A commit after the import that
+writes a line back as the import's copy holds it is not in that history, and sets the line. The parent guard reads a tracker folder
 a parent lacks as one it does not hold, and one the parent's listing names but this clone cannot read as unread, and one such parent
 is enough to refuse a merge; the import sets only a line its copy holds as the file does, and of two imports that hold it, the newest.
 
@@ -40,6 +41,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
@@ -834,10 +836,56 @@ def rows_newest_import_named(area, add):
     s.add(add, "of two imports that attest a tracker and hold a line as the file does, the newest sets it: the record --clear-ask "
                "writes names that import's commit")
 
+
+# --- a line written back after the import: the commit that writes it back sets it ----------------------------------------------------
+
+def written_back(r):
+    """A seat's commit changes FM-205's answer and FM-204's `tier:`, and a second seat's commit, a second later, writes both back as the
+    import's copy holds them. The second commit."""
+    answer, tier = r.read("FM-205"), r.read("FM-204")
+    r.write("FM-205", answer.replace(f'answer: "{ANSWER}"', f'answer: "{ANSWER}, for a while"'))
+    r.write("FM-204", tier.replace("tier: P1", "tier: P2"))
+    commit(r, "FM-204, FM-205: changed by a seat")
+    time.sleep(1.1)
+    r.write("FM-205", answer)
+    r.write("FM-204", tier)
+    return commit(r, "FM-204, FM-205: written back as imported, by a seat")
+
+
+def rows_written_back(area, add):
+    """After the import — an ordinary one landed on `main`, a merge that is the import, or a merge that imports the five again after a
+    seat's commit took them out —, a seat's commit changes FM-205's answer and FM-204's `tier:`, and a second seat's commit writes both
+    back as the import's copy holds them: that copy holds both lines as the file does, and the import's history holds neither commit."""
+    s = Steps()
+    for case, how in (("an ordinary import", "plain"), ("a merge import", "merge"), ("an import made again by a merge", "again")):
+        r = seeded(area.with_name(f"{area.name}-{how}"), "before")
+        if how == "plain":
+            made_import(r, bodies=FIVE)
+            r.land("import")
+        elif how == "merge":
+            merged(r, FIVE)
+        else:
+            made_import(r, bodies=FIVE)
+            r.land("import")
+            taken_out(r)
+            merged(r, FIVE)
+        time.sleep(1.1)
+        back = written_back(r)
+        said = r.check()
+        with reading(r.root) as ts:
+            who = [author_of(ts, "FM-205", "answer:"), author_of(ts, "FM-204", "tier:")]
+        s(f"after {case}: FM-205's answer and FM-204's `tier:` are the seat's commit's that wrote them back, not the import's",
+          who == [(SEAT[0], SEAT[1], "git", back)] * 2, extra=repr((back[:10], who)))
+        s("…so --check refuses FM-205's answer as one from a seat that may not give one",
+          refusal(said, "FM-205", "an answer counts only from a seat"), said)
+    s.add(add, "a line a seat's commit after the import writes back as the import's copy holds it stays that commit's: the import's "
+               "history does not hold it, so the import does not set it, and --check refuses FM-205's answer as a seat's")
+
 ROWS = (rows_check, rows_modified, rows_queue, rows_owner, rows_answer_counts, rows_ask_numbers, rows_after_import, rows_attests_nothing,
         rows_done_left, rows_below_top_verification_stubbed, rows_merge_import, rows_parent_unread, rows_merge_first_parent,
         rows_merge_being_made, rows_legacy_reworded, rows_first_commit, rows_answer_other_id, rows_merge_reimport, rows_merge_reimport_landed,
-        rows_parent_without_folder, rows_parent_folder_unread, rows_merge_parent_unread, rows_merge_copy_differs, rows_newest_import_named)
+        rows_parent_without_folder, rows_parent_folder_unread, rows_merge_parent_unread, rows_merge_copy_differs, rows_newest_import_named,
+        rows_written_back)
 
 
 @contextlib.contextmanager
@@ -926,6 +974,8 @@ MUTANTS = (
      (('for sha, name, text in import_attests().get("-".join(pathlib.PurePosixPath(rel).name.split("-")[:2]), ()):',
        'for sha, name, text in list(import_attests().get("-".join(pathlib.PurePosixPath(rel).name.split("-")[:2]), ()))[::-1]:'),),
      (rows_newest_import_named,)),
+    ("the import sets a line its copy holds whatever commit the search names: a line a seat's commit writes back after the import is the "
+     "import's", "import_setter", (("if found and found != sha and not reaches(found, sha):", "if False:"),), (rows_written_back,)),
 )
 
 
