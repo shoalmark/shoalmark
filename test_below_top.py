@@ -1213,6 +1213,95 @@ def rows_hooks(area, add):
         add("hooks · the copy, judging the project below the top, finds the repository's own tool where its COPY says, from the top of the working "
             "tree — the folder it finds for every project", want is not None and got == want, f"tree_tool_dir() = {got}, not {want}")
 
+    def first_refusal(r, outer, team):
+        paths = [r_at(team, "src/tool.py"), r_at(outer, "src/app.py")]
+        for path in paths:
+            r.put(path, "print('built')\n")
+        git(r.top, "add", "--", *paths)
+        code, said = hooked(r, "FM-001: build both, naming the team's tracker only")
+        return code != 0 and NO_OUTER in said and NO_TEAM not in said, f"hook exit {code}: {said.strip()[-400:]!r}"
+
+    def refused_config(r, outer, team):
+        cfg = r.root(team) / "shoalmark.toml"
+        cfg.write_text(cfg.read_text(encoding="utf-8") + '[repositories]\ntool = ""\n', encoding="utf-8")
+        git(r.top, "add", "--", r_at(team, "shoalmark.toml"))
+        code, said = hooked(r, "FM-001: name the tool's repository")
+        return code != 0 and "[repositories]" in said, f"hook exit {code}: {said.strip()[-400:]!r}"
+
+    def moved_out(r, outer, team):
+        src, dst = r_at(team, "src/moved.py"), r_at(outer, "src/moved.py")
+        r.put(src, "print('the team file')\n")
+        git(r.top, "add", "--", src)
+        git(r.top, "commit", "-q", "-m", "FM-001: the team's file")                # the hooks off
+        git(r.top, "mv", src, dst)
+        code, said = hooked(r, "OR-001: the team's file moves to the app")
+        return code != 0 and NO_TEAM in said and NO_OUTER not in said, f"hook exit {code}: {said.strip()[-400:]!r}"
+
+    def config_out(r, outer, team):
+        git(r.top, "rm", "-q", "--", r_at(team, "shoalmark.toml"))
+        code, said = hooked(r, "take the team's configuration out, naming no tracker")
+        theirs = [one for one in said.splitlines() if NO_OUTER in one]
+        return (code != 0 and bool(theirs) and not any(one.startswith(f"{team}: ") for one in said.splitlines())
+                and all(one.startswith(f"{outer}: ") if outer else not one.startswith(f"{team}") for one in theirs)), f"hook exit {code}: {said.strip()[-400:]!r}"
+
+    for where, outer_at in other_layouts():             # four rules of the hooks, each in a clone of its own
+        for name, label, build in (
+                ("hooks-first", "a build commit staged in both projects whose subject names the team's judged tracker alone: the outer project "
+                 "refuses it, the team passes it, and the commit is refused — the first refusal gives the exit", first_refusal),
+                ("hooks-config", "a staged change that makes the team's configuration one the tool refuses refuses the commit, with its line",
+                 refused_config),
+                ("hooks-moved-out", "a file moved out of the team's project into the outer one, the subject naming the outer project's judged "
+                 "tracker alone: the team judges the path it loses, and the commit is refused by the team's rule", moved_out),
+                ("hooks-config-out", "a commit that takes the team's `shoalmark.toml` out, naming no tracker: the team, whose working tree no "
+                 "longer holds it, is no project of that commit, and the outer project refuses it — no line is the team's", config_out)):
+            if not picked(name):
+                continue
+            try:
+                r, outer, team = gated(area, f"{name}-{'below' if outer_at else 'top'}", outer_at)
+                installed = install_once(r, outer)
+                if installed[0] != 0:
+                    raise AssertionError(f"--install-hook: {seen(installed)}")
+                ok, saw = build(r, outer, team)
+            except Exception as e:
+                ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+            finally:
+                fm.configure(HERE)
+            add(f"hooks · {where}: {label}", ok, saw)
+
+    if picked("each-alone"):
+        try:
+            r = layout(area, "each-alone", "", {"FM-001": text("FM-001")})
+            got = [run(r.root(""), *argv, who=LEAD) for argv in (("--each-project", "--print-written", "--check"), ("--each-project", "--check"))]
+            ok, saw = (all(g[0] == 2 and "--each-project goes with one of" in g[2] for g in got),
+                       " · ".join(f"exit {g[0]}: {g[2].strip()[:160]!r}" for g in got))
+        except Exception as e:
+            ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm.configure(HERE)
+        add("hooks · `--each-project` with a flag besides the hooks' line, or with no hook line, is refused in one line, exit 2", ok, saw)
+
+    if picked("drift-once"):
+        try:
+            r = org_tools(area, "drift-once", {"": org_config(), TEAM: team_config()}, {("", "OR-001"): text("OR-001"), (TEAM, "FM-001"): text("FM-001")})
+            tool = r.top / TOOL_AT / "shoalmark.py"
+            tool.write_text(tool.read_text(encoding="utf-8") + "# the repository's tool, edited\n", encoding="utf-8")
+            line, counts = "the repository's tool differs from it", []
+            for n, paths in enumerate(([r_at(TEAM, "src/tool.py")], [r_at(TEAM, "src/tool2.py"), "src/app2.py"])):
+                for path in paths:
+                    r.put(path, "print('built')\n")
+                git(r.top, "add", "--", *paths)
+                code, said = hooked(r, f"FM-001, OR-001: build, step {n}")
+                counts.append((code, said.count(line), said))
+            ok = counts[0][1] >= 1 and counts[0][1] == counts[1][1]
+            saw = (f"one project: exit {counts[0][0]}, said {counts[0][1]} times · two projects: exit {counts[1][0]}, said {counts[1][1]} times · "
+                   f"{counts[1][2].strip()[-300:]!r}")
+        except Exception as e:
+            ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm.configure(HERE)
+        add("hooks · the drift line, where the repository's tool differs from the copy, is said once in each hook's run, however many projects "
+            "the commit stages", ok, saw)
+
     for where, outer_at in other_layouts():             # what a project below the top says in the hooks starts with its folder from the top
         name = f"hooks-named-{'below' if outer_at else 'top'}"
         if not picked("hooks-named"):
@@ -1619,6 +1708,44 @@ def rows_command(area, add):
         return (wrote[0] == 0 and code == 0 and not any(stale),
                 f"--root exit {wrote[0]}, hook exit {code}: {said.strip()[-200:]!r} · the team's --check in the Owner's clone and in its own: exits "
                 f"{[c[0] for c in checks]}, {stale}")
+    def from_below():
+        r = Repo(area / "command-from-below", {"": org_config(), TEAM: team_config()}, {("", "OR-001"): text("OR-001"), (TEAM, "FM-001"): text("FM-001")},
+                 {"src/app.py": "print('app')\n"})
+        vendored(r)
+        installed = by_hand(r.root(TEAM), f"../../{TOOL_AT}/shoalmark.py", "--install-hook", who=OWNER)
+        index, t = r.top / REL / "INDEX.md", r.path("", "OR-001")
+        t.write_text(t.read_text(encoding="utf-8").replace('hook: "h of OR-001"', 'hook: "h of OR-001, reworded"'), encoding="utf-8")
+        index.write_bytes(b"placeholder\n")
+        direct = by_hand(r.top, f"{TOOL_AT}/shoalmark.py", who=COORD)
+        by_run = index.read_bytes()
+        index.write_bytes(b"placeholder\n")
+        git(r.top, "add", "-A")
+        code, said = hooked(r, "OR-001: its hook, reworded", who=COORD, shell=PERSON)
+        by_hook = subprocess.run(["git", "-C", str(r.top), "show", f"HEAD:{REL}/INDEX.md"], capture_output=True, env=ids.ENV).stdout
+        header = lambda b: next((l for l in b.decode("utf-8", "replace").splitlines() if "GENERATED" in l), "")
+        return (installed[0] == 0 and direct[0] == 0 and code == 0 and by_run == by_hook,
+                f"--install-hook from {TEAM}/: exit {installed[0]} · the direct run at the top: exit {direct[0]}, header {header(by_run)!r} · "
+                f"the hook: exit {code} {said.strip()[-200:]!r}, header {header(by_hook)!r} · the same bytes {by_run == by_hook}")
+    one("command-from-below", "the tool's command · the hooks installed from the team project below the top, by the tool in the top's `tools/`: "
+        "the outer project's INDEX.md, as the hooks write it at the top, is the same bytes as a direct run's there", from_below)
+
+    def copy_outside():
+        r = org_tools(area, "command-copy-outside", {"": org_config(), TEAM: team_config()}, {("", "OR-001"): text("OR-001"), (TEAM, "FM-001"): text("FM-001")})
+        common = Path(git(r.top, "rev-parse", "--git-common-dir").strip())
+        record = (common if common.is_absolute() else r.top / common) / fm.COPY_DIR / "COPY"
+        lines = record.read_text(encoding="utf-8").splitlines()
+        record.write_text("".join(("tool: ../outside" if one.startswith("tool: ") else one) + "\n" for one in lines), encoding="utf-8")
+        t = r.path(TEAM, "FM-001")
+        t.write_text(t.read_text(encoding="utf-8").replace('hook: "h of FM-001"', 'hook: "h of FM-001, reworded"'), encoding="utf-8")
+        git(r.top, "add", "-A")
+        code, said = hooked(r, "FM-001: its hook, reworded", who=LEAD, shell=PERSON)
+        got = subprocess.run(["git", "-C", str(r.top), "show", f"HEAD:{TEAM}/{REL}/INDEX.md"], capture_output=True, env=ids.ENV).stdout
+        header = next((l for l in got.decode("utf-8", "replace").splitlines() if "GENERATED" in l), "")
+        return (any(one.startswith("tool: ") for one in lines) and code == 0 and f"Run `{fm.PY} {TOOL_AT}/shoalmark.py` after" in header,
+                f"hook exit {code}: {said.strip()[-200:]!r} · header {header!r}")
+    one("command-copy-outside", "the tool's command · a COPY whose `tool:` climbs out of the working tree, `../outside`, is not taken: the hooks "
+        "name the team project by the command `--install-hook` recorded, and no path outside the working tree", copy_outside)
+
     def own_tool():
         r = org_tools(area, "command-own", {"": org_config(), TEAM: team_config()}, {("", "OR-001"): text("OR-001"), (TEAM, "FM-001"): text("FM-001")})
         vendored(r, f"{TEAM}/{TOOL_AT}")                     # the team keeps its own tool, at its root's `tools/shoalmark/`
@@ -1744,6 +1871,13 @@ def rows_after_move(area, add):
         return said[0] == 0 and GATE not in said[2], seen(said)
     each(area, add, "elsewhere-gate", "trackers elsewhere · a code repository marked so, with `judged_before_build = true`: the build gate is off — "
          "the commit being made on a branch, naming no tracker, passes the commit-msg check", gate_off, top=GATED, tables=ELSEWHERE, signers_in=KEYS)
+
+    def hook_run(r, f):
+        said = run(r.root(f), "--print-written", who=LEAD)
+        want = ELSEWHERE_SAID + ": nothing here is judged, and the build gate, `judged_before_build`, is off\n"
+        return said[0] == 0 and said[1] == "" and said[2] == want, f"exit {said[0]}: stdout {said[1][:200]!r} · stderr {said[2][:300]!r}"
+    each(area, add, "elsewhere-hook", "trackers elsewhere · a code repository marked so: the pre-commit hook's run, `--print-written`, says so in "
+         "one line on stderr, prints nothing on stdout and passes", hook_run, tables=ELSEWHERE, signers_in=KEYS)
 
     def on_a_branch(r, f):
         said = {}
@@ -1945,6 +2079,26 @@ MUTANTS = (
      (rows_hooks,), {"hooks-top"}, False),
     ("the hooks' copy finds the repository's own tool from each project's root", "tree_tool_dir", [("return top / tool if tool else top", "return ROOT / tool if tool else ROOT", 1)],
      (rows_hooks,), {"copy-tool"}, False),
+    ("the pre-commit hook's run in a code repository whose trackers live elsewhere judges as anywhere", "elsewhere_run",
+     [('if operation == "check" or args.print_written:', 'if operation == "check":', 1)], (rows_after_move,), {"elsewhere-hook"}, False),
+    ("the hooks' copy exits with the last project's run, not the first refusal", "copy:each_project",
+     [("code = code or got or EXIT_OK", "code = got or EXIT_OK", 1)], (rows_hooks,), {"hooks-first"}, False),
+    ("the hooks' copy passes a project whose configuration is refused", "copy:each_project",
+     [("got = stop.code if isinstance(stop.code, int) else 0 if stop.code is None else 1", "got = 0", 1)], (rows_hooks,), {"hooks-config"}, False),
+    ("`--each-project` taken with any other flag", "each_project", [("if alone is None or any(", "if alone is None and any(", 1)],
+     (rows_hooks,), {"each-alone"}, False),
+    ("the drift line said once for each project, in the hooks' copy", "copy:main_run", [("if drift and drift not in _DRIFT_SAID:", "if drift:", 1)],
+     (rows_hooks,), {"drift-once"}, False),
+    ("the hooks' copy reads the staged names with renames", "copy:each_project",
+     [('"diff", "--cached", "-z", "--name-only", "--no-renames", "--ignore-submodules=none", cwd=top',
+       '"diff", "--cached", "-z", "--name-only", "--ignore-submodules=none", cwd=top', 1)], (rows_hooks,), {"hooks-moved-out"}, False),
+    ("`--install-hook` from the vendored tool records the tool's folder from the project root, not the top", "tree:install_copy",
+     [('here_rel = os.path.relpath(HERE, top).replace(os.sep, "/") if inside else "-"',
+       'here_rel = os.path.relpath(HERE, ROOT).replace(os.sep, "/") if in_tree(HERE) else "-"', 1)], (rows_command,), {"command-from-below"}, False),
+    ("the hooks' copy takes a `tool:` folder that climbs out of the working tree", "copy:copy_tool_folder",
+     [(' or ".." in tool.split("/")', '', 1)], (rows_command,), {"command-copy-outside"}, False),
+    ("the hooks' copy takes a project HEAD holds but the working tree lacks", "copy:staged_projects",
+     [("if os.path.lexists(top.joinpath(*parts[:n], CONFIG_NAME))", "if True", 1)], (rows_hooks,), {"hooks-config-out"}, False),
     ("the hooks' copy says a project's lines below the top without its folder", "copy:each_project",
      [("with lines_named(folder[:-1]):              # each line", 'with lines_named(""):              # each line', 1)], (rows_hooks,),
      {"hooks-named"}, False),
