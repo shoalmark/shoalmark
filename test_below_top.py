@@ -195,11 +195,12 @@ def run_area():
     return _RUN
 
 
-def layout(area, name, below, trackers=None, top="", tables="", files=None, signers=None):
-    """One project — the team's — at the top (`below` ""), or in `below` of a larger repository whose top holds other files."""
+def layout(area, name, below, trackers=None, top="", tables="", files=None, signers=None, signers_in=None):
+    """One project — the team's — at the top (`below` ""), or in `below` of a larger repository whose top holds other files. `signers_in` names
+    the signers file from the project root, `signers` from the top."""
     more = {"README.md": "the larger repository\n", "src/app.py": "print('app')\n"} if below else {}
     return Repo(area / name, {below: team_config(top, tables)}, {(below, tid): body for tid, body in (trackers or {}).items()},
-                {**more, **(files or {})}, signers)
+                {**more, **(files or {})}, Repo.at(below, signers_in) if signers_in else signers)
 
 
 def api(name):
@@ -1389,6 +1390,9 @@ OTHER = "0123456789abcdef0123456789abcdef01234567"      # a commit of the code r
 CODE_LINE = ("the Shipped rule: 1 move to `Shipped` rests on a ship-log row naming `<repository>@<commit>` for a code repository "
              "`[repositories]` names (tool) — taken as the commit behind the move, that repository unread: FM-001")
 ELSEWHERE_SAID = "this repository's trackers live elsewhere — https://example.invalid/planning.git, teams/tool/ (`[trackers] elsewhere` in shoalmark.toml)"
+KEYS = "keys/allowed_signers"       # a code repository's signers file, from its root: it holds no tracker folder
+FOLDER_HELD = ("shoalmark.toml: `[trackers] elsewhere` is for a code repository whose trackers live in another, and this project holds a tracker "
+               "folder, {} — its trackers live here: take the table out")
 
 
 def rows_after_move(area, add):
@@ -1448,7 +1452,7 @@ def rows_after_move(area, add):
         want = ELSEWHERE_SAID + ": nothing here is judged, and the build gate, `judged_before_build`, is off\n"
         return said[0] == 0 and said[1] == want and not said[2], f"exit {said[0]}: stdout {said[1][:300]!r} · stderr {said[2][:300]!r}"
     each(area, add, "elsewhere-check", "trackers elsewhere · a code repository marked so: `--check` says so in one line and passes — a build commit "
-         "on a branch, naming no tracker, under `judged_before_build = true`, is not judged", elsewhere_check, top=GATED, tables=ELSEWHERE)
+         "on a branch, naming no tracker, under `judged_before_build = true`, is not judged", elsewhere_check, top=GATED, tables=ELSEWHERE, signers_in=KEYS)
 
     def refusal(argvs, line):
         def case(r, f):
@@ -1464,7 +1468,7 @@ def rows_after_move(area, add):
                                     ("elsewhere-board", "the board — `--html-only`, and the run that writes INDEX.md and the board —", [("--html-only",), ()],
                                      "the board: {}: its board is built there")):
         each(area, add, name, f"trackers elsewhere · a code repository marked so: {what} refuses in one line, exit 4, and writes nothing",
-             refusal(argvs, said.format(ELSEWHERE_SAID) + " — nothing is written"), tables=ELSEWHERE)
+             refusal(argvs, said.format(ELSEWHERE_SAID) + " — nothing is written"), tables=ELSEWHERE, signers_in=KEYS)
 
     def gate_off(r, f):
         r.switch("-c", "work")
@@ -1475,7 +1479,63 @@ def rows_after_move(area, add):
         said = run(r.root(f), "--commit-msg", str(msg), who=LEAD)
         return said[0] == 0 and GATE not in said[2], seen(said)
     each(area, add, "elsewhere-gate", "trackers elsewhere · a code repository marked so, with `judged_before_build = true`: the build gate is off — "
-         "the commit being made on a branch, naming no tracker, passes the commit-msg check", gate_off, top=GATED, tables=ELSEWHERE)
+         "the commit being made on a branch, naming no tracker, passes the commit-msg check", gate_off, top=GATED, tables=ELSEWHERE, signers_in=KEYS)
+
+    def on_a_branch(r, f):
+        said = {}
+        for name, extra in (("control", ""), ("table", '[trackers]\nelsewhere = "anywhere"\n')):
+            git(r.top, "switch", "-q", "-c", f"work-{name}", "main")
+            r.write(f, "FM-001", closed(r.read(f, "FM-001")))                  # a close by no seat: the rights rule refuses it
+            r.put(r.signers_rel, (r.top / r.signers_rel).read_text(encoding="utf-8") + f"{PROBE[1]} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOnly\n")
+            r.put(r.at(f, "src/evil.py"), "print('built under no tracker')\n")
+            cfg = r.root(f) / "shoalmark.toml"
+            cfg.write_text(cfg.read_text(encoding="utf-8") + extra, encoding="utf-8")
+            r.commit("no tracker named", who=PROBE, index=False)
+            said[name] = r.check(f, who=PROBE)
+        ok = (said["control"][0] == fm.EXIT_LINT and refused(said["control"], "FM-001: this change is a `close`", "is not a seat")
+              and said["table"][0] == 1 and said["table"][2] == FOLDER_HELD.format(REL + "/") + "\n" and not said["table"][1])
+        return ok, " · ".join(f"{k}: exit {c}: {(o + e).strip()[:300]!r}" for k, (c, o, e) in said.items())
+    each(area, add, "elsewhere-branch", "trackers elsewhere · a branch of a project that holds trackers adds the table, with a close by no seat, a key "
+         "added to the signers file and a build under no tracker: refused at configuration in one line, exit 1, naming the tracker folder — the "
+         "same commit without the table refused by the rights rule", on_a_branch, {"FM-001": text("FM-001", f"tier: P2\ntriaged: {TODAY}\n")}, top=GATED)
+
+    def judged_on_a_branch(r, f):
+        r.switch("-c", "work")
+        cfg = r.root(f) / "shoalmark.toml"
+        cfg.write_text(cfg.read_text(encoding="utf-8") + ELSEWHERE, encoding="utf-8")
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        r.commit("build the tool", index=False)
+        check = r.check(f)
+        r.put(r.at(f, "src/more.py"), "print('more')\n")
+        git(r.top, "add", "--", r.at(f, "src/more.py"))
+        msg = r.base / "msg"
+        msg.write_text("build more\n", encoding="utf-8")
+        gate = run(r.root(f), "--commit-msg", str(msg), who=LEAD)
+        ok = check[0] != 0 and ELSEWHERE_SAID not in check[1] + check[2] and gate[0] != 0 and GATE in gate[2]
+        return ok, f"--check: {seen(check)} · --commit-msg: {seen(gate)}"
+    each(area, add, "elsewhere-branch-code", "trackers elsewhere · a code repository whose default branch does not hold the table, a branch that adds "
+         "it: judged by every rule — `--check` does not pass it, and the commit-msg check refuses a build commit naming no tracker",
+         judged_on_a_branch, top=GATED, signers_in=KEYS)
+
+    def held_on_main(r, f):
+        r.switch("-c", "work")
+        git(r.root(f), "rm", "-q", "-r", "--", REL)
+        if (r.root(f) / REL).exists():                                     # what git does not track in it, moved out of the working tree
+            os.rename(r.root(f) / REL, r.base / "set-aside")
+        cfg = r.root(f) / "shoalmark.toml"
+        cfg.write_text(cfg.read_text(encoding="utf-8") + ELSEWHERE, encoding="utf-8")
+        r.commit("the trackers live elsewhere now", index=False)
+        said = r.check(f)
+        return said[0] == 1 and said[2] == FOLDER_HELD.format(f"{REL}/ on origin/main") + "\n" and not said[1], seen(said)
+    each(area, add, "elsewhere-folder-landed", "trackers elsewhere · a branch that takes the tracker folder out and adds the table: refused at "
+         "configuration in one line, exit 1 — the default branch holds the tracker folder", held_on_main, {"FM-001": text("FM-001")}, signers_in=KEYS)
+
+    def unread(r, f):
+        git(r.top, "remote", "remove", "origin")
+        said = r.check(f)
+        return said[0] != 0 and ELSEWHERE_SAID not in said[1] + said[2], seen(said)
+    each(area, add, "elsewhere-unread", "trackers elsewhere · where the default branch cannot be read — no `origin` — the table is not in force: "
+         "`--check` does not pass", unread, top=GATED, tables=ELSEWHERE, signers_in=KEYS)
 
     if picked("code-schema"):
         code, out, err = run(HERE, "--schema")
@@ -1618,8 +1678,16 @@ MUTANTS = (
      (rows_after_move,), {"elsewhere-board"}, False),
     ("the run that writes INDEX.md and the board, in such a repository, writes them here", "elsewhere_run",
      [('if operation in ("init", "new", "write"):', 'if operation in ("init", "new"):', 1)], (rows_after_move,), {"elsewhere-board"}, False),
-    ("the build gate on in such a repository, where its configuration turns it on", "configure",
-     [('        CONFIG["judged_before_build"] = False\n', "        pass\n", 1)], (rows_after_move,), {"elsewhere-gate"}, False),
+    ("the build gate on in such a repository, where its configuration turns it on", "commit_msg_check",
+     [('if not CONFIG.get("judged_before_build") or vcs() != "git" or trackers_elsewhere():', 'if not CONFIG.get("judged_before_build") or vcs() != "git":', 1)],
+     (rows_after_move,), {"elsewhere-gate"}, False),
+    ("`[trackers] elsewhere` read from this checkout's configuration, not the default branch's", "trackers_elsewhere",
+     [('named = elsewhere_named((landed_config() or {}).get("trackers"))', 'named = elsewhere_named(CONFIG.get("trackers"))', 1)],
+     (rows_after_move,), {"elsewhere-branch-code", "elsewhere-unread"}, False),
+    ("`[trackers] elsewhere` taken where the project holds a tracker folder", "code_config_problem",
+     [('held = tracker_folder_held() if section is not None else ""', 'held = ""', 1)], (rows_after_move,), {"elsewhere-branch"}, False),
+    ("the default branch's tracker folder not looked at", "tracker_folder_held",
+     [('if path_mode(trunk, root_prefix() + folder) not in ("", "?"):', "if False:", 1)], (rows_after_move,), {"elsewhere-folder-landed"}, False),
     ("the tool named by its absolute path again where it lies outside the project root, in the root's working tree", "tree:tool_named",
      [("if inside(ROOT) or inside(top):", "if inside(ROOT):", 1)], (rows_command,), {"command-below", "command-import"}, False),
     ("the hooks' copy names the command `--install-hook` recorded, from the top, for a project below it", "copy:configure",

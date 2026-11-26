@@ -837,8 +837,8 @@ def configure(root=None):
     _GUARD, _SIGNERS = None, None                       # FM-037's, the same — and the signers file it verifies against
     global _OWNER_POLICY, _OWNER_COMMITS
     _OWNER_POLICY, _OWNER_COMMITS = None, {}
-    global _FILED
-    _FILED = None
+    global _FILED, _LANDED
+    _FILED, _LANDED = None, None                        # …and the configuration the default branch holds for this project (`landed_config`)
     global _CODE_MOVES
     _CODE_MOVES = {}                                    # the moves to `Shipped` that rest on a commit of another code repository (`ship_problems`)
     _FILED_AT.clear()
@@ -885,8 +885,6 @@ def configure(root=None):
     code_refused = code_config_problem()                # `[repositories]` and `[trackers]`, each as `--schema` says it
     if code_refused:
         raise SystemExit(code_refused)
-    if trackers_elsewhere():                            # a code repository whose trackers live in another: no build commit here is judged
-        CONFIG["judged_before_build"] = False
     ANSWERERS = {}                                      # name -> "signed" | "" (name only)
     for a in (CONFIG.get("answerers") or []):
         name, _, mode = str(a).strip().rpartition(" ")
@@ -6507,8 +6505,10 @@ CONFIG_KEYS = {           # the configuration's keys that change what a command 
                              "table's one key",
                              "a code repository whose trackers live in another: `--check` says so in one line and passes, reading no tracker; `--init`, "
                              "`--new` and the board — `--html-only`, and the run that writes INDEX.md and the board — refuse in one line each (exit 4); "
-                             "`judged_before_build` is off, whatever it says. Another key in `[trackers]`, or an empty value, is refused at configuration "
-                             "(exit 1)"),
+                             "`judged_before_build` is off, whatever it says. In force as the default branch's configuration holds it, read as the Owner "
+                             "is: a branch that adds it is judged by every rule, and where that branch cannot be read it is not in force. Another key in "
+                             "`[trackers]`, or an empty value, is refused at configuration (exit 1), and so is the table where the project, or its default "
+                             "branch, holds a tracker folder"),
 }
 
 
@@ -7903,17 +7903,83 @@ def code_config_problem():
         return (f"{CONFIG_NAME}: `[repositories]` names each code repository a ship-log row may name as `<repository>@<commit>` — "
                 f"`<repository> = \"<where it is>\"`, its URL or its path, a non-empty string. Got {named!r}")
     section = CONFIG.get("trackers")
-    if section is not None and not (isinstance(section, dict) and set(section) == {"elsewhere"} and isinstance(section["elsewhere"], str)
-                                    and section["elsewhere"].strip()):
+    if section is not None and not elsewhere_named(section):
         return (f"{CONFIG_NAME}: `[trackers]` holds one key, `elsewhere = \"<where>\"` — where this code repository's trackers live, a non-empty "
                 f"string. Got {section!r}")
+    held = tracker_folder_held() if section is not None else ""
+    if held:
+        return (f"{CONFIG_NAME}: `[trackers] elsewhere` is for a code repository whose trackers live in another, and this project holds a tracker "
+                f"folder, {held} — its trackers live here: take the table out")
     return None
 
 
+def elsewhere_named(section):
+    """`[trackers] elsewhere`'s value where `section` is the table `--schema` names — one key, a non-empty string — else ""."""
+    ok = isinstance(section, dict) and set(section) == {"elsewhere"} and isinstance(section["elsewhere"], str) and section["elsewhere"].strip()
+    return section["elsewhere"].strip() if ok else ""
+
+
 def trackers_elsewhere():
-    """Where this code repository's trackers live, as `[trackers] elsewhere` names it — "" where they live here."""
-    section = CONFIG.get("trackers")
-    return section["elsewhere"].strip() if isinstance(section, dict) and isinstance(section.get("elsewhere"), str) else ""
+    """Where this code repository's trackers live, as `[trackers] elsewhere` names it in the configuration the default branch holds
+    (`landed_config`) — "" where they live here: that configuration holds no such table, the default branch cannot be read, or this project
+    holds a tracker folder (`tracker_folder_held`). What this checkout's configuration says is not read: a branch that adds the table is judged
+    by every rule, and one that takes it out does not turn the gate back on before it lands."""
+    named = elsewhere_named((landed_config() or {}).get("trackers"))
+    return "" if not named or tracker_folder_held() else named
+
+
+def config_at(rev):
+    """`rev`'s configuration of this project, read as `owners_at` reads it: a dict — {} where nothing is at its path — or None where it is
+    no regular file, or one this tool refuses."""
+    prefix = root_prefix()
+    spec, types = f"{rev}:{prefix}{CONFIG_NAME}", {}
+    text = cat_blobs([spec], types=types, raw=True).get(spec)
+    mode = path_mode(rev, prefix + CONFIG_NAME)
+    if not mode:
+        return {}
+    if text is None or types.get(spec, "blob") != "blob" or mode not in ("100644", "100755"):
+        return None
+    try:
+        guard_config(text)
+        return read_config(text)
+    except SystemExit:
+        return None
+
+
+def landed_config():
+    """This project's configuration as the default branch holds it, read as the gate reads the Owner (`owners_now`): at the last state that
+    branch accepted, or at its tip where no state there names anyone yet — a dict, or None where it cannot be read: no git, no default branch
+    here, that history closed, or no regular file this tool accepts at the tip or at that state. Where the tip holds neither `[trackers]` nor
+    `[repositories]`, no state is read: neither is in force, whatever an earlier state held — more is judged, never less. Read once per run."""
+    global _LANDED
+    if _LANDED is None:
+        tip = None
+        if vcs() == "git":
+            git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+            trunk = default_trunk(git)
+            tip = config_at(trunk) if trunk else None
+        if tip and ("trackers" in tip or "repositories" in tip):
+            at, closed = filed_tip()
+            tip = None if closed else tip if at is None else config_at(at)
+        _LANDED = (tip,)
+    return _LANDED[0]
+
+
+def tracker_folder_held():
+    """Where this project holds a tracker folder — anything at the path its configuration names, `tracker_dir`: on disk, or at the default
+    branch's tip, in the folder this checkout's configuration names or the one the default branch's names — that folder, as the one line
+    that refuses `[trackers] elsewhere` names it; else "". `configure` asks it: the default branch's tip is read as it stands, no state of it."""
+    if os.path.lexists(TRACKER_DIR):
+        return f"{TRACKER_DIR.relative_to(ROOT).as_posix()}/"
+    if vcs() != "git":
+        return ""
+    git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
+    trunk = default_trunk(git)
+    tip = config_at(trunk) if trunk else None
+    for folder in dict.fromkeys([tracker_folder(CONFIG).as_posix(), *([tracker_folder(tip).as_posix()] if tip else [])]) if trunk else ():
+        if path_mode(trunk, root_prefix() + folder) not in ("", "?"):
+            return f"{folder}/ on {ref_name(trunk)}"
+    return ""
 
 
 def code_rows_report():
@@ -9425,7 +9491,7 @@ def build_judgement(subject=None):
         return [], ""                                      # the commit-msg stage judges it, with its subject (`pending_judgement`)
     if _BUILD is not None:
         return _BUILD
-    if not CONFIG.get("judged_before_build"):
+    if not CONFIG.get("judged_before_build") or trackers_elsewhere():
         _BUILD = ([], f"judged before build: off — `judged_before_build = true` in {CONFIG_NAME} turns it on")
         return _BUILD
     if vcs() != "git":
@@ -9502,7 +9568,7 @@ def commit_msg_check(message_file):
     except OSError as e:
         print(f"--commit-msg: cannot read {message_file} — {e}", file=sys.stderr)
         return EXIT_LINT
-    if not CONFIG.get("judged_before_build") or vcs() != "git":
+    if not CONFIG.get("judged_before_build") or vcs() != "git" or trackers_elsewhere():
         return EXIT_OK
     git = lambda *a: vcs_process("git", *a, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", env=nested_git_env())
     trunk, branch = default_trunk(git), built_on()
@@ -13319,10 +13385,10 @@ def board_run(root):
     os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"          # Windows starts `git` from the current directory first, and the checkout's is the branch's
     try:
         configure(root)
+        lazy_fetch_off()                                            # before its first git: every read of this run fetches nothing
         if trackers_elsewhere():                                    # a code repository whose trackers live in another: its board is built there
             print(elsewhere_said("the board"), file=sys.stderr)
             return EXIT_LINT
-        lazy_fetch_off()                                            # before its first git: every read of this run fetches nothing
         sys.path[:] = [e for e in sys.path if not in_tree(e or ".") or _norm(e or ".") == _norm(HERE)]      # nothing is imported from the tree, but the tool's own place
         refused = tracker_folder_problem()
         if refused:
@@ -13617,8 +13683,10 @@ def elsewhere_said(run):
 def elsewhere_run(args):
     """In a code repository whose trackers live in another (`[trackers] elsewhere`): `--check`, and the pre-commit hook's run, say so in one
     line and pass — no tracker is read and nothing is judged or written; `--init`, `--new` and the board's runs refuse in one line each, exit 4.
-    None for any other run, which goes on as it would."""
+    None for any other run, which goes on as it would, and wherever the default branch does not say so (`trackers_elsewhere`)."""
     operation = cli_operation(args)
+    if operation not in ("check", "init", "new", "write") or not trackers_elsewhere():
+        return None
     if operation == "check" or args.print_written:
         print(f"this repository's trackers live elsewhere — {trackers_elsewhere()} (`[trackers] elsewhere` in {CONFIG_NAME}): nothing here is "
               "judged, and the build gate, `judged_before_build`, is off", file=sys.stderr if args.print_written else sys.stdout)
@@ -13653,10 +13721,9 @@ def main_run(args):
         except (SvnUnreadable, OSError) as error:
             print(f"--tsvn-hook: the consumer working copy cannot be bound: {error} — nothing is written", file=sys.stderr)
             return EXIT_LINT
-    if trackers_elsewhere():                                # a code repository whose trackers live in another: what a run of them does here
-        code = elsewhere_run(args)
-        if code is not None:
-            return code
+    code = elsewhere_run(args)                              # a code repository whose trackers live in another, as its default branch says: what a run does here
+    if code is not None:
+        return code
     diagnostic, code = cli_preflight(args, vcs()) if vcs() == "svn" else (None, EXIT_OK)
     if diagnostic is not None:
         print(diagnostic, file=sys.stderr)

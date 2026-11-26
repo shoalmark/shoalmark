@@ -838,7 +838,9 @@ CODE_SCHEMA_ROWS = (
      '| `[trackers] elsewhere` | `"<where>"` — the repository, and the folder in it, that holds this code repository\'s trackers; a non-empty '
      "string, the table's one key | a code repository whose trackers live in another: `--check` says so in one line and passes, reading no "
      'tracker; `--init`, `--new` and the board — `--html-only`, and the run that writes INDEX.md and the board — refuse in one line each (exit 4); '
-     '`judged_before_build` is off, whatever it says. Another key in `[trackers]`, or an empty value, is refused at configuration (exit 1) |'),
+     '`judged_before_build` is off, whatever it says. In force as the default branch\'s configuration holds it, read as the Owner is: a branch '
+     'that adds it is judged by every rule, and where that branch cannot be read it is not in force. Another key in `[trackers]`, or an empty '
+     'value, is refused at configuration (exit 1), and so is the table where the project, or its default branch, holds a tracker folder |'),
 )
 
 
