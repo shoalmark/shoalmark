@@ -1055,6 +1055,17 @@ def rows_other_project(area, add):
     one("moved-session", "another project · a seat's move into the team project with no `Session:` trailer", moved_session(False))
     one("moved-session-below", "another project · a seat's move into the team project with no `Session:` trailer, below HEAD", moved_session(True))
 
+    for where, outer_at in other_layouts():
+        def moved_staged():
+            r, outer, team = gated(area, f"moved-session-staged-{'below' if outer_at else 'top'}", outer_at, trailers=("Session: aaaaaaaa",))
+            (r.root(team) / "src").mkdir(parents=True, exist_ok=True)
+            git(r.top, "mv", r_at(outer, "src/app.py"), r_at(team, "src/app.py"))
+            o = r.check(outer, who=COORD)
+            return [(f"another project · {where}: the outer project's seat, its session not set, moves a file of the outer project into the team "
+                     "project, staged and not committed, where the history carries `Session:` trailers: the outer check reads the working tree's "
+                     "edits by the path the move leaves, and its session rule refuses them", refused(o, "carries no Session: trailer"), seen(o))]
+        one("moved-session-staged", f"another project · {where}: a seat's move into the team project, staged and not committed", moved_staged)
+
 
 NESTS = (("no `shoalmark.toml`", ""), ("a one-line `shoalmark.toml`", "file"), ("a folder named `shoalmark.toml`", "dir"),
          ("a dangling symlink named `shoalmark.toml`", "link"), ("a configuration the tool refuses, beside its tracker folder", "refused"),
@@ -1174,6 +1185,32 @@ def rows_hooks(area, add):
             fm.configure(HERE)
         add("hooks · a commit being made that moves a file of the outer project into the team project, naming the team's tracker alone: the outer "
             "project's commit-msg check judges it by the path it leaves, and refuses it", ok, saw)
+
+    for where, outer_at in other_layouts():             # the same move made inside a merge, by the outer project's seat with no session set
+        if not picked("hooks-merge-moved"):
+            continue
+        try:
+            r, outer, team = gated(area, f"hooks-merge-moved-{'below' if outer_at else 'top'}", outer_at, trailers=("Session: aaaaaaaa",))
+            installed = install_once(r, outer)
+            if installed[0] != 0:
+                raise AssertionError(f"--install-hook: {seen(installed)}")
+            r.switch("-c", "side")
+            r.put(r_at(outer, "src/side.py"), "print('side')\n")
+            r.commit("OR-001: a side file", who=COORD, trailers=("Session: bbbbbbbb",), paths=[r_at(outer, "src/side.py")])
+            r.switch("work")
+            git(r.top, "merge", "-q", "--no-ff", "--no-commit", "side")
+            (r.root(team) / "src").mkdir(parents=True, exist_ok=True)
+            git(r.top, "mv", r_at(outer, "src/app.py"), r_at(team, "src/app.py"))
+            code, said = hooked(r, "FM-001: the app moves into the team's project, in the merge of side", who=COORD)
+            made = len(git(r.top, "rev-list", "--parents", "-n", "1", "HEAD").split()) > 2
+            ok, saw = code != 0 and "carries no Session: trailer" in said and not made, f"hook exit {code}, merge made: {made}: {said.strip()[-400:]!r}"
+        except Exception as e:
+            ok, saw = False, f"{type(e).__name__}: {str(e)[:300]}"
+        finally:
+            fm.configure(HERE)
+        add(f"hooks · {where}: a merge being made by the outer project's seat, its session not set, where the history carries `Session:` trailers, "
+            "that moves a file of the outer project into the team project: the session rule reads the merge's own change against each merge head "
+            "by the path the move leaves, and the hooks refuse it", ok, saw)
 
     if picked("hooks-nested"):
         rows, control = [], None
@@ -2035,6 +2072,32 @@ def rows_after_move(area, add):
          "judged by every rule — `--check` does not pass it, and the commit-msg check refuses a build commit naming no tracker", taken_out,
          top=GATED, tables=ELSEWHERE, signers_in=KEYS)
 
+    def tip_out(r, f):
+        r.switch("-c", "work")
+        r.put(r.at(f, "src/tool.py"), "print('built')\n")
+        r.commit("build the tool", index=False)
+        r.switch("main")
+        cfg = r.root(f) / "shoalmark.toml"
+        before = cfg.read_text(encoding="utf-8")
+        cfg.write_text(before.replace(ELSEWHERE, ""), encoding="utf-8")
+        r.put(r.signers_rel, (r.top / r.signers_rel).read_text(encoding="utf-8") + f"{PROBE[1]} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOnly\n")
+        r.commit("the table out, and a key added", index=False)                   # a seat's change of the signers file: the filed line does not accept it
+        git(r.top, "push", "-q", "origin", "main")
+        git(r.top, "fetch", "-q", "origin")
+        r.switch("work")
+        check = r.check(f)
+        r.put(r.at(f, "src/more.py"), "print('more')\n")
+        git(r.top, "add", "--", r.at(f, "src/more.py"))
+        msg = r.base / "msg"
+        msg.write_text("build more\n", encoding="utf-8")
+        gate = run(r.root(f), "--commit-msg", str(msg), who=LEAD)
+        ok = ELSEWHERE in before and check[0] != 0 and ELSEWHERE_SAID not in check[1] + check[2] and gate[0] != 0 and GATE in gate[2]
+        return ok, f"--check: {seen(check)} · --commit-msg: {seen(gate)}"
+    each(area, add, "elsewhere-tip-out", "trackers elsewhere · the Owner's start holds the table, and a seat's commit on the default branch that the "
+         "filed line does not accept takes it out and adds a key to the signers file: the tip holds no table, so none is in force, though the state "
+         "in force holds one — a branch that still holds it is judged by every rule: `--check` does not pass it, and the commit-msg check refuses a "
+         "build commit naming no tracker", tip_out, top=GATED, tables=ELSEWHERE, signers_in=KEYS)
+
     if picked("code-schema"):
         code, out, err = run(HERE, "--schema")
         found = [line for line in out.split("\n") if line.startswith(("| `[repositories] <repository>` |", "| `[trackers] elsewhere` |"))]
@@ -2213,6 +2276,12 @@ MUTANTS = (
        '"diff", "-z", "--name-only", "--relative", "--ignore-submodules=none", parent, "HEAD"', 1)], (rows_other_project,), {"moved-session"}, False),
     ("the commit being made's names read with renames by the commit-msg check, in the hooks' copy", "copy:pending_judgement",
      [('"diff", "--cached", "--name-only", "--no-renames", "--relative"', '"diff", "--cached", "--name-only", "--relative"', 1)], (rows_hooks,), {"hooks-moved"}, False),
+    ("the merge being made read against each merge head with renames, in the hooks' copy", "copy:read_changes",
+     [('"diff", "-z", "--cached", "--name-only", "--no-renames", "--relative", "--ignore-submodules=none", h',
+       '"diff", "-z", "--cached", "--name-only", "--relative", "--ignore-submodules=none", h', 1)], (rows_hooks,), {"hooks-merge-moved"}, False),
+    ("the working tree's edits read with renames", "worktree_edits",
+     [('"diff", "-z", "--name-only", "--no-renames", "--relative", "--ignore-submodules=dirty", rev',
+       '"diff", "-z", "--name-only", "--relative", "--ignore-submodules=dirty", rev', 1)], (rows_other_project,), {"moved-session-staged"}, False),
     ("a `<repository>@<commit>` row counted as no commit, though `[repositories]` names its repository", "code_row_verdicts",
      [('"" if name in named else', '"" if False else', 1)], (rows_after_move,), {"code-named"}, False),
     ("a `<repository>@<commit>` row taken whatever repository it names", "code_row_verdicts", [('"" if name in named else', '"" if True else', 1)],
@@ -2244,6 +2313,8 @@ MUTANTS = (
      [('held = tracker_folder_held() if section is not None else ""', 'held = ""', 1)], (rows_after_move,), {"elsewhere-branch"}, False),
     ("`[trackers]` read from the default branch where this checkout's configuration holds none", "trackers_elsewhere",
      [('if CONFIG.get("trackers") is None:\n        return ""', 'if False:\n        return ""', 1)], (rows_after_move,), {"elsewhere-removed"}, False),
+    ("a state of the default branch read where its tip holds neither table", "landed_config",
+     [('if tip and ("trackers" in tip or "repositories" in tip):', "if tip:", 1)], (rows_after_move,), {"elsewhere-tip-out"}, False),
     ("`[repositories]` read from this checkout's configuration, not the default branch's", "landed_repositories",
      [('theirs = (landed_config() or {}).get("repositories") if mine else None', "theirs = mine", 1)], (rows_after_move,),
      {"code-branch", "code-unread"}, False),
