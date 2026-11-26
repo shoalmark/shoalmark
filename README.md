@@ -287,7 +287,9 @@ the folder the enclosing project's, in the check and in the hooks alike. The fol
 `shoalmark.toml` too, a regular file the tool accepts, and where the default branch cannot be read it is none: a branch that creates a project is the
 enclosing project's on every commit until the new configuration lands — land it first, or build under the enclosing project's tracker until then. So
 the commit that adds a folder's `shoalmark.toml` is the enclosing project's: its check and hooks judge it, by its Owner and signers, and the new
-project's own check judges it too. After a checkout or switch, a merge (including a fast-forward pull), or a rebase, the refresh hooks run
+project's own check judges it too. A project is created inside a repository in two landings. The first lands only the project's
+`shoalmark.toml` and its signers file on the default branch. The second brings its trackers.
+After a checkout or switch, a merge (including a fast-forward pull), or a rebase, the refresh hooks run
 `--html-only`. The board says what it read, and when; each refresh hook exits 0, with one line if the refresh failed or was stopped.
 The explicit refresh stays, as do the commit's own rebuild where it stages a tracker and the rebuild right after each answer or act.
 An unchanged refresh hook an earlier version wrote is replaced, with one line; a changed hook is kept byte for byte and named. A person's own hook
