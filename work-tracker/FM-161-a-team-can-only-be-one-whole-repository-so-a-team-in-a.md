@@ -15,6 +15,19 @@ Seat: the Planner (27f31560) · filed 2026-11-12, on the Auditor's word of that 
 
 ## What is true now
 
+**2026-11-26 — two points from the critical review's second round, recorded by the lead; neither is built in this
+lane.**
+- **The two tables a seat's landing brings in.** A seat's commit that adds `[trackers] elsewhere`, landed by an
+  unsigned merge, becomes the state in force, read as the gate reads the Owner, as decision 12 is answered. A later
+  branch's build commit then passes with `nothing here is judged`. The same holds for `[repositories]`, which makes
+  ship-log rows that name another repository count. Whether a table that turns the build gate off is the Owner's
+  material, so that only the Owner's signed change puts it in force, is a new rule. The lane goes out with the rule as
+  answered; the question goes to the Owner as an ask after the tracker cut, not before, and this line records it until
+  then.
+- **No default branch at all.** With no `origin` ref, every project passes and says `judged before build: on — no
+  origin default branch to measure from: nothing is judged`. Main's tool reads one project at the top so too, so it is
+  not this lane's; the lane's rules for another project read the default branch, and fall to the same reading.
+
 **2026-11-26 — FM-161-Q4 answered with the Owner's signature: two landings, on two conditions; keep P1, In Progress,**
 on the coordinator's word of that day.
 - **The conditions:** each first landing carries only that team's `shoalmark.toml` and signers file, which the
@@ -278,6 +291,7 @@ Each item names its commit or pull request when it lands.
 
 | Date | Event |
 |---|---|
+| 2026-11-26 | Two points from the critical review's second round recorded: whether the tables a seat's landing brings in are the Owner's material, a question for the Owner after the tracker cut; and no default branch at all, main's own reading. Records only. |
 | 2026-11-26 | FM-161-Q4 answered: two landings, on two conditions; the answer cleared into the record; the critical review's finding 3 recorded as the lead answered it; keep P1, In Progress. Records only. |
 | 2026-11-25 | FM-161-Q3 answered, yes, as proposed: every part of decisions 7 to 13 in the cut; the answer cleared into the record; keep P1, In Progress. Records only. |
 | 2026-11-25 | FM-161-Q3 put, as a change to FM-161-Q2: each part of decisions 7 to 13 in the tracker cut's release or in a v0.20.4, every part proposed for the cut; pass 1's rows below the top filed as evidence. Records only. |
