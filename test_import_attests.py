@@ -23,7 +23,9 @@ import sets them. An import whose parent's tree this clone cannot read — a par
 A merge adds only what none of its parents holds; a merge being made reads the history its incoming head brings; an answer with no ask
 id that a later commit changes is that commit's; the Owner's signed first commit attests nothing; and the import's copy gives an answer
 only to the ask id it holds. An import that brings a tracker back, after a commit took its lines out, sets those lines: the
-commit that took them out is in the import's history, so it set nothing the file now holds.
+commit that took them out is in the import's history, so it set nothing the file now holds. The parent guard reads a tracker folder
+a parent lacks as one it does not hold, and one the parent's listing names but this clone cannot read as unread, and one such parent
+is enough to refuse a merge; the import sets only a line its copy holds as the file does, and of two imports that hold it, the newest.
 
 Run: `python3 test_import_attests.py` — exit 1 on a failure; `python3 test_import_attests.py rows_<name> …` runs those rows alone, without
 the mutants, and with `--with-mutants` beside them, with the mutants that run those rows; `--no-mutants` runs every row and no mutant.
@@ -685,9 +687,157 @@ def rows_merge_reimport_landed(area, add):
     s.add(add, "with the history behind it landed, a merge that imports a tracker again sets its lines, whoever took them out: after a "
                "seat's commit FM-205's answer is no longer refused, and after the Owner's own nothing is refused, as before")
 
+
+# --- the parent guard and the import's setter: four rules and the newest import, each a row --------------------------------------
+
+def partial_clone(r, area, spec):
+    """A clone of `r`'s `origin`, its branch `import` checked out, made with `--filter=<spec>`: it reads `main`'s history in full while
+    `origin` is there, and then `origin` is out of reach. Its folder."""
+    for k, v in (("uploadpack.allowFilter", "true"), ("uploadpack.allowAnySHA1InWant", "true")):
+        git(r.origin, "config", k, v)
+    pc = area / "partial"
+    git(area, "clone", "-q", f"--filter={spec}", "--no-local", "--branch", "import", f"file://{r.origin}", str(pc))
+    for k, v in (("user.name", OWNER[0]), ("user.email", OWNER[1]), ("gpg.ssh.allowedSignersFile", f"{REL}/allowed_signers")):
+        git(pc, "config", k, v)
+    git(pc, "remote", "set-head", "origin", "main")
+    git(pc, "log", "-p", "--format=%H", "origin/main")
+    r.origin.rename(r.origin.with_name("origin-out-of-reach.git"))
+    return pc
+
+
+def here(root, *specs):
+    """For each of `specs`, whether the clone at `root` holds that object."""
+    return [subprocess.run(["git", "-C", str(root), "cat-file", "-e", spec], capture_output=True).returncode == 0 for spec in specs]
+
+
+def rows_parent_without_folder(area, add):
+    """Below the top, as the row above puts it and with its stubs: the import's parent is the project's first landing, its
+    shoalmark.toml alone, with no tracker folder yet. The parent's tree is here, so the folder it lacks is one it does not hold."""
+    top, key = area / "repo", area / "key-owner"
+    proj = top / "project"
+    proj.mkdir(parents=True)
+    subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key), "-C", "owner"], check=True, capture_output=True)
+    git(top, "init", "-q", "--initial-branch=main")
+    (top / "README.txt").write_text("the repository around the project\n", encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-S", "-m", "the repository's start", who=OWNER, sign=key)
+    (proj / "shoalmark.toml").write_text(CONFIG, encoding="utf-8")
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-S", "-m", "the project's first landing", who=OWNER, sign=key)
+    for tid, body in imported().items():
+        write(proj, tid, body)
+    git(top, "add", "-A")
+    git(top, "commit", "-q", "-S", "-m", "the trackers, imported", "-m", TRAILER, who=OWNER, sign=key)
+    sha = git(top, "rev-parse", "HEAD").strip()
+    with stubbed(import_verified=lambda commit, name, email: True, commits_held=lambda revs: True), reading(proj):
+        got = {tid: [c for c, _name, _text in held] for tid, held in fm.import_attests().items()}
+    s = Steps()
+    s("the import attests the four it adds: its parent holds no tracker folder, and its tree is here", got == {tid: [sha] for tid in IMPORTED},
+      extra=repr(got))
+    s.add(add, "an import whose parent holds no tracker folder, the project's first landing below the top, attests what it adds: a "
+               "folder the parent lacks is not one this clone cannot read")
+
+
+def rows_parent_folder_unread(area, add):
+    """The import on its branch, on top of a seat's commit `main` does not hold that changes FM-001, so the parent's folder trees are its
+    own. A clone that holds each commit's top tree and no tree below it (`--filter=tree:1`) loses its origin: the parent's top tree is
+    here, and its tracker folder, which that top tree names on the way, is not."""
+    r = seeded(area, "before")
+    r.switch("-c", "import")
+    r.write("FM-001", r.read("FM-001").replace("One thing is left.", "One thing is left, on the import's line."))
+    parent = commit(r, "FM-001: a note, before the import")
+    for tid, body in imported().items():
+        write(r.root, tid, body)
+    sha = commit(r, "the trackers, imported", OWNER, "owner", (TRAILER,))
+    git(r.root, "push", "-q", "origin", "import")
+    pc = partial_clone(r, area, "tree:1")
+    held = here(pc, f"{parent}^{{tree}}", f"{parent}:{REL}")
+    with reading(pc):
+        verified = fm.import_verified(sha, *OWNER)
+        got = {tid: [c for c, _name, _text in held_] for tid, held_ in fm.import_attests().items()}
+    s = Steps()
+    s("the import verifies; its parent's top tree is here and its tracker folder is not", verified and held == [True, False],
+      extra=repr((verified, held)))
+    s("…and the import attests nothing: a folder the parent's listing names, unread, is not one the parent lacks", got == {}, extra=repr(got))
+    s.add(add, "an import whose parent's tracker folder this clone cannot read, though the parent's top tree names it, attests nothing: "
+               "a `--filter=tree:1` clone whose origin is out of reach")
+
+
+def rows_merge_parent_unread(area, add):
+    """A merge that is the import, on `import`, in a `--filter=tree:0` clone that loses its origin: its first parent is `main`'s tip,
+    whose tree that clone read with `main`'s history; its second is the side's commit, whose tree it never read."""
+    r = seeded(area, "before")
+    r.switch("-c", "import")
+    m = merged(r, imported())
+    p1, p2 = git(r.root, "log", "-1", "--format=%P", m).split()
+    git(r.root, "push", "-q", "origin", "import")
+    pc = partial_clone(r, area, "tree:0")
+    held = here(pc, f"{p1}^{{tree}}", f"{p2}^{{tree}}")
+    with reading(pc):
+        verified, both = fm.import_verified(m, *OWNER), fm.commits_held([p1, p2])
+        got = {tid: [c for c, _name, _text in held_] for tid, held_ in fm.import_attests().items()}
+    s = Steps()
+    s("the merge verifies and both parents are held; the first parent's tree is here, the second's is not",
+      verified and both and held == [True, False], extra=repr((verified, both, held)))
+    s("…and the merge attests nothing: one parent whose tracker folder this clone cannot read is enough", got == {}, extra=repr(got))
+    s.add(add, "a merge that is the import, one of whose parents' trees this clone cannot read, attests nothing, though its other "
+               "parent's tree is here")
+
+
+def rows_merge_copy_differs(area, add):
+    """After a merge that is the import adds the four and FM-205, a seat's merge rewrites FM-205's answer and FM-204's `tier:` in its own
+    change: no commit's change holds the new lines, and the import's copy holds the old ones."""
+    r = seeded(area, "before")
+    merged(r, FIVE)
+    r.switch("-c", "side2")
+    (r.root / "notes2.txt").write_text("a second note\n", encoding="utf-8")
+    commit(r, "side2: a note")
+    r.switch("main")
+    git(r.root, "merge", "-q", "--no-ff", "--no-commit", "side2", who=SEAT)
+    r.write("FM-205", r.read("FM-205").replace(f'answer: "{ANSWER}"', 'answer: "accepted - something else"'))
+    r.write("FM-204", r.read("FM-204").replace("tier: P1", "tier: P3"))
+    commit(r, "side2, landed")
+    said = r.check()
+    with reading(r.root) as ts:
+        who = [author_of(ts, "FM-205", "answer:"), author_of(ts, "FM-204", "tier:")]
+    s = Steps()
+    s("the two lines the seat's merge rewrote name no commit, and the import, whose copy holds the old ones, sets neither",
+      who == [(None, None, "unattributed", "")] * 2, extra=repr(who))
+    s("…so --check refuses FM-205's answer as one no commit is named for", refusal(said, "FM-205", "version control names no commit"), said)
+    s.add(add, "the import sets only a line its copy holds as the file does: a line a seat's merge rewrote in its own change names no "
+               "commit, and is refused")
+
+
+def rows_newest_import_named(area, add):
+    """FM-205, an answer with no ask id, imported twice on one line of history, each time by the Owner's signed merge that adds it in its
+    own change, and taken out between them in a seat's merge's own change: no commit's change holds the answer line, and both imports
+    attest FM-205 and hold that line as the file does."""
+    r = seeded(area, "before")
+    first = merged(r, {"FM-205": LEGACY})
+    r.switch("-c", "out")
+    (r.root / "notes.txt").write_text("a note\n", encoding="utf-8")
+    commit(r, "out: a note")
+    r.switch("main")
+    git(r.root, "merge", "-q", "--no-ff", "--no-commit", "out", who=SEAT)
+    (r.root / REL / "FM-205-x.md").unlink()
+    commit(r, "out, landed, FM-205 taken out")
+    r.switch("-c", "again")
+    second = merged(r, {"FM-205": LEGACY})
+    with reading(r.root):
+        held = [c for c, _name, _text in fm.import_attests().get("FM-205", ())]
+    said = run(r.root, "--clear-ask", "FM-205", "build", who=SEAT)
+    body = r.read("FM-205")
+    s = Steps()
+    s("both imports attest FM-205, the newest first", held == [second, first], extra=repr(held))
+    s("--clear-ask writes FM-205's record, whose signed line names the newest import that holds the answer",
+      said[0] == 0 and f"**signed** — {second[:7]} · G\n" in body, said, repr((first[:7], second[:7], body[body.find("**signed**"):][:60])))
+    s.add(add, "of two imports that attest a tracker and hold a line as the file does, the newest sets it: the record --clear-ask "
+               "writes names that import's commit")
+
 ROWS = (rows_check, rows_modified, rows_queue, rows_owner, rows_answer_counts, rows_ask_numbers, rows_after_import, rows_attests_nothing,
         rows_done_left, rows_below_top_verification_stubbed, rows_merge_import, rows_parent_unread, rows_merge_first_parent,
-        rows_merge_being_made, rows_legacy_reworded, rows_first_commit, rows_answer_other_id, rows_merge_reimport, rows_merge_reimport_landed)
+        rows_merge_being_made, rows_legacy_reworded, rows_first_commit, rows_answer_other_id, rows_merge_reimport, rows_merge_reimport_landed,
+        rows_parent_without_folder, rows_parent_folder_unread, rows_merge_parent_unread, rows_merge_copy_differs, rows_newest_import_named)
 
 
 @contextlib.contextmanager
@@ -764,6 +914,18 @@ MUTANTS = (
     ("the search's commit taken without asking the import: a line an import brings back is the commit's that took it out", "line_author",
      (('out = import_setter(rel, key, line, commit) or (name, email, "git", commit)', 'out = (name, email, "git", commit)'),),
      (rows_merge_reimport, rows_merge_reimport_landed)),
+    ("a tracker folder a parent lacks read as one this clone cannot read", "import_attests",
+     (("listed[(rev, folder)] = None if above is None or last in above else []", "listed[(rev, folder)] = None"),), (rows_parent_without_folder,)),
+    ("a folder the parent's listing names, which this clone cannot read, read as one the parent lacks", "import_attests",
+     (("None if above is None or last in above else []", "None if above is None else []"),), (rows_parent_folder_unread,)),
+    ("a merge refused only where every parent's tracker folder is unread", "import_attests",
+     (("if any(names(p) is None for p in parents):", "if all(names(p) is None for p in parents):"),), (rows_merge_parent_unread,)),
+    ("the import sets a line whatever its copy holds under that key", "import_setter",
+     (('if n is not None and text.split("\\n")[n - 1].rstrip("\\r") == line:', "if n is not None:"),), (rows_merge_copy_differs,)),
+    ("the oldest import that holds the line sets it, not the newest", "import_setter",
+     (('for sha, name, text in import_attests().get("-".join(pathlib.PurePosixPath(rel).name.split("-")[:2]), ()):',
+       'for sha, name, text in list(import_attests().get("-".join(pathlib.PurePosixPath(rel).name.split("-")[:2]), ()))[::-1]:'),),
+     (rows_newest_import_named,)),
 )
 
 
