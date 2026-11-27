@@ -71,6 +71,7 @@ _RUNNER_GIT_CONFIG = [subprocess.run(["git", "config", "--global", "--get", key]
 _SUITE_HOME = _suite_home()
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_repository import check_repository, suite_repository
 
 HERE = suite_repository(__file__)

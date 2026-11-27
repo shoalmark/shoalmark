@@ -1,5 +1,6 @@
 """The repository under test, with its own tree as the default branch."""
 import atexit
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -32,6 +33,9 @@ def repository_tree(source):
         head = git(source, "rev-parse", "HEAD").decode().strip()
         git(source, "clone", "--quiet", "--shared", "--no-checkout", str(source), str(root))
         git(root, "checkout", "--quiet", "--detach", head)
+        signers = os.environ.get("SHOALMARK_SUITE_SIGNERS")
+        if signers:
+            git(root, "config", "gpg.ssh.allowedSignersFile", str(Path(signers).resolve()))
         changes = git(source, "diff", "--binary", "--no-ext-diff", "--no-textconv", "HEAD", "--")
         if changes:
             git(root, "apply", "--binary", "--whitespace=nowarn", "-", input=changes)
@@ -97,6 +101,11 @@ def run_checks(check):
         clean = repository_tree(source)
         clean_head = subprocess.check_output(["git", "-C", str(clean), "rev-parse", "HEAD"])
         check("FM-161 · a clean snapshot keeps the commit under test", clean_head == head)
+        named = subprocess.run(["git", "-C", str(clean), "config", "--local", "--get", "gpg.ssh.allowedSignersFile"],
+                               env=env, capture_output=True, text=True).stdout.strip()
+        supplied = os.environ.get("SHOALMARK_SUITE_SIGNERS")
+        check("FM-161 · the snapshot names only the runner's absolute signers file",
+              named == (str(Path(supplied).resolve()) if supplied else ""))
         _REPOSITORIES.pop(source)
         (source / "keep").write_bytes(b"staged\n")
         git("add", "keep")
@@ -136,5 +145,10 @@ if __name__ == "__main__":
         if not ok:
             failures.append(label)
 
+    root = suite_repository(__file__)
+    spec = importlib.util.spec_from_file_location("repository_tool", root / "shoalmark.py")
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    check_repository(root, tool.CONFIG, check)
     run_checks(check)
     raise SystemExit(bool(failures))

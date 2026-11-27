@@ -12,6 +12,78 @@ import tempfile
 HERE = Path(__file__).resolve().parent
 
 
+def signer_checks(workflow, check):
+    match = re.search(r"^        id: suite-signers\n(?P<settings>.*?)^        run: \|\n(?P<script>(?:^          [^\n]*\n|^\n)+)", workflow, re.M | re.S)
+    check("the signers step uses bash on every system and precedes both suites", match is not None
+          and "shell: bash" in match["settings"] and "if:" not in match["settings"]
+          and match.start() < workflow.index("      - run: python -u test_shoalmark.py"))
+    if not match:
+        return
+    check("signers come from the pull request base, or origin/main on tags and manual runs",
+          'env: {BASE: "${{ github.event.pull_request.base.sha || \'origin/main\' }}"}' in match["settings"])
+    script = "\n".join(line[10:] for line in match["script"].splitlines())
+    check("the signers step never selects the head", not any(word in match["settings"] + script
+          for word in ("HEAD", "github.sha", "pull_request.head")))
+    bash = shutil.which("bash")
+    check("the signers step's shell is available", bool(bash))
+    if not bash:
+        return
+    with tempfile.TemporaryDirectory(prefix="suite-signers-") as directory:
+        area = Path(directory).resolve()
+        root = area / "repo"
+        root.mkdir()
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+
+        def git(*args):
+            return subprocess.check_output(["git", "-C", str(root), *args], env=env, stderr=subprocess.STDOUT).decode().strip()
+
+        def commit(message):
+            git("add", "-A"); git("commit", "-qm", message)
+            return git("rev-parse", "HEAD")
+
+        git("init", "-q", "-b", "main")
+        git("config", "user.name", "fixture")
+        git("config", "user.email", "fixture@example.invalid")
+        git("config", "commit.gpgsign", "false")
+        (root / "file").write_text("fixture\n", encoding="utf-8")
+        empty = commit("Fixture without signers.")
+        old = root / "work-tracker/allowed_signers"
+        old.parent.mkdir()
+        old.write_text("base old path\n", encoding="utf-8")
+        old_base = commit("Fixture with the old signers path.")
+        top = root / "allowed_signers"
+        top.write_text("base top path\n", encoding="utf-8")
+        top_base = commit("Fixture with both signers paths.")
+        old.write_text("untrusted old head\n", encoding="utf-8")
+        top.write_text("untrusted top head\n", encoding="utf-8")
+        commit("Fixture head replaces both files.")
+        git("update-ref", "refs/remotes/origin/main", top_base)
+        for label, base, expected in (("old base", old_base, "base old path\n"),
+                                      ("top base", top_base, "base top path\n"),
+                                      ("default branch", "origin/main", "base top path\n"),
+                                      ("no file", empty, None), ("missing base", "missing-ref", None)):
+            where = area / label
+            where.mkdir()
+            exported = where / "environment"
+            exported.touch()
+            subprocess.run(["git", "-C", str(root), "config", "--unset-all", "gpg.ssh.allowedSignersFile"], env=env, capture_output=True)
+            result = subprocess.run([bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script], cwd=root,
+                                    env=dict(env, BASE=base, RUNNER_TEMP=str(where), GITHUB_ENV=str(exported)), capture_output=True, text=True)
+            named = subprocess.run(["git", "-C", str(root), "config", "--get", "gpg.ssh.allowedSignersFile"], env=env,
+                                   capture_output=True, text=True).stdout.strip()
+            fields = dict(line.split("=", 1) for line in exported.read_text(encoding="utf-8").splitlines())
+            if expected is not None:
+                path = fields.get("SHOALMARK_SUITE_SIGNERS", "")
+                check("signers step: " + label + " uses the base outside the checkout and exports it to later steps",
+                      result.returncode == 0 and bool(path) and Path(path).is_absolute() and Path(path).parent == where
+                      and named == path and Path(path).read_text(encoding="utf-8") == expected)
+            else:
+                check("signers step: " + label, not fields and not named
+                      and (result.returncode != 0 if label == "missing base" else result.returncode == 0
+                           and "no signers file" in result.stdout))
+
+
 def run_checks():
     rows = []
 
@@ -25,6 +97,7 @@ def run_checks():
           not any(word in workflow for word in ("id: gate", "id: tier", "steps.tier", "shoalmark.py --check", "Records validation")))
     check("all five matrix entries remain", len(re.findall(r"^          - \{system:", workflow, re.M)) == 5)
     check("additional time-zone results remain visible", "if: matrix.tz\n" in workflow and "continue-on-error: true" in workflow)
+    signer_checks(workflow, check)
     match = re.search(r"^        id: tracker-path\n(?P<settings>.*?)^        run: \|\n(?P<script>(?:^          [^\n]*\n|^\n)+)", workflow, re.M | re.S)
     check("the path check runs for pull requests", match is not None and "if: github.event_name == 'pull_request'" in match["settings"])
     if match:

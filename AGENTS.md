@@ -8,6 +8,8 @@ The tool team's trackers live in [`shoalmark/org`](https://github.com/shoalmark/
 `python3 tools/shoalmark/shoalmark.py --root teams/tool --check`; use the same root for `--next`, `--new`,
 `--triage`, `--owner` and the board. The code repository's CI runs the product suites and refuses pull requests
 adding paths under `work-tracker/`. The old copy here is frozen until its removal; never edit it.
+The code repository's signers file is `allowed_signers` at the top after the cut. Each clone names it with
+`git config gpg.ssh.allowedSignersFile allowed_signers` so it can verify the signed configuration change.
 
 1. **The tracker is canonical.** The spec, the state and the record of a piece of work live in its tracker —
    never in a side plan, a chat or a TODO comment. Its *What is true now* section is rewritten in place when
