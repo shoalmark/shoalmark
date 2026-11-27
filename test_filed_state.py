@@ -1225,7 +1225,7 @@ MUTANTS = (
     ("an answer by its line judged by the default branch's tip", "lint", 'then = filed_state(commit) if how == "git" else None', "then = None", (rows_after,)),
     ("a filed commit's keys read from the tip", "answer_commits", "not verified_as(sha, identity, at)", "not verified_as(sha, identity)", (rows_after,)),
     ("the state the landing commit itself leaves", "filed_state", "at = _FILED_STATES.get(chain[position - 1]) if position else None", "at = _FILED_STATES.get(landing)", (rows_same_landing,)),
-    ("an author the default branch did not name then passes by what it says now", "lint", "elif then and not filed:", "elif False:", (rows_named_later,)),
+    ("an author the default branch did not name then passes by what it says now", "lint", "elif then and not filed and not attested:", "elif False:", (rows_named_later,)),
     ("a key the signers file did not hold then verifies by the file as it is now", "lint", "if not verified_as(commit, filed[0], then[2]):",
      "if not verified_as(commit, filed[0]):", (rows_key_later,)),
     ("a state that names nobody is not passed over", "filed_state", "if position <= place[first]:",

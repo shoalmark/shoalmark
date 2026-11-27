@@ -476,6 +476,12 @@ def tag_steps(check, fm, tool_bytes, base):
         git(att, "checkout", "--", mixed)
         if quiet:
             git(att, "update-index", "--assume-unchanged", mixed)
+        else:
+            # the checkout recorded the converted file's stat in the index, and where the file system's timestamps let git trust that
+            # stat, `git status` never reads the file and names nothing; its modification time one second back, its access time kept,
+            # makes the stat differ, so `git status` reads the converted bytes and names the file on any runner
+            held = (att / mixed).stat()
+            os.utime(att / mixed, ns=(held.st_atime_ns, held.st_mtime_ns - 1_000_000_000))
         seen = (show(att, mixed) == b"A\r\nB\n", (att / mixed).read_bytes() == b"A\r\nB\r\n",
                 (git(att, "status", "--porcelain", "--untracked-files=all") == "") == quiet)
         dest = base / ("from-attributed" + ("-quiet" if quiet else "")) / "tools" / "shoalmark"
