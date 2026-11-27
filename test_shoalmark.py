@@ -6480,12 +6480,10 @@ check("refresh hooks · the README names the hooks, read-at wording, and fetch-o
 # from facts.html, which the build writes and nothing commits. These read the sources, as the suite reads the other pages, and have controls:
 # a copy of the sources with one thing changed, which must be refused.
 _LANDING_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html", "zensical.toml", "docs/index.md", "docs/de/index.md")
-_FOOT_EN = ("{tag}, released {date} — <a href=\"skills.html\">two drift skills</a>, and an id of its own for every question. Licence: Apache-2.0 or MIT. The high scores, the wrecks and the board's excerpt come "
-            "from the repository and were read when the site was built: {read_date}, at {read_sha}.")
-_FOOT_DE = ("{tag}, veröffentlicht am {date} – <a href=\"skills.html\">zwei Drift-Skills</a> und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem "
-            "Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
-_CHART_NOTE = ("shoalmark runs on itself: every wreck is a bug or a security finding, filed in its own repository.",
-               "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.")
+_FOOT_EN = ("{tag}, released {date} — <a href=\"skills.html\">two drift skills</a>, and an id of its own for every question. Licence: Apache-2.0 or MIT. The high scores come "
+            "from the repository history and were read when the site was built: {read_date}, at {read_sha}.")
+_FOOT_DE = ("{tag}, veröffentlicht am {date} – <a href=\"skills.html\">zwei Drift-Skills</a> und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores stammen aus der "
+            "Repository-Historie und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.")
 
 
 def _sources(files, root=None):
@@ -6509,7 +6507,7 @@ def _landing_words(src):
 
 def _landing_problems(src):
     """What is wrong with the landing's sources, one line each, none where it is as B1 builds it: one template, the same words in two languages, every
-    figure from facts.html and none typed, the Owner's line and the footer's sentence as ruled, and the sections in order."""
+    remaining figure from facts.html and none typed, no tracker chart or excerpt, the footer and the sections in order."""
     tpl = src["overrides/landing.html"]
     code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)                        # the template without its comments
     words, bad = _landing_words(src)
@@ -6528,21 +6526,16 @@ def _landing_problems(src):
         bad.append("the template does not choose its words by the page's path, or does not read facts.html")
     if re.search(r"\bv\d+\.\d+\.\d+\b", code) or re.search(r"\bv\d+\.\d+\.\d+\b", json.dumps(words, ensure_ascii=False)):
         bad.append("a release is typed where the build's figures give it")
-    if code.count('<b id="hud-w">{{ F.counts.wrecks }}</b>') != 1 or code.count('<b id="hud-o">{{ F.counts.open }}</b>') != 1 or re.search(r'id="hud-[wo]">\d', code):
-        bad.append("the top bar's wrecks and open counts are not facts.html's `counts`, or a count is typed in the HTML")
+    removed = ("F.counts", "F.wrecks", "F.excerpt", 'id="hud-w"', 'id="hud-o"', 'id="register"', 'id="chart"', 'class="peek"')
+    if (any(token in code for token in removed) or re.search(r'<span class="id">FM-\d', code)
+            or any(key in w for w in words.values() for key in ("chart_note", "peek_cap", "peek_1", "peek_2", "peek_3", "reg_n"))):
+        bad.append("the landing still carries tracker counts, a wreck chart or a board excerpt")
     if code.count("releases/tag/{{ F.release.tag }}") != 2 or code.count("<b>{{ F.release.tag }}</b>") != 1:
         bad.append("the top bar's label and link and the footer's link do not all read F.release.tag")
     if (en.get("foot_fine"), de.get("foot_fine")) != (_FOOT_EN, _FOOT_DE):
         bad.append("the footer's sentence is not the Owner's words for this release (English) and go-to-market's (German)")
-    if (en.get("chart_note"), de.get("chart_note")) != _CHART_NOTE or code.count("{{ w.chart_note }}") != 1:
-        bad.append("the line under the chart is not the Owner's words, once")
-    # the board's excerpt is facts.html's: its act's line is escaped once, by the script, so the template prints it once and as it stands; nothing of it is typed
-    if code.count("{{ F.excerpt.act.line }}") != 1 or re.search(r"F\.excerpt\.act\.line\s*\|", code) or code.count("F.excerpt.act.line") != 1:
-        bad.append("the act's line of the board's excerpt is not printed once, as facts.html holds it (it is escaped once already, and the engine does not escape on its own)")
-    if re.search(r'<span class="id">FM-\d', code) or "peek_3" in json.dumps(words) or any(("{waiting}" not in w.get("peek_1", "") or "{acts}" not in w.get("peek_2", "")) for w in words.values()):
-        bad.append("the board's excerpt is typed where facts.html gives it")
-    if not all("{read_date}" in w.get("peek_cap", "") for w in words.values()) or de.get("moves_aria") != "Spielzüge":
-        bad.append("the excerpt's caption does not name the day the figures were read, or the German move lists are not named Spielzüge")
+    if de.get("moves_aria") != "Spielzüge":
+        bad.append("the German move lists are not named Spielzüge")
     # the probe dialog's step 1: the prompt stands in it as a box of two lines, a real button opens it whole; the prompt has no fold of its own, the approvals keep theirs
     step1 = re.search(r'<li class="probe-step" id="probe-s1">(.*?)</li>', code, re.S)
     step1 = step1.group(1) if step1 else ""
@@ -6565,9 +6558,9 @@ def _landing_problems(src):
         bad.append("step 2's link does not show the short address taken from the value its href has, without the scheme")
     if any(gone in tpl + src["zensical.toml"] + json.dumps(words) for gone in ("register_up", "chart_gloss", "chart_note_gloss")):
         bad.append("a switch the Owner's answers removed is still there")
-    order = [tpl.find(f'id="{section}"') for section in ("agents", "seats", "scores", "register", "start")]
+    order = [tpl.find(f'id="{section}"') for section in ("agents", "seats", "scores", "start")]
     if min(order) < 0 or order != sorted(order):
-        bad.append("the sections are not in order: two players, the fleet, the high scores, the register, the start")
+        bad.append("the sections are not in order: two players, the fleet, the high scores, the start")
     for page in ("docs/index.md", "docs/de/index.md"):
         if not src[page].startswith("---\ntemplate: landing.html\n"):
             bad.append(f"{page} does not select the landing's template")
@@ -6584,12 +6577,12 @@ def _with(src, rel, old, new):
 _ls = _sources(_LANDING_FILES)
 _lp = _landing_problems(_ls)
 check("FM-006 · B1 · the landing is one template with its words per language: the German page takes de.html by its path, both words files hold the same keys and every key the template reads, "
-      "no release is typed (the top bar's label and link and the footer's link read the one figure), the footer is the Owner's words and go-to-market's German for this release, the line "
-      f"under the chart is the Owner's, and the register stays after the scores (problems found: {_lp})", _lp == [])
-_ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.html", '  "key_stamp": "nicht zur Navigation",\n', ""),
+      "no release is typed (the top bar and footer read the build's release), the footer names the remaining figures, the tracker chart and excerpt are absent, "
+      f"and the start follows the scores (problems found: {_lp})", _lp == [])
+_ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.html", '  "moves_aria": "Spielzüge",\n', ""),
         "a release typed in the footer's link": _with(_ls, "overrides/landing.html", 'releases/tag/{{ F.release.tag }}" style="color:#b4c3d1">{{ F.release.tag }}', 'releases/tag/v0.19.2" style="color:#b4c3d1">v0.19.2'),
-        "the Owner's line reworded": _with(_ls, "overrides/partials/landing/en.html", "a bug or a security finding", "a bug"),
-        "the register gone from its place": _with(_ls, "overrides/landing.html", 'id="register"', 'id="registre"'),
+        "the chart note restored": _with(_ls, "overrides/partials/landing/en.html", '  "scores_n":', '  "chart_note": "obsolete chart",\n  "scores_n":'),
+        "the register restored": _with(_ls, "overrides/landing.html", 'id="start"', 'id="register"'),
         "the footer's sentence changed": _with(_ls, "overrides/partials/landing/en.html", "two drift skills</a>, and an id of its own for every question", "two drift skills</a>, and a fix for the board's refresh"),
         "the facts file not read": _with(_ls, "overrides/landing.html", 'import "partials/landing/facts.html" as F', ""),
         "the German page not on the template": _with(_ls, "docs/de/index.md", "template: landing.html\n", ""),
@@ -6606,14 +6599,16 @@ _ctl = {"a key missing in German": _with(_ls, "overrides/partials/landing/de.htm
         "the badge's German key back": _with(_ls, "overrides/partials/landing/de.html", '  "dlg_more": "Alles anzeigen",\n', '  "dlg_more": "Alles anzeigen",\n  "dlg_ph_badge": "Entwurf",\n'),
         "step 2's link text as it was": _with(_ls, "overrides/partials/landing/de.html", '">{probe_short}</a>', '">probe.txt</a>'),
         "step 2's address typed in the template": _with(_ls, "overrides/landing.html", 'urls.probe_abs | replace("https://", "")', '"shoalmark.tools/probe.txt" | replace("https://", "")'),
-        "the act's line escaped a second time": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}"),
-        "the act's line printed twice": _with(_ls, "overrides/landing.html", "{{ F.excerpt.act.line }} <span", "{{ F.excerpt.act.line }} {{ F.excerpt.act.line }} <span"),
-        "a top bar count typed": _with(_ls, "overrides/landing.html", '<b id="hud-w">{{ F.counts.wrecks }}</b>', '<b id="hud-w">27</b>'),
-        "the act typed again": _with(_ls, "overrides/landing.html", '<span class="id">{{ F.excerpt.act.id }}</span>', '<span class="id">FM-007</span>'),
-        "the caption's day typed": _with(_ls, "overrides/partials/landing/en.html", "board, {read_date}:", "board, 1 October 2026:")}
+        "the excerpt's escaped act restored": _with(_ls, "overrides/landing.html", "<b>{{ F.release.tag }}</b>", "<b>{{ F.release.tag }}</b>{{ F.excerpt.act.line | e }}"),
+        "the excerpt's repeated act restored": _with(_ls, "overrides/landing.html", "<b>{{ F.release.tag }}</b>", "<b>{{ F.release.tag }}</b>{{ F.excerpt.act.line }}{{ F.excerpt.act.line }}"),
+        "a top bar tracker count restored": _with(_ls, "overrides/landing.html", "<b>{{ F.release.tag }}</b>", '<b>{{ F.release.tag }}</b><b id="hud-w">27</b>'),
+        "a typed board excerpt restored": _with(_ls, "overrides/landing.html", "<b>{{ F.release.tag }}</b>", '<b>{{ F.release.tag }}</b><span class="id">FM-007</span>'),
+        "the excerpt caption restored": _with(_ls, "overrides/partials/landing/en.html", '  "scores_n":', '  "peek_cap": "board, {read_date}",\n  "scores_n":')}
+
 _ctl_saw = {name: len(_landing_problems(src)) for name, src in _ctl.items()}
-check("FM-006 · B1 · the landing's source check is not blind: each of a German key missing, a release typed in the footer's link, the Owner's line reworded, the register gone from its place, "
-      f"the footer's sentence changed, the facts file not read, the German page off the template, the act's line escaped a second time or printed twice, the act typed again, the caption's day typed, a top bar count typed, the prompt back in a fold, the button without aria-expanded or without aria-controls or a link, the box without its fade or above Copy again, the prompt's fold words back, a German button word changed, the approvals' fold gone, the draft badge back or its German key back, step 2's link text as it was and its address typed in the template leaves a problem (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 25)
+check("FM-161 · the landing's source checks reject missing language keys, typed releases, restored tracker content, changed footer words, missing facts, "
+      f"a missing template and broken prompt controls (problems found: {_ctl_saw})", all(_ctl_saw.values()) and len(_ctl_saw) == 25)
+
 
 
 # --- the landing's four stand-up lines, in both words files and in their Markdown twins -------------------------------------------------------------
@@ -7104,11 +7099,11 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
 # In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green, one line from
 # the first frame; only its icon and words blink, four blinks of a second each from the page's start, then stay lit; under reduced motion nothing blinks, and
 # in print the cue stands still. The players label has a joystick and the start label a coin,
-# neither blinking; the issue tracker's, the fleet's, the high scores' and the register's labels have a ticket, a ship, a screen and a wreck, none blinking. Every icon is
+# neither blinking; the issue tracker, fleet and high scores labels have a ticket, ship and screen, none blinking. Every icon is
 # aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
 _CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
-_CUE_WORDS = {"en": {"cue": "— press start —", "players_n": "— select player —", "start_n": "— insert coin —", "scores_n": "— measured, not promised —", "reg_n": "— the wreck register —"},
-              "de": {"cue": "— Start drücken —", "players_n": "— Spieler wählen —", "start_n": "— Münze einwerfen —", "scores_n": "— gemessen, nicht versprochen —", "reg_n": "— Wrackregister —"}}
+_CUE_WORDS = {"en": {"cue": "— press start —", "players_n": "— select player —", "start_n": "— insert coin —", "scores_n": "— measured, not promised —"},
+              "de": {"cue": "— Start drücken —", "players_n": "— Spieler wählen —", "start_n": "— Münze einwerfen —", "scores_n": "— gemessen, nicht versprochen —"}}
 
 
 def _cue_problems(src):
@@ -7148,11 +7143,11 @@ def _cue_problems(src):
         bad.append("in print the cue's words and icon may still blink")
     if "*,*::before,*::after{animation:none!important" not in code:
         bad.append("the rule that ends every animation under reduced motion is not there")
-    # the icons: seven, each aria-hidden and not focusable; every label keeps its words and takes its icon after the first dash
+    # The six remaining icons are hidden from assistive technology; each label keeps its words and takes its icon after the first dash.
     icons = re.findall(r'<svg class="cab cab-(dome|stick|coin|ticket|ship|screen|wreck)"([^>]*)>', code)
-    if sorted(n for n, _ in icons) != ["coin", "dome", "screen", "ship", "stick", "ticket", "wreck"] or not all('aria-hidden="true"' in a and 'focusable="false"' in a for _, a in icons):
-        bad.append("the seven icons, dome, joystick, coin, ticket, ship, screen and wreck, are not each aria-hidden and not focusable")
-    for key, icon in (("players_n", "icon_stick"), ("start_n", "icon_coin"), ("it_n", "icon_ticket"), ("fleet_n", "icon_ship"), ("scores_n", "icon_screen"), ("reg_n", "icon_wreck")):
+    if sorted(n for n, _ in icons) != ["coin", "dome", "screen", "ship", "stick", "ticket"] or not all('aria-hidden="true"' in a and 'focusable="false"' in a for _, a in icons):
+        bad.append("the six icons, dome, joystick, coin, ticket, ship and screen, are not each aria-hidden and not focusable")
+    for key, icon in (("players_n", "icon_stick"), ("start_n", "icon_coin"), ("it_n", "icon_ticket"), ("fleet_n", "icon_ship"), ("scores_n", "icon_screen")):
         if f'<span class="n n-ic">{{{{ w.{key} | replace("— ", "— " ~ {icon} ~ " ") }}}}</span>' not in code:
             bad.append(f"the {key} label is not its words with the {icon} after the first dash")
     if "--gold:#e3b84c" not in code.replace(" ", ""):
@@ -7163,8 +7158,8 @@ def _cue_problems(src):
 _cs = _sources(_CUE_FILES)
 _cp = _cue_problems(_cs)
 check("FM-006 · B1 · the hero's cue and the labels' cabinet parts: the cue stands over the primary button in the probe state alone, one line, in both languages' words; only its icon and "
-      "words blink, from the start, four seconds at most and then lit, nothing blinks under reduced motion and in print the cue stands still; the joystick and the coin stand on the players and start labels, the ticket, the ship, the screen and the "
-      "wreck on the issue tracker's, the fleet's, the high scores' and the register's, every icon is "
+      "words blink, from the start, four seconds at most and then lit, nothing blinks under reduced motion and in print the cue stands still; the joystick and coin stand on the players and start labels, "
+      "and the ticket, ship and screen on the issue tracker, fleet and high scores labels; every remaining icon is "
       f"aria-hidden, and the labels keep their words (problems found: {_cp})", _cp == [])
 _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html", "{%- else %}\n      <a class=\"btn\" href=\"{{ urls.adopt }}\">", "{%- else %}\n      <span class=\"cue\" aria-hidden=\"true\">{{ w.cue }}</span><a class=\"btn\" href=\"{{ urls.adopt }}\">"),
          "the cue under the button": _with(_cs, "overrides/landing.html", '<div class="cta-main"><span class="cue" aria-hidden="true">', '<div class="cta-main">{{ coin_door("probe-open") }}<span class="cue" aria-hidden="true">'),
@@ -7177,7 +7172,7 @@ _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html"
          "the reduced-motion rule gone": _with(_cs, "overrides/landing.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}"),
          "an icon read by screen readers": _with(_cs, "overrides/landing.html", '<svg class="cab cab-coin" viewBox="0 0 7 7" aria-hidden="true"', '<svg class="cab cab-coin" viewBox="0 0 7 7"'),
          "the scores label without its icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_screen ~ " ") }}</span>', '<span class="n">{{ w.scores_n }}</span>'),
-         "the register label with another icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_wreck ~ " ") }}</span>', '<span class="n n-ic">{{ w.reg_n | replace("— ", "— " ~ icon_stick ~ " ") }}</span>'),
+         "the scores label with the removed wreck icon": _with(_cs, "overrides/landing.html", '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_screen ~ " ") }}</span>', '<span class="n n-ic">{{ w.scores_n | replace("— ", "— " ~ icon_wreck ~ " ") }}</span>'),
          "the players label reworded": _with(_cs, "overrides/partials/landing/en.html", '"players_n": "— select player —"', '"players_n": "— choose —"'),
          "the start label's German reworded": _with(_cs, "overrides/partials/landing/de.html", '"start_n": "— Münze einwerfen —"', '"start_n": "— Los —"'),
          "the taped cue beside the live one": _with(_cs, "overrides/landing.html", '<span class="cue" aria-hidden="true"><span class="cue-t">',
@@ -7187,7 +7182,7 @@ _cctl = {"the cue in the interim state too": _with(_cs, "overrides/landing.html"
 _cctl_saw = {name: len(_cue_problems(src)) for name, src in _cctl.items()}
 check("FM-006 · B1 · the cue's check is not blind: each of the cue in the interim state, under the button, read by screen readers or in other German words, blinking for ever, longer than 5 s, "
       "late as the ceremony had it, in print or with its rules, the taped cue beside the live one, a label blinking, the reduced-motion rule gone, an icon read by screen readers, the scores "
-      "label without its icon, the register label with another, and a label reworded leaves a problem "
+      "label without its icon or with the removed wreck icon, and a label reworded leaves a problem "
       f"(problems found: {_cctl_saw})", all(_cctl_saw.values()) and len(_cctl_saw) == 17)
 
 
