@@ -26,10 +26,13 @@ Path.read_text = lambda self, encoding="utf-8", errors=None: _rt(self, encoding=
 Path.write_text = lambda self, data, encoding="utf-8", errors=None: _wt(self, data, encoding=encoding, errors=errors)
 
 
-HERE = Path(__file__).resolve().parent
+from test_repository import check_repository, run_checks as repository_checks, suite_repository
+
+HERE = suite_repository(__file__)
 _spec = importlib.util.spec_from_file_location("gti", HERE / "shoalmark.py")
 gti = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gti)
+_REPOSITORY_CONFIG = gti.CONFIG.copy()
 
 # --- the synthetic corpus: a story with a chapter, open and done work of every status, a blocker, a tag -------------
 _TMP = tempfile.TemporaryDirectory()
@@ -72,6 +75,10 @@ def check(label, cond):
     print(f"  {'ok  ' if cond else 'FAIL'}  {label}")
     if not cond:
         FAILS.append(label)
+
+
+check_repository(HERE, _REPOSITORY_CONFIG, check)
+repository_checks(check)
 
 
 def run(argv):

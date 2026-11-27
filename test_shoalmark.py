@@ -71,7 +71,9 @@ _RUNNER_GIT_CONFIG = [subprocess.run(["git", "config", "--global", "--get", key]
 _SUITE_HOME = _suite_home()
 
 
-HERE = Path(__file__).resolve().parent
+from test_repository import check_repository, suite_repository
+
+HERE = suite_repository(__file__)
 _spec = importlib.util.spec_from_file_location("fm", HERE / "shoalmark.py")
 fm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fm)
@@ -84,6 +86,9 @@ def check(name, ok):
     print(("  ok    " if ok else "  FAIL  ") + name)
     if not ok:
         FAILS.append(name)
+
+
+check_repository(HERE, fm.CONFIG, check)
 
 
 def _try(f):
