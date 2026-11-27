@@ -1,5 +1,7 @@
 # Deine Antwort ist dein Commit — eine Signatur einrichten
 
+Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
+
 *Für den Eigner. Eine Minute, um deine Stufe zu finden; zehn, um die gewählte einzurichten, einmal.*
 
 Wenn du auf dem Board eine Frage beantwortest, landen drei Zeilen im Arbeitspaket — `answer:`, `answered:`,
@@ -40,7 +42,7 @@ Laut Stand vom 25. September 2026 verwendet der Eigner von shoalmark **Stufe 0**
 Software-Schlüssel. Der geplante Wechsel zum Hardware-Schlüssel ist noch nicht als abgeschlossen
 dokumentiert. Eine verifizierte Antwort belegt bis dahin die Nutzung des vertrauten Schlüssels,
 nicht die persönliche Anwesenheit des Eigners. Das ist der dokumentierte Projektstand, keine
-Prüfung deines Rechners. Siehe [FM-007](https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md).
+Prüfung deines Rechners. Siehe [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md).
 
 ## Was dein Beleg sagt
 
@@ -317,7 +319,7 @@ Sichtung festhalten. Die Signierer-Datei ist ebenso geschützt, und eine Signatu
 Standard-Branch geprüft: Ein Branch, der seinen eigenen Schlüssel unter deiner E-Mail einträgt, beweist nichts.
 
 **Was es nicht unterscheiden kann.** Ein Commit, der mit deinem Schlüssel signiert ist, geht durch; auf Stufe 0 hat jeder
-Prozess unter deinem Konto diesen Schlüssel (FM-007) — erst die Stufen oben machen ihn allein zu deinem. Wo dein `owner`
+Prozess unter deinem Konto diesen Schlüssel ([FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md)) — erst die Stufen oben machen ihn allein zu deinem. Wo dein `owner`
 oder eine Rolle mit `answer` nicht `signed` ist, beweist das Werkzeug nur den Autor, eine Zeichenkette, die jeder tippen
 kann, und sagt es: Markiere ihn `signed`, um den Schlüssel zu beweisen. Unter Subversion liegt dieser Schutz
 außerhalb des Umfangs: seine Arbeitskopie trägt keine Signatur.

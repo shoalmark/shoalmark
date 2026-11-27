@@ -4,6 +4,8 @@ description: "A week with shoalmark in four steps: your part in it, what it does
 
 # How it works
 
+Since the tracker cut of 27 November 2026, the tool team's trackers are kept in the organisation's repository at `teams/tool/work-tracker/`, and these links show them as they stood at the cut.
+
 shoalmark keeps your project's work as plain files inside the project, so every agent that works on it reads the same current state. It shows you first what is waiting for your answer, and its checks report work marked as shipped when no saved change (a commit) in the project's history backs it.
 
 ## A week in four steps
@@ -16,7 +18,7 @@ shoalmark keeps your project's work as plain files inside the project, so every 
 4. **The agents act on your answer, and a reviewer judges before the merge.** A seat that holds the right to do so records your answer in the work item and moves on. Before work reaches a merge, a reviewer checks it; the board says whether that pass was independent, meaning it came from another session than the code. That is a report, not a proof. `--queue` lists the open pull requests in the order to merge them.
 
 <figure class="week" markdown="0">
-<div class="week-card"><h3 class="t">FM-024</h3><p class="src">work-tracker/FM-024-….md · 2026-09-28</p>
+<div class="week-card"><h3 class="t"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024</a></h3><p class="src"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md</a> · 2026-09-28</p>
 <pre lang="en">next: owner
 ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
 ask-kind: ruling
@@ -26,7 +28,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 <p class="week-arrow" aria-hidden="true">↓</p>
 <div class="week-card board"><h3 class="t">board</h3>
 <div class="wk-board" lang="en"><p><i>##</i> <b class="hot">waiting for you: 3</b></p>
-<p><span class="id">FM-024</span> Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them? · a ruling <span class="chip">accept</span><span class="chip">reject</span></p></div></div>
+<p><span class="id"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024</a></span> Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them? · a ruling <span class="chip">accept</span><span class="chip">reject</span></p></div></div>
 <p class="week-arrow" aria-hidden="true">↓</p>
 <div class="week-card"><h3 class="t">4127dba</h3><p class="src">git commit · 2026-09-28</p>
 <pre lang="en"><span class="del">-next: owner</span>

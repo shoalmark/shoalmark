@@ -2,10 +2,12 @@
 template: landing.html
 ---
 
-<!-- FM-006 slice L: the site renders this page with overrides/landing.html, the landing page — the start page. This prose
+<!-- The site renders this page with overrides/landing.html, the landing page — the start page. This prose
      is its source, the German start page's original and llms.txt's Markdown twin of the start page; the site does not show it. -->
 
 # shoalmark
+
+Since the tracker cut of 27 November 2026, the tool team's trackers are kept in the organisation's repository at `teams/tool/work-tracker/`, and these links show them as they stood at the cut.
 
 *A workbench for your agents. Your decisions on record.*
 
@@ -50,7 +52,7 @@ In shoalmark's own repository, which runs on shoalmark:
 
 *Counted on 1 October 2026 with `gh` from pull requests 1–144 of shoalmark/shoalmark: merged ones only, without the
 Owner's own answer branches (`answer/…`). One counts when a commit adding or changing a file under
-`work-tracker/evidence/reviews/`, merge commits excluded, is dated before the pull request was opened. A commit's date
+[`work-tracker/evidence/reviews/`](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/evidence/reviews/) (as it stood at the cut of 27 November 2026), merge commits excluded, is dated before the pull request was opened. A commit's date
 is when it was made, not when it was pushed: the forge's push events confirm the counted pull requests from
 24 September 2026, 05:18 UTC on, and it no longer lists older ones. The rule is the Owner's signed answer of
 24 September 2026, 11:07 CEST.*

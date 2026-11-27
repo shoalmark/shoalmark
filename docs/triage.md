@@ -1,5 +1,7 @@
 # Your word in TRIAGE.md
 
+Since the tracker cut of 27 November 2026, the tool team's trackers are kept in the organisation's repository at `teams/tool/work-tracker/`, and these links show them as they stood at the cut.
+
 *For the owner. Five minutes to read. You write it once, in your own words, and your agents do the rest.*
 
 Your agents can run a task from start to finish without asking you, if they know two things first: what the work is
@@ -31,7 +33,7 @@ two of them are yours.
 
 **A first draft: the village library.** `--init` writes an example in italics, and it is a whole product on purpose.
 The owner's own first draft once came out the size of one feature, after a seat had shown them a feature-sized example
-(FM-022). So the example looks like this:
+([FM-022](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md)). So the example looks like this:
 
 > - **for** — *e.g. a village library's lending, all of it: members, loans, returns and the shelf in one record the librarian trusts*
 > - **so that** — *e.g. a member finds a book and a librarian finds a member in one look, and nothing on loan is lost*
@@ -79,20 +81,20 @@ After:
 > 3\. A pull request merges only with a review's evidence file on its head: a Reviewer from another independent
 > session for critical changes (critical = a release, the gate or hooks, signing and rights, TRIAGE.md or AGENTS.md
 > rules changed by a seat, anything tagged security or P1); inline Reviewer passes on other code; one Reviewer pass
-> for documentation; a review of the Owner's own answers and TRIAGE lines reports and never blocks, until FM-007's
+> for documentation; a review of the Owner's own answers and TRIAGE lines reports and never blocks, until [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md)'s
 > hardware key signs them. The Owner merges on a ready line, or over any other verdict with a signed reason.
 
 - **Review.** The same day, the seats sorted their work by the new line. The pass that took in the CI fix wrote
-  *"the Owner's line 3 names a release critical, so its fix's review is the cold session's"* (`42f4eca`). FM-037, the
+  *"the Owner's line 3 names a release critical, so its fix's review is the cold session's"* (`42f4eca`). [FM-037](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md), the
   guard described below, was reviewed in two other sessions before it merged, and `--check` lists both verdicts as
   *independent*.
 - **The tool.** `--check` prints how independent the week's reviews were. At `88c7b0c` on 26 September 2026 it
   printed `reviews this week · 104 verdict(s) · independent 10 · same session 89 · untraced 5`. That is a report,
   not a gate: most of that week's verdicts came from the same session as the work, and nothing refuses a same-session
-  verdict yet (FM-024's second slice is not built). The line shows you what you are merging.
+  verdict yet ([FM-024](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md)'s second slice is not built). The line shows you what you are merging.
 
 **One phrase decides a tier.** CI went red on the release tag `v0.18.3` on 25 September 2026. The first pass
-(`42f4eca`, 12:15) kept FM-035 at P1: *"a red release tag on two of three platforms is a failed command on the
+(`42f4eca`, 12:15) kept [FM-035](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) at P1: *"a red release tag on two of three platforms is a failed command on the
 current path, line 1"*. Its Reviewer found the quotation cut short. Line 1 in full reads: *"The daily sitting runs on
 a tagged release with a signed answer and no failed command in the sitting."* The pass was re-made (`c8939e3`, 12:30)
 and judged P2: *"the sitting's commands ran green here, so a red CI is not that command"*.
@@ -100,14 +102,14 @@ and judged P2: *"the sitting's commands ran green here, so a red CI is not that 
 - **Review.** Three words, *in the sitting*, moved the tier. No check acts on what your words say, so the Reviewer
   holds the pass to them. If a red release tag should be P1 for you, write that into your path. It's your line.
 
-**A raise that names your path.** On 24 September 2026 the Auditor seat raised FM-007 with a sourced line under it.
+**A raise that names your path.** On 24 September 2026 the Auditor seat raised [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) with a sourced line under it.
 The key that signs the owner's answers was a software key in the shared ssh-agent, used by every seat's push without
-a prompt, and the line ended *"undermines: TRIAGE.md path 5, FM-033's answer"*: it named two signed rules, line 5
-of the path and the Owner's signed answer on FM-033. The same evening a pass judged FM-007 again
+a prompt, and the line ended *"undermines: TRIAGE.md path 5, [FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s answer"*: it named two signed rules, line 5
+of the path and the Owner's signed answer on [FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md). The same evening a pass judged [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) again
 (`29466fc`). Re-made on its Reviewer's findings (`c5696c5`), it set P1: *"on the current path, line 5: an answer is
 written and signed, and the raise shows the signature proves the account, not the hand"*.
 
-- **The text alone,** for *the same day*: that is the owner's rule, their signed answer on FM-033, and a pass keeps it
+- **The text alone,** for *the same day*: that is the owner's rule, their signed answer on [FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md), and a pass keeps it
   by running.
 - **The tool,** since 0.18.3: a raise that names a line your path has puts the tracker under *triage* until a pass
   has judged it again. On 24 September the tool couldn't list a raised tracker yet, so the seat wrote the row by hand.
@@ -132,13 +134,12 @@ the village library as its intent, two path lines, an invented owner with their 
 scratch directory. On its own branch, the seat changed path line 2 from *"A pull request merges only with a review's
 evidence file on its head."* to *"A pull request merges when its tests pass."* `--check` on that branch exited 4, and
 these are the refusal's lines as the tool printed them (the script and its whole output are in
-[FM-006's evidence](https://github.com/shoalmark/shoalmark/tree/main/work-tracker/evidence/FM-006/triage-page)):
+[FM-006's evidence](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/evidence/FM-006/triage-page)):
 
-```text
-  lint: refused: commit 1063448 "LIB-001: path line 2, shorter" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`you@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
-  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+<pre>  lint: refused: commit 1063448 "LIB-001: path line 2, shorter" changes the text under `## The current path` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`you@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (<a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md">FM-007</a>)
 FAILED: 1 ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.
-```
+</pre>
 
 With the hooks installed (`--install-hook`), a seat's change to the intent was not made at all: the hook printed the
 same refusal for *this commit*, and before the limit it added *"the hook proves the author only: git signs a commit
@@ -150,7 +151,7 @@ edit the file, `git commit -S`, push. `git log -1 --format='%G? %GS %ae'` then p
 is the check on [the signing page](signing.md).
 
 **The limit,** in the words the tool prints after every refusal: *a commit signed with the Owner's key passes; at tier 0 any
-process on their account holds that key (FM-007)*.
+process on their account holds that key ([FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md))*.
 
 - **The tool** cannot tell the difference. At tier 0, *only you* means *only your account*. In the scratch
   repository, a commit made with the owner's key, which had no passphrase, passed `--check` exactly like their own. A
@@ -172,7 +173,7 @@ process on their account holds that key (FM-007)*.
 - **It moves no tier and no rank by itself.** A tracker's tier moves only when the tracker is on a pass's sheet and
   the command applies its row: work in progress not judged in the last seven days, a new filing, or a tracker whose
   raise names a line of your path (*the tool*). The pass's rules say a raised tracker is judged again the same day
-  (FM-033's rule); that it is, is *the text alone*. Every other tracker keeps its tier until its next pass, and your
+  ([FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s rule); that it is, is *the text alone*. Every other tracker keeps its tier until its next pass, and your
   board shows the old judgement until then. *The tool* refuses a tier or a rank from a seat that lacks the `triage`
   right; that no seat edits them by hand is *the text alone*.
 - **It answers no question.** An ask on your board is answered by `--answer`, signed (*the tool*). An edit to
