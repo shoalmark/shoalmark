@@ -3,13 +3,17 @@
 For a bug, open an issue with the version, expected and observed behavior, and a small reproduction
 using synthetic data. Propose a feature in an issue before building it. Never include credentials
 or private project records; report vulnerabilities through [the security policy](SECURITY.md).
-The maintainer routes accepted work into `work-tracker/`; issues do not replace its specifications.
+The maintainer routes accepted work into `shoalmark/org` at `teams/tool/work-tracker/`; issues do not replace
+its specifications. The tool team's project is `teams/tool/`, where its rules run from an org checkout as
+`python3 tools/shoalmark/shoalmark.py --root teams/tool --check`. Code and tracker changes use paired pull requests,
+with review evidence filed in org naming the code repository and full reviewed commit.
 
 ## Local checks
 
-The commit hook checks staged Python syntax and runs the focused `test_core.py` suite once, with visible
-progress. Session, tracker and judgement gates still run. The full suites below are available on demand
-and required in the PR/release CI matrix; the hook no longer runs both suites under two interpreters.
+Run the focused `test_core.py` suite and compile changed Python before committing. The full suites below are
+required in the PR/release CI matrix. Every code pull request runs the suites; CI refuses added paths under
+`work-tracker/`. The tracker gate runs in org's team project. Code clones use the released hooks that understand
+`[trackers] elsewhere`; the code-side build-judgement rule is off until the cross-repository join is available.
 
 Clone `https://github.com/shoalmark/shoalmark`, create a branch, and read [AGENTS.md](AGENTS.md).
 The tool uses Python’s standard library. Python 3.9 and 3.12 are exercised in CI; install Subversion

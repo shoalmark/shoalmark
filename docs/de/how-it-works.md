@@ -4,7 +4,7 @@ description: "Eine Woche mit shoalmark in vier Schritten: dein Teil daran, was e
 
 # So funktioniert's
 
-Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
+Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation, [`shoalmark/org`](https://github.com/shoalmark/org), unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
 
 shoalmark legt die Arbeit deines Projekts als Textdateien im Projekt selbst ab, sodass jeder Agent, der daran arbeitet, denselben aktuellen Stand liest. Es zeigt dir zuerst, was auf deine Antwort wartet, und seine Prüfungen melden Arbeit, die als ausgeliefert markiert ist, wenn keine gespeicherte Änderung (ein Commit) in der Historie des Projekts dahintersteht.
 
@@ -18,7 +18,7 @@ shoalmark legt die Arbeit deines Projekts als Textdateien im Projekt selbst ab, 
 4. **Die Agenten handeln auf deine Antwort, und ein Reviewer urteilt vor dem Merge.** Eine Rolle mit dem Recht dazu hält deine Antwort im Arbeitspaket fest und macht weiter. Bevor Arbeit zu einem Merge kommt, prüft sie ein Reviewer; das Board sagt, ob dessen Durchgang unabhängig war, also aus einer anderen Session kam als der Code. Das ist eine Meldung, kein Beweis. `--queue` zeigt die offenen Pull Requests in der Reihenfolge, in der sie zu mergen sind.
 
 <figure class="week" markdown="0">
-<div class="week-card"><h3 class="t"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024</a></h3><p class="src"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md</a> · 2026-09-28</p>
+<div class="week-card"><h3 class="t"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024</a></h3><p class="src"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">archiviertes Arbeitspaket</a> · 2026-09-28</p>
 <pre lang="en">next: owner
 ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
 ask-kind: ruling

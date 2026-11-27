@@ -1,6 +1,6 @@
 # Your word in TRIAGE.md
 
-Since the tracker cut of 27 November 2026, the tool team's trackers are kept in the organisation's repository at `teams/tool/work-tracker/`, and these links show them as they stood at the cut.
+Since the tracker cut of 27 November 2026, the tool team's trackers are kept in the organisation's repository, [`shoalmark/org`](https://github.com/shoalmark/org), at `teams/tool/work-tracker/`, and these links show them as they stood at the cut.
 
 *For the owner. Five minutes to read. You write it once, in your own words, and your agents do the rest.*
 

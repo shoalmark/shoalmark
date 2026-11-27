@@ -36,8 +36,10 @@ def snippet(name):
     raise SystemExit(f"llms.txt: a page includes {name}, which none of the snippet base paths {snippet_bases} holds")
 
 
-def plain(fragment):
+def plain(fragment, links=True):
     """A fragment of the figure as text: a chip as [chip], code as `code`, every other tag dropped, entities read."""
+    if links:
+        fragment = re.sub(r'<a href="([^"]+)">(.*?)</a>', r"[\2](\1)", fragment, flags=re.S)
     fragment = fragment.replace('</span><span class="chip">', '</span> <span class="chip">')
     fragment = re.sub(r'<span class="chip">(.*?)</span>', r"[\1]", fragment, flags=re.S)
     fragment = re.sub(r"<code>(.*?)</code>", r"`\1`", fragment, flags=re.S)
@@ -54,8 +56,9 @@ def week_as_markdown(figure):
             title = plain(re.search(r"<h3[^>]*>(.*?)</h3>", card, re.S).group(1)).strip()
             src = re.search(r'<p class="src">(.*?)</p>', card, re.S)
             pre = re.search(r"<pre[^>]*>(.*?)</pre>", card, re.S)
-            body = plain(pre.group(1)) if pre else "\n".join(plain(p).strip() for p in re.findall(r"<p>(.*?)</p>", card, re.S))
-            out.append(f"**{title}**" + (f" · {plain(src.group(1)).strip()}" if src else "") + "\n\n```\n" + body.strip("\n") + "\n```")
+            body = plain(pre.group(1), links=False) if pre else "\n".join(plain(p).strip() for p in re.findall(r"<p>(.*?)</p>", card, re.S))
+            body = "```\n" + body.strip("\n") + "\n```" if pre else body
+            out.append(f"**{title}**" + (f" · {plain(src.group(1)).strip()}" if src else "") + "\n\n" + body)
         elif piece.group("arrow") is not None:
             out.append(plain(piece.group("arrow")).strip())
         else:

@@ -6,7 +6,7 @@ description: "Eine Werkbank für deine Agenten. Deine Entscheidungen belegt."
 
 # shoalmark
 
-Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
+Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation, [`shoalmark/org`](https://github.com/shoalmark/org), unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
 
 *Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.*
 

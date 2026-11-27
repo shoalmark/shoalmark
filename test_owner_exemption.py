@@ -1,4 +1,4 @@
-"""Synthetic Owner lists, signed histories, installed hooks and CI checkouts for FM-033 R14."""
+"""Synthetic Owner lists, signed histories and installed hooks for FM-033."""
 
 import datetime
 import os
@@ -453,58 +453,6 @@ class OwnerExemption(unittest.TestCase):
         with self.subTest(stage="gate"):
             self.assertIn("names no tracker", self.gate(root, 4).stderr)
 
-    def test_ci_gate_executes_on_pr_head(self):
-        bash = ci_bash()
-        if not bash:
-            self.skipTest("the CI shell requires Git Bash")
-        text = (HERE / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        match = re.search(r"^        id: gate\n(?P<settings>.*?)^        run: \|\n(?P<script>(?:^          [^\n]*\n|^\n)+)", text, re.M | re.S)
-        self.assertIsNotNone(match)
-        settings = match["settings"]
-        self.assertNotIn("continue-on-error", settings)
-        self.assertIn("if: steps.tier.outputs.records != 'true' || (matrix.system == 'ubuntu' && matrix.python == '3.9')", settings)
-        command = re.search(r"\bSHOALMARK_CMD:\s*([^,}\n]+)", settings)
-        command = command[1].strip().strip("\"'") if command else ""
-        script = "\n".join(line[10:] for line in match["script"].splitlines())
-        programs = self.area / "ci-python"
-        programs.mkdir()
-        launcher = programs / "launcher.py"
-        write_text(launcher,
-            "import importlib.util, os, sys\n"
-            "if sys.argv[1] == '-I': del sys.argv[1]\n"
-            "spec = importlib.util.spec_from_file_location('ci_tool', sys.argv[1])\n"
-            "tool = importlib.util.module_from_spec(spec)\n"
-            "spec.loader.exec_module(tool)\n"
-            "tool.PY = os.environ['SHOALMARK_TEST_PY']\n"
-            "tool.configure()\n"
-            "raise SystemExit(tool.main(sys.argv[2:]))\n", encoding="utf-8")
-        python = programs / "python"
-        write_text(python, "#!/bin/sh\nexec " + shlex.quote(Path(sys.executable).as_posix()) + " "
-                          + shlex.quote(launcher.as_posix()) + ' "$@"\n', encoding="utf-8")
-        python.chmod(0o755)
-        for records in (True, False):
-            for key in ("owner", None):
-                with self.subTest(records=records, key=key):
-                    root = self.fixture()
-                    self.stage(root, "work-tracker/evidence/note.txt" if records else "app.py")
-                    self.commit(root, OWNER, key, "AP-001: PR work", required=True)
-                    head = self.git(root, "rev-parse", "HEAD").stdout.strip()
-                    self.git(root, "switch", "-q", "main", required=True)
-                    self.git(root, "merge", "--no-ff", "-m", "CI merge", "work", author=NOREPLY, required=True)
-                    merge = self.git(root, "rev-parse", "HEAD").stdout.strip()
-                    for naming in ("python3", "python"):
-                        with self.subTest(naming=naming):
-                            self.git(root, "checkout", "--detach", merge, required=True)
-                            r = self.call(root, bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script,
-                                          extra={"EVENT": "pull_request", "HEAD_SHA": head, "DEFAULT_BRANCH": "main",
-                                                 "TRACKER": "work-tracker", "SHOALMARK_CMD": command,
-                                                 "SHOALMARK_TEST_PY": naming,
-                                                 "PATH": str(programs) + os.pathsep + self.env["PATH"]})
-                            self.assertEqual(r.returncode, 0 if key else 4, r.stdout + r.stderr)
-                            if key:
-                                self.assertEqual(self.git(root, "rev-parse", "HEAD").stdout.strip(), merge)
-                            else:
-                                self.assertIn(head[:10], r.stderr)
 
 
 def run_checks():

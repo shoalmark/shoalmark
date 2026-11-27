@@ -110,12 +110,12 @@ def rows_relation(area, add):
         add(f"the relation · {label}: {want}", said == want, f"saw {said!r}")
         if as_before:
             add(f"the relation · {label}: reads as it did before", fm.answer_relation(t) == reference(t), f"saw {fm.answer_relation(t)} for {reference(t)}")
-    fm.configure(HERE)
-    here = [t for t in fm.load_trackers() if t.get("answer")]
+    here = [{"id": f"AP-{n:03}", "answer": answer, "ask_proposal": proposal, "ask_options": list(options)}
+            for n, (_label, answer, proposal, options, _want, _before) in enumerate(RELATIONS, 1)]
     text = lambda t: ((fm.ANSWER_WORD_RE.fullmatch(fm.answer_norm(t["answer"])) or [None, None, ""])[2] or "").strip()
     moved = [t["id"] for t in here if fm.answer_relation(t) != reference(t) and not fm.split_changes(t, text(t))]
-    add(f"the relation · every answer this repository's trackers hold that carries no changes reads as it did before ({len(here)} read)",
-        not moved, f"read otherwise: {moved}")
+    add(f"the relation · synthetic answers without changes retain their earlier reading ({len(here)} read)",
+        bool(here) and not moved, f"read otherwise: {moved}")
 
 
 # --- the command ---------------------------------------------------------------------------------------------------------------

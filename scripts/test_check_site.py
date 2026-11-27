@@ -457,7 +457,8 @@ class EveryPage(unittest.TestCase):
 
 
 LLMS = Path(__file__).with_name("llms_txt.py")
-FIGURE = ('<figure class="week" markdown="0">\n<div class="week-card"><h3 class="t">FM-024</h3><p class="src">work-tracker/FM-024-….md · 2026-09-28</p>\n'
+TRACKER_LINK = 'https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md'
+FIGURE = (f'<figure class="week" markdown="0">\n<div class="week-card"><h3 class="t"><a href="{TRACKER_LINK}">FM-024</a></h3><p class="src"><a href="{TRACKER_LINK}">archived tracker</a> · 2026-09-28</p>\n'
           '<pre lang="en">next: owner\nask: "x"</pre></div>\n<p class="week-arrow" aria-hidden="true">↓</p>\n'
           '<div class="week-card board"><h3 class="t">board</h3>\n<div class="wk-board" lang="en"><p><i>##</i> <b class="hot">waiting for you: 3</b></p>\n'
           '<p><span class="id">FM-024</span> a question · a ruling <span class="chip">accept</span><span class="chip">reject</span></p></div></div>\n'
@@ -660,7 +661,7 @@ class Twins(unittest.TestCase):
         self.assertIn("The button leads to the note.", twin)
         self.assertNotIn("--8<--", twin)
         self.assertNotRegex(twin, r"</?[a-zA-Z][a-zA-Z0-9]*[\s/>]")
-        for wanted in ("**FM-024** · work-tracker/FM-024-….md · 2026-09-28", "```\nnext: owner\nask: \"x\"\n```", "↓", "a ruling [accept] [reject]", "**4127dba** · git commit",
+        for wanted in (f"**[FM-024]({TRACKER_LINK})** · [archived tracker]({TRACKER_LINK}) · 2026-09-28", "```\nnext: owner\nask: \"x\"\n```", "↓", "a ruling [accept] [reject]", "**4127dba** · git commit",
                        "-next: owner\n+next: build", "*One question, a signed commit that sets `next` to `build`.*"):
             self.assertIn(wanted, twin)
         self.assertIn("](../setup/index.md)", twin)

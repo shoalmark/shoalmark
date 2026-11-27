@@ -1,6 +1,6 @@
 # Dein Wort in der TRIAGE.md
 
-Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
+Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation, [`shoalmark/org`](https://github.com/shoalmark/org), unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
 
 *Für den Eigner. Fünf Minuten Lesezeit. Du schreibst es einmal, in deinen eigenen Worten, und alles Weitere
 übernehmen deine Agenten.*

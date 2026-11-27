@@ -3128,8 +3128,8 @@ check(f"{_KC_NAME} · from this process, on every system: the control and a page
 
 _KC_PATHS = ["from a child program that carries the browser helpers, as the board block runs in one: the control",
              "from a child program that carries the browser helpers, as the board block runs in one: each page",
-             "from work-tracker/evidence/FM-006/landing/start-page/checks.mjs, as the summaries' rebuild runs it",
-             "from work-tracker/evidence/FM-002/slice-a/checks.mjs, as the summaries' rebuild runs it",
+             "from tests/fixtures/tracker-cut/start-page/checks.mjs, as the summaries' rebuild runs it",
+             "from tests/fixtures/tracker-cut/board/checks.mjs, as the summaries' rebuild runs it",
              "from scripts/check_landing_browser.mjs, as the landings' browser run runs it",
              "the suite's own temporary folder is gone when the child program ends, and a runner's profile folder was never made",
              "a SIGTERM, as a runner's time limit sends one, leaves no folder of the suite's behind: the run ends by the signal, and nothing "
@@ -3149,8 +3149,8 @@ else:
         (kc_dir / "stand-in.py").write_text(_KC_STAND_IN.replace("@LOG@", repr(str(kc_log))), encoding="utf-8")
         (kc_bin / "stand in").write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(kc_dir / "stand-in.py"))} "$@"\n', encoding="utf-8")
         (kc_bin / "stand in").chmod(0o755)
-        kc_scripts = [("work-tracker/evidence/FM-006/landing/start-page/checks.mjs", [str(kc_site), str(kc_dir / "a.json")]),
-                      ("work-tracker/evidence/FM-002/slice-a/checks.mjs", [str(kc_site), str(kc_dir / "b.json")]),
+        kc_scripts = [("tests/fixtures/tracker-cut/start-page/checks.mjs", [str(kc_site), str(kc_dir / "a.json")]),
+                      ("tests/fixtures/tracker-cut/board/checks.mjs", [str(kc_site), str(kc_dir / "b.json")]),
                       ("scripts/check_landing_browser.mjs", [str(kc_site), "probe", str(kc_dir / "c.json")])] if shutil.which("node") else []
         kc_end = "".join(f"\nopen({str(kc_log)!r}, 'a', encoding='utf-8').write({json.dumps({'path': s}) + chr(10)!r})\n_chrome_node({s!r}, *{a!r}, timeout=60)\n"
                          for s, a in kc_scripts) + "\nprint('the suite folder:', _CHROME_HOME[0] if _CHROME_HOME else None)\n"
@@ -9946,20 +9946,6 @@ check("R10 · the docs draw their own chart: their stylesheet holds the chart's 
       and "work-tracker/brand" not in _dcss and "brand/themes" not in _dcss)
 
 # --- this repository's own board: its brand files, held to their sources — a logo and the labels; its theme, fonts and wordmark gone with R10 -------
-_rb, _xdg = HERE / "work-tracker/brand", os.environ.get("XDG_CONFIG_HOME")
-with tempfile.TemporaryDirectory() as _nowhere:
-    os.environ["XDG_CONFIG_HOME"] = _nowhere                 # the person's own place stays out of it
-    try:
-        fm.configure(HERE); _logo, _labels, _src, _warn, _gone = fm.brand()
-    finally:
-        os.environ.pop("XDG_CONFIG_HOME", None) if _xdg is None else os.environ.update(XDG_CONFIG_HOME=_xdg)
-check("FM-053 · this repository's board needs no labels.yaml: the claim under its board is gone, it carries no tagline, and its chrome is the English table",
-      not (_rb / "labels.yaml").exists() and "footer" not in _labels and _labels["tagline"] == "" and _src["labels.yaml"] == [] and _labels == fm.LABELS)
-check("0.18.2 · this repository's logo — the tab's — is the site's tab icon, byte for byte", _src["logo"] == ["repository"] and (_rb / "logo.svg").read_bytes() == (HERE / "docs/assets/favicon.svg").read_bytes())
-check(f"R10 · this repository holds no brand file the board no longer reads — its theme.css, fonts/ and wordmark.svg are gone, and the tool's own brand/ "
-      f"ships no themes/ — so its board names none, and warns of nothing (saw {_gone}, {_warn})",
-      sorted(p_.name for p_ in _rb.iterdir()) == ["logo.svg"] and not (HERE / "brand/themes").exists() and _gone == [] and _warn == [])
-
 # --- FM-053's answer, and the guide's amendment G1–G2: the board's colours are `[palette]` — a palette by name or a few tokens in three meanings, `ok`,
 # `warn` and `fail`, refused below the set contrast on every ground its text stands on, ignored by an older copy. The class test, run on the tool and on
 # its mutant, the refusal turned back into a warning, which it must fail
@@ -18801,18 +18787,6 @@ with tempfile.TemporaryDirectory() as tmp:
           and len([c_ for c_ in calls_ if "log" in c_]) == 1 and len([c_ for c_ in calls_ if "cat-file" in c_ and "--batch" in c_]) == 2)
     rm_git(root)
 fm.configure(HERE)
-# …and FM-007 in this repository: answered twice, word for word, on 09-22 — `63e72b4` at 16:48 and `7521116` at 19:36, the same
-# question. Its record, read without its relation line, is not computable: which of the two is its answer, nothing can say.
-_f007 = next(p_ for p_ in (HERE / "work-tracker").glob("FM-007-*.md"))
-_q007 = "Which closure for the signing doorway do you want first, knowing that the first two are enforcement and the third only a tripwire?"
-_a007 = "accepted - a hardware key that needs a touch"
-_writers = subprocess.run(["git", "-C", str(HERE), "log", "--full-history", "--format=%h", "-G", "^answer: \"" + _a007, "--", _f007.relative_to(HERE).as_posix()],
-                          capture_output=True, text=True, env=_ENV).stdout.split()
-_t007 = {"id": "FM-007", "file": _f007.name, "asks_answers": [(fm.answer_norm(_q007), fm.answer_norm(_a007))], "asks_key": (fm.answer_norm(_q007), fm.answer_norm(_a007))}
-_no_git_env(lambda: fm.recover_relations([_t007]))
-check(f"FM-029 · R1 (third pass) · FM-007's real double answer in this repository's history — 63e72b4 and 7521116, one question, one text — reads *relation not computable*, never the newer one's (saw {_writers}, {_t007['asks_recovered_all']})",
-      {"63e72b4", "7521116"} <= {w_[:7] for w_ in _writers} and _t007["asks_recovered"] == ("relation not computable", ""))
-
 # --- FM-029: the half-written answer's *give it again* knows all three words, and a superseding answer's flag ----------
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve()
@@ -18870,7 +18844,7 @@ check("FM-032 · `--schema` lists both `[ratio]` keys", "`[ratio] records`" in f
 # the number of checks, the failing ids. Here they are read back: `facts.mjs` (git and Node only) on every run where it can; the
 # browser checks — a rebuilt site, `checks.mjs` in Chrome, the same thresholds as the READMEs — behind `SHOALMARK_REGENERATE=1`. A
 # difference in the results fails with both listed; a run that cannot happen here says why and is counted as skipped, never passed.
-_FM6_DIR, _FM2_DIR, _ZENSICAL = "work-tracker/evidence/FM-006/landing/start-page", "work-tracker/evidence/FM-002/slice-a", "0.0.65"
+_FM6_DIR, _FM2_DIR, _ZENSICAL = "tests/fixtures/tracker-cut/start-page", "tests/fixtures/tracker-cut/board", "0.0.65"
 _SUMMARY_HEAD = "## Summary \u2014 the check output, regenerable"
 
 
@@ -18986,7 +18960,7 @@ else:
     # made with seven: the run pins seven, so a clone that holds more reads the same document
     _n32 = int(_ENV.get("GIT_CONFIG_COUNT") or 0)
     _abbrev32 = lambda n: dict(_ENV, GIT_CONFIG_COUNT=str(_n32 + 1), **{f"GIT_CONFIG_KEY_{_n32}": "core.abbrev", f"GIT_CONFIG_VALUE_{_n32}": str(n)})
-    _facts32 = lambda n: subprocess.run([_have_node, str(HERE / _FM6_DIR / "facts.mjs"), "bef2a1e", str(HERE / "work-tracker/evidence/FM-006/landing/index.html")],
+    _facts32 = lambda n: subprocess.run([_have_node, str(HERE / _FM6_DIR / "facts.mjs"), "bef2a1e", str(HERE / "tests/fixtures/tracker-cut/landing.html")],
                                         cwd=str(HERE), env=_abbrev32(n), capture_output=True, text=True, encoding="utf-8", timeout=300)
     _out32 = _facts32(7)
     _want32 = {k: v for k, v in _b6["facts.json"]["fields"].items()}
@@ -19040,7 +19014,7 @@ else:
 
     with tempfile.TemporaryDirectory() as d:
         work = Path(d).resolve()
-        mock_html = str(HERE / "work-tracker/evidence/FM-006/landing/index.html")
+        mock_html = str(HERE / "tests/fixtures/tracker-cut/landing.html")
         for name, block, chart_only, mock in (("the start page's checks.json", _b6["checks.json"], False, mock_html),
                                               ("checks-r3-before.json", _b6["checks-r3-before.json"], True, None)):
             stage = work / block["tested"]
@@ -19089,11 +19063,11 @@ _why = ("SHOALMARK_REGENERATE=1 is not set (the browser run builds the site twic
         else _CHROME_NODE_GAP if _CHROME_NODE_GAP else "no uvx here" if not _uvx
         else "no Node here" if not _have_node else "no scripts/landing_facts.py here, so the landing's figures cannot be written" if not (HERE / "scripts/landing_facts.py").is_file() else "")
 if _why:
-    _regen_skip(_B1_NAME, 7, _why)
+    _regen_skip(_B1_NAME, 4, _why)
 else:
     _node_ok = subprocess.run([_have_node, "-e", "process.exit(typeof WebSocket == 'function' && typeof fetch == 'function' ? 0 : 1)"], capture_output=True, env=_ENV).returncode == 0
     if not _node_ok:
-        _regen_skip(_B1_NAME, 7, "this Node has no WebSocket (Node 22 or newer has)")
+        _regen_skip(_B1_NAME, 4, "this Node has no WebSocket (Node 22 or newer has)")
     else:
         _pin = re.search(r"(?m)^zensical==(\S+)", (HERE / "requirements-docs.txt").read_text(encoding="utf-8")).group(1)
         _head = subprocess.run(["git", "-C", str(HERE), "rev-parse", "HEAD"], capture_output=True, text=True, env=_ENV).stdout.strip()
@@ -19219,8 +19193,6 @@ else:
                              "the cue is as wide as the primary button and centred on it, above it"),
                 "cue-aside": ("a cue off the button's centre", _mutate("cue-aside", "index.html", "</head>", "<style>.cue{position:relative;left:14px}</style></head>", "cue"),
                               "the cue is as wide as the primary button and centred on it, above it"),
-                "cue-chart": ("a cue that touches the chart's labels", _mutate("cue-chart", "index.html", "</head>", "<style>#names .name{left:15%!important;top:48%!important}</style></head>", "cue"),
-                              "the cue stands clear of every chart label, by at least 2 px"),
                 "cue-motion": ("a cue that blinks under reduced motion", _mutate("cue-motion", "index.html", "*,*::before,*::after{animation:none!important;transition:none!important}", "*,*::before,*::after{transition:none!important}", "1440x900"),
                                "under reduced motion nothing animates: the document has no animation"),
                 "cue-forever": ("a cue that blinks for ever", _mutate("cue-forever", "index.html", "animation:blink 1s steps(1) 4}", "animation:blink 1s steps(1) infinite}", "cue"),
@@ -19281,56 +19253,12 @@ else:
             }
             _found = {k: (code, names) for k, (what, (code, names, n), expect) in _controls.items()}
             check("FM-006 · B1 · the browser check is not blind: each of an unlabelled dialog, a page wider than the window, a script error, a request to another host, a dialog that is not "
-                  "modal, a dialog whose third step is out of view on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, on the chart's labels, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
+                  "modal, a dialog whose third step is out of view on a phone, a fold that keyboard does not open, a prompt box whose button does not say aria-expanded or that never opens, a failed copy that leaves the box closed, an opened box that never yields to the window, of a fixed size, that ends in an empty line or that does not follow a resize, a copy that loses the last line ending, a second step whose link shows only probe.txt or whose address does not wrap, a ticker that does not clip its band, a cue that is wider than the primary button, off its centre, blinking under reduced motion, for ever, with its rules or never at rest, a fade that takes the pointer, a later success that folds the box, a dialog that does not give focus back and a top bar whose anchors show 30 px too early for the widest hi-score, a Docs button too wide for the bar, a bar that keeps the mark's word on a phone, header buttons without their focus ring, high scores left in their columns on a phone and a German dialog that scrolls at 1024×768, "
                   "a cue that blinks only from 2.8 s, as the ceremony had it, "
                   "and of the coin door a tape drawn over it again, the taped cue back beside the live one, a door without its copy icon, a door that lifts on hover, a door that grows in its first seconds, an unlit window drawn over it, a dialog that waits 0.9 s for the coin, a copy made after the hold, a hold under reduced motion, a keyboard that waits for the coin, "
                   "a coin drawn under reduced motion, a cue that blinks in print and a door named with a tape's words, and of the door's twin a twin that is not the door, one the "
                   "door's handler does not reach and one whose coin is drawn in print makes it exit 1 with that check failing "
                   f"(saw {_found})", all(code == 1 and expect in names for (what, (code, names, n), expect) in _controls.values()))
-            # the board's excerpt: an act's line holding markup reaches the page escaped once. The script writes a tracker's line `After midnight <b>the suite</b> refuses & "every" commit`
-            # into facts.html as HTML-escaped text; the template prints it as it stands, so the page's HTML holds that text, `&lt;b&gt;` and not `&amp;lt;b&amp;gt;`, and no <b> element
-            _mark = "After midnight &lt;b&gt;the suite&lt;/b&gt; refuses &amp; &quot;every&quot; commit \u00b7 no date yet"
-
-            def _line_in(site):
-                """The act's line as the built landings' HTML holds it, English and German; None where a page has no such line."""
-                out_ = []
-                for rel_ in ("index.html", "de/index.html"):
-                    found_ = re.search(r'<p><span class="id">[^<]*</span> (.*?) <span class="chip">', (site / rel_).read_text(encoding="utf-8"), re.S)
-                    out_.append(found_.group(1) if found_ else None)
-                return out_
-
-            _lf_spec = importlib.util.spec_from_file_location("landing_facts", HERE / "scripts/landing_facts.py")
-            _lf_b1 = importlib.util.module_from_spec(_lf_spec)
-            _lf_spec.loader.exec_module(_lf_b1)
-
-            def _facts_with(line):
-                """facts.html with the board's excerpt fixed, written as the script writes it: nothing waiting and one act owed, with a fixed id and `line`; or,
-                where `line` is None, nothing waiting and no act."""
-                fixed_ = {"waiting": 0, "acts": 1, "act": {"id": "FM-007", "line": line}} if line is not None else {"waiting": 0, "acts": 0, "act": None}
-
-                def edit_(text):
-                    assert len(re.findall(r"(?m)^\{% set excerpt = .* %\}$", text)) == 1
-                    return re.sub(r"(?m)^\{% set excerpt = .* %\}$", lambda m: "{% set excerpt = " + _lf_b1.jinja_value(fixed_) + " %}", text)
-                return edit_
-
-            def _peek_in(site):
-                """The board's excerpt box as the built landings' HTML holds it, English and German."""
-                return [re.search(r'<div class="peek-box"[^>]*>(.*?)</div>', (site / rel_).read_text(encoding="utf-8"), re.S).group(1) for rel_ in ("index.html", "de/index.html")]
-            _good = _line_in(_b1_site(_work, "interim", "excerpt-good", facts_edit=_facts_with(_mark)))
-            _twice = _line_in(_b1_site(_work, "interim", "excerpt-twice", facts_edit=_facts_with(_mark), template_edit=lambda s: s.replace("{{ F.excerpt.act.line }}", "{{ F.excerpt.act.line | e }}")))
-            _bare = _line_in(_b1_site(_work, "interim", "excerpt-bare", facts_edit=_facts_with("After midnight <b>the suite</b> refuses & \"every\" commit")))
-            check("FM-006 · B1 · the board's excerpt reaches the page escaped, and once: an act's line holding markup, as the script writes it, is in the English and the German landing's HTML "
-                  f"as that text, `&lt;b&gt;` and no <b> element (saw {_good})", _good == [_mark, _mark])
-            check("FM-006 · B1 · the excerpt's check is not blind: a template that escapes the line a second time puts `&amp;lt;` on the page, and a script that does not escape it puts a <b> element on it "
-                  f"(saw {_twice}, {_bare})", _twice != [_mark, _mark] and "&amp;lt;" in str(_twice) and _bare != [_mark, _mark] and "<b>the suite</b>" in str(_bare))
-            _none = _b1_site(_work, "interim", "excerpt-none", facts_edit=_facts_with(None))
-            _none_peek = _peek_in(_none)
-            _none_words = [" ".join(re.sub(r"<[^>]+>", " ", x).split()) for x in _none_peek]
-            check("FM-006 · B1 · the board's excerpt with no act owed: the English and the German landing print nothing waiting and no act, and no act's line or chip "
-                  f"(saw {_line_in(_none)}, {_none_words})",
-                  _line_in(_none) == [None, None] and all("waiting for you: 0" in x and "your acts, with their time: 0" in x and 'class="chip"' not in x and 'class="id"' not in x
-                                                          for x in _none_peek))
-
 check("the vendored renderer is the pinned one — an update is a deliberate act",
       fm.digest(HERE / "vendor/marked-18.0.13.umd.js").startswith("b147274a9ce27d17"))
 check("the version is the `VERSION` file and nothing else — one source of truth, so a release cannot ship a stale constant beside it",
@@ -19646,10 +19574,9 @@ def _lf_run(*argv):
 
 
 def _lf_read(path):
-    """facts.html as the template reads it: each `set` as its value, wrecks_json parsed."""
+    """facts.html as the template reads it: each `set` as its value."""
     text = Path(path).read_text(encoding="utf-8")
     out = {k: json.loads("null" if v == "none" else re.sub(r": none(?=[,}])", ": null", v)) for k, v in re.findall(r"^\{% set (\w+) = (.*) %\}$", text, re.M)}
-    out["wrecks"] = json.loads(re.search(r"\{% set wrecks_json %\}(.*)\{% endset %\}", text, re.S).group(1))
     return out
 
 
@@ -19677,7 +19604,7 @@ _lf_why = ("this clone is shallow" if _shallow32 != "false" else f"this clone do
            else "this clone does not hold ffa63b8, the Owner's answer the high scores are split at" if not _held("ffa63b8")
            else "no tz database for Europe/Berlin here (the filing days and the build's day are Berlin days)" if not _zone_ok else "")
 if _lf_why:
-    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 10, _lf_why)
+    _skipped("FM-006 · B1 · the landing's figures, read at v0.19.2", 5, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -19688,12 +19615,6 @@ else:
         f_ = _lf_read(out_) if run_[0] == 0 else {}
         lf_ = _lf_module()
         tagged_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", _LF_TAG + "^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
-        template_ = subprocess.run(["git", "-C", str(HERE), "show", f"{_LF_TAG}:overrides/landing.html"], capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout
-        drawn_ = json.loads(re.search(r"^const WRECKS = (\[.*\]);$", template_, re.M).group(1))
-        new_ = {"id": "FM-045", "inc": "5b56de3", "filed": "2026-10-08", "status": "In Progress", "lon": 8.23, "lat": 53.505,     # Shipped after the tag
-                "title": "The board's refresh stops on git ls-tree, which its read-only list does not hold",
-                "report": "Where an answer waits on an answer branch and the signers file lies in the working tree, the board's refresh stops and the board goes stale.",
-                "url": "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-045-the-board-s-refresh-stops-on-git-ls-tree-which-its-read-only.md"}
         check(f"FM-006 · B1 · landing_facts.py at {_LF_TAG}: the release is the tag VERSION names, and its day the CHANGELOG heading's, in English and "
               f"German (saw exit {run_[0]} {run_[2].strip()[:200]!r}, {f_.get('release')})",
               run_[0] == 0 and f_.get("release") == {"tag": "v0.19.2", "version": "0.19.2", "date_en": "9 October 2026", "date_de": "9. Oktober 2026"})
@@ -19729,31 +19650,8 @@ else:
               f"pd_1 and board_small say the cohort in FM-006's words, board_small and pd_3 the review-commit cohort's too, and the template fills the slots (saw {_cohort_}, {_end_}, words {_m5_words_})",
               lf_.COHORT_LAST == 159 and _cohort_ == {159: (71, 83, 159), 160: (71, 82, 144)} and _end_ == {"en": "12 October 2026", "de": "12. Oktober 2026"}
               and _m5_words_)
-        check(f"FM-006 · B1 · the wrecks: every tracker tagged `bug` or `security` at {_LF_TAG} — the 27 the landing's WRECKS drew there, field for field and "
-              f"in their order, and FM-045, filed since, first, placed by the drawing's rule (saw {len(f_.get('wrecks', []))} wrecks; the first "
-              f"{(f_.get('wrecks') or [None])[0]})", f_.get("wrecks") == [new_] + drawn_)
-        opened_ = sum(w["status"] in ("In Progress", "Proposed") for w in f_.get("wrecks", []))
-        check(f"FM-006 · B1 · the top bar's counts are the wrecks_json's own: 28 wrecks at {_LF_TAG}, 11 open — In Progress or Proposed, FM-045 among them "
-              f"before it shipped (saw {f_.get('counts')}; the list holds {len(f_.get('wrecks', []))}, {opened_} open)",
-              f_.get("counts") == {"wrecks": 28, "open": 11} == {"wrecks": len(f_.get("wrecks", [])), "open": opened_})
-        check("FM-006 · B1 · the same trackers give the same file: a second reading writes the same bytes",
+        check("FM-006 · B1 · the same history gives the same file: a second reading writes the same bytes",
               rerun_[0] == 0 and out_.exists() and again_.exists() and out_.read_bytes() == again_.read_bytes())
-        chart_, at_ = lf_.Chart(template_), {i: (lo, la) for i, lo, la in lf_.DRAWN if i not in ("FM-038", "FM-039", "FM-040", "FM-041")}
-        placed_, drawing_ = [], {i: (lo, la) for i, lo, la in lf_.DRAWN}
-        for i_ in ("FM-038", "FM-039", "FM-040"):
-            placed_.append((i_, chart_.place([(chart_.x(lo), chart_.y(la)) for lo, la in at_.values()])))
-            at_[i_] = drawing_[i_]
-        check(f"FM-006 · B1 · the drawing's rule places FM-038, FM-039 and FM-040 where the drawing has them, each against the wrecks drawn before it "
-              f"and the chart's names (saw {placed_})", placed_ == [(i, drawing_[i]) for i in ("FM-038", "FM-039", "FM-040")])
-        check(f"FM-006 · B1 · the board's excerpt is what `shoalmark.py --owner` prints at {_LF_TAG}: one question waits for the Owner, one act is owed, "
-              f"and the first is FM-007's line as it prints it (saw {f_.get('excerpt')})",
-              f_.get("excerpt") == {"waiting": 1, "acts": 1, "act": {"id": "FM-007", "line": "after the scoring, once the key is delivered. · no date yet · promised 2026-09-25"}})
-        under_ = lambda box: [w["id"] for w in f_.get("wrecks", []) if not (chart_.x(w["lon"]) + lf_.WRECK[2] <= box[0] or chart_.x(w["lon"]) + lf_.WRECK[0] >= box[2]
-                                                                     or chart_.y(w["lat"]) + lf_.WRECK[3] <= box[1] or chart_.y(w["lat"]) + lf_.WRECK[1] >= box[3])]
-        clear_, grown_ = under_(lf_.TITLE), under_((lf_.TITLE[0], lf_.TITLE[1], lf_.TITLE[2] + 12, lf_.TITLE[3] + 12))
-        check(f"FM-006 · B1 · no wreck's button falls under the hero's text: each of the {len(f_.get('wrecks', []))} at {_LF_TAG} is clear of the title's box, "
-              f"{lf_.TITLE}, as the B1 template draws it; its control, the box 12 chart pixels wider and taller, has FM-013 and FM-029 under it (under it: "
-              f"{clear_}; the control's {grown_})", bool(f_.get("wrecks")) and not clear_ and grown_ == ["FM-029", "FM-013"])
         check(f"FM-006 · B1 · the probe switch off: the pins are the commit, the release's tag and the two marked stand-ins; `read` is the build's Berlin day, "
               f"as ISO and in English and German, and the commit (saw {f_.get('pins')}, {f_.get('read')})",
               f_.get("pins") == {"ADOPT_COMMIT": tagged_, "TAG": "v0.19.2", "ARCHIVE_URL": "[ARCHIVE URL — filled at build]", "ARCHIVE_SHA256": "[SHA-256 — filled at build]"}
@@ -19851,97 +19749,6 @@ else:
           f"hi-score is the first row it draws; no score is typed; the words' slots {{c3_first}} and {{c3_last}} take the cohort's bounds (saw {_page3})", _page3)
 
 
-# FM-006, B1, RV-2881: wrecks_json is written inside a <script> and a Jinja block — a title or a report that holds `</script>`, a comment's
-# opening, a Jinja delimiter or a JavaScript line separator is escaped in it, and reads back as written
-_lf_nasty = "a </script> b </SCRIPT c <!-- d {{ e }} f {% g %} h {# i #} j \u2028 k \u2029 l"
-_lf_esc_mod = _lf_module()
-
-
-def _lf_esc_block(js_string):
-    """facts.html's wrecks_json for one wreck whose title and report hold `_lf_nasty`, written with `js_string`."""
-    real_, _lf_esc_mod.js_string = _lf_esc_mod.js_string, js_string
-    try:
-        text_ = _lf_esc_mod.facts_html("0" * 40, {"tag": "v0.0.1", "version": "0.0.1", "date_en": "1 October 2026", "date_de": "1. Oktober 2026"}, "1/2", 2,
-                                       {"en": "1 October 2026", "de": "1. Oktober 2026"},
-                                       {"date": "2026-10-01", "date_en": "1 October 2026", "date_de": "1. Oktober 2026", "sha": "0000000"},
-                                       {"ADOPT_COMMIT": "0" * 40, "TAG": "v0.0.1", "ARCHIVE_URL": "x", "ARCHIVE_SHA256": "x"},
-                                       [{"id": "FM-099", "inc": "0000000", "filed": "2026-10-01", "status": "Proposed", "lon": 8.0, "lat": 54.0,
-                                         "title": "title " + _lf_nasty, "report": "hook " + _lf_nasty, "url": "https://github.com/shoalmark/shoalmark"}],
-                                       {"waiting": 0, "acts": 0, "act": None}, {"wrecks": 1, "open": 1})
-    finally:
-        _lf_esc_mod.js_string = real_
-    return re.search(r"\{% set wrecks_json %\}(.*)\{% endset %\}", text_, re.S).group(1)
-
-
-def _lf_esc_holds(block):
-    """(whether it holds, what it found): none of `</`, `<!--`, a Jinja delimiter or U+2028/U+2029 in the block, no brace inside its strings,
-    and the title and the report read back as written."""
-    found = [x for x in ("</", "<!--", "{{", "}}", "{%", "%}", "{#", "#}", "\u2028", "\u2029") if x in block]
-    found += ["a brace in a string"] if any(c in lit for lit in re.findall(r'"(?:[^"\\]|\\.)*"', block) for c in "{}") else []
-    try:
-        back = json.loads(block)
-        same = back[0]["title"] == "title " + _lf_nasty and back[0]["report"] == "hook " + _lf_nasty
-    except ValueError:
-        same = False
-    return not found and same, found + ([] if same else ["does not read back"])
-
-
-_lf_esc_ok, _lf_esc_found = _lf_esc_holds(_lf_esc_block(_lf_esc_mod.js_string))
-_lf_esc_ctl, _lf_esc_ctl_found = _lf_esc_holds(_lf_esc_block(lambda v: json.dumps(v, ensure_ascii=False)))
-check(f"FM-006 · B1 · RV-2881: a title and a report holding `</script>`, `</SCRIPT`, `<!--`, `{{{{`, `{{%`, `{{#`, U+2028 and U+2029 give a wrecks_json with none "
-      f"of `</`, `<!--`, a Jinja delimiter or a line separator, and no brace inside a string, that reads back to the same strings; its control, the "
-      f"strings written as plain json.dumps, holds them (saw {_lf_esc_found}; the control's {_lf_esc_ctl_found})",
-      _lf_esc_ok and not _lf_esc_ctl and {"</", "<!--", "{{", "{%", "a brace in a string"} <= set(_lf_esc_ctl_found))
-
-if _lf_why:
-    _skipped("FM-006 · B1 · RV-2882: trackers whose names git quotes", 1, _lf_why)
-else:
-    with tempfile.TemporaryDirectory() as d:
-        clone_ = _lf_clone(Path(d).resolve())
-        for name_, title_ in (("FM-096-über.md", "Über a name git quotes"), ('FM-097-a"b.md', 'A name with a " in it')):
-            text_ = (f'---\nid: {name_[:6]}\nstatus: Proposed\ntags: security\nhook: "{title_.replace(chr(34), chr(39))}, filed for a probe."\n---\n\n'
-                     f"# {name_[:6]} — {title_}\n\n## What is true now\n\nA probe.\n")
-            blob_ = subprocess.run(["git", "-C", str(clone_), "hash-object", "-w", "--stdin"], input=text_.encode("utf-8"), capture_output=True, check=True, env=_ENV).stdout.decode().strip()
-            git(clone_, "update-index", "--add", "--cacheinfo", f"100644,{blob_},work-tracker/{name_}")      # never on disk: Windows refuses `"` in a name
-        git(clone_, "commit", "-q", "-m", "two trackers whose names git quotes")
-        lf_ = _lf_module()
-        g_ = lf_.Git(clone_)
-        read_ = {w["id"]: w["url"] for w in lf_.read_wrecks(g_, g_("rev-parse", "HEAD").strip(), "https://github.com/shoalmark/shoalmark")}
-        quoted_ = [ln for ln in subprocess.run(["git", "-C", str(clone_), "-c", "core.quotePath=true", "ls-tree", "--name-only", "HEAD", "work-tracker/"],
-                                               capture_output=True, text=True, encoding="utf-8", env=_ENV).stdout.splitlines() if re.match(r"^work-tracker/(FM-(\d+))-.*\.md$", ln)]
-        check(f"FM-006 · B1 · RV-2882: trackers named FM-096-über.md and FM-097-a\"b.md, both tagged security, are read as wrecks, each linked by its name "
-              f"percent-encoded; its control, the listing without -z that git quotes, misses both (saw {len(read_)} wrecks, {read_.get('FM-096')}, {read_.get('FM-097')}; "
-              f"the listing without -z finds {sum('FM-09' in q for q in quoted_)} of them)",
-              read_.get("FM-096") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-096-%C3%BCber.md"
-              and read_.get("FM-097") == "https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-097-a%22b.md"
-              and len(read_) == 30 and not any("FM-096" in q or "FM-097" in q for q in quoted_))
-
-if _lf_why:
-    _skipped("FM-006 · a parked wreck is open, on the chart", 1, _lf_why)
-else:
-    with tempfile.TemporaryDirectory() as d:
-        clone_ = _lf_clone(Path(d).resolve())
-        parked_ = ("FM-028", "FM-029", "FM-039")
-        for p_ in (next(clone_.glob(f"work-tracker/{i}-*.md")) for i in parked_):
-            p_.write_text(re.sub(r"(?m)^status: .*$", "status: Parked", p_.read_text(encoding="utf-8"), count=1), encoding="utf-8")
-        git(clone_, "commit", "-q", "-a", "-m", "three wrecks parked")
-        lf_ = _lf_module()
-        g_ = lf_.Git(clone_)
-        try:
-            read_ = lf_.read_wrecks(g_, g_("rev-parse", "HEAD").strip(), "https://github.com/shoalmark/shoalmark")
-        except lf_.Stop as e:                                     # the build stopped on a parked wreck
-            read_ = [{"stopped": str(e)}]
-        drawing_ = {i: (lo, la) for i, lo, la in lf_.DRAWN}
-        seen_ = {w["id"]: (w["status"], (w["lon"], w["lat"])) for w in read_ if w.get("id") in parked_}
-        counts_, tpl_ = lf_.wreck_counts(read_) if "stopped" not in read_[0] else None, (HERE / "overrides/landing.html").read_text(encoding="utf-8")
-        check(f"FM-006 · three parked wrecks are read as open: each on the chart where the drawing placed it, counted among the top bar's open wrecks, "
-              f"and the template labels a parked wreck open, on hold, drawn hollow and ordered after the other open ones (saw {seen_}, counts {counts_}, of {len(read_)} read)",
-              seen_ == {i: ("Parked", drawing_[i]) for i in parked_} and counts_ is not None
-              and counts_ == {"wrecks": len(read_), "open": sum(w["status"] in ("In Progress", "Parked", "Proposed") for w in read_)}
-              and counts_["open"] - sum(w["status"] in ("In Progress", "Proposed") for w in read_) == 3
-              and '"Parked": ["open held", T.status_parked]' in tpl_ and 'const ORDER = {"In Progress": 0, "Proposed": 1, "Parked": 1.5, "Shipped": 2, "Closed": 3};' in tpl_
-              and '<symbol id="wo" viewBox="0 0 9 6">' in tpl_ and 'STATUS[w.status][0].startsWith("open")' in tpl_)
-
 def _switch_read(lf, text):
     """landing_facts.py's probe switch for a zensical.toml of `text`, or the one line it stops with."""
     with tempfile.TemporaryDirectory() as d:
@@ -19965,7 +19772,7 @@ check("FM-006 · landing_facts.py reads the probe switch alone: no tape is read,
 
 
 if _lf_why:
-    _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 4, _lf_why)
+    _skipped("FM-006 · B1 · landing_facts.py stops the build with one line", 3, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -19983,17 +19790,11 @@ else:
             facts_.write_text("a facts.html an earlier build left", encoding="utf-8")
             return _lf_run("--repo", str(clone_), "--out", str(facts_), "--config", str(config), "--pulls", str(pulls))
 
-        def _lf_status(root):
-            p_ = next(root.glob("work-tracker/FM-045-*.md"))
-            p_.write_text(re.sub(r"(?m)^status: .*$", "status: Reserved", p_.read_text(encoding="utf-8"), count=1), encoding="utf-8")
         version_ = _lf_case(lambda root: (root / "VERSION").write_text("0.19.3\n", encoding="utf-8"))
-        status_ = _lf_case(_lf_status)
         switch_ = _lf_case(lambda root: None, config=on_)
         history_ = _lf_case(lambda root: None, pulls=pulls_)
         check(f"FM-006 · B1 · VERSION other than the newest release tag the commit holds stops the build: exit 1, one line, and the facts.html an earlier "
               f"build left is gone (saw {version_})", _lf_stops(version_, facts_, "VERSION says 0.19.3, and the newest release tag"))
-        check(f"FM-006 · B1 · a wreck whose status is none of In Progress, Parked, Proposed, Shipped and Closed stops the build, rather than be guessed (saw {status_})",
-              _lf_stops(status_, facts_, "FM-045's status reads as Reserved"))
         check(f"FM-006 · B1 · the probe switch on, and a pin still a stand-in — here no ADOPT pin to read at all — stops the build (saw {switch_})",
               _lf_stops(switch_, facts_, "pins check 1: ADOPT.svn.md is missing"))
         check(f"FM-006 · B1 · a pull request whose commits this history does not hold stops the build, rather than count it as unreviewed (saw {history_})",
@@ -20051,48 +19852,6 @@ else:
               _lf_stops(behind_, facts_, "VERSION says 0.19.1, behind the release tag v0.19.2"))
         named_ = _lf_ev("--event", "pull_request_target", at=_LF_TAG)
         check(f"FM-006 · B1 · an event the build does not know stops it (saw {named_})", _lf_stops(named_, facts_, "--event 'pull_request_target'"))
-
-if _lf_why:
-    _skipped("FM-006 · B1 · the board's excerpt, read and refused", 4, _lf_why)
-else:
-    with tempfile.TemporaryDirectory() as d:
-        base_ = Path(d).resolve()
-        clone_, facts_, off_ = _lf_clone(base_), base_ / "facts.html", base_ / "off.toml"
-        off_.write_text('[project]\nsite_name = "t"\n', encoding="utf-8")
-
-        def _lf_owner(change):
-            git(clone_, "checkout", "-q", "--detach", _LF_TAG)
-            change(clone_)
-            git(clone_, "commit", "-q", "-a", "-m", "a control")
-            facts_.write_text("a facts.html an earlier build left", encoding="utf-8")
-            return _lf_run("--repo", str(clone_), "--out", str(facts_), "--config", str(off_), "--pulls", str(_LF_PULLS))
-
-        def _lf_marked(root):
-            p28_, p7_ = next(root.glob("work-tracker/FM-028-*.md")), next(root.glob("work-tracker/FM-007-*.md"))
-            t28_ = p28_.read_text(encoding="utf-8").replace("\nstatus: Proposed\n", "\nstatus: Proposed\ndue: 2026-10-20 10:00\n", 1)
-            p28_.write_text(re.sub(r"(?m)^# FM-028 — .*$", '# FM-028 — After midnight <b>the suite</b> refuses & "every" commit', t28_, count=1), encoding="utf-8")
-            p7_.write_text(p7_.read_text(encoding="utf-8").replace("\nanswered: 2026-09-25\n", '\nanswered: 2026-09-25\ndone: "the key is set up"\n', 1), encoding="utf-8")
-
-        def _lf_stub(first, title=True):
-            """The commit's tool, its `--owner` printing `first` and nothing more; without ACTS_TITLE where `title` is false."""
-            return lambda root: (root / "shoalmark.py").write_text(f"import sys\nif __name__ == '__main__' and '--owner' in sys.argv:\n    print({first!r}); sys.exit(0)\n"
-                + (root / "shoalmark.py").read_text(encoding="utf-8").replace('ACTS_TITLE = "ACTS — yours, with their time"',
-                                                                              'ACTS_TITLE = "ACTS — yours, with their time"' if title else 'ACTS_TITLE_ = "gone"', 1), encoding="utf-8")
-        marked_ = _lf_owner(_lf_marked)
-        excerpt_ = _lf_read(facts_).get("excerpt") if marked_[0] == 0 else None
-        text_ = facts_.read_text(encoding="utf-8") if marked_[0] == 0 else ""
-        check(f"FM-006 · B1 · the excerpt follows the trackers: FM-007's act done, it leaves; an act owed on FM-028 takes its place, its line HTML-escaped "
-              f"and written so no character of it ends the string or opens a tag (saw {marked_[0]}, {excerpt_})",
-              excerpt_ == {"waiting": 1, "acts": 1, "act": {"id": "FM-028", "line": "After midnight &lt;b&gt;the suite&lt;/b&gt; refuses &amp; &quot;every&quot; commit · no date yet"}}
-              and '\\u0026lt;b\\u0026gt;the suite' in text_ and "<b>" not in text_.split("{% set excerpt")[1].split("\n")[0])
-        odd_ = _lf_owner(_lf_stub("SOMETHING ELSE ENTIRELY"))
-        check(f"FM-006 · B1 · an `--owner` whose first line counts no questions, nor says there are none, stops the build (saw {odd_})",
-              _lf_stops(odd_, facts_, "shoalmark.py --owner's first line at"))
-        miscount_ = _lf_owner(_lf_stub("NO QUESTION FOR THE OWNER · 2 ACT(S) OWED, WITH THEIR TIME"))
-        check(f"FM-006 · B1 · an `--owner` that counts acts it does not list stops the build (saw {miscount_})", _lf_stops(miscount_, facts_, "counts 2 act(s), and it lists 0"))
-        untitled_ = _lf_owner(_lf_stub("NOTHING NEEDS THE OWNER.", title=False))
-        check(f"FM-006 · B1 · a tool at the commit that names no ACTS_TITLE stops the build, rather than read no acts (saw {untitled_})",
-              _lf_stops(untitled_, facts_, "names no ACTS_TITLE"))
 
 if _lf_why:
     _skipped("FM-006 · B1 · the probe prompt's pins, the switch on", 23, _lf_why)
@@ -20208,7 +19967,7 @@ else:
         lf_.fetch_raw, lf_.pause = _lf_real
 
 if _lf_why:
-    _skipped("FM-006 · B1 · the landing names the release the build reads (RV-2750)", 15, _lf_why)
+    _skipped("FM-006 · B1 · the landing names the release the build reads", 12, _lf_why)
 else:
     with tempfile.TemporaryDirectory() as d:
         base_ = Path(d).resolve()
@@ -20216,19 +19975,17 @@ else:
         sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", _LF_TAG + "^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
         old_sha_ = subprocess.run(["git", "-C", str(HERE), "rev-parse", "v0.19.1^{commit}"], capture_output=True, text=True, env=_ENV).stdout.strip()
 
-        def _lf_facts(tag="v0.19.2", sha=None, counts='{"wrecks": 2, "open": 1}'):
-            """A facts.html as the script writes it, in the lines `--check` reads: two wrecks, one of them open."""
+        def _lf_facts(tag="v0.19.2", sha=None):
+            """The release and source commit read by the built-site check."""
             return ("{% set release = {\"tag\": \"" + tag + "\", \"version\": \"" + tag[1:] + "\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\"} %}\n"
-                    "{% set read = {\"date\": \"2026-10-09\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\", \"sha\": \"" + (sha or sha_)[:7] + "\"} %}\n"
-                    + ("" if counts is None else "{% set counts = " + counts + " %}\n")
-                    + '{% set wrecks_json %}[{"id": "FM-041", "status": "In Progress"}, {"id": "FM-040", "status": "Shipped"}]{% endset %}\n')
+                    "{% set read = {\"date\": \"2026-10-09\", \"date_en\": \"9 October 2026\", \"date_de\": \"9. Oktober 2026\", \"sha\": \"" + (sha or sha_)[:7] + "\"} %}\n")
 
         def _lf_landing(label="v0.19.2", link="v0.19.2", aria="v0.19.2", foot="v0.19.2", text="v0.19.2", word="release", today=False):
             """A landing's top bar and footer as the B1 template writes them (`today`: as v0.19.2's page has the label, not yet a link)."""
             bar = (f'<div role="listitem">{word}<b>{label}</b></div>' if today else
                    f'<div role="listitem"><a class="rel" href="https://github.com/shoalmark/shoalmark/releases/tag/{link}" aria-label="{word} {aria}, its notes on GitHub">'
                    f'{word}<b>{label}</b></a></div>')
-            return (f'<nav class="hud">{bar}<div role="listitem">wrecks<b id="hud-w">28</b></div></nav><main>…</main><footer><span class="mk">'
+            return (f'<nav class="hud">{bar}</nav><main>…</main><footer><span class="mk">'
                     f'<a href="https://github.com/shoalmark/shoalmark">shoalmark</a> · <a href="https://github.com/shoalmark/shoalmark/releases/tag/{foot}" '
                     f'style="color:#b4c3d1">{text}</a></span></footer>')
 
@@ -20254,12 +20011,7 @@ else:
                 ("the German landing's label names another release", lambda: _lf_site(_lf_landing(), _lf_landing(word="Release", label="v0.19.1")), "de/index.html names v0.19.1"),
                 ("facts.html names another release", lambda: _lf_site(_lf_landing(), facts=_lf_facts(tag="v0.19.1")), "names v0.19.1 read at"),
                 ("facts.html was read at another commit", lambda: _lf_site(_lf_landing(), facts=_lf_facts(sha=old_sha_)), f"read at {old_sha_[:7]}"),
-                ("the landing carries no release label", lambda: _lf_site(_lf_landing().replace("release<b>v0.19.2</b>", "")), "carries no release label"),
-                ("facts.html counts a wreck more than its wrecks_json holds", lambda: _lf_site(_lf_landing(), facts=_lf_facts(counts='{"wrecks": 3, "open": 1}')),
-                 "counts {'wrecks': 3, 'open': 1}, and its wrecks_json holds {'wrecks': 2, 'open': 1}"),
-                ("facts.html counts a Shipped wreck as open", lambda: _lf_site(_lf_landing(), facts=_lf_facts(counts='{"wrecks": 2, "open": 2}')),
-                 "counts {'wrecks': 2, 'open': 2}, and its wrecks_json holds {'wrecks': 2, 'open': 1}"),
-                ("facts.html carries no counts", lambda: _lf_site(_lf_landing(), facts=_lf_facts(counts=None)), "counts None")):
+                ("the landing carries no release label", lambda: _lf_site(_lf_landing().replace("release<b>v0.19.2</b>", "")), "carries no release label")):
             got_ = case_()
             check(f"FM-006 · B1 · RV-2750: where {what_}, the check fails — exit 1, one line (saw {got_})",
                   got_[0] == 1 and len(got_[2].strip().splitlines()) == 1 and says_ in got_[2])
@@ -20726,903 +20478,10 @@ check("FM-006 · the feedback page · its check is not blind: each of the refres
       f"the page indexed, the German privacy link gone from the footer and a refresh inside the footer leaves a problem (problems found: {_fbctl_saw})", all(_fbctl_saw.values()) and len(_fbctl_saw) == 6)
 
 
-# --- FM-032: CI's cost follows the review tier, and the Ubuntu suites also run far from UTC — the Owner's words of 2026-10-09 and 2026-10-10:
-#     R12 (2026-10-12): records run --check only on Ubuntu/3.9, with four truthful pass-through results; anything else, and any doubt,
-#     five gates and the full suites; the two Ubuntu entries run both suites again under UTC+14 and UTC−11, reported and not yet required
-def _ci_yaml(text):
-    """A workflow read as the shapes it is written in: block mappings and `- ` sequences by indentation, one-line flow mappings and
-    sequences of plain or quoted scalars, `|` and `>` blocks (their lines kept, less the block's own indentation), `#` comments.
-    Anything else raises ValueError, and every property read from it fails."""
-    lines = text.replace("\r\n", "\n").split("\n")
-
-    def bare(s):
-        quote = None
-        for i, ch in enumerate(s):
-            if quote:
-                quote = None if ch == quote else quote
-            elif ch in "\"'":
-                quote = ch
-            elif ch == "#" and (i == 0 or s[i - 1] in " \t"):
-                return s[:i].rstrip()
-        return s.rstrip()
-
-    def scalar(s):
-        s = s.strip()
-        if s[:1] in ("{", "["):
-            value, end = flow(s, 0)
-            if s[end:].strip():
-                raise ValueError(f"after a flow collection: {s[end:]!r}")
-            return value
-        if len(s) > 1 and s[0] == s[-1] and s[0] in "\"'":
-            return s[1:-1]
-        return {"": None, "~": None, "null": None, "true": True, "false": False}.get(s, int(s) if re.fullmatch(r"-?\d+", s) else s)
-
-    def flow(s, i):
-        close, out = {"{": "}", "[": "]"}[s[i]], {} if s[i] == "{" else []
-        i += 1
-        while True:
-            while i < len(s) and s[i] == " ":
-                i += 1
-            if i < len(s) and s[i] == close:
-                return out, i + 1
-            if isinstance(out, dict):
-                m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[^:,{}\[\]]+):\s*", s[i:])
-                if not m:
-                    raise ValueError(f"a flow mapping's key at {s[i:]!r}")
-                key, i = scalar(m.group(1)), i + m.end()
-            if i < len(s) and s[i] in "{[":
-                value, i = flow(s, i)
-            else:
-                m = re.match(r"(\"[^\"]*\"|'[^']*'|[^,{}\[\]]*)", s[i:])
-                value, i = scalar(m.group(1)), i + m.end()
-            out.__setitem__(key, value) if isinstance(out, dict) else out.append(value)
-            while i < len(s) and s[i] == " ":
-                i += 1
-            if i < len(s) and s[i] == ",":
-                i += 1
-            elif i >= len(s) or s[i] != close:
-                raise ValueError(f"an unclosed flow collection: {s!r}")
-
-    def skip(i):
-        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
-            i += 1
-        return i
-
-    def node(i, ind):
-        i = skip(i)
-        if i >= len(lines) or len(lines[i]) - len(lines[i].lstrip(" ")) < ind:
-            return None, i
-        ind = len(lines[i]) - len(lines[i].lstrip(" "))
-        if lines[i].lstrip().startswith("- ") or lines[i].strip() == "-":
-            out = []
-            while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind and lines[i].lstrip().startswith("-"):
-                rest = lines[i].lstrip()[1:]
-                if re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(\s|$)", rest):
-                    lines[i] = " " * (ind + 2) + rest.lstrip()      # `- key: value`: a mapping, its first key on the dash's line
-                    value, i = node(i, ind + 2)
-                else:
-                    value, i = scalar(bare(rest)), i + 1
-                out.append(value)
-                i = skip(i)
-            return out, i
-        out = {}
-        while i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) == ind:
-            m = re.match(r"\s*(\"[^\"]*\"|'[^']*'|[\w.-]+):(?:\s+(.*))?$", lines[i])
-            if not m:
-                raise ValueError(f"line {i + 1}: {lines[i].strip()!r}")
-            key, rest = scalar(m.group(1)), bare(m.group(2) or "")
-            if key in out:
-                raise ValueError(f"line {i + 1}: {key!r} twice")
-            if rest in ("|", ">", "|-", ">-"):
-                j, block = i + 1, []
-                while j < len(lines) and (not lines[j].strip() or len(lines[j]) - len(lines[j].lstrip(" ")) > ind):
-                    block.append(lines[j].rstrip())
-                    j += 1
-                cut = min((len(b) - len(b.lstrip(" ")) for b in block if b.strip()), default=0)
-                out[key], i = "\n".join(b[cut:] for b in block).strip("\n") + "\n", j
-            elif rest:
-                out[key], i = scalar(rest), i + 1
-            else:
-                out[key], i = node(i + 1, ind + 1)
-            i = skip(i)
-        if i < len(lines) and len(lines[i]) - len(lines[i].lstrip(" ")) > ind:
-            raise ValueError(f"line {i + 1} is indented under nothing: {lines[i].strip()!r}")
-        return out, i
-    value, end = node(0, 0)
-    if skip(end) < len(lines):
-        raise ValueError(f"line {skip(end) + 1}: {lines[skip(end)].strip()!r}")
-    return value
-
-
-def _ci_bash():
-    """The bash a workflow step's `shell: bash` runs — Git's own on Windows, as the runners have it — or None."""
-    if os.name == "nt":
-        found = shutil.which("git")
-        for up in ((Path(found).resolve().parents[1], Path(found).resolve().parents[2]) if found else ()):
-            for sub in ("bin", "usr/bin"):
-                if (up / sub / "bash.exe").is_file():
-                    return str(up / sub / "bash.exe")
-        return None
-    return shutil.which("bash")
-
-
-_CI_BASH = _ci_bash()
-
-
-def _ci_shapes(root):
-    """A repository holding a base and, for each shape of pull request, a head on it: {shape: (event, base, head, merge)}, the merge
-    the commit a pull request's checkout holds — its parents the base and the head, or a later head where the shape says so. Every
-    commit is made in git's own store, never on disk: a symlink, a mode and a submodule pointer are written as git records them."""
-    def g(*a, data=None):
-        return subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=" + os.devnull, "-c", "commit.gpgsign=false", *a], input=data,
-                              capture_output=True, check=True, env=_ENV).stdout.decode().strip()
-    blob = lambda text: g("hash-object", "-w", "--stdin", data=text.encode())
-    index = root / ".git" / "shape-index"
-
-    def tree(entries):
-        index.unlink() if index.exists() else None
-        for path, (mode, sha) in entries.items():
-            subprocess.run(["git", "-C", str(root), "update-index", "--add", "--cacheinfo", f"{mode},{sha},{path}"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True)
-        return subprocess.run(["git", "-C", str(root), "write-tree"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True).stdout.decode().strip()
-    def commit(t, *parents, day=None):
-        env = dict(_ENV, **({"GIT_AUTHOR_DATE": day, "GIT_COMMITTER_DATE": day} if day else {}))
-        return subprocess.run(["git", "-C", str(root), "commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a shape"], capture_output=True,
-                              check=True, env=env).stdout.decode().strip()
-    g("init", "-q")
-    one, edited, script = blob("# FM-001 — one\n"), blob("# FM-001 — one, edited\n"), blob("print(1)\n")
-    modules = blob('[submodule "sub"]\n\tpath = sub\n\turl = https://example.invalid/sub.git\n\tignore = all\n')
-    pointer, pointer2 = commit(tree({"x": ("100644", script)})), commit(tree({"y": ("100644", script)}))
-    based = {"shoalmark.toml": ("100644", blob('tracker_dir = "work-tracker"       # the tracker\n')), "work-tracker/FM-001-one.md": ("100644", one),
-             "scripts/x.py": ("100644", script), ".gitmodules": ("100644", modules), "sub": ("160000", pointer)}
-    base, edit = commit(tree(based)), {"work-tracker/FM-001-one.md": ("100644", edited)}
-    without = lambda *paths: {k: v for k, v in based.items() if k not in paths}
-    trees = {"a tracker-only edit": {**based, **edit},
-             "a tracker added beside one deleted": {**without("work-tracker/FM-001-one.md"), "work-tracker/FM-002-two.md": ("100644", edited)},
-             "a tracker edit beside an ignored submodule pointer": {**based, **edit, "sub": ("160000", pointer2)},
-             "a tracker edit beside a mode change": {**based, "work-tracker/FM-001-one.md": ("100755", edited)},
-             "a mode change alone": {**based, "work-tracker/FM-001-one.md": ("100755", one)},
-             "a tracker edit beside a symlink in the folder": {**based, **edit, "work-tracker/link.md": ("120000", blob("../scripts/x.py"))},
-             "a tracker edit beside .github/ in the folder": {**based, **edit, "work-tracker/evidence/.github/x.md": ("100644", script)},
-             "a tracker edit beside .gitmodules in the folder": {**based, **edit, "work-tracker/evidence/.gitmodules": ("100644", modules)},
-             "a tracker edit beside .github/": {**based, **edit, ".github/workflows/x.yml": ("100644", script)},
-             "a tracker edit beside a script": {**based, **edit, "scripts/x.py": ("100644", edited)},
-             "a script moved into the folder": {**without("scripts/x.py"), "work-tracker/x.py": ("100644", script)},
-             "an empty change": dict(based),
-             "INDEX.md and TRIAGE.md edited": {**based, "work-tracker/INDEX.md": ("100644", edited), "work-tracker/TRIAGE.md": ("100644", edited)},
-             "an evidence file no suite reads": {**based, **edit, "work-tracker/evidence/FM-099/notes.md": ("100644", edited)},
-             "allowed_signers edited": {**based, **edit, "work-tracker/allowed_signers": ("100644", edited)},
-             "a brand font edited": {**based, **edit, "work-tracker/brand/fonts/IBMPlexMono-Regular-Latin1.woff2": ("100644", edited)},
-             "the landing mock edited": {**based, **edit, "work-tracker/evidence/FM-006/landing/index.html": ("100644", edited)},
-             "a file in the folder outside its entries and evidence": {**based, **edit, "work-tracker/view/x.html": ("100644", edited)},
-             "a file at the folder's top that is no entry": {**based, **edit, "work-tracker/notes.txt": ("100644", edited)},
-             "a case variant of the landing mock": {**based, **edit, "work-tracker/evidence/fm-006/Landing/index.html": ("100644", edited)},
-             "a case variant of FM-007's entry": {**based, **edit, "work-tracker/fm-007-x.md": ("100644", edited)},
-             "an evidence file whose name holds a ligature": {**based, **edit, "work-tracker/evidence/FM-099/\ufb01le.md": ("100644", edited)},
-             "a tracker whose name holds a combining accent": {**based, **edit, "work-tracker/FM-002-tw\u006f\u0301.md": ("100644", edited)},
-             "a Windows short name of the start page's folder": {**based, **edit, "work-tracker/evidence/FM-006/landing/START-~1/facts.mjs": ("100644", edited)},
-             "a Windows short name of the landing mock": {**based, **edit, "work-tracker/evidence/FM-006/landing/INDEX~1.HTM": ("100644", edited)}}
-    out = {}
-    for shape, entries in trees.items():
-        head = commit(tree(entries), base)
-        out[shape] = ("pull_request", base, head, commit(tree(entries), base, head))
-    head = commit(tree({**based, **edit}), base)
-    merge = commit(tree({**based, **edit}), base, head)
-    later = commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), head)
-    out.update({"a tag's run of a tracker-only edit": ("push", base, head, merge), "a run by hand of a tracker-only edit": ("workflow_dispatch", base, head, merge),
-                "a pull request whose shas the event lacks": ("pull_request", "", "", merge),
-                "a checkout of a later head than the event names": ("pull_request", base, head, commit(tree({**based, **edit, "scripts/x.py": ("100644", edited)}), base, later)),
-                "a checkout whose first parent is not the event's base": ("pull_request", base, head, commit(tree({**based, **edit}), later, head))})
-    # RV-2965: a pull request whose history criss-crosses main's. Main merged M1 (a tracker edit) and M2 (a fix to scripts/x.py); the pull
-    # request merges the two the other way, drops the fix in its resolution, and edits a tracker. It has two merge bases with main, and a
-    # diff against "the" merge base takes one of them by date; the merge CI tests reverts the fix. Each order of the two dates.
-    fixed = blob("print(2)  # the fix\n")
-    for order, (d1, d2) in (("M1 newer", ("2026-10-02T12:00:00", "2026-10-01T12:00:00")), ("M2 newer", ("2026-10-01T12:00:00", "2026-10-02T12:00:00"))):
-        m1 = commit(tree({**based, **edit}), base, day=d1)
-        m2 = commit(tree({**based, "scripts/x.py": ("100644", fixed)}), base, day=d2)
-        main = commit(tree({**based, **edit, "scripts/x.py": ("100644", fixed)}), commit(tree({**based, **edit}), base, m1), m2)
-        crossed = commit(tree({**based, **edit}), m2, m1)                                     # the fix dropped in the resolution
-        pr = commit(tree({**based, **edit, "work-tracker/FM-002-two.md": ("100644", edited)}), crossed)
-        out[f"a criss-cross whose merge drops main's fix ({order})"] = ("pull_request", main, pr,
-                                                                       commit(tree({**based, **edit, "work-tracker/FM-002-two.md": ("100644", edited)}), main, pr))
-    return out
-
-
-_CI_ALLOWLIST_SHAPES = ("INDEX.md and TRIAGE.md edited", "an evidence file no suite reads", "allowed_signers edited", "a brand font edited",
-                        "the landing mock edited", "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry")
-_CI_ALIAS_SHAPES = ("a case variant of the landing mock", "a case variant of FM-007's entry", "an evidence file whose name holds a ligature",
-                    "a tracker whose name holds a combining accent", "a Windows short name of the start page's folder", "a Windows short name of the landing mock")
-_CI_RECORDS = ("a tracker-only edit", "a tracker added beside one deleted", "INDEX.md and TRIAGE.md edited",
-               "an evidence file no suite reads")                                    # --check alone; every other shape, the full suites
-
-
-_CI_TIER_RAN = {}
-
-
-def _ci_tier(script, root, shapes, stop_at=None):
-    """{shape: what the tier step's shell writes to `records`} — run as a `shell: bash` step runs it, in the shape's checkout, each shape once
-    per script; with `stop_at`, what each shape should give, it stops at the first that gives anything else (a control needs one)."""
-    out = {}
-    for shape, (event, base, head, merge) in shapes.items():
-        key = (script, str(root), shape, event, base, head, merge)
-        if key in _CI_TIER_RAN:
-            out[shape] = _CI_TIER_RAN[key]
-            if stop_at is not None and out[shape] != stop_at.get(shape):
-                break
-            continue
-        subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
-        with tempfile.TemporaryDirectory() as d:
-            put, summary, step = Path(d) / "output", Path(d) / "summary", Path(d) / "tier.sh"
-            put.write_bytes(b""); summary.write_bytes(b""); step.write_bytes(script.encode("utf-8"))     # bytes, its lines \n: bash reads no \r
-            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", str(step)], cwd=str(root), capture_output=True, timeout=120,
-                               env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head, RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
-            said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
-            out[shape] = _CI_TIER_RAN[key] = said.get("records") if r.returncode == 0 else f"exit {r.returncode}"
-        if stop_at is not None and out[shape] != stop_at.get(shape):
-            break
-    return out
-
-
-def _suite_reads(sources, folder="work-tracker"):
-    """{pattern: [where, …]} — each path under the tracker folder of THIS repository that a suite names, found in the sources' syntax: a `/`
-    chain that starts at `HERE`, or at a name a module-level assignment binds to such a chain; a module-level string, or `+` join of
-    strings, naming a path under the folder (a helper reads it from here); `_rd(<string>)`, the suite's reader of this repository; and
-    `.glob()` or `.rglob()` on such a chain, its pattern appended. Only whole chains count: a chain inside a longer one, or a glob's base,
-    is no read of its own. A part that is no string reads as `*`."""
-    out = {}
-    for name, text in sources.items():
-        tree = ast.parse(text)
-        bound = {}
-
-        def parts(node):
-            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
-                return parts(node.left) + parts(node.right)
-            if isinstance(node, ast.Name):
-                return bound.get(node.id, ["HERE"] if node.id == "HERE" else [None])
-            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-                left, right = parts(node.left), parts(node.right)
-                return [left[0] + right[0]] if len(left) == len(right) == 1 and isinstance(left[0], str) and isinstance(right[0], str) else [None]
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                return [node.value]
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "str" and node.args:
-                return parts(node.args[0])
-            return [None]
-
-        for node in tree.body:
-            if isinstance(node, ast.Assign):
-                pairs = []
-                for t in node.targets:
-                    if isinstance(t, ast.Name):
-                        pairs.append((t, node.value))
-                    elif isinstance(t, ast.Tuple) and isinstance(node.value, ast.Tuple) and len(t.elts) == len(node.value.elts):
-                        pairs += [(a, b) for a, b in zip(t.elts, node.value.elts) if isinstance(a, ast.Name)]
-                for t, v in pairs:
-                    p = parts(v)
-                    if p and p[0] == "HERE":
-                        bound[t.id] = p
-                    elif len(p) == 1 and isinstance(p[0], str) and (p[0] == folder or p[0].startswith(folder + "/")):
-                        bound[t.id] = p
-                        out.setdefault(p[0].rstrip("/"), []).append(f"{name}:{node.lineno}")
-
-        def put(p, where):
-            if p and p[0] == "HERE":
-                path = "/".join("*" if x is None else x for x in p[1:]).replace("//", "/").rstrip("/")
-                if path == folder or path.startswith(folder + "/"):
-                    out.setdefault(path, []).append(where)
-        inner = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and isinstance(node.left, ast.BinOp) and isinstance(node.left.op, ast.Div):
-                inner.add(id(node.left))
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("glob", "rglob"):
-                inner.add(id(node.func.value))
-        for node in ast.walk(tree):
-            where = f"{name}:{getattr(node, 'lineno', 0)}"
-            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and id(node) not in inner:
-                put(parts(node), where)
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_rd" and node.args:
-                put(["HERE"] + parts(node.args[0]), where)
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("glob", "rglob") and node.args:
-                arg = node.args[0].value if isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str) else "*"
-                put(parts(node.func.value) + (["**"] if node.func.attr == "rglob" else []) + [arg], where)
-    return out
-
-
-def _read_paths(reads):
-    """Each read as the paths a pull request would change: the path itself, `*` and `**` as `x`; where its last part names no file (no
-    dot), a file below it, as a folder read covers; and each of these with the case of every letter below the tracker folder swapped,
-    the same file where macOS and Windows hold it."""
-    out = set()
-    for read in reads:
-        path = "/".join("x" if part in ("*", "**") else part.replace("*", "x") for part in read.split("/"))
-        out.add(path)
-        if "." not in path.rsplit("/", 1)[-1]:
-            out.add(path + "/x.md")
-    return sorted(out | {p.split("/", 1)[0] + "/" + p.split("/", 1)[1].swapcase() for p in out if "/" in p})
-
-
-_CI_READ_SHAPES = {}
-
-
-def _ci_read_shapes(root, paths):
-    """{shape: (event, base, head, merge)}: for each path, a pull request of a tracker edit beside an edit of that path, in `root` — made
-    once per repository and set of paths."""
-    key = (str(root), tuple(paths))
-    if key not in _CI_READ_SHAPES:
-        _CI_READ_SHAPES[key] = _ci_read_shapes_made(root, paths)
-    return _CI_READ_SHAPES[key]
-
-
-def _ci_read_shapes_made(root, paths):
-    def g(*a, data=None):
-        return subprocess.run(["git", "-C", str(root), "-c", "core.hooksPath=" + os.devnull, "-c", "commit.gpgsign=false", *a], input=data,
-                              capture_output=True, check=True, env=_ENV).stdout.decode().strip()
-    blob = lambda text: g("hash-object", "-w", "--stdin", data=text.encode())
-    index = root / ".git" / "read-index"
-
-    def tree(entries):
-        index.unlink() if index.exists() else None
-        for path, sha in entries.items():
-            subprocess.run(["git", "-C", str(root), "update-index", "--add", "--cacheinfo", f"100644,{sha},{path}"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True)
-        return subprocess.run(["git", "-C", str(root), "write-tree"], env=dict(_ENV, GIT_INDEX_FILE=str(index)), check=True, capture_output=True).stdout.decode().strip()
-    commit = lambda t, *parents: g("commit-tree", t, *[x for p in parents for x in ("-p", p)], "-m", "a read")
-    based = {"shoalmark.toml": blob('tracker_dir = "work-tracker"\n'), "work-tracker/FM-001-one.md": blob("# FM-001 — one\n")}
-    base, out = commit(tree(based)), {}
-    for path in paths:
-        entries = {**based, "work-tracker/FM-001-one.md": blob("# FM-001 — one, edited\n"), path: blob("a change\n")}
-        head = commit(tree(entries), base)
-        out[f"a tracker edit beside {path}"] = ("pull_request", base, head, commit(tree(entries), base, head))
-    return out
-
-
-def _ci_reads_hold(tier_run, root, sources, lazy=False):
-    """(whether every path under the tracker folder a suite reads gives the full suites, as the tier step's shell decides; what was read) —
-    `lazy`, for a control: it stops at the first path that does not."""
-    reads = _suite_reads(sources)
-    shapes = _ci_read_shapes(root, _read_paths(reads))
-    runs = _ci_tier(tier_run, root, shapes, stop_at={n: "false" for n in shapes} if lazy else None) if tier_run and _CI_BASH else {}
-    records = sorted(n[len("a tracker edit beside "):] for n, r in runs.items() if r != "false")
-    return bool(reads) and len(runs) == len(shapes) and not records, (len(reads), len(shapes), records)
-
-
-_CI_SOURCES = {n: (HERE / n).read_text(encoding="utf-8") for n in ("test_shoalmark.py", "test_core.py") if (HERE / n).is_file()}
-
-
-def _ci_step_runs(step, records, entry):
-    """Evaluate the workflow's simple conditions for an independently chosen tier and matrix entry; refuse other syntax."""
-    if step.get("if") is None:
-        return True
-    values = {"steps.tier.outputs.records": records, "matrix.system": entry.get("system"), "matrix.python": entry.get("python"),
-              "matrix.tz": entry.get("tz") or "", "runner.os": {"ubuntu": "Linux", "macos": "macOS", "windows": "Windows"}.get(entry.get("system"))}
-    expr = re.sub(r"\b(?:steps\.tier\.outputs\.records|matrix\.(?:system|python|tz)|runner\.os)\b",
-                  lambda m: repr(values[m.group()]), str(step["if"]))
-    expr = expr.replace("&&", " and ").replace("||", " or ")
-
-    def read(node):
-        if isinstance(node, ast.Constant) and isinstance(node.value, (str, bool)):
-            return node.value
-        if isinstance(node, ast.BoolOp) and isinstance(node.op, (ast.And, ast.Or)):
-            parts = [bool(read(v)) for v in node.values]
-            return all(parts) if isinstance(node.op, ast.And) else any(parts)
-        if isinstance(node, ast.Compare) and len(node.ops) == 1 and isinstance(node.ops[0], (ast.Eq, ast.NotEq)):
-            equal = str(read(node.left)).casefold() == str(read(node.comparators[0])).casefold()
-            return equal if isinstance(node.ops[0], ast.Eq) else not equal
-        raise ValueError("a condition outside the CI checks' expression subset")
-    return bool(read(ast.parse(expr, mode="eval").body))
-
-
-def _ci_job_paths(steps, include):
-    """R12/R25: each of five independent choices runs one gate or truthful pass-through; code and uncertain output retain coverage."""
-    entries = [("ubuntu", "3.9"), ("ubuntu", "3.12"), ("macos", "3.12"), ("windows", "3.9"), ("windows", "3.12")]
-    gate = [s for s in steps if "python shoalmark.py --check" in str(s.get("run") or "")]
-    passes = [s for s in steps if "Records validation was not run in this job." in str(s.get("run") or "")]
-    installs = [s for s in steps if s.get("name") in ("Subversion (Linux)", "Subversion (macOS)", "Subversion (Windows)")]
-    svn = [s for s in steps if str(s.get("run") or "").strip() == "svn --version --quiet"]
-    suites = [s for s in steps if str(s.get("run") or "").strip() in ("python -u test_shoalmark.py", "python -u test_core.py")]
-    zones = [s for s in steps if "TZ" in (s.get("env") or {})]
-    out = []
-    for records in ("true", "false", "", "uncertain"):
-        seen = []
-        try:
-            for system, python in entries:
-                entry = next(e for e in include if (e.get("system"), e.get("python")) == (system, python))
-                counts = tuple(sum(_ci_step_runs(s, records, entry) for s in group) for group in (gate, passes, installs, svn, suites, zones))
-                want = (int((system, python) == ("ubuntu", "3.9")), int((system, python) != ("ubuntu", "3.9")), 0, 0, 0, 0) if records == "true" else (1, 0, 1, 1, 2, int(system == "ubuntu"))
-                seen.append((system, python, counts, want))
-            ok = all(got == want for _, _, got, want in seen)
-        except (ValueError, SyntaxError, StopIteration, TypeError):
-            ok = False
-        out.append((f"R12/R25: all five jobs for records={records!r} select gate, pass-through, SVN install/verification, UTC suites and zone reports (saw {seen})", ok))
-    return out
-
-
-def _ci_install_failures(steps):
-    """R12: execute installer failures and mandatory SVN verification with harmless stubs; Windows also runs where PowerShell exists."""
-    scripts = {s.get("name"): str(s.get("run") or "") for s in steps}
-    if not _CI_BASH:
-        return [("the Linux/macOS install and SVN verification failure controls run in bash", False)]
-    out = []
-    with tempfile.TemporaryDirectory() as d:
-        root = Path(d)
-        for name, script in {
-            "sudo": '#!/bin/sh\ncase "$2" in update) exit "$UPDATE_EXIT";; install) exit "$INSTALL_EXIT";; *) exit 99;; esac\n',
-            "brew": '#!/bin/sh\nexit "$INSTALL_EXIT"\n',
-            "svn": '#!/bin/sh\nexit "$INSTALL_EXIT"\n',
-        }.items():
-            path = root / name
-            path.write_bytes(script.encode())
-            path.chmod(0o755)
-        for name, update, install, wanted in (("Subversion (Linux)", 0, 0, 0), ("Subversion (Linux)", 23, 0, 23),
-                                              ("Subversion (Linux)", 0, 23, 23), ("Subversion (macOS)", 0, 0, 0),
-                                              ("Subversion (macOS)", 0, 23, 23),
-                                              ("Subversion is really there — the S checks must run, not skip", 0, 23, 23)):
-            script = scripts.get(name, "")
-            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c", script], cwd=root, capture_output=True, timeout=5,
-                               env=dict(_ENV, PATH=str(root) + os.pathsep + _ENV.get("PATH", ""), UPDATE_EXIT=str(update), INSTALL_EXIT=str(install)))
-            out.append((f"{name}: update exit {update}, install/verification exit {install} gives {wanted} (saw {r.returncode})",
-                        bool(script) and r.returncode == wanted))
-        pwsh = shutil.which("pwsh")
-        if pwsh:
-            script = scripts.get("Subversion (Windows)", "")
-            for install in (0, 23):
-                target = root / "github-path"
-                target.unlink() if target.exists() else None
-                r = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command",
-                                    'function choco { $global:LASTEXITCODE = [int]$env:INSTALL_EXIT };\n' + script],
-                                   cwd=root, capture_output=True, timeout=15,
-                                   env=dict(_ENV, INSTALL_EXIT=str(install), GITHUB_PATH=str(target)))
-                out.append((f"Subversion (Windows): installer exit {install} propagates, writing PATH only on success (saw {r.returncode})",
-                            bool(script) and r.returncode == install and target.exists() == (install == 0)))
-    return out
-
-
-def _ci_classifier_failures(script, root, shape):
-    """The unchanged classifier must retain full coverage after failed git commands or incomplete raw diff records."""
-    event, base, head, merge = shape
-    out = []
-    def fault(command, replacement):
-        # Git for Windows' bash launcher can put its real git ahead of PATH. A function is resolved before any executable;
-        # all other commands still use the real git, through `command`, in this same shell.
-        return (f'git() {{ if [ "$1" = {shlex.quote(command)} ]; then {replacement}; return $?; fi; command git "$@"; }}\n')
-    subprocess.run(["git", "-C", str(root), "update-ref", "--no-deref", "HEAD", merge], check=True, capture_output=True, env=_ENV)
-    valid = ':100644 100644 ' + '1' * 40 + ' ' + '2' * 40 + ' M\\0work-tracker/FM-001-note.md\\0'
-    for name, command, replacement, wanted in (
-        ("git show fails", "show", "return 23", "false"),
-        ("git diff fails", "diff", "return 23", "false"),
-        ("a raw record has no terminated path", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md'", "false"),
-        ("a raw record has an extra NUL", "diff", "printf ':100644 100644 a b M\\0work-tracker/FM-001-one.md\\0\\0'", "false"),
-        ("a valid raw record", "diff", "printf " + shlex.quote(valid), "true"),
-        ("an empty raw stream", "diff", ":", "false"),
-        ("stream control A", "diff", "printf " + shlex.quote(valid + ':100644 100644'), "false"),
-        ("stream control B", "diff", "printf " + shlex.quote(valid + valid.split('\\0', 1)[0]), "false"),
-    ):
-        with tempfile.TemporaryDirectory() as d:
-            area = Path(d)
-            put, summary = area / "output", area / "summary"
-            put.write_bytes(b""); summary.write_bytes(b"")
-            r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c", fault(command, replacement) + script], cwd=root, capture_output=True, timeout=15,
-                               env=dict(_ENV, EVENT=event, BASE=base, HEAD_SHA=head,
-                                        RUNNER_TEMP=d, GITHUB_OUTPUT=str(put), GITHUB_STEP_SUMMARY=str(summary)))
-            said = dict(ln.split("=", 1) for ln in put.read_text().splitlines() if "=" in ln)
-            out.append((f"the classifier: {name} requires records={wanted!r} (saw exit {r.returncode}, records={said.get('records')!r})",
-                        r.returncode == 0 and said.get("records") == wanted))
-    # Prove the injection itself, including its nonzero return and delegation, with the real git first on PATH. This also runs
-    # on macOS, where the old executable shim worked; classifier output alone would not prove the intended call was intercepted.
-    with tempfile.TemporaryDirectory() as d:
-        marker = Path(d) / "intercepted"
-        probe = ('if git diff > "$RUNNER_TEMP/intercepted"; then status=0; else status=$?; fi\n'
-                 'printf "status=%s\\nkind=%s\\nhead=%s\\n" "$status" "$(type -t git)" "$(git rev-parse --verify HEAD)"\n')
-        r = subprocess.run([_CI_BASH, "--noprofile", "--norc", "-eo", "pipefail", "-c",
-                            fault("diff", 'printf "function intercepted\\n"; return 23') + probe], cwd=root, capture_output=True, timeout=15,
-                           env=dict(_ENV, RUNNER_TEMP=d, PATH=str(Path(shutil.which("git")).parent) + os.pathsep + _ENV.get("PATH", "")))
-        said = dict(ln.split("=", 1) for ln in r.stdout.decode().splitlines() if "=" in ln)
-        out.append(("the classifier's bash function intercepts with real git first on PATH, preserves a failed return and delegates other commands",
-                    r.returncode == 0 and marker.read_bytes() == b"function intercepted\n"
-                    and said == {"status": "23", "kind": "function", "head": merge}))
-    return out
-
-
-def _ci_wf_properties(text, root, shapes, sources=None, lazy=False):
-    """FM-032's CI tiers and time zones, as `.github/workflows/ci.yml` says them — [(what is asserted, whether it holds)]. `lazy`, for a
-    control: where a property of the file's text fails, the tier step's shell is not run; else it stops at its first shape that differs."""
-    try:
-        wf, refused = _ci_yaml(text) or {}, ""
-    except ValueError as e:
-        wf, refused = {}, f" — the file is refused: {e}"
-    jobs = wf.get("jobs") or {}
-    job = jobs.get("suites") or {}
-    include = ((job.get("strategy") or {}).get("matrix") or {}).get("include") or []
-    steps = [s for s in job.get("steps") or [] if isinstance(s, dict)]
-    run_of = lambda s: str(s.get("run") or "")
-    at = lambda pred: next((i for i, s in enumerate(steps) if pred(s)), None)
-    tier_at = at(lambda s: s.get("id") == "tier")
-    tier = steps[tier_at] if tier_at is not None else {}
-    records_at = at(lambda s: "python shoalmark.py --check" in run_of(s))
-    pass_at = at(lambda s: "Records validation was not run in this job." in run_of(s))
-    pass_step = steps[pass_at] if pass_at is not None else {}
-    installs = [s for s in steps if s.get("name") in ("Subversion (Linux)", "Subversion (macOS)", "Subversion (Windows)")]
-    svn = [s for s in steps if run_of(s).strip() == "svn --version --quiet"]
-    suite_at, core_at = at(lambda s: run_of(s) == "python -u test_shoalmark.py\n" or run_of(s) == "python -u test_shoalmark.py"), \
-        at(lambda s: run_of(s).strip() == "python -u test_core.py")
-    zone_at = at(lambda s: s.get("continue-on-error") is not None or "TZ" in (s.get("env") or {}))
-    zone = steps[zone_at] if zone_at is not None else {}
-    full = "steps.tier.outputs.records != 'true'"
-    want = {shape: "true" if shape in _CI_RECORDS else "false" for shape in shapes}
-    text_props = [
-        ("the tracker-read scan includes both suites", set(sources or _CI_SOURCES) == {"test_shoalmark.py", "test_core.py"}),
-        ("the five check names stand: one job, `suites`, named by `suites (${{ matrix.system }}, ${{ matrix.python }})`, over ubuntu 3.9 and 3.12, "
-         "macos 3.12, windows 3.9 and 3.12 on their pinned images" + refused,
-         set(jobs) == {"suites"} and job.get("name") == "suites (${{ matrix.system }}, ${{ matrix.python }})"
-         and [(e.get("system"), e.get("image"), e.get("python")) for e in include] == [("ubuntu", "ubuntu-24.04", "3.9"), ("ubuntu", "ubuntu-24.04", "3.12"),
-                                                                                       ("macos", "macos-26", "3.12"), ("windows", "windows-2025-vs2026", "3.9"), ("windows", "windows-2025-vs2026", "3.12")]),
-        ("it runs on a `v*` tag, on a pull request opened, pushed to, reopened or marked ready, and by hand",
-         wf.get("on") == {"push": {"tags": ["v*"]}, "pull_request": {"types": ["opened", "synchronize", "reopened", "ready_for_review"]}, "workflow_dispatch": None}),
-        ("the tier is decided first after the whole history is checked out, in bash, the event and the pull request's two shas given through env: alone",
-         tier_at == 1 and (steps[0].get("with") or {}).get("fetch-depth") == 0 and tier.get("shell") == "bash"
-         and tier.get("env") == {"EVENT": "${{ github.event_name }}", "BASE": "${{ github.event.pull_request.base.sha }}", "HEAD_SHA": "${{ github.event.pull_request.head.sha }}"}),
-        ("it reads the merge CI tests — its first parent the base, its second the head — and lists that merge's whole diff against the base "
-         "with --raw -z --no-abbrev --no-renames --ignore-submodules=none",
-         'git diff --raw -z --no-abbrev --no-renames --ignore-submodules=none "$BASE" HEAD > ' in run_of(tier)
-         and """[ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ]""" in run_of(tier)
-         and """[ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ]""" in run_of(tier)),
-        ("no `${{ … }}` inside a `run:`", bool(steps) and not any("${{" in run_of(s) for s in steps)),
-        ("each gate checks the PR head with the default branch's signers and SHOALMARK_CMD, then restores the merge checkout for the suites",
-         records_at is not None and steps[records_at].get("id") == "gate"
-         and steps[records_at].get("continue-on-error") is None and steps[records_at].get("shell") == "bash"
-         and run_of(steps[records_at]) == 'git remote set-head origin "$DEFAULT_BRANCH"\nchecked=$(git rev-parse HEAD)\n'
-             'if [ "$EVENT" = pull_request ]; then git checkout --detach "$HEAD_SHA"; fi\n'
-             'git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\npython shoalmark.py --check\n'
-             'git checkout --detach "$checked"\n'
-         and (steps[records_at].get("env") or {}) == {"TRACKER": "${{ steps.tier.outputs.dir }}", "EVENT": "${{ github.event_name }}",
-             "HEAD_SHA": "${{ github.event.pull_request.head.sha }}", "DEFAULT_BRANCH": "${{ github.event.repository.default_branch }}",
-             "SHOALMARK_CMD": "python3 shoalmark.py"}),
-        ("the four records pass-through jobs explicitly say they did not validate records and Ubuntu/3.9 owns validation, in the summary",
-         pass_at is not None and pass_step.get("shell") == "bash" and pass_step.get("continue-on-error") is None
-         and 'suites (ubuntu, 3.9) owns records validation.' in run_of(pass_step) and '>> "$GITHUB_STEP_SUMMARY"' in run_of(pass_step)),
-        ("each of the three SVN installs has a positive bound of at most 15 minutes and failures stop the code job; SVN verification stays mandatory",
-         len(installs) == 3 and all(type(s.get("timeout-minutes")) is int and 1 <= s["timeout-minutes"] <= 15
-                                  and s.get("continue-on-error") is None for s in installs)
-         and [run_of(s).strip() for s in installs] == ['sudo apt-get update -q && sudo apt-get install -y -q subversion', 'brew install subversion',
-             'choco install sliksvn -y --no-progress\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n'
-             'echo "C:\\Program Files\\SlikSvn\\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append']
-         and len(svn) == 1 and svn[0].get("continue-on-error") is None),
-        ("both UTC suites and the Subversion steps run unless the tier says records — an unset tier runs them",
-         None not in (suite_at, core_at)
-         and all(steps[i].get("if") == full and steps[i].get("continue-on-error") is None for i in (suite_at, core_at))
-         and all(str(s.get("if") or "").endswith(" && " + full) or s.get("if") == full for s in steps if "Subversion" in str(s.get("name") or "")) and len([s for s in steps if "Subversion" in str(s.get("name") or "")]) == 4),
-        ("the Ubuntu 3.9 entry carries the zone Pacific/Kiritimati, UTC+14, the Ubuntu 3.12 entry Pacific/Pago_Pago, UTC−11, and no other entry a zone",
-         [e.get("tz") for e in include] == ["Pacific/Kiritimati", "Pacific/Pago_Pago", None, None, None]),
-        ("after the UTC suites, the entry's zone runs both suites again under TZ, with continue-on-error, where there is a zone and the tier is not records, "
-         "and writes both exits on failure to the run's summary",
-         zone_at is not None and None not in (suite_at, core_at) and zone_at > max(suite_at, core_at) and zone.get("continue-on-error") is True
-         and zone.get("if") == "matrix.tz && " + full and zone.get("env") == {"TZ": "${{ matrix.tz }}"} and zone.get("shell") == "bash"
-         and "python -u test_shoalmark.py && suite=0 || suite=$?" in run_of(zone) and "python -u test_core.py && core=0 || core=$?" in run_of(zone)
-         and 'if [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]; then said="both suites passed"; '
-             'else said="FAILED — test_shoalmark.py exit $suite, test_core.py exit $core"; fi' in run_of(zone)
-         and '>> "$GITHUB_STEP_SUMMARY"' in run_of(zone)
-         and run_of(zone).rstrip().endswith('[ "$suite" -eq 0 ] && [ "$core" -eq 0 ]')),
-    ] + _ci_job_paths(steps, include)
-    if lazy and not all(ok for _, ok in text_props):
-        return text_props
-    runs = _ci_tier(run_of(tier), root, shapes, stop_at=want if lazy else None) if tier and _CI_BASH else {}
-    if lazy and runs != want:
-        return text_props + [(f"the tier step's own shell gives each shape what it should (saw {runs})", False)]
-    reads_ok, reads_saw = _ci_reads_hold(run_of(tier), root, sources or _CI_SOURCES, lazy=lazy)
-    shown = lambda *names: {n: runs.get(n) for n in names}
-    return text_props + [
-        (f"the tier step's own shell: a tracker-only edit, and a tracker added beside one deleted, give --check alone (saw {shown(*_CI_RECORDS)})",
-         bool(runs) and all(runs.get(n) == "true" for n in _CI_RECORDS)),
-        (f"…a tracker edit beside an ignored submodule pointer — .gitmodules with ignore = all — gives the full suites (saw {shown('a tracker edit beside an ignored submodule pointer')})",
-         runs.get("a tracker edit beside an ignored submodule pointer") == "false"),
-        (f"…RV-2965: a criss-cross whose merge drops main's fix gives the full suites, whichever of its two merge bases is newer (saw "
-         f"{shown(*[n for n in shapes if n.startswith('a criss-cross')])})",
-         sum(n.startswith("a criss-cross") for n in shapes) == 2 and all(runs.get(n) == "false" for n in shapes if n.startswith("a criss-cross"))),
-        (f"…the records are the entries at the folder's top, INDEX.md and TRIAGE.md, and evidence no suite reads: those give --check alone, while "
-         f"allowed_signers, a brand font, the landing mock, a file in the folder outside its entries and evidence, and a file at its top that is no "
-         f"entry give the full suites (saw {shown(*_CI_ALLOWLIST_SHAPES)})",
-         runs.get("INDEX.md and TRIAGE.md edited") == runs.get("an evidence file no suite reads") == "true"
-         and all(runs.get(n) == "false" for n in ("allowed_signers edited", "a brand font edited", "the landing mock edited",
-                                                  "a file in the folder outside its entries and evidence", "a file at the folder's top that is no entry"))),
-        (f"…every path under the tracker folder that test_shoalmark.py or test_core.py reads in this repository — found in their syntax — gives the "
-         f"full suites beside a tracker edit, and so does each with the case of its letters swapped (saw {reads_saw[0]} reads, {reads_saw[1]} paths, "
-         f"these giving records: {reads_saw[2]})", reads_ok),
-        (f"…RV-2966 and RV-2968: a case variant of a path the suites read, a path holding a byte outside printable ASCII — a ligature, a combining "
-         f"accent — and a Windows short name, a part with `~` and a digit, give the full suites (saw {shown(*_CI_ALIAS_SHAPES)})",
-         all(runs.get(n) == "false" for n in _CI_ALIAS_SHAPES)),
-        (f"…a tracker edit beside a mode change, and a mode change alone, give the full suites (saw {shown('a tracker edit beside a mode change', 'a mode change alone')})",
-         runs.get("a tracker edit beside a mode change") == "false" and runs.get("a mode change alone") == "false"),
-        (f"…every other shape gives the full suites: a symlink, .github/ or .gitmodules in the folder, .github/ outside it, a script beside a tracker, "
-         f"a script moved in, an empty change, a tag, a run by hand, a pull request without its shas, a checkout of a later head, a checkout whose first "
-         f"parent is not the base (saw "
-         f"{ {n: r for n, r in runs.items() if r != want.get(n)} or 'each as it should'})", bool(runs) and runs == want),
-    ]
-
-
-def _ci_wf_regressions(text, root, shapes):
-    """Each change that undoes one property above, and fails: the controls of the check that reads ci.yml."""
-    rows = (
-        ("a sixth entry runs", lambda t: t.replace('          - {system: macos, image: macos-26, python: "3.12"}\n',
-                                                    '          - {system: macos, image: macos-26, python: "3.12"}\n          - {system: macos, image: macos-26, python: "3.9"}\n', 1)),
-        ("a check is named by its image", lambda t: t.replace("    name: suites (${{ matrix.system }}, ${{ matrix.python }})", "    name: suites (${{ matrix.image }}, ${{ matrix.python }})", 1)),
-        ("a sha goes into the shell as an expression", lambda t: t.replace('"$BASE" HEAD >', '"${{ github.event.pull_request.base.sha }}" HEAD >', 1)),
-        ("the shas are not given through env:", lambda t: t.replace(', HEAD_SHA: "${{ github.event.pull_request.head.sha }}"}', "}", 1)),
-        ("the diff hides an ignored submodule pointer", lambda t: t.replace(" --ignore-submodules=none", "", 1)),
-        ("the diff detects renames", lambda t: t.replace(" --no-renames", "", 1)),
-        ("the diff is the head's against a merge base, as 2d5c7ff read it (RV-2965)", lambda t: t.replace('"$BASE" HEAD >', '"$BASE...$HEAD_SHA" >', 1)),
-        ("the checkout's first parent is not held to the base", lambda t: t.replace("""             && [ "$(git rev-parse --verify --quiet 'HEAD^1^{commit}')" = "$BASE" ] \\\n""", "", 1)),
-        ("a mode change reads as an edit", lambda t: t.replace('":100644 100644 M" |', '":100644 100644 M" | ":100644 100755 M" | ":100755 100755 M" |', 1)),
-        ("a symlink added reads as a file", lambda t: t.replace('":000000 100644 A" |', '":000000 100644 A" | ":000000 120000 A" |', 1)),
-        (".github/ in the folder passes", lambda t: t.replace("*/.github/* | ", "", 1)),
-        (".gitmodules in the folder passes", lambda t: t.replace(" | */.gitmodules/*", "", 1)),
-        ("any path passes as the folder's", lambda t: t.replace('                "$dir"/*.md) ;;\n                *) records=false ;;\n', '                "$dir"/*.md) ;;\n                *) ;;\n', 1)),
-        ("an empty list reads as records", lambda t: t.replace('[ "$entries" -eq 0 ] || ', "", 1)),
-        ("any event reads as a pull request", lambda t: t.replace('[ "$EVENT" = pull_request ] && ', "", 1)),
-        ("the checkout is not held to the event's head", lambda t: t.replace("""             && [ "$(git rev-parse --verify --quiet 'HEAD^2^{commit}')" = "$HEAD_SHA" ] \\\n""", "", 1)),
-        ("records only also runs the suites", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", "      - run: python -u test_shoalmark.py\n", 1)),
-        ("the suites skip where the tier is unset", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n",
-                                                                        "      - if: steps.tier.outputs.records == 'false'\n        run: python -u test_core.py\n", 1)),
-        ("the core UTC step is absent", lambda t: t.replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_core.py\n", "", 1)),
-        ("the core UTC step may fail without stopping CI", lambda t: t.replace("        run: python -u test_core.py\n",
-                                                                                             "        continue-on-error: true\n        run: python -u test_core.py\n", 1)),
-        ("the core TZ run is absent", lambda t: t.replace("          python -u test_core.py && core=0 || core=$?\n", "", 1)),
-        ("the core TZ exit is absent from the summary", lambda t: t.replace(", test_core.py exit $core", "", 1)),
-        ("the core TZ exit is ignored by the summary", lambda t: t.replace(' && [ "$core" -eq 0 ]; then', '; then', 1)),
-        ("the core TZ exit is ignored by the final status", lambda t: t.replace('          [ "$suite" -eq 0 ] && [ "$core" -eq 0 ]\n',
-                                                                                            '          [ "$suite" -eq 0 ]\n', 1)),
-        ("the signers setting is removed", lambda t: t.replace('          git config gpg.ssh.allowedSignersFile "${TRACKER:-work-tracker}/allowed_signers"\n', "", 1)),
-        ("the gate command changes to the platform's default", lambda t: t.replace(', SHOALMARK_CMD: python3 shoalmark.py', "", 1)),
-        ("records repeat the gate in all five jobs", lambda t: t.replace("        if: steps.tier.outputs.records != 'true' || (matrix.system == 'ubuntu' && matrix.python == '3.9')\n", "", 1)),
-        ("code runs no gate", lambda t: t.replace("        if: steps.tier.outputs.records != 'true' || ", "        if: steps.tier.outputs.records == 'true' || ", 1)),
-        ("records validation moves to Windows", lambda t: t.replace("|| (matrix.system == 'ubuntu' && matrix.python == '3.9')", "|| (matrix.system == 'windows' && matrix.python == '3.9')", 1)),
-        ("pass-through says it did not validate when it did", lambda t: t.replace("        if: steps.tier.outputs.records == 'true' && (matrix.system != 'ubuntu' || matrix.python != '3.9')\n", "", 1)),
-        ("pass-through names no validation owner", lambda t: t.replace("suites (ubuntu, 3.9) owns records validation.", "", 1)),
-        ("Linux update failure is hidden by its install", lambda t: t.replace("sudo apt-get update -q &&", "sudo apt-get update -q;", 1)),
-        ("Windows installation failure is not propagated", lambda t: t.replace("          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n", "", 1)),
-        ("SVN verification may fail without stopping suites", lambda t: t.replace("      - name: Subversion is really there — the S checks must run, not skip\n", "      - name: Subversion is really there — the S checks must run, not skip\n        continue-on-error: true\n", 1)),
-        ("the zone's run turns the check red", lambda t: t.replace("        continue-on-error: true\n", "", 1)),
-        ("macOS runs a zone too", lambda t: t.replace('{system: macos, image: macos-26, python: "3.12"}', '{system: macos, image: macos-26, python: "3.12", tz: Pacific/Kiritimati}', 1)),
-        ("the zones change places", lambda t: t.replace("tz: Pacific/Kiritimati}", "tz: PLACE}", 1).replace("tz: Pacific/Pago_Pago}", "tz: Pacific/Kiritimati}", 1).replace("tz: PLACE}", "tz: Pacific/Pago_Pago}", 1)),
-        ("the zone's run says nothing in the summary", lambda t: t.replace('(reported, not yet required)." >> "$GITHUB_STEP_SUMMARY"', '(reported, not yet required)."', 1)),
-        ("the zone's run comes before the UTC suites", lambda t: (lambda m: t if not m else t.replace(m.group(0), "", 1).replace("      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n",
-                                                                  m.group(0) + "      - if: steps.tier.outputs.records != 'true'\n        run: python -u test_shoalmark.py\n", 1))(
-            re.search(r"(?ms)^      # Both suites again under.*?\[ \"\$suite\" -eq 0 \] && \[ \"\$core\" -eq 0 \]\n", t))),
-    )
-    rows += tuple((f"{system}'s SVN installation has no timeout", lambda t, system=system:
-                   re.sub(r"(      - name: Subversion \(" + re.escape(system) + r"\)\n.*?)(        timeout-minutes: 15\n)", r"\1", t, count=1, flags=re.S))
-                  for system in ("Linux", "macOS", "Windows"))
-    rows += tuple((f"an SVN install timeout is {minutes}", lambda t, minutes=minutes: t.replace("timeout-minutes: 15", f"timeout-minutes: {minutes}", 1))
-                  for minutes in (0, -1, 360))
-    rows += tuple((f"{system}'s SVN installation may fail without stopping suites", lambda t, system=system:
-                   t.replace(f"      - name: Subversion ({system})\n", f"      - name: Subversion ({system})\n        continue-on-error: true\n", 1))
-                  for system in ("Linux", "macOS", "Windows"))
-    rows += (("the step compares paths case-sensitively (RV-2966)", lambda t: t.replace("          shopt -s nocasematch\n", "", 1)),
-             ("a path holding a byte outside printable ASCII passes (RV-2966)", lambda t: t.replace(
-                 '              case "$path" in\n                *[![:print:]]*) records=false ;;\n              esac\n', "", 1)),
-             ("a Windows short name passes (RV-2968)", lambda t: t.replace(
-                 '              case "/$path/" in\n                */*~[0-9]*/*) records=false ;;\n              esac\n', "", 1)),
-             ("the folder's whole top counts as records", lambda t: t.replace('                "$dir"/*.md) ;;\n', '                "$dir"/*) ;;\n', 1)),
-             ("anything under the folder counts as records", lambda t: t.replace('"$dir"/*/*) case "$path" in "$dir"/evidence/*) ;; *) records=false ;; esac ;;', '"$dir"/*/*) ;;', 1)),
-             ("the landing mock is not among what the suites read", lambda t: t.replace('                "$dir"/evidence/FM-006/landing/index.html) records=false ;;\n', "", 1)),
-             ("FM-007's entry is not among what the suites read", lambda t: t.replace('                "$dir"/FM-007-*.md) records=false ;;\n', "", 1)))
-    out = []
-    for what, change in rows:
-        changed = change(text)
-        props = _ci_wf_properties(changed, root, shapes, lazy=True)
-        out.append((f"a ci.yml in which {what} fails one of the properties above" + (" — NOT JUDGED: the change finds no line to apply to" if changed == text else ""),
-                    changed != text and not all(ok for _, ok in props)))
-    added = {**_CI_SOURCES, "test_shoalmark.py": _CI_SOURCES.get("test_shoalmark.py", "") + '\n_x = (HERE / "work-tracker/evidence/FM-010/read-by-a-suite.md").read_text()\n'}
-    out.append(("a suite that reads a file of the allowlist — evidence/FM-010/read-by-a-suite.md, added to test_shoalmark.py — fails the reads property",
-                not _ci_reads_hold(next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier"), root, added)[0]))
-    without_core = {name: source for name, source in _CI_SOURCES.items() if name != "test_core.py"}
-    out.append(("omitting test_core.py from the tracker-read scan fails a property",
-                not all(ok for _, ok in _ci_wf_properties(text, root, shapes, sources=without_core, lazy=True))))
-    core_read = "work-tracker/evidence/core/read-by-a-suite.md"
-    added = {**_CI_SOURCES, "test_core.py": _CI_SOURCES.get("test_core.py", "") + '\n_x = (HERE / "' + core_read + '").read_text()\n'}
-    tier_run = next(s.get("run") for s in (_ci_yaml(text) or {}).get("jobs", {}).get("suites", {}).get("steps", []) if s.get("id") == "tier")
-    protected = tier_run.replace('case "$path" in\n', 'case "$path" in\n                "$dir"/evidence/core/*) records=false ;;\n', 1)
-    out.append(("a tracker path added to test_core.py is detected and requires a full-suite exclusion from records",
-                core_read in _suite_reads(added) and protected != tier_run and _ci_reads_hold(protected, root, added)[0]))
-    out.append(("without that exclusion a tracker path added to test_core.py fails the reads property",
-                not _ci_reads_hold(tier_run, root, added)[0]))
-    for what, change in (("nothing changes", lambda t: t), ("every line ends in \\r\\n, as a Windows checkout writes it", lambda t: t.replace("\n", "\r\n"))):
-        out.append((f"a ci.yml in which {what} passes every property above", all(ok for _, ok in _ci_wf_properties(change(text), root, shapes))))
-    return out
-
-
-
-def _ci_declared_checks(source, powershell=False):
-    """Count declared CI outputs without running a shell or the properties."""
-    import ast
-    functions = {node.name: node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef)}
-
-    def appends(node):
-        return (isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
-                and isinstance(node.value.func, ast.Attribute) and isinstance(node.value.func.value, ast.Name)
-                and node.value.func.value.id == "out" and node.value.func.attr == "append")
-
-    def emits(node):
-        return any(isinstance(part, ast.Call) and isinstance(part.func, ast.Attribute)
-                   and isinstance(part.func.value, ast.Name) and part.func.value.id == "out"
-                   for part in ast.walk(node))
-
-    def outputs(nodes, declared):
-        count = 0
-        for node in nodes:
-            if appends(node):
-                count += 1
-            elif not emits(node):
-                continue
-            elif isinstance(node, ast.With):
-                count += outputs(node.body, declared)
-            elif isinstance(node, ast.For):
-                count += size(node.iter, declared) * outputs(node.body, declared)
-                if any(emits(part) for part in node.orelse):
-                    raise ValueError("the CI output count is conditional")
-            elif isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "pwsh":
-                count += outputs(node.body if powershell else node.orelse, declared)
-            else:
-                raise ValueError("the CI output count is conditional")
-        return count
-
-    def helper(name):
-        function = functions[name]
-        last = function.body[-1]
-        if not (isinstance(last, ast.Return) and isinstance(last.value, ast.Name) and last.value.id == "out"):
-            raise ValueError("the CI helper output cannot be counted")
-        declared = {target.id: node.value for node in function.body if isinstance(node, ast.Assign)
-                    for target in node.targets if isinstance(target, ast.Name)}
-        if not (isinstance(declared.get("out"), ast.List) and not declared["out"].elts):
-            raise ValueError("the CI helper output cannot be counted")
-        return outputs(function.body, declared)
-
-    def size(value, declared):
-        if isinstance(value, (ast.List, ast.Tuple)):
-            return len(value.elts)
-        if isinstance(value, ast.Name) and value.id in declared:
-            return size(declared[value.id], declared)
-        if isinstance(value, ast.BinOp) and isinstance(value.op, ast.Add):
-            return size(value.left, declared) + size(value.right, declared)
-        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
-            if value.func.id == "_ci_job_paths":
-                return helper(value.func.id)
-            if value.func.id in ("tuple", "list") and len(value.args) == 1 and not value.keywords:
-                generator = value.args[0]
-                if isinstance(generator, ast.GeneratorExp) and not any(part.ifs or part.is_async for part in generator.generators):
-                    count = 1
-                    for part in generator.generators:
-                        count *= size(part.iter, declared)
-                    return count
-        raise ValueError("the CI declarations cannot be counted")
-
-    properties = functions["_ci_wf_properties"]
-    returns = [node.value for node in properties.body if isinstance(node, ast.Return)]
-    declared = {target.id: node.value for node in properties.body if isinstance(node, ast.Assign)
-                for target in node.targets if isinstance(target, ast.Name)}
-    if len(returns) != 1:
-        raise ValueError("the CI property declarations cannot be counted")
-    count = size(returns[0], declared)
-    rows = 0
-    for node in functions["_ci_wf_regressions"].body:
-        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AugAssign) else []
-        if any(isinstance(target, ast.Name) and target.id == "rows" for target in targets):
-            if isinstance(node, ast.AugAssign):
-                if not isinstance(node.op, ast.Add):
-                    raise ValueError("the CI regression declarations cannot be counted")
-                rows += size(node.value, {})
-            else:
-                rows = size(node.value, {})
-        elif isinstance(node, ast.For):
-            multiplicity = rows if isinstance(node.iter, ast.Name) and node.iter.id == "rows" else size(node.iter, {})
-            if any(isinstance(part, (ast.If, ast.For, ast.While)) for part in node.body):
-                raise ValueError("the CI regression count is conditional")
-            if any(emits(part) for part in node.orelse):
-                raise ValueError("the CI regression count is conditional")
-            count += multiplicity * outputs(node.body, {})
-        else:
-            count += outputs([node], {})
-    return count + helper("_ci_install_failures") + helper("_ci_classifier_failures")
-
-
-def _ci_declaration_controls(source):
-    """Pure source controls; these run even where the CI shell is unavailable."""
-    import ast
-    count = _ci_declared_checks(source)
-    results = [_ci_declared_checks(source, powershell=True) == count + 2]
-    for name, variable in (("_ci_wf_properties", "return"), ("_ci_wf_regressions", "generator"),
-                           ("_ci_job_paths", "records"), ("_ci_install_failures", "name"),
-                           ("_ci_classifier_failures", "case")):
-        tree = ast.parse(source)
-        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == name)
-        if variable == "return":
-            value = next(node.value for node in function.body if isinstance(node, ast.Return))
-            value.right.elts.append(ast.Tuple(elts=[ast.Constant("control"), ast.Constant(True)], ctx=ast.Load()))
-        elif variable == "generator":
-            value = next(node.value.args[0] for node in function.body if isinstance(node, ast.AugAssign)
-                         and isinstance(node.value, ast.Call) and isinstance(node.value.args[0], ast.GeneratorExp))
-            value.generators[0].iter.elts.append(ast.Constant("control"))
-        else:
-            loop = next(node for node in ast.walk(function) if isinstance(node, ast.For)
-                        and isinstance(node.iter, ast.Tuple) and any(isinstance(part, ast.Expr)
-                        and isinstance(part.value, ast.Call) and isinstance(part.value.func, ast.Attribute)
-                        and part.value.func.attr == "append" and isinstance(part.value.func.value, ast.Name)
-                        and part.value.func.value.id == "out" for child in node.body for part in ast.walk(child)))
-            loop.iter.elts.append(loop.iter.elts[0])
-        results.append(_ci_declared_checks(ast.unparse(tree)) == count + 1)
-    tree = ast.parse(source)
-    function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_wf_regressions")
-    generator = next(node.value.args[0] for node in function.body if isinstance(node, ast.AugAssign)
-                     and isinstance(node.value, ast.Call) and isinstance(node.value.args[0], ast.GeneratorExp))
-    generator.generators[0].ifs.append(ast.Name(id="unknown", ctx=ast.Load()))
-    try:
-        _ci_declared_checks(ast.unparse(tree))
-    except ValueError:
-        results.append(True)
-    else:
-        results.append(False)
-    for mutation in ("conditional", "method"):
-        tree = ast.parse(source)
-        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_classifier_failures")
-        if mutation == "conditional":
-            function.body[-2] = ast.If(test=ast.Name(id="unknown", ctx=ast.Load()), body=[function.body[-2]], orelse=[])
-        else:
-            call = next(node for node in ast.walk(function.body[-2]) if isinstance(node, ast.Call)
-                        and isinstance(node.func, ast.Attribute) and node.func.attr == "append")
-            call.func.attr = "extend"
-        try:
-            _ci_declared_checks(ast.unparse(ast.fix_missing_locations(tree)))
-        except ValueError:
-            results.append(True)
-        else:
-            results.append(False)
-    return results
-
-
-def _ci_regression_declaration_controls(source):
-    import ast
-    results = []
-    for shape in ("certain", "unknown", "loop-else", "nested-method"):
-        tree = ast.parse(source)
-        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ci_wf_regressions")
-        if shape in ("certain", "unknown"):
-            statement = ast.parse("if True:\n    out.append(('control', True))").body[0]
-            if shape == "unknown":
-                statement.test = ast.Name(id="unknown_condition", ctx=ast.Load())
-            function.body.insert(-1, statement)
-        else:
-            loop = next(node for node in function.body if isinstance(node, ast.For)
-                        and isinstance(node.iter, ast.Name) and node.iter.id == "rows")
-            if shape == "loop-else":
-                loop.orelse.append(ast.parse("out.append(('control', True))").body[0])
-            else:
-                loop.body.append(ast.parse("with context():\n    out.extend([('control', True)])").body[0])
-        try:
-            _ci_declared_checks(ast.unparse(ast.fix_missing_locations(tree)))
-        except ValueError:
-            results.append(True)
-        else:
-            results.append(False)
-    return results
-
-
-for _result in _ci_declaration_controls(_CI_SOURCES["test_shoalmark.py"]):
-    check("RV-3003/RV-3004: recorded privately", _result)
-
-
-for _result in _ci_regression_declaration_controls(_CI_SOURCES["test_shoalmark.py"]):
-    check("RV-3099: recorded privately", _result)
-
-if not _CI_BASH:
-    _skipped("FM-032 · ci.yml's tiers and time zones", _ci_declared_checks(_CI_SOURCES["test_shoalmark.py"], powershell=bool(shutil.which("pwsh"))), "no bash here: the tier step is a `shell: bash` step, and its shell is what the checks run")
-else:
-    with tempfile.TemporaryDirectory() as _ci_d:
-        _ci_root = Path(_ci_d).resolve()
-        _ci_shape = _ci_shapes(_ci_root)
-        _ci_text = (HERE / ".github/workflows/ci.yml").read_text(encoding="utf-8") if (HERE / ".github/workflows/ci.yml").is_file() else ""
-        _ci_steps = (_ci_yaml(_ci_text) or {}).get("jobs", {}).get("suites", {}).get("steps", [])
-        _ci_tier_script = next(s["run"] for s in _ci_steps if s.get("id") == "tier")
-        _ci_results = _ci_wf_properties(_ci_text, _ci_root, _ci_shape) + _ci_wf_regressions(_ci_text, _ci_root, _ci_shape)
-        _ci_results += _ci_install_failures(_ci_steps) + _ci_classifier_failures(_ci_tier_script, _ci_root, _ci_shape["a tracker-only edit"])
-        for _what, _ok in _ci_results:
-            check(f"FM-032 · ci.yml: {_what}", _ok)
-        rm_git(_ci_root)
+# --- The code repository's CI and its tracker-path refusal ------------------------------------------------
+import test_tracker_cut
+for _label, _ok, _detail in test_tracker_cut.run_checks():
+    check(_label + (": " + _detail if _detail else ""), _ok)
 
 # --- FM-045: the classification's runtime half — none of the git commands the tool names as never started in the board's run is started by one. Watched,
 #     each git argv it started recorded (`_BOARD_GIT`): each `--html-only` the suite ran in process; each `--html-only` of this tool's own file it ran as a
@@ -21717,7 +20576,7 @@ import test_tracker_text
 _module_guard(test_tracker_text, check, fm, skip_count=11, details=False)
 
 import test_owner_exemption
-_module_guard(test_owner_exemption, check, single_label="FM-033 R14 · Owner authors, signatures, histories and CI")
+_module_guard(test_owner_exemption, check, single_label="FM-033 R14 · Owner authors, signatures and histories")
 
 # an ask's own id and the answer that names it: its class test, a program of its own so its mutants patch the module it imports
 import test_ask_ids
