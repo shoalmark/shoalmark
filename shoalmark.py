@@ -10256,7 +10256,7 @@ def signers_paths(trunk):
 
 def did_words(what):
     """What a commit did to the sections, in one phrase: `changes the text under `## The intent` and `## The current path`
-    in <tracker dir>/TRIAGE.md` — the headings that one thing happened to, named together."""
+    in work-tracker/TRIAGE.md` — the headings that one thing happened to, named together."""
     said = {}
     for _k, verb, name, tail in what:
         said.setdefault((verb, tail), []).append(name)
