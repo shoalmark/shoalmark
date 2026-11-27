@@ -66,26 +66,6 @@ jobs:
         run: svn --version --quiet
       - name: git identity for the suites
         run: git config --global user.email ci@example.invalid && git config --global user.name ci && git config --global init.defaultBranch main
-      - name: signers from the base
-        id: suite-signers
-        shell: bash
-        env: {BASE: "${{ github.event.pull_request.base.sha || 'origin/main' }}"}
-        run: |
-          git rev-parse --verify "$BASE^{commit}" > /dev/null
-          signers="$RUNNER_TEMP/shoalmark-allowed-signers"
-          path=allowed_signers
-          if ! git cat-file -e "$BASE:$path" 2>/dev/null; then
-            # Remove this fallback once main holds allowed_signers at the top.
-            path=work-tracker/allowed_signers
-          fi
-          if git cat-file -e "$BASE:$path" 2>/dev/null; then
-            umask 077
-            git show "$BASE:$path" > "$signers"
-            git config gpg.ssh.allowedSignersFile "$signers"
-            echo "SHOALMARK_SUITE_SIGNERS=$signers" >> "$GITHUB_ENV"
-          else
-            echo "The base has no signers file; no file is configured."
-          fi
       - run: python -u test_shoalmark.py
       - run: python -u test_core.py
       # The additional time-zone runs report their results without changing the required result.

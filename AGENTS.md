@@ -8,8 +8,9 @@ The tool team's trackers live in [`shoalmark/org`](https://github.com/shoalmark/
 `python3 tools/shoalmark/shoalmark.py --root teams/tool --check`; use the same root for `--next`, `--new`,
 `--triage`, `--owner` and the board. The code repository's CI runs the product suites and refuses pull requests
 adding paths under `work-tracker/`. The old copy here is frozen until its removal; never edit it.
-The code repository's signers file is `allowed_signers` at the top after the cut. Each clone names it with
-`git config gpg.ssh.allowedSignersFile allowed_signers` so it can verify the signed configuration change.
+The tool verifies the Owner's signed configuration changes against `work-tracker/allowed_signers` as each state of
+the default branch held it; after the cut the tip holds no signers file. Each clone names that path with
+`git config --worktree gpg.ssh.allowedSignersFile work-tracker/allowed_signers`.
 
 1. **The tracker is canonical.** The spec, the state and the record of a piece of work live in its tracker —
    never in a side plan, a chat or a TODO comment. Its *What is true now* section is rewritten in place when
@@ -77,6 +78,7 @@ git -C "$w" config --worktree user.email '336429412+shoalmark-builder[bot]@users
 git -C "$w" config --worktree seat.session a9f3c2d1/builder-3
 git -C "$w" config --worktree --unset-all seat.harness # the copy's id is another seat's; from the spawn's result:
                                                        #   git -C "$w" config --worktree seat.harness <its agent id>
+git -C "$w" config --worktree gpg.ssh.allowedSignersFile work-tracker/allowed_signers
 git -C "$w" config --worktree --list                   # every key is now the new seat's own
 ```
 

@@ -6506,8 +6506,6 @@ def _landing_words(src):
 
 
 def _landing_problems(src):
-    """What is wrong with the landing's sources, one line each, none where it is as B1 builds it: one template, the same words in two languages, every
-    remaining figure from facts.html and none typed, no tracker chart or excerpt, the footer and the sections in order."""
     tpl = src["overrides/landing.html"]
     code = re.sub(r"\{#.*?#\}", "", tpl, flags=re.S)                        # the template without its comments
     words, bad = _landing_words(src)
@@ -7096,11 +7094,6 @@ check("FM-006 · B1 · the no-server-or-account check is not blind: each of the 
 
 
 # --- FM-006 · B1 · the hero's cue and the arcade labels' cabinet parts ------------------------------------------------------------------------------------
-# In the probe state the hero's cue, "— [dome] press start —", stands over the primary button in a strip as wide as it, in the button's green, one line from
-# the first frame; only its icon and words blink, four blinks of a second each from the page's start, then stay lit; under reduced motion nothing blinks, and
-# in print the cue stands still. The players label has a joystick and the start label a coin,
-# neither blinking; the issue tracker, fleet and high scores labels have a ticket, ship and screen, none blinking. Every icon is
-# aria-hidden, and the labels keep their words. (The browser check measures the strip's place.)
 _CUE_FILES = ("overrides/landing.html", "overrides/partials/landing/en.html", "overrides/partials/landing/de.html")
 _CUE_WORDS = {"en": {"cue": "— press start —", "players_n": "— select player —", "start_n": "— insert coin —", "scores_n": "— measured, not promised —"},
               "de": {"cue": "— Start drücken —", "players_n": "— Spieler wählen —", "start_n": "— Münze einwerfen —", "scores_n": "— gemessen, nicht versprochen —"}}
@@ -7143,7 +7136,6 @@ def _cue_problems(src):
         bad.append("in print the cue's words and icon may still blink")
     if "*,*::before,*::after{animation:none!important" not in code:
         bad.append("the rule that ends every animation under reduced motion is not there")
-    # The six remaining icons are hidden from assistive technology; each label keeps its words and takes its icon after the first dash.
     icons = re.findall(r'<svg class="cab cab-(dome|stick|coin|ticket|ship|screen|wreck)"([^>]*)>', code)
     if sorted(n for n, _ in icons) != ["coin", "dome", "screen", "ship", "stick", "ticket"] or not all('aria-hidden="true"' in a and 'focusable="false"' in a for _, a in icons):
         bad.append("the six icons, dome, joystick, coin, ticket, ship and screen, are not each aria-hidden and not focusable")

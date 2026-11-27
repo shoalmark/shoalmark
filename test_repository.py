@@ -33,9 +33,7 @@ def repository_tree(source):
         head = git(source, "rev-parse", "HEAD").decode().strip()
         git(source, "clone", "--quiet", "--shared", "--no-checkout", str(source), str(root))
         git(root, "checkout", "--quiet", "--detach", head)
-        signers = os.environ.get("SHOALMARK_SUITE_SIGNERS")
-        if signers:
-            git(root, "config", "gpg.ssh.allowedSignersFile", str(Path(signers).resolve()))
+        git(root, "config", "--local", "gpg.ssh.allowedSignersFile", "work-tracker/allowed_signers")
         changes = git(source, "diff", "--binary", "--no-ext-diff", "--no-textconv", "HEAD", "--")
         if changes:
             git(root, "apply", "--binary", "--whitespace=nowarn", "-", input=changes)
@@ -103,9 +101,8 @@ def run_checks(check):
         check("FM-161 · a clean snapshot keeps the commit under test", clean_head == head)
         named = subprocess.run(["git", "-C", str(clean), "config", "--local", "--get", "gpg.ssh.allowedSignersFile"],
                                env=env, capture_output=True, text=True).stdout.strip()
-        supplied = os.environ.get("SHOALMARK_SUITE_SIGNERS")
-        check("FM-161 · the snapshot names only the runner's absolute signers file",
-              named == (str(Path(supplied).resolve()) if supplied else ""))
+        check("FM-161 · the snapshot names its repository-relative signers path",
+              named == "work-tracker/allowed_signers")
         _REPOSITORIES.pop(source)
         (source / "keep").write_bytes(b"staged\n")
         git("add", "keep")

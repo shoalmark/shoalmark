@@ -7,8 +7,9 @@ The maintainer routes accepted work into `shoalmark/org` at `teams/tool/work-tra
 its specifications. The tool team's project is `teams/tool/`, where its rules run from an org checkout as
 `python3 tools/shoalmark/shoalmark.py --root teams/tool --check`. Code and tracker changes use paired pull requests,
 with review evidence filed in org naming the code repository and full reviewed commit.
-After the cut, the code repository's signers file is `allowed_signers` at the top. In each clone, run
-`git config gpg.ssh.allowedSignersFile allowed_signers` to verify the signed configuration change.
+The tool verifies the Owner's signed configuration changes against `work-tracker/allowed_signers` as each state of
+the default branch held it; after the cut the tip holds no signers file. Each clone names that path with
+`git config --worktree gpg.ssh.allowedSignersFile work-tracker/allowed_signers`.
 
 ## Local checks
 
