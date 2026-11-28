@@ -17512,17 +17512,26 @@ with tempfile.TemporaryDirectory() as tmp:
 fm.configure(HERE)
 # FM-033's five, judged at their own parents in this repository's history — by their subjects, their branches not being in
 # the record. CI checks out the whole history for this (`fetch-depth: 0`); the seat that built them was not this one.
-_five = ["89e0586", "3c0754f", "90d3d6f", "bd7d5ea", "4dfb999"]
-_judged5 = _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_five), ""))
-check(f"FM-033 · the four builds of FM-033's table and the fifth are each refused, judged at their own parents: FM-024 not judged, FM-032, FM-031 and FM-029 not judged and Proposed, and bd7d5ea names no tracker (saw {[l_[:60] for l_ in _judged5]})",
-      len(_judged5) == 5 and all(any(l_.startswith(f"refused: commit {c_}") for l_ in _judged5) for c_ in _five)
-      and any(l_.startswith("refused: commit 89e0586") and "FM-024: not judged —" in l_ for l_ in _judged5)
-      and all(any(l_.startswith(f"refused: commit {c_}") and f"{t_}: not judged, not In Progress (Proposed)" in l_ for l_ in _judged5)
-              for c_, t_ in (("3c0754f", "FM-032"), ("90d3d6f", "FM-031"), ("4dfb999", "FM-029")))
-      and any(l_.startswith("refused: commit bd7d5ea") and "names no tracker" in l_ for l_ in _judged5))
-_own = ["cba97b6", "b9f8a29", "6f54242", "3c3e02f", "172a2ad", "f44e7f9"]
-check("FM-033 · and 0.18.3's own build commits pass the same judgement — each under FM-029, FM-030, FM-031 or FM-033, judged and In Progress at its parent",
-      _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_own), "")) == [] and len(fm.commit_list("--no-walk", *_own)) == len(_own))
+with tempfile.TemporaryDirectory() as _history_tmp:
+    _history_root = Path(_history_tmp).resolve() / "repo"
+    git(HERE, "clone", "--quiet", "--shared", "--no-checkout", str(HERE), str(_history_root))
+    git(_history_root, "checkout", "--quiet", "--detach", "ae138ee10efb4c8a4a9710afdf61ae571fc21119")
+    try:
+        fm.configure(_history_root)
+        _five = ["89e0586", "3c0754f", "90d3d6f", "bd7d5ea", "4dfb999"]
+        _judged5 = _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_five), ""))
+        check(f"FM-033 · the four builds of FM-033's table and the fifth are each refused, judged at their own parents: FM-024 not judged, FM-032, FM-031 and FM-029 not judged and Proposed, and bd7d5ea names no tracker (saw {[l_[:60] for l_ in _judged5]})",
+              len(_judged5) == 5 and all(any(l_.startswith(f"refused: commit {c_}") for l_ in _judged5) for c_ in _five)
+              and any(l_.startswith("refused: commit 89e0586") and "FM-024: not judged —" in l_ for l_ in _judged5)
+              and all(any(l_.startswith(f"refused: commit {c_}") and f"{t_}: not judged, not In Progress (Proposed)" in l_ for l_ in _judged5)
+                      for c_, t_ in (("3c0754f", "FM-032"), ("90d3d6f", "FM-031"), ("4dfb999", "FM-029")))
+              and any(l_.startswith("refused: commit bd7d5ea") and "names no tracker" in l_ for l_ in _judged5))
+        _own = ["cba97b6", "b9f8a29", "6f54242", "3c3e02f", "172a2ad", "f44e7f9"]
+        check("FM-033 · and 0.18.3's own build commits pass the same judgement — each under FM-029, FM-030, FM-031 or FM-033, judged and In Progress at its parent",
+              _no_git_env(lambda: fm.judge_commits(fm.commit_list("--no-walk", *_own), "")) == [] and len(fm.commit_list("--no-walk", *_own)) == len(_own))
+    finally:
+        fm.configure(HERE)
+
 
 # --- FM-037, 0.18.4 (the Owner's word through the Auditor seat's AU-12): only the Owner changes his intent and his current
 #     path — a branch commit that changes the two sections of TRIAGE.md, as a pass reads them, is refused unless it is his
