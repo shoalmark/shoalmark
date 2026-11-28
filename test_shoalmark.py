@@ -3029,7 +3029,7 @@ check(f"FM-035 · no Chrome here: the board block is skipped by name with the re
       and "skipped here: 2 check(s) in 1 block(s) did not run — this is NOT a full pass: the board, rendered in a browser (2): no Chrome or Chromium is installed here" in _none.stdout)
 if _browser("hang"):
     _hang, _healthy = _block_run(_hang_page), _block_run("")
-    check(f"FM-035 · Chrome here and a page that never comes back — an infinite loop in the board: the block FAILS by name, the budget, Chrome's own time on its control (FM-039) and the retry named, nothing skipped, the run exits 1; the same block on the healthy page passes (saw {_hang.stdout.strip()[-260:]!r})",
+    check(f"FM-035 · Chrome here and a page that never comes back — an infinite loop in the board: the block FAILS by name, the budget, Chrome's own time on its control (FM-039) and the retry named, nothing skipped, the run exits 1; the same block on the healthy page passes (saw healthy exit {_healthy.returncode}, tail {_healthy.stdout.strip()[-260:]!r}; hang exit {_hang.returncode}, tail {_hang.stdout.strip()[-260:]!r})",
           _healthy.returncode == 0 and _healthy.stdout.count("  ok    ") >= 4 and "skipped here: 0 checks — every check ran" in _healthy.stdout
           and _hang.returncode == 1 and re.search(r"  FAIL  the board, rendered in a browser — headless Chrome did not return index\.html within 5 s beyond Chrome's own \d+\.\d s, tried twice\n", _hang.stdout) is not None
           and "skipped here: 0 checks — every check ran" in _hang.stdout and "  skip  " not in _hang.stdout)

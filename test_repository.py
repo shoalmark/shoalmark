@@ -27,6 +27,12 @@ def repository_tree(source):
                                "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false", *args],
                               env=env, capture_output=True, check=True, **kwargs).stdout
 
+    marked = subprocess.run(["git", "-C", str(source), "config", "--local", "--get", "shoalmark.suiteRepository"],
+                            env=env, capture_output=True).stdout
+    if marked == os.fsencode(str(source)) + b"\n":
+        _REPOSITORIES[source] = source
+        return source
+
     held = tempfile.TemporaryDirectory(prefix="shoalmark-repository-")
     root = Path(held.name).resolve() / "repo"
     try:
@@ -50,6 +56,7 @@ def repository_tree(source):
         head = git(root, "rev-parse", "HEAD").decode().strip()
         git(root, "update-ref", "refs/remotes/origin/main", head)
         git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+        git(root, "config", "--local", "shoalmark.suiteRepository", str(root))
     except BaseException:
         held.cleanup()
         raise
@@ -103,6 +110,13 @@ def run_checks(check):
                                env=env, capture_output=True, text=True).stdout.strip()
         check("FM-161 · the snapshot names its repository-relative signers path",
               named == "work-tracker/allowed_signers")
+        child = subprocess.run([sys.executable, "-c",
+                                "import sys; sys.path.insert(0, sys.argv[1]); "
+                                "from test_repository import suite_repository; print(suite_repository(sys.argv[2]))",
+                                str(Path(__file__).resolve().parent), str(clean / "suite.py")],
+                               env=env, capture_output=True, text=True)
+        check("FM-161 · a child process reuses the snapshot named by its own local configuration",
+              child.returncode == 0 and child.stdout.strip() == str(clean))
         _REPOSITORIES.pop(source)
         (source / "keep").write_bytes(b"staged\n")
         git("add", "keep")
