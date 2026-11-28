@@ -198,7 +198,7 @@ def board_snapshot(folder):
 def measured(root, search, scenario="normal"):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
-    r = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--probe", str(root), scenario], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    r = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--probe", str(root), scenario], cwd=Path(search).resolve().parent, env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
     if r.returncode:
         raise AssertionError(f"probe failed {r.returncode}: {r.stderr[:600]}")
     return json.loads(r.stdout)
@@ -250,7 +250,7 @@ def run_board_local_controls(fm, check):
                   bool(writes) and all(Path(p) == folder / "index.html" or Path(p).parent == folder / "view" for p in writes))
             env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
             env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
-            cli = subprocess.run([sys.executable, "-B", str(HERE / "shoalmark.py"), "--root", str(root), "--html-only"], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
+            cli = subprocess.run([sys.executable, "-B", str(HERE / "shoalmark.py"), "--root", str(root), "--html-only"], cwd=base, env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
             check(f"A1: direct production CLI succeeds with no Git and unavailable server ({saw(cli)})",
                   cli.returncode == 0 and "file://" in cli.stdout and cli.stderr == "")
             before = board_snapshot(folder)                 # FM-057: after the last run that writes the board — each run names its own moment

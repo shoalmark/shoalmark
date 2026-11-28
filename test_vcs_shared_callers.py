@@ -276,7 +276,7 @@ def svn_controls(fm, old, check):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}; env.update(PATH=str(search), PYTHONDONTWRITEBYTECODE="1")
         observations = []
         def probe(mode, source=fm.__file__, target=root):
-            done = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--svn-probe", str(source), str(target), mode], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
+            done = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--svn-probe", str(source), str(target), mode], cwd=base, env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
             if done.returncode:
                 raise AssertionError(done.stderr)
             value = json.loads(done.stdout); observations.append({"mode": mode, "source": str(source), "result": value}); return value
@@ -400,7 +400,7 @@ def inherited_cwd_controls(fm, check, operations=("repos_naming", "install_copy"
             env.update(PYTHONDONTWRITEBYTECODE="1", GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
             if operation == "svn_last_worked_on":
                 env["PATH"] = str(search)
-            done = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--cwd-probe", str(tool), str(consumer), str(launch), operation, str(int(deleted))], env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
+            done = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--cwd-probe", str(tool), str(consumer), str(launch), operation, str(int(deleted))], cwd=base, env=env, capture_output=True, text=True, encoding="utf-8", timeout=30)
             if done.returncode:
                 raise AssertionError(done.stderr)
             got = json.loads(done.stdout); got.update(operation=operation, source_pin="43b5600" if chosen == before else "fixed working source", root=str(consumer)); rows.append(got)
