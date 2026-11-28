@@ -73,33 +73,44 @@ def run_checks():
                          ("newline", "work-tracker/line\nbreak.md", False),
                          ("delete", None, True), ("rename", None, False))
                 for label, path, accepted in cases:
-                    if label == "newline":
-                        before_head = git("rev-parse", "HEAD")
-                        before_index = (root / ".git/index").read_bytes()
-                        before_tree = working_tree()
-                        index_env = dict(env, GIT_INDEX_FILE=str(area / "newline.index"))
-                        git("read-tree", base, env=index_env)
-                        blob = git("hash-object", "-w", "--stdin", input=b"synthetic fixture\n", env=index_env)
-                        git("update-index", "--add", "--cacheinfo", "100644", blob, path, env=index_env)
-                        tree = git("write-tree", env=index_env)
-                        head = git("commit-tree", tree, "-p", base, "-m", "Fixture change.", env=index_env)
-                    else:
-                        git("checkout", "-q", "-b", label, base)
-                        if path:
-                            write(path)
-                        elif label == "delete":
-                            (root / "work-tracker/old.md").rename(area / "old.md")
+                    try:
+                        if label == "newline":
+                            before_head = git("rev-parse", "HEAD")
+                            before_index = (root / ".git/index").read_bytes()
+                            before_tree = working_tree()
+                            blob = git("hash-object", "-w", "--stdin", input=b"synthetic fixture\n")
+                            entries = git("ls-tree", "-z", base + ":work-tracker")
+                            tracker_tree = git("mktree", "-z", input=(entries + f"100644 blob {blob}\tline\nbreak.md\0").encode())
+                            entries = git("ls-tree", "-z", base).split("\0")
+                            entries = [f"040000 tree {tracker_tree}\twork-tracker" if entry.split("\t", 1)[1] == "work-tracker" else entry
+                                       for entry in entries if entry]
+                            tree = git("mktree", "-z", input=("\0".join(entries) + "\0").encode())
+                            head = git("commit-tree", tree, "-p", base, "-m", "Fixture change.")
+                            base_paths = git("ls-tree", "-r", "-z", "--name-only", base).split("\0")[:-1]
+                            paths = git("ls-tree", "-r", "-z", "--name-only", head).split("\0")[:-1]
+                            check("the newline commit contains exactly the base paths and the new path", sorted(paths) == sorted(base_paths + [path]))
                         else:
-                            (root / "app.py").rename(root / "work-tracker/moved.py")
-                        git("add", "-A"); git("commit", "-qm", "Fixture change.")
-                        head = git("rev-parse", "HEAD")
-                    result = subprocess.run([bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
-                                            cwd=root, env=dict(env, BASE=base, HEAD_SHA=head), capture_output=True, text=True)
-                    check("path check: " + label, result.returncode == (0 if accepted else 1), result.stderr.strip() if result.returncode != (0 if accepted else 1) else "")
-                    if label == "newline":
-                        check("the newline case leaves HEAD unchanged", git("rev-parse", "HEAD") == before_head)
-                        check("the newline case leaves the shared index unchanged", (root / ".git/index").read_bytes() == before_index)
-                        check("the newline case leaves the working tree unchanged", working_tree() == before_tree)
+                            git("checkout", "-q", "-b", label, base)
+                            if path:
+                                write(path)
+                            elif label == "delete":
+                                (root / "work-tracker/old.md").rename(area / "old.md")
+                            else:
+                                (root / "app.py").rename(root / "work-tracker/moved.py")
+                            git("add", "-A"); git("commit", "-qm", "Fixture change.")
+                            head = git("rev-parse", "HEAD")
+                        result = subprocess.run([bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
+                                                cwd=root, env=dict(env, BASE=base, HEAD_SHA=head), capture_output=True, text=True)
+                        check("path check: " + label, result.returncode == (0 if accepted else 1), result.stderr.strip() if result.returncode != (0 if accepted else 1) else "")
+                        if label == "newline":
+                            check("the newline case leaves HEAD unchanged", git("rev-parse", "HEAD") == before_head)
+                            check("the newline case leaves the shared index unchanged", (root / ".git/index").read_bytes() == before_index)
+                            check("the newline case leaves the working tree unchanged", working_tree() == before_tree)
+                    except Exception as error:
+                        output = getattr(error, "output", "")
+                        if isinstance(output, bytes):
+                            output = output.decode(errors="replace")
+                        check("path check: " + label, False, f"{type(error).__name__}: {error}\n{output or ''}".strip())
                 result = subprocess.run([bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
                                         cwd=root, env=dict(env, BASE="missing-ref", HEAD_SHA=head), capture_output=True, text=True)
                 check("an unreadable diff fails closed", result.returncode != 0)
