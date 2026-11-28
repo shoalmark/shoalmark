@@ -1,5 +1,7 @@
 # Your answer is your commit — setting up a signature
 
+Since the tracker cut of 27 November 2026, the tool team's trackers are kept in the organisation's repository, [`shoalmark/org`](https://github.com/shoalmark/org), at `teams/tool/work-tracker/`, and these links show them as they stood at the cut.
+
 *For the owner. A minute to find your tier; ten to set up the one you choose, once.*
 
 When you answer an ask on the board, three lines land in the ask's tracker — `answer:`, `answered:`, `answered-by:` —
@@ -36,7 +38,7 @@ Touch ID and nothing to buy. Tier 0 is for trying the tool — your record will 
 As recorded on 2026-09-25, shoalmark’s own Owner uses **tier 0**, a software key.
 The planned hardware-key move is not recorded as complete. Until that changes, a verified answer
 proves use of the trusted key, not the Owner’s physical presence. This is the project’s recorded
-state, not a measurement of your machine. See [FM-007](https://github.com/shoalmark/shoalmark/blob/main/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md).
+state, not a measurement of your machine. See [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md).
 
 ## What your record says
 
@@ -278,7 +280,7 @@ guarded the same way, and a signature is checked against the default branch's co
 key under your email proves nothing.
 
 **What it cannot tell.** A commit signed with your key passes; at tier 0 any process on your account holds that key
-(FM-007) — the tiers above are what make the key yours alone. Where your `owner`, or a seat that holds `answer`, is not
+([FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md)) — the tiers above are what make the key yours alone. Where your `owner`, or a seat that holds `answer`, is not
 marked `signed`, the tool proves the author only, a string anyone can type, and says so: mark it `signed` to prove the
 key. Under Subversion this guard is out of scope: its working copy carries no signature.
 

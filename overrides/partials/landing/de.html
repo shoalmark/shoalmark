@@ -1,6 +1,5 @@
 {#- The landing's German words, in the du form: the template's `{{ w.key }}`, one dict, with the same keys as en.html. A value is HTML where it carries
-    <em>, <code>, <b> or <a>, and holds the same slots (see en.html). A wreck's title and report, the board's excerpt and the register's titles are the
-    trackers' own words, in English, and the template marks them lang="en". `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
+    <em>, <code>, <b> or <a>, and holds the same slots (see en.html). `foot_fine`'s first sentence, up to the licence, is set by hand for each release. -#}
 {% set w = {
   "lang": "de",
   "locale": "de_DE",
@@ -15,13 +14,10 @@
   "hud_release": "Release",
   "hud_release_aria": "Release {tag}, die Versionshinweise auf GitHub",
   "hud_hiscore": "Highscore",
-  "hud_wrecks": "Wracks",
-  "hud_open": "offen",
   "nav_aria": "Abschnitte",
   "nav_agents": "<i>1P</i> Agenten",
   "nav_people": "<i>2P</i> Menschen",
   "nav_scores": "Highscores",
-  "nav_wrecks": "Wracks",
   "nav_start": "Start",
   "nav_docs": "Doku",
   "nav_blog": "Blog",
@@ -31,8 +27,7 @@
   "switch_short": "EN",
   "switch_lang": "en",
 
-  "chart_aria": "Eine nächtliche Seekarte der Deutschen Bucht: die Ostfriesischen Inseln von Borkum bis Wangerooge, Jade, Weser und Elbe, dazwischen Watt und Sandbänke, vor der Küste Helgoland. Magentafarbene Wracks liegen auf dem Watt; jedes ist ein Fehler aus shoalmarks eigenem Tracker und steht unten im Wrackregister.",
-  "hero_aria": "Die Seekarte der deutschen Wattenküste und ihre Wracks",
+  "hero_aria": "shoalmark: deine Arbeit und Entscheidungen",
   "claim": "Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.",
   "h1": "Die Agenten tragen die Arbeit, du hast das letzte Wort.",
   "lede": "Für eine Person, die das Sagen hat, und ihre Agentenflotte. Sieh, wo die Arbeit steht, was auf dein Wort wartet und was die nächste Session aufgreift. Deine Agenten halten das in deinem Repository fest; deine Entscheidungen kommen als deine eigenen Commits hinzu, neben den Belegen für die Arbeit.",
@@ -41,30 +36,7 @@
   "btn_probe": "Prompt kopieren",
   "btn_how": "So funktioniert's",
   "cue": "— Start drücken —",
-  "chart_note": "shoalmark arbeitet mit sich selbst: Jedes Wrack ist ein Bug oder ein Sicherheitsbefund, erfasst im eigenen Repository.",
 
-  "inc_h": "Vorfall",
-  "inc_tracker": "Arbeitspaket",
-  "inc_incident": "Vorfall",
-  "inc_filed": "erfasst",
-  "inc_status": "Status",
-  "inc_position": "Position",
-  "inc_mode_attract": "Demomodus – das nächste offene Wrack in 6 s; wähle eines, um anzuhalten",
-  "inc_link": "Arbeitspaket lesen →",
-  "key_aria": "Legende",
-  "key_h": "Legende",
-  "key_open_b": "offen",
-  "key_open": "erfasst, aber noch nicht gehoben – in Bergung, ruhend oder auf der Karte",
-  "key_raised_b": "gehoben",
-  "key_raised": "die Behebung ist zusammengeführt, das Arbeitspaket ausgeliefert",
-  "key_closed_b": "geschlossen",
-  "key_closed": "ohne Behebung geschlossen",
-  "key_fleet_b": "die Flotte",
-  "key_fleet": "Konvois auf den Fahrwassern – Elbe, Jade, Weser",
-  "key_pricken_b": "Pricken",
-  "key_pricken": "die Birkenzweige, die einen Weg durchs Watt markieren – die des Wattwegs nach Neuwerk, vor Cuxhaven",
-  "key_note": "Vorfall: der Commit, der das Arbeitspaket erfasst hat. Die Positionen sind gezeichnet, nicht eingemessen.",
-  "key_stamp": "nicht zur Navigation",
 
   "fleet_n": "— Koop-Modus —",
 
@@ -110,13 +82,6 @@
   "p2_answer": "Ein Befehl pro Antwort: Er schreibt deine Antwort als Commit, mit deinem Schlüssel signiert, sobald du das Signieren einschaltest.",
   "p2_sig_dt": "Deine Signatur",
   "p2_sig": "Sobald du das Signieren einschaltest, zählt als Antwort nur dein signierter Commit. Ein Klick, ein Merge oder eine Zeile im Chat ist keine Antwort – vier Stufen, vom Schlüssel, den alles unter deinem Konto benutzen kann, bis zu einem, der deine Freigabe am Gerät braucht.",
-  "peek_aria": "Ein Auszug aus shoalmarks eigenem Board",
-  "peek_t": "owed to the owner",
-  "peek_1": "waiting for you: {waiting}",
-  "peek_2": "your acts, with their time: {acts}",
-  "peek_chip_done": "done",
-  "peek_chip_resched": "reschedule",
-  "peek_cap": "Auszug aus shoalmarks eigenem Board, auf Englisch, Stand {read_date}: Was auf seinen Eigner wartet, steht zuerst.",
   "p2_loses_b": "Nichts überschrieben.",
   "p2_loses": "Was du heute schon festhältst, bleibt, wo es ist: shoalmark schreibt nur seine eigenen Dateien und überschreibt nie eine Datei oder einen Hook, den es nicht selbst geschrieben hat. Nichts bindet dich daran: Der Beleg bleibt in deinem Repository, als Markdown und deine eigenen Commits. Signierte Antworten lassen sich weiter allein mit git prüfen.",
 
@@ -146,21 +111,12 @@
   "rk_3": "3.",
   "pd_3_b": "per Commit geprüft",
   "pd_3": "Pull Requests {c3_first}–{c3_last}, vom {cohort_end} bis {read_date}",
-  "board_small": "Gelesen beim Bau der Seite am {read_date} aus den Pull Requests 1–{c3_last} von shoalmark/shoalmark: nur gemergte, ohne die eigenen Antwort-Branches des Eigners. Bis Pull Request {cohort_last} zählt einer, wenn ein Commit, der eine Datei unter <code>work-tracker/evidence/reviews/</code> anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull Requests datiert ist. Ab Pull Request {c3_first} zählt einer, wenn einer seiner eigenen Commits genau einen <code>Reviewed:</code>-Trailer trägt, der einen Commit des Pull Requests nennt, und der Commit mit diesem Trailer vor dem Öffnen des Pull Requests datiert ist.",
+  "board_small": "Gelesen beim Bau der Seite am {read_date} aus den Pull Requests 1–{c3_last} von shoalmark/shoalmark: nur gemergte, ohne die eigenen Antwort-Branches des Eigners. Bis Pull Request {cohort_last} zählt einer, wenn ein Commit, der eine Datei unter <a href=\"https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/evidence/reviews/\"><code>work-tracker/evidence/reviews/</code></a> (Stand beim Umzug am 27. November 2026) anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull Requests datiert ist. Ab Pull Request {c3_first} zählt einer, wenn einer seiner eigenen Commits genau einen <code>Reviewed:</code>-Trailer trägt, der einen Commit des Pull Requests nennt, und der Commit mit diesem Trailer vor dem Öffnen des Pull Requests datiert ist. Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation, <a href=\"https://github.com/shoalmark/org\">shoalmark/org</a>, unter <code>teams/tool/work-tracker/</code>, und diese Links zeigen ihren Stand beim Umzug.",
   "over_t": "Game over – mein letztes Repository",
   "over_big": "<em>200</em> Pull Requests in <em>22</em> Tagen gemergt. <em>85 %</em> weniger als eine Minute nach dem Öffnen. <em>Keiner</em> mit einem Review.",
   "over_1": "Gefragt, was sie am meisten bremst, gaben drei getrennt laufende Agenten dieselbe Antwort, mit großem Abstand: meine unbeantworteten Fragen – eine Frage, drei Tage offen, hielt drei Pakete auf.",
   "over_2": "Blockieren und Abnicken haben eine Wurzel: ein Mensch, der mitten in der Arbeit um viele kleine Entscheidungen gebeten wird.",
 
-  "reg_n": "— Wrackregister —",
-  "reg_h": "Jeder erfasste Fehler auf der Seekarte",
-  "reg_th_tracker": "Arbeitspaket",
-  "reg_th_incident": "Vorfall",
-  "reg_th_filed": "erfasst",
-  "reg_th_status": "Status",
-  "reg_th_report": "Bericht",
-  "reg_th_chart": "Karte",
-  "reg_note": "Titel und Berichte stehen im Wortlaut der Arbeitspakete, auf Englisch.",
 
   "start_n": "— Münze einwerfen —",
   "start_h": "Deine Agenten richten es ein",
@@ -199,7 +155,7 @@
   "ticker": "Python 3.9 oder neuer, keine Abhängigkeiten <b>·</b> kein eigener Server, keine eigene Datenbank, kein eigenes Konto <b>·</b> eine Markdown-Datei je Arbeitspaket <b>·</b> kein Lock-in: alles bleibt in deinem Repository <b>·</b> IDs, die man aussprechen kann <b>·</b> eine Python-Datei <b>·</b> Prüfungen mit <code>--check</code> <b>·</b> gebaut und erprobt mit git <b>·</b> Windows, macOS und Linux <b>·</b> Apache-2.0 oder MIT <b>·</b>",
 
   "foot_claim": "<span><a href=\"warum-shoalmark.html\">Warum shoalmark?</a></span><span class=\"sep\"> · </span><span>Offen gebaut: <a href=\"https://github.com/shoalmark/shoalmark\">github.com/shoalmark/shoalmark</a></span><span class=\"sep\"> · </span><span>Folge mir beim Bauen auf X: <a href=\"https://x.com/holgo99\">@holgo99</a></span>",
-  "foot_fine": "{tag}, veröffentlicht am {date} – <a href=\"skills.html\">zwei Drift-Skills</a> und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores, die Wracks und der Auszug aus dem Board stammen aus dem Repository und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.",
+  "foot_fine": "{tag}, veröffentlicht am {date} – <a href=\"skills.html\">zwei Drift-Skills</a> und eine eigene ID für jede Frage. Lizenz: Apache-2.0 oder MIT. Die Highscores stammen aus der Repository-Historie und wurden beim Bau der Seite gelesen: {read_date}, Stand {read_sha}.",
   "foot_imprint": "Impressum",
   "foot_privacy": "Datenschutz",
 
@@ -226,23 +182,7 @@
   "dlg_ap_7": "Nur bei einem Projekt, das schon im Einsatz ist: den Code des Projekts ausführen, um einen Fehler nachzustellen, nie etwas, das Daten schreibt, einen laufenden Dienst anspricht oder das Projekt ändert.",
   "dlg_ap_8": "Erst nach deinem Ja zur Übernahme: Änderungen am Projekt selbst; vor dem ersten Commit fragt der Agent noch einmal.",
   "dlg_ap_9": "Nur am Ende und nur auf dein Ja: das Rückmeldeformular von shoalmark in deinem Browser öffnen, mit dem Text des Agenten darin. Du sendest es ab, oder nicht.",
-  "dlg_appr_close": "Das ist so vorgesehen.",
-
-  "js": {
-    "status_progress": "Bergung läuft",
-    "status_parked": "Bergung ruht",
-    "status_proposed": "auf der Karte",
-    "status_raised": "gehoben",
-    "status_closed": "geschlossen",
-    "read_id": "{id} lesen →",
-    "picked": "Du hast dieses Wrack gewählt – die Karte hält es fest",
-    "pick_hint": "Wähle ein Wrack auf der Karte oder im Register",
-    "reg_sum": "{n} Fehler in shoalmarks eigenem Tracker erfasst, {range}: {open} offen, {raised} gehoben, {closed} geschlossen. Jeder ist eine Markdown-Datei mit seinem Beleg.",
-    "reg_btn": "auf der Karte",
-    "dir_n": "N",
-    "dir_e": "O",
-    "date_locale": "de-DE"
-  }
+  "dlg_appr_close": "Das ist so vorgesehen."
 } %}
 {% set urls = {
   "self": "https://shoalmark.tools/de/",

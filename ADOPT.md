@@ -105,36 +105,36 @@ Wait for the yes. Without it, stop: nothing has been written.
 ### 3. The tool, fetched and checked
 
 Create the folder; below, `<probe>` is its path. The tool comes as its release's archive, the same for every project
-and every system. The release page also carries `shoalmark-0.20.2.zip.sha256`, in the form that
+and every system. The release page also carries `shoalmark-0.20.3.zip.sha256`, in the form that
 `shasum -a 256 -c` reads. The zip stores its files without compression, at its root. Its `RELEASE` manifest names
 the version, tag, commit and each file's SHA-256.
 
-The pin: release `v0.20.2`; the archive `https://github.com/shoalmark/shoalmark/releases/download/v0.20.2/shoalmark-0.20.2.zip`, SHA-256 `990bc0972726a803e0569e653d8ae18220d5bbb2435dfbb8f4d9e35dd0c753f5`; in it, `shoalmark.py`, SHA-256 `72f7a76de82c42bd8fe253ca301a8de94ac5a08095f81ed69149579e6b27a0f9`.
+The pin: release `v0.20.3`; the archive `https://github.com/shoalmark/shoalmark/releases/download/v0.20.3/shoalmark-0.20.3.zip`, SHA-256 `8367ae85d9e89a94ed82da3d14f2cdb8868ad115f0cf408f61ead60e8a414649`; in it, `shoalmark.py`, SHA-256 `861fd0592984fb18165bd352f9f7d4da2d70ec9f56063cdf6a2974c54aebca45`.
 
 1. **Check the address before you download.** It is the same, character for character, on the pin line and in the
-   prompt. It is exactly `https://github.com/shoalmark/shoalmark/releases/download/v0.20.2/shoalmark-0.20.2.zip`.
+   prompt. It is exactly `https://github.com/shoalmark/shoalmark/releases/download/v0.20.3/shoalmark-0.20.3.zip`.
    Where it differs, download nothing and tell the person.
 
 2. **Download** the archive into the folder with the system's own tool:
 
    | System | Command |
    |---|---|
-   | Windows (PowerShell) | `Invoke-WebRequest -UseBasicParsing -Uri https://github.com/shoalmark/shoalmark/releases/download/v0.20.2/shoalmark-0.20.2.zip -OutFile <probe>\shoalmark-0.20.2.zip` |
-   | macOS and Linux | `curl -fsSL -o <probe>/shoalmark-0.20.2.zip https://github.com/shoalmark/shoalmark/releases/download/v0.20.2/shoalmark-0.20.2.zip` |
+   | Windows (PowerShell) | `Invoke-WebRequest -UseBasicParsing -Uri https://github.com/shoalmark/shoalmark/releases/download/v0.20.3/shoalmark-0.20.3.zip -OutFile <probe>\shoalmark-0.20.3.zip` |
+   | macOS and Linux | `curl -fsSL -o <probe>/shoalmark-0.20.3.zip https://github.com/shoalmark/shoalmark/releases/download/v0.20.3/shoalmark-0.20.3.zip` |
 
 3. **Check its SHA-256 before anything runs.** It must be the archive's SHA-256 above.
 
    | System | Command |
    |---|---|
-   | Windows (PowerShell) | `Get-FileHash -Algorithm SHA256 <probe>\shoalmark-0.20.2.zip`, or `certutil -hashfile <probe>\shoalmark-0.20.2.zip SHA256` |
-   | macOS | `shasum -a 256 <probe>/shoalmark-0.20.2.zip` |
-   | Linux | `sha256sum <probe>/shoalmark-0.20.2.zip` |
+   | Windows (PowerShell) | `Get-FileHash -Algorithm SHA256 <probe>\shoalmark-0.20.3.zip`, or `certutil -hashfile <probe>\shoalmark-0.20.3.zip SHA256` |
+   | macOS | `shasum -a 256 <probe>/shoalmark-0.20.3.zip` |
+   | Linux | `sha256sum <probe>/shoalmark-0.20.3.zip` |
 
    `Get-FileHash` prints capital letters, so compare without regard to case. If the checksum differs, run nothing,
    delete the folder and tell the person.
 
 4. **Unpack** it with Python's own module, which is the same on every system:
-   `<py> -m zipfile -e <probe>/shoalmark-0.20.2.zip <probe>/shoalmark/`.
+   `<py> -m zipfile -e <probe>/shoalmark-0.20.3.zip <probe>/shoalmark/`.
 
 5. **Check the tool:** the same command on `<probe>/shoalmark/shoalmark.py` must print the tool's SHA-256 above.
 
@@ -231,7 +231,7 @@ cd <probe>/trial
 letters from its name. Every id carries it, so the trackers keep their ids when they move into the project
 (step 12). The report names the key, and the Owner may choose another before anything moves. `--vendor` checks that the manifest's version equals `VERSION` and every file of the set matches its SHA-256.
 Otherwise it refuses in one line and writes nothing. The PIN's first line names only these checks, for example:
-`# shoalmark 0.20.2 · vendored from an archive whose manifest names v0.20.2, commit <sha>, every file matched · <date>`.
+`# shoalmark 0.20.3 · vendored from an archive whose manifest names v0.20.3, commit <sha>, every file matched · <date>`.
 `--init` writes
 `shoalmark.toml`, `docs/work-tracker/TRIAGE.md`, the agents' contract in `AGENTS.md` and a `CLAUDE.md` router; it
 overwrites nothing. Set `name` in `shoalmark.toml` to the project's name. For a German project, step 14 comes before

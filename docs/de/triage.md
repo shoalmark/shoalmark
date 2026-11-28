@@ -1,5 +1,7 @@
 # Dein Wort in der TRIAGE.md
 
+Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation, [`shoalmark/org`](https://github.com/shoalmark/org), unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
+
 *Für den Eigner. Fünf Minuten Lesezeit. Du schreibst es einmal, in deinen eigenen Worten, und alles Weitere
 übernehmen deine Agenten.*
 
@@ -40,7 +42,7 @@ In einem deutsch eingerichteten Repository heißen die Überschriften `## Die Ab
 **Ein erster Entwurf: die Dorfbücherei.** Die deutsche Vorlage `examples/de/TRIAGE.md`, die deine Agenten vor `--init`
 kopieren ([Einrichtung](setup.md), Schritt 2), bringt ein Beispiel in Kursivschrift mit. Dieses Beispiel ist mit
 Absicht ein ganzes Produkt. Der Eigner von shoalmark hat einmal einen ersten Entwurf geschrieben, der nur so groß wie
-ein einzelnes Feature war, weil ein Agent dem Eigner zuvor ein Beispiel dieser Größe gezeigt hatte (FM-022). Deshalb lautet
+ein einzelnes Feature war, weil ein Agent dem Eigner zuvor ein Beispiel dieser Größe gezeigt hatte ([FM-022](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-022-a-person-finds-the-three-intent-lines-hard-to-start-no.md)). Deshalb lautet
 das Beispiel so:
 
 > - **für** — *z. B. die ganze Ausleihe einer Dorfbücherei: Mitglieder, Ausleihen, Rückgaben und das Regal in einem Bestand, dem die Bibliothekarin traut*
@@ -96,7 +98,7 @@ Nachher steht dort:
 > 3\. A pull request merges only with a review's evidence file on its head: a Reviewer from another independent
 > session for critical changes (critical = a release, the gate or hooks, signing and rights, TRIAGE.md or AGENTS.md
 > rules changed by a seat, anything tagged security or P1); inline Reviewer passes on other code; one Reviewer pass
-> for documentation; a review of the Owner's own answers and TRIAGE lines reports and never blocks, until FM-007's
+> for documentation; a review of the Owner's own answers and TRIAGE lines reports and never blocks, until [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md)'s
 > hardware key signs them. The Owner merges on a ready line, or over any other verdict with a signed reason.
 
 Die neue Zeile verlangt für kritische Änderungen einen Reviewer aus einer anderen, unabhängigen Session. Kritisch
@@ -105,16 +107,16 @@ geändert hat, und alles, was als security oder P1 markiert ist.
 
 - **Das Review.** Noch am selben Tag haben sich die Agenten nach der neuen Zeile gerichtet. Die Sichtung, die
   den CI-Fix aufnahm, schrieb *„the Owner's line 3 names a release critical, so its fix's review is the cold
-  session's"* (`42f4eca`), also: Das Review des Fixes gehört der kalten Session. FM-037, der weiter unten beschriebene
+  session's"* (`42f4eca`), also: Das Review des Fixes gehört der kalten Session. [FM-037](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-037-a-seat-can-change-the-owner-s-intent-and-current-path-in.md), der weiter unten beschriebene
   Schutz, wurde vor dem Merge in zwei anderen Sessions geprüft, und `--check` führt beide Urteile als *independent*.
 - **Das Werkzeug.** `--check` zeigt an, wie unabhängig die Reviews der Woche waren. Am 26. September 2026 hat es
   bei `88c7b0c` `reviews this week · 104 verdict(s) · independent 10 · same session 89 · untraced 5`
   ausgegeben. Das ist eine Meldung, keine Sperre. Die meisten Urteile dieser Woche kamen aus derselben Session wie die
-  Arbeit, und ein solches Urteil wird bisher nicht abgelehnt, weil der zweite Abschnitt von FM-024 noch nicht gebaut
+  Arbeit, und ein solches Urteil wird bisher nicht abgelehnt, weil der zweite Abschnitt von [FM-024](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md) noch nicht gebaut
   ist. Die Zeile zeigt dir, was du mergst.
 
 **Drei Wörter, eine andere Einstufung.** Am 25. September 2026 war die CI auf dem Release-Tag `v0.18.3` rot. Die erste
-Sichtung (`42f4eca`, 12:15 Uhr) hat FM-035 als P1 eingestuft, denn ein rotes Release-Tag sei *„a failed command on the
+Sichtung (`42f4eca`, 12:15 Uhr) hat [FM-035](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-035-ci-is-red-on-the-v0-18-3-release-tag-two-suites-fail-on.md) als P1 eingestuft, denn ein rotes Release-Tag sei *„a failed command on the
 current path, line 1"*. Ihr Reviewer hat bemerkt, dass das Zitat gekürzt war. Vollständig lautet Zeile 1: *„The daily
 sitting runs on a tagged release with a signed answer and no failed command in the sitting."* Die Sichtung wurde neu
 gemacht (`c8939e3`, 12:30 Uhr) und kam auf P2: *„the sitting's commands ran green here, so a red CI is not that
@@ -124,17 +126,17 @@ command"*. Die Befehle der Runde selbst waren grün gelaufen.
   dem, was deine Worte sagen, und deshalb achtet der Reviewer darauf, dass die Sichtung sich an sie hält. Soll ein
   rotes Release-Tag für dich P1 sein, schreibe es in deinen Weg. Es ist deine Zeile.
 
-**Ein Einwand, der deinen Weg nennt.** Am 24. September 2026 hat die Auditor-Rolle zu FM-007 einen Einwand erhoben, mit
+**Ein Einwand, der deinen Weg nennt.** Am 24. September 2026 hat die Auditor-Rolle zu [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) einen Einwand erhoben, mit
 einer belegten Zeile. Darin stand, dass der Schlüssel, der die Antworten des Eigners signiert, ein Software-Schlüssel
 im gemeinsamen ssh-agent war, den jeder Push eines Agenten ohne Nachfrage benutzte. Die Zeile endete mit
-*„undermines: TRIAGE.md path 5, FM-033's answer"*. Sie nannte also zwei signierte Regeln als untergraben: Zeile 5 des
-Wegs und die signierte Antwort des Eigners zu FM-033. Am selben Abend hat eine Sichtung FM-007 neu eingestuft
+*„undermines: TRIAGE.md path 5, [FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)'s answer"*. Sie nannte also zwei signierte Regeln als untergraben: Zeile 5 des
+Wegs und die signierte Antwort des Eigners zu [FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md). Am selben Abend hat eine Sichtung [FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md) neu eingestuft
 (`29466fc`). Nach den Befunden ihres Reviewers wurde sie neu gemacht (`c5696c5`) und setzte P1: *„on the current path,
 line 5: an answer is written and signed, and the raise shows the signature proves the account, not the hand"*. Die
 Signatur beweist also das Konto, nicht die Hand.
 
 - **Nur der Text.** Dass neu eingestuft wird, noch am selben Tag, ist die Regel des Eigners, die signierte Antwort zu
-  FM-033. Eine Sichtung hält sie ein, indem sie an diesem Tag noch läuft.
+  [FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md). Eine Sichtung hält sie ein, indem sie an diesem Tag noch läuft.
 - **Das Werkzeug**, seit 0.18.3: Ein Einwand, der eine Zeile nennt, die dein Weg hat, stellt das Arbeitspaket unter
   *triage*, bis eine Sichtung es neu eingestuft hat. Am 24. September konnte das Werkzeug ein solches Arbeitspaket
   noch nicht auflisten. Der Agent hat die Zeile im Arbeitsblatt deshalb von Hand geschrieben.
@@ -165,13 +167,12 @@ auf seinem Kopf die Belegdatei eines Reviews liegt."* zu *„Ein Pull Request wi
 sind."* `--check` hat auf diesem Branch mit Exit-Code 4 geendet. Das sind die Zeilen der Ablehnung, so wie das
 Werkzeug sie ausgibt. Wie alle seine Meldungen sind sie englisch, nennen aber deine deutsche Überschrift. Das Skript
 und seine vollständige Ausgabe liegen in den
-[Belegen zu FM-006](https://github.com/shoalmark/shoalmark/tree/main/work-tracker/evidence/FM-006/triage-page).
+[Belegen zu FM-006](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/evidence/FM-006/triage-page).
 
-```text
-  lint: refused: commit aee039e "AP-001: Zeile 2 des Wegs, kürzer" changes the text under `## Der aktuelle Weg` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`du@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
-  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (FM-007)
+<pre>  lint: refused: commit aee039e "AP-001: Zeile 2 des Wegs, kürzer" changes the text under `## Der aktuelle Weg` in docs/work-tracker/TRIAGE.md — its author `implementer@seat` is not the Owner (`du@example.org`): not the Owner's signed commit — only the Owner changes his intent and his current path (FM-037). The way through: the Owner commits it signed; a seat proposes the change as an ask — `ask:` in its tracker, one sentence he can answer, with `ask-kind: ruling`, `ask-since:` and `next: owner`
+  the limit: a commit signed with the Owner's key passes; at tier 0 any process on his account holds that key (<a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md">FM-007</a>)
 FAILED: 1 ledger-integrity violation(s) — fix the tracker; regenerating will not clear these.
-```
+</pre>
 
 Mit installierten Hooks (`--install-hook`) ist die Änderung einer Rolle an der Absicht gar nicht erst entstanden.
 Der Hook hat dieselbe Ablehnung für *this commit* ausgegeben und vor der Grenze einen Satz ergänzt: *„the hook proves
@@ -185,7 +186,7 @@ Bist du einverstanden, änderst du die Zeile selbst: Datei bearbeiten, `git comm
 [Signaturseite](signing.md).
 
 **Die Grenze** steht in den Worten, die das Werkzeug ausgibt: *a commit signed with the Owner's key passes;
-at tier 0 any process on their account holds that key (FM-007)*. Ein Commit, der mit dem Schlüssel des Eigners signiert ist,
+at tier 0 any process on their account holds that key ([FM-007](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-007-a-signature-proves-the-key-not-the-hand-an-agent-running-as.md))*. Ein Commit, der mit dem Schlüssel des Eigners signiert ist,
 geht also durch, und auf Stufe 0 hat jeder Prozess unter deinem Konto diesen Schlüssel. Das Werkzeug gibt diesen Satz
 nach jeder Ablehnung aus.
 
@@ -212,7 +213,7 @@ nach jeder Ablehnung aus.
   dem Arbeitsblatt einer Sichtung steht und deren Befehl seine Zeile anwendet: laufende Arbeit, die seit mehr als
   sieben Tagen nicht eingestuft wurde, eine neue Erfassung oder ein Arbeitspaket, dessen Einwand eine Zeile deines
   Wegs nennt (*das Werkzeug*). Nach den Regeln der Sichtung wird ein solches Arbeitspaket noch am selben Tag neu
-  eingestuft (die Regel aus FM-033); dass es geschieht, trägt *nur der Text*. Alle anderen behalten ihre Stufe bis zu
+  eingestuft (die Regel aus [FM-033](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-033-work-is-built-on-trackers-no-pass-has-judged-and-the-board.md)); dass es geschieht, trägt *nur der Text*. Alle anderen behalten ihre Stufe bis zu
   ihrer nächsten Sichtung, und bis dahin zeigt dein Board das alte Urteil. Stufe oder Rang von einer Rolle ohne das
   Recht `triage` lehnt *das Werkzeug* ab; dass kein Agent sie von Hand ändert, trägt *nur der Text*.
 - **Sie beantwortet keine Frage.** Eine Frage auf deinem Board beantwortest du mit `--answer`, signiert (*das

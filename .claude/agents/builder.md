@@ -14,3 +14,10 @@ and never in another seat's worktree. Spawn nothing. Open no pull request. Push 
 report as the brief's last section says, with exact times.
 A refactor lands in its own commit, before any behaviour change, and proves it changed nothing: identical outputs, tests
 passing unedited.
+
+The tool team's trackers and review evidence live in `shoalmark/org`, in the project `teams/tool/`, with its
+trackers under `teams/tool/work-tracker/`. Run its rules there as
+`python3 tools/shoalmark/shoalmark.py --root teams/tool --check`. Use a separately configured org worktree or an
+explicit hand-off for tracker changes; leave the frozen code-side copy alone. Pair the code and tracker pull
+requests by repository and number. A review is filed in org and names `shoalmark/shoalmark` and the full code
+commit it reviewed; its org commit carries `Reviewed: <full sha>`. The code-side queue cannot verify that join.

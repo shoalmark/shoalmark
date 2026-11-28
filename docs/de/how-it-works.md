@@ -4,6 +4,8 @@ description: "Eine Woche mit shoalmark in vier Schritten: dein Teil daran, was e
 
 # So funktioniert's
 
+Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation, [`shoalmark/org`](https://github.com/shoalmark/org), unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
+
 shoalmark legt die Arbeit deines Projekts als Textdateien im Projekt selbst ab, sodass jeder Agent, der daran arbeitet, denselben aktuellen Stand liest. Es zeigt dir zuerst, was auf deine Antwort wartet, und seine Prüfungen melden Arbeit, die als ausgeliefert markiert ist, wenn keine gespeicherte Änderung (ein Commit) in der Historie des Projekts dahintersteht.
 
 ## Eine Woche in vier Schritten
@@ -16,7 +18,7 @@ shoalmark legt die Arbeit deines Projekts als Textdateien im Projekt selbst ab, 
 4. **Die Agenten handeln auf deine Antwort, und ein Reviewer urteilt vor dem Merge.** Eine Rolle mit dem Recht dazu hält deine Antwort im Arbeitspaket fest und macht weiter. Bevor Arbeit zu einem Merge kommt, prüft sie ein Reviewer; das Board sagt, ob dessen Durchgang unabhängig war, also aus einer anderen Session kam als der Code. Das ist eine Meldung, kein Beweis. `--queue` zeigt die offenen Pull Requests in der Reihenfolge, in der sie zu mergen sind.
 
 <figure class="week" markdown="0">
-<div class="week-card"><h3 class="t">FM-024</h3><p class="src">work-tracker/FM-024-….md · 2026-09-28</p>
+<div class="week-card"><h3 class="t"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024</a></h3><p class="src"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">archiviertes Arbeitspaket</a> · 2026-09-28</p>
 <pre lang="en">next: owner
 ask: "Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them?"
 ask-kind: ruling
@@ -26,7 +28,7 @@ ask-proposal: "all three: --statusline, --install-statusline for Claude and Code
 <p class="week-arrow" aria-hidden="true">↓</p>
 <div class="week-card board"><h3 class="t">Board</h3>
 <div class="wk-board" lang="en"><p><i>##</i> <b class="hot">waiting for you: 3</b></p>
-<p><span class="id">FM-024</span> Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them? · a ruling <span class="chip">accept</span><span class="chip">reject</span></p></div></div>
+<p><span class="id"><a href="https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/FM-024-a-seat-s-commit-names-its-session-and-the-record-knows-the.md">FM-024</a></span> Do the status-line scripts for Claude and Codex and the addressing rule ship with shoalmark, so a pinned copy carries them? · a ruling <span class="chip">accept</span><span class="chip">reject</span></p></div></div>
 <p class="week-arrow" aria-hidden="true">↓</p>
 <div class="week-card"><h3 class="t">4127dba</h3><p class="src">git commit · 2026-09-28</p>
 <pre lang="en"><span class="del">-next: owner</span>

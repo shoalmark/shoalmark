@@ -6,6 +6,8 @@ description: "Eine Werkbank für deine Agenten. Deine Entscheidungen belegt."
 
 # shoalmark
 
+Seit dem Umzug der Arbeitspakete am 27. November 2026 liegen die Arbeitspakete des Tool-Teams im Repository der Organisation, [`shoalmark/org`](https://github.com/shoalmark/org), unter `teams/tool/work-tracker/`, und diese Links zeigen ihren Stand beim Umzug.
+
 *Eine Werkbank für deine Agenten. Deine Entscheidungen belegt.*
 
 ## Die Agenten tragen die Arbeit, du hast das letzte Wort.
@@ -50,7 +52,7 @@ Im eigenen Repository von shoalmark, das selbst mit shoalmark arbeitet:
 
 *Gezählt am 1. Oktober 2026 mit `gh` aus den Pull Requests 1–144 von shoalmark/shoalmark: nur gemergte, ohne die
 eigenen Antwort-Branches des Eigners (`answer/…`). Einer zählt, wenn ein Commit, der eine Datei unter
-`work-tracker/evidence/reviews/` anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull
+[`work-tracker/evidence/reviews/`](https://github.com/shoalmark/shoalmark/blob/ae138ee10efb4c8a4a9710afdf61ae571fc21119/work-tracker/evidence/reviews/) (Stand beim Umzug am 27. November 2026) anlegt oder ändert (Merge-Commits nicht mitgezählt), vor dem Öffnen des Pull
 Requests datiert ist. Das Datum eines Commits sagt, wann er entstand, nicht wann er gepusht wurde: Die
 Push-Ereignisse der Git-Plattform bestätigen die gezählten Pull Requests ab dem 24. September 2026, 05:18 UTC; ältere listet
 sie nicht mehr. Die Regel ist die signierte Antwort des Eigners vom 24. September 2026, 11:07 Uhr MESZ.*

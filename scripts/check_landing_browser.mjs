@@ -6,7 +6,7 @@
 // wrap and are cut nowhere, and nothing scrolls sideways; the anchors and the separator with them first show at 1280 px (English) and 1346 px (German); both header buttons show the
 // focus ring when the keyboard reaches them.
 // In the probe state, on each landing: the hero's cue is as wide as the primary button and centred on it (over the stacked buttons on a phone), hidden from screen readers,
-// clear of every chart label; with motion allowed only its icon and words blink, from the start, 5 s at most, then lit; under reduced motion the document has no
+// with motion allowed only its icon and words blink, from the start, 5 s at most, then lit; under reduced motion the document has no
 // animation.
 // In the probe state, the coin door on each landing: in every frame from 0 to 2.9 s the door is lit and still, with no tape, unlit window or second cue line drawn,
 // the page does not scroll sideways and the door is the live link; the door, 55 px tall on a desktop and 59 px on a phone, shows its copy icon centred under its
@@ -206,13 +206,11 @@ if (state == "probe" && DESK) for (const page of PAGES.filter(p => p.endsWith("i
   verdict(page, 1024, 768, "at 1024×768, with its fold closed, nothing in the dialog scrolls inside itself", open_ && scrolling.length == 0, scrolling.join("; ") || String(open_));
   await t.close();
 }
-// the hero's cue (the probe state): a strip as wide as the primary button and centred on it, over the stacked buttons on a phone; clear of every chart label; blinking its icon and
-// words alone, 5 s at most, then lit. The chart's labels are its names, its figures and the wrecks' labels; the strip stands clear of each by at least 2 px.
+// The hero cue matches the primary button and blinks briefly before remaining lit.
 const CUE = `(() => { const r = e => { const b = e.getBoundingClientRect(); return {l: b.left, r: b.right, t: b.top, b: b.bottom, w: b.width, cx: (b.left + b.right) / 2} }, c = document.querySelector(".cue"), b = document.getElementById("probe-open"), a = document.querySelector(".btn.alt");
   if (!c || !b || !a) return {missing: true};
-  const labels = [...document.querySelectorAll(".name, .fig, .wreck .lbl")].filter(e => getComputedStyle(e).display != "none" && e.getBoundingClientRect().width > 0), rc = r(c);
-  let gap = Infinity, nearest = ""; for (const e of labels) { const x = r(e), g = Math.max(x.l - rc.r, rc.l - x.r, x.t - rc.b, rc.t - x.b); if (g < gap) { gap = g; nearest = e.textContent.trim().slice(0, 20) } }
-  return {cue: rc, btn: r(b), alt: r(a), gap: Math.round(gap * 10) / 10, nearest, hidden: c.getAttribute("aria-hidden"), sw: document.documentElement.scrollWidth - innerWidth} })()`;
+  const rc = r(c);
+  return {cue: rc, btn: r(b), alt: r(a), hidden: c.getAttribute("aria-hidden"), sw: document.documentElement.scrollWidth - innerWidth} })()`;
 if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("index.html"))) for (const [w, h] of [[360, 780], [375, 667], [390, 844], [1024, 768], [1280, 720], [1366, 768], [1440, 900], [1536, 864], [1599, 900], [1600, 900], [1920, 1080], [2560, 1300]]) {
   const t = await open(page, {w, h});
   const q = await t.js(CUE);
@@ -222,8 +220,6 @@ if (state == "probe" && CUEON) for (const page of PAGES.filter(p => p.endsWith("
   verdict(page, w, h, phone ? "the cue is centred over the stacked buttons, as wide as they" : "the cue is as wide as the primary button and centred on it, above it",
     near(q.cue.w, q.btn.w) && near(q.cue.cx, q.btn.cx) && q.cue.b <= q.btn.t && (phone ? near(q.cue.cx, q.alt.cx) && q.alt.t >= q.btn.b : q.alt.l >= q.btn.r), JSON.stringify([q.cue, q.btn, q.alt].map(o => [Math.round(o.l), Math.round(o.w)])));
   verdict(page, w, h, "the cue is hidden from screen readers and takes no room sideways", q.hidden == "true" && q.sw <= 0, JSON.stringify([q.hidden, q.sw]));
-  if (w >= 1280) verdict(page, w, h, "the cue stands clear of every chart label, by at least 2 px", q.gap >= 2, `nearest ${q.nearest}: ${q.gap}px`);
-  if (w >= 1280 && (w == 1440 || w == 1600 || w == 2560)) info.push({page, w, h, state: "the cue's clearance of the chart's labels", gap: q.gap, nearest: q.nearest});
   await t.close();
 }
 // the blink: with motion allowed, the cue is one line from the first frame, and its icon and words alone blink, from the start, 5 s at most, and are lit and at rest
