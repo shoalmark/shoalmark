@@ -45,13 +45,18 @@ def run_checks():
                 env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0",
                            PATH=str(programs) + os.pathsep + env.get("PATH", ""))
 
-                def git(*args):
-                    return subprocess.check_output(["git", "-C", str(root), *args], env=env, stderr=subprocess.STDOUT).decode().strip()
+                def git(*args, env=env, input=None):
+                    return subprocess.check_output(["git", "-C", str(root), *args], env=env, input=input,
+                                                   stderr=subprocess.STDOUT).decode().strip()
 
                 def write(path):
                     target = root / path
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text("synthetic fixture\n", encoding="utf-8")
+
+                def working_tree():
+                    return {p.relative_to(root): p.read_bytes() if p.is_file() else None
+                            for p in root.rglob("*") if ".git" not in p.relative_to(root).parts}
 
                 git("init", "-q", "-b", "main")
                 git("config", "user.name", "fixture")
@@ -68,18 +73,33 @@ def run_checks():
                          ("newline", "work-tracker/line\nbreak.md", False),
                          ("delete", None, True), ("rename", None, False))
                 for label, path, accepted in cases:
-                    git("checkout", "-q", "-b", label, base)
-                    if path:
-                        write(path)
-                    elif label == "delete":
-                        (root / "work-tracker/old.md").rename(area / "old.md")
+                    if label == "newline":
+                        before_head = git("rev-parse", "HEAD")
+                        before_index = (root / ".git/index").read_bytes()
+                        before_tree = working_tree()
+                        index_env = dict(env, GIT_INDEX_FILE=str(area / "newline.index"))
+                        git("read-tree", base, env=index_env)
+                        blob = git("hash-object", "-w", "--stdin", input=b"synthetic fixture\n", env=index_env)
+                        git("update-index", "--add", "--cacheinfo", "100644", blob, path, env=index_env)
+                        tree = git("write-tree", env=index_env)
+                        head = git("commit-tree", tree, "-p", base, "-m", "Fixture change.", env=index_env)
                     else:
-                        (root / "app.py").rename(root / "work-tracker/moved.py")
-                    git("add", "-A"); git("commit", "-qm", "Fixture change.")
-                    head = git("rev-parse", "HEAD")
+                        git("checkout", "-q", "-b", label, base)
+                        if path:
+                            write(path)
+                        elif label == "delete":
+                            (root / "work-tracker/old.md").rename(area / "old.md")
+                        else:
+                            (root / "app.py").rename(root / "work-tracker/moved.py")
+                        git("add", "-A"); git("commit", "-qm", "Fixture change.")
+                        head = git("rev-parse", "HEAD")
                     result = subprocess.run([bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
                                             cwd=root, env=dict(env, BASE=base, HEAD_SHA=head), capture_output=True, text=True)
                     check("path check: " + label, result.returncode == (0 if accepted else 1), result.stderr.strip() if result.returncode != (0 if accepted else 1) else "")
+                    if label == "newline":
+                        check("the newline case leaves HEAD unchanged", git("rev-parse", "HEAD") == before_head)
+                        check("the newline case leaves the shared index unchanged", (root / ".git/index").read_bytes() == before_index)
+                        check("the newline case leaves the working tree unchanged", working_tree() == before_tree)
                 result = subprocess.run([bash, "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
                                         cwd=root, env=dict(env, BASE="missing-ref", HEAD_SHA=head), capture_output=True, text=True)
                 check("an unreadable diff fails closed", result.returncode != 0)
